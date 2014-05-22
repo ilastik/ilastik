@@ -1,3 +1,5 @@
+from ilastik.utility.commandProcessor import CommandProcessor
+
 import SocketServer
 import threading
 import socket
@@ -92,54 +94,20 @@ class TCPRequestHandler(SocketServer.StreamRequestHandler):
         self.respond(data)
     
     def parse(self, data):
+        # check if data is in correct format
         if not isinstance(data, dict):
             raise Exception("Message is not a proper JSON object")
         
-        # keys to lowercase
+        # transform all keys to lower case
         data = dict((k.lower(), v) for k,v in data.iteritems())
         
+        # abort parsing if keyword 'command' is missing
         if not 'command' in data:
             raise Exception("Missing keyword 'command'")
         
-        cmd = data['command']
-        if not cmd in self.CommandProcessor.allowedCommands:
-            raise Exception("'%s' is not a valid command" % cmd)
-        
-        self.CommandProcessor.execute(cmd, data)
+        # hand data to a command processor (the commands are defined in
+        # ilastik/utility/commands.py)
+        self.CommandProcessor.execute(data['command'], data)
             
     def respond(self, data):
         pass
-    
-class CommandProcessor(object):
-    def __init__(self, shell):
-        self.shell = shell
-        
-        # define allowed commands and implement them in this class
-        self.allowedCommands = {'setviewerposition': self._setViewerPos,
-                                'handshake': self._connectToServer}
-    
-    def execute(self, cmd, data):
-        try:
-            self.allowedCommands[cmd](data)
-        except Exception, e:
-            raise Exception("Executing command '%s' failed: %s" % (cmd, e))
-    
-    def _setViewerPos(self, data):
-        # pos5d is a dict which may contain one entry for each coordinate
-        pos5d = []
-        for l in 'txyzc':
-            if l in data:
-                pos5d.append(data[l])
-            else:
-                pos5d.append(0)
-        self.shell.setAllViewersPosition(pos5d)
-        
-    def _connectToServer(self, data):
-        if ('port' in data and 'name' in data and 
-            isinstance(data['port'], int) and 
-            isinstance(data['name'], basestring)):
-            host = 'localhost'  
-            self.shell.socketServer.connect(host, data['port'], 
-                                            data['name'].encode('ascii','ignore'))
-        else:
-            raise Exception("Please supply at least server 'name' and 'port' for handshake")
