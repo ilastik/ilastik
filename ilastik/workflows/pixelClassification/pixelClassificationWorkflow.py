@@ -338,8 +338,9 @@ class PixelClassificationWorkflow(Workflow):
             self.batchResultsApplet.configure_operator_with_parsed_args( self._batch_export_args )
 
         if self.retrain:
-            # re-train Classifier (useful if the stored labels were changed outside ilastik)
-            self.pcApplet.topLevelOperator.opTrain._opTrainFromFeatures.Classifier.setDirty()
+            # Cause the classifier to be dirty so it is forced to retrain.
+            # (useful if the stored labels were changed outside ilastik)
+            self.pcApplet.topLevelOperator.opTrain.ClassifierFactory.setDirty()
 
         if self._headless and self._batch_input_args and self._batch_export_args:
 
