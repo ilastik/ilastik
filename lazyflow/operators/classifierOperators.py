@@ -168,8 +168,8 @@ class OpTrainVectorwiseClassifierBlocked(Operator):
     
     Classifier = OutputSlot()
     
-    # Images[N] ---                                                                                    MaxLabel ------
-    #              \                                                                                                  \
+    # Images[N] ---                                                                                         MaxLabel ------
+    #              \                                                                                                       \
     # Labels[N] --> opFeatureMatrixCaches ---(FeatureImage[N])---> opConcatenateFeatureImages ---(label+feature matrix)---> OpTrainFromFeatures ---(Classifier)--->
 
     def __init__(self, *args, **kwargs):
