@@ -49,7 +49,24 @@ class OpTrainClassifierBlocked(Operator):
         super(OpTrainClassifierBlocked, self).__init__(*args, **kwargs)
         self.progressSignal = OrderedSignal()
         self._mode = None
-        self._training_op = None
+        
+        # Fully connect the vectorwise training operator
+        self._opVectorwiseTrain = OpTrainVectorwiseClassifierBlocked( parent=self )
+        self._opVectorwiseTrain.Images.connect( self.Images )
+        self._opVectorwiseTrain.Labels.connect( self.Labels )
+        self._opVectorwiseTrain.ClassifierFactory.connect( self.ClassifierFactory )
+        self._opVectorwiseTrain.nonzeroLabelBlocks.connect( self.nonzeroLabelBlocks )
+        self._opVectorwiseTrain.MaxLabel.connect( self.MaxLabel )
+        self._opVectorwiseTrain.progressSignal.subscribe( self.progressSignal )
+
+        # Fully connect the pixelwise training operator
+        self._opPixelwiseTrain = OpTrainPixelwiseClassifierBlocked( parent=self )            
+        self._opPixelwiseTrain.Images.connect( self.Images )
+        self._opPixelwiseTrain.Labels.connect( self.Labels )
+        self._opPixelwiseTrain.ClassifierFactory.connect( self.ClassifierFactory )
+        self._opPixelwiseTrain.nonzeroLabelBlocks.connect( self.nonzeroLabelBlocks )
+        self._opPixelwiseTrain.MaxLabel.connect( self.MaxLabel )
+        self._opPixelwiseTrain.progressSignal.subscribe( self.progressSignal )
         
     def setupOutputs(self):
         # Construct an inner operator depending on the type of classifier we'll be creating.
@@ -64,24 +81,13 @@ class OpTrainClassifierBlocked(Operator):
         if new_mode == self._mode:
             return
         
-        if self._training_op is not None:
-            self.Classifier.disconnect()
-            self._training_op.cleanUp()
+        self.Classifier.disconnect()
         self._mode = new_mode
         
         if self._mode == 'vectorwise':
-            self._training_op = OpTrainVectorwiseClassifierBlocked( parent=self )
+            self.Classifier.connect( self._opVectorwiseTrain.Classifier )
         elif self._mode == 'pixelwise':
-            self._training_op = OpTrainPixelwiseClassifierBlocked( parent=self )            
-
-        self._training_op.progressSignal.subscribe( self.progressSignal )
-
-        self._training_op.Images.connect( self.Images )
-        self._training_op.Labels.connect( self.Labels )
-        self._training_op.ClassifierFactory.connect( self.ClassifierFactory )
-        self._training_op.nonzeroLabelBlocks.connect( self.nonzeroLabelBlocks )
-        self._training_op.MaxLabel.connect( self.MaxLabel )
-        self.Classifier.connect( self._training_op.Classifier )
+            self.Classifier.connect( self._opPixelwiseTrain.Classifier )
 
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here..."
@@ -151,7 +157,6 @@ class OpTrainPixelwiseClassifierBlocked(Operator):
         return result
 
     def propagateDirty(self, slot, subindex, roi):
-        print 'classifier is dirty...'
         self.Classifier.setDirty()
 
 class OpTrainVectorwiseClassifierBlocked(Operator):
