@@ -1,26 +1,33 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import sys
 import copy
 import argparse
+from functools import partial
 import logging
 logger = logging.getLogger(__name__)
 
 import numpy
+
+from ilastik.config import cfg as ilastik_config
 
 from ilastik.workflow import Workflow
 
@@ -41,6 +48,9 @@ class PixelClassificationWorkflow(Workflow):
     workflowName = "Pixel Classification"
     workflowDescription = "This is obviously self-explanatory."
     defaultAppletIndex = 1 # show DataSelection by default
+    
+    DATA_ROLE_RAW = 0
+    DATA_ROLE_PREDICTION_MASK = 1
     
     @property
     def applets(self):
@@ -94,11 +104,16 @@ class PixelClassificationWorkflow(Workflow):
                                                         batchDataGui=False,
                                                         instructionText=data_instructions )
         opDataSelection = self.dataSelectionApplet.topLevelOperator
-        opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
+        
+        if ilastik_config.getboolean('ilastik', 'debug'):
+            # see role constants, above
+            opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Prediction Mask'] )
+        else:
+            opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
 
         self.featureSelectionApplet = FeatureSelectionApplet(self, "Feature Selection", "FeatureSelections", self.filter_implementation)
 
-        self.pcApplet = PixelClassificationApplet(self, "PixelClassification")
+        self.pcApplet = PixelClassificationApplet( self, "PixelClassification" )
         opClassify = self.pcApplet.topLevelOperator
 
         self.dataExportApplet = PixelClassificationDataExportApplet(self, "Prediction Export")
@@ -150,6 +165,9 @@ class PixelClassificationWorkflow(Workflow):
         #         and -> Classification Op (for display)
         opTrainingFeatures.InputImage.connect( opData.Image )
         opClassify.InputImages.connect( opData.Image )
+        
+        if ilastik_config.getboolean('ilastik', 'debug'):
+            opClassify.PredictionMasks.connect( opData.ImageGroup[self.DATA_ROLE_PREDICTION_MASK] )
         
         # Feature Images -> Classification Op (for training, prediction)
         opClassify.FeatureImages.connect( opTrainingFeatures.OutputImage )
@@ -228,6 +246,7 @@ class PixelClassificationWorkflow(Workflow):
         # Just connect the uncached features here to satisfy the operator.
         #opBatchPredictionPipeline.CachedFeatureImages.connect( opBatchFeatures.OutputImage )
 
+        self.opBatchFeatures = opBatchFeatures
         self.opBatchPredictionPipeline = opBatchPredictionPipeline
 
     def handleAppletStateUpdateRequested(self):
@@ -320,7 +339,7 @@ class PixelClassificationWorkflow(Workflow):
 
         if self.retrain:
             # re-train Classifier (useful if the stored labels were changed outside ilastik)
-            self.pcApplet.topLevelOperator.opTrain._opTrainFromFeatures.Classifier.setDirty()
+            self.pcApplet.topLevelOperator.opTrain._training_op._opTrainFromFeatures.Classifier.setDirty()
 
         if self._headless and self._batch_input_args and self._batch_export_args:
 

@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import os
 import logging
 from functools import partial
@@ -52,6 +56,11 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         super( ThresholdTwoLevelsGui, self ).__init__(*args, **kwargs)
         self._channelColors = self._createDefault16ColorColorTable()
 
+        self._onInputMetaChanged()
+
+        # connect callbacks last -> avoid undefined behaviour
+        self._connectCallbacks()
+
     def initAppletDrawerUi(self):
         """
         Reimplemented from LayerViewerGui base class.
@@ -59,9 +68,6 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
-        
-        self._drawer.applyButton.clicked.connect( self._onApplyButtonClicked )
-        self._drawer.tabWidget.currentChanged.connect( self._onTabCurrentChanged )
 
         # disable graph cut applet if not available
         if not haveGraphCut():
@@ -96,6 +102,12 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
 
         self.topLevelOperatorView.InputImage.notifyMetaChanged( bind(self._updateGuiFromOperator) )
         self.__cleanup_fns.append( partial( self.topLevelOperatorView.InputImage.unregisterMetaChanged, bind(self._updateGuiFromOperator) ) )
+
+    def _connectCallbacks(self):
+        self.topLevelOperatorView.InputImage.notifyMetaChanged(bind(self._onInputMetaChanged))
+        self._drawer.applyButton.clicked.connect(bind(self._onApplyButtonClicked))
+        self._drawer.tabWidget.currentChanged.connect(bind(self._onTabCurrentChanged))
+
 
     @threadRouted
     def _updateGuiFromOperator(self):
@@ -138,25 +150,24 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             self._drawer.radioButtonGC_local.setChecked(True)
         else:
             self._drawer.radioButtonGC_global.setChecked(True)
-            
 
         # Size filters
         self._drawer.minSizeSpinBox.setValue( op.MinSize.value )
         self._drawer.maxSizeSpinBox.setValue( op.MaxSize.value )
-        
+
         # Operator
         self._drawer.tabWidget.setCurrentIndex( op.CurOperator.value )
-    
+
     def _updateOperatorFromGui(self):
         op = self.topLevelOperatorView
 
         # Read all gui settings before updating the operator
         # (The gui is still responding to operator changes, 
         #  and we don't want it to update until we've read all gui values.)
-        
+
         # Read Channel
         channel = self._drawer.inputChannelSpinBox.value()
-        
+
         # Read Sigmas
         sigmaSlot = self.topLevelOperatorView.SmootherSigma
         block_shape_dict = dict( sigmaSlot.value )
@@ -199,11 +210,11 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             mexBox.setText("Low threshold must be lower than high threshold ")
             mexBox.exec_()
             return
-        
+
         # Read Size filters
         minSize = self._drawer.minSizeSpinBox.value()
         maxSize = self._drawer.maxSizeSpinBox.value()
-        
+
         if minSize>=maxSize:
             mexBox=QMessageBox()
             mexBox.setText("Min size must be smaller than max size ")
@@ -213,7 +224,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         # Read the current thresholding method
         curIndex = self._drawer.tabWidget.currentIndex()
         #print "Setting operator to", curIndex+1, " thresholds"
-        
+
         # Apply new settings to the operator
         op.CurOperator.setValue(curIndex)
         op.Channel.setValue(channel)
@@ -234,11 +245,15 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         for layer in self.layerstack:
             if "Final" in layer.name:
                 layer.visible = True
-    
-    def _onTabCurrentChanged(self, cur):
-        self._updateOperatorFromGui()
         self.updateAllLayers()
-        
+
+    def _onTabCurrentChanged(self):
+        pass
+        # not needed, we update ONLY on apply button
+        #self._updateOperatorFromGui()
+        #not needed, LayerViewerGui monitors op.CurOperator
+        #self.updateAllLayers()
+
     def _onShowDebugChanged(self, state):
         if state==Qt.Checked:
             self._showDebug = True
@@ -257,16 +272,29 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
                 self._drawer.applyButton.click()
                 return True
         return False
-    
+
+    def _onInputMetaChanged(self):
+        op = self.topLevelOperatorView
+        self._channelProviders = []
+        if not op.InputImage.ready():
+            return
+
+        numChannels = op.InputImage.meta.getTaggedShape()['c']
+        for channel in range(numChannels):
+            channelProvider = OpSingleChannelSelector(parent=op.InputImage.getRealOperator().parent)
+            channelProvider.Input.connect(op.InputImage)
+            channelProvider.Index.setValue(channel)
+            self._channelProviders.append(channelProvider)
+
     def setupLayers(self):
-        layers = []        
+        layers = []
         op = self.topLevelOperatorView
         binct = [QColor(Qt.black), QColor(Qt.white)]
         binct[0] = 0
         ct = create_default_16bit()
-        ct[0]=0
+        ct[0] = 0
         # Show the cached output, since it goes through a blocked cache
-        
+
         if op.CachedOutput.ready():
             outputSrc = LazyflowSource(op.CachedOutput)
             outputLayer = ColortableLayer(outputSrc, ct)
@@ -275,26 +303,19 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             outputLayer.opacity = 1.0
             outputLayer.setToolTip("Results of thresholding and size filter")
             layers.append(outputLayer)
-            
-        if op.InputImage.ready():
-            numChannels = op.InputImage.meta.getTaggedShape()['c']
-            
-            for channel in range(numChannels):
-                channelProvider = OpSingleChannelSelector(parent=op.InputImage.getRealOperator().parent)
-                channelProvider.Input.connect(op.InputImage)
-                channelProvider.Index.setValue( channel )
-                channelSrc = LazyflowSource( channelProvider.Output )
-                inputChannelLayer = AlphaModulatedLayer( channelSrc,
-                                                    tintColor=QColor(self._channelColors[channel]),
-                                                    range=(0.0, 1.0),
-                                                    normalize=(0.0, 1.0) )
-                inputChannelLayer.opacity = 0.5
-                inputChannelLayer.visible = True
-                inputChannelLayer.name = "Input Channel " + str(channel)
-                inputChannelLayer.setToolTip("Select input channel " + str(channel) + \
-                                             " if this prediction image contains the objects of interest.")                    
-                layers.append(inputChannelLayer)
-                
+
+        for channel, channelProvider in enumerate(self._channelProviders):
+            channelSrc = LazyflowSource(channelProvider.Output)
+            inputChannelLayer = AlphaModulatedLayer(
+                channelSrc, tintColor=QColor(self._channelColors[channel]),
+                range=(0.0, 1.0), normalize=(0.0, 1.0))
+            inputChannelLayer.opacity = 0.5
+            inputChannelLayer.visible = True
+            inputChannelLayer.name = "Input Channel " + str(channel)
+            inputChannelLayer.setToolTip("Select input channel " + str(channel) + \
+                                            " if this prediction image contains the objects of interest.")                    
+            layers.append(inputChannelLayer)
+
         if self._showDebug:
             #FIXME: We have to do that, because lazyflow doesn't have a way to make an operator partially ready
             curIndex = self._drawer.tabWidget.currentIndex()
@@ -309,7 +330,9 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
                     layers.append(lowThresholdLayer)
         
                 if op.FilteredSmallLabels.ready():
-                    filteredSmallLabelsLayer = self.createStandardLayerFromSlot( op.FilteredSmallLabels )
+                    filteredSmallLabelsSrc = LazyflowSource(op.FilteredSmallLabels)
+                    #filteredSmallLabelsLayer = self.createStandardLayerFromSlot( op.FilteredSmallLabels )
+                    filteredSmallLabelsLayer = ColortableLayer(filteredSmallLabelsSrc, binct)
                     filteredSmallLabelsLayer.name = "After high threshold and size filter"
                     filteredSmallLabelsLayer.visible = False
                     filteredSmallLabelsLayer.opacity = 1.0

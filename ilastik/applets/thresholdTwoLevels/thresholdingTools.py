@@ -1,18 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+##############################################################################
 
 # Built-in
 import gc
@@ -188,7 +193,7 @@ class OpAnisotropicGaussianSmoothing(Operator):
 #
 #   Thresholds: High=4, Low=1
 #
-#     0 2 0        0 2 0 
+#     0 2 0        0 2 0
 #     2 5 2        2 3 2
 #     0 2 0        0 2 0
 #
@@ -283,98 +288,3 @@ class OpSelectLabels(Operator):
             self.Output.setDirty(slice(None))
         else:
             assert False, "Unknown input slot: {}".format(slot.name)
-
-
-## wrapper for OpFilterLabels
-# Wraps OpFilterLabels in time and channel dimension beacuse we want to filter
-# objects by size only in spatial dimensions.
-#   - Spawns a new request for each time/channel slice
-#   - Assumes that input is 5d in 'txyzc' order
-class OpFilterLabels5d(Operator):
-    name = "OpFilterLabels5d"
-    category = "generic"
-
-    # inherited
-
-    Input = InputSlot()
-    MinLabelSize = InputSlot(stype='int')
-    MaxLabelSize = InputSlot(optional=True, stype='int')
-    BinaryOut = InputSlot(optional=True, value=False, stype='bool')
-
-    _ReorderedOutput = OutputSlot()
-    Output = OutputSlot()
-
-    def __init__(self, *args, **kwargs):
-        super(OpFilterLabels5d, self).__init__(*args, **kwargs)
-        #FIXME move the reordering to high-level operator, assume txyzc
-        self._reorder1 = OpReorderAxes(parent=self)
-        self._reorder1.AxisOrder.setValue('txyzc')
-        self._reorder1.Input.connect(self.Input)
-
-        self._op = OpFilterLabels(parent=self)
-        self._op.Input.connect(self._reorder1.Output)
-        #self._op.Input.connect(self.Input)
-        self._op.MinLabelSize.connect(self.MinLabelSize)
-        self._op.MaxLabelSize.connect(self.MaxLabelSize)
-        self._op.BinaryOut.connect(self.BinaryOut)
-
-        self._reorder2 = OpReorderAxes(parent=self)
-        self._reorder2.Input.connect(self._ReorderedOutput)
-        self.Output.connect(self._reorder2.Output)
-        #self.Output.connect(self._)
-
-    def setupOutputs(self):
-        assert len(self._reorder1.Output.meta.shape) == 5
-        self.Output.meta.assignFrom(self.Input.meta)
-        self._ReorderedOutput.meta.assignFrom(self._reorder1.Output.meta)
-        self._reorder2.AxisOrder.setValue(self.Input.meta.getAxisKeys())
-
-    def execute(self, slot, subindex, roi, result):
-        assert slot == self._ReorderedOutput
-        pool = RequestPool()
-
-        t_ind = 0
-        for t in range(roi.start[0], roi.stop[0]):
-            c_ind = 0
-            for c in range(roi.start[-1], roi.stop[-1]):
-                newroi = roi.copy()
-                newroi.start[0] = t
-                newroi.stop[0] = t+1
-                newroi.start[-1] = c
-                newroi.stop[-1] = c+1
-
-                req = self._op.Output.get(newroi)
-                resView = result[t_ind:t_ind+1, ..., c_ind:c_ind+1]
-                req.writeInto(resView)
-
-                pool.add(req)
-
-                c_ind += 1
-
-            t_ind += 1
-
-        pool.wait()
-        pool.clean()
-
-    def propagateDirty(self, slot, subindex, roi):
-        inStop = numpy.asarray(self.Input.meta.shape)
-        inStart = inStop*0
-        if slot == self.Input:
-            # upstream dirtiness affects whole volume (per time/channel)
-            t_ind = self.Input.meta.axistags.index('t')
-            c_ind = self.Input.meta.axistags.index('c')
-            inStart[t_ind] = roi.start[t_ind]
-            inStop[t_ind] = roi.stop[t_ind]
-            inStart[c_ind] = roi.start[c_ind]
-            inStop[c_ind] = roi.stop[c_ind]
-        elif slot == self.MinLabelSize or slot == self.MaxLabelSize\
-                or slot == self.BinaryOut:
-            # changes in the size affect the entire volume including all time
-            # slices and channels
-            # if we change the semantics of the output, we have to set it dirty
-            pass
-        else:
-            assert False, "Invalid slot {}".format(slot)
-
-        roi = SubRegion(self.Output, start=inStart, stop=inStop)
-        self.Output.setDirty(roi)

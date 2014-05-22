@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import sys
 import os
 from functools import partial
@@ -60,17 +64,18 @@ class BodySplitInfoWidget( QWidget ):
         self.opSplitBodyCarving = opSplitBodyCarving
         self._bodyTreeParentItems = {} # This is easier to maintain than using setData/find
         
-        annotation_filepath = None
+        self._annotation_filepath = None
         if self.opSplitBodyCarving.AnnotationFilepath.ready():
-            annotation_filepath = self.opSplitBodyCarving.AnnotationFilepath.value
+            self._annotation_filepath = self.opSplitBodyCarving.AnnotationFilepath.value
         self._annotations = {} # coordinate : Annotation
         self._ravelerLabels = set()
         
         self._initUi()
         
-        if annotation_filepath is not None:
-            self._loadAnnotationFile( annotation_filepath )
-        self.refreshButton.setEnabled( annotation_filepath is not None )
+        if self._annotation_filepath is not None:
+            self._loadAnnotationFile( self._annotation_filepath )
+        self.refreshButton.setEnabled( self._annotation_filepath is not None )
+
 
     def _initUi(self):
         # Load the ui file into this class (find it in our own directory)
@@ -104,8 +109,8 @@ class BodySplitInfoWidget( QWidget ):
         Ask the user for a new annotation filepath, and then load it.
         """
         navDir = ""
-        if self._annotationFilepath is not None:
-            navDir = os.path.split( self._annotationFilepath )[0]
+        if self._annotation_filepath is not None:
+            navDir = os.path.split( self._annotation_filepath )[0]
 
         selected_file = QFileDialog.getOpenFileName(self,
                                     "Load Split Annotation File",
