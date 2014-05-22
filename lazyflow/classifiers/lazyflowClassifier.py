@@ -64,8 +64,8 @@ class LazyflowVectorwiseClassifierABC(object):
     
 class LazyflowPixelwiseClassifierFactoryABC(object):
     """
-    Defines an interface for vector-wise classifier 'factory' objects, 
-    which lazyflow classifier operators use to construct new vector-wise classifiers.
+    Defines an interface for pixel-wise classifier 'factory' objects, 
+    which lazyflow classifier operators use to construct new pixel-wise classifiers.
     A "pixel-wise" classifier is trained with a list of ND feature images (with M feature channels),
     and a list of corresponding ND label images, with 1 channel each.
 
@@ -98,7 +98,7 @@ class LazyflowPixelwiseClassifierFactoryABC(object):
 
     @classmethod
     def __subclasshook__(cls, C):
-        if cls is LazyflowVectorwiseClassifierFactoryABC:
+        if cls is LazyflowPixelwiseClassifierFactoryABC:
             return _has_attributes(C, ['create_and_train_pixelwise', 'description', 'get_halo_shape'])
         return NotImplemented
 

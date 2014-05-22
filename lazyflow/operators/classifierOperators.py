@@ -71,9 +71,9 @@ class OpTrainClassifierBlocked(Operator):
     def setupOutputs(self):
         # Construct an inner operator depending on the type of classifier we'll be creating.
         classifier_factory = self.ClassifierFactory.value        
-        if isinstance( classifier_factory, LazyflowVectorwiseClassifierFactoryABC ):
+        if issubclass( type(classifier_factory), LazyflowVectorwiseClassifierFactoryABC ):
             new_mode = 'vectorwise'
-        elif isinstance( classifier_factory, LazyflowPixelwiseClassifierFactoryABC ):
+        elif issubclass( type(classifier_factory), LazyflowPixelwiseClassifierFactoryABC ):
             new_mode = 'pixelwise'
         else:
             raise Exception("Unknown classifier factory type: {}".format( type(classifier_factory) ) )
@@ -121,7 +121,7 @@ class OpTrainPixelwiseClassifierBlocked(Operator):
 
     def execute(self, slot, subindex, roi, result):
         classifier_factory = self.ClassifierFactory.value
-        assert isinstance(classifier_factory, LazyflowPixelwiseClassifierFactoryABC), \
+        assert issubclass(type(classifier_factory), LazyflowPixelwiseClassifierFactoryABC), \
             "Factory is of type {}, which does not satisfy the LazyflowPixelwiseClassifierFactoryABC interface."\
             "".format( type(classifier_factory) )
         
@@ -150,7 +150,7 @@ class OpTrainPixelwiseClassifierBlocked(Operator):
                 image_data_blocks.append( block_image_data )
                 
         classifier = classifier_factory.create_and_train_pixelwise( image_data_blocks, label_data_blocks )
-        assert isinstance(classifier, LazyflowPixelwiseClassifierABC), \
+        assert issubclass(type(classifier), LazyflowPixelwiseClassifierABC), \
             "Classifier is of type {}, which does not satisfy the LazyflowPixelwiseClassifierABC interface."\
             "".format( type(classifier) )
         result[0] = classifier
@@ -170,7 +170,7 @@ class OpTrainVectorwiseClassifierBlocked(Operator):
     
     # Images[N] ---                                                                                    MaxLabel ------
     #              \                                                                                                  \
-    # Labels[N] --> opFeatureMatrixCaches ---(FeatureImage[N])---> opConcatenateFeatureImages ---(FeatureMatrices)---> OpTrainFromFeatures ---(Classifier)--->
+    # Labels[N] --> opFeatureMatrixCaches ---(FeatureImage[N])---> opConcatenateFeatureImages ---(label+feature matrix)---> OpTrainFromFeatures ---(Classifier)--->
 
     def __init__(self, *args, **kwargs):
         super(OpTrainVectorwiseClassifierBlocked, self).__init__(*args, **kwargs)
@@ -250,12 +250,12 @@ class OpTrainClassifierFromFeatureVectors(Operator):
             return
 
         classifier_factory = self.ClassifierFactory.value
-        assert isinstance(classifier_factory, LazyflowVectorwiseClassifierFactoryABC), \
+        assert issubclass(type(classifier_factory), LazyflowVectorwiseClassifierFactoryABC), \
             "Factory is of type {}, which does not satisfy the LazyflowVectorwiseClassifierFactoryABC interface."\
             "".format( type(classifier_factory) )
 
         classifier = classifier_factory.create_and_train( featMatrix, labelsMatrix[:,0] )
-        assert isinstance(classifier, LazyflowVectorwiseClassifierABC), \
+        assert issubclass(type(classifier), LazyflowVectorwiseClassifierABC), \
             "Classifier is of type {}, which does not satisfy the LazyflowVectorwiseClassifierABC interface."\
             "".format( type(classifier) )
 
@@ -374,7 +374,7 @@ class OpPixelwiseClassifierPredict(Operator):
             result[:] = 0.0
             return result
 
-        assert isinstance(classifier, LazyflowPixelwiseClassifierABC), \
+        assert issubclass(type(classifier), LazyflowPixelwiseClassifierABC), \
             "Classifier is of type {}, which does not satisfy the LazyflowPixelwiseClassifierABC interface."\
             "".format( type(classifier) )
 
@@ -477,7 +477,7 @@ class OpVectorwiseClassifierPredict(Operator):
             result[:] = 0.0
             return result
 
-        assert isinstance(classifier, LazyflowVectorwiseClassifierABC), \
+        assert issubclass(type(classifier), LazyflowVectorwiseClassifierABC), \
             "Classifier is of type {}, which does not satisfy the LazyflowVectorwiseClassifierABC interface."\
             "".format( type(classifier) )
 
