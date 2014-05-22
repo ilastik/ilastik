@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 #Python
 import os
 import tempfile
@@ -26,7 +30,7 @@ from PyQt4.QtCore import QTimer
 from PyQt4.QtGui import QColor, QMenu, QMessageBox, QFileDialog
 
 #volumina
-from volumina.pixelpipeline.datasources import LazyflowSource
+from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
 from volumina.layer import ColortableLayer, GrayscaleLayer
 from volumina.utility import ShortcutManager, PreferencesManager
 from volumina.view3d.GenerateModelsFromLabels_thread import MeshExtractorDialog
@@ -195,7 +199,8 @@ class CarvingGui(LabelingGui):
         ## object names
         
         self.labelingDrawerUi.namesButton.clicked.connect(self.onShowObjectNames)
-        self.labelingDrawerUi.exportAllMeshesButton.clicked.connect(self._exportAllObjectMeshes)
+        if hasattr( self.labelingDrawerUi, 'exportAllMeshesButton' ):
+            self.labelingDrawerUi.exportAllMeshesButton.clicked.connect(self._exportAllObjectMeshes)
 
         
         def labelBackground():
@@ -738,17 +743,15 @@ class CarvingGui(LabelingGui):
             layers.append(layer)
 
         #raw data
-        '''
         rawSlot = self.topLevelOperatorView.RawData
         if rawSlot.ready():
             raw5D = self.topLevelOperatorView.RawData.value
             layer = GrayscaleLayer(ArraySource(raw5D), direct=True)
             #layer = GrayscaleLayer( LazyflowSource(rawSlot) )
             layer.visible = True
-            layer.name = 'raw'
+            layer.name = 'Raw Data'
             layer.opacity = 1.0
             layers.append(layer)
-        '''
 
         inputSlot = self.topLevelOperatorView.InputData
         if inputSlot.ready():
@@ -758,7 +761,15 @@ class CarvingGui(LabelingGui):
             #layer.visible = not rawSlot.ready()
             layer.visible = True
             layer.opacity = 1.0
+            # if the flag window_leveling is set the contrast 
+            # of the layer is adjustable
+            layer.window_leveling = True
             layers.append(layer)
+
+            if layer.window_leveling:
+                self.labelingDrawerUi.thresToolButton.show()
+            else:
+                self.labelingDrawerUi.thresToolButton.hide()
 
         filteredSlot = self.topLevelOperatorView.FilteredInputData
         if filteredSlot.ready():

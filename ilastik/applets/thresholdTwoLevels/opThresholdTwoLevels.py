@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 # Built-in
 import warnings
 import logging
@@ -221,6 +225,8 @@ class OpThresholdTwoLevels(Operator):
         self._op5CacheOutput.AxisOrder.setValue(
             self._op5CacheInput.Input.meta.getAxisKeys())
         self._setBlockShape()
+        # force the cache to emit a dirty signal
+        self._opCache.Input.setDirty(slice(None))
 
     def _disconnectAll(self):
         # start from back
@@ -262,7 +268,7 @@ class OpThresholdTwoLevels(Operator):
         tagged_shape['t'] = 1
         tagged_shape['c'] = 1
 
-        # Blockshape must correspond to cache input order
+        # Blockshape must correspond to cachsetInSlote input order
         blockshape = map(lambda k: tagged_shape[k], 'xyzct')
         self._opCache.BlockShape.setValue(tuple(blockshape))
 
@@ -276,6 +282,15 @@ class OpThresholdTwoLevels(Operator):
     def propagateDirty(self, slot, subindex, roi):
         # dirtiness propagation is handled in the sub-operators
         pass
+
+    def setInSlot(self, slot, subindex, roi, value):
+        assert slot == self.InputHdf5,\
+            "[{}] Wrong slot for setInSlot(): {}".format(self.name,
+                                                         slot)
+        pass
+        # InputHDF5 is connected to the cache so we don't have to do
+        # anything, all other slots are rejected
+        
 
 
 ## internal operator for one level thresholding

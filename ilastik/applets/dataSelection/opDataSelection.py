@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import uuid
 import numpy
 import vigra
@@ -183,6 +187,14 @@ class OpDataSelection(Operator):
                     metadata['normalizeDisplay'] = datasetInfo.normalizeDisplay
                 if datasetInfo.axistags is not None:
                     metadata['axistags'] = datasetInfo.axistags
+                
+                    # FIXME: We are overwriting the axistags metadata to intentionally allow 
+                    #        the user to change our interpretation of which axis is which.
+                    #        That's okay, but technically there's a special corner case if 
+                    #        the user redefines the channel axis index.  
+                    #        Technically, it invalidates the meaning of meta.ram_usage_per_requested_pixel.
+                    #        For most use-cases, that won't really matter, which is why I'm not worrying about it right now.
+                
                 opMetadataInjector = OpMetadataInjector( parent=self )
                 opMetadataInjector.Input.connect( providerSlot )
                 opMetadataInjector.Metadata.setValue( metadata )

@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import numpy
 import vigra
 np = numpy
@@ -595,6 +599,33 @@ class TestThresholdTwoLevels(Generator2):
         print(output2[idx])
         numpy.testing.assert_array_almost_equal(ref, output)
 
+    def testPropagateDirty(self):
+        g = Graph()
+        oper = OpThresholdTwoLevels(graph=g)
+        oper.InputImage.setValue(self.data5d)
+        oper.MinSize.setValue(1)
+        oper.MaxSize.setValue(np.prod(self.data5d.shape[1:]))
+        oper.HighThreshold.setValue(.7)
+        oper.LowThreshold.setValue(.3)
+        oper.SmootherSigma.setValue({'x': 0, 'y': 0, 'z': 0})
+        oper.CurOperator.setValue(1)
+        
+        inspector = DirtyAssert(graph=g)
+        inspector.Input.connect(oper.CachedOutput)
+        
+        with self.assertRaises(DirtyAssert.WasSetDirty):
+            oper.CurOperator.setValue(0)
+
+
+from lazyflow.operator import Operator, InputSlot
+
+class DirtyAssert(Operator):
+    Input = InputSlot()
+    class WasSetDirty(Exception):
+        pass
+    def propagateDirty(self, slot, subindex, roi):
+        raise DirtyAssert.WasSetDirty()
+
 
 class TestTTLUseCase(unittest.TestCase):
     def setUp(self):
@@ -640,6 +671,7 @@ class TestTTLUseCase(unittest.TestCase):
         output = oper.Output[:].wait()
         output = vigra.taggedView(output, axistags=oper.Output.meta.axistags)
         self.checkCorrect(output)
+
 
 if __name__ == "__main__":
     import nose
