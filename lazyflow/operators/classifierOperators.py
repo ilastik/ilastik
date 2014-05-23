@@ -409,7 +409,7 @@ class OpPixelwiseClassifierPredict(Operator):
         downstream_roi = numpy.array((roi.start, roi.stop))
         downstream_channels = self.PMaps.meta.shape[-1]
         roi_within_result = downstream_roi - upstream_roi[0]
-        roi_within_result[-1] = [0, downstream_channels]
+        roi_within_result[:,-1] = [0, downstream_channels]
 
         # Request all upstream channels
         input_channels = self.Image.meta.shape[-1]
@@ -428,7 +428,7 @@ class OpPixelwiseClassifierPredict(Operator):
             assert probabilities.shape[-1] == len(classifier.known_classes)
             full_probabilities = numpy.zeros( probabilities.shape[:-1] + (self.PMaps.meta.shape[-1],), dtype=numpy.float32 )
             for i, label in enumerate(classifier.known_classes):
-                full_probabilities[:, label-1] = probabilities[:, i]
+                full_probabilities[..., label-1] = probabilities[..., i]
             
             probabilities = full_probabilities
 
