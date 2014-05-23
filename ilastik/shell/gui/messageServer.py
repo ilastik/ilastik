@@ -5,6 +5,7 @@ import threading
 import socket
 import logging
 import json
+import atexit
 
 logger = logging.getLogger(__name__)
 
@@ -32,11 +33,13 @@ class MessageServer(object):
     def setupServer(self):
         self.server = TCPServerBoundToShell((self.host, self.port), TCPRequestHandler, shell=self.parent)
         self.thread = threading.Thread(name="IlastikTCPServer", target=self.server.serve_forever)
+        self.thread.daemon = True
         
     def startListening(self): 
         try:
             if not self.server is None:
                 self.thread.start()
+                atexit.register( self.server.shutdown )
             else:
                 raise Exception('TCP Server not set up yet')
         except:
