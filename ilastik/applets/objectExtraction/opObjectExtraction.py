@@ -776,6 +776,10 @@ class OpObjectExtraction(Operator):
         dtype_names.insert(0, "time")
         dtype_names.insert(0, "object id")
         
+        # Some versions of numpy can't handle unicode names.
+        # Convert to str.
+        dtype_names = map(str, dtype_names)
+        
         dtype_types.insert(0, np.dtype(np.uint32).str)
         dtype_types.insert(0, np.dtype(np.uint32).str)
         
