@@ -34,6 +34,7 @@ import numpy
 import weakref
 from functools import partial
 
+from ilastik.config import cfg as ilastik_config
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from lazyflow.operators import OpSubRegion
@@ -201,9 +202,13 @@ class ObjectClassificationGui(LabelingGui):
         self.checkEnableButtons()
 
     def menus(self):
-        m = QMenu("Special Stuff", self.volumeEditorWidget)
-        m.addAction( "Export to Knime" ).triggered.connect(self.exportStuff)
-        return [m]
+        if ilastik_config.getboolean('ilastik', 'debug'):
+            m = QMenu("Special Stuff", self.volumeEditorWidget)
+            m.addAction( "Export to Knime" ).triggered.connect(self.exportStuff)
+            mlist = [m]
+        else:
+            mlist = []
+        return mlist
 
     def exportStuff(self):
         if not self.layerstack or len(self.layerstack)==0:
