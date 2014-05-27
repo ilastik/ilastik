@@ -56,7 +56,8 @@ from ilastik.workflow import getAvailableWorkflows, getWorkflowFromName
 from ilastik.utility import bind
 from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
 from ilastik.applets.base.applet import Applet, ShellRequest
-from ilastik.applets.base.appletGuiInterface import AppletGuiInterface
+from ilastik.applets.base.appletGuiInterface import AppletGuiInterface, VolumeViewerGui
+from ilastik.applets.base.singleToMultiGuiAdapter import SingleToMultiGuiAdapter
 from ilastik.shell.projectManager import ProjectManager
 from ilastik.config import cfg as ilastik_config
 from iconMgr import ilastikIcons
@@ -69,6 +70,8 @@ from ilastik.shell.gui.splashScreen import showSplashScreen
 from ilastik.shell.gui.licenseDialog import LicenseDialog
 
 from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox
+
+from ilastik.shell.gui.messageServer import MessageServer
 
 # Import all known workflows now to make sure they are all registered with getWorkflowFromName()
 import ilastik.workflows
@@ -244,7 +247,10 @@ class IlastikShell( QMainWindow ):
         #self.setFixedSize(1680,1050) #ilastik manuscript resolution
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
-
+        
+        # Server/client for inter process communication
+        self.socketServer = MessageServer(self, 'localhost', 9997)
+        
         self.openFileButtons = []
         self.cleanupFunctions = []
 
@@ -1453,6 +1459,32 @@ class IlastikShell( QMainWindow ):
     def setAppletEnabled(self, applet, enabled):
         # Post this to the gui thread
         self.thunkEventHandler.post(self._setAppletEnabled, applet, enabled)
+    
+    def newServerConnected(self, name):
+        # iterate over all other applets and inform about new connection if relevant
+        for applet in self._applets:
+            if name == "knime":
+                if hasattr(applet, "connected_to_knime"):
+                    applet.connected_to_knime = True
+    
+    def setAllViewersPosition(self, pos):
+        # operate on currently displayed applet first
+        self._setViewerPosition(self._applets[self.currentAppletIndex], pos) 
+        
+        # now iterate over all other applets and change the viewer focus
+        for applet in self._applets:
+            if not applet is self._applets[self.currentAppletIndex]:
+                self._setViewerPosition(applet, pos)
+        
+    @threadRouted
+    def _setViewerPosition(self, applet, pos):
+        gui = applet.getMultiLaneGui()
+        # test if gui is a Gui on its own or just created by a SingleToMultiGuiAdapter
+        if isinstance(gui, SingleToMultiGuiAdapter):
+            gui = gui.currentGui()
+        # test if gui implements "setViewerPos()" method
+        if issubclass(type(gui), VolumeViewerGui):
+            gui.setViewerPos(pos, setTime=True, setChannel=True)
 
     def enableProjectChanges(self, enabled):
         # Post this to the gui thread

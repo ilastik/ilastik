@@ -32,6 +32,7 @@ class ObjectClassificationApplet(StandardApplet):
                  projectFileGroupName="ObjectClassification"):
         self._topLevelOperator = OpObjectClassification(parent=workflow)
         self.predict_enabled = False
+        self.connected_to_knime = False
         super(ObjectClassificationApplet, self).__init__(name=name, workflow=workflow)
 
         self._serializableItems = [

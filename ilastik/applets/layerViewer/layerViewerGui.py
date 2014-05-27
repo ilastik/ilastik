@@ -428,11 +428,9 @@ class LayerViewerGui(QWidget):
                        
             # Find the xyz midpoint
             midpos5d = [x/2 for x in newDataShape]
-            midpos3d = midpos5d[1:4]
-
-            # Start in the center of the volume
-            self.editor.posModel.slicingPos = midpos3d
-            self.editor.navCtrl.panSlicingViews( midpos3d, [0,1,2] )
+            
+            # center viewer there
+            self.setViewerPos(midpos5d)
 
         # Old layers are deleted if
         # (1) They are not in the new set or
@@ -488,6 +486,39 @@ class LayerViewerGui(QWidget):
                 if newDataShape is None:
                     newDataShape = self.getVoluminaShapeForSlot(slot)
         return newDataShape
+
+    @threadRouted
+    def setViewerPos(self, pos, setTime=False, setChannel=False):
+        try:
+            pos5d = self.validatePos(pos, dims=5)
+            
+            # set xyz position
+            pos3d = pos5d[1:4]
+            self.editor.posModel.slicingPos = pos3d
+            
+            # set time and channel if requested
+            if setTime:
+                self.editor.posModel.time = pos5d[0]
+            if setChannel:
+                self.editor.posModel.channel = pos5d[4]
+
+            self.editor.navCtrl.panSlicingViews( pos3d, [0,1,2] )
+        except Exception, e:
+            logger.warn("Failed to navigate to position (%s): %s" % (pos, e))
+        return
+    
+    def validatePos(self, pos, dims=5):
+        if not isinstance(pos, list):
+            raise Exception("Wrong data format")
+        if not len(pos) == dims:
+            raise Exception("Wrong data format")
+        ds = self.editor.dataShape
+        for i in range(dims):
+            try:
+                pos[i] = max(0, min(int(pos[i]), ds[i]-1))
+            except:
+                pos[i] = 0                
+        return pos
 
     @classmethod
     def getVoluminaShapeForSlot(self, slot):

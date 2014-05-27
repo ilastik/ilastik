@@ -26,6 +26,29 @@ def _has_attribute( cls, attr ):
 def _has_attributes( cls, attrs ):
     return True if all(_has_attribute(cls, a) for a in attrs) else False
 
+class VolumeViewerGui():
+    """
+    This class defines the methods which all GUIs with a volume editor/viewer should implement
+    """
+    
+    __metaclass__ = ABCMeta
+    
+    def __init__(self, topLevelOperatorView):
+        pass
+    
+    @abstractmethod
+    def setViewerPos(self, pos5d):
+        """
+        Abstract method. Manually set the viewer position.
+        """
+        raise NotImplementedError
+    
+    @classmethod
+    def __subclasshook__(cls, C):
+        if cls is VolumeViewerGui:
+            return _has_attribute(C, 'setViewerPos')
+        return NotImplemented
+    
 class AppletGuiInterface():
     """
     This is the abstract interface to which all applet GUI classes should adhere.

@@ -22,6 +22,9 @@ from abc import abstractproperty, abstractmethod
 from lazyflow.graph import Operator, Graph
 from string import ascii_uppercase
 from ilastik.shell.shellAbc import ShellABC
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Workflow( Operator ):
     """
@@ -93,6 +96,13 @@ class Workflow( Operator ):
         """
         pass
 
+    def handleSendMessageToServer(self, name, data):
+        try:
+            server = self._shell.socketServer
+            server.send(name, data)
+        except Exception, e:
+            logger.error("Failed sending message to server '%s': %s" % (name, e))
+
     ##################
     # Public methods #
     ##################
@@ -157,6 +167,7 @@ class Workflow( Operator ):
         
         for applet in self.applets:
             applet.appletStateUpdateRequested.connect( self.handleAppletStateUpdateRequested )
+            applet.sendMessageToServer.connect( self.handleSendMessageToServer )
         
     def _createNewImageLane(self, multislot, index, *args):
         """
