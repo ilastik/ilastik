@@ -44,6 +44,8 @@ except ImportError as e:
     logger.warn("Failed to import counting workflow; check dependencies: " + str(e))
 
 
+import seededWatershed
+
 # Examples
 import ilastik.config
 
