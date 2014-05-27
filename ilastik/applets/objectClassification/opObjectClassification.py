@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 import numpy
+import numpy.lib.recfunctions as rfn
 import vigra
 import time
 import warnings
@@ -35,6 +36,7 @@ from functools import partial
 from ilastik.utility import OperatorSubView, MultiLaneOperatorABC, OpMultiLaneWrapper
 from ilastik.utility.mode import mode
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
+from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
 
 from ilastik.applets.base.applet import DatasetConstraintError
 
@@ -531,6 +533,37 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         new_labels[0]=0 #FIXME: hardcoded background value again
         return new_labels, old_labels_lost, new_labels_lost
 
+
+    def exportTable(self, lane):
+        if not self.Predictions.ready() or not self.ObjectFeatures.ready():
+            return None
+        
+        numLanes = len(self.SegmentationImages)
+        assert lane<numLanes
+        features = self.ObjectFeatures[lane]([]).wait()
+        feature_table = OpObjectExtraction.exportTable(features)
+        predictions = self.Predictions[lane]([]).wait()
+        nobjs = []
+        for t, preds in predictions.iteritems():
+            nobjs.append(preds.shape[0])
+        nobjs_total = sum(nobjs)
+        if nobjs_total==0:
+            print "Prediction not run yet, won't be exported"
+            return feature_table
+        else:
+            assert nobjs_total==feature_table.shape[0]
+            
+            pred_column = numpy.zeros(nobjs_total, {'names': ['prediction'], 'formats': [numpy.dtype(numpy.uint8)]})
+            start = 0
+            finish = start
+            for t, preds in predictions.iteritems():
+                finish = start + nobjs[t]
+                pred_column['prediction'][start:finish] = preds[:]
+                start = finish
+            
+            feature_pred_table = rfn.merge_arrays((feature_table, pred_column), flatten = True, usemask = False)
+        
+            return feature_pred_table 
 
     def addLane(self, laneIndex):
         numLanes = len(self.SegmentationImages)
