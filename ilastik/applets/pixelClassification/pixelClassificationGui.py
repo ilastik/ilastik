@@ -205,9 +205,7 @@ class PixelClassificationGui(LabelingGui):
         try:
             self.render = True
             self._renderedLayers = {} # (layer name, label number)
-            self._renderMgr = RenderingManager(
-                renderer=self.editor.view3d.qvtk.renderer,
-                qvtk=self.editor.view3d.qvtk)
+            self._renderMgr = RenderingManager( self.editor.view3d )
         except:
             self.render = False
 

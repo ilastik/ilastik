@@ -169,9 +169,7 @@ class CountingGui(LabelingGui):
         try:
             self.render = True
             self._renderedLayers = {} # (layer name, label number)
-            self._renderMgr = RenderingManager(
-                renderer=self.editor.view.qvtk.renderer,
-                qvtk=self.editor.view.qvtk)
+            self._renderMgr = RenderingManager( self.editor.view3d )
         except Exception,e:
             self.render = False
 
