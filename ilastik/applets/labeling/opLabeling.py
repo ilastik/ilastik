@@ -69,6 +69,10 @@ class OpLabelingTopLevel( Operator ):
         # Connect internal outputs -> external outputs
         self.LabelImages.connect( self.opLabelLane.LabelImage )
         self.NonzeroLabelBlocks.connect( self.opLabelLane.NonzeroLabelBlocks )
+        
+        self.LabelColors.setValue( [] )
+        self.LabelNames.setValue( [] )
+
 
     def propagateDirty(self, slot, subindex, roi):
         # Nothing to do here: All outputs are directly connected to 
@@ -145,7 +149,7 @@ class OpLabelingSingleLane( Operator ):
 
         # Configuration options
         if blockDims is None:
-            blockDims = { 't' : 1, 'x' : 32, 'y' : 32, 'z' : 32, 'c' : 1 } 
+            blockDims = { 't' : 1, 'x' : 100, 'y' : 100, 'z' : 100, 'c' : 1 } 
         assert isinstance(blockDims, dict)
         self._blockDims = blockDims
 
