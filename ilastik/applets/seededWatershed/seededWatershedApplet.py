@@ -26,7 +26,7 @@ class SeededWatershedApplet( LabelingSingleLaneApplet ):
     """
     """
     def __init__( self, workflow, projectFileGroupName, blockDims=None ):
-        super(SeededWatershedApplet, self).__init__( workflow, "Seeded Watershed" )
+        super(SeededWatershedApplet, self).__init__( workflow, "Seeded Watershed", appletName="SeededWatershed" )
             
     @property
     def singleLaneOperatorClass(self):

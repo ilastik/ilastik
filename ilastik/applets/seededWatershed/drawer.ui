@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>269</width>
-    <height>340</height>
+    <height>377</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -181,6 +181,13 @@
         </spacer>
        </item>
       </layout>
+     </item>
+     <item>
+      <widget class="QPushButton" name="computeWatershedButton">
+       <property name="text">
+        <string>Compute Watershed!</string>
+       </property>
+      </widget>
      </item>
      <item>
       <spacer name="verticalSpacer">

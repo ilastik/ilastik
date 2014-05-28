@@ -33,11 +33,16 @@ class SeededWatershedWorkflow(Workflow):
         self._applets = []
 
         # Create applets
-        self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
+        self.dataSelectionApplet = DataSelectionApplet(self, 
+                                                       "Input Data", 
+                                                       "Input Data", 
+                                                       supportIlastik05Import=True, 
+                                                       batchDataGui=False,
+                                                       force5d=True)
         self.seededWatershedApplet = SeededWatershedApplet(self, "Seeded Watershed")
 
         opDataSelection = self.dataSelectionApplet.topLevelOperator
-        opDataSelection.DatasetRoles.setValue( ["Raw Data"] )
+        opDataSelection.DatasetRoles.setValue( ["Raw Data", "Mask"] )
 
         self._applets.append( self.dataSelectionApplet )
         self._applets.append( self.seededWatershedApplet )
@@ -47,7 +52,10 @@ class SeededWatershedWorkflow(Workflow):
         opSeededWatershed = self.seededWatershedApplet.topLevelOperator.getLane(laneIndex)
         
         # Connect top-level operators
-        opSeededWatershed.InputImage.connect( opDataSelection.Image )
+        opSeededWatershed.InputImage.connect( opDataSelection.ImageGroup[0] )
+        opSeededWatershed.Mask.connect( opDataSelection.ImageGroup[1] )
+        opSeededWatershed.LabelsAllowedFlag.setValue(True)
+        opSeededWatershed.FreezeCache.setValue(True)
 
     @property
     def applets(self):
