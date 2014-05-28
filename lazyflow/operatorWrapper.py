@@ -71,6 +71,7 @@ class OperatorWrapper(Operator):
 
         """
         # Base class init
+        self._name = "Uninitialized OperatorWrapper"
         super(OperatorWrapper, self).__init__(parent=parent, graph=graph)
         if operator_args == None:
             operator_args = ()
