@@ -202,12 +202,22 @@ class PixelClassificationGui(LabelingGui):
         
         self._initShortcuts()
 
-        try:
-            self.render = True
-            self._renderedLayers = {} # (layer name, label number)
-            self._renderMgr = RenderingManager( self.editor.view3d )
-        except:
-            self.render = False
+        # FIXME: We MUST NOT enable the render manager by default,
+        #        since it will drastically slow down the app for large volumes.
+        #        For now, we leave it off by default.
+        #        To re-enable rendering, we need to allow the user to render a segmentation 
+        #        and then initialize the render manager on-the-fly. 
+        #        (We might want to warn the user if her volume is not small.)
+        self.render = False
+        self._renderMgr = None
+        self._renderedLayers = {} # (layer name, label number)
+        
+        # Always off for now (see note above)
+        if self.render:
+            try:
+                self._renderMgr = RenderingManager( self.editor.view3d )
+            except:
+                self.render = False
 
         # toggle interactive mode according to freezePredictions.value
         self.toggleInteractive(not self.topLevelOperatorView.FreezePredictions.value)
