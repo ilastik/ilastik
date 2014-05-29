@@ -39,12 +39,16 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
             forests.append( forest )
 
         # Train them all in parallel
+        oobs = [None] * len(forests)
         pool = RequestPool()
-        for forest in forests:
-            pool.add( Request( partial(forest.learnRF, X, y) ) )
+        for i, forest in enumerate(forests):
+            req = Request( partial(forest.learnRF, X, y) )
+            # save the oobs
+            req.notify_finished( partial( oobs.__setitem__, i ) )
+            pool.add( req )
         pool.wait()
 
-        return ParallelVigraRfLazyflowClassifier( forests, known_labels )
+        return ParallelVigraRfLazyflowClassifier( forests, oobs, known_labels )
 
     @property
     def description(self):
@@ -57,9 +61,12 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
     """
     Adapt the vigra RandomForest class to the interface lazyflow expects.
     """
-    def __init__(self, forests, known_labels):
+    def __init__(self, forests, oobs, known_labels):
         self._known_labels = known_labels
         self._forests = forests
+        
+        # Note that oobs may not be in the same order as the forests.
+        self._oobs = oobs
     
     def predict_probabilities(self, X):
         logger.debug( "Predicting with parallel vigra RF" )
@@ -84,6 +91,10 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
 
         predictions /= len(reqs)
         return predictions
+    
+    @property
+    def oobs(self):
+        return self._oobs
     
     @property
     def known_classes(self):
@@ -141,9 +152,16 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
             # Older projects didn't store the labels explicitly.
             known_labels = range(1, forests[0].labelCount()+1 )
 
+        try:
+            oobs = list(h5py_group['oobs'][:])
+        except KeyError:
+            # Older projects didn't store the oobs.
+            # Just provide something obviously invalid.
+            oobs = [-1.0] * len(forests)
+
         os.remove(cachePath)
         os.rmdir(tmpDir)
 
-        return ParallelVigraRfLazyflowClassifier( forests, known_labels )
+        return ParallelVigraRfLazyflowClassifier( forests, oobs, known_labels )
 
 assert issubclass( ParallelVigraRfLazyflowClassifier, LazyflowVectorwiseClassifierABC )
