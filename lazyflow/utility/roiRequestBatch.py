@@ -141,26 +141,34 @@ class RoiRequestBatch( object ):
         """
         self.progressSignal( 0 )
 
-        with self._condition:
-            try:
-                # Start by activating a batch of N requests
-                for _ in range(self._batchSize):
+        ## In the lines below, we acquire/release self._condition with high frequency,
+        ## to allow finishing requests to be handled in _handleCompletedRequest as soon as possible,
+        ## instead of forcing them to wait for the entire batch to be launched before the first 
+        ## finished request can be handled and discarded.
+
+        try:
+            # Start by activating a batch of N requests
+            for _ in range(self._batchSize):
+                with self._condition:
                     self._activateNewRequest()
                     self._activated_count += 1
 
-                # Loop until StopIteration
-                while True:
-                    # Wait for at least one active request to finish
+            # Loop until StopIteration
+            while True:
+                # Wait for at least one active request to finish
+                with self._condition:
                     while (self._activated_count - self._completed_count) == self._batchSize:
                         self._condition.wait()
 
-                    # Launch new requests until we have the correct number of active requests
-                    while self._activated_count - self._completed_count < self._batchSize:
+                # Launch new requests until we have the correct number of active requests
+                while self._activated_count - self._completed_count < self._batchSize:
+                    with self._condition:
                         self._activateNewRequest() # Eventually raises StopIteration
                         self._activated_count += 1
-            except StopIteration:
-                # We've run out of requests to launch.
-                # Wait for the remaining active requests to finish.
+        except StopIteration:
+            # We've run out of requests to launch.
+            # Wait for the remaining active requests to finish.
+            with self._condition:
                 while self._completed_count < self._activated_count:
                     self._condition.wait()
 
