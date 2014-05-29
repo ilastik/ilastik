@@ -89,9 +89,19 @@ class ClassifierSelectionDlg(QDialog):
     def _get_available_classifier_factories(self):
         # FIXME: Replace this logic with a proper plugin mechanism
         from lazyflow.classifiers import VigraRfLazyflowClassifierFactory, SklearnLazyflowClassifierFactory, \
-                                         ParallelVigraRfLazyflowClassifierFactory, VigraRfPixelwiseClassifierFactory
+                                         ParallelVigraRfLazyflowClassifierFactory, VigraRfPixelwiseClassifierFactory,\
+                                         LazyflowVectorwiseClassifierFactoryABC, LazyflowPixelwiseClassifierFactoryABC
         classifiers = collections.OrderedDict()
         classifiers["Parallel Random Forest (VIGRA)"] = ParallelVigraRfLazyflowClassifierFactory(10, 10)
+        
+        try:
+            from iiboostLazyflowClassifier import IIBoostLazyflowClassifierFactory
+            classifiers["IIBoost"] = IIBoostLazyflowClassifierFactory(numStumps=2, debugOutput=True)
+            assert issubclass( type(classifiers["IIBoost"]), LazyflowPixelwiseClassifierFactoryABC )
+        except ImportError:
+            import warnings
+            warnings.warn("Couldn't import IIBoost.")
+        
         try:
             from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
             from sklearn.naive_bayes import GaussianNB
@@ -120,7 +130,7 @@ class ClassifierSelectionDlg(QDialog):
         return classifiers
         
     def accept(self):
-        # Configure the operator with the newly selected classfier factory
+        # Configure the operator with the newly selected classifier factory
         selected_item = self._classifier_listwidget.selectedItems()[0]
         selected_factory = selected_item.data(Qt.UserRole).toPyObject()
         self._op.ClassifierFactory.setValue( selected_factory )
