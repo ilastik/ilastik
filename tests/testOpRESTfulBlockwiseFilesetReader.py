@@ -44,6 +44,10 @@ class TestOpBlockwiseFilesetReader(object):
     
     @classmethod
     def setupClass(cls):
+        # The openconnectome site appears to be down at the moment.
+        # This test fails when that happens...
+        raise nose.SkipTest
+        
         if platform.system() == 'Windows':
             # On windows, there are errors, and we make no attempt to solve them (at the moment).
             raise nose.SkipTest

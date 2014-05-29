@@ -36,6 +36,10 @@ logger.setLevel(logging.INFO)
 class TestRESTfulVolume(object):
 
     def testBasic(self):
+        # The openconnectome site appears to be down at the moment.
+        # This test fails when that happens...
+        raise nose.SkipTest
+
         if 'TRAVIS' in os.environ:
             raise nose.SkipTest
         testConfig0 = """
