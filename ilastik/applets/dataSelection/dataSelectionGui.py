@@ -372,8 +372,11 @@ class DataSelectionGui(QWidget):
             PreferencesManager().set('DataSelection', 'recent image', fileNames[0])
             try:
                 self.addFileNames(fileNames, roleIndex, startingLane)
-            except RuntimeError as e:
-                QMessageBox.critical(self, "Error loading file", str(e))
+            except Exception as ex:
+                logger.error(ex)
+                import sys, traceback
+                traceback.print_tb(sys.exc_info()[2])
+                QMessageBox.critical(self, "Error loading file", str(ex))
 
     def getImageFileNamesToOpen(self, defaultDirectory):
         """
