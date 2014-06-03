@@ -15,6 +15,7 @@
 # Copyright 2011-2014, the ilastik developers
 
 import sys
+import os
 import time
 import psutil
 import numpy
@@ -57,7 +58,7 @@ def test_cleanup():
     Check if requests added to a RequestPool are cleaned when they are
     completed without waiting for the RequestPool itself to be cleaned.
     """
-    cur_process = psutil.Process()
+    cur_process = psutil.Process(os.getpid())
     def getMemoryUsage():
         # Collect garbage first
         gc.collect()
