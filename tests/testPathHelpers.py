@@ -19,6 +19,7 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
+import os
 from lazyflow.utility.pathHelpers import compressPathForDisplay, getPathVariants
 
 class TestPathHelpers(object):
@@ -31,15 +32,21 @@ class TestPathHelpers(object):
 
     def test_getPathVariants(self):
         abs, rel = getPathVariants('/aaa/bbb/ccc/ddd.txt', '/aaa/bbb/ccc/eee')
-        assert abs == '/aaa/bbb/ccc/ddd.txt'
+        #assert abs == '/aaa/bbb/ccc/ddd.txt'
+        # Use normpath to make sure this test works on windows...
+        assert abs == os.path.normpath(os.path.join('/aaa/bbb/ccc/eee', '/aaa/bbb/ccc/ddd.txt'))
         assert rel == '../ddd.txt'
     
         abs, rel = getPathVariants('../ddd.txt', '/aaa/bbb/ccc/eee')
-        assert abs == '/aaa/bbb/ccc/ddd.txt'
+        #assert abs == '/aaa/bbb/ccc/ddd.txt'
+        # Use normpath to make sure this test works on windows...
+        assert abs == os.path.normpath(os.path.join('/aaa/bbb/ccc/eee', '../ddd.txt'))
         assert rel == '../ddd.txt'
     
         abs, rel = getPathVariants('ddd.txt', '/aaa/bbb/ccc')
-        assert abs == '/aaa/bbb/ccc/ddd.txt'
+        #assert abs == '/aaa/bbb/ccc/ddd.txt'
+        # Use normpath to make sure this test works on windows...
+        assert abs == os.path.normpath(os.path.join('/aaa/bbb/ccc', 'ddd.txt'))
         assert rel == 'ddd.txt'
 
         assert getPathVariants('', '/abc') == ('/abc', '')
