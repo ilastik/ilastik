@@ -301,7 +301,6 @@ class IlastikShell( QMainWindow ):
             assert self._settingsMenu.thread() == self.thread()
 
         self.appletBar.currentChanged.connect(self.handleAppletBarItemExpanded)
-        #self.appletBar.clicked.connect(self.handleAppletBarClick)
         #self.appletBar.setVerticalScrollMode( QAbstractItemView.ScrollPerPixel )
 
         self.currentAppletIndex = 0
@@ -919,18 +918,6 @@ class IlastikShell( QMainWindow ):
     def getModelIndexFromDrawerIndex(self, drawerIndex):
         drawerTitleItem = self.appletBar.widget(drawerIndex)
         return self.appletBar.indexOf(drawerTitleItem)
-
-    def handleAppletBarClick(self, modelIndex):
-        #bug #193
-        drawerTitleItem = self.appletBar.widget(modelIndex)
-        if drawerTitleItem.isDisabled():
-            return
-
-        # If the user clicks on a top-level item, automatically expand it.
-        if modelIndex.parent() == self.appletBar.rootIndex():
-            self.appletBar.expand(modelIndex)
-        else:
-            self.appletBar.setCurrentIndex( modelIndex.parent() )
 
     def addApplet( self, applet_index, app ):
         assert isinstance( app, Applet ), "Applets must inherit from Applet base class."
