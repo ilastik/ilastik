@@ -1,0 +1,35 @@
+{
+    "_schema_name" : "seeded watershed paramters",
+    "_schema_version" : 0.1,
+
+    "raw_data_info" :
+    {
+        "_schema_name" : "dataset-info",
+        "_schema_version" : 0.1,
+
+        "##filepath" : "/groups/flyem/data/medulla-FIB-Z1211-25-production/align2/substacks/00076_4508-5007_3259-3758_2000-2499/grayscale_maps/*.png",
+        "filepath" : "/magnetic/split-body-data/test_data2/raw_250.h5/data",
+        "nickname" : "raw"
+    },
+    "pixel_probabilities_info" :
+    {
+        "_schema_name" : "dataset-info",
+        "_schema_version" : 0.1,
+
+        "filepath" : "/magnetic/split-body-data/test_data2/raw_250_pixelprobabilities.h5/data",
+        "drange" : [0.0, 1.0],
+        "nickname" : "predictions"
+    },
+    "undersegmentation_info" :
+    {
+        "_schema_name" : "dataset-info",
+        "_schema_version" : 0.1,
+
+        "filepath" : "/magnetic/split-body-data/test_data2/seg_250.h5/data",
+        "nickname" : "original_labels",
+        "axistags" : "zyx"
+    },
+    "available_body_ids" : [100000,100001,100002,100003,100004,100005,100006,100007,100008,100009,100010],    
+    "focus_coordinates" : {"x" : 100, "y" : 200, "z" : 100}
+    
+}
