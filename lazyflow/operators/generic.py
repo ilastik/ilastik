@@ -594,7 +594,8 @@ class OpMultiArrayMerger(Operator):
         
         fun=self.inputs["MergingFunction"].value
 
-        return fun(data)
+        result[:] = fun(data)
+        return result
 
     def propagateDirty(self, dirtySlot, subindex, roi):
         if dirtySlot == self.MergingFunction:
