@@ -304,6 +304,9 @@ class OpStackToH5Writer(Operator):
         self.WriteImage.setDirty(slice(None))
 
     def execute(self, slot, subindex, roi, result):
+        if not self.opStackLoader.fileNameList:
+            raise Exception( "Didn't find any files to combine.  Is the glob string valid?  globstring = {}".format( self.GlobString.value ) )
+        
         # Copy the data image-by-image
         stackTags = self.opStackLoader.stack.meta.axistags
         zAxis = stackTags.index('z')
