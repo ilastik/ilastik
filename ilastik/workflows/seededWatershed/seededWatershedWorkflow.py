@@ -147,6 +147,16 @@ class SeededWatershedWorkflow(Workflow):
         
         if workflow_params.available_body_ids is not None:
             opSeededWatershed.AvailableLabelIds.setValue( workflow_params.available_body_ids )
-        
+
+        # Create some label classes
+        opSeededWatershed.LabelNames.setValue( ['Label 1', 'Label 2'] )
+        opSeededWatershed.LabelColors.setValue( [(255,0,0), (0,255,0)] )
+
+        projectManager.saveProject()
+
+        # Open the seeded watershed applet
+        # FIXME: This is called too early: the applet guis haven't been created yet!
+        # self._shell.setSelectedAppletDrawer(1)
+
         logger.info("FINISHED")
 
