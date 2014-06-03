@@ -218,4 +218,23 @@ class DataSelectionApplet( Applet ):
                         assert success, "Something went wrong when generating an hdf5 file from an image sequence."
             
         return filePaths
-            
+
+    def configureRoleFromJson(self, lane, role, dataset_info_namespace):
+        opDataSelection = self.topLevelOperator
+        logger.debug( "Configuring dataset for role {}".format( role ) )
+        logger.debug( "Params: {}".format(dataset_info_namespace) )
+        datasetInfo = DatasetInfo()
+        datasetInfo.updateFromJson( dataset_info_namespace )
+
+        # Check for globstring, which means we need to import the stack first.            
+        if '*' in datasetInfo.filePath:
+            totalProgress = [-100]
+            def handleStackImportProgress( progress ):
+                if progress / 10 != totalProgress[0] / 10:
+                    totalProgress[0] = progress
+                    logger.info( "Importing stack: {}%".format( totalProgress[0] ) )
+            serializer = self.dataSerializers[0]
+            serializer.progressSignal.connect( handleStackImportProgress )
+            serializer.importStackAsLocalDataset( datasetInfo )
+        
+        opDataSelection.DatasetGroup[lane][role].setValue( datasetInfo )
