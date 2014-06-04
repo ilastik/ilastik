@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 # Built-in
 import os
 import logging
@@ -85,9 +89,19 @@ class ClassifierSelectionDlg(QDialog):
     def _get_available_classifier_factories(self):
         # FIXME: Replace this logic with a proper plugin mechanism
         from lazyflow.classifiers import VigraRfLazyflowClassifierFactory, SklearnLazyflowClassifierFactory, \
-                                         ParallelVigraRfLazyflowClassifierFactory, VigraRfPixelwiseClassifierFactory
+                                         ParallelVigraRfLazyflowClassifierFactory, VigraRfPixelwiseClassifierFactory,\
+                                         LazyflowVectorwiseClassifierFactoryABC, LazyflowPixelwiseClassifierFactoryABC
         classifiers = collections.OrderedDict()
         classifiers["Parallel Random Forest (VIGRA)"] = ParallelVigraRfLazyflowClassifierFactory(10, 10)
+        
+        try:
+            from iiboostLazyflowClassifier import IIBoostLazyflowClassifierFactory
+            classifiers["IIBoost"] = IIBoostLazyflowClassifierFactory(numStumps=2, debugOutput=True)
+            assert issubclass( type(classifiers["IIBoost"]), LazyflowPixelwiseClassifierFactoryABC )
+        except ImportError:
+            import warnings
+            warnings.warn("Couldn't import IIBoost.")
+        
         try:
             from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
             from sklearn.naive_bayes import GaussianNB
@@ -116,7 +130,7 @@ class ClassifierSelectionDlg(QDialog):
         return classifiers
         
     def accept(self):
-        # Configure the operator with the newly selected classfier factory
+        # Configure the operator with the newly selected classifier factory
         selected_item = self._classifier_listwidget.selectedItems()[0]
         selected_factory = selected_item.data(Qt.UserRole).toPyObject()
         self._op.ClassifierFactory.setValue( selected_factory )
@@ -198,14 +212,22 @@ class PixelClassificationGui(LabelingGui):
         
         self._initShortcuts()
 
-        try:
-            self.render = True
-            self._renderedLayers = {} # (layer name, label number)
-            self._renderMgr = RenderingManager(
-                renderer=self.editor.view3d.qvtk.renderer,
-                qvtk=self.editor.view3d.qvtk)
-        except:
-            self.render = False
+        # FIXME: We MUST NOT enable the render manager by default,
+        #        since it will drastically slow down the app for large volumes.
+        #        For now, we leave it off by default.
+        #        To re-enable rendering, we need to allow the user to render a segmentation 
+        #        and then initialize the render manager on-the-fly. 
+        #        (We might want to warn the user if her volume is not small.)
+        self.render = False
+        self._renderMgr = None
+        self._renderedLayers = {} # (layer name, label number)
+        
+        # Always off for now (see note above)
+        if self.render:
+            try:
+                self._renderMgr = RenderingManager( self.editor.view3d )
+            except:
+                self.render = False
 
         # toggle interactive mode according to freezePredictions.value
         self.toggleInteractive(not self.topLevelOperatorView.FreezePredictions.value)

@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 #Python
 import os
 from functools import partial
@@ -98,12 +102,6 @@ class LayerViewerGui(QWidget):
         # Unsubscribe to all signals
         for fn in self.__cleanup_fns:
             fn()
-
-        # Stop rendering
-        for scene in self.editor.imageScenes:
-            if scene._tileProvider:
-                scene._tileProvider.notifyThreadsToStop()
-            scene.joinRendering()
             
         for op in self._orphanOperators:
             op.cleanUp()
@@ -424,11 +422,9 @@ class LayerViewerGui(QWidget):
                        
             # Find the xyz midpoint
             midpos5d = [x/2 for x in newDataShape]
-            midpos3d = midpos5d[1:4]
-
-            # Start in the center of the volume
-            self.editor.posModel.slicingPos = midpos3d
-            self.editor.navCtrl.panSlicingViews( midpos3d, [0,1,2] )
+            
+            # center viewer there
+            self.setViewerPos(midpos5d)
 
         # Old layers are deleted if
         # (1) They are not in the new set or
@@ -484,6 +480,39 @@ class LayerViewerGui(QWidget):
                 if newDataShape is None:
                     newDataShape = self.getVoluminaShapeForSlot(slot)
         return newDataShape
+
+    @threadRouted
+    def setViewerPos(self, pos, setTime=False, setChannel=False):
+        try:
+            pos5d = self.validatePos(pos, dims=5)
+            
+            # set xyz position
+            pos3d = pos5d[1:4]
+            self.editor.posModel.slicingPos = pos3d
+            
+            # set time and channel if requested
+            if setTime:
+                self.editor.posModel.time = pos5d[0]
+            if setChannel:
+                self.editor.posModel.channel = pos5d[4]
+
+            self.editor.navCtrl.panSlicingViews( pos3d, [0,1,2] )
+        except Exception, e:
+            logger.warn("Failed to navigate to position (%s): %s" % (pos, e))
+        return
+    
+    def validatePos(self, pos, dims=5):
+        if not isinstance(pos, list):
+            raise Exception("Wrong data format")
+        if not len(pos) == dims:
+            raise Exception("Wrong data format")
+        ds = self.editor.dataShape
+        for i in range(dims):
+            try:
+                pos[i] = max(0, min(int(pos[i]), ds[i]-1))
+            except:
+                pos[i] = 0                
+        return pos
 
     @classmethod
     def getVoluminaShapeForSlot(self, slot):

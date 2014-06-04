@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import os
 import sys
 import imp
@@ -43,7 +47,7 @@ class TestPixelClassificationHeadless(unittest.TestCase):
     #SAMPLE_DATA = os.path.split(__file__)[0] + '/synapse_small.npy'
 
     @classmethod
-    def setUpClass(cls):
+    def setupClass(cls):
         if hasattr(cls, 'SAMPLE_DATA'):
             cls.using_random_data = False
         else:
@@ -52,8 +56,13 @@ class TestPixelClassificationHeadless(unittest.TestCase):
 
         cls.create_new_tst_project()
 
+        # Load the ilastik startup script as a module.
+        # Do it here in setupClass to ensure that it isn't loaded more than once.
+        ilastik_entry_file_path = os.path.join( os.path.split( ilastik.__file__ )[0], "../ilastik.py" )
+        cls.ilastik_startup = imp.load_source( 'ilastik_startup', ilastik_entry_file_path )
+
     @classmethod
-    def tearDownClass(cls):
+    def teardownClass(cls):
         # Clean up: Delete any test files we generated
         removeFiles = [ TestPixelClassificationHeadless.PROJECT_FILE ]
         if cls.using_random_data:
@@ -139,7 +148,7 @@ class TestPixelClassificationHeadless(unittest.TestCase):
         #       See if __name__ == __main__ section, below.
         args = "--project=" + self.PROJECT_FILE
         args += " --headless"
-        args += " --sys_tmp_dir=/tmp"
+        #args += " --sys_tmp_dir=/tmp"
 
         # Batch export options
         args += " --output_format=hdf5"
@@ -151,8 +160,7 @@ class TestPixelClassificationHeadless(unittest.TestCase):
         sys.argv += args.split()
 
         # Start up the ilastik.py entry script as if we had launched it from the command line
-        ilastik_entry_file_path = os.path.join( os.path.split( ilastik.__file__ )[0], "../ilastik.py" )
-        imp.load_source( 'main', ilastik_entry_file_path )
+        self.ilastik_startup.main()
         
         # Examine the output for basic attributes
         output_path = self.SAMPLE_DATA[:-4] + "_prediction.h5"
@@ -171,46 +179,45 @@ class TestPixelClassificationHeadless(unittest.TestCase):
         args = []
         args.append( "--project=" + self.PROJECT_FILE )
         args.append( "--headless" )
-        args.append( "--sys_tmp_dir=/tmp" )
-
+        #args.append( "--sys_tmp_dir=/tmp" )
+ 
         # Batch export options
         args.append( '--output_format=png sequence' ) # If we were actually launching from the command line, 'png sequence' would be in quotes...
         args.append( "--output_filename_format={dataset_dir}/{nickname}_prediction_z{slice_index}.png" )
         args.append( "--export_dtype=uint8" )
         args.append( "--output_axis_order=zxyc" )
-        
+         
         args.append( "--pipeline_result_drange=(0.0,1.0)" )
         args.append( "--export_drange=(0,255)" )
-
+ 
         args.append( "--cutout_subregion=[(0,50,50,0,0), (1, 150, 150, 50, 2)]" )
         args.append( self.SAMPLE_DATA )
-
+ 
         sys.argv = ['ilastik.py'] # Clear the existing commandline args so it looks like we're starting fresh.
         sys.argv += args
-
+ 
         # Start up the ilastik.py entry script as if we had launched it from the command line
         # This will execute the batch mode script
-        ilastik_entry_file_path = os.path.join( os.path.split( ilastik.__file__ )[0], "../ilastik.py" )
-        imp.load_source( 'main', ilastik_entry_file_path )
-
+        self.ilastik_startup.main()
+ 
         output_path = self.SAMPLE_DATA[:-4] + "_prediction_z{slice_index}.png"
         globstring = output_path.format( slice_index=999 )
         globstring = globstring.replace('999', '*')
-
+ 
         opReader = OpStackLoader( graph=Graph() )
         opReader.globstring.setValue( globstring )
-
+ 
         # (The OpStackLoader produces txyzc order.)
         opReorderAxes = OpReorderAxes( graph=Graph() )
         opReorderAxes.AxisOrder.setValue( 'txyzc' )
         opReorderAxes.Input.connect( opReader.stack )
-        
+         
         readData = opReorderAxes.Output[:].wait()
-
+ 
         # Check basic attributes
         assert readData.shape[:-1] == self.data[0:1, 50:150, 50:150, 0:50, 0:2].shape[:-1] # Assume channel is last axis
         assert readData.shape[-1] == 2, "Wrong number of channels.  Expected 2, got {}".format( readData.shape[-1] )
-        
+         
         # Clean-up.
         opReorderAxes.cleanUp()
         opReader.cleanUp()

@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 #Python
 from copy import copy
 import collections
@@ -731,3 +735,81 @@ class OpObjectExtraction(Operator):
         # Nothing to do here.
         # Our Input slots are directly fed into the cache,
         #  so all calls to __setitem__ are forwarded automatically
+
+    @staticmethod
+    def exportTable(features):
+        #Assume features is the output of our own RegionFeatures slot
+        #Now we have a dict of dicts. Let's make a table
+        
+        #print features
+        ntimes = len(features.keys())
+        nplugins = len(features[0].keys())
+        nchannels = 0
+        nobjects = []
+        dtype_names = []
+        dtype_types = []
+        for t, plugin_name in features.iteritems():
+            feat0 = plugin_name.values()[0]
+            feat0_name = feat0.keys()[0]
+            feat0_array = feat0.values()[0]
+            nobjects.append(feat0_array.shape[0])
+                
+                
+        for plugin_name, plugins in features[0].iteritems():
+            for feature_name, feature_array in plugins.iteritems():
+                feature_channels = feature_array.shape[-1]
+                nchannels += feature_channels
+                if feature_channels==1:
+                    dtype_names.append(plugin_name + ", "+feature_name)
+                    dtype_types.append(feature_array.dtype)
+                else:
+                    for ich in range(feature_channels):
+                        dtype_names.append(plugin_name + ", "+ feature_name+"_ch_%d"%ich)
+                        dtype_types.append(feature_array.dtype)
+                    
+        #print "nchannels:", nchannels, "nobjects:", nobjects
+        #print dtype_names
+        #print dtype_types
+        nchannels += 2 #true channels + time value + explicit object id
+        
+        dtype_names.insert(0, "time")
+        dtype_names.insert(0, "object id")
+        
+        # Some versions of numpy can't handle unicode names.
+        # Convert to str.
+        dtype_names = map(str, dtype_names)
+        
+        dtype_types.insert(0, np.dtype(np.uint32).str)
+        dtype_types.insert(0, np.dtype(np.uint32).str)
+        
+        nobjects_total = sum(nobjects)
+        
+        table = np.zeros(nobjects_total, dtype = {'names': dtype_names, 'formats': dtype_types})
+        
+        #table = np.zeros(4, dtype = {'names': ['Mean', 'Coord<Maximum>_ch_0'], \
+        #                           'formats': [np.dtype(np.uint32), np.dtype(np.uint8)]})
+        
+        
+        start = 0
+        finish = start
+        for itime in range(ntimes):
+            print str(itime) + "/" + str(ntimes)
+            finish = start+nobjects[itime]
+            print start, finish
+            table["object id"][start: finish] = np.arange(nobjects[itime])
+            table["time"][start: finish] = itime
+            nfeat = 2
+            for plugin_name, plugins in features[itime].iteritems():
+                for feature_name, feature_array in plugins.iteritems():
+                    nchannels = feature_array.shape[-1]
+                    for ich in range(nchannels):
+                        table[dtype_names[nfeat]][start: finish] = feature_array[:, ich]
+                        nfeat += 1
+            start = finish
+        
+        #print table
+        #print table['Default features, RegionCenter_ch_1']
+        #print table['object id']
+        #dtype={'names':['col1', 'col2'], 'formats':['i4','f4']}
+        return table
+        
