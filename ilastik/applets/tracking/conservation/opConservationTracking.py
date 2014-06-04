@@ -166,7 +166,8 @@ class OpConservationTracking(OpTrackingBase):
                                          transition_parameter,
                                          borderAwareWidth,
                                          fov,
-                                         True #with_constraints
+                                         True, #with_constraints
+                                         "none" # dump traxelstore
                                          )
 
         
