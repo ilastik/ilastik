@@ -118,6 +118,18 @@ class TestOpInputDataReader(object):
         h5Reader.cleanUp()
         assert not h5Reader._file # Whitebox assertion...
 
+    def test_npy_with_roi(self):
+        a = numpy.indices((100,100,200)).astype( numpy.uint8 ).sum(0)
+        assert a.shape == (100,100,200)
+        numpy.save( self.testNpyDataFileName, a )
+        opReader = OpInputDataReader( graph=lazyflow.graph.Graph() )
+        opReader.FilePath.setValue( self.testNpyDataFileName )
+        opReader.SubVolumeRoi.setValue( ((10,20,30), (50, 70, 90)) )
+
+        all_data = opReader.Output[:].wait()
+        assert all_data.shape == ( 40, 50, 60 )
+        assert (all_data == a[ 10:50, 20:70, 30:90 ]).all()
+
 if __name__ == "__main__":
     import sys
     import nose

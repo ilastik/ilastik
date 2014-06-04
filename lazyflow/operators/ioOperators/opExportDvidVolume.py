@@ -13,7 +13,6 @@
 # Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #
 # Copyright 2011-2014, the ilastik developers
-import httplib
 import contextlib
 
 import pydvid
@@ -61,18 +60,17 @@ class OpExportDvidVolume(Operator):
             shape = tuple(reversed(shape))
         
         axiskeys = "".join( axiskeys )
-        
-        # FIXME: We assume the dataset needs to be created first.
-        #        If it already existed, this (presumably) causes an error on the DVID side.
-        metadata = pydvid.voxels.VoxelsMetadata.create_default_metadata( shape, 
-                                                                         self.Input.meta.dtype, 
-                                                                         axiskeys, 
-                                                                         0.0, 
-                                                                         "" )
 
-        connection = httplib.HTTPConnection( hostname )
+        connection = pydvid.dvid_connection.DvidConnection( hostname )
         with contextlib.closing( connection ):
             self.progressSignal(5)
+            # FIXME: We assume the dataset needs to be created first.
+            #        If it already existed, this (presumably) causes an error on the DVID side.
+            metadata = pydvid.voxels.VoxelsMetadata.create_default_metadata( shape, 
+                                                                             self.Input.meta.dtype, 
+                                                                             axiskeys, 
+                                                                             0.0, 
+                                                                             "" )
             pydvid.voxels.create_new(connection, uuid, dataname, metadata)
     
             client = pydvid.voxels.VoxelsAccessor( connection, uuid, dataname )

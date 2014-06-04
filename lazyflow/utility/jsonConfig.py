@@ -131,6 +131,27 @@ class FormattedField(object):
         # TODO: Also validate that all format fields the user provided are known required/optional fields.
         return x    
 
+class RoiTuple(object):
+    """
+    Callale that serves as a pseudo-type.
+    Converts a nested list to a roi tuple.
+    """
+    
+    def __call__(self, x):
+        if not isinstance(x, (list, tuple)) or \
+           len(x) != 2 or \
+           not isinstance(x[0], (list, tuple)) or \
+           not isinstance(x[1], (list, tuple)) or \
+           len(x[0]) != len(x[1]):
+            raise JsonConfigParser.ParsingError( "json value is not a valid roi: {}".format( x ) )
+        
+        # Are all values ints?
+        for a in x[0] + x[1]:
+            if not isinstance(a, int):
+                raise JsonConfigParser.ParsingError( "roi contains non-integers: {}".format( x ) )
+        
+        return ( tuple(x[0]), tuple(x[1]) )
+
 class JsonConfigEncoder( json.JSONEncoder ):
     """
     This special Json encoder standardizes the way that special types are written to JSON format.
