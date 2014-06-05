@@ -67,11 +67,11 @@ class OpFormattedDataExport(Operator):
     ConvertedImage = OutputSlot() # Not yet re-ordered
     ImageToExport = OutputSlot() # Preview of the pre-processed image that will be exported
     ExportPath = OutputSlot() # Location of the saved file after export is complete.
-    FormatSelectionIsValid = OutputSlot() # True or False depending on whether or not the currently selected format can support the current export data.
+    FormatSelectionErrorMsg = OutputSlot() # True or False depending on whether or not the currently selected format can support the current export data.
     
     ALL_FORMATS = OpExportSlot.ALL_FORMATS
     
-    # Simplified block diagram:                                          -> ConvertedImage                -> FormatSelectionIsValid
+    # Simplified block diagram:                                          -> ConvertedImage                -> FormatSelectionErrorMsg
     #                                                                   /                                /
     # Input -> opSubRegion -> opDrangeInjection -> opNormalizeAndConvert -> opReorderAxes -> opExportSlot -> ExportPath
     #                                                                                    \
@@ -111,7 +111,7 @@ class OpFormattedDataExport(Operator):
         self._opExportSlot.OutputFormat.connect( self.OutputFormat )
         
         self.ExportPath.connect( self._opExportSlot.ExportPath )
-        self.FormatSelectionIsValid.connect( self._opExportSlot.FormatSelectionIsValid )
+        self.FormatSelectionErrorMsg.connect( self._opExportSlot.FormatSelectionErrorMsg )
         self.progressSignal = self._opExportSlot.progressSignal
 
     def setupOutputs(self):

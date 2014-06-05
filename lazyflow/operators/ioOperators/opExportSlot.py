@@ -57,7 +57,7 @@ class OpExportSlot(Operator):
     CoordinateOffset = InputSlot(optional=True) # Add an offset to the roi coordinates in the export path (useful if Input is a subregion of a larger dataset)
 
     ExportPath = OutputSlot()
-    FormatSelectionIsValid = OutputSlot()
+    FormatSelectionErrorMsg = OutputSlot()
 
     _2d_exts = vigra.impex.listExtensions().split()    
 
@@ -93,13 +93,13 @@ class OpExportSlot(Operator):
         export_impls['multipage tiff sequence'] = ('tiff', self._export_multipage_tiff_sequence)
         self._export_impls = export_impls
 
-        self.Input.notifyMetaChanged( self._updateFormatSelectionIsValid )
+        self.Input.notifyMetaChanged( self._updateFormatSelectionErrorMsg )
     
     def setupOutputs(self):
         self.ExportPath.meta.shape = (1,)
         self.ExportPath.meta.dtype = object
-        self.FormatSelectionIsValid.meta.shape = (1,)
-        self.FormatSelectionIsValid.meta.dtype = object
+        self.FormatSelectionErrorMsg.meta.shape = (1,)
+        self.FormatSelectionErrorMsg.meta.dtype = object
         
         if self.OutputFormat.value == 'hdf5' and self.OutputInternalPath.value == "":
             self.ExportPath.meta.NOTREADY = True
@@ -141,21 +141,22 @@ class OpExportSlot(Operator):
         result[0] = formatted_path
         return result
 
-    def _updateFormatSelectionIsValid(self, *args):
-        valid = self._is_format_selection_valid()
-        self.FormatSelectionIsValid.setValue( valid )
+    def _updateFormatSelectionErrorMsg(self, *args):
+        error_msg = self._get_format_selection_error_msg()
+        self.FormatSelectionErrorMsg.setValue( error_msg )
 
-    def _is_format_selection_valid(self, *args):
+    def _get_format_selection_error_msg(self, *args):
         """
-        Return True if the currently selected format is valid to export the current input dataset
+        If the currently selected format does not support the input image format, 
+        return an error message stating why. Otherwise, return an empty string.
         """
         if not self.Input.ready():
-            return False
+            return "Input not ready"
         output_format = self.OutputFormat.value
 
         # These cases support all combinations
         if output_format in ('hdf5', 'npy'):
-            return True
+            return ""
         
         tagged_shape = self.Input.meta.getTaggedShape()
         axes = OpStackWriter.get_nonsingleton_axes_for_tagged_shape( tagged_shape )
@@ -165,34 +166,41 @@ class OpExportSlot(Operator):
             # dvid requires a channel axis, which must come last.
             # Internally, we transpose it before sending it over the wire
             if tagged_shape.keys()[-1] != 'c':
-                return False
+                return "DVID requires the last axis to be channel."
 
             # Make sure DVID supports this dtype/channel combo.
             from pydvid.voxels import VoxelsMetadata
-            metainfo = VoxelsMetadata.create_default_metadata( self.Input.meta.shape,
+            axiskeys = self.Input.meta.getAxisKeys()
+            # We reverse the axiskeys because the export operator (see below) uses transpose_axes=True
+            reverse_axiskeys = "".join(reversed( axiskeys ))
+            reverse_shape = tuple(reversed(self.Input.meta.shape))
+            metainfo = VoxelsMetadata.create_default_metadata( reverse_shape,
                                                                output_dtype,
-                                                               "".join(self.Input.meta.getAxisKeys()),
+                                                               reverse_axiskeys,
                                                                0.0,
                                                                'nanometers' )
             try:
                 metainfo.determine_dvid_typename()
-            except:
-                return False
+            except Exception as ex:
+                return str(ex)
             else:
-                return True
+                return ""
 
         # None of the remaining formats support more than 4 channels.
         if 'c' in tagged_shape and tagged_shape['c'] > 4:
-            return False
+            return "Too many channels."
 
         # HDR format supports float32 only, and must have exactly 3 channels
         if output_format == 'hdr' or output_format == 'hdr sequence':
-            return output_dtype == numpy.float32 and \
-                   'c' in tagged_shape and tagged_shape['c'] == 3
+            if output_dtype == numpy.float32 and\
+               'c' in tagged_shape and tagged_shape['c'] == 3:
+                return ""
+            else:
+                return "HDR volumes must be float32, with exactly 3 channels."
 
         # Apparently, TIFF supports everything but signed byte
         if 'tif' in output_format and output_dtype == numpy.int8:
-            return False
+            return "TIF output does not support signed byte (int8).  Try unsigned (uint8)."
 
         # Apparently, these formats support everything except uint32
         # See http://github.com/ukoethe/vigra/issues/153
@@ -201,14 +209,14 @@ class OpExportSlot(Operator):
              'pgm' in output_format or \
              'pnm' in output_format or \
              'ppm' in output_format ):
-            return False
+            return "PBM/PGM/PNM/PPM do not support the uint32 pixel type."
 
         # These formats don't support 2 channels (must be either 1 or 3)
         non_dualband_formats = ['bmp', 'gif', 'jpg', 'jpeg', 'ras']
         for fmt in non_dualband_formats:
             if fmt in output_format and axes[0] != 'c' and 'c' in tagged_shape:
                 if 'c' in tagged_shape and tagged_shape['c'] != 1 and tagged_shape['c'] != 3:
-                    return False
+                    return "Invalid number of channels (must be exactly 1 or 3)."
 
         # 2D formats only support 2D images (singleton/channel axes excepted)
         if filter(lambda fmt: fmt.name == output_format, self._2d_formats):
@@ -216,7 +224,10 @@ class OpExportSlot(Operator):
             # OK: 'xy', 'xyc'
             # NOT OK: 'xc', 'xyz'
             nonchannel_axes = filter(lambda a: a != 'c', axes)
-            return len(nonchannel_axes) == 2
+            if len(nonchannel_axes) == 2:
+                return ""
+            else:
+                return "Input has too many dimensions for a 2D output format."
 
         nonstep_axes = axes[1:]
         nonchannel_axes = filter( lambda a: a != 'c', nonstep_axes )
@@ -228,7 +239,10 @@ class OpExportSlot(Operator):
             # Examples:
             # OK: 'xyz', 'xyzc', 'cxy'
             # NOT OK: 'cxyz'
-            return len(nonchannel_axes) == 2
+            if len(nonchannel_axes) == 2:
+                return ""
+            else:
+                return "Can't export 3D stack: Input is not 3D."
 
         # 4D sequences of 3D images require a 4D image
         # (singleton/channel axes excepted, unless channel is the 'step' axis)
@@ -236,7 +250,10 @@ class OpExportSlot(Operator):
             # Examples:
             # OK: 'txyz', 'txyzc', 'cxyz'
             # NOT OK: 'xyzc', 'xyz', 'xyc'
-            return len(nonchannel_axes) == 3
+            if len(nonchannel_axes) == 3:
+                return ""
+            else:
+                return "Can't export 4D stack: Input is not 4D."
 
         assert False, "Unknown format case: {}".format( output_format )
 
@@ -244,7 +261,7 @@ class OpExportSlot(Operator):
         if slot == self.OutputFormat or slot == self.OutputFilenameFormat:
             self.ExportPath.setDirty()
         if slot == self.OutputFormat:
-            self._updateFormatSelectionIsValid()
+            self._updateFormatSelectionErrorMsg()
 
     def run_export(self):
         """
