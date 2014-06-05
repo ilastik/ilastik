@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>272</width>
-    <height>431</height>
+    <height>517</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -62,7 +62,7 @@
      <item>
       <widget class="LabelListView" name="labelListView">
        <property name="sizePolicy">
-        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+        <sizepolicy hsizetype="Minimum" vsizetype="Maximum">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
@@ -70,7 +70,7 @@
        <property name="minimumSize">
         <size>
          <width>0</width>
-         <height>192</height>
+         <height>75</height>
         </size>
        </property>
       </widget>
@@ -224,6 +224,13 @@
       <widget class="QPushButton" name="computeWatershedButton">
        <property name="text">
         <string>Compute Watershed!</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="exportToDvidButton">
+       <property name="text">
+        <string>Export to DVID</string>
        </property>
       </widget>
      </item>

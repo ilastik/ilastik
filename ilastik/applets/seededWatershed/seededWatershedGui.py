@@ -1,19 +1,27 @@
 import os
+import threading
 from functools import partial
 
 import numpy
 from PyQt4.QtCore import QTimer
-from PyQt4.QtGui import QColor, QMenu, QAction
+from PyQt4.QtGui import QApplication, QColor, QMenu, QAction
 
 from volumina.api import ColortableLayer, LazyflowSource
 from volumina.view3d.volumeRendering import RenderingManager
 from ilastik.applets.labeling.labelingGui import LabelingGui
+from ilastik.utility.gui import ThunkEvent
+
+from lazyflow.operators.ioOperators import OpExportDvidVolume
+from lazyflow.operators import OpReorderAxes
+
+from pydvid.gui.contents_browser import ContentsBrowser
 
 class SeededWatershedGui(LabelingGui):
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, parentApplet, *args, **kwargs):
         kwargs['drawerUiPath'] = os.path.split(__file__)[0] + '/drawer.ui'
-        super( SeededWatershedGui, self ).__init__(*args, **kwargs)
+        super( SeededWatershedGui, self ).__init__(parentApplet, *args, **kwargs)
+        self.parentApplet = parentApplet
         
         def _onComputeWatershed():
             self.topLevelOperatorView.FreezeCache.setValue(False)
@@ -21,6 +29,8 @@ class SeededWatershedGui(LabelingGui):
             QTimer.singleShot(1000, lambda: self._update_rendering() )            
         
         self._labelControlUi.computeWatershedButton.clicked.connect( _onComputeWatershed )
+        
+        self._labelControlUi.exportToDvidButton.clicked.connect( self._export_to_dvid )
         
         def _handleLabelClassChange( topLeft, bottomRight ):
             self.updateAllLayers()
@@ -46,7 +56,7 @@ class SeededWatershedGui(LabelingGui):
             self._renderMgr = RenderingManager( self.editor.view3d )
         except:
             self.render = False
-        
+    
     def _after_init(self):
         """
         Override from base class.
@@ -134,7 +144,6 @@ class SeededWatershedGui(LabelingGui):
 
         # Overwrite the data
         volume = op.CachedWatershed().wait()[0,...,0]
-        print "watershed max,min = ", volume.max(), volume.min()
         self._renderMgr.volume[:] = volume
         self._renderMgr.update()
 
@@ -196,10 +205,67 @@ class SeededWatershedGui(LabelingGui):
         mask_layer = self.find_layer("Mask")
         mask_layer.visible = (op.SplittingLabelId.value != 0)
 
+    def _export_to_dvid(self):
+        op = self.topLevelOperatorView
+        assert op.FinalSegmentation.ready(), "FIXME: Shouldn't be able to export if the seg isn't ready."
+        
+        subvolume_roi = op.InputImage.meta.subvolume_roi
+        
+        browser = ContentsBrowser( ['localhost:8000'] )
+        if browser.exec_() != ContentsBrowser.Accepted:
+            return
+        hostname, dataset_index, data_name, node_uuid = browser.get_selection()
+        node_url = "dvid://{hostname}/api/node/{node_uuid}/{data_name}".format( **locals() )
+        
+        opReorderAxes = OpReorderAxes( parent=op.parent )
+        opReorderAxes.AxisOrder.setValue( "xyzc" )
+        opReorderAxes.Input.connect( op.FinalSegmentation )
+        
+        opExport = OpExportDvidVolume( transpose_axes=True, parent=op.parent )
+        opExport.Input.connect( opReorderAxes.Output )
+        opExport.NodeDataUrl.setValue( node_url )
+        if subvolume_roi is not None:
+            opExport.OffsetCoord.setValue( subvolume_roi[0] )
 
+        def export_thread_fn():
+            try:
+                # Set the busy flag so the workflow knows not to allow 
+                #  upstream changes or shell changes while we're exporting
+                self.parentApplet.busy = True
+                self.parentApplet.appletStateUpdateRequested.emit()
+    
+                # Disable our own gui
+                # FIXME: Can't this be done using the applet state update mechanism???
+                QApplication.instance().postEvent( self, ThunkEvent( partial(self.setEnabledIfAlive, self._labelControlUi, False) ) )
+                QApplication.instance().postEvent( self, ThunkEvent( partial(self.setEnabledIfAlive, self, False) ) )
+                
+                # Start with 1% so the progress bar shows up
+                self.parentApplet.progressSignal.emit(0)
+                self.parentApplet.progressSignal.emit(1)
+    
+                opExport.progressSignal.subscribe( self.parentApplet.progressSignal.emit )
+                opExport.run_export()
+    
+                # Ensure the shell knows we're really done.
+                self.parentApplet.progressSignal.emit(100)
+            except:
+                # Cancel our progress.
+                self.parentApplet.progressSignal.emit(0, True)
+                raise
+            finally:
+                opExport.cleanUp()
+                opReorderAxes.cleanUp()
 
+                # We're not busy any more.  Tell the workflow.
+                self.parentApplet.busy = False
+                self.parentApplet.appletStateUpdateRequested.emit()
+                
+                # Re-enable our own gui
+                QApplication.instance().postEvent( self, ThunkEvent( partial(self.setEnabledIfAlive, self._labelControlUi, True) ) )
+                QApplication.instance().postEvent( self, ThunkEvent( partial(self.setEnabledIfAlive, self, True) ) )
 
-
+        export_thread = threading.Thread( target=export_thread_fn )
+        export_thread.start()
 
 
 
