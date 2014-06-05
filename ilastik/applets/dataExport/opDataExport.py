@@ -69,7 +69,7 @@ class OpDataExport(Operator):
 
     ImageOnDisk = OutputSlot() # This slot reads the exported image from disk (after the export is complete)
     Dirty = OutputSlot() # Whether or not the result currently matches what's on disk
-    FormatSelectionIsValid = OutputSlot()
+    FormatSelectionErrorMsg = OutputSlot()
 
     ALL_FORMATS = OpFormattedDataExport.ALL_FORMATS
 
@@ -123,7 +123,7 @@ class OpDataExport(Operator):
         self.ConvertedImage.connect( opFormattedExport.ConvertedImage )
         self.ImageToExport.connect( opFormattedExport.ImageToExport )
         self.ExportPath.connect( opFormattedExport.ExportPath )
-        self.FormatSelectionIsValid.connect( opFormattedExport.FormatSelectionIsValid )
+        self.FormatSelectionErrorMsg.connect( opFormattedExport.FormatSelectionErrorMsg )
         self.progressSignal = opFormattedExport.progressSignal
 
         self.Dirty.setValue(True) # Default to Dirty
