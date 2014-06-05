@@ -91,6 +91,7 @@ class DatasetInfo(object):
         self.nickname = namespace.nickname or self.nickname
         if namespace.axistags is not None:
             self.axistags = vigra.defaultAxistags(namespace.axistags)
+        self.subvolume_roi = namespace.subvolume_roi or self.subvolume_roi
 
 class OpDataSelection(Operator):
     """
@@ -191,8 +192,14 @@ class OpDataSelection(Operator):
                 if datasetInfo.normalizeDisplay is not None:
                     metadata['normalizeDisplay'] = datasetInfo.normalizeDisplay
                 if datasetInfo.axistags is not None:
+                    if len(datasetInfo.axistags) != len(providerSlot.meta.shape):
+                        raise Exception( "Your dataset's provided axistags ({}) do not have the "
+                                         "correct dimensionality for your dataset, which has {} dimensions."
+                                         .format( "".join(tag.key for tag in datasetInfo.axistags), len(providerSlot.meta.shape) ) )
                     metadata['axistags'] = datasetInfo.axistags
-                
+                if datasetInfo.subvolume_roi is not None:
+                    metadata['subvolume_roi'] = datasetInfo.subvolume_roi
+                    
                     # FIXME: We are overwriting the axistags metadata to intentionally allow 
                     #        the user to change our interpretation of which axis is which.
                     #        That's okay, but technically there's a special corner case if 
