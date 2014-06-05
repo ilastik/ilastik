@@ -155,19 +155,19 @@ class BigRequestStreamer(object):
         
         # Fudge factor: Reduce RAM usage by a bit
         available_ram *= 0.5
+
+        if ram_usage_per_requested_pixel is None:
+            # Make a conservative guess: (bytes for dtype) * (num channels) + (fudge factor=4)
+            ram_usage_per_requested_pixel = 4 + 2*outputSlot.meta.dtype().nbytes*outputSlot.meta.shape[-1]
+            logger.warn( "Unknown RAM usage.  Making a guess." )
+        else:
+            logger.info( "Estimated RAM usage per pixel is {} bytes"
+                               .format( ram_usage_per_requested_pixel ) )
         
         if ideal_blockshape is None:
-            blockshape = determineBlockShape( input_shape, available_ram/num_threads )
+            blockshape = determineBlockShape( input_shape, available_ram/(num_threads*ram_usage_per_requested_pixel) )
             logger.warn( "Chose an arbitrary request blockshape {}".format( blockshape ) )
         else:
-            if ram_usage_per_requested_pixel is None:
-                # Make a conservative guess: (bytes for dtype) * (num channels) + (fudge factor=4)
-                ram_usage_per_requested_pixel = 4 + 2*outputSlot.meta.dtype().nbytes*outputSlot.meta.shape[-1]
-                logger.warn( "Unknown RAM usage.  Making a guess." )
-            else:
-                logger.info( "Estimated RAM usage per pixel is {} bytes"
-                                   .format( ram_usage_per_requested_pixel ) )
-
             logger.info( "determining blockshape assuming available_ram is {} GB, split between {} threads"
                                .format( available_ram/1e9, num_threads ) )
             
