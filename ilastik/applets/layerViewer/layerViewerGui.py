@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
 #PyQt
+import sip
 from PyQt4.QtGui import *
 from PyQt4 import uic
 
@@ -194,6 +195,10 @@ class LayerViewerGui(QWidget):
         if self._need_update:
             self.updateAllLayers()
         super( LayerViewerGui, self ).showEvent(event)
+
+    def setEnabledIfAlive(self, widget, enable):
+        if not sip.isdeleted(widget):
+            widget.setEnabled(enable)
 
     def setupLayers( self ):
         """
