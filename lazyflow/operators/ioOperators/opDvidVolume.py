@@ -70,6 +70,7 @@ class OpDvidVolume(Operator):
     
     def setupOutputs(self):
         shape, dtype, axiskeys = self._volume_client.shape, self._volume_client.dtype, self._volume_client.axiskeys
+        num_channels = shape[0]
         if self._transpose_axes:
             shape = tuple(reversed(shape))
             axiskeys = "".join(reversed(axiskeys))
@@ -77,6 +78,10 @@ class OpDvidVolume(Operator):
         self.Output.meta.shape = shape
         self.Output.meta.dtype = dtype.type
         self.Output.meta.axistags = vigra.defaultAxistags( axiskeys ) # FIXME: Also copy resolution, etc.
+        
+        # For every request, we probably need room RAM for the array and for the http buffer
+        # (and hopefully nothing more)
+        self.Output.meta.ram_usage_per_requested_pixel = 2 * dtype.type().nbytes * num_channels
 
     def execute(self, slot, subindex, roi, result):
         # TODO: Modify volume client implementation to accept a pre-allocated array.
