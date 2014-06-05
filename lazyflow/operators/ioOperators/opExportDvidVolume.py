@@ -15,11 +15,13 @@
 # Copyright 2011-2014, the ilastik developers
 import contextlib
 
+import numpy
+
 import pydvid
 
 from lazyflow.graph import Operator, InputSlot
 from lazyflow.utility import OrderedSignal, BigRequestStreamer
-from lazyflow.roi import roiFromShape, roiToSlice
+from lazyflow.roi import roiFromShape
 
 import logging
 logger = logging.getLogger(__name__)
@@ -27,6 +29,7 @@ logger = logging.getLogger(__name__)
 class OpExportDvidVolume(Operator):
     Input = InputSlot()
     NodeDataUrl = InputSlot() # Should be a url of the form http://<hostname>[:<port>]/api/node/<uuid>/<dataname>
+    OffsetCoord = InputSlot(optional=True)
     
     def __init__(self, transpose_axes, *args, **kwargs):
         super(OpExportDvidVolume, self).__init__(*args, **kwargs)
@@ -61,22 +64,35 @@ class OpExportDvidVolume(Operator):
         
         axiskeys = "".join( axiskeys )
 
+        if self.OffsetCoord.ready():
+            offset_start = self.OffsetCoord.value
+        else:
+            offset_start = (0,) * len( self.Input.meta.shape )
+
         connection = pydvid.dvid_connection.DvidConnection( hostname )
         with contextlib.closing( connection ):
             self.progressSignal(5)
-            # FIXME: We assume the dataset needs to be created first.
-            #        If it already existed, this (presumably) causes an error on the DVID side.
-            metadata = pydvid.voxels.VoxelsMetadata.create_default_metadata( shape, 
-                                                                             self.Input.meta.dtype, 
-                                                                             axiskeys, 
-                                                                             0.0, 
-                                                                             "" )
-            pydvid.voxels.create_new(connection, uuid, dataname, metadata)
+            
+            # Get the dataset details
+            try:
+                metadata = pydvid.voxels.get_metadata(connection, uuid, dataname)
+            except pydvid.errors.DvidHttpError as ex:
+                if ex.status_code != 404:
+                    raise
+                # Dataset doesn't exist yet.  Let's create it.
+                metadata = pydvid.voxels.VoxelsMetadata.create_default_metadata( shape, 
+                                                                                 self.Input.meta.dtype, 
+                                                                                 axiskeys, 
+                                                                                 0.0, 
+                                                                                 "" )
+                pydvid.voxels.create_new(connection, uuid, dataname, metadata)
     
             client = pydvid.voxels.VoxelsAccessor( connection, uuid, dataname )
             
             def handle_block_result(roi, data):
                 # Send it to dvid
+                roi = numpy.asarray(roi)
+                roi += offset_start
                 start, stop = roi
                 if self._transpose_axes:
                     data = data.transpose()

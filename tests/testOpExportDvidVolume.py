@@ -118,6 +118,50 @@ class TestOpDvidVolume(unittest.TestCase):
         assert ( data.view(numpy.ndarray) == exported_data.transpose() ).all(),\
             "Exported data is not correct"
 
+    def test_export_with_offset(self):
+        """
+        hostname: The dvid server host
+        h5filename: The h5 file to compare against
+        h5group: The hdf5 group, also used as the uuid of the dvid dataset
+        h5dataset: The dataset name, also used as the name of the dvid dataset
+        start, stop: The bounds of the cutout volume to retrieve from the server. C ORDER FOR THIS TEST BECAUSE we use transpose_axes=True.
+        """
+        data = numpy.indices( (10, 100, 200, 4) )
+        assert data.shape == (4, 10, 100, 200, 4)
+        data = data.astype( numpy.uint8 )
+        data = vigra.taggedView( data, vigra.defaultAxistags('tzyxc') )
+
+        # Retrieve from server
+        graph = Graph()
+        
+        opPiper = OpArrayPiper(graph=graph)
+        opPiper.Input.setValue( data )
+        
+        opExport = OpExportDvidVolume( transpose_axes=True, graph=graph )
+        
+        # Reverse data order for dvid export
+        opExport.Input.connect( opPiper.Output )
+        opExport.NodeDataUrl.setValue( 'http://localhost:8000/api/node/{uuid}/{dataname}'.format( uuid=self.data_uuid, dataname=self.data_name ) )
+        offset = (0, 5, 500, 0, 0)
+        opExport.OffsetCoord.setValue( offset )
+
+        # Export!
+        opExport.run_export()
+
+        # Retrieve from file
+        with h5py.File(self.test_filepath, 'r') as f:
+            exported_data = f['all_nodes'][self.data_uuid][self.data_name][:]
+
+        # The offset should have caused larger extents in the saved data.
+        assert (exported_data.transpose().shape == numpy.add( data.shape, offset )).all(), \
+            "Wrong shape: {}".format(exported_data.transpose().shape)
+
+        # Compare.
+        offset_slicing = tuple(slice(s,None) for s in offset)
+        assert ( data.view(numpy.ndarray) == exported_data.transpose()[offset_slicing] ).all(),\
+            "Exported data is not correct"
+
+
 if __name__ == "__main__":
     import sys
     import nose
