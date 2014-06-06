@@ -21,6 +21,7 @@
 import os
 import gc
 import copy
+import platform
 import h5py
 import logging
 import time
@@ -314,17 +315,14 @@ class ProjectManager(object):
         """
         # If our project is read-only, we can't be efficient.
         # We have to take a snapshot, then close our current project and open the snapshot
-        if self.currentProjectIsReadOnly:
+        # Furthermore, windows does not permit renaming an open file, so we must take this approach.
+        if self.currentProjectIsReadOnly or platform.system() == 'Windows':
             self._takeSnapshotAndLoadIt(newPath)
             return
 
         oldPath = self.currentProjectPath
         try:
-            self.currentProjectFile.close()
-            if os.path.isfile(newPath):
-                os.remove(newPath)
             os.rename( oldPath, newPath )
-            self.currentProjectFile = h5py.File(newPath)
         except OSError, err:
             msg = 'Could not rename your project file to:\n'
             msg += newPath + '\n'
