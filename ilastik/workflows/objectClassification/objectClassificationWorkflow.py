@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import warnings
 import argparse
 
@@ -46,11 +50,12 @@ class ObjectClassificationWorkflow(Workflow):
 
     def __init__(self, shell, headless,
                  workflow_cmdline_args,
+                 project_creation_args,
                  *args, **kwargs):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
         if 'graph' in kwargs:
             del kwargs['graph']
-        super(ObjectClassificationWorkflow, self).__init__(shell, headless=headless, graph=graph, *args, **kwargs)
+        super(ObjectClassificationWorkflow, self).__init__(shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
 
         # Parse workflow-specific command-line args
         parser = argparse.ArgumentParser()
@@ -58,13 +63,22 @@ class ObjectClassificationWorkflow(Workflow):
         parser.add_argument('--filter', help="pixel feature filter implementation.", choices=['Original', 'Refactored', 'Interpolated'], default='Original')
         parser.add_argument('--nobatch', help="do not append batch applets", action='store_true', default=False)
         
+        parsed_creation_args, unused_args = parser.parse_known_args(project_creation_args)
+
+        self.fillMissing = parsed_creation_args.fillmissing
+        self.filter_implementation = parsed_creation_args.filter
+
         parsed_args, unused_args = parser.parse_known_args(workflow_cmdline_args)
+        if parsed_args.fillmissing != 'none' and parsed_creation_args.fillmissing != parsed_args.fillmissing:
+            logger.error( "Ignoring --fillmissing cmdline arg.  Can't specify a different fillmissing setting after the project has already been created." )
+        
+        if parsed_args.filter != 'Original' and parsed_creation_args.filter != parsed_args.filter:
+            logger.error( "Ignoring --filter cmdline arg.  Can't specify a different filter setting after the project has already been created." )
+
+        self.batch = not parsed_args.nobatch
+        
         if unused_args:
             warnings.warn("Unused command-line args: {}".format( unused_args ))
-
-        self.fillMissing = parsed_args.fillmissing
-        self.filter_implementation = parsed_args.filter
-        self.batch = not parsed_args.nobatch
 
         self._applets = []
 
@@ -172,14 +186,14 @@ class ObjectClassificationWorkflow(Workflow):
     def _initBatchWorkflow(self):
         # Access applet operators from the training workflow
         opObjectTrainingTopLevel = self.objectClassificationApplet.topLevelOperator
-        
         opBlockwiseObjectClassification = self.blockwiseObjectClassificationApplet.topLevelOperator
-
-        
 
         # If we are not in the binary workflow, connect the thresholding operator.
         # Parameter inputs are cloned from the interactive workflow,
-        if not isinstance(self, ObjectClassificationWorkflowBinary):
+        if isinstance(self, ObjectClassificationWorkflowBinary):
+            #FIXME
+            pass
+        else:
             opInteractiveThreshold = self.thresholdingApplet.topLevelOperator
             opBatchThreshold = OperatorWrapper(OpThresholdTwoLevels, parent=self)
             opBatchThreshold.MinSize.connect(opInteractiveThreshold.MinSize)
@@ -643,6 +657,7 @@ class ObjectClassificationWorkflowPrediction(ObjectClassificationWorkflow):
         thresholding_ready = True  # is that so?
         cumulated_readyness = cumulated_readyness and thresholding_ready
         super(ObjectClassificationWorkflowPrediction, self).handleAppletStateUpdateRequested(upstream_ready=cumulated_readyness)
+
 
 if __name__ == "__main__":
     from sys import argv

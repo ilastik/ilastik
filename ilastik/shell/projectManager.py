@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import os
 import gc
 import copy
@@ -112,6 +116,7 @@ class ProjectManager(object):
         If it doesn't exist, raise a ``ProjectManager.FileMissingError``.
         If its version is outdated, raise a ``ProjectManager.ProjectVersionError.``
         """
+        projectFilePath = os.path.expanduser(projectFilePath)
         logger.info("Opening Project: " + projectFilePath)
 
         if not os.path.exists(projectFilePath):
@@ -147,7 +152,7 @@ class ProjectManager(object):
     ## Public methods
     #########################    
 
-    def __init__(self, shell, workflowClass, headless=False, workflow_cmdline_args=None):
+    def __init__(self, shell, workflowClass, headless=False, workflow_cmdline_args=None, project_creation_args=None):
         """
         Constructor.
         
@@ -156,9 +161,6 @@ class ProjectManager(object):
                          indicating whether or not the workflow should be opened in 'headless' mode.
         :param workflow_cmdline_args: A list of strings from the command-line to configure the workflow.
         """
-        if workflow_cmdline_args is None:
-            workflow_cmdline_args = []
-
         # Init
         self.closed = True
         self._shell = shell
@@ -170,11 +172,12 @@ class ProjectManager(object):
         # Instantiate the workflow.
         self._workflowClass = workflowClass
         self._workflow_cmdline_args = workflow_cmdline_args or []
+        self._project_creation_args = project_creation_args or []
         self._headless = headless
         
         #the workflow class has to be specified at this point
         assert workflowClass is not None
-        self.workflow = workflowClass(shell, headless, workflow_cmdline_args)
+        self.workflow = workflowClass(shell, headless, self._workflow_cmdline_args, self._project_creation_args)
     
     
     def cleanUp(self):
@@ -232,11 +235,6 @@ class ProjectManager(object):
             if "workflowName" in self.currentProjectFile:
                 del self.currentProjectFile["workflowName"]
             self.currentProjectFile.create_dataset("workflowName",data = self.workflow.workflowName)
-
-            if "workflow_cmdline_args" in self.currentProjectFile:
-                del self.currentProjectFile["workflow_cmdline_args"]
-            if self._workflow_cmdline_args is not None and len(self._workflow_cmdline_args) > 0:
-                self.currentProjectFile.create_dataset(name='workflow_cmdline_args', data=self._workflow_cmdline_args)
 
         except Exception, err:
             logger.error("Project Save Action failed due to the following exception:")
@@ -471,7 +469,7 @@ class ProjectManager(object):
         self.currentProjectFile = None
 
         # Create brand new workflow to load from the new project file.
-        self.workflow = self._workflowClass(self._shell, self._headless, self._workflow_cmdline_args)
+        self.workflow = self._workflowClass(self._shell, self._headless, self._workflow_cmdline_args, self._project_creation_args)
 
         # Load the new file.
         self._loadProject(newProjectFile, newProjectFilePath, False)

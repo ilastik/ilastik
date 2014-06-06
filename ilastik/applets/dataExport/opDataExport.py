@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import collections
 import numpy
 
@@ -65,7 +69,7 @@ class OpDataExport(Operator):
 
     ImageOnDisk = OutputSlot() # This slot reads the exported image from disk (after the export is complete)
     Dirty = OutputSlot() # Whether or not the result currently matches what's on disk
-    FormatSelectionIsValid = OutputSlot()
+    FormatSelectionErrorMsg = OutputSlot()
 
     ALL_FORMATS = OpFormattedDataExport.ALL_FORMATS
 
@@ -119,7 +123,7 @@ class OpDataExport(Operator):
         self.ConvertedImage.connect( opFormattedExport.ConvertedImage )
         self.ImageToExport.connect( opFormattedExport.ImageToExport )
         self.ExportPath.connect( opFormattedExport.ExportPath )
-        self.FormatSelectionIsValid.connect( opFormattedExport.FormatSelectionIsValid )
+        self.FormatSelectionErrorMsg.connect( opFormattedExport.FormatSelectionErrorMsg )
         self.progressSignal = opFormattedExport.progressSignal
 
         self.Dirty.setValue(True) # Default to Dirty

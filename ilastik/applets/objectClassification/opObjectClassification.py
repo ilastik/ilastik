@@ -1,36 +1,44 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import numpy
+import numpy.lib.recfunctions as rfn
 import vigra
 import time
 import warnings
 import itertools
 from collections import defaultdict
+from functools import partial
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List
 from lazyflow.operators import OpValueCache, OpSlicedBlockedArrayCache, OperatorWrapper
 from lazyflow.request import Request, RequestPool, RequestLock
-from functools import partial
+
+from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory, ParallelVigraRfLazyflowClassifier
 
 from ilastik.utility import OperatorSubView, MultiLaneOperatorABC, OpMultiLaneWrapper
 from ilastik.utility.mode import mode
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
+from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
 
 from ilastik.applets.base.applet import DatasetConstraintError
 
@@ -528,6 +536,37 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         return new_labels, old_labels_lost, new_labels_lost
 
 
+    def exportTable(self, lane):
+        if not self.Predictions.ready() or not self.ObjectFeatures.ready():
+            return None
+        
+        numLanes = len(self.SegmentationImages)
+        assert lane<numLanes
+        features = self.ObjectFeatures[lane]([]).wait()
+        feature_table = OpObjectExtraction.exportTable(features)
+        predictions = self.Predictions[lane]([]).wait()
+        nobjs = []
+        for t, preds in predictions.iteritems():
+            nobjs.append(preds.shape[0])
+        nobjs_total = sum(nobjs)
+        if nobjs_total==0:
+            print "Prediction not run yet, won't be exported"
+            return feature_table
+        else:
+            assert nobjs_total==feature_table.shape[0]
+            
+            pred_column = numpy.zeros(nobjs_total, {'names': ['prediction'], 'formats': [numpy.dtype(numpy.uint8)]})
+            start = 0
+            finish = start
+            for t, preds in predictions.iteritems():
+                finish = start + nobjs[t]
+                pred_column['prediction'][start:finish] = preds[:]
+                start = finish
+            
+            feature_pred_table = rfn.merge_arrays((feature_table, pred_column), flatten = True, usemask = False)
+        
+            return feature_pred_table 
+
     def addLane(self, laneIndex):
         numLanes = len(self.SegmentationImages)
         assert numLanes == laneIndex, "Image lanes must be appended."
@@ -659,10 +698,10 @@ class OpObjectTrain(Operator):
         self.FixClassifier.setValue(False)
 
     def setupOutputs(self):
-        if self.inputs["FixClassifier"].value == False:
-            self.outputs["Classifier"].meta.dtype = object
-            self.outputs["Classifier"].meta.shape = (self.ForestCount.value,)
-            self.outputs["Classifier"].meta.axistags = None
+        if self.FixClassifier.value == False:
+            self.Classifier.meta.dtype = object
+            self.Classifier.meta.shape = (1,)
+            self.Classifier.meta.axistags = None
 
         self.BadObjects.meta.shape = (1,)
         self.BadObjects.meta.dtype = object
@@ -743,23 +782,11 @@ class OpObjectTrain(Operator):
         if featMatrix.size == 0 or labelsMatrix.size == 0:
             result[:] = None
             return
-        oob = [0] * self.ForestCount.value
-        try:
-            # train and store forests in parallel
-            pool = RequestPool()
-            for i in range(self.ForestCount.value):
-                def train_and_store(number):
-                    result[number] = vigra.learning.RandomForest(self._tree_count)
-                    oob[number] = result[number].learnRF(featMatrix.astype(numpy.float32), numpy.asarray(labelsMatrix, dtype=numpy.uint32))
-                req = Request( partial(train_and_store, i) )
-                pool.add( req )
-            pool.wait()
-            pool.clean()
-        except:
-            logger.warn("couldn't learn classifier")
-            raise
-        oob_total = numpy.mean(oob)
-        logger.info("training finished, out of bag error: {}".format(oob_total))
+        classifier_factory = ParallelVigraRfLazyflowClassifierFactory( self.ForestCount.value, self._tree_count )
+        classifier = classifier_factory.create_and_train( featMatrix.astype(numpy.float32), numpy.asarray(labelsMatrix, dtype=numpy.uint32) )
+        avg_oob = numpy.mean(classifier.oobs)
+        logger.info("training finished, average out-of-bag error: {}".format(avg_oob))
+        result[0] = classifier
         return result
 
     def propagateDirty(self, slot, subindex, roi):
@@ -848,8 +875,8 @@ class OpObjectPredict(Operator):
         if slot is self.CachedProbabilities:
             return {t: self.prob_cache[t] for t in times if t in self.prob_cache}
 
-        forests=self.inputs["Classifier"][:].wait()
-        if forests is None or forests[0] is None:
+        classifier = self.Classifier.value
+        if classifier is None:
             # this happens if there was no data to train with
             return dict((t, numpy.array([])) for t in times)
 
@@ -860,8 +887,7 @@ class OpObjectPredict(Operator):
 
         # FIXME: self.prob_cache is shared, so we need to block.
         # However, this makes prediction single-threaded.
-        self.lock.acquire()
-        try:
+        with self.lock:
             for t in times:
                 if t in self.prob_cache:
                     continue
@@ -872,40 +898,33 @@ class OpObjectPredict(Operator):
                 self.bad_objects[t] = numpy.zeros((ftmatrix.shape[0],))
                 self.bad_objects[t][rows] = 1
                 feats[t] = ftmatrix
-                prob_predictions[t] = [0] * len(forests)
+                prob_predictions[t] = 0
 
-            def predict_forest(_t, forest_index):
+            def predict_forest(_t):
                 # Note: We can't use RandomForest.predictLabels() here because we're training in parallel,
                 #        and we have to average the PROBABILITIES from all forests.
                 #       Averaging the label predictions from each forest is NOT equivalent.
                 #       For details please see wikipedia:
                 #       http://en.wikipedia.org/wiki/Electoral_College_%28United_States%29#Irrelevancy_of_national_popular_vote
                 #       (^-^)
-                prob_predictions[_t][forest_index] = forests[forest_index].predictProbabilities(feats[_t].astype(numpy.float32))
+                prob_predictions[_t] = classifier.predict_probabilities(feats[_t].astype(numpy.float32))
 
             # predict the data with all the forests in parallel
             pool = RequestPool()
             for t in times:
                 if t in self.prob_cache:
                     continue
-                for i, f in enumerate(forests):
-                    req = Request( partial(predict_forest, t, i) )
-                    pool.add(req)
+                req = Request( partial(predict_forest, t) )
+                pool.add(req)
 
             pool.wait()
             pool.clean()
 
             for t in times:
                 if t not in self.prob_cache:
-                    # prob_predictions is a dict-of-lists-of-arrays, indexed as follows:
-                    # prob_predictions[t][forest_index][object_index, class_index]
-
-                    # Stack the forests together and average them.
-                    stacked_predictions = numpy.array( prob_predictions[t] )
-                    averaged_predictions = numpy.average( stacked_predictions, axis=0 )
-                    assert averaged_predictions.shape[0] == len(feats[t])
-                    self.prob_cache[t] = averaged_predictions
-
+                    # prob_predictions is a dict-of-arrays, indexed as follows:
+                    # prob_predictions[t][object_index, class_index]
+                    self.prob_cache[t] = prob_predictions[t]
                     self.prob_cache[t][0] = 0 # Background probability is always zero
 
 
@@ -936,8 +955,6 @@ class OpObjectPredict(Operator):
 
             else:
                 assert False, "Unknown input slot"
-        finally:
-            self.lock.release()
 
     def propagateDirty(self, slot, subindex, roi):
         self.prob_cache = {}

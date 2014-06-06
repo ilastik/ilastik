@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import os
 import logging
 from functools import partial
@@ -30,8 +34,10 @@ from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted 
 from lazyflow.operators.generic import OpSingleChannelSelector
 
+from opGraphcutSegment import haveGraphCut
+
 # always available
-import math
+import numpy as np
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
@@ -50,6 +56,11 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         super( ThresholdTwoLevelsGui, self ).__init__(*args, **kwargs)
         self._channelColors = self._createDefault16ColorColorTable()
 
+        self._onInputMetaChanged()
+
+        # connect callbacks last -> avoid undefined behaviour
+        self._connectCallbacks()
+
     def initAppletDrawerUi(self):
         """
         Reimplemented from LayerViewerGui base class.
@@ -57,9 +68,10 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
-        
-        self._drawer.applyButton.clicked.connect( self._onApplyButtonClicked )
-        self._drawer.tabWidget.currentChanged.connect( self._onTabCurrentChanged )
+
+        # disable graph cut applet if not available
+        if not haveGraphCut():
+            self._drawer.tabWidget.setTabEnabled(2, False)
 
         self._sigmaSpinBoxes = { 'x' : self._drawer.sigmaSpinBox_X,
                                  'y' : self._drawer.sigmaSpinBox_Y,
@@ -72,7 +84,9 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             self._drawer.highThresholdSpinBox,
             self._drawer.thresholdSpinBox,
             self._drawer.minSizeSpinBox,
-            self._drawer.maxSizeSpinBox
+            self._drawer.maxSizeSpinBox,
+            self._drawer.thresholdSpinBoxGC,
+            self._drawer.lambdaSpinBoxGC
         ]
         
         for widget in self._allWatchedWidgets:
@@ -88,19 +102,28 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
 
         self.topLevelOperatorView.InputImage.notifyMetaChanged( bind(self._updateGuiFromOperator) )
         self.__cleanup_fns.append( partial( self.topLevelOperatorView.InputImage.unregisterMetaChanged, bind(self._updateGuiFromOperator) ) )
-        
-        # check if the data is 2D. If so, hide the z-sigma
-        if self.topLevelOperatorView.InputImage.ready():
-            tShape = self.topLevelOperatorView.InputImage.meta.getTaggedShape()
-            if not 'z' in tShape or tShape['z']==1:
-                self._drawer.sigmaSpinBox_Z.setVisible(False) 
-        
-    
+
+    def _connectCallbacks(self):
+        self.topLevelOperatorView.InputImage.notifyMetaChanged(bind(self._onInputMetaChanged))
+        self._drawer.applyButton.clicked.connect(bind(self._onApplyButtonClicked))
+        self._drawer.tabWidget.currentChanged.connect(bind(self._onTabCurrentChanged))
+
+
     @threadRouted
     def _updateGuiFromOperator(self):
         op = self.topLevelOperatorView
 
-        numChannels = 0        
+        # check if the data is 2D. If so, hide the z-dependent spinboxes
+        data_has_z_axis = True
+        if self.topLevelOperatorView.InputImage.ready():
+            tShape = self.topLevelOperatorView.InputImage.meta.getTaggedShape()
+            if not 'z' in tShape or tShape['z']==1:
+                data_has_z_axis = False
+
+        self._drawer.sigmaSpinBox_Z.setVisible(data_has_z_axis)
+        self._drawer.marginSpinBoxGC_Z.setVisible(data_has_z_axis)
+
+        numChannels = 0
         if op.InputImage.ready():
             # Channel
             channelIndex = op.InputImage.meta.axistags.index('c')
@@ -117,24 +140,34 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         self._drawer.lowThresholdSpinBox.setValue( op.LowThreshold.value )
         self._drawer.highThresholdSpinBox.setValue( op.HighThreshold.value )
         self._drawer.thresholdSpinBox.setValue( op.SingleThreshold.value )
+        self._drawer.thresholdSpinBoxGC.setValue( op.SingleThresholdGC.value )
+        self._drawer.lambdaSpinBoxGC.setValue( op.Beta.value )
+        margin = op.Margin.value
+        self._drawer.marginSpinBoxGC_X.setValue(margin[0])
+        self._drawer.marginSpinBoxGC_Y.setValue(margin[1])
+        self._drawer.marginSpinBoxGC_Z.setValue(margin[2])
+        if op.UsePreThreshold.value:
+            self._drawer.radioButtonGC_local.setChecked(True)
+        else:
+            self._drawer.radioButtonGC_global.setChecked(True)
 
         # Size filters
         self._drawer.minSizeSpinBox.setValue( op.MinSize.value )
         self._drawer.maxSizeSpinBox.setValue( op.MaxSize.value )
-        
+
         # Operator
         self._drawer.tabWidget.setCurrentIndex( op.CurOperator.value )
-    
+
     def _updateOperatorFromGui(self):
         op = self.topLevelOperatorView
 
         # Read all gui settings before updating the operator
         # (The gui is still responding to operator changes, 
         #  and we don't want it to update until we've read all gui values.)
-        
+
         # Read Channel
         channel = self._drawer.inputChannelSpinBox.value()
-        
+
         # Read Sigmas
         sigmaSlot = self.topLevelOperatorView.SmootherSigma
         block_shape_dict = dict( sigmaSlot.value )
@@ -152,7 +185,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         # avoid 'kernel longer than line' errors
         shape = self.topLevelOperatorView.InputImage.meta.getTaggedShape()
         for ax in [item for item in 'xyz' if item in shape and shape[item] > 1]:
-            req_sigma = math.floor(shape[ax]/2-1)
+            req_sigma = np.floor(shape[ax]/2-1)
             if block_shape_dict[ax] > req_sigma:
                 mexBox = QMessageBox()
                 mexBox.setText("The sigma value {} for dimension '{}'"
@@ -165,17 +198,23 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         singleThreshold = self._drawer.thresholdSpinBox.value()
         lowThreshold = self._drawer.lowThresholdSpinBox.value()
         highThreshold = self._drawer.highThresholdSpinBox.value()
-        
+        singleThresholdGC = self._drawer.thresholdSpinBoxGC.value()
+        beta = self._drawer.lambdaSpinBoxGC.value()
+        margin = [self._drawer.marginSpinBoxGC_X.value(),
+                  self._drawer.marginSpinBoxGC_Y.value(),
+                  self._drawer.marginSpinBoxGC_Z.value()]
+        margin = np.asarray(margin)
+
         if lowThreshold>highThreshold:
             mexBox=QMessageBox()
             mexBox.setText("Low threshold must be lower than high threshold ")
             mexBox.exec_()
             return
-        
+
         # Read Size filters
         minSize = self._drawer.minSizeSpinBox.value()
         maxSize = self._drawer.maxSizeSpinBox.value()
-        
+
         if minSize>=maxSize:
             mexBox=QMessageBox()
             mexBox.setText("Min size must be smaller than max size ")
@@ -185,28 +224,36 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         # Read the current thresholding method
         curIndex = self._drawer.tabWidget.currentIndex()
         #print "Setting operator to", curIndex+1, " thresholds"
-        
+
         # Apply new settings to the operator
         op.CurOperator.setValue(curIndex)
-        op.Channel.setValue( channel )
-        sigmaSlot.setValue( block_shape_dict )
-        op.SingleThreshold.setValue( singleThreshold )
-        op.LowThreshold.setValue( lowThreshold )
+        op.Channel.setValue(channel)
+        sigmaSlot.setValue(block_shape_dict)
+        op.SingleThreshold.setValue(singleThreshold)
+        op.LowThreshold.setValue(lowThreshold)
         op.HighThreshold.setValue( highThreshold )
-        op.MinSize.setValue( minSize )
-        op.MaxSize.setValue( maxSize )
-        
+        op.SingleThresholdGC.setValue(singleThresholdGC)
+        op.Beta.setValue(beta)
+        op.Margin.setValue(margin)
+        op.MinSize.setValue(minSize)
+        op.MaxSize.setValue(maxSize)
+        op.UsePreThreshold.setValue(
+            self._drawer.radioButtonGC_local.isChecked())
 
     def _onApplyButtonClicked(self):
         self._updateOperatorFromGui()
         for layer in self.layerstack:
             if "Final" in layer.name:
                 layer.visible = True
-    
-    def _onTabCurrentChanged(self, cur):
-        self._updateOperatorFromGui()
         self.updateAllLayers()
-        
+
+    def _onTabCurrentChanged(self):
+        pass
+        # not needed, we update ONLY on apply button
+        #self._updateOperatorFromGui()
+        #not needed, LayerViewerGui monitors op.CurOperator
+        #self.updateAllLayers()
+
     def _onShowDebugChanged(self, state):
         if state==Qt.Checked:
             self._showDebug = True
@@ -225,16 +272,29 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
                 self._drawer.applyButton.click()
                 return True
         return False
-    
+
+    def _onInputMetaChanged(self):
+        op = self.topLevelOperatorView
+        self._channelProviders = []
+        if not op.InputImage.ready():
+            return
+
+        numChannels = op.InputImage.meta.getTaggedShape()['c']
+        for channel in range(numChannels):
+            channelProvider = OpSingleChannelSelector(parent=op.InputImage.getRealOperator().parent)
+            channelProvider.Input.connect(op.InputImage)
+            channelProvider.Index.setValue(channel)
+            self._channelProviders.append(channelProvider)
+
     def setupLayers(self):
-        layers = []        
+        layers = []
         op = self.topLevelOperatorView
         binct = [QColor(Qt.black), QColor(Qt.white)]
         binct[0] = 0
         ct = create_default_16bit()
-        ct[0]=0
+        ct[0] = 0
         # Show the cached output, since it goes through a blocked cache
-        
+
         if op.CachedOutput.ready():
             outputSrc = LazyflowSource(op.CachedOutput)
             outputLayer = ColortableLayer(outputSrc, ct)
@@ -243,26 +303,19 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             outputLayer.opacity = 1.0
             outputLayer.setToolTip("Results of thresholding and size filter")
             layers.append(outputLayer)
-            
-        if op.InputImage.ready():
-            numChannels = op.InputImage.meta.getTaggedShape()['c']
-            
-            for channel in range(numChannels):
-                channelProvider = OpSingleChannelSelector(parent=op.InputImage.getRealOperator().parent)
-                channelProvider.Input.connect(op.InputImage)
-                channelProvider.Index.setValue( channel )
-                channelSrc = LazyflowSource( channelProvider.Output )
-                inputChannelLayer = AlphaModulatedLayer( channelSrc,
-                                                    tintColor=QColor(self._channelColors[channel]),
-                                                    range=(0.0, 1.0),
-                                                    normalize=(0.0, 1.0) )
-                inputChannelLayer.opacity = 0.5
-                inputChannelLayer.visible = True
-                inputChannelLayer.name = "Input Channel " + str(channel)
-                inputChannelLayer.setToolTip("Select input channel " + str(channel) + \
-                                             " if this prediction image contains the objects of interest.")                    
-                layers.append(inputChannelLayer)
-                
+
+        for channel, channelProvider in enumerate(self._channelProviders):
+            channelSrc = LazyflowSource(channelProvider.Output)
+            inputChannelLayer = AlphaModulatedLayer(
+                channelSrc, tintColor=QColor(self._channelColors[channel]),
+                range=(0.0, 1.0), normalize=(0.0, 1.0))
+            inputChannelLayer.opacity = 0.5
+            inputChannelLayer.visible = True
+            inputChannelLayer.name = "Input Channel " + str(channel)
+            inputChannelLayer.setToolTip("Select input channel " + str(channel) + \
+                                            " if this prediction image contains the objects of interest.")                    
+            layers.append(inputChannelLayer)
+
         if self._showDebug:
             #FIXME: We have to do that, because lazyflow doesn't have a way to make an operator partially ready
             curIndex = self._drawer.tabWidget.currentIndex()
@@ -277,7 +330,9 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
                     layers.append(lowThresholdLayer)
         
                 if op.FilteredSmallLabels.ready():
-                    filteredSmallLabelsLayer = self.createStandardLayerFromSlot( op.FilteredSmallLabels )
+                    filteredSmallLabelsSrc = LazyflowSource(op.FilteredSmallLabels)
+                    #filteredSmallLabelsLayer = self.createStandardLayerFromSlot( op.FilteredSmallLabels )
+                    filteredSmallLabelsLayer = ColortableLayer(filteredSmallLabelsSrc, binct)
                     filteredSmallLabelsLayer.name = "After high threshold and size filter"
                     filteredSmallLabelsLayer.visible = False
                     filteredSmallLabelsLayer.opacity = 1.0

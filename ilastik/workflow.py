@@ -1,23 +1,30 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 from abc import abstractproperty, abstractmethod
 from lazyflow.graph import Operator, Graph
 from string import ascii_uppercase
 from ilastik.shell.shellAbc import ShellABC
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Workflow( Operator ):
     """
@@ -89,11 +96,18 @@ class Workflow( Operator ):
         """
         pass
 
+    def handleSendMessageToServer(self, name, data):
+        try:
+            server = self._shell.socketServer
+            server.send(name, data)
+        except Exception, e:
+            logger.error("Failed sending message to server '%s': %s" % (name, e))
+
     ##################
     # Public methods #
     ##################
 
-    def __init__(self, shell, headless=False, workflow_cmdline_args=(), parent=None, graph=None):
+    def __init__(self, shell, headless=False, workflow_cmdline_args=(), project_creation_args=(), parent=None, graph=None):
         """
         Constructor.  Subclasses MUST call this in their own ``__init__`` functions.
         The parent and graph parameters will be passed directly to the Operator base class. If both are None,
@@ -103,6 +117,7 @@ class Workflow( Operator ):
                          in which case the workflow should not attempt to access applet GUIs.
         :param workflow_cmdline_args: a (possibly empty) sequence of arguments to control
                                       the workflow from the command line
+        :param project_creation_args: The original workflow_cmdline_args used when the project was first created.
         :param parent: The parent operator of the workflow or None (see also: Operator)
         :param graph: The graph instance the workflow is assigned to (see also: Operator)
 
@@ -152,6 +167,7 @@ class Workflow( Operator ):
         
         for applet in self.applets:
             applet.appletStateUpdateRequested.connect( self.handleAppletStateUpdateRequested )
+            applet.sendMessageToServer.connect( self.handleSendMessageToServer )
         
     def _createNewImageLane(self, multislot, index, *args):
         """

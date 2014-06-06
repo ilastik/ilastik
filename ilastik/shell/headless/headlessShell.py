@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import os
 import logging
 logger = logging.getLogger(__name__)
@@ -51,6 +55,14 @@ class HeadlessShell(object):
             # Open the project file
             hdf5File, workflow_class, _ = ProjectManager.openProjectFile(projectFilePath)
 
+            # If there are any "creation-time" command-line args saved to the project file,
+            #  load them so that the workflow can be instantiated with the same settings 
+            #  that were used when the project was first created. 
+            project_creation_args = []
+            if "workflow_cmdline_args" in hdf5File.keys():
+                if len(hdf5File["workflow_cmdline_args"]) > 0:
+                    project_creation_args = map(str, hdf5File["workflow_cmdline_args"][...])
+
             if workflow_class is None:
                 # If the project file has no known workflow, we assume pixel classification
                 import ilastik.workflows
@@ -64,7 +76,8 @@ class HeadlessShell(object):
             self.projectManager = ProjectManager( self,
                                                   workflow_class,
                                                   headless=True,
-                                                  workflow_cmdline_args=self._workflow_cmdline_args )
+                                                  workflow_cmdline_args=self._workflow_cmdline_args,
+                                                  project_creation_args=project_creation_args )
             self.projectManager._loadProject(hdf5File, projectFilePath, readOnly = False)
 
         except ProjectManager.FileMissingError:
@@ -89,7 +102,10 @@ class HeadlessShell(object):
             self.projectManager = ProjectManager( self,
                                                   default_workflow,
                                                   importFromPath=oldProjectFilePath,
-                                                  headless=True )
+                                                  headless=True,
+                                                  workflow_cmdline_args=self._workflow_cmdline_args,
+                                                  project_creation_args=self._workflow_cmdline_args )
+
             self.projectManager._importProject(oldProjectFilePath, hdf5File, projectFilePath,readOnly = False)
 
     def setAppletEnabled(self, applet, enabled):
