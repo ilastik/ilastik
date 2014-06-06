@@ -234,11 +234,6 @@ class SeededWatershedGui(LabelingGui):
                 self.parentApplet.busy = True
                 self.parentApplet.appletStateUpdateRequested.emit()
     
-                # Disable our own gui
-                # FIXME: Can't this be done using the applet state update mechanism???
-                QApplication.instance().postEvent( self, ThunkEvent( partial(self.setEnabledIfAlive, self._labelControlUi, False) ) )
-                QApplication.instance().postEvent( self, ThunkEvent( partial(self.setEnabledIfAlive, self, False) ) )
-                
                 # Start with 1% so the progress bar shows up
                 self.parentApplet.progressSignal.emit(0)
                 self.parentApplet.progressSignal.emit(1)
@@ -260,10 +255,6 @@ class SeededWatershedGui(LabelingGui):
                 self.parentApplet.busy = False
                 self.parentApplet.appletStateUpdateRequested.emit()
                 
-                # Re-enable our own gui
-                QApplication.instance().postEvent( self, ThunkEvent( partial(self.setEnabledIfAlive, self._labelControlUi, True) ) )
-                QApplication.instance().postEvent( self, ThunkEvent( partial(self.setEnabledIfAlive, self, True) ) )
-
         export_thread = threading.Thread( target=export_thread_fn )
         export_thread.start()
 
