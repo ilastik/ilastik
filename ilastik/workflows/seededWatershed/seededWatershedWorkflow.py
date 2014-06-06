@@ -39,7 +39,7 @@ ROLE_INPUT_SEGMENTATION = 2
 
 ParameterFileSchema = \
 {
-    "_schema_name" : "seeded watershed paramters",
+    "_schema_name" : "seeded watershed parameters",
     "_schema_version" : 0.1,
     
     # Input data
@@ -105,6 +105,9 @@ class SeededWatershedWorkflow(Workflow):
         opSeededWatershed.UndersegmentedLabels.connect( opDataSelection.ImageGroup[ROLE_INPUT_SEGMENTATION] )
         opSeededWatershed.LabelsAllowedFlag.setValue(True)
         opSeededWatershed.FreezeCache.setValue(True)
+        
+        # For debug purposes, don't leave this slot empty.
+        # It will be overwritten when the parameter json is parsed.
         opSeededWatershed.AvailableLabelIds.setValue( [999999999,999999998,999999997,999999996,999999995] )
 
     @property
@@ -189,3 +192,27 @@ class SeededWatershedWorkflow(Workflow):
 
         logger.info("FINISHED")
 
+    def handleAppletStateUpdateRequested(self):
+        """
+        Overridden from Workflow base class
+        Called when an applet has fired the :py:attr:`Applet.appletStateUpdateRequested`
+        """
+        # If no data, nothing else is ready.
+        opDataSelection = self.dataSelectionApplet.topLevelOperator
+        input_ready = ( len(opDataSelection.ImageGroup) > 0 
+                        and not self.dataSelectionApplet.busy
+                        and opDataSelection.ImageGroup[0][ROLE_RAW].ready()
+                        and opDataSelection.ImageGroup[0][ROLE_PROBABILITIES].ready()
+                        and opDataSelection.ImageGroup[0][ROLE_INPUT_SEGMENTATION].ready() )
+        
+        exporting_to_dvid = self.seededWatershedApplet.busy
+        
+        self._shell.setAppletEnabled(self.dataSelectionApplet, not exporting_to_dvid)
+        self._shell.setAppletEnabled(self.seededWatershedApplet, input_ready and not exporting_to_dvid)
+
+        # Lastly, check for certain "busy" conditions, during which we 
+        #  should prevent the shell from closing the project.
+        busy = False
+        busy |= self.dataSelectionApplet.busy
+        busy |= self.seededWatershedApplet.busy
+        self._shell.enableProjectChanges( not busy )
