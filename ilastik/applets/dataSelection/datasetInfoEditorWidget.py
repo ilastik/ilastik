@@ -724,7 +724,11 @@ class DatasetInfoEditorWidget(QDialog):
             cwd = op.WorkingDirectory.value
             filePath = PathComponents(info.filePath).externalPath
             absPath, relPath = getPathVariants(filePath, cwd)
-            showpaths = not info.fromstack
+            
+            # commented out: 
+            # Show the paths even if the data is from a stack (they are grayed out, but potentially informative)
+            #showpaths = not info.fromstack
+            showpaths = True
 
         if showpaths:
             self.storageComboBox.addItem( "Copied to Project File", userData=StorageLocation.ProjectFile )
