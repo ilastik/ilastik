@@ -80,14 +80,18 @@ def playback_events(player):
     project_file = os.path.join(tempfile.gettempdir(), 'object_classification_test%s.ilp' %  os.getpid())    
     widget = 'MainWindow.QFileDialog.fileNameEdit'
 
-    for c in project_file:
-        # Press
-        event = PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x2f, Qt.NoModifier, c, False, 1)
-        player.post_event( widget, event , 18.0 )
+    # set the entire file name in one go ...
+    player.getNamedObject(widget).setText(project_file)
+    
+    # ... or post it one character at a time
+    # for c in project_file:
+        # # Press
+        # event = PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x2f, Qt.NoModifier, c, False, 1)
+        # player.post_event( widget, event , 18.0 )
 
-        # Release
-        event = PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x2f, Qt.NoModifier, c, False, 1)
-        player.post_event( widget, event , 18.0 )
+        # # Release
+        # event = PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x2f, Qt.NoModifier, c, False, 1)
+        # player.post_event( widget, event , 18.0 )
         
     event = PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x1000004, Qt.NoModifier, """""", False, 1)
     player.post_event( 'MainWindow.QFileDialog.fileNameEdit', event , 13.143786 )
@@ -146,14 +150,18 @@ def playback_events(player):
 
     widget = 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.ap    pletStack.centralWidget_applet_1_lane_-1.QFileDialog.fileNameEdit'
 
-    for c in data_raw_file:
-        # Press
-        event = PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x2f, Qt.NoModifier, c, False, 1)
-        player.post_event( widget, event , 18.0 )
+    # set the entire file name in one go ...
+    player.getNamedObject(widget).setText(data_raw_file)
+    
+    # ... or post it one character at a time
+    # for c in data_raw_file:
+        # # Press
+        # event = PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x2f, Qt.NoModifier, c, False, 1)
+        # player.post_event( widget, event , 18.0 )
 
-        # Release
-        event = PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x2f, Qt.NoModifier, c, False, 1)
-        player.post_event( widget, event , 18.0 )
+        # # Release
+        # event = PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x2f, Qt.NoModifier, c, False, 1)
+        # player.post_event( widget, event , 18.0 )
         
     event = PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x1000004, Qt.NoModifier, """""", False, 1)
     player.post_event( 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_0_lane_-1.QFileDialog.fileNameEdit', event , 36.380273 )
@@ -218,14 +226,18 @@ def playback_events(player):
 
     widget = 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_1_lane_-1.QFileDialog.fileNameEdit'
 
-    for c in data_bin_file:
-        # Press
-        event = PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x2f, Qt.NoModifier, c, False, 1)
-        player.post_event( widget, event , 45.0 )
+    # set the entire file name in one go ...
+    player.getNamedObject(widget).setText(data_bin_file)
+    
+    # ... or post it one character at a time
+    # for c in data_bin_file:
+        # # Press
+        # event = PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x2f, Qt.NoModifier, c, False, 1)
+        # player.post_event( widget, event , 45.0 )
 
-        # Release
-        event = PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x2f, Qt.NoModifier, c, False, 1)
-        player.post_event( widget, event , 45.0 )
+        # # Release
+        # event = PyQt4.QtGui.QKeyEvent(QEvent.KeyRelease, 0x2f, Qt.NoModifier, c, False, 1)
+        # player.post_event( widget, event , 45.0 )
         
 
     event = PyQt4.QtGui.QKeyEvent(QEvent.KeyPress, 0x1000004, Qt.NoModifier, """""", False, 1)
