@@ -76,9 +76,6 @@ class ObjectClassificationWorkflow(Workflow):
             logger.error( "Ignoring --filter cmdline arg.  Can't specify a different filter setting after the project has already been created." )
 
         self.batch = not parsed_args.nobatch
-        
-        if unused_args:
-            warnings.warn("Unused command-line args: {}".format( unused_args ))
 
         self._applets = []
 
@@ -139,6 +136,13 @@ class ObjectClassificationWorkflow(Workflow):
 
             self._initBatchWorkflow()
 
+            if unused_args:
+                # We parse the export setting args first.  All remaining args are considered input files by the input applet.
+                self._batch_export_args, unused_args = self.batchExportApplet.parse_known_cmdline_args( unused_args )
+                self._batch_input_args, unused_args = self.dataSelectionAppletBatch.parse_known_cmdline_args( unused_args )
+            
+        if unused_args:
+            warnings.warn("Unused command-line args: {}".format( unused_args ))
 
     @property
     def applets(self):
@@ -266,25 +270,40 @@ class ObjectClassificationWorkflow(Workflow):
         opBatchExport.RawDatasetInfo.connect( opTransposeDatasetGroup.Outputs[0] )
         opBatchExport.Input.connect( opBatchClassify.PredictionImage )
 
-    def onProjectLoaded(self):
+    def onProjectLoaded(self, projectManager):
         if self._headless and self._batch_input_args and self._batch_export_args:
-            # Force the block size to be the same as image size (1 big block)
-            tagged_shape = self.opBatchClassify.RawImage.meta.getTaggedShape
-            try:
-                tagged_shape.pop('t')
-            except KeyError:
-                pass
-            try:
-                tagged_shape.pop('c')
-            except KeyError:
-                pass
-            self.opBatchClassify.BlockShape3dDict.setValue( tagged_shape )
-    
-            # Must predict before requesting region features (see note in BlockwiseObjectClassification)
-            #prediction_image = self.opBatchClassify.PredictionImage[:].wait()
-            self.opBatchClassify._ensurePipelineExists( (0,0,0,0,0) )
-            opSingleBlockClassify = self.opBatchClassify._blockPipelines[(0,0,0,0,0)]
-            region_features = opSingleBlockClassify._opExtract.export_features()
+            
+            # Configure the batch data selection operator.
+            if self._batch_input_args and self._batch_input_args.raw_data:
+                self.dataSelectionAppletBatch.configure_operator_with_parsed_args( self._batch_input_args )
+            
+            # Configure the data export operator.
+            if self._batch_export_args:
+                self.batchExportApplet.configure_operator_with_parsed_args( self._batch_export_args )
+
+            self.opBatchClassify.BlockShape3dDict.disconnect()
+
+            for lane, opBatchClassifyView in enumerate(self.opBatchClassify):
+                # Force the block size to be the same as image size (1 big block)
+                tagged_shape = opBatchClassifyView.RawImage.meta.getTaggedShape()
+                try:
+                    tagged_shape.pop('t')
+                except KeyError:
+                    pass
+                try:
+                    tagged_shape.pop('c')
+                except KeyError:
+                    pass
+                opBatchClassifyView.BlockShape3dDict.setValue( tagged_shape )
+        
+                # Must predict before requesting region features (see note in BlockwiseObjectClassification)
+                #prediction_image = opBatchClassifyView.PredictionImage[:].wait()
+                opBatchClassifyView._ensurePipelineExists( (0,0,0,0,0) )
+                opSingleBlockClassify = opBatchClassifyView._blockPipelines[(0,0,0,0,0)]
+                feature_table = opSingleBlockClassify._opPredict.exportTable()
+                print feature_table
+                print "GOT A PREDICTION TABLE! WEEEE!"
+            
             
     def getHeadlessOutputSlot(self, slotId):
         if slotId == "BatchPredictionImage":
