@@ -327,6 +327,7 @@ class OpClassifierPredict(Operator):
         elif self._mode == 'pixelwise':
             self._prediction_op = OpPixelwiseClassifierPredict( parent=self )            
 
+        self._prediction_op.PredictionMask.connect( self.PredictionMask )
         self._prediction_op.Image.connect( self.Image )
         self._prediction_op.LabelsCount.connect( self.LabelsCount )
         self._prediction_op.Classifier.connect( self.Classifier )
