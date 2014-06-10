@@ -107,9 +107,11 @@ class PixelClassificationWorkflow(Workflow):
         
         if ilastik_config.getboolean('ilastik', 'debug'):
             # see role constants, above
-            opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Prediction Mask'] )
+            role_names = ['Raw Data', 'Prediction Mask']
+            opDataSelection.DatasetRoles.setValue( role_names )
         else:
-            opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
+            role_names = ['Raw Data']
+            opDataSelection.DatasetRoles.setValue( role_names )
 
         self.featureSelectionApplet = FeatureSelectionApplet(self, "Feature Selection", "FeatureSelections", self.filter_implementation)
 
@@ -177,10 +179,10 @@ class PixelClassificationWorkflow(Workflow):
         opClassify.LabelsAllowedFlags.connect( opData.AllowLabels )
 
         # Data Export connections
-        opDataExport.RawData.connect( opData.ImageGroup[0] )
+        opDataExport.RawData.connect( opData.ImageGroup[self.DATA_ROLE_RAW] )
         opDataExport.Input.connect( opClassify.HeadlessPredictionProbabilities )
-        opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
-        opDataExport.ConstraintDataset.connect( opData.ImageGroup[0] )
+        opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[self.DATA_ROLE_RAW] )
+        opDataExport.ConstraintDataset.connect( opData.ImageGroup[self.DATA_ROLE_RAW] )
 
     def _initBatchWorkflow(self):
         """
@@ -203,7 +205,7 @@ class PixelClassificationWorkflow(Workflow):
         
         opSelectFirstRole = OpSelectSubslot( parent=self )
         opSelectFirstRole.Inputs.connect( opSelectFirstLane.Output )
-        opSelectFirstRole.SubslotIndex.setValue(0)
+        opSelectFirstRole.SubslotIndex.setValue(self.DATA_ROLE_RAW)
         
         opBatchResults.ConstraintDataset.connect( opSelectFirstRole.Output )
         
@@ -213,11 +215,11 @@ class PixelClassificationWorkflow(Workflow):
         
         ## Connect Operators ##
         opTranspose = OpTransposeSlots( parent=self )
-        opTranspose.OutputLength.setValue(1)
+        opTranspose.OutputLength.setValue(2) # There are 2 roles
         opTranspose.Inputs.connect( opBatchInputs.DatasetGroup )
         
         # Provide dataset paths from data selection applet to the batch export applet
-        opBatchResults.RawDatasetInfo.connect( opTranspose.Outputs[0] )
+        opBatchResults.RawDatasetInfo.connect( opTranspose.Outputs[self.DATA_ROLE_RAW] )
         opBatchResults.WorkingDirectory.connect( opBatchInputs.WorkingDirectory )
         
         # Connect (clone) the feature operator inputs from 
@@ -239,6 +241,7 @@ class PixelClassificationWorkflow(Workflow):
         # Connect Image pathway:
         # Input Image -> Features Op -> Prediction Op -> Export
         opBatchFeatures.InputImage.connect( opBatchInputs.Image )
+        opBatchPredictionPipeline.PredictionMask.connect( opBatchInputs.Image1 )
         opBatchPredictionPipeline.FeatureImages.connect( opBatchFeatures.OutputImage )
         opBatchResults.Input.connect( opBatchPredictionPipeline.HeadlessPredictionProbabilities )
 
@@ -330,7 +333,7 @@ class PixelClassificationWorkflow(Workflow):
             self._print_labels_by_slice( self.label_search_value )
 
         # Configure the batch data selection operator.
-        if self._batch_input_args and self._batch_input_args.input_files:
+        if self._batch_input_args and (self._batch_input_args.input_files or self._batch_input_args.raw_data):
             self.batchInputApplet.configure_operator_with_parsed_args( self._batch_input_args )
         
         # Configure the data export operator.
