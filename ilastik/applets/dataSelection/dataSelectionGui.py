@@ -382,31 +382,33 @@ class DataSelectionGui(QWidget):
         """
         Launch an "Open File" dialog to ask the user for one or more image files.
         """
-        file_dialog = QFileDialog(self, "Select Images")
-
         extensions = OpDataSelection.SupportedExtensions
         filter_strs = ["*." + x for x in extensions]
         filters = ["{filt} ({filt})".format(filt=x) for x in filter_strs]
         filt_all_str = "Image files (" + ' '.join(filter_strs) + ')'
-        file_dialog.setFilters([filt_all_str] + filters)
 
-        # do not display file types associated with a filter
-        # the line for "Image files" is too long otherwise
-        file_dialog.setNameFilterDetailsVisible(False)
-        # select multiple files
-        file_dialog.setFileMode(QFileDialog.ExistingFiles)
-        file_dialog.setDirectory( defaultDirectory )
+        fileNames = []
         
         if ilastik_config.getboolean("ilastik", "debug"):
+            # use Qt dialog in debug mode (more portable?)
+            file_dialog = QFileDialog(self, "Select Images")
             file_dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+            # do not display file types associated with a filter
+            # the line for "Image files" is too long otherwise
+            file_dialog.setFilters([filt_all_str] + filters)
+            file_dialog.setNameFilterDetailsVisible(False)
+            # select multiple files
+            file_dialog.setFileMode(QFileDialog.ExistingFiles)
+            file_dialog.setDirectory( defaultDirectory )
 
-        if file_dialog.exec_():
-            fileNames = file_dialog.selectedFiles()
-            # Convert from QtString to python str
-            fileNames = map(encode_from_qstring, fileNames)
-            return fileNames
-
-        return []
+            if file_dialog.exec_():
+                fileNames = file_dialog.selectedFiles()
+        else:
+            # otherwise, use native dialog of the present platform
+            fileNames = QFileDialog.getOpenFileNames(self, "Select Images", defaultDirectory, filt_all_str)
+        # Convert from QtString to python str
+        fileNames = map(encode_from_qstring, fileNames)
+        return fileNames
 
     def _findFirstEmptyLane(self, roleIndex):
         opTop = self.topLevelOperator
