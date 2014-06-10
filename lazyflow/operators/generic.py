@@ -114,7 +114,12 @@ class OpMultiArraySlicer(Operator):
         outshape=list(self.inputs["Input"].meta.shape)
         n=outshape.pop(indexAxis)
         outshape=tuple(outshape)
-
+        
+        if self.Input.meta.ideal_blockshape:
+            ideal_blockshape = list( self.Input.meta.ideal_blockshape )
+            ideal_blockshape.pop(indexAxis)
+            ideal_blockshape = tuple(ideal_blockshape)
+        
         outaxistags=copy.copy(self.inputs["Input"].meta.axistags)
         del outaxistags[flag]
 
@@ -127,6 +132,9 @@ class OpMultiArraySlicer(Operator):
             o.meta.shape = outshape
             if self.Input.meta.drange is not None:
                 o.meta.drange = self.Input.meta.drange
+
+            if self.Input.meta.ideal_blockshape:
+                o.meta.ideal_blockshape = ideal_blockshape
 
     def execute(self, slot, subindex, rroi, result):
         key = roiToSlice(rroi.start, rroi.stop)
