@@ -34,6 +34,12 @@ def main():
     #parsed_args.project='/Users/bergs/MyProject.ilp'
     #parsed_args.headless = True
 
+    #parsed_args.project = '/Users/bergs/NewProject.ilp'
+    #parsed_args.new_project = '/Users/bergs/NewProject.ilp'
+    #parsed_args.workflow = 'Seeded Watershed'
+
+    #workflow_cmdline_args.append( '--parameter-file=/Users/bergs/Documents/workspace/ilastik-meta/ilastik/ilastik/workflows/seededWatershed/example-params.json' )
+
     ilastik_main.main(parsed_args, workflow_cmdline_args)
 
 if __name__ == "__main__":
