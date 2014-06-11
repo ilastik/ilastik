@@ -87,7 +87,9 @@ class OpExportDvidVolume(Operator):
                                                                                  "" )
                 pydvid.voxels.create_new(connection, uuid, dataname, metadata)
     
-            client = pydvid.voxels.VoxelsAccessor( connection, uuid, dataname )
+            # Since this class is generall used to push large blocks of data,
+            #  we'll be nice and set throttle=True
+            client = pydvid.voxels.VoxelsAccessor( connection, uuid, dataname, throttle=True )
             
             def handle_block_result(roi, data):
                 # Send it to dvid
@@ -98,7 +100,7 @@ class OpExportDvidVolume(Operator):
                     data = data.transpose()
                     start = tuple(reversed(start))
                     stop = tuple(reversed(stop))
-                client.post_ndarray( start, stop, data )
+                    client.post_ndarray( start, stop, data )
             requester = BigRequestStreamer( self.Input, roiFromShape( self.Input.meta.shape ) )
             requester.resultSignal.subscribe( handle_block_result )
             requester.progressSignal.subscribe( self.progressSignal )
