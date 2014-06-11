@@ -204,13 +204,13 @@ class ObjectClassificationGui(LabelingGui):
     def menus(self):
         if ilastik_config.getboolean('ilastik', 'debug'):
             m = QMenu("Special Stuff", self.volumeEditorWidget)
-            m.addAction( "Export to Knime" ).triggered.connect(self.exportStuff)
+            m.addAction( "Export to Knime" ).triggered.connect(self.exportObjectInfo)
             mlist = [m]
         else:
             mlist = []
         return mlist
 
-    def exportStuff(self):
+    def exportObjectInfo(self):
         if not self.layerstack or len(self.layerstack)==0:
             print "Wait, nothing defined yet"
             

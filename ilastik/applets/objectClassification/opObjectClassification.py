@@ -550,7 +550,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
             nobjs.append(preds.shape[0])
         nobjs_total = sum(nobjs)
         if nobjs_total==0:
-            print "Prediction not run yet, won't be exported"
+            logger.info("Prediction not run yet, won't be exported")
             return feature_table
         else:
             assert nobjs_total==feature_table.shape[0]
