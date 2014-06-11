@@ -102,8 +102,8 @@ class OpExportToKnime(Operator):
     ObjectFeatures = InputSlot(rtype=List, stype=Opaque)
     ImagePerObject = InputSlot(stype="bool")
     ImagePerTime = InputSlot(stype="bool")
-    FileType = InputSlot(stype="str", "h5") #can be "csv" or "h5"
-    OutputFilename = InputSlot(stype="str", "test_export_for_now.h5")
+    FileType = InputSlot(value="csv", stype="str") #can be "csv" or "h5"
+    OutputFileName = InputSlot(value="test_export_for_now.txt", stype="str")
     
     WriteImage = OutputSlot(stype='bool')
     
@@ -240,8 +240,9 @@ class OpExportToKnime(Operator):
             write_numpy_structured_array_to_HDF5(fout, "tables/ImagePathTable", image_paths, True)
         
     def write_to_csv(self, table):
-        #with open(self.OutputFileName.value, "w") as fout:
-        numpy.savetxt(self.OutputFilename.value, table, fmt='.05f', delimiter=" ")   
+        with open(self.OutputFileName.value, "w") as fout:
+            for sublist in table:
+                fout.write(' '.join([str(item) for item in sublist])+"\n")
             
         
         
