@@ -502,7 +502,8 @@ class OpSubRegion(Operator):
         stop = self.inputs["Stop"].value
         assert isinstance(start, tuple)
         assert isinstance(stop, tuple)
-        assert len(start) == len(self.inputs["Input"].meta.shape)
+        assert len(start) == len(self.inputs["Input"].meta.shape), \
+            "dimension mismatch: {} vs {}".format( start, self.Input.meta.shape )
         assert len(start) == len(stop)
         assert (numpy.array(stop)>= numpy.array(start)).all()
     
