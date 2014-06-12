@@ -20,7 +20,6 @@
 ###############################################################################
 # Built-in
 import logging
-import collections
 
 # Third-party
 import numpy
@@ -63,7 +62,7 @@ class OpSingleBlockObjectPrediction( Operator ):
     #                                      /         \               /                    /
     #                 SelectedFeatures-----           \   Classifier                     /
     #                                                  \                                /
-    #                                                   (labels)------------------------
+    #                                                   (labels)---------------------------> opProbabilityChannelsToImage
 
     # +----------------------------------------------------------------+
     # | input_shape = RawImage.meta.shape                              |
@@ -130,7 +129,7 @@ class OpSingleBlockObjectPrediction( Operator ):
         self._opProbabilityChannelsToImage = OpMultiRelabelSegmentation( parent=self )
         self._opProbabilityChannelsToImage.Image.connect( self._opExtract.LabelImage )
         self._opProbabilityChannelsToImage.ObjectMaps.connect( self._opPredict.ProbabilityChannels )
-        self._opProbabilityChannelsToImage.Features.connect( self._opExtract.Features )
+        self._opProbabilityChannelsToImage.Features.connect( self._opExtract.RegionFeatures )
         
         self._opProbabilityChannelStacker = OpMultiArrayStacker( parent=self )
         self._opProbabilityChannelStacker.Images.connect( self._opProbabilityChannelsToImage.Output )
