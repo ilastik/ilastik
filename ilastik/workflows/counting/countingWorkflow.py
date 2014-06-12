@@ -74,7 +74,7 @@ class CountingWorkflow(Workflow):
         opDataExport.LabelNames.connect(opCounting.LabelNames)
         opDataExport.UpperBound.connect(opCounting.UpperBound)
         opDataExport.WorkingDirectory.connect(opDataSelection.WorkingDirectory)
-
+        opDataExport.SelectionNames.setValue( ['Probabilities'] )        
 
         self._applets = []
         self._applets.append(self.projectMetadataApplet)
@@ -121,8 +121,9 @@ class CountingWorkflow(Workflow):
         opCounting.CachedFeatureImages.connect( opTrainingFeatures.CachedOutputImage )
         #opCounting.UserLabels.connect(opClassify.LabelImages)
         #opCounting.ForegroundLabels.connect(opObjExtraction.LabelImage)
+        opDataExport.Inputs.resize(1)
+        opDataExport.Inputs[0].connect( opCounting.HeadlessPredictionProbabilities )
         opDataExport.RawData.connect( opData.ImageGroup[0] )
-        opDataExport.Input.connect( opCounting.HeadlessPredictionProbabilities )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
         opDataExport.ConstraintDataset.connect( opData.ImageGroup[0] )
 
@@ -185,7 +186,17 @@ class CountingWorkflow(Workflow):
         # Input Image -> Features Op -> Prediction Op -> Export
         opBatchFeatures.InputImage.connect( opBatchInputs.Image )
         opBatchPredictionPipeline.FeatureImages.connect( opBatchFeatures.OutputImage )
-        opBatchResults.Input.connect( opBatchPredictionPipeline.HeadlessPredictionProbabilities )
+        
+        opBatchResults.SelectionNames.setValue( ['Probabilities'] )        
+        # opBatchResults.Inputs is indexed by [lane][selection],
+        # Use OpTranspose to allow connection.
+        opTransposeBatchInputs = OpTransposeSlots( parent=self )
+        opTransposeBatchInputs.OutputLength.setValue(0)
+        opTransposeBatchInputs.Inputs.resize(2)
+        opTransposeBatchInputs.Inputs[0].connect( opBatchPredictionPipeline.HeadlessPredictionProbabilities ) # selection 0
+        
+        # Now opTransposeBatchInputs.Outputs is level-2 indexed by [lane][selection]
+        opBatchResults.Inputs.connect( opTransposeBatchInputs.Outputs )
 
         # We don't actually need the cached path in the batch pipeline.
         # Just connect the uncached features here to satisfy the operator.
@@ -212,9 +223,9 @@ class CountingWorkflow(Workflow):
 
         opDataExport = self.dataExportApplet.topLevelOperator
         predictions_ready = features_ready and \
-                            len(opDataExport.Input) > 0 and \
-                            opDataExport.Input[0].ready() and \
-                            (TinyVector(opDataExport.Input[0].meta.shape) > 0).all()
+                            len(opDataExport.Inputs) > 0 and \
+                            opDataExport.Inputs[0][0].ready() and \
+                            (TinyVector(opDataExport.Inputs[0][0].meta.shape) > 0).all()
 
         self._shell.setAppletEnabled(self.featureSelectionApplet, input_ready)
         self._shell.setAppletEnabled(self.countingApplet, features_ready)
