@@ -64,7 +64,9 @@ class OpGraphCut(Operator):
     # graph cut parameter, usually called lambda
     Beta = InputSlot(value=.2)
 
-    # segmentation image -> graph cut segmentation
+    # labeled segmentation image
+    #     i=0: background
+    #     i>0: connected foreground object i
     Output = OutputSlot()
     CachedOutput = OutputSlot()
 
@@ -90,8 +92,8 @@ class OpGraphCut(Operator):
             "(expected: txyzc, got: {})".format(tags)
 
         self.Output.meta.assignFrom(self.Prediction.meta)
-        # output is a binary image
-        self.Output.meta.dtype = np.uint8
+        # output is a label image
+        self.Output.meta.dtype = np.uint32
 
         # cache should hold entire c-t-slices in memory
         shape = list(self.Prediction.meta.shape)
@@ -115,8 +117,13 @@ class OpGraphCut(Operator):
         resView = resView.withAxes(*'xyz')
 
         logger.info("Executing graph cut ... (this might take a while)")
-        resView[:] = segmentGC(pred, self.Beta.value)
+        tmp = segmentGC(pred, self.Beta.value)
         logger.info("Graph-cut done")
+
+        # label the segmentation so that this operator is consistent with
+        # the other thresholding operators
+        vigra.analysis.labelVolumeWithBackground(tmp.astype(np.uint32),
+                                                 out=resView)
 
     def propagateDirty(self, slot, subindex, roi):
         # all input slots affect the (global) graph cut computation
@@ -152,7 +159,7 @@ def segmentGC(pred, beta):
        -- beta - the weight of the pairwise potentials, usually called lambda
        Return:
        -- binary volume, as produced by OpenGM
-       
+
     '''
     nx, ny, nz = pred.shape
 

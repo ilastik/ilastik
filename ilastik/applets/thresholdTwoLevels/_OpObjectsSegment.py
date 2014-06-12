@@ -91,7 +91,7 @@ class OpObjectsSegment(OpGraphCut):
     ## graph cut parameter
     #Beta = InputSlot(value=.2)
 
-    ## segmentation image -> graph cut segmentation
+    ## labeled segmentation image
     #Output = OutputSlot()
     #CachedOutput = OutputSlot()
 
@@ -178,7 +178,7 @@ class OpObjectsSegment(OpGraphCut):
         cc = vigra.taggedView(cc, axistags=self.LabelImage.meta.axistags)
         cc = cc.withAxes(*'xyz')
 
-        # provide xyz view for the output
+        # provide xyz view for the output (just need 8bit for segmentation
         resultXYZ = vigra.taggedView(np.zeros(cc.shape, dtype=np.uint8),
                                      axistags='xyz')
 
@@ -245,8 +245,8 @@ class OpObjectsSegment(OpGraphCut):
         resView = vigra.taggedView(result, axistags=self.Output.meta.axistags)
         resView = resView.withAxes(*'xyz')
 
-        # convert from label image to segmentation
-        resView[:] = resultXYZ > 0
+        # some labels could have been removed => relabel
+        vigra.analysis.labelVolumeWithBackground(resultXYZ, out=resView)
 
     def propagateDirty(self, slot, subindex, roi):
         super(OpObjectsSegment, self).propagateDirty(slot, subindex, roi)
