@@ -123,7 +123,7 @@ class DataExportGui(QWidget):
             if subslot.ready():
                 self.updateTableForSlot(subslot)
     
-        def handleImageRemoved( multislot, index, finalLength ):
+        def handleLaneRemoved( multislot, index, finalLength ):
             if self.batchOutputTableWidget.rowCount() <= finalLength:
                 return
 
@@ -131,14 +131,14 @@ class DataExportGui(QWidget):
             self.batchOutputTableWidget.removeRow( index )
 
             # Remove the viewer for this dataset
-            imageSlot = self.topLevelOperator.Input[index]
-            if imageSlot in self.layerViewerGuis.keys():
-                layerViewerGui = self.layerViewerGuis[imageSlot]
+            imageMultiSlot = self.topLevelOperator.Inputs[index]
+            if imageMultiSlot in self.layerViewerGuis.keys():
+                layerViewerGui = self.layerViewerGuis[imageMultiSlot]
                 self.viewerStack.removeWidget( layerViewerGui )
                 self._viewerControlWidgetStack.removeWidget( layerViewerGui.viewerControlWidget() )
                 layerViewerGui.stopAndCleanUp()
 
-        self.topLevelOperator.Input.notifyRemove( bind( handleImageRemoved ) )
+        self.topLevelOperator.Inputs.notifyRemove( bind( handleLaneRemoved ) )
     
     def _initAppletDrawerUic(self):
         """
@@ -153,6 +153,18 @@ class DataExportGui(QWidget):
         self.drawer.exportAllButton.setIcon( QIcon(ilastikIcons.Save) )
         self.drawer.deleteAllButton.clicked.connect( self.deleteAllResults )
         self.drawer.deleteAllButton.setIcon( QIcon(ilastikIcons.Clear) )
+        
+        def _handleNewSelectionNames( *args ):
+            input_names = self.topLevelOperator.SelectionNames.value
+            self.drawer.inputSelectionCombo.addItems( input_names )
+        self.topLevelOperator.SelectionNames.notifyDirty( _handleNewSelectionNames )
+        _handleNewSelectionNames()
+
+        def _handleInputComboSelectionChanged( index ):
+            assert index < len(self.topLevelOperator.SelectionNames.value)
+            #assert index < len(self.topLevelOperator.Inputs)
+            self.topLevelOperator.InputSelection.setValue( index )
+        self.drawer.inputSelectionCombo.currentIndexChanged.connect( _handleInputComboSelectionChanged )
 
     def initCentralUic(self):
         """
@@ -425,22 +437,23 @@ class DataExportGui(QWidget):
         if len(selectedRanges) == 0:
             return
         row = selectedRanges[0].topRow()
-        imageSlot = self.topLevelOperator.Input[row]
+        
+        imageMultiSlot = self.topLevelOperator.Inputs[row]
         
         # Create if necessary
-        if imageSlot not in self.layerViewerGuis.keys():
+        if imageMultiSlot not in self.layerViewerGuis.keys():
             opLane = self.topLevelOperator.getLane(row)
             layerViewer = self.createLayerViewer(opLane)
 
             # Maximize the x-y view by default.
             layerViewer.volumeEditorWidget.quadview.ensureMaximized(2)
             
-            self.layerViewerGuis[imageSlot] = layerViewer
+            self.layerViewerGuis[imageMultiSlot] = layerViewer
             self.viewerStack.addWidget( layerViewer )
             self._viewerControlWidgetStack.addWidget( layerViewer.viewerControlWidget() )
 
         # Show the right one
-        layerViewer = self.layerViewerGuis[imageSlot]
+        layerViewer = self.layerViewerGuis[imageMultiSlot]
         self.viewerStack.setCurrentWidget( layerViewer )
         self._viewerControlWidgetStack.setCurrentWidget( layerViewer.viewerControlWidget() )
 
