@@ -41,7 +41,7 @@ from ilastik.applets.pixelClassification.opPixelClassification import OpPredicti
 
 from lazyflow.roi import TinyVector, fullSlicing
 from lazyflow.graph import Graph, OperatorWrapper
-from lazyflow.operators.generic import OpTransposeSlots, OpSelectSubslot
+from lazyflow.operators.generic import OpTransposeSlots, OpSelectSubslot, OpWrapSlot
 
 class PixelClassificationWorkflow(Workflow):
     
@@ -180,9 +180,10 @@ class PixelClassificationWorkflow(Workflow):
 
         # Data Export connections
         opDataExport.RawData.connect( opData.ImageGroup[self.DATA_ROLE_RAW] )
-        opDataExport.Input.connect( opClassify.HeadlessPredictionProbabilities )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[self.DATA_ROLE_RAW] )
         opDataExport.ConstraintDataset.connect( opData.ImageGroup[self.DATA_ROLE_RAW] )
+        opDataExport.Inputs.resize(1)
+        opDataExport.Inputs[0].connect( opClassify.HeadlessPredictionProbabilities )
 
     def _initBatchWorkflow(self):
         """
@@ -243,7 +244,17 @@ class PixelClassificationWorkflow(Workflow):
         opBatchFeatures.InputImage.connect( opBatchInputs.Image )
         opBatchPredictionPipeline.PredictionMask.connect( opBatchInputs.Image1 )
         opBatchPredictionPipeline.FeatureImages.connect( opBatchFeatures.OutputImage )
-        opBatchResults.Input.connect( opBatchPredictionPipeline.HeadlessPredictionProbabilities )
+
+        opBatchResults.SelectionNames.setValue( ['Probabilities'] )        
+        # opBatchResults.Inputs is indexed by [lane][selection],
+        #  but opBatchPredictionPipeline.HeadlessPredictionProbabilities is indexed by [lane] only
+        # Use OpWrapSlot to "up-level" the slot 
+        opWrap = OperatorWrapper( OpWrapSlot, parent=self )
+        opWrap.Input.connect( opBatchPredictionPipeline.HeadlessPredictionProbabilities )
+        
+        # Now opWrap.Output is level-2 indexed by [lane][0]
+        opBatchResults.Inputs.resize(1)
+        opBatchResults.Inputs.connect( opWrap.Output )
 
         # We don't actually need the cached path in the batch pipeline.
         # Just connect the uncached features here to satisfy the operator.
@@ -270,9 +281,9 @@ class PixelClassificationWorkflow(Workflow):
 
         opDataExport = self.dataExportApplet.topLevelOperator
         predictions_ready = features_ready and \
-                            len(opDataExport.Input) > 0 and \
-                            opDataExport.Input[0].ready() and \
-                            (TinyVector(opDataExport.Input[0].meta.shape) > 0).all()
+                            len(opDataExport.Inputs) > 0 and \
+                            opDataExport.Inputs[0][0].ready() and \
+                            (TinyVector(opDataExport.Inputs[0][0].meta.shape) > 0).all()
 
         # Problems can occur if the features or input data are changed during live update mode.
         # Don't let the user do that.
