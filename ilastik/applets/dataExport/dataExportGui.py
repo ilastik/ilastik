@@ -28,7 +28,7 @@ from PyQt4.QtGui import QApplication, QWidget, QIcon, QHeaderView, QStackedWidge
 
 from lazyflow.graph import Slot
 
-from ilastik.utility import bind
+from ilastik.utility import bind, log_exception
 from lazyflow.utility import PathComponents
 from ilastik.utility.gui import ThreadRouter, threadRouted, ThunkEvent, ThunkEventHandler
 from ilastik.shell.gui.iconMgr import ilastikIcons
@@ -377,11 +377,8 @@ class DataExportGui(QWidget):
                     else:
                         msg = "Failed to generate export file."
                         msg += "\n{}".format( ex )
+                    log_exception( logger, msg )
                     self.showExportError(msg)
-                    
-                    logger.error( msg )
-                    import traceback
-                    traceback.print_exc()
 
                 # We're finished with this file. 
                 self.progressSignal.emit( 100*(i+1)/float(len(laneViewList)) )
