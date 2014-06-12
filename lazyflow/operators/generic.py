@@ -865,7 +865,8 @@ class OpTransposeSlots(Operator):
     configured (e.g. if not all input multi-slots have the same length).
     The length of the output multi-slot must be specified explicitly.
     """
-    OutputLength = InputSlot() # The length of the j dimension = J.
+    OutputLength = InputSlot(value=0)   # The MINIMUM length of the j dimension = J. If the input isn't configured yet, 
+                                        #   the output slot will be at least this long (with empty subslots).
     Inputs = InputSlot(level=2, optional=True) # Optional so that the Output mslot is configured even if len(Inputs) == 0
     Outputs = OutputSlot(level=2)   # A level-2 multislot of len J.
                                     # For each inner (level-1) multislot, len(multislot) == len(self.Inputs)
@@ -876,7 +877,10 @@ class OpTransposeSlots(Operator):
         super( OpTransposeSlots, self ).__init__(*args, **kwargs)
 
     def setupOutputs(self):
-        self.Outputs.resize( self.OutputLength.value )
+        max_input_len = self.OutputLength.value
+        for inslot in self.Inputs:
+            max_input_len = max( len(inslot), max_input_len )
+        self.Outputs.resize( max_input_len )
         for j, mslot in enumerate( self.Outputs ):
             mslot.resize( len(self.Inputs) )
             for i, oslot in enumerate( mslot ):
