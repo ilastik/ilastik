@@ -18,6 +18,8 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+import sys
+import os
 import warnings
 import argparse
 
@@ -40,9 +42,13 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators.generic import OpTransposeSlots, OpSelectSubslot
 from lazyflow.operators.valueProviders import OpAttributeSelector
 from lazyflow.roi import TinyVector
+from lazyflow.utility import PathComponents
 
 import logging
 logger = logging.getLogger(__name__)
+
+EXPORT_SELECTION_PREDICTIONS = 0
+EXPORT_SELECTION_PROBABILITIES = 1
 
 class ObjectClassificationWorkflow(Workflow):
     workflowName = "Object Classification Workflow Base"
@@ -89,37 +95,40 @@ class ObjectClassificationWorkflow(Workflow):
                 self, "Fill Missing Slices", "Fill Missing Slices", self.fillMissing)
             self._applets.append(self.fillMissingSlicesApplet)
 
-
+        if isinstance(self, ObjectClassificationWorkflowPixel):
+            self.input_types = 'raw'
+        elif isinstance(self, ObjectClassificationWorkflowBinary):
+            self.input_types = 'raw+binary'
+        elif isinstance( self, ObjectClassificationWorkflowPrediction ):
+            self.input_types = 'raw+pmaps'
+        
         # our main applets
         self.objectExtractionApplet = ObjectExtractionApplet(workflow=self, name = "Object Feature Selection")
         self.objectClassificationApplet = ObjectClassificationApplet(workflow=self)
         self.dataExportApplet = ObjectClassificationDataExportApplet(self, "Object Prediction Export")
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.WorkingDirectory.connect( self.dataSelectionApplet.topLevelOperator.WorkingDirectory )
+        
+        # See EXPORT_SELECTION_PREDICTIONS and EXPORT_SELECTION_PROBABILITIES, above
+        opDataExport.SelectionNames.setValue( ['Object Predictions', 'Object Probabilities'] )        
 
         self._applets.append(self.objectExtractionApplet)
         self._applets.append(self.objectClassificationApplet)
         self._applets.append(self.dataExportApplet)
 
-        self.pixel = False
-        if isinstance(self, ObjectClassificationWorkflowPixel):
-            self.pixel = True
-        self.binary = False
-        if isinstance(self, ObjectClassificationWorkflowBinary):
-            self.binary = True
-            
         if self.batch:
             self.dataSelectionAppletBatch = DataSelectionApplet(
                     self, "Batch Inputs", "Batch Inputs", batchDataGui=True)
             self.opDataSelectionBatch = self.dataSelectionAppletBatch.topLevelOperator
             
-            if self.pixel:
+            if self.input_types == 'raw':
                 self.opDataSelectionBatch.DatasetRoles.setValue(['Raw Data'])
+            elif self.input_types == 'raw+binary':
+                self.opDataSelectionBatch.DatasetRoles.setValue(['Raw Data', 'Binary Data'])
+            elif self.input_types == 'raw+pmaps':
+                self.opDataSelectionBatch.DatasetRoles.setValue(['Raw Data', 'Prediction Maps'])
             else:
-                if self.binary:
-                    self.opDataSelectionBatch.DatasetRoles.setValue(['Raw Data', 'Binary Data'])
-                else:
-                    self.opDataSelectionBatch.DatasetRoles.setValue(['Raw Data', 'Prediction Maps'])
+                assert False, "Unknown object classification subclass type."
     
             self.blockwiseObjectClassificationApplet = BlockwiseObjectClassificationApplet(
                 self, "Blockwise Object Classification", "Blockwise Object Classification")
@@ -137,10 +146,23 @@ class ObjectClassificationWorkflow(Workflow):
             self._initBatchWorkflow()
 
             if unused_args:
+                # Additional export args (specific to the object classification workflow)
+                export_arg_parser = argparse.ArgumentParser()
+                export_arg_parser.add_argument( "--table_filename", help="The location to export the object feature/prediction CSV file.", required=False )
+                export_arg_parser.add_argument( "--export_object_prediction_img", action="store_true" )
+                export_arg_parser.add_argument( "--export_object_probability_img", action="store_true" )
+
+                # TODO: Support this, too, someday?
+                #export_arg_parser.add_argument( "--export_object_label_img", action="store_true" )
+                
+                if self.input_types == 'raw':
+                    export_arg_parser.add_argument( "--export_pixel_probability_img", action="store_true" )
+                self._export_args, unused_args = export_arg_parser.parse_known_args(unused_args)
+
                 # We parse the export setting args first.  All remaining args are considered input files by the input applet.
                 self._batch_export_args, unused_args = self.batchExportApplet.parse_known_cmdline_args( unused_args )
                 self._batch_input_args, unused_args = self.dataSelectionAppletBatch.parse_known_cmdline_args( unused_args )
-            
+
         if unused_args:
             warnings.warn("Unused command-line args: {}".format( unused_args ))
 
@@ -174,8 +196,10 @@ class ObjectClassificationWorkflow(Workflow):
 
         # Data Export connections
         opDataExport.RawData.connect( opData.ImageGroup[0] )
-        opDataExport.Input.connect( opObjClassification.UncachedPredictionImages )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
+        opDataExport.Inputs.resize(2)
+        opDataExport.Inputs[EXPORT_SELECTION_PREDICTIONS].connect( opObjClassification.UncachedPredictionImages )
+        opDataExport.Inputs[EXPORT_SELECTION_PROBABILITIES].connect( opObjClassification.ProbabilityChannelImage )
 
         if self.batch:
             opObjClassification = self.objectClassificationApplet.topLevelOperator.getLane(laneIndex)
@@ -244,7 +268,7 @@ class ObjectClassificationWorkflow(Workflow):
         
         
         op5Binary = OperatorWrapper(OpReorderAxes, parent=self)
-        if not self.binary:
+        if self.input_types != 'raw+binary':
             op5Pred = OperatorWrapper(OpReorderAxes, parent=self)
             op5Pred.Input.connect(batchInputsOther)
             opBatchThreshold.RawInput.connect(op5Raw.Output)
@@ -268,11 +292,22 @@ class ObjectClassificationWorkflow(Workflow):
         opBatchExport = self.batchExportApplet.topLevelOperator
         opBatchExport.RawData.connect( batchInputsRaw )
         opBatchExport.RawDatasetInfo.connect( opTransposeDatasetGroup.Outputs[0] )
-        opBatchExport.Input.connect( opBatchClassify.PredictionImage )
+        
+        # See EXPORT_SELECTION_PREDICTIONS and EXPORT_SELECTION_PROBABILITIES, above
+        opBatchExport.SelectionNames.setValue( ['Object Predictions', 'Object Probabilities'] )        
+        # opBatchResults.Inputs is indexed by [lane][selection],
+        # Use OpTranspose to allow connection.
+        opTransposeBatchInputs = OpTransposeSlots( parent=self )
+        opTransposeBatchInputs.OutputLength.setValue(0)
+        opTransposeBatchInputs.Inputs.resize(2)
+        opTransposeBatchInputs.Inputs[EXPORT_SELECTION_PREDICTIONS].connect( opBatchClassify.PredictionImage ) # selection 0
+        opTransposeBatchInputs.Inputs[EXPORT_SELECTION_PROBABILITIES].connect( opBatchClassify.ProbabilityChannelImage ) # selection 1
+        
+        # Now opTransposeBatchInputs.Outputs is level-2 indexed by [lane][selection]
+        opBatchExport.Inputs.connect( opTransposeBatchInputs.Outputs )
 
     def onProjectLoaded(self, projectManager):
         if self._headless and self._batch_input_args and self._batch_export_args:
-            
             # Configure the batch data selection operator.
             if self._batch_input_args and self._batch_input_args.raw_data:
                 self.dataSelectionAppletBatch.configure_operator_with_parsed_args( self._batch_input_args )
@@ -283,7 +318,8 @@ class ObjectClassificationWorkflow(Workflow):
 
             self.opBatchClassify.BlockShape3dDict.disconnect()
 
-            for lane, opBatchClassifyView in enumerate(self.opBatchClassify):
+            # For each BATCH lane...
+            for lane_index, opBatchClassifyView in enumerate(self.opBatchClassify):
                 # Force the block size to be the same as image size (1 big block)
                 tagged_shape = opBatchClassifyView.RawImage.meta.getTaggedShape()
                 try:
@@ -295,16 +331,80 @@ class ObjectClassificationWorkflow(Workflow):
                 except KeyError:
                     pass
                 opBatchClassifyView.BlockShape3dDict.setValue( tagged_shape )
-        
-                # Must predict before requesting region features (see note in BlockwiseObjectClassification)
-                #prediction_image = opBatchClassifyView.PredictionImage[:].wait()
+
+                # For now, we force the entire result to be computed as one big block.
+                # Force the batch classify op to create an internal pipeline for our block.
                 opBatchClassifyView._ensurePipelineExists( (0,0,0,0,0) )
                 opSingleBlockClassify = opBatchClassifyView._blockPipelines[(0,0,0,0,0)]
-                feature_table = opSingleBlockClassify._opPredict.exportTable()
-                print feature_table
-                print "GOT A PREDICTION TABLE! WEEEE!"
-            
-            
+
+                # Export the images (if any)
+                if self._export_args.export_object_prediction_img:
+                    self._export_batch_image( lane_index, EXPORT_SELECTION_PREDICTIONS, 'object-prediction-img' )
+                if self._export_args.export_object_probability_img:
+                    self._export_batch_image( lane_index, EXPORT_SELECTION_PROBABILITIES, 'object-probability-img' )
+
+                # Export the CSV
+                csv_filename = self._export_args.table_filename
+                if csv_filename:
+                    feature_table = opSingleBlockClassify._opPredict.exportTable()
+                    if len(self.opBatchClassify) > 1:
+                        base, ext = os.path.splitext( csv_filename )
+                        csv_filename = base + '-' + str(lane_index) + ext
+                    print "Exporting object table for image #{}:\n{}".format( lane_index, csv_filename )
+                    self.record_array_to_csv(feature_table, csv_filename)
+
+    def _export_batch_image(self, lane_index, selection_index, selection_name):
+        opBatchExport = self.batchExportApplet.topLevelOperator
+        opBatchExport.InputSelection.setValue(selection_index)
+        opBatchExportView = opBatchExport.getLane(lane_index)
+
+        # Remember this so we can restore it later
+        default_output_path = opBatchExport.OutputFilenameFormat.value
+        export_path = opBatchExportView.ExportPath.value
+
+        path_comp = PathComponents( export_path, os.getcwd() )
+        path_comp.filenameBase += '-' + selection_name
+        opBatchExport.OutputFilenameFormat.setValue( path_comp.externalPath )
+        
+        logger.info( "Exporting {} for image #{} to {}"
+                     .format(selection_name, lane_index+1, opBatchExportView.ExportPath.value) )
+
+        sys.stdout.write( "Result {}/{} Progress: "
+                          .format( lane_index+1, len( self.opBatchClassify ) ) )
+        sys.stdout.flush()
+        def print_progress( progress ):
+            sys.stdout.write( "{} ".format( progress ) )
+            sys.stdout.flush()
+
+        # If the operator provides a progress signal, use it.
+        slotProgressSignal = opBatchExportView.progressSignal
+        slotProgressSignal.subscribe( print_progress )
+        opBatchExportView.run_export()
+        
+        # Finished.
+        sys.stdout.write("\n")
+        
+        # Restore original format
+        opBatchExport.OutputFilenameFormat.setValue( default_output_path )
+
+    def record_array_to_csv(self, record_array, filename):
+        """
+        Save the given record array to a CSV file.
+        """
+        # Sort by offset
+        with open(filename, 'w') as csv_file:
+            sorted_fields = sorted( record_array.dtype.fields.items(), key=lambda (k,v): v[1] )
+            field_names = map( lambda (k,v): k, sorted_fields )
+            for name in field_names:
+                # Remove any commas in the header (this is csv, after all)
+                name = name.replace(',', '/')
+                csv_file.write(name + ',')
+            csv_file.write('\n')
+            for row in record_array:
+                for name in field_names:
+                    csv_file.write(str(row[name]) + ',')
+                csv_file.write('\n')
+
     def getHeadlessOutputSlot(self, slotId):
         if slotId == "BatchPredictionImage":
             return self.opBatchClassify.PredictionImage
