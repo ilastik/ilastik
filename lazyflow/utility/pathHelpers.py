@@ -24,7 +24,12 @@ import os
 class PathComponents(object):
     """
     Provides a convenient access to path components of a combined external/internal path to a dataset.
+    Also, each of the properties listed below is writable, in which case ALL properties are updated accordingly.
     """
+    
+    # Only files with these extensions are allowed to have an 'internal' path
+    HDF5_EXTS = ['.ilp', '.h5', '.hdf5']
+    
     def __init__(self, totalPath, cwd=None):
         """
         Initialize the path components.
@@ -34,25 +39,20 @@ class PathComponents(object):
 
         :param cwd: If provided, relative paths will be converted to absolute paths using this arg as the working directory.
         """
-        #: Example: ``/some/path/to/file.h5``
-        self.externalPath = None
-        #: Example: ``/some/path/to``
-        self.externalDirectory = None
-        #: Example: ``file.h5``
-        self.filename = None            
-        #: Example: ``file``
-        self.filenameBase = None
-        #: Example: ``.h5``
-        self.extension = None
-        #: Example: ``/with/internal/dataset``
-        self.internalPath = None
-        #: Example: ``/dataset``
-        self.internalDatasetName = None
-        #: Example: ``/some/path/to/file.h5/with/internal``
-        self.internalDirectory = None
+        self._externalPath = None
+        self._externalDirectory = None
+        self._filename = None            
+        self._filenameBase = None
+        self._extension = None
+        self._internalPath = None
+        self._internalDatasetName = None
+        self._internalDirectory = None
         
-        # For hdf5 paths, split into external, extension, and internal paths
-        h5Exts = ['.ilp', '.h5', '.hdf5']
+        self._cwd = cwd
+        self._init(totalPath, cwd)
+        self._initialized = True
+
+    def _init(self, totalPath, cwd):
         ext = None
         extIndex = -1
         
@@ -63,7 +63,8 @@ class PathComponents(object):
         #convention for Windows: use "/"
         totalPath = totalPath.replace("\\","/")
         
-        for x in h5Exts:
+        # For hdf5 paths, split into external, extension, and internal paths
+        for x in self.HDF5_EXTS:
             if totalPath.find(x) > extIndex:
                 extIndex = totalPath.find(x)
                 ext = x
@@ -71,29 +72,39 @@ class PathComponents(object):
         # Comments below refer to this example path:
         # /some/path/to/file.h5/with/internal/dataset
         if ext is not None:
-            self.extension = ext                              # .h5
+            self._extension = ext                              # .h5
             parts = totalPath.split(ext)
             
             # Must deal with pathological filenames such as /path/to/file.h5_with_duplicate_ext.h5
             while len(parts) > 2:
                 parts[0] = parts[0] + ext + parts[1]
                 del parts[1]
-            self.externalPath = parts[0] + ext # /some/path/to/file.h5
-            self.internalPath = parts[1].replace('\\', '/') # /with/internal/dataset
+            self._externalPath = parts[0] + ext # /some/path/to/file.h5
+            self._internalPath = parts[1].replace('\\', '/') # /with/internal/dataset
 
-            self.internalDirectory = os.path.split( self.internalPath )[0]   # /with/internal
-            self.internalDatasetName = os.path.split( self.internalPath )[1] # dataset
+            self._internalDirectory = os.path.split( self.internalPath )[0]   # /with/internal
+            self._internalDatasetName = os.path.split( self.internalPath )[1] # dataset
         else:
             # For non-hdf5 files, use normal path/extension (no internal path)
-            (self.externalPath, self.extension) = os.path.splitext(totalPath)
-            self.externalPath += self.extension
-            self.internalPath = None
-            self.internalDatasetName = None
-            self.internalDirectory = None
+            (self._externalPath, self._extension) = os.path.splitext(totalPath)
+            self._externalPath += self._extension
+            self._internalPath = None
+            self._internalDatasetName = None
+            self._internalDirectory = None
 
-        self.externalDirectory = os.path.split( self.externalPath )[0] # /some/path/to
-        self.filename = os.path.split( self.externalPath )[1]          # file.h5
-        self.filenameBase = os.path.splitext(self.filename)[0]         # file
+        self._externalDirectory = os.path.split( self._externalPath )[0] # /some/path/to
+        self._filename = os.path.split( self._externalPath )[1]          # file.h5
+        self._filenameBase = os.path.splitext(self._filename)[0]         # file
+    
+    def __setattr__(self, attr, value):
+        """
+        This prevents us from accidentally writing to a non-existant attribute.
+        e.g. if the user tries to say components.fIlEnAmE = 'newfile.h5', raise an error.
+        """
+        if hasattr( self, '_initialized' ):
+            # Attempt to get the old attribute first
+            oldval = getattr(self, attr)
+        object.__setattr__( self, attr, value )
 
     def totalPath(self):
         """
@@ -103,6 +114,123 @@ class PathComponents(object):
         if self.internalPath:
             total += self.internalPath
         return total
+    
+    #
+    # Getters
+    #
+    
+    @property
+    def externalPath(self):
+        """
+        Example: ``/some/path/to/file.h5``
+        """
+        return self._externalPath
+
+    @property
+    def externalDirectory(self):
+        """
+        Example: ``/some/path/to``
+        """
+        return self._externalDirectory
+
+    @property
+    def filename(self):
+        """
+        Example: ``file.h5``
+        """
+        return self._filename
+
+    @property
+    def filenameBase(self):
+        """
+        Example: ``file``
+        """
+        return self._filenameBase
+
+    @property
+    def extension(self):
+        """
+        Example: ``.h5``
+        """
+        return self._extension
+
+    @property
+    def internalPath(self):
+        """
+        Example: ``/with/internal/dataset``
+        """
+        return self._internalPath
+
+    @property
+    def internalDatasetName(self):
+        """
+        Example: ``/dataset``
+        """
+        return self._internalDatasetName
+
+    @property
+    def internalDirectory(self):
+        """
+        Example: ``/with/internal``
+        """
+        return self._internalDirectory
+
+    #
+    # Setters
+    #
+
+    @externalPath.setter
+    def externalPath(self, new):
+        assert new[-1] != '/'
+        if self._internalPath:
+            self._init( new + self._internalPath, self._cwd )
+        else:
+            self._init( new, self._cwd ) 
+
+    @externalDirectory.setter
+    def externalDirectory(self, new):
+        new_external = os.path.join(new, self._filename)
+        self.externalPath = new_external
+
+    @filename.setter
+    def filename(self, new):
+        new_external = os.path.join( self._externalDirectory, new )
+        self.externalPath = new_external
+
+    @filenameBase.setter
+    def filenameBase(self, new):
+        new_external = os.path.join( self._externalDirectory, new + self._extension )
+        self.externalPath = new_external
+
+    @extension.setter
+    def extension(self, new):
+        assert (not self._internalPath) or (new in self.HDF5_EXTS), \
+            "This PathComponents has an internal path ({}), but you are "\
+            "attempting to assign a non-hdf5 extension to it ({})"\
+            .format( self._internalPath, new )
+        new_external = os.path.join( self._externalDirectory, self._filenameBase + new )
+        self.externalPath = new_external        
+
+    @internalPath.setter
+    def internalPath(self, new):
+        assert self._extension in self.HDF5_EXTS, \
+            "Can't set an internal path on a filename with extension {}".format( self._extension )
+        if new:
+            self._init( self._externalPath + new, self._cwd )
+        else:
+            self._init( self._externalPath, self._cwd )
+
+    @internalDatasetName.setter
+    def internalDatasetName(self, new):
+        new_internal = os.path.join(self._internalDirectory, new)
+        self.internalPath = new_internal
+
+    @internalDirectory.setter
+    def internalDirectory(self, new):
+        if new and new[0] != '/':
+            new = '/' + new
+        new_internal = os.path.join( new, self._internalDatasetName )
+        self.internalPath = new_internal
 
 def areOnSameDrive(path1,path2):
     #if one path is relative, assume they are on same drive
@@ -200,4 +328,25 @@ if __name__ == "__main__":
     assert components.internalPath is None
     assert components.externalDirectory == 'http://somehost:8000/path/to/data'
     assert components.filenameBase == 'with'
-
+    
+    # Try modifying the properties and verify that the total path is updated.
+    components = PathComponents('/some/external/path/to/file.h5/with/internal/path/to/data')
+    components.extension = '.hdf5'
+    assert components.externalPath == '/some/external/path/to/file.hdf5'
+    assert components.totalPath() == '/some/external/path/to/file.hdf5/with/internal/path/to/data'
+    components.filenameBase = 'newbase'
+    assert components.totalPath() == '/some/external/path/to/newbase.hdf5/with/internal/path/to/data'
+    components.internalDirectory = 'new/internal/dir'
+    assert components.totalPath() == '/some/external/path/to/newbase.hdf5/new/internal/dir/data'
+    components.internalDatasetName = 'newdata'
+    assert components.totalPath() == '/some/external/path/to/newbase.hdf5/new/internal/dir/newdata'
+    components.externalDirectory = '/new/extern/dir/'
+    assert components.totalPath() == '/new/extern/dir/newbase.hdf5/new/internal/dir/newdata'
+    components.externalDirectory = '/new/extern/dir'
+    assert components.totalPath() == '/new/extern/dir/newbase.hdf5/new/internal/dir/newdata'
+    components.externalPath = '/new/externalpath/somefile.h5'
+    assert components.totalPath() == '/new/externalpath/somefile.h5/new/internal/dir/newdata'
+    components.filename = 'newfilename.h5'
+    assert components.totalPath() == '/new/externalpath/newfilename.h5/new/internal/dir/newdata'
+    components.internalPath = '/new/internal/path/dataset'
+    assert components.totalPath() == '/new/externalpath/newfilename.h5/new/internal/path/dataset'
