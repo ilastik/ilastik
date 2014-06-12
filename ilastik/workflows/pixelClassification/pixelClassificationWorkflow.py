@@ -21,7 +21,6 @@
 import sys
 import copy
 import argparse
-from functools import partial
 import logging
 logger = logging.getLogger(__name__)
 
@@ -41,7 +40,7 @@ from ilastik.applets.pixelClassification.opPixelClassification import OpPredicti
 
 from lazyflow.roi import TinyVector, fullSlicing
 from lazyflow.graph import Graph, OperatorWrapper
-from lazyflow.operators.generic import OpTransposeSlots, OpSelectSubslot, OpWrapSlot
+from lazyflow.operators.generic import OpTransposeSlots, OpSelectSubslot
 
 class PixelClassificationWorkflow(Workflow):
     
@@ -123,6 +122,7 @@ class PixelClassificationWorkflow(Workflow):
         opDataExport.PmapColors.connect( opClassify.PmapColors )
         opDataExport.LabelNames.connect( opClassify.LabelNames )
         opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
+        opDataExport.SelectionNames.setValue( ['Probabilities', 'Simple Segmentation'] )        
 
         # Expose for shell
         self._applets.append(self.projectMetadataApplet)
@@ -182,8 +182,9 @@ class PixelClassificationWorkflow(Workflow):
         opDataExport.RawData.connect( opData.ImageGroup[self.DATA_ROLE_RAW] )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[self.DATA_ROLE_RAW] )
         opDataExport.ConstraintDataset.connect( opData.ImageGroup[self.DATA_ROLE_RAW] )
-        opDataExport.Inputs.resize(1)
+        opDataExport.Inputs.resize(2)
         opDataExport.Inputs[0].connect( opClassify.HeadlessPredictionProbabilities )
+        opDataExport.Inputs[1].connect( opClassify.SimpleSegmentation )
 
     def _initBatchWorkflow(self):
         """
@@ -245,16 +246,17 @@ class PixelClassificationWorkflow(Workflow):
         opBatchPredictionPipeline.PredictionMask.connect( opBatchInputs.Image1 )
         opBatchPredictionPipeline.FeatureImages.connect( opBatchFeatures.OutputImage )
 
-        opBatchResults.SelectionNames.setValue( ['Probabilities'] )        
+        opBatchResults.SelectionNames.setValue( ['Probabilities', 'Simple Segmentation'] )        
         # opBatchResults.Inputs is indexed by [lane][selection],
-        #  but opBatchPredictionPipeline.HeadlessPredictionProbabilities is indexed by [lane] only
-        # Use OpWrapSlot to "up-level" the slot 
-        opWrap = OperatorWrapper( OpWrapSlot, parent=self )
-        opWrap.Input.connect( opBatchPredictionPipeline.HeadlessPredictionProbabilities )
+        # Use OpTranspose to allow connection.
+        opTransposeBatchInputs = OpTransposeSlots( parent=self )
+        opTransposeBatchInputs.OutputLength.setValue(0)
+        opTransposeBatchInputs.Inputs.resize(2)
+        opTransposeBatchInputs.Inputs[0].connect( opBatchPredictionPipeline.HeadlessPredictionProbabilities ) # selection 0
+        opTransposeBatchInputs.Inputs[1].connect( opBatchPredictionPipeline.SimpleSegmentation ) # selection 1
         
-        # Now opWrap.Output is level-2 indexed by [lane][0]
-        opBatchResults.Inputs.resize(1)
-        opBatchResults.Inputs.connect( opWrap.Output )
+        # Now opTransposeBatchInputs.Outputs is level-2 indexed by [lane][selection]
+        opBatchResults.Inputs.connect( opTransposeBatchInputs.Outputs )
 
         # We don't actually need the cached path in the batch pipeline.
         # Just connect the uncached features here to satisfy the operator.
