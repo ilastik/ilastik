@@ -111,9 +111,6 @@ class OpSlicedBlockedArrayCache(OpCache):
 
         self.Output.meta.assignFrom(self.Input.meta)
         
-        # Blockshape: Somewhat arbitrarily, we choose the first blockshape
-        self.Output.meta.blockshape = self._innerShapes[0]
-
         # Estimate ram usage            
         ram_per_pixel = 0
         if self.Output.meta.dtype == object or self.Output.meta.dtype == numpy.object_:

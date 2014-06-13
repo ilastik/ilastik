@@ -111,11 +111,6 @@ class OpBlockedArrayCache(OpCache):
 
                 self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)
                 
-                # For downstream operators:
-                # If requesting the entire image (or a big portion of it), 
-                #  it's most efficient to size your requests according to the outer blockshape
-                self.Output.meta.blockshape = self._blockShape
-
                 # Estimate ram usage            
                 ram_per_pixel = 0
                 if self.Output.meta.dtype == object or self.Output.meta.dtype == numpy.object_:
