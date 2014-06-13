@@ -39,7 +39,7 @@ from ilastik.widgets.labelListView import Label
 from ilastik.widgets.labelListModel import LabelListModel
 
 # ilastik
-from ilastik.utility import bind 
+from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThunkEventHandler, threadRouted
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
@@ -566,7 +566,13 @@ class LabelingGui(LayerViewerGui):
         operator_names = self._labelingSlots.labelNames.value
         if len(operator_names) < self._labelControlUi.labelListModel.rowCount():
             operator_names.append( label.name )
-            self._labelingSlots.labelNames.setValue( operator_names, check_changed=False )
+            try:
+                self._labelingSlots.labelNames.setValue( operator_names, check_changed=False )
+            except:
+                # I have no idea why this is, but sometimes PyQt "loses" exceptions here.
+                # Print it out before it's too late!
+                log_exception( logger, "Logged the above exception just in case PyQt loses it." )
+                raise
 
         # Call the 'changed' callbacks immediately to initialize any listeners
         self.onLabelNameChanged()
