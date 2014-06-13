@@ -339,6 +339,10 @@ class OpMultiArrayStacker(Operator):
             else:
                 #FIXME axisindex is not necessarily defined yet (try setValue on subslot)
                 newshape.insert(axisindex, c)
+                ideal_blockshape = self.Output.meta.ideal_blockshape
+                if ideal_blockshape is not None:
+                    ideal_blockshape = ideal_blockshape[:axisindex] + (1,) + ideal_blockshape[axisindex:]
+                    self.Output.meta.ideal_blockshape = ideal_blockshape
             self.outputs["Output"].meta.shape=tuple(newshape)
         else:
             self.outputs["Output"].meta.shape = None
