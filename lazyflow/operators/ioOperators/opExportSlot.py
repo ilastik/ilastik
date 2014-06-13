@@ -290,22 +290,29 @@ class OpExportSlot(Operator):
             # It's okay if the file isn't there.
             if ex.errno != 2:
                 raise
-        with h5py.File(export_components.externalPath, 'w') as hdf5File:
-            # Create a temporary operator to do the work for us
-            opH5Writer = OpH5WriterBigDataset(parent=self)
-            try:
-                opH5Writer.hdf5File.setValue( hdf5File )
-                opH5Writer.hdf5Path.setValue( export_components.internalPath )
-                opH5Writer.Image.connect( self.Input )
-        
-                # The H5 Writer provides it's own progress signal, so just connect ours to it.
-                opH5Writer.progressSignal.subscribe( self.progressSignal )
-
-                # Perform the export and block for it in THIS THREAD.
-                opH5Writer.WriteImage[:].wait()
-            finally:
-                opH5Writer.cleanUp()
-                self.progressSignal(100)
+        try:
+            with h5py.File(export_components.externalPath, 'w') as hdf5File:
+                # Create a temporary operator to do the work for us
+                opH5Writer = OpH5WriterBigDataset(parent=self)
+                try:
+                    opH5Writer.hdf5File.setValue( hdf5File )
+                    opH5Writer.hdf5Path.setValue( export_components.internalPath )
+                    opH5Writer.Image.connect( self.Input )
+            
+                    # The H5 Writer provides it's own progress signal, so just connect ours to it.
+                    opH5Writer.progressSignal.subscribe( self.progressSignal )
+    
+                    # Perform the export and block for it in THIS THREAD.
+                    opH5Writer.WriteImage[:].wait()
+                finally:
+                    opH5Writer.cleanUp()
+                    self.progressSignal(100)
+        except IOError as ex:
+            import sys
+            msg = "\nException raised when attempting to export to {}: {}\n"\
+                  .format( export_components.externalPath, str(ex) )
+            sys.stderr.write(msg)
+            raise
 
     def _export_npy(self):
         self.progressSignal(0)
