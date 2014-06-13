@@ -30,7 +30,7 @@ from functools import partial
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List
-from lazyflow.operators import OpValueCache, OpSlicedBlockedArrayCache, OperatorWrapper
+from lazyflow.operators import OpValueCache, OpSlicedBlockedArrayCache, OperatorWrapper, OpMultiArrayStacker
 from lazyflow.request import Request, RequestPool, RequestLock
 
 from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory, ParallelVigraRfLazyflowClassifier
@@ -104,6 +104,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     PredictionImages = OutputSlot(level=1) #Labels, by the majority vote
     UncachedPredictionImages = OutputSlot(level=1)
     PredictionProbabilityChannels = OutputSlot(level=2) # Classification predictions, enumerated by channel
+    ProbabilityChannelImage = OutputSlot(level=1)
     SegmentationImagesOut = OutputSlot(level=1) #input connected components
     BadObjects = OutputSlot(level=1, stype=Opaque, rtype=List) #Objects with NaN-like features
     BadObjectImages = OutputSlot(level=1) #Images, where objects with NaN-like features are black
@@ -231,6 +232,10 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.LabelColors.setValue( [] )
         self.PmapColors.setValue( [] )
 
+        self.opStackProbabilities = OperatorWrapper( OpMultiArrayStacker, parent=self )
+        self.opStackProbabilities.Images.connect( self.opProbChannelsImageCache.Output )
+        self.opStackProbabilities.AxisFlag.setValue('c')
+
         # connect outputs
         self.LabelImages.connect(self.opLabelsToImage.Output)
         self.Predictions.connect(self.opPredict.Predictions)
@@ -239,6 +244,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         self.PredictionImages.connect(self.opPredictionImageCache.Output)
         self.UncachedPredictionImages.connect(self.opPredictionsToImage.Output)
         self.PredictionProbabilityChannels.connect(self.opProbChannelsImageCache.Output)
+        self.ProbabilityChannelImage.connect( self.opStackProbabilities.Output )
         self.BadObjects.connect(self.opPredict.BadObjects)
         self.BadObjectImages.connect(self.opBadObjectsToImage.Output)
         self.Warnings.connect(self.opBadObjectsToWarningMessage.WarningMessage)
@@ -537,36 +543,12 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
 
     def exportTable(self, lane):
-        if not self.Predictions.ready() or not self.ObjectFeatures.ready():
-            return None
-        
         numLanes = len(self.SegmentationImages)
-        assert lane<numLanes
-        features = self.ObjectFeatures[lane]([]).wait()
-        feature_table = OpObjectExtraction.exportTable(features)
-        predictions = self.Predictions[lane]([]).wait()
-        nobjs = []
-        for t, preds in predictions.iteritems():
-            nobjs.append(preds.shape[0])
-        nobjs_total = sum(nobjs)
-        if nobjs_total==0:
-            logger.info("Prediction not run yet, won't be exported")
-            return feature_table
-        else:
-            assert nobjs_total==feature_table.shape[0]
-            
-            pred_column = numpy.zeros(nobjs_total, {'names': ['prediction'], 'formats': [numpy.dtype(numpy.uint8)]})
-            start = 0
-            finish = start
-            for t, preds in predictions.iteritems():
-                finish = start + nobjs[t]
-                pred_column['prediction'][start:finish] = preds[:]
-                start = finish
-            
-            feature_pred_table = rfn.merge_arrays((feature_table, pred_column), flatten = True, usemask = False)
-        
-            return feature_pred_table 
-
+        assert lane < numLanes, \
+            "Can't export features for lane {} (only {} lanes exist)"\
+            .format( lane, numLanes )
+        return self.opPredict[lane].exportTable()
+    
     def addLane(self, laneIndex):
         numLanes = len(self.SegmentationImages)
         assert numLanes == laneIndex, "Image lanes must be appended."
@@ -963,6 +945,36 @@ class OpObjectPredict(Operator):
         self.Predictions.setDirty(())
         self.Probabilities.setDirty(())
         self.ProbabilityChannels.setDirty(())
+
+    def exportTable(self):
+        if not self.Predictions.ready() or not self.Features.ready():
+            return None
+        
+        features = self.Features([]).wait()
+        feature_table = OpObjectExtraction.exportTable(features)
+        predictions = self.Predictions([]).wait()
+        nobjs = []
+        for t, preds in predictions.iteritems():
+            nobjs.append(preds.shape[0])
+        nobjs_total = sum(nobjs)
+        if nobjs_total==0:
+            logger.info("Prediction not run yet, won't be exported")
+            return feature_table
+        else:
+            assert nobjs_total==feature_table.shape[0]
+            
+            pred_column = numpy.zeros(nobjs_total, {'names': ['prediction'], 'formats': [numpy.dtype(numpy.uint8)]})
+            start = 0
+            finish = start
+            for t, preds in predictions.iteritems():
+                finish = start + nobjs[t]
+                pred_column['prediction'][start:finish] = preds[:]
+                start = finish
+            
+            feature_pred_table = rfn.merge_arrays((feature_table, pred_column), flatten = True, usemask = False)
+        
+            return feature_pred_table 
+
 
 
 class OpRelabelSegmentation(Operator):

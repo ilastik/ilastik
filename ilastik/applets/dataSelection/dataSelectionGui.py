@@ -38,7 +38,7 @@ from volumina.utility import PreferencesManager, encode_from_qstring
 
 #ilastik
 from ilastik.config import cfg as ilastik_config
-from ilastik.utility import bind
+from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from lazyflow.utility.pathHelpers import getPathVariants, PathComponents
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
@@ -373,9 +373,7 @@ class DataSelectionGui(QWidget):
             try:
                 self.addFileNames(fileNames, roleIndex, startingLane)
             except Exception as ex:
-                logger.error(ex)
-                import sys, traceback
-                traceback.print_tb(sys.exc_info()[2])
+                log_exception( logger )
                 QMessageBox.critical(self, "Error loading file", str(ex))
 
     def getImageFileNamesToOpen(self, defaultDirectory):
@@ -514,12 +512,11 @@ class DataSelectionGui(QWidget):
                     loaded_all = False
                     break
             except Exception as ex:
-                QMessageBox.critical( self, "Dataset Load Error", "Wasn't able to load your dataset into the workflow.  See error log for details." )
-                opTop.DatasetGroup.resize( originalSize )
                 loaded_all = False
-                logger.error(ex)
-                import sys, traceback
-                traceback.print_tb(sys.exc_info()[2])
+                msg = "Wasn't able to load your dataset into the workflow.  See error log for details."
+                log_exception( logger, msg )
+                QMessageBox.critical( self, "Dataset Load Error", msg )
+                opTop.DatasetGroup.resize( originalSize )
 
         # If we succeeded in adding all images, show the first one.
         if loaded_all:
@@ -623,12 +620,11 @@ class DataSelectionGui(QWidget):
 
     @threadRouted
     def handleFailedStackLoad(self, files, originalNumLanes, exc, exc_info):
-        import traceback
-        traceback.print_tb(exc_info[2])
         msg = "Failed to load stack due to the following error:\n{}".format( exc )
         msg += "Attempted stack files were:"
         for f in files:
             msg += f + "\n"
+        log_exception( logger, msg, exc_info )
         QMessageBox.critical(self, "Failed to load image stack", msg)
         self.topLevelOperator.DatasetGroup.resize(originalNumLanes)
 

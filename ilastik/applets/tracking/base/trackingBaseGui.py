@@ -38,6 +38,7 @@ from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.config import cfg as ilastik_config
 from lazyflow.request.request import Request
 from ilastik.utility.gui.threadRouter import threadRouted
+from ilastik.utility import log_exception
 
 logger = logging.getLogger(__name__)
 
@@ -368,9 +369,8 @@ class TrackingBaseGui( LayerViewerGui ):
             self.applet.progressSignal.emit(100)
                
         def _handle_failure( exc, exc_info ):
-            import traceback, sys
-            traceback.print_exception(*exc_info)
-            sys.stderr.write("Exception raised during export.  See traceback above.\n")
+            msg = "Exception raised during export.  See traceback above.\n"
+            log_exception( logger, msg, exc_info=exc_info )
             self.applet.progressSignal.emit(100)
             self._drawer.exportButton.setEnabled(True)
         
@@ -424,9 +424,8 @@ class TrackingBaseGui( LayerViewerGui ):
             self.applet.progressSignal.emit(100)
                
         def _handle_failure( exc, exc_info ):
-            import traceback, sys
-            traceback.print_exception(*exc_info)
-            sys.stderr.write("Exception raised during export.  See traceback above.\n")
+            msg = "Exception raised during export.  See traceback above.\n"
+            log_exception( logger, msg, exc_info )
             self.applet.progressSignal.emit(100)
             self._drawer.exportTifButton.setEnabled(True)
         
