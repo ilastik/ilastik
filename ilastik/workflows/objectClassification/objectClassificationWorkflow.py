@@ -49,6 +49,7 @@ logger = logging.getLogger(__name__)
 
 EXPORT_SELECTION_PREDICTIONS = 0
 EXPORT_SELECTION_PROBABILITIES = 1
+EXPORT_SELECTION_PIXEL_PROBABILITIES = 2
 
 class ObjectClassificationWorkflow(Workflow):
     workflowName = "Object Classification Workflow Base"
@@ -111,6 +112,10 @@ class ObjectClassificationWorkflow(Workflow):
         
         # See EXPORT_SELECTION_PREDICTIONS and EXPORT_SELECTION_PROBABILITIES, above
         opDataExport.SelectionNames.setValue( ['Object Predictions', 'Object Probabilities'] )        
+        if self.input_types == 'raw':
+            # Re-configure to add the pixel probabilities option
+            # See EXPORT_SELECTION_PIXEL_PROBABILITIES, above
+            opDataExport.SelectionNames.setValue( ['Object Predictions', 'Object Probabilities', 'Pixel Probabilities'] )
 
         self._applets.append(self.objectExtractionApplet)
         self._applets.append(self.objectClassificationApplet)
@@ -200,6 +205,13 @@ class ObjectClassificationWorkflow(Workflow):
         opDataExport.Inputs.resize(2)
         opDataExport.Inputs[EXPORT_SELECTION_PREDICTIONS].connect( opObjClassification.UncachedPredictionImages )
         opDataExport.Inputs[EXPORT_SELECTION_PROBABILITIES].connect( opObjClassification.ProbabilityChannelImage )
+        if self.input_types == 'raw':
+            # Append the prediction probabilities to the list of slots that can be exported.
+            opDataExport.Inputs.resize(3)
+            # Pull from this slot since the data has already been through the Op5 operator
+            # (All data in the export operator must have matching spatial dimensions.)
+            opThreshold = self.thresholdingApplet.topLevelOperator.getLane(laneIndex)
+            opDataExport.Inputs[EXPORT_SELECTION_PIXEL_PROBABILITIES].connect( opThreshold.InputImage )
 
         if self.batch:
             opObjClassification = self.objectClassificationApplet.topLevelOperator.getLane(laneIndex)
@@ -338,6 +350,11 @@ class ObjectClassificationWorkflow(Workflow):
                 opSingleBlockClassify = opBatchClassifyView._blockPipelines[(0,0,0,0,0)]
 
                 # Export the images (if any)
+                if self.input_types == 'raw':
+                    # If pixel probabilities need export, do that first.
+                    # (They are needed by the other outputs, anyway)
+                    if self._export_args.export_pixel_probability_img:
+                        self._export_batch_image( lane_index, EXPORT_SELECTION_PIXEL_PROBABILITIES, 'pixel-probability-img' )
                 if self._export_args.export_object_prediction_img:
                     self._export_batch_image( lane_index, EXPORT_SELECTION_PREDICTIONS, 'object-prediction-img' )
                 if self._export_args.export_object_probability_img:
@@ -352,6 +369,8 @@ class ObjectClassificationWorkflow(Workflow):
                         csv_filename = base + '-' + str(lane_index) + ext
                     print "Exporting object table for image #{}:\n{}".format( lane_index, csv_filename )
                     self.record_array_to_csv(feature_table, csv_filename)
+                
+                print "FINISHED."
 
     def _export_batch_image(self, lane_index, selection_index, selection_name):
         opBatchExport = self.batchExportApplet.topLevelOperator
@@ -657,9 +676,22 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         opTransposeDatasetGroup.Inputs.connect( opBatchInputs.DatasetGroup )
 
         # Connect the batch OUTPUT applet
-        opBatchExport.Input.connect( opBatchObjectClassify.PredictionImage )
         opBatchExport.RawData.connect( opBatchInputs.Image )
         opBatchExport.RawDatasetInfo.connect( opTransposeDatasetGroup.Outputs[0] )
+
+        # See EXPORT_SELECTION_PREDICTIONS, EXPORT_SELECTION_PROBABILITIES, and EXPORT_SELECTION_PIXEL_PROBABILITIES, above
+        opBatchExport.SelectionNames.setValue( ['Object Predictions', 'Object Probabilities', 'Pixel Probabilities'] )        
+        # opBatchResults.Inputs is indexed by [lane][selection],
+        # Use OpTranspose to allow connection.
+        opTransposeBatchInputs = OpTransposeSlots( parent=self )
+        opTransposeBatchInputs.OutputLength.setValue(0)
+        opTransposeBatchInputs.Inputs.resize(3)
+        opTransposeBatchInputs.Inputs[EXPORT_SELECTION_PREDICTIONS].connect( opBatchObjectClassify.PredictionImage ) # selection 0
+        opTransposeBatchInputs.Inputs[EXPORT_SELECTION_PROBABILITIES].connect( opBatchObjectClassify.ProbabilityChannelImage ) # selection 1
+        opTransposeBatchInputs.Inputs[EXPORT_SELECTION_PIXEL_PROBABILITIES].connect( opBatchThreshold.InputImage ) # selection 2 (must use op5'd version)
+        
+        # Now opTransposeBatchInputs.Outputs is level-2 indexed by [lane][selection]
+        opBatchExport.Inputs.connect( opTransposeBatchInputs.Outputs )
 
     def handleAppletStateUpdateRequested(self):
         """

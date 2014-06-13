@@ -75,11 +75,12 @@ class ObjectClassificationResultsViewer(DataExportLayerViewerGui):
 
         opLane = self.topLevelOperatorView
 
+        selection_names = opLane.SelectionNames.value
+        selection = selection_names[ opLane.InputSelection.value ]
+
         # This code depends on a specific order for the export slots.
         # If those change, update this function!
-        selection_names = opLane.SelectionNames.value
-        assert selection_names == ['Object Predictions', 'Object Probabilities']
-        selection = selection_names[ opLane.InputSelection.value ]
+        assert selection in ['Object Predictions', 'Object Probabilities', 'Pixel Probabilities']
     
         if selection == "Object Predictions":
             fromDiskSlot = self.topLevelOperatorView.ImageOnDisk
@@ -97,6 +98,19 @@ class ObjectClassificationResultsViewer(DataExportLayerViewerGui):
                 layers.append(previewLayer)
 
         elif selection == "Object Probabilities":
+            exportedLayers = self._initPredictionLayers(opLane.ImageOnDisk)
+            for layer in exportedLayers:
+                layer.visible = True
+                layer.name = layer.name + "- Exported"
+            layers += exportedLayers
+            
+            previewLayers = self._initPredictionLayers(opLane.ImageToExport)
+            for layer in previewLayers:
+                layer.visible = False
+                layer.name = layer.name + "- Preview"
+            layers += previewLayers
+        
+        elif selection == 'Pixel Probabilities':
             exportedLayers = self._initPredictionLayers(opLane.ImageOnDisk)
             for layer in exportedLayers:
                 layer.visible = True
