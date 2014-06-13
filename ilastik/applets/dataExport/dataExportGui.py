@@ -162,7 +162,6 @@ class DataExportGui(QWidget):
 
         def _handleInputComboSelectionChanged( index ):
             assert index < len(self.topLevelOperator.SelectionNames.value)
-            #assert index < len(self.topLevelOperator.Inputs)
             self.topLevelOperator.InputSelection.setValue( index )
         self.drawer.inputSelectionCombo.currentIndexChanged.connect( _handleInputComboSelectionChanged )
 
