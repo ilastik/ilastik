@@ -25,6 +25,7 @@ import logging
 import itertools
 import threading
 import functools
+import warnings
 
 #SciPy
 import numpy
@@ -508,19 +509,29 @@ class Slot(object):
                     partner.notifyValueChanged(self._sig_value_changed)
 
         except:
-            # If anything went wrong, we revert to the disconnected state.
             try:
-                exc_info = sys.exc_info()
-                self.disconnect()
-            except:
-                # Well, this is bad.  We caused an exception while handling an exception.
-                # We're more interested in the FIRST excpetion, so print this one out and
-                #  continue unwinding the stack with the first one.
-                self.logger.error("Error: Caught a secondary exception while handling a different exception.")                
-                import traceback
-                traceback.print_exc() 
-                raise exc_info[0], exc_info[1], exc_info[2]
-            raise
+                raise
+            finally:
+                try:
+                    # We would like to clean up by calling self.disconnect()
+                    # ... but if that raises an exception, it OVERWRITES the original exception.
+                    # This complicated nest of try/except/finally is supposed to prevent that from happening.
+                    # For example, see the bottom of this site:
+                    # http://doughellmann.com/2009/06/19/python-exception-handling-techniques.html
+                    # And yet, that DOESN'T work here for some unknown reason.
+                    # Hence, we can't actually clean up.
+                    # What a bummer.
+
+                    ##self.disconnect() # commented out because it might throw and hide the original exception. See note above.
+                    pass
+                except:
+                    # Well, this is bad.  We caused an exception while handling an exception.
+                    # We're more interested in the FIRST excpetion, so print this one out and
+                    #  continue unwinding the stack with the first one.
+                    self.logger.error("Error: Caught a secondary exception while handling a different exception.")                
+                    import traceback
+                    traceback.print_exc()
+                    pass
             
 
     @is_setup_fn    
@@ -709,7 +720,12 @@ class Slot(object):
                 msg = "Can't get data from slot {}.{} yet."\
                       " It isn't ready."\
                       "First upstream problem slot is: {}"
-                msg = msg.format( self.getRealOperator().__class__, self.name, Slot._findUpstreamProblemSlot(self) )
+                problem_slot = Slot._findUpstreamProblemSlot(self)
+                problem_str = str( problem_slot )
+                if isinstance( problem_slot, Slot ):
+                    problem_op = problem_slot.getRealOperator()
+                    problem_str = problem_op.name + '/' + str( problem_slot )
+                msg = msg.format( self.getRealOperator().__class__, self.name, problem_str )
                 raise Slot.SlotNotReadyError(msg)
 
             # If someone is asking for data from an inputslot that has
@@ -894,10 +910,15 @@ class Slot(object):
                     msg = "This slot ({}.{}) isn't ready yet, which means " \
                           "you can't ask for its data.  Is it connected?".format(self.getRealOperator().name, self.name)
                     self.logger.error(msg)
+                    problem_slot = Slot._findUpstreamProblemSlot(self)
+                    problem_str = str( problem_slot )
+                    if isinstance( problem_slot, Slot ):
+                        problem_op = problem_slot.getRealOperator()
+                        problem_str = problem_op.name + '/' + str( problem_slot )
                     slotInfoMsg = "Can't get data from slot {}.{} yet."\
                                   " It isn't ready."\
                                   "First upstream problem slot is: {}"\
-                                  "".format( self.getRealOperator().__class__, self.name, Slot._findUpstreamProblemSlot(self) )
+                                  "".format( self.getRealOperator().__class__, self.name, problem_str )
                     self.logger.error(slotInfoMsg)
                     raise Slot.SlotNotReadyError("Slot isn't ready.  See error log.")
                 assert self.meta.shape is not None, \
@@ -984,9 +1005,9 @@ class Slot(object):
         elif isinstance(temp, list):
             return temp[0]
         else:
-            self.logger.warn("FIXME: Slot.value for slot {} is {},"
-                             " which should be wrapped in an ndarray.".format(
-                                 self.name, temp))
+            warnings.warn("FIXME: Slot.value for slot {} is {},"
+                          " which should be wrapped in an ndarray."
+                          .format(self.name, temp))
             return temp
 
     @is_setup_fn    
@@ -1080,17 +1101,28 @@ class Slot(object):
                     self.setDirty(slice(None))
         except:
             try:
-                exc_info = sys.exc_info()
-                self.disconnect()
-            except:
-                # Well, this is bad.  We caused an exception while handling an exception.
-                # We're more interested in the FIRST excpetion, so print this one out and
-                #  continue unwinding the stack with the first one.
-                self.logger.error("Error: Caught a secondary exception while handling a different exception.")                
-                import traceback
-                traceback.print_exc() 
-                raise exc_info[0], exc_info[1], exc_info[2]
-            raise
+                raise
+            finally:
+                try:
+                    # We would like to clean up by calling self.disconnect()
+                    # ... but if that raises an exception, it OVERWRITES the original exception.
+                    # This complicated nest of try/except/finally is supposed to prevent that from happening.
+                    # For example, see the bottom of this site:
+                    # http://doughellmann.com/2009/06/19/python-exception-handling-techniques.html
+                    # And yet, that DOESN'T work here for some unknown reason.
+                    # Hence, we can't actually clean up.
+                    # What a bummer.
+
+                    ##self.disconnect() # commented out because it might throw and hide the original exception. See note above.
+                    pass
+                except:
+                    # Well, this is bad.  We caused an exception while handling an exception.
+                    # We're more interested in the FIRST excpetion, so print this one out and
+                    #  continue unwinding the stack with the first one.
+                    self.logger.error("Error: Caught a secondary exception while handling a different exception.")                
+                    import traceback
+                    traceback.print_exc()
+                    pass
 
     @is_setup_fn    
     def setValues(self, values):
