@@ -39,6 +39,7 @@ class OpReorderAxes(Operator):
         
         tagged_ideal_blockshape = None
         if self.Input.meta.ideal_blockshape is not None:
+            assert len( input_order) == len(self.Input.meta.ideal_blockshape)
             tagged_ideal_blockshape = collections.OrderedDict( zip( input_order, self.Input.meta.ideal_blockshape ) )
 
         # Check for errors
