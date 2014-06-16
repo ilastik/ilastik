@@ -246,7 +246,7 @@ class OpBlockwiseObjectClassification( Operator ):
             if dict(rawTaggedShape) != dict(binTaggedShape):
                 msg = "Raw data and other data must have equal dimensions (different channels are okay).\n"\
                       "Your datasets have shapes: {} and {}".format( self.RawImage.meta.shape, self.BinaryImage.meta.shape )
-                raise DatasetConstraintError( "Layer Viewer", msg )
+                raise DatasetConstraintError( "Blockwise Object Classification", msg )
         
         self.PredictionImage.meta.assignFrom( self.RawImage.meta )
         self.PredictionImage.meta.dtype = numpy.uint8 # Ultimately determined by meta.mapping_dtype from OpRelabelSegmentation
