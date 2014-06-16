@@ -7,6 +7,7 @@ logger = logging.getLogger(__name__)
 
 import h5py
 import numpy
+import csv
 
 def write_numpy_structured_array_to_HDF5(fid, internalPath, data, overwrite = False):
     """
@@ -111,6 +112,7 @@ class OpExportToKnime(Operator):
         super(OpExportToKnime, self).__init__(*args, **kwargs)
         self.imagePerObject = False
         self.imagePerTime = False
+        self.delim = "\t"
         
     def setupOutputs(self):
         self.imagePerObject = self.ImagePerObject.value
@@ -240,10 +242,17 @@ class OpExportToKnime(Operator):
             write_numpy_structured_array_to_HDF5(fout, "tables/ImagePathTable", image_paths, True)
         
     def write_to_csv(self, table):
+        
         with open(self.OutputFileName.value, "w") as fout:
-            for sublist in table:
-                fout.write(' '.join([str(item) for item in sublist])+"\n")
+            names = table.dtype.names
+            header = self.delim.join(names)
+
+            fout.write(header+"\n")
             
+            for sublist in table:
+                fout.write(self.delim.join([str(item) for item in sublist])+"\n")
+        
+        
         
         
     def run_export(self, constraints={}):
