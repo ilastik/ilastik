@@ -542,12 +542,12 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         return new_labels, old_labels_lost, new_labels_lost
 
 
-    def exportTable(self, lane):
+    def createExportTable(self, lane):
         numLanes = len(self.SegmentationImages)
         assert lane < numLanes, \
             "Can't export features for lane {} (only {} lanes exist)"\
             .format( lane, numLanes )
-        return self.opPredict[lane].exportTable()
+        return self.opPredict[lane].createExportTable()
     
     def addLane(self, laneIndex):
         numLanes = len(self.SegmentationImages)
@@ -946,13 +946,14 @@ class OpObjectPredict(Operator):
         self.Probabilities.setDirty(())
         self.ProbabilityChannels.setDirty(())
 
-    def exportTable(self):
+    def createExportTable(self):
         if not self.Predictions.ready() or not self.Features.ready():
             return None
         
         features = self.Features([]).wait()
-        feature_table = OpObjectExtraction.exportTable(features)
+        feature_table = OpObjectExtraction.createExportTable(features)
         predictions = self.Predictions([]).wait()
+        probs = self.Probabilities([]).wait()
         nobjs = []
         for t, preds in predictions.iteritems():
             nobjs.append(preds.shape[0])
@@ -963,17 +964,30 @@ class OpObjectPredict(Operator):
         else:
             assert nobjs_total==feature_table.shape[0]
             
-            pred_column = numpy.zeros(nobjs_total, {'names': ['prediction'], 'formats': [numpy.dtype(numpy.uint8)]})
-            start = 0
-            finish = start
-            for t, preds in predictions.iteritems():
-                finish = start + nobjs[t]
-                pred_column['prediction'][start:finish] = preds[:]
-                start = finish
-            
-            feature_pred_table = rfn.merge_arrays((feature_table, pred_column), flatten = True, usemask = False)
-        
-            return feature_pred_table 
+            def fill_column(slot_value, column, name, channel=None):
+                start = 0
+                finish = start
+                for t, values in slot_value.iteritems():
+                    finish = start + nobjs[t]
+                    if channel is None:
+                        column[name][start:finish] = values[:]
+                    else:
+                        column[name][start:finish] = values[:, channel]
+                    start = finish
+                    
+            pred_column = numpy.zeros(nobjs_total, {'names': ['Prediction'], 'formats': [numpy.dtype(numpy.uint8)]})
+            fill_column(predictions, pred_column, "Prediction")
+            joint_table = rfn.merge_arrays((feature_table, pred_column), flatten = True, usemask = False)
+            nchannels = probs[0].shape[-1]
+            columns = [feature_table, pred_column]
+            for ich in range(nchannels):
+                prob_column = numpy.zeros(nobjs_total, {'names': ['Probability of class %d'%ich], \
+                                                      'formats': [numpy.dtype(numpy.float32)]})
+                fill_column(probs, prob_column, 'Probability of class %d'%ich, ich)
+                columns.append(prob_column)
+                
+            joint_table = rfn.merge_arrays(columns, flatten = True, usemask = False)
+            return joint_table
 
 
 

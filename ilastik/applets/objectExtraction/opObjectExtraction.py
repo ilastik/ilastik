@@ -738,7 +738,7 @@ class OpObjectExtraction(Operator):
         #  so all calls to __setitem__ are forwarded automatically
 
     @staticmethod
-    def exportTable(features):
+    def createExportTable(features):
         ''' This function takes the features as produced by the RegionFeatures slot
             and transforms them into a flat table, which is later used for exporting
             object-level data to csv and h5 files. The columns of the table are as follows:
@@ -772,8 +772,8 @@ class OpObjectExtraction(Operator):
                     
         nchannels += 2 #true channels + time value + explicit object id
         
-        dtype_names.insert(0, "time")
-        dtype_names.insert(0, "object id")
+        dtype_names.insert(0, "Time")
+        dtype_names.insert(0, "Object id")
         
         # Some versions of numpy can't handle unicode names.
         # Convert to str.
@@ -794,8 +794,8 @@ class OpObjectExtraction(Operator):
         finish = start
         for itime in range(ntimes):
             finish = start+nobjects[itime]
-            table["object id"][start: finish] = np.arange(nobjects[itime])
-            table["time"][start: finish] = itime
+            table["Object id"][start: finish] = np.arange(nobjects[itime])
+            table["Time"][start: finish] = itime
             nfeat = 2
             for plugin_name, plugins in features[itime].iteritems():
                 for feature_name, feature_array in plugins.iteritems():

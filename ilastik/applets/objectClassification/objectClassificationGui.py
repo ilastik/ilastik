@@ -234,7 +234,7 @@ class ObjectClassificationGui(LabelingGui):
                     
                     self._knime_exporter.RawImage.connect(mainOperator.RawImages)
                     self._knime_exporter.CCImage.connect(mainOperator.SegmentationImages)
-                    feature_table = mainOperator.exportTable(0)
+                    feature_table = mainOperator.createExportTable(0)
                     if feature_table is None:
                         return
                     self._knime_exporter.ObjectFeatures.setValue(feature_table)
