@@ -194,6 +194,12 @@ class DataSelectionApplet( Applet ):
                     comp.externalPath = os.path.abspath(comp.externalPath)
                     info.filePath = comp.totalPath()
                 info.nickname = comp.filenameBase
+                
+                # Remove globstring syntax.
+                if '*' in info.nickname:
+                    info.nickname = info.nickname.replace('*', '')
+                if '//' in info.nickname:
+                    info.nickname = PathComponents(info.nickname.split('//')[0]).fileNameBase
                 input_infos.append(info)
     
             opDataSelection = self.topLevelOperator
