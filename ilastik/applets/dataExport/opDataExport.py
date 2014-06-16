@@ -207,7 +207,10 @@ class OpDataExport(Operator):
         abs_dataset_dir, _ = getPathVariants(dataset_dir, self.WorkingDirectory.value)
         known_keys = {}        
         known_keys['dataset_dir'] = abs_dataset_dir
-        known_keys['nickname'] = rawInfo.nickname
+        nickname = rawInfo.nickname.replace('*', '')
+        if '//' in nickname:
+            nickname = PathComponents(nickname.split('//')[0]).fileNameBase
+        known_keys['nickname'] = nickname
 
         # Disconnect to open the 'transaction'
         if self._opImageOnDiskProvider is not None:
