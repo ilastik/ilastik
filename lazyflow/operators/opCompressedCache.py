@@ -58,6 +58,8 @@ class OpCompressedCache(OpCache):
         self._dirtyBlocks = set()
         self._lock = RequestLock()
         self._blockLocks = {}
+        self._cacheInUse = False
+        self._validBlockShape = True
 
 
     def cleanUp(self):
@@ -72,20 +74,40 @@ class OpCompressedCache(OpCache):
         self.CleanBlocks.meta.shape = (1,)
         self.CleanBlocks.meta.dtype = object
 
-        # Clip blockshape to image bounds
         if self.BlockShape.ready():
-            if self._blockshape and tuple(self.BlockShape.value) != self._blockshape:
-                assert len(self._cacheFiles) == 0, \
-                    "It is an error to reconfigure the cache block shape after you have started using it!"
-            self._blockshape = tuple(numpy.minimum( self.BlockShape.value, self.Input.meta.shape ))
+            if self._cacheInUse:
+                # self._blockshape is definitely configured
+                if tuple(self.BlockShape.value) != self._blockshape:
+                    # The block shape changed, but the cache was already in use.
+                    # This is not supported, but it might be that this operator is
+                    # not being used anymore, or that the block shape is reset to
+                    # its original value. Therefore, we throw the error in execute
+                    # rather than in setupOutputs.
+                    self._validBlockShape = False
+                else:
+                    # was reset to a valid shape
+                    self._validBlockShape = True
+            else:
+                # we did not start filling the cache yet, changing the block
+                # shape is safe
+                self._validBlockShape = True
+
+            if self._validBlockShape:
+                # Clip blockshape to image bounds
+                self._blockshape = tuple(numpy.minimum( self.BlockShape.value, self.Input.meta.shape ))
         else:
+            # no block shape given -> use the whole volume as one block
             self._blockshape = self.Input.meta.shape
-        
+
         # Choose optimal chunkshape
         self._chunkshape = self._chooseChunkshape(self._blockshape)
 
 
     def execute(self, slot, subindex, roi, destination):
+        self._cacheInUse = True
+        assert self._validBlockShape,\
+            "It is an error to reconfigure the cache block shape "\
+            "after you have started using it!"
         if slot == self.Output:
             return self._executeOutput(roi, destination)
         elif slot == self.CleanBlocks:
