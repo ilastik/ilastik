@@ -224,7 +224,6 @@ class ObjectClassificationGui(LabelingGui):
             
             dlg = ExportToKnimeDialog(rawLayer, objLayer, computedFeatures)
             if dlg.exec_() == QDialog.Accepted:
-                print "exporting"
                 if self._knime_exporter is None:
                     #topLevelOp = self.topLevelOperatorView.viewed_operator()
                     #imageIndex = topLevelOp.LabelInputs.index( self.topLevelOperatorView.LabelInputs )
@@ -234,21 +233,17 @@ class ObjectClassificationGui(LabelingGui):
                     
                     self._knime_exporter.RawImage.connect(mainOperator.RawImages)
                     self._knime_exporter.CCImage.connect(mainOperator.SegmentationImages)
-                    feature_table = mainOperator.createExportTable(0)
+                    #FIXME: pass the time region here, read it from the GUI somehow?
+                    feature_table = mainOperator.createExportTable(0, [])
                     if feature_table is None:
                         return
                     self._knime_exporter.ObjectFeatures.setValue(feature_table)
                     self._knime_exporter.ImagePerObject.setValue(True)
                     self._knime_exporter.ImagePerTime.setValue(False)
                 
-                success = self._knime_exporter.run_export()
+                success = self._knime_exporter.WriteData([]).wait()
                 print "EXPORTED:", success
                         
-
-            else:
-                print "not exporting" 
-            
-
     @property
     def labelMode(self):
         return self._labelMode
