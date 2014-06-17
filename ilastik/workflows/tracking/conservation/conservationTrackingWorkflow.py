@@ -66,8 +66,13 @@ class ConservationTrackingWorkflow( Workflow ):
                                                                      projectFileGroupName="CountClassification")
                 
         self.trackingApplet = ConservationTrackingApplet( workflow=self )
+        opTracking = self.trackingApplet.topLevelOperator
 
         self.dataExportApplet = TrackingBaseDataExportApplet(self, "Tracking Result Export")
+        
+        opDataExport = self.dataExportApplet.topLevelOperator
+        opDataExport.SelectionNames.setValue( ['Tracking'] )
+        opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
         
         self._applets = []                
         self._applets.append(self.dataSelectionApplet)
@@ -175,9 +180,9 @@ class ConservationTrackingWorkflow( Workflow ):
         opTracking.NumLabels.connect( opCellClassification.NumLabels )        
 #        opTracking.RegionLocalCenters.connect( opObjExtraction.RegionLocalCenters )        
     
-        opDataExport.WorkingDirectory.connect( self.dataSelectionApplet.topLevelOperator.WorkingDirectory )
+        opDataExport.Inputs.resize(1)
+        opDataExport.Inputs[0].connect( opTracking.Output )
         opDataExport.RawData.connect( op5Raw.Output )
-        opDataExport.Input.connect( opTracking.Output )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
 
     def _inputReady(self, nRoles):
@@ -239,7 +244,8 @@ class ConservationTrackingWorkflow( Workflow ):
         self._shell.setAppletEnabled(self.cellClassificationApplet, features_ready and not busy)
         self._shell.setAppletEnabled(self.divisionDetectionApplet, features_ready and not busy)
         self._shell.setAppletEnabled(self.trackingApplet, objectCountClassifier_ready and not busy)
-        self._shell.setAppletEnabled(self.dataExportApplet, tracking_ready and not busy)
+        self._shell.setAppletEnabled(self.dataExportApplet, tracking_ready and not busy and \
+                                    self.dataExportApplet.topLevelOperator.Inputs[0][0].ready() )
         
 
 
