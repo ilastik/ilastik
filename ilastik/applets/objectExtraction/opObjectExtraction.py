@@ -737,11 +737,13 @@ class OpObjectExtraction(Operator):
         #  so all calls to __setitem__ are forwarded automatically
 
     @staticmethod
-    def exportTable(features):
-        #Assume features is the output of our own RegionFeatures slot
-        #Now we have a dict of dicts. Let's make a table
-        
-        #print features
+    def createExportTable(features):
+        ''' This function takes the features as produced by the RegionFeatures slot
+            and transforms them into a flat table, which is later used for exporting
+            object-level data to csv and h5 files. The columns of the table are as follows:
+            (t, object index, feature 1, feature 2, ...). Row-wise object index increases
+            faster than time, so first all objects for time 0 are exported, then for time 1, etc  '''
+       
         ntimes = len(features.keys())
         nplugins = len(features[0].keys())
         nchannels = 0
@@ -767,13 +769,10 @@ class OpObjectExtraction(Operator):
                         dtype_names.append(plugin_name + ", "+ feature_name+"_ch_%d"%ich)
                         dtype_types.append(feature_array.dtype)
                     
-        #print "nchannels:", nchannels, "nobjects:", nobjects
-        #print dtype_names
-        #print dtype_types
         nchannels += 2 #true channels + time value + explicit object id
         
-        dtype_names.insert(0, "time")
-        dtype_names.insert(0, "object id")
+        dtype_names.insert(0, "Time")
+        dtype_names.insert(0, "Object id")
         
         # Some versions of numpy can't handle unicode names.
         # Convert to str.
@@ -793,11 +792,9 @@ class OpObjectExtraction(Operator):
         start = 0
         finish = start
         for itime in range(ntimes):
-            print str(itime) + "/" + str(ntimes)
             finish = start+nobjects[itime]
-            print start, finish
-            table["object id"][start: finish] = np.arange(nobjects[itime])
-            table["time"][start: finish] = itime
+            table["Object id"][start: finish] = np.arange(nobjects[itime])
+            table["Time"][start: finish] = itime
             nfeat = 2
             for plugin_name, plugins in features[itime].iteritems():
                 for feature_name, feature_array in plugins.iteritems():
@@ -807,9 +804,5 @@ class OpObjectExtraction(Operator):
                         nfeat += 1
             start = finish
         
-        #print table
-        #print table['Default features, RegionCenter_ch_1']
-        #print table['object id']
-        #dtype={'names':['col1', 'col2'], 'formats':['i4','f4']}
         return table
         

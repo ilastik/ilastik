@@ -331,7 +331,11 @@ class SerialListSlot(SerialSlot):
         if 'isEmpty' in subgroup.attrs and subgroup.attrs['isEmpty']:
             self.inslot.setValue( self._iterable([]) )
         else:
-            self.inslot.setValue(self._iterable(map(self.transform, subgroup[()])))
+            if len(subgroup.shape) == 0 or subgroup.shape[0] == 0:
+                # How can this happen, anyway...?
+                return
+            else:
+                self.inslot.setValue(self._iterable(map(self.transform, subgroup[()])))
         self.dirty = False
 
 class SerialBlockSlot(SerialSlot):

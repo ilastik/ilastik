@@ -128,7 +128,7 @@ class TestOpRegionFeatures(object):
 
         feats = opAdapt.Output([0, 1]).wait()
         print "feature length:", len(feats)
-        OpObjectExtraction.exportTable(feats)
+        OpObjectExtraction.createExportTable(feats)
 
 
 class testOpRegionFeaturesAgainstNumpy(object):

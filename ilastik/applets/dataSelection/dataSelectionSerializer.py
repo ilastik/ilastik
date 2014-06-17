@@ -163,12 +163,15 @@ class DataSelectionSerializer( AppletSerializer ):
                     infoGroup.create_dataset('datasetId', data=datasetInfo.datasetId)
                     infoGroup.create_dataset('allowLabels', data=datasetInfo.allowLabels)
                     infoGroup.create_dataset('nickname', data=datasetInfo.nickname)
+                    infoGroup.create_dataset('fromstack', data=datasetInfo.fromstack)
                     if datasetInfo.drange is not None:
                         infoGroup.create_dataset('drange', data=datasetInfo.drange)
                     if datasetInfo.axistags is not None:
                         infoGroup.create_dataset('axistags', data=datasetInfo.axistags.toJSON())
                         axisorder = "".join(tag.key for tag in datasetInfo.axistags)
                         infoGroup.create_dataset('axisorder', data=axisorder)
+                    if datasetInfo.subvolume_roi is not None:
+                        infoGroup.create_dataset('subvolume_roi', data=datasetInfo.subvolume_roi)
 
         self._dirty = False
 
@@ -192,6 +195,7 @@ class DataSelectionSerializer( AppletSerializer ):
             info.location = DatasetInfo.Location.ProjectInternal
             firstPathParts = PathComponents(info.filePath.split('//')[0])
             info.filePath = firstPathParts.externalDirectory + '/??' + firstPathParts.extension
+            info.fromstack = True
 
             # Use absolute path
             cwd = self.topLevelOperator.WorkingDirectory
@@ -315,6 +319,13 @@ class DataSelectionSerializer( AppletSerializer ):
             datasetInfo.nickname = PathComponents(datasetInfo.filePath).filenameBase
         
         try:
+            datasetInfo.fromstack = infoGroup['fromstack'].value
+        except KeyError:
+            # Guess based on the storage setting and original filepath
+            datasetInfo.fromstack = ( datasetInfo.location == DatasetInfo.Location.ProjectInternal
+                                      and ( ('?' in datasetInfo._filePath) or ('//' in datasetInfo._filePath) ) )
+
+        try:
             tags = vigra.AxisTags.fromJSON( infoGroup['axistags'].value )
             datasetInfo.axistags = tags
         except KeyError:
@@ -324,6 +335,12 @@ class DataSelectionSerializer( AppletSerializer ):
                 datasetInfo.axistags = vigra.defaultAxistags(axisorder)
             except KeyError:
                 pass
+        
+        try:
+            start, stop = map( tuple, infoGroup['subvolume_roi'].value )
+            datasetInfo.subvolume_roi = (start, stop)
+        except KeyError:
+            pass
         
         # If the data is supposed to be in the project,
         #  check for it now.

@@ -35,7 +35,7 @@ class DataExportApplet( Applet ):
         self.__topLevelOperator = None
         if self.topLevelOperator is None:
             self.__topLevelOperator = OpMultiLaneWrapper( OpDataExport, parent=workflow,
-                                         promotedSlotNames=set(['RawData', 'Input', 'RawDatasetInfo']) )
+                                         promotedSlotNames=set(['RawData', 'Inputs', 'RawDatasetInfo']) )
         # Users can temporarily disconnect the 'transaction' 
         #  slot to force all slots to be applied atomically.
         self.topLevelOperator.TransactionSlot.setValue(True)

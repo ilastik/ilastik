@@ -43,6 +43,7 @@ class Applet( object ):
         self.name = name
         self.syncWithImageIndex = syncWithImageIndex
         self.__interactive = interactive
+        self.busy = False
 
         #: Progress signal.
         #: When the applet is doing something time-consuming, this signal tells the shell to show a progress bar.

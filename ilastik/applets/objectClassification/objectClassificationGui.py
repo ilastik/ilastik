@@ -208,13 +208,13 @@ class ObjectClassificationGui(LabelingGui):
     def menus(self):
         if ilastik_config.getboolean('ilastik', 'debug'):
             m = QMenu("Special Stuff", self.volumeEditorWidget)
-            m.addAction( "Export to Knime" ).triggered.connect(self.exportStuff)
+            m.addAction( "Export to Knime" ).triggered.connect(self.exportObjectInfo)
             mlist = [m]
         else:
             mlist = []
         return mlist
 
-    def exportStuff(self):
+    def exportObjectInfo(self):
         if not self.layerstack or len(self.layerstack)==0:
             print "Wait, nothing defined yet"
             
@@ -238,7 +238,7 @@ class ObjectClassificationGui(LabelingGui):
                     
                     self._knime_exporter.RawImage.connect(mainOperator.RawImages)
                     self._knime_exporter.CCImage.connect(mainOperator.SegmentationImages)
-                    feature_table = mainOperator.exportTable(0)
+                    feature_table = mainOperator.createExportTable(0)
                     if feature_table is None:
                         return
                     self._knime_exporter.ObjectFeatures.setValue(feature_table)

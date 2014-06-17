@@ -53,7 +53,7 @@ from volumina.utility import PreferencesManager, ShortcutManagerDlg, ShortcutMan
 
 # ilastik
 from ilastik.workflow import getAvailableWorkflows, getWorkflowFromName
-from ilastik.utility import bind
+from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
 from ilastik.applets.base.applet import Applet, ShellRequest
 from ilastik.applets.base.appletGuiInterface import AppletGuiInterface, VolumeViewerGui
@@ -301,7 +301,6 @@ class IlastikShell( QMainWindow ):
             assert self._settingsMenu.thread() == self.thread()
 
         self.appletBar.currentChanged.connect(self.handleAppletBarItemExpanded)
-        #self.appletBar.clicked.connect(self.handleAppletBarClick)
         #self.appletBar.setVerticalScrollMode( QAbstractItemView.ScrollPerPixel )
 
         self.currentAppletIndex = 0
@@ -920,18 +919,6 @@ class IlastikShell( QMainWindow ):
         drawerTitleItem = self.appletBar.widget(drawerIndex)
         return self.appletBar.indexOf(drawerTitleItem)
 
-    def handleAppletBarClick(self, modelIndex):
-        #bug #193
-        drawerTitleItem = self.appletBar.widget(modelIndex)
-        if drawerTitleItem.isDisabled():
-            return
-
-        # If the user clicks on a top-level item, automatically expand it.
-        if modelIndex.parent() == self.appletBar.rootIndex():
-            self.appletBar.expand(modelIndex)
-        else:
-            self.appletBar.setCurrentIndex( modelIndex.parent() )
-
     def addApplet( self, applet_index, app ):
         assert isinstance( app, Applet ), "Applets must inherit from Applet base class."
         assert app.base_initialized, "Applets must call Applet.__init__ upon construction."
@@ -1137,8 +1124,9 @@ class IlastikShell( QMainWindow ):
         except ProjectManager.FileMissingError:
             QMessageBox.warning(self, "Missing File", "Could not find project file: " + projectFilePath)
         except:
-            logger.error( traceback.format_exc() )
-            QMessageBox.warning(self, "Corrupted Project", "Unable to open project file: " + projectFilePath)
+            msg = "Corrupted Project", "Unable to open project file: " + projectFilePath
+            log_exception( logger, msg )
+            QMessageBox.warning(self, msg)
         else:
             #as load project can take a while, show a wait cursor
             QApplication.setOverrideCursor(Qt.WaitCursor)
@@ -1177,8 +1165,9 @@ class IlastikShell( QMainWindow ):
                                                   project_creation_args=project_creation_args)
 
         except Exception, e:
-            traceback.print_exc()
-            QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + str(e))
+            msg = "Could not load project file.\n" + str(e)
+            log_exception( logger, msg )
+            QMessageBox.warning(self, "Failed to Load",  msg)
 
             # no project will be loaded, free the file resource
             hdf5File.close()
@@ -1198,7 +1187,7 @@ class IlastikShell( QMainWindow ):
                     assert not readOnly, "Can't import into a read-only file."
                     self.projectManager._importProject(importFromPath, hdf5File, projectFilePath)
             except Exception as ex:
-                traceback.print_exc()
+                log_exception( logger )
                 self.closeCurrentProject()
 
                 # _loadProject failed, so we cannot expect it to clean up
@@ -1519,5 +1508,7 @@ class IlastikShell( QMainWindow ):
                 # Therefore, only disable the title button of a drawer if it isn't already selected.
                 if enabled or self.appletBar.currentIndex() != applet_index:
                     self.appletBar.setItemEnabled(applet_index, enabled)
+                else:
+                    applet.getMultiLaneGui().appletDrawer().setEnabled( enabled )
 
 assert issubclass( IlastikShell, ShellABC ), "IlastikShell does not satisfy the generic shell interface!"
