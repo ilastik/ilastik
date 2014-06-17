@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 import h5py
 import numpy
-import csv
+import math
 
 def write_numpy_structured_array_to_HDF5(fid, internalPath, data, overwrite = False):
     """
@@ -103,10 +103,10 @@ class OpExportToKnime(Operator):
     ObjectFeatures = InputSlot(rtype=List, stype=Opaque)
     ImagePerObject = InputSlot(stype="bool")
     ImagePerTime = InputSlot(stype="bool")
-    FileType = InputSlot(value="csv", stype="str") #can be "csv" or "h5"
-    OutputFileName = InputSlot(value="test_export_for_now.txt", stype="str")
+    FileType = InputSlot(value="h5", stype="str") #can be "csv" or "h5"
+    OutputFileName = InputSlot(value="test_export_for_now.h5", stype="str")
     
-    WriteImage = OutputSlot(stype='bool')
+    WriteData = OutputSlot(stype='bool', rtype=List)
     
     def __init__(self, *args, **kwargs):
         super(OpExportToKnime, self).__init__(*args, **kwargs)
@@ -118,8 +118,10 @@ class OpExportToKnime(Operator):
         self.imagePerObject = self.ImagePerObject.value
         self.imagePerTime = self.ImagePerTime.value
         
-    def execute(self, slot, subindex, roi, result):
-        pass
+        self.WriteData.meta.shape = (1,)
+        self.WriteData.meta.dtype = object
+        
+    
     def propagateDirty(self, slot, subindex, roi): 
         pass
     
@@ -133,11 +135,20 @@ class OpExportToKnime(Operator):
                 newrecarray[name] = a[name]
         return newrecarray
     
-    def write_to_h5(self, table, image_paths, constraints):
+    def write_to_h5(self, table, image_paths, roi):
+        
+        times = roi._l
+        if len(times) == 0:
+            # we assume that 0-length requests are requesting everything
+            times = range(self.RawImage.meta.shape[0])
+        
         with h5py.File(self.OutputFileName.value, "w") as fout:
             gr_images = fout.create_group("images")
             if not self.imagePerObject and not self.imagePerTime:
-                #one image for everything
+                # One image for everything. 
+                # FIXME: what if a subrange in time is requested? Stack different time
+                # values on top of each other?
+                
                 raw_image = self.RawImage[:].wait()
                 cc_image = self.CCImage[:].wait()
                 
@@ -155,11 +166,15 @@ class OpExportToKnime(Operator):
                 
             
             elif self.imagePerObject and not self.imagePerTime:
+                # We export a bounding box image for every object individually
+                raw_shape = self.RawImage.meta.getTaggedShape()
+                nchannels = raw_shape['c']
                 try:
                     minxs = table["Default features, Coord<Minimum>_ch_0"].astype(numpy.int32)
                     minys = table["Default features, Coord<Minimum>_ch_1"].astype(numpy.int32)
                     maxxs = table["Default features, Coord<Maximum>_ch_0"].astype(numpy.int32)
                     maxys = table["Default features, Coord<Maximum>_ch_1"].astype(numpy.int32)
+                    time_values = table["Time"].astype(numpy.int32)
                 except ValueError:
                     logger.info("Object bounding boxes are not passed as features. Object images will not be saved")
                     for i in range(table.shape[0]):
@@ -174,21 +189,25 @@ class OpExportToKnime(Operator):
                         maxzs = None    
                     
                     for i, minx in enumerate(minxs):
-                        bbox = [slice(0, 1, None), slice(minx, maxxs[i], None), slice(minys[i], maxys[i], None)]
+                        bbox = [slice(time_values[i], time_values[i]+1, None), slice(minx, maxxs[i], None), slice(minys[i], maxys[i], None)]
                         if minzs is not None:
                             bbox.append(slice(minzs[i], maxzs[i], None))
                         else:
                             bbox.append(slice(0, 1, None))
-                            #FIXME: only 1 channel!!!!!!!
-                        bbox.append(slice(0, 1, None))
+                        bbox.append(slice(0, nchannels, None))
                         
                         
                         raw_image = self.RawImage[bbox].wait()
                         cc_image = self.CCImage[bbox].wait()
                         
-                        gr_images_obj = gr_images.create_group("{}".format(i))
-                        rawname = "{}/raw".format(i)
-                        ccname = "{}/labels".format(i)
+                        #ensure the right order
+                        ndigits = int(math.floor( math.log10( table.shape[0] ) ) + 1)
+                        formatstring = "{:0>"+str(ndigits)+"d}"
+                        numstring = formatstring.format(i)
+                        
+                        gr_images_obj = gr_images.create_group(numstring)
+                        rawname = numstring+"/raw"
+                        ccname = numstring+"/labels"
                         
                         image_paths["raw"][i] = rawname
                         image_paths["labels"][i] = ccname
@@ -202,22 +221,7 @@ class OpExportToKnime(Operator):
                 assert image_paths.shape[0] == table.shape[0]
             
             elif self.imagePerTime and not self.imagePerObject:
-                # check for constraints passed with function call
-                # FIXME: see above, constraints should be a normal roi
-                try:
-                    if 't' in constraints:                    
-                        tmin = constraints['t']['min']
-                        tmax = constraints['t']['max']
-                    else:
-                        raise Exception("Constraints on an axis have to be defined by 'min' and 'max' value")
-                except:
-                    tmin, tmax = (-1, -1)
-                
-                # sanity check given constraint values
-                tmax = max(min(tmax, self.RawImage.meta.getTaggedShape()['t']), 0)
-                tmin = min(max(tmin, 0), tmax)
-                
-                for t in range(tmin, tmax):                                              
+                for t in times:                                              
                     bbox = [slice(t, t+1, None), slice(None), slice(None), slice(None), slice(None)]      
                     
                     raw_image = self.RawImage[bbox].wait()
@@ -254,7 +258,27 @@ class OpExportToKnime(Operator):
         
         
         
+    def execute(self, slot, subindex, roi, result):
+        assert slot==self.WriteData
+
         
+        #request the right time values from the feature table? But then it has to be a slot!
+        #the correct requesting has to happen before
+        table = self.ObjectFeatures.value
+        filetype = self.FileType.value
+        if filetype=="h5":
+            if not self.RawImage.ready() or not self.CCImage.ready():
+                logger.info("Image slots are not ready for export!")
+                result[0] = False
+                return
+            image_paths = numpy.zeros(table.shape[0], dtype={"names":["raw", "labels"], "formats":['a50', 'a50']})
+            self.write_to_h5(table, image_paths, roi)
+        elif filetype=="csv":
+            self.write_to_csv(table)
+        
+        # We're finished.
+        result[0] = True
+    
     def run_export(self, constraints={}):
         #FIXME: constraints should be replaced by a real roi, like we 
         #usually do in execute() functions
