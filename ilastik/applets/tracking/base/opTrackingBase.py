@@ -179,7 +179,7 @@ class OpTrackingBase(Operator):
         mergers = []
         mergers.append({})
         
-        maxId = 1 #  misdetections have id 1
+        maxId = 2 #  misdetections have id 1
         
         # handle start time offsets
         for i in range(time_range[0]):            
@@ -204,33 +204,33 @@ class OpTrackingBase(Operator):
                         
             for e in app:
                 if successive_ids:
-                    label2color[-1][e[0]] = maxId
+                    label2color[-1][int(e[0])] = maxId
                     maxId += 1
                 else:
-                    label2color[-1][e[0]] = np.random.randint(1, 255)
+                    label2color[-1][int(e[0])] = np.random.randint(1, 255)
 
             for e in mov:                
-                if not label2color[-2].has_key(e[0]):
+                if not label2color[-2].has_key(int(e[0])):
                     if successive_ids:
-                        label2color[-2][e[0]] = maxId
+                        label2color[-2][int(e[0])] = maxId
                         maxId += 1
                     else:
-                        label2color[-2][e[0]] = np.random.randint(1, 255)
-                label2color[-1][e[1]] = label2color[-2][e[0]]
+                        label2color[-2][int(e[0])] = np.random.randint(1, 255)
+                label2color[-1][int(e[1])] = label2color[-2][int(e[0])]
 
             for e in div:
-                if not label2color[-2].has_key(e[0]):
+                if not label2color[-2].has_key(int(e[0])):
                     if successive_ids:
-                        label2color[-2][e[0]] = maxId
+                        label2color[-2][int(e[0])] = maxId
                         maxId += 1
                     else:
-                        label2color[-2][e[0]] = np.random.randint(1, 255)
-                ancestor_color = label2color[-2][e[0]]
-                label2color[-1][e[1]] = ancestor_color
-                label2color[-1][e[2]] = ancestor_color
+                        label2color[-2][int(e[0])] = np.random.randint(1, 255)
+                ancestor_color = label2color[-2][int(e[0])]
+                label2color[-1][int(e[1])] = ancestor_color
+                label2color[-1][int(e[2])] = ancestor_color
             
             for e in merger:
-                mergers[-1][e[0]] = e[1]
+                mergers[-1][int(e[0])] = int(e[1])
                 
         # mark the filtered objects
         for i in filtered_labels.keys():
