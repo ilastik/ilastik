@@ -43,6 +43,12 @@ try:
 except ImportError as e:
     logger.warn("Failed to import counting workflow; check dependencies: " + str(e))
 
+try:
+    import connectedComponents
+except ImportError as e:
+    logger.warn("Failed to import connected components workflow; check dependencies: " + str(e))
+
+
 
 # Examples
 import ilastik.config
