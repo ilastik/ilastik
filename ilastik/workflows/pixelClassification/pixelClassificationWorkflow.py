@@ -51,6 +51,8 @@ class PixelClassificationWorkflow(Workflow):
     DATA_ROLE_RAW = 0
     DATA_ROLE_PREDICTION_MASK = 1
     
+    EXPORT_NAMES = ['Probabilities', 'Simple Segmentation', 'Uncertainty']
+    
     @property
     def applets(self):
         return self._applets
@@ -122,7 +124,7 @@ class PixelClassificationWorkflow(Workflow):
         opDataExport.PmapColors.connect( opClassify.PmapColors )
         opDataExport.LabelNames.connect( opClassify.LabelNames )
         opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
-        opDataExport.SelectionNames.setValue( ['Probabilities', 'Simple Segmentation'] )        
+        opDataExport.SelectionNames.setValue( self.EXPORT_NAMES )        
 
         # Expose for shell
         self._applets.append(self.projectMetadataApplet)
@@ -182,9 +184,12 @@ class PixelClassificationWorkflow(Workflow):
         opDataExport.RawData.connect( opData.ImageGroup[self.DATA_ROLE_RAW] )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[self.DATA_ROLE_RAW] )
         opDataExport.ConstraintDataset.connect( opData.ImageGroup[self.DATA_ROLE_RAW] )
-        opDataExport.Inputs.resize(2)
+        opDataExport.Inputs.resize( len(self.EXPORT_NAMES) )
         opDataExport.Inputs[0].connect( opClassify.HeadlessPredictionProbabilities )
         opDataExport.Inputs[1].connect( opClassify.SimpleSegmentation )
+        opDataExport.Inputs[2].connect( opClassify.HeadlessUncertaintyEstimate )
+        for slot in opDataExport.Inputs:
+            assert slot.partner is not None
 
     def _initBatchWorkflow(self):
         """
@@ -219,6 +224,7 @@ class PixelClassificationWorkflow(Workflow):
         opTranspose = OpTransposeSlots( parent=self )
         opTranspose.OutputLength.setValue(2) # There are 2 roles
         opTranspose.Inputs.connect( opBatchInputs.DatasetGroup )
+        opTranspose.name = "batchTransposeInputs"
         
         # Provide dataset paths from data selection applet to the batch export applet
         opBatchResults.RawDatasetInfo.connect( opTranspose.Outputs[self.DATA_ROLE_RAW] )
@@ -246,14 +252,18 @@ class PixelClassificationWorkflow(Workflow):
         opBatchPredictionPipeline.PredictionMask.connect( opBatchInputs.Image1 )
         opBatchPredictionPipeline.FeatureImages.connect( opBatchFeatures.OutputImage )
 
-        opBatchResults.SelectionNames.setValue( ['Probabilities', 'Simple Segmentation'] )        
+        opBatchResults.SelectionNames.setValue( self.EXPORT_NAMES )        
         # opBatchResults.Inputs is indexed by [lane][selection],
         # Use OpTranspose to allow connection.
         opTransposeBatchInputs = OpTransposeSlots( parent=self )
+        opTransposeBatchInputs.name = "opTransposeBatchInputs"
         opTransposeBatchInputs.OutputLength.setValue(0)
-        opTransposeBatchInputs.Inputs.resize(2)
+        opTransposeBatchInputs.Inputs.resize( len(self.EXPORT_NAMES) )
         opTransposeBatchInputs.Inputs[0].connect( opBatchPredictionPipeline.HeadlessPredictionProbabilities ) # selection 0
         opTransposeBatchInputs.Inputs[1].connect( opBatchPredictionPipeline.SimpleSegmentation ) # selection 1
+        opTransposeBatchInputs.Inputs[2].connect( opBatchPredictionPipeline.HeadlessUncertaintyEstimate ) # selection 2
+        for slot in opTransposeBatchInputs.Inputs:
+            assert slot.partner is not None
         
         # Now opTransposeBatchInputs.Outputs is level-2 indexed by [lane][selection]
         opBatchResults.Inputs.connect( opTransposeBatchInputs.Outputs )
