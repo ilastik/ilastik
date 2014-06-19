@@ -506,6 +506,11 @@ class IlastikShell( QMainWindow ):
             pos += 1
 
     def openFileAndCloseStartscreen(self,path):
+        if self.projectManager is not None:
+            # If the user double-clicked a "recent project" button,
+            #  then this handler function might get called twice.
+            # In that case, just ignore the second click.
+            return
         #self.startscreen.setParent(None)
         #del self.startscreen
         self.openProjectFile(path)
