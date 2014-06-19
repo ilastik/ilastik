@@ -881,10 +881,19 @@ class OpTransposeSlots(Operator):
         super( OpTransposeSlots, self ).__init__(*args, **kwargs)
 
     def setupOutputs(self):
-        max_input_len = self.OutputLength.value
-        for inslot in self.Inputs:
-            max_input_len = max( len(inslot), max_input_len )
-        self.Outputs.resize( max_input_len )
+        if len( self.Inputs ) == 0:
+            self.Outputs.resize( self.OutputLength.value )
+            for oslot in self.Outputs:
+                oslot.resize(0)
+            return
+
+        # If the inputs are in sync (all inner inputs have the same len)
+        #  then we'll resize the output.
+        # Otherwise, the output is not resized, but its inner slots are 
+        #  still connected if possible or marked 'not ready' otherwise.        
+        input_lens = map( lambda slot: len(slot), self.Inputs )
+        if len( set(input_lens) ) == 1:
+            self.Outputs.resize( max(input_lens[0], self.OutputLength.value ) )
         for j, mslot in enumerate( self.Outputs ):
             mslot.resize( len(self.Inputs) )
             for i, oslot in enumerate( mslot ):
