@@ -693,7 +693,7 @@ class ObjectClassificationGui(LabelingGui):
         label_actions = []
         for l in range(numLabels):
             color_icon = self.labelListData.createIconForLabel(l)
-            act_text = "Label object {} with label {}".format(obj, l+1)
+            act_text = 'Label object {} as "{}"'.format(obj, self.labelListData[l].name)
             act = QAction(color_icon, act_text, menu)
             act.setIconVisibleInMenu(True)
             label_actions.append(act_text)
