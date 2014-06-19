@@ -149,7 +149,7 @@ class Slot(object):
         
         if not hasattr(self, "_type"):
             self._type = None
-        if type(stype) == str:
+        if type(stype) is str:
             stype = ArrayLike
         self.partners = []
         self.name = name
@@ -424,17 +424,17 @@ class Slot(object):
 
             my_op = self.getRealOperator()
             partner_op = partner.getRealOperator()
-            if not( partner_op.parent == my_op.parent or \
-                    (self._type == "output" and partner_op.parent == my_op) or \
-                    (self._type == "input" and my_op.parent == partner_op) or \
-                    my_op == partner_op):
+            if partner_op and not( partner_op.parent is my_op.parent or \
+                    (self._type == "output" and partner_op.parent is my_op) or \
+                    (self._type == "input" and my_op.parent is partner_op) or \
+                    my_op is partner_op):
                 msg = "It is forbidden to connect slots of operators that are not siblings "\
                       "or not directly related as parent and child."
                 if partner_op.parent is None or my_op.parent is None:
                     msg += "\n(For one of your operators, parent=None.  Was it already cleaned up?"
                 raise Exception(msg)
     
-            if self.partner == partner and partner.level == self.level:
+            if self.partner is partner and partner.level == self.level:
                 return
             if self.level == 0:
                 self.disconnect()
@@ -539,7 +539,7 @@ class Slot(object):
         """
         Disconnect a InputSlot from its partner
         """
-        if self.backpropagate_values and not self.getRealOperator()._cleaningUp:
+        if self.backpropagate_values and self.getRealOperator() and not self.getRealOperator()._cleaningUp:
             if self.partner is not None:
                 self.partner.disconnect()
             return
@@ -560,7 +560,7 @@ class Slot(object):
         oldReady = self.meta._ready
         self.meta = MetaDict()
 
-        if len(self._subSlots) > 0 and not self.getRealOperator()._cleaningUp:
+        if len(self._subSlots) > 0 and self.getRealOperator() and not self.getRealOperator()._cleaningUp:
             self.resize(0)
 
         # call callbacks
@@ -642,8 +642,11 @@ class Slot(object):
             return self[position]
 
         slot =  self._insertNew(position)
+        operator_name = '<NO OPERATOR>'
+        if self.operator:
+            operator_name = self.operator.name
         self.logger.debug("Inserting slot {} into slot {} of operator {} to size {}".format(
-            position, self.name, self.operator.name, finalsize))
+            position, self.name, operator_name, finalsize))
         if propagate:
             if self.partner is not None and self.partner.level == self.level:
                 self.partner.insertSlot(position, finalsize)
@@ -676,8 +679,9 @@ class Slot(object):
         self._sig_remove(self, position, finalsize)
 
         slot = self._subSlots.pop(position)
-        slot.operator = None
         slot.disconnect()
+        slot.operator = None
+        slot._real_operator = None
         if propagate:
             if self.partner is not None and self.partner.level == self.level:
                 self.partner.removeSlot(position, finalsize)
@@ -725,7 +729,7 @@ class Slot(object):
                 if isinstance( problem_slot, Slot ):
                     problem_op = problem_slot.getRealOperator()
                     problem_str = problem_op.name + '/' + str( problem_slot )
-                msg = msg.format( self.getRealOperator().__class__, self.name, problem_str )
+                msg = msg.format( self.getRealOperator() and self.getRealOperator().__class__, self.name, problem_str )
                 raise Slot.SlotNotReadyError(msg)
 
             # If someone is asking for data from an inputslot that has
@@ -748,9 +752,10 @@ class Slot(object):
     def _findUpstreamProblemSlot(slot):
         if slot.partner is not None:
             return Slot._findUpstreamProblemSlot( slot.partner )
-        for inputSlot in slot.getRealOperator().inputs.values():
-            if not inputSlot._optional and not inputSlot.ready():
-                return inputSlot
+        if slot.getRealOperator() is not None:
+            for inputSlot in slot.getRealOperator().inputs.values():
+                if not inputSlot._optional and not inputSlot.ready():
+                    return inputSlot
         return "Couldn't find an upstream problem slot."
 
     class RequestExecutionWrapper(object):
@@ -908,17 +913,20 @@ class Slot(object):
                 Request.raise_if_cancelled()
                 if not self.ready():
                     msg = "This slot ({}.{}) isn't ready yet, which means " \
-                          "you can't ask for its data.  Is it connected?".format(self.getRealOperator().name, self.name)
+                          "you can't ask for its data.  Is it connected?".format(self.getRealOperator() and self.getRealOperator().name, self.name)
                     self.logger.error(msg)
                     problem_slot = Slot._findUpstreamProblemSlot(self)
                     problem_str = str( problem_slot )
                     if isinstance( problem_slot, Slot ):
                         problem_op = problem_slot.getRealOperator()
-                        problem_str = problem_op.name + '/' + str( problem_slot )
+                        if problem_op is not None:
+                            problem_str = problem_op.name + '/' + str( problem_slot )
+                        else:
+                            problem_str = '<NO OPERATOR> /' + str( problem_slot )                            
                     slotInfoMsg = "Can't get data from slot {}.{} yet."\
                                   " It isn't ready."\
                                   "First upstream problem slot is: {}"\
-                                  "".format( self.getRealOperator().__class__, self.name, problem_str )
+                                  "".format( self.getRealOperator() and self.getRealOperator().__class__, self.name, problem_str )
                     self.logger.error(slotInfoMsg)
                     raise Slot.SlotNotReadyError("Slot isn't ready.  See error log.")
                 assert self.meta.shape is not None, \
@@ -1318,7 +1326,7 @@ class Slot(object):
         value in case of self._value != None
 
         """
-        if type(slot) == int:
+        if type(slot) is int:
             index = slot
             slot = self._subSlots[slot]
         else:
