@@ -76,6 +76,7 @@ class OpPixelClassification( Operator ):
 
     HeadlessPredictionProbabilities = OutputSlot(level=1) # Classification predictions ( via no image caches (except for the classifier itself )
     HeadlessUint8PredictionProbabilities = OutputSlot(level=1) # Same as above, but 0-255 uint8 instead of 0.0-1.0 float32
+    HeadlessUncertaintyEstimate = OutputSlot(level=1) # Same as uncertaintly estimate, but does not rely on cached data.
 
     UncertaintyEstimate = OutputSlot(level=1)
     
@@ -166,6 +167,7 @@ class OpPixelClassification( Operator ):
         self.SegmentationChannels.connect( self.opPredictionPipeline.SegmentationChannels )
         self.UncertaintyEstimate.connect( self.opPredictionPipeline.UncertaintyEstimate )
         self.SimpleSegmentation.connect( self.opPredictionPipeline.SimpleSegmentation )
+        self.HeadlessUncertaintyEstimate.connect( self.opPredictionPipeline.HeadlessUncertaintyEstimate )
 
         def inputResizeHandler( slot, oldsize, newsize ):
             if ( newsize == 0 ):
@@ -339,6 +341,7 @@ class OpPredictionPipelineNoCache(Operator):
     HeadlessPredictionProbabilities = OutputSlot() # drange is 0.0 to 1.0
     HeadlessUint8PredictionProbabilities = OutputSlot() # drange 0 to 255
     SimpleSegmentation = OutputSlot()
+    HeadlessUncertaintyEstimate = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super( OpPredictionPipelineNoCache, self ).__init__( *args, **kwargs )
@@ -364,6 +367,11 @@ class OpPredictionPipelineNoCache(Operator):
         self.opArgmaxChannel = OpArgmaxChannel( parent=self )
         self.opArgmaxChannel.Input.connect( self.cacheless_predict.PMaps )
         self.SimpleSegmentation.connect( self.opArgmaxChannel.Output )
+        
+        # Create a layer for uncertainty estimate
+        self.opUncertaintyEstimator = OpEnsembleMargin( parent=self )
+        self.opUncertaintyEstimator.Input.connect( self.cacheless_predict.PMaps )
+        self.HeadlessUncertaintyEstimate.connect( self.opUncertaintyEstimator.Output )
 
     def setupOutputs(self):
         pass
