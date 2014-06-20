@@ -173,7 +173,7 @@ class OpArrayCache(OpCache):
         #if a request has been submitted to get a block, the request object
         #is stored within this array
         self._blockQuery = numpy.ndarray(self._dirtyShape, dtype=object)
-       
+        
         #keep track of the dirty state of each block
         self._blockState = OpArrayCache.DIRTY * numpy.ones(self._dirtyShape, numpy.uint8)
     
@@ -204,6 +204,7 @@ class OpArrayCache(OpCache):
 
         if self.inputs["blockShape"].ready() and self.inputs["Input"].ready():
             newBShape = self.inputs["blockShape"].value
+            assert numpy.issubdtype(type(newBShape), numpy.integer) or all( map(lambda x: numpy.issubdtype(type(x), numpy.integer), newBShape) )
             if self._origBlockShape != newBShape and self.inputs["Input"].ready():
                 reconfigure = True
             self._origBlockShape = newBShape
