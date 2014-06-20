@@ -543,16 +543,20 @@ class SerialCountingSlot(SerialSlot):
         with h5py.File(cachePath, 'w') as cacheFile:
             cacheFile.copy(classifierGroup, self.name)
 
-        forests = []
-        for name, forestGroup in sorted(classifierGroup.items()):
-            targetname = '{0}/{1}'.format(self.name, name)
-            #forests.append(vigra.learning.RandomForest(cachePath, targetname))
-            from ilastik.applets.counting.countingsvr import SVR
-            forests.append(SVR.load(cachePath, targetname))
-            
-
-        os.remove(cachePath)
-        os.rmdir(tmpDir)
+        try:
+            forests = []
+            for name, forestGroup in sorted(classifierGroup.items()):
+                targetname = '{0}/{1}'.format(self.name, name)
+                #forests.append(vigra.learning.RandomForest(cachePath, targetname))
+                from ilastik.applets.counting.countingsvr import SVR
+                forests.append(SVR.load(cachePath, targetname))
+        except:
+            warnings.warn( "Wasn't able to deserialize the saved classifier.  "
+                           "It will need to be retrainied" )
+            return
+        finally:
+            os.remove(cachePath)
+            os.rmdir(tmpDir)
 
         # Now force the classifier into our classifier cache. The
         # downstream operators (e.g. the prediction operator) can
