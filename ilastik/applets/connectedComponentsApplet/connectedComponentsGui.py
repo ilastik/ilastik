@@ -31,7 +31,7 @@ from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer
 from volumina.colortables import create_default_16bit
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.utility import bind
-from ilastik.utility.gui import threadRouted 
+from ilastik.utility.gui import threadRouted
 
 # always available
 import numpy as np
@@ -39,8 +39,8 @@ import numpy as np
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
 
-
 _methods = {'vigra': 0, 'lazy': 1}
+
 
 class ConnectedComponentsGui(LayerViewerGui):
 
@@ -55,8 +55,6 @@ class ConnectedComponentsGui(LayerViewerGui):
         self.__cleanup_fns = []
         super(ConnectedComponentsGui, self).__init__(*args, **kwargs)
         self._channelColors = self._createDefault16ColorColorTable()
-
-        #self._onInputMetaChanged()
 
         # connect callbacks last -> avoid undefined behaviour
         self._connectCallbacks()
@@ -80,18 +78,21 @@ class ConnectedComponentsGui(LayerViewerGui):
             widget.installEventFilter(self)
 
         self._updateGuiFromOperator()
-        self.topLevelOperatorView.Input.notifyReady(bind(self._updateGuiFromOperator))
+        self.topLevelOperatorView.Input.notifyReady(
+            bind(self._updateGuiFromOperator))
         self.__cleanup_fns.append(partial(
             self.topLevelOperatorView.Input.unregisterUnready,
             bind(self._updateGuiFromOperator)))
 
-        self.topLevelOperatorView.Input.notifyMetaChanged(bind(self._updateGuiFromOperator))
+        self.topLevelOperatorView.Input.notifyMetaChanged(
+            bind(self._updateGuiFromOperator))
         self.__cleanup_fns.append(partial(
             self.topLevelOperatorView.Input.unregisterMetaChanged,
             bind(self._updateGuiFromOperator)))
 
     def _connectCallbacks(self):
-        self._drawer.applyButton.clicked.connect(bind(self._onApplyButtonClicked))
+        self._drawer.applyButton.clicked.connect(
+            bind(self._onApplyButtonClicked))
 
     @threadRouted
     def _updateGuiFromOperator(self):
@@ -109,6 +110,9 @@ class ConnectedComponentsGui(LayerViewerGui):
 
     def _onApplyButtonClicked(self):
         self._updateOperatorFromGui()
+        for layer in self.layerstack:
+            if "Connect" in layer.name:
+                layer.visible = True
         self.updateAllLayers()
 
     def eventFilter(self, watched, event):
@@ -134,10 +138,10 @@ class ConnectedComponentsGui(LayerViewerGui):
         if op.CachedOutput.ready():
             outputSrc = LazyflowSource(op.CachedOutput)
             outputLayer = ColortableLayer(outputSrc, ct)
-            outputLayer.name = "Final output"
+            outputLayer.name = "Connected Components"
             outputLayer.visible = False
             outputLayer.opacity = 1.0
-            outputLayer.setToolTip("Results of thresholding and size filter")
+            outputLayer.setToolTip("Results of connected component analysis")
             layers.append(outputLayer)
 
         rawSlot = self.topLevelOperatorView.Input
