@@ -384,6 +384,10 @@ class OpPredictionPipelineNoCache(Operator):
         pass
 
 class OpArgmaxChannel( Operator ):
+    """
+    At each pixel output the index of the channel with the highest value.
+    NOTE: The index is incremented, so the returned channel indexes are 1-based (not 0-based).
+    """
     Input = InputSlot()
     Output = OutputSlot()
     
