@@ -229,7 +229,7 @@ class OpArrayCache(OpCache):
             self.Output.meta.ram_usage_per_requested_pixel = ram_per_pixel
 
         shape = self.Output.meta.shape
-        if reconfigure and shape is not None:
+        if (self._dirtyShape is None or reconfigure) and shape is not None:
             with self._lock:
                 self._allocateManagementStructures()
                 if not self._lazyAlloc:
