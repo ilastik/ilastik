@@ -164,8 +164,8 @@
                    <rect>
                     <x>0</x>
                     <y>0</y>
-                    <width>678</width>
-                    <height>543</height>
+                    <width>672</width>
+                    <height>526</height>
                    </rect>
                   </property>
                   <property name="sizePolicy">
@@ -195,10 +195,13 @@
                        <property name="orientation">
                         <enum>Qt::Vertical</enum>
                        </property>
+                       <property name="sizeType">
+                        <enum>QSizePolicy::Fixed</enum>
+                       </property>
                        <property name="sizeHint" stdset="0">
                         <size>
                          <width>20</width>
-                         <height>1</height>
+                         <height>20</height>
                         </size>
                        </property>
                       </spacer>
@@ -224,14 +227,17 @@
                       </widget>
                      </item>
                      <item>
-                      <spacer name="verticalSpacer_6">
+                      <spacer name="verticalSpacer_7">
                        <property name="orientation">
                         <enum>Qt::Vertical</enum>
+                       </property>
+                       <property name="sizeType">
+                        <enum>QSizePolicy::Fixed</enum>
                        </property>
                        <property name="sizeHint" stdset="0">
                         <size>
                          <width>20</width>
-                         <height>1</height>
+                         <height>20</height>
                         </size>
                        </property>
                       </spacer>
@@ -248,6 +254,19 @@
                         <string>Open Recent Project</string>
                        </property>
                       </widget>
+                     </item>
+                     <item>
+                      <spacer name="verticalSpacer_6">
+                       <property name="orientation">
+                        <enum>Qt::Vertical</enum>
+                       </property>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>20</width>
+                         <height>1</height>
+                        </size>
+                       </property>
+                      </spacer>
                      </item>
                     </layout>
                    </item>
