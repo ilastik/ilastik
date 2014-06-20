@@ -76,7 +76,7 @@ from ilastik.shell.gui.messageServer import MessageServer
 # Import all known workflows now to make sure they are all registered with getWorkflowFromName()
 import ilastik.workflows
 
-ILASTIKFont = QFont("Helvetica",10,QFont.Bold)
+ILASTIKFont = QFont("Helvetica",12,QFont.Bold)
 
 logger = logging.getLogger(__name__)
 
@@ -475,7 +475,11 @@ class IlastikShell( QMainWindow ):
                 text = "{0} ({1})".format(compressedpath,compressedworkflow)
                 b.setText(text)
                 b.clicked.connect(partial(self.openFileAndCloseStartscreen,path))
-                self.startscreen.VL1.insertWidget(self.startscreen.VL1.count(),b)
+                
+                # Insert the new button after all the other controls, 
+                #  but before the vertical spacer at the end of the list.
+                insertion_index = self.startscreen.VL1.count()-1
+                self.startscreen.VL1.insertWidget(insertion_index, b)
                 self.openFileButtons.append(b)
 
     def _loaduifile(self):
