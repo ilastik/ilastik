@@ -133,8 +133,8 @@ class CountingGui(LabelingGui):
         labelSlots = LabelingGui.LabelingSlots()
         labelSlots.labelInput = topLevelOperatorView.LabelInputs
         labelSlots.labelOutput = topLevelOperatorView.LabelImages
-        labelSlots.labelEraserValue = topLevelOperatorView.opLabelPipeline.opLabelArray.eraser
-        labelSlots.labelDelete = topLevelOperatorView.opLabelPipeline.opLabelArray.deleteLabel
+        labelSlots.labelEraserValue = topLevelOperatorView.opLabelPipeline.opLabelArray.EraserLabelValue
+        labelSlots.labelDelete = topLevelOperatorView.opLabelPipeline.opLabelArray.DeleteLabel
         labelSlots.maxLabelValue = topLevelOperatorView.MaxLabelValue
         labelSlots.labelsAllowed = topLevelOperatorView.LabelsAllowedFlags
         labelSlots.labelNames = topLevelOperatorView.LabelNames
@@ -651,15 +651,17 @@ class CountingGui(LabelingGui):
 
 
 
-        slots = {'Prediction' : self.op.Density, 'LabelPreview': self.op.LabelPreview, 'Uncertainty' :
-                 self.op.UncertaintyEstimate}
+        slots = { 'Prediction' : (self.op.Density, 0.5), 
+                 'LabelPreview': (self.op.LabelPreview, 1.0), 
+                 'Uncertainty' : (self.op.UncertaintyEstimate, 1.0) }
 
-        for name, slot in slots.items():
+        for name, (slot, opacity) in slots.items():
             if slot.ready():
                 from volumina import colortables
                 layer = ColortableLayer(LazyflowSource(slot), colorTable = countingColorTable, normalize =
                                        (0,self.upperBound))
                 layer.name = name
+                layer.opacity = opacity
                 layer.visible = self.labelingDrawerUi.liveUpdateButton.isChecked()
                 layers.append(layer)
 

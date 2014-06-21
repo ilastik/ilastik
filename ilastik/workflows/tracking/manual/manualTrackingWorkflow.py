@@ -66,8 +66,13 @@ class ManualTrackingWorkflow( Workflow ):
                                                              workflow=self, interactive=False)
         
         self.trackingApplet = ManualTrackingApplet( workflow=self )
+        opTracking = self.trackingApplet.topLevelOperator
         self.dataExportApplet = TrackingBaseDataExportApplet(self, "Tracking Result Export")
         
+        opDataExport = self.dataExportApplet.topLevelOperator
+        opDataExport.SelectionNames.setValue( ['Tracking'] )
+        opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
+
         self._applets = []        
         self._applets.append(self.dataSelectionApplet)        
         self._applets.append(self.thresholdTwoLevelsApplet)
@@ -102,10 +107,10 @@ class ManualTrackingWorkflow( Workflow ):
         opTracking.BinaryImage.connect( op5Binary.Output )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
         opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeatures )        
-        
-        opDataExport.WorkingDirectory.connect( self.dataSelectionApplet.topLevelOperator.WorkingDirectory )
+
+        opDataExport.Inputs.resize(1)
+        opDataExport.Inputs[0].connect( opTracking.TrackImage )
         opDataExport.RawData.connect( op5Raw.Output )
-        opDataExport.Input.connect( opTracking.TrackImage )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
     
     def _inputReady(self, nRoles):
@@ -154,4 +159,5 @@ class ManualTrackingWorkflow( Workflow ):
         self._shell.setAppletEnabled(self.thresholdTwoLevelsApplet, input_ready and not busy)
         self._shell.setAppletEnabled(self.objectExtractionApplet, thresholding_ready and not busy)        
         self._shell.setAppletEnabled(self.trackingApplet, features_ready and not busy)
-        self._shell.setAppletEnabled(self.dataExportApplet, tracking_ready and not busy)
+        self._shell.setAppletEnabled(self.dataExportApplet, tracking_ready and not busy and \
+                                        self.dataExportApplet.topLevelOperator.Inputs[0][0].ready() )

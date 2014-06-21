@@ -363,7 +363,7 @@ class ObjectClassificationWorkflow(Workflow):
                 # Export the CSV
                 csv_filename = self._export_args.table_filename
                 if csv_filename:
-                    feature_table = opSingleBlockClassify._opPredict.exportTable()
+                    feature_table = opSingleBlockClassify._opPredict.createExportTable([])
                     if len(self.opBatchClassify) > 1:
                         base, ext = os.path.splitext( csv_filename )
                         csv_filename = base + '-' + str(lane_index) + ext
