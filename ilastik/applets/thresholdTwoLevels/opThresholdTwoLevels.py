@@ -38,7 +38,7 @@ from lazyflow.rtype import SubRegion
 from lazyflow.request import Request, RequestPool
 
 # local
-from thresholdingTools import OpAnisotropicGaussianSmoothing
+from thresholdingTools import OpAnisotropicGaussianSmoothing5d
 from thresholdingTools import OpSelectLabels
 
 from opGraphcutSegment import haveGraphCut
@@ -107,31 +107,17 @@ class OpThresholdTwoLevels(Operator):
         self._opReorder1.AxisOrder.setValue('txyzc')
         self._opReorder1.Input.connect(self.InputImage)
 
-        # slice in time for anisotropic gauss
-        self._opTimeSlicer = OpMultiArraySlicer(parent=self)
-        self._opTimeSlicer.AxisFlag.setValue('t')
-        self._opTimeSlicer.Input.connect(self._opReorder1.Output)
-        assert self._opTimeSlicer.Slices.level == 1
-
-        self._opChannelSelector = OperatorWrapper(OpSingleChannelSelector, parent=self)
-        self._opChannelSelector.Input.connect(self._opTimeSlicer.Slices)
+        self._opChannelSelector = OpSingleChannelSelector(parent=self)
+        self._opChannelSelector.Input.connect(self._opReorder1.Output)
         self._opChannelSelector.Index.connect(self.Channel)
 
         # anisotropic gauss
-        self._opSmoother = OperatorWrapper(OpAnisotropicGaussianSmoothing,
-                                           parent=self,
-                                           broadcastingSlotNames=['Sigmas'])
+        self._opSmoother = OpAnisotropicGaussianSmoothing5d(parent=self)
         self._opSmoother.Sigmas.connect(self.SmootherSigma)
         self._opSmoother.Input.connect(self._opChannelSelector.Output)
 
-        # stack output again, everything is now going to work for arbitrary dimensions
-        self._smoothStacker = OpMultiArrayStacker(parent=self)
-        self._smoothStacker.AxisFlag.setValue('t')
-        self._smoothStacker.AxisIndex.setValue(0)
-        self._smoothStacker.Images.connect(self._opSmoother.Output)
-
         # debug output
-        self.Smoothed.connect(self._smoothStacker.Output)
+        self.Smoothed.connect(self._opSmoother.Output)
 
         # single threshold operator
         self.opThreshold1 = _OpThresholdOneLevel(parent=self)
