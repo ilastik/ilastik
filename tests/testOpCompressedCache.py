@@ -245,15 +245,11 @@ class TestOpCompressedCache( object ):
         opData1 = OpArrayPiper(graph=graph)
         opData1.Input.setValue(vol1)
 
-        opData2 = OpArrayPiper(graph=graph)
-        opData2.Input.setValue(vol1)
-
         op = OpCompressedCache(graph=graph)
         op.Input.connect(opData1.Output)
         op.BlockShape.setValue((200, 100, 10))
         out = op.Output[...].wait()
 
-        #op.Input.connect(opData2.Output)
         op.BlockShape.setValue((50, 100, 10))
 
         # this must throw an exception
