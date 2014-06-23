@@ -144,6 +144,15 @@ class ConnectedComponentsGui(LayerViewerGui):
             outputLayer.setToolTip("Results of connected component analysis")
             layers.append(outputLayer)
 
+        if op.Debug.ready():
+            outputSrc = LazyflowSource(op.Debug)
+            outputLayer = ColortableLayer(outputSrc, ct)
+            outputLayer.name = "Debug output"
+            outputLayer.visible = False
+            outputLayer.opacity = 1.0
+            outputLayer.setToolTip("Non-globalized indices")
+            layers.append(outputLayer)
+
         rawSlot = self.topLevelOperatorView.Input
         if rawSlot.ready():
             rawLayer = self.createStandardLayerFromSlot(rawSlot)

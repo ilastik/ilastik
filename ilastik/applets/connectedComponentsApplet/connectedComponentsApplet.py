@@ -20,7 +20,6 @@
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
-#from opConnectedComponents import OpConnectedComponents
 from _OpLabelVolumeChild import OpLabelVolumeChild
 
 

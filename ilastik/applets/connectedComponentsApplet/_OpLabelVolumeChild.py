@@ -8,17 +8,28 @@ import vigra
 from lazyflow.operators.opLabelVolume import OpLabelVolume, OpLabelingABC
 from lazyflow.operators import OperatorWrapper, OpMultiArraySlicer
 from lazyflow.rtype import SubRegion
+from lazyflow.slot import OutputSlot
 
 from lazycc import OpLazyCC
 
 
 class OpLabelVolumeChild(OpLabelVolume):
+    Debug = OutputSlot()
+
     def __init__(self, *args, **kwargs):
         super(OpLabelVolumeChild, self).__init__(*args, **kwargs)
         self._labelOps['lazy'] = _OpLazyCCWrapper
 
+    def setupOutputs(self):
+        super(OpLabelVolumeChild, self).setupOutputs()
+        if self.Method.value == 'lazy':
+            self.Debug.connect(self._opLabel.Debug)
+        else:
+            self.Debug.disconnect()
+            self.Debug.meta.NOTREADY = True
 
 class _OpLazyCCWrapper(OpLabelingABC):
+    Debug = OutputSlot()
     name = "OpLazyConnectedComponents"
     supportedDtypes = [np.uint8, np.uint32, np.float32]
 
@@ -67,6 +78,7 @@ class _OpLazyCCWrapper(OpLabelingABC):
                 #TODO
                 ops[i, j] = op
         self._ops = ops
+        self.Debug.connect(ops[0][0]._NonGlobalOutput)
 
     def _label3d(self, roi, _, result):
         currOp = self._ops[roi.start[3], roi.start[4]]
