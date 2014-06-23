@@ -155,6 +155,7 @@ class OpThresholdTwoLevels(Operator):
 
         #cache our own output, don't propagate from internal operator
         self._cache = _OpCacheWrapper(parent=self)
+        self._cache.name = "OpThresholdTwoLevels.OpCacheWrapper"
         self._cache.Input.connect(self.Output)
         self.CachedOutput.connect(self._cache.Output)
 
@@ -164,11 +165,7 @@ class OpThresholdTwoLevels(Operator):
         self.OutputHdf5.connect(self._cache.OutputHdf5)
 
         #Debug outputs
-        self._inputStacker = OpMultiArrayStacker(parent=self)
-        self._inputStacker.AxisFlag.setValue('t')
-        self._inputStacker.AxisIndex.setValue(0)
-        self._inputStacker.Images.connect(self._opChannelSelector.Output)
-        self.InputChannel.connect(self._inputStacker.Output)
+        self.InputChannel.connect(self._opChannelSelector.Output)
 
     def setupOutputs(self):
 
@@ -489,6 +486,7 @@ class _OpThresholdTwoLevels(Operator):
 #HACK this ensures backwards compatibility by providing serialization slots
 # with xyzct axes
 class _OpCacheWrapper(Operator):
+    name = "OpCacheWrapper"
     Input = InputSlot()
 
     Output = OutputSlot()
@@ -515,11 +513,11 @@ class _OpCacheWrapper(Operator):
         self._cache = None
 
     def setupOutputs(self):
-        self._disconnect()
+        self._disconnectInternals()
 
         # we need a new cache
         cache = OpCompressedCache(parent=self)
-        cache.name = self.parent.name + ".OutputCache"
+        cache.name = self.name + "WrappedCache"
 
         # connect cache outputs
         self.CleanBlocks.connect(cache.CleanBlocks)
@@ -545,7 +543,14 @@ class _OpCacheWrapper(Operator):
     def propagateDirty(self, slot, subindex, roi):
         pass
 
-    def _disconnect(self):
+    def setInSlot(self, slot, subindex, key, value):
+        assert slot == self.InputHdf5,\
+            "setInSlot not implemented for slot {}".format(slot.name)
+        assert self._cache is not None,\
+            "setInSlot called before input was configured"
+        self._cache.setInSlot(self._cache.InputHdf5, subindex, key, value)
+
+    def _disconnectInternals(self):
         self.CleanBlocks.disconnect()
         self.OutputHdf5.disconnect()
         self._op2.Input.disconnect()
