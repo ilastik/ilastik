@@ -1384,7 +1384,10 @@ class Slot(object):
         if self.level > 0 or isinstance(self.operator, Slot):
             mslot_info += "["
             if isinstance(self.operator, Slot):
-                mslot_info += " index={}".format( self.operator.index(self) )
+                if self in self.operator._subSlots:
+                    mslot_info += " index={}".format( self.operator.index(self) )
+                else:
+                    mslot_info += " index=NOTFOUND"
             if self.level > 0:
                 mslot_info += " len={}".format( len(self) )
                 if self.level > 1:
