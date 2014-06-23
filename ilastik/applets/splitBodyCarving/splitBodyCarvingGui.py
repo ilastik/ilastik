@@ -42,6 +42,7 @@ from bodySplitInfoWidget import BodySplitInfoWidget
 from ilastik.applets.labeling.labelingGui import Tool
 
 from ilastik.utility.gui import threadRouted, ThunkEventHandler, ThunkEvent
+from ilastik.utility import log_exception
 
 import logging
 logger = logging.getLogger(__name__)
@@ -131,9 +132,8 @@ class SplitBodyCarvingGui(CarvingGui):
         # (Because this function is running in the context of a dirty notification!)
         req = Request( self.__update_rendering )
         def handle_rendering_failure( exc, exc_info ):
-            import traceback
-            traceback.print_exception(*exc_info)
-            sys.stderr.write("Exception raised during volume rendering update.  See traceack above.\n")
+            msg = "Exception raised during volume rendering update.  See traceack above.\n"
+            log_exception( logger, msg, exc_info )
         req.notify_failed( handle_rendering_failure )
         req.submit()
     

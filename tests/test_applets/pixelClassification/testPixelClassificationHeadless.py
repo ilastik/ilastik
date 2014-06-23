@@ -37,6 +37,8 @@ from ilastik.shell.projectManager import ProjectManager
 from ilastik.shell.headless.headlessShell import HeadlessShell
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
 
+from ilastik.config import cfg as ilastik_config
+
 import logging
 logger = logging.getLogger(__name__)
 #logger.setLevel(logging.DEBUG)
@@ -80,6 +82,10 @@ class TestPixelClassificationHeadless(unittest.TestCase):
         cls.data = numpy.random.random((1,200,200,50,1))
         cls.data *= 256
         numpy.save(cls.SAMPLE_DATA, cls.data.astype(numpy.uint8))
+        
+        cls.SAMPLE_MASK = os.path.join(cls.dir, 'mask.npy')
+        cls.data = numpy.ones((1,200,200,50,1))
+        numpy.save(cls.SAMPLE_MASK, cls.data.astype(numpy.uint8))
 
     @classmethod
     def create_new_tst_project(cls):
@@ -154,7 +160,11 @@ class TestPixelClassificationHeadless(unittest.TestCase):
         args += " --output_format=hdf5"
         args += " --output_filename_format={dataset_dir}/{nickname}_prediction.h5"
         args += " --output_internal_path=volume/pred_volume"
+        args += " --raw_data" # (Specifying the role name like this is optional for pixel classification, unless we are also using a mask...)
         args += " " + self.SAMPLE_DATA
+        if ilastik_config.getboolean('ilastik', 'debug'):
+            args += " --prediction_mask" # (Specifying the role name like this is optional for pixel classification)
+            args += " " + self.SAMPLE_MASK
 
         sys.argv = ['ilastik.py'] # Clear the existing commandline args so it looks like we're starting fresh.
         sys.argv += args.split()

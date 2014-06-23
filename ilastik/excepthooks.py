@@ -21,6 +21,7 @@
 import sys
 import traceback
 import threading
+import StringIO
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel( logging.INFO )
@@ -53,7 +54,9 @@ def init_user_mode_excepthook():
             from lazyflow.graph import Slot
             if isinstance(exc_info[1], Slot.SlotNotReadyError):
                 logger.warn( "Caught unhandled SlotNotReadyError exception in the volumina tile rendering thread:" )
-                logger.error( "".join( traceback.format_exception( *exc_info ) ) )
+                sio = StringIO.StringIO()
+                traceback.print_exception( exc_info[0], exc_info[1], exc_info[2], file=sio )
+                logger.error( sio.getvalue() )
                 return
         
         # All other exceptions are treated as true errors
@@ -66,7 +69,9 @@ def init_user_mode_excepthook():
             shell.postErrorMessage( exc_info[0].__name__, msg )
         except:
             logger.error( "UNHANDLED EXCEPTION WHILE DISPLAYING AN ERROR TO THE USER:" )
-            logger.error( "".join( traceback.format_exception( *exc_info ) ) )
+            sio = StringIO.StringIO()
+            traceback.print_exception( exc_info[0], exc_info[1], exc_info[2], file=sio )
+            logger.error( sio.getvalue() )
             raise
     
     sys.excepthook = display_and_log
@@ -76,9 +81,11 @@ def init_developer_mode_excepthook():
     """
     This excepthook is used in debug mode (for developers).  It simply logs the exception.
     """
-    def log_exception(*exc_info):
-        logger.error( "".join( traceback.format_exception( *exc_info ) ) )
-    sys.excepthook = log_exception
+    def _log_exception(*exc_info):
+        sio = StringIO.StringIO()
+        traceback.print_exception( exc_info[0], exc_info[1], exc_info[2], file=sio )
+        logger.error( sio.getvalue() )
+    sys.excepthook = _log_exception
     _install_thread_excepthook()
 
 def _install_thread_excepthook():

@@ -417,10 +417,10 @@ class TestFullOperator(unittest.TestCase):
         probs = self.classOp.PredictionImages[0][:].wait()
         
     def testExport(self):
-        table = self.classOp.exportTable(0)
-        print table["object id"]
+        table = self.classOp.createExportTable(0, [])
+        print table["Object id"]
         print table["Default features, RegionCenter_ch_1"]
-        print table["prediction"]
+        print table["Prediction"]
         
     def test_unfavorable_conditions(self):
         #TODO write test with not so nice input

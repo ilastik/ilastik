@@ -21,6 +21,9 @@
 from PyQt4.QtGui import QColor, QPixmap, QIcon, QItemSelectionModel, QPainter, QPen, QImage
 from PyQt4.QtCore import QObject, QAbstractTableModel, Qt, QModelIndex, pyqtSignal
 
+# unicode support
+from volumina.utility import encode_from_qstring, decode_to_qstring
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -196,21 +199,21 @@ class ListModel(QAbstractTableModel):
         '''
 
         if role == Qt.EditRole and index.column() == self.ColumnID.Name:
-            return self._elements[index.row()].name
-
+            name = self._elements[index.row()].name
+            return decode_to_qstring(name)
 
         elif role == Qt.ToolTipRole and index.column() == self.ColumnID.Delete:
-            return "Delete {}".format(self._elements[index.row()].name)
+            s = "Delete {}".format(self._elements[index.row()].name)
+            return decode_to_qstring(s)
 
         elif role == Qt.ToolTipRole and index.column() == self.ColumnID.Name:
             suffix = self._getToolTipSuffix(index.row())
-            return "{}\nDouble click to rename {}".format(
+            s = "{}\nDouble click to rename {}".format(
                 self._elements[index.row()].name, suffix)
+            return decode_to_qstring(s)
         elif role == Qt.DisplayRole and index.column() == self.ColumnID.Name:
-            row = index.row()
-            value = self._elements[row]
-            return value.name
-
+            name = self._elements[index.row()].name
+            return decode_to_qstring(name)
 
         if role == Qt.DecorationRole and index.column() == self.ColumnID.Delete:
             if index.row() in self.unremovable_rows: return
@@ -256,8 +259,9 @@ class ListModel(QAbstractTableModel):
         '''
         if role == Qt.EditRole  and index.column() == self.ColumnID.Name:
             row = index.row()
-            name = value
-            self._elements[row].name = str(name.toString())
+            # value is a user provided QVariant, possibly with unicode
+            # characters in it. internally, we keep a str
+            self._elements[row].name = encode_from_qstring(value.toString())
             self.dataChanged.emit(index, index)
             return True
 

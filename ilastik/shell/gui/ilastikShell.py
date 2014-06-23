@@ -53,7 +53,7 @@ from volumina.utility import PreferencesManager, ShortcutManagerDlg, ShortcutMan
 
 # ilastik
 from ilastik.workflow import getAvailableWorkflows, getWorkflowFromName
-from ilastik.utility import bind
+from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
 from ilastik.applets.base.applet import Applet, ShellRequest
 from ilastik.applets.base.appletGuiInterface import AppletGuiInterface, VolumeViewerGui
@@ -76,7 +76,7 @@ from ilastik.shell.gui.messageServer import MessageServer
 # Import all known workflows now to make sure they are all registered with getWorkflowFromName()
 import ilastik.workflows
 
-ILASTIKFont = QFont("Helvetica",10,QFont.Bold)
+ILASTIKFont = QFont("Helvetica",12,QFont.Bold)
 
 logger = logging.getLogger(__name__)
 
@@ -475,7 +475,11 @@ class IlastikShell( QMainWindow ):
                 text = "{0} ({1})".format(compressedpath,compressedworkflow)
                 b.setText(text)
                 b.clicked.connect(partial(self.openFileAndCloseStartscreen,path))
-                self.startscreen.VL1.insertWidget(self.startscreen.VL1.count(),b)
+                
+                # Insert the new button after all the other controls, 
+                #  but before the vertical spacer at the end of the list.
+                insertion_index = self.startscreen.VL1.count()-1
+                self.startscreen.VL1.insertWidget(insertion_index, b)
                 self.openFileButtons.append(b)
 
     def _loaduifile(self):
@@ -506,6 +510,11 @@ class IlastikShell( QMainWindow ):
             pos += 1
 
     def openFileAndCloseStartscreen(self,path):
+        if self.projectManager is not None:
+            # If the user double-clicked a "recent project" button,
+            #  then this handler function might get called twice.
+            # In that case, just ignore the second click.
+            return
         #self.startscreen.setParent(None)
         #del self.startscreen
         self.openProjectFile(path)
@@ -1011,6 +1020,7 @@ class IlastikShell( QMainWindow ):
 
         newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath, workflow_class, self._workflow_cmdline_args, h5_file_kwargs)
         self._loadProject(newProjectFile, newProjectFilePath, workflow_class, readOnly=False)
+        self.projectManager.saveProject()
 
     def getProjectPathToCreate(self, defaultPath=None, caption="Create Ilastik Project"):
         """
@@ -1124,8 +1134,9 @@ class IlastikShell( QMainWindow ):
         except ProjectManager.FileMissingError:
             QMessageBox.warning(self, "Missing File", "Could not find project file: " + projectFilePath)
         except:
-            logger.error( traceback.format_exc() )
-            QMessageBox.warning(self, "Corrupted Project", "Unable to open project file: " + projectFilePath)
+            msg = "Corrupted Project", "Unable to open project file: " + projectFilePath
+            log_exception( logger, msg )
+            QMessageBox.warning(self, msg)
         else:
             #as load project can take a while, show a wait cursor
             QApplication.setOverrideCursor(Qt.WaitCursor)
@@ -1164,8 +1175,9 @@ class IlastikShell( QMainWindow ):
                                                   project_creation_args=project_creation_args)
 
         except Exception, e:
-            traceback.print_exc()
-            QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + str(e))
+            msg = "Could not load project file.\n" + str(e)
+            log_exception( logger, msg )
+            QMessageBox.warning(self, "Failed to Load",  msg)
 
             # no project will be loaded, free the file resource
             hdf5File.close()
@@ -1185,7 +1197,7 @@ class IlastikShell( QMainWindow ):
                     assert not readOnly, "Can't import into a read-only file."
                     self.projectManager._importProject(importFromPath, hdf5File, projectFilePath)
             except Exception as ex:
-                traceback.print_exc()
+                log_exception( logger )
                 self.closeCurrentProject()
 
                 # _loadProject failed, so we cannot expect it to clean up

@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+from ilastik.utility import log_exception
 
 import volumina.colortables as colortables
 from volumina.api import LazyflowSource, GrayscaleLayer, ColortableLayer
@@ -700,9 +701,8 @@ class ManualTrackingGui(LayerViewerGui):
         def _handle_failure( exc, exc_info ):
             self.applet.busy = False
             self.applet.appletStateUpdateRequested.emit()
-            import traceback, sys
-            traceback.print_exception(*exc_info)
-            sys.stderr.write("Exception raised during tracking.  See traceback above.\n")            
+            msg = "Exception raised during tracking.  See traceback above.\n"
+            log_exception( logger, msg, exc_info )
         
         self.applet.busy = True
         self.applet.appletStateUpdateRequested.emit()
@@ -1076,11 +1076,10 @@ class ManualTrackingGui(LayerViewerGui):
             self.applet.appletStateUpdateRequested.emit()
                
         def _handle_failure( exc, exc_info ):
+            msg = "Exception raised during export.  See traceback above.\n"
+            log_exception( logger, msg, exc_info )
             self.applet.busy = False
             self.applet.appletStateUpdateRequested.emit()
-            import traceback, sys
-            traceback.print_exception(*exc_info)
-            sys.stderr.write("Exception raised during export.  See traceback above.\n")
             self.applet.progressSignal.emit(100)
         
         self.applet.progressSignal.emit(0)  
@@ -1155,11 +1154,10 @@ class ManualTrackingGui(LayerViewerGui):
             self.applet.progressSignal.emit(100)
                
         def _handle_failure( exc, exc_info ):
+            msg = "Exception raised during export.  See traceback above.\n"
+            log_exception( logger, msg, exc_info )
             self.applet.busy = False
             self.applet.appletStateUpdateRequested.emit()
-            import traceback, sys
-            traceback.print_exception(*exc_info)
-            sys.stderr.write("Exception raised during export.  See traceback above.\n")     
             self.applet.progressSignal.emit(100)       
                 
         self.applet.progressSignal.emit(0)

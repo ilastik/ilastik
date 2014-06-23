@@ -28,7 +28,7 @@ from lazyflow.operators.ioOperators import OpH5WriterBigDataset
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 from lazyflow.utility import PathComponents
-from ilastik.utility import bind
+from ilastik.utility import bind, log_exception
 from ilastik.applets.splitBodyPostprocessing.opSplitBodyPostprocessing import OpAccumulateFragmentSegmentations, OpMaskedWatershed
 
 import logging
@@ -172,10 +172,8 @@ class OpSplitBodySupervoxelExport(Operator):
         def handleFailed( exc, exc_info ):
             cleanOps()        
             f.close()
-            import traceback
-            traceback.print_tb(exc_info[2])
             msg = "Final Supervoxel export FAILED due to the following error:\n{}".format( exc )
-            logger.error( msg )
+            log_exception( logger, msg, exc_info )
 
         def handleFinished( result ):
             # Generate the mapping transforms dataset

@@ -21,7 +21,6 @@
 import sys
 import copy
 import argparse
-from functools import partial
 import logging
 logger = logging.getLogger(__name__)
 
@@ -51,6 +50,8 @@ class PixelClassificationWorkflow(Workflow):
     
     DATA_ROLE_RAW = 0
     DATA_ROLE_PREDICTION_MASK = 1
+    
+    EXPORT_NAMES = ['Probabilities', 'Simple Segmentation', 'Uncertainty']
     
     @property
     def applets(self):
@@ -107,9 +108,11 @@ class PixelClassificationWorkflow(Workflow):
         
         if ilastik_config.getboolean('ilastik', 'debug'):
             # see role constants, above
-            opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Prediction Mask'] )
+            role_names = ['Raw Data', 'Prediction Mask']
+            opDataSelection.DatasetRoles.setValue( role_names )
         else:
-            opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
+            role_names = ['Raw Data']
+            opDataSelection.DatasetRoles.setValue( role_names )
 
         self.featureSelectionApplet = FeatureSelectionApplet(self, "Feature Selection", "FeatureSelections", self.filter_implementation)
 
@@ -121,6 +124,7 @@ class PixelClassificationWorkflow(Workflow):
         opDataExport.PmapColors.connect( opClassify.PmapColors )
         opDataExport.LabelNames.connect( opClassify.LabelNames )
         opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
+        opDataExport.SelectionNames.setValue( self.EXPORT_NAMES )        
 
         # Expose for shell
         self._applets.append(self.projectMetadataApplet)
@@ -177,10 +181,15 @@ class PixelClassificationWorkflow(Workflow):
         opClassify.LabelsAllowedFlags.connect( opData.AllowLabels )
 
         # Data Export connections
-        opDataExport.RawData.connect( opData.ImageGroup[0] )
-        opDataExport.Input.connect( opClassify.HeadlessPredictionProbabilities )
-        opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
-        opDataExport.ConstraintDataset.connect( opData.ImageGroup[0] )
+        opDataExport.RawData.connect( opData.ImageGroup[self.DATA_ROLE_RAW] )
+        opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[self.DATA_ROLE_RAW] )
+        opDataExport.ConstraintDataset.connect( opData.ImageGroup[self.DATA_ROLE_RAW] )
+        opDataExport.Inputs.resize( len(self.EXPORT_NAMES) )
+        opDataExport.Inputs[0].connect( opClassify.HeadlessPredictionProbabilities )
+        opDataExport.Inputs[1].connect( opClassify.SimpleSegmentation )
+        opDataExport.Inputs[2].connect( opClassify.HeadlessUncertaintyEstimate )
+        for slot in opDataExport.Inputs:
+            assert slot.partner is not None
 
     def _initBatchWorkflow(self):
         """
@@ -203,7 +212,7 @@ class PixelClassificationWorkflow(Workflow):
         
         opSelectFirstRole = OpSelectSubslot( parent=self )
         opSelectFirstRole.Inputs.connect( opSelectFirstLane.Output )
-        opSelectFirstRole.SubslotIndex.setValue(0)
+        opSelectFirstRole.SubslotIndex.setValue(self.DATA_ROLE_RAW)
         
         opBatchResults.ConstraintDataset.connect( opSelectFirstRole.Output )
         
@@ -213,11 +222,12 @@ class PixelClassificationWorkflow(Workflow):
         
         ## Connect Operators ##
         opTranspose = OpTransposeSlots( parent=self )
-        opTranspose.OutputLength.setValue(1)
+        opTranspose.OutputLength.setValue(2) # There are 2 roles
         opTranspose.Inputs.connect( opBatchInputs.DatasetGroup )
+        opTranspose.name = "batchTransposeInputs"
         
         # Provide dataset paths from data selection applet to the batch export applet
-        opBatchResults.RawDatasetInfo.connect( opTranspose.Outputs[0] )
+        opBatchResults.RawDatasetInfo.connect( opTranspose.Outputs[self.DATA_ROLE_RAW] )
         opBatchResults.WorkingDirectory.connect( opBatchInputs.WorkingDirectory )
         
         # Connect (clone) the feature operator inputs from 
@@ -239,8 +249,24 @@ class PixelClassificationWorkflow(Workflow):
         # Connect Image pathway:
         # Input Image -> Features Op -> Prediction Op -> Export
         opBatchFeatures.InputImage.connect( opBatchInputs.Image )
+        opBatchPredictionPipeline.PredictionMask.connect( opBatchInputs.Image1 )
         opBatchPredictionPipeline.FeatureImages.connect( opBatchFeatures.OutputImage )
-        opBatchResults.Input.connect( opBatchPredictionPipeline.HeadlessPredictionProbabilities )
+
+        opBatchResults.SelectionNames.setValue( self.EXPORT_NAMES )        
+        # opBatchResults.Inputs is indexed by [lane][selection],
+        # Use OpTranspose to allow connection.
+        opTransposeBatchInputs = OpTransposeSlots( parent=self )
+        opTransposeBatchInputs.name = "opTransposeBatchInputs"
+        opTransposeBatchInputs.OutputLength.setValue(0)
+        opTransposeBatchInputs.Inputs.resize( len(self.EXPORT_NAMES) )
+        opTransposeBatchInputs.Inputs[0].connect( opBatchPredictionPipeline.HeadlessPredictionProbabilities ) # selection 0
+        opTransposeBatchInputs.Inputs[1].connect( opBatchPredictionPipeline.SimpleSegmentation ) # selection 1
+        opTransposeBatchInputs.Inputs[2].connect( opBatchPredictionPipeline.HeadlessUncertaintyEstimate ) # selection 2
+        for slot in opTransposeBatchInputs.Inputs:
+            assert slot.partner is not None
+        
+        # Now opTransposeBatchInputs.Outputs is level-2 indexed by [lane][selection]
+        opBatchResults.Inputs.connect( opTransposeBatchInputs.Outputs )
 
         # We don't actually need the cached path in the batch pipeline.
         # Just connect the uncached features here to satisfy the operator.
@@ -267,9 +293,9 @@ class PixelClassificationWorkflow(Workflow):
 
         opDataExport = self.dataExportApplet.topLevelOperator
         predictions_ready = features_ready and \
-                            len(opDataExport.Input) > 0 and \
-                            opDataExport.Input[0].ready() and \
-                            (TinyVector(opDataExport.Input[0].meta.shape) > 0).all()
+                            len(opDataExport.Inputs) > 0 and \
+                            opDataExport.Inputs[0][0].ready() and \
+                            (TinyVector(opDataExport.Inputs[0][0].meta.shape) > 0).all()
 
         # Problems can occur if the features or input data are changed during live update mode.
         # Don't let the user do that.
@@ -330,7 +356,7 @@ class PixelClassificationWorkflow(Workflow):
             self._print_labels_by_slice( self.label_search_value )
 
         # Configure the batch data selection operator.
-        if self._batch_input_args and self._batch_input_args.input_files:
+        if self._batch_input_args and (self._batch_input_args.input_files or self._batch_input_args.raw_data):
             self.batchInputApplet.configure_operator_with_parsed_args( self._batch_input_args )
         
         # Configure the data export operator.

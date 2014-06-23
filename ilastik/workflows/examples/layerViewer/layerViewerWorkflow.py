@@ -47,6 +47,8 @@ class LayerViewerWorkflow(Workflow):
                                                        force5d=True)
         self.viewerApplet = LayerViewerApplet(self)
         self.dataExportApplet = DataExportApplet(self, "Data Export")
+        opDataExport = self.dataExportApplet.topLevelOperator
+        opDataExport.SelectionNames.setValue( ['Raw Data', 'Other Data'] )
 
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue( ["Raw Data", "Other Data"] )
@@ -74,9 +76,12 @@ class LayerViewerWorkflow(Workflow):
         opLayerViewerView.OtherInput.connect( opDataSelectionView.ImageGroup[1] )
 
         opDataExportView.RawData.connect( opDataSelectionView.ImageGroup[0] )
-        opDataExportView.Input.connect( opDataSelectionView.ImageGroup[1] )
         opDataExportView.RawDatasetInfo.connect( opDataSelectionView.DatasetGroup[0] )        
         opDataExportView.WorkingDirectory.connect( opDataSelectionView.WorkingDirectory )
+
+        opDataExportView.Inputs.resize(2)
+        opDataExportView.Inputs[0].connect( opDataSelectionView.ImageGroup[0] )
+        opDataExportView.Inputs[1].connect( opDataSelectionView.ImageGroup[1] )
 
     @property
     def applets(self):
@@ -97,9 +102,9 @@ class LayerViewerWorkflow(Workflow):
 
         opDataExport = self.dataExportApplet.topLevelOperator
         export_data_ready = input_ready and \
-                            len(opDataExport.Input) > 0 and \
-                            opDataExport.Input[0].ready() and \
-                            (TinyVector(opDataExport.Input[0].meta.shape) > 0).all()
+                            len(opDataExport.Inputs) > 0 and \
+                            opDataExport.Inputs[0][0].ready() and \
+                            (TinyVector(opDataExport.Inputs[0][0].meta.shape) > 0).all()
 
         self._shell.setAppletEnabled(self.viewerApplet, input_ready)
         self._shell.setAppletEnabled(self.dataExportApplet, export_data_ready)

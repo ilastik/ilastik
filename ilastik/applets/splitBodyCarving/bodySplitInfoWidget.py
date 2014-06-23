@@ -29,8 +29,12 @@ from PyQt4.QtGui import QWidget, QFileDialog, QMessageBox, QTreeWidgetItem, QTab
 
 from volumina.utility import encode_from_qstring, decode_to_qstring
 from ilastik.shell.gui.iconMgr import ilastikIcons
+from ilastik.utility import log_exception
 
 from opParseAnnotations import OpParseAnnotations
+
+import logging
+logger = logging.getLogger(__name__)
 
 class BodyProgressBar(QProgressBar):
     
@@ -141,12 +145,10 @@ class BodySplitInfoWidget( QWidget ):
             self.annotationFilepathEdit.setText( decode_to_qstring(annotation_filepath) )
             
         except OpParseAnnotations.AnnotationParsingException as ex :
-            import traceback
             if ex.original_exc is not None:
-                traceback.print_exception( type(ex.original_exc), ex.original_exc, sys.exc_info()[2] )
-                sys.stderr.write( ex.msg )
+                log_exception( logger, exc_info=( type(ex.original_exc), ex.original_exc, sys.exc_info[2]) )
             else:
-                traceback.print_exc()
+                log_exception( logger )
             QMessageBox.critical(self,
                                  "Failed to parse",
                                  ex.msg + "\n\nSee console output for details." )
@@ -155,11 +157,9 @@ class BodySplitInfoWidget( QWidget ):
             self._ravelerLabels = None
             self.annotationFilepathEdit.setText("")
         except:
-            import traceback
-            traceback.print_exc()
-            QMessageBox.critical(self,
-                                 "Failed to parse",
-                                 "Wasn't able to parse your bookmark file.  See console output for details." )
+            msg = "Wasn't able to parse your bookmark file.  See console output for details."
+            QMessageBox.critical(self, "Failed to parse", msg )
+            log_exception( logger, msg )
             self._annotations = None
             self._ravelerLabels = None
             self.annotationFilepathEdit.setText("")

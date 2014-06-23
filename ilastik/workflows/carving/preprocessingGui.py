@@ -21,7 +21,6 @@
 #Python
 import os
 import logging
-import traceback
 logger = logging.getLogger(__name__)
 
 #PyQt
@@ -30,7 +29,7 @@ from PyQt4.QtGui import QMainWindow, QIcon, QMessageBox
 
 #ilastik
 from ilastik.shell.gui.iconMgr import ilastikIcons
-from ilastik.utility import bind
+from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from preprocessingViewerGui import PreprocessingViewerGui
 
@@ -117,7 +116,7 @@ class PreprocessingGui(QMainWindow):
     
     @threadRouted 
     def onFailed(self, exception, exc_info):
-        traceback.print_tb(exc_info[2])
+        log_exception( logger, exc_info=exc_info )
         QMessageBox.critical(self, "error", str(exception))
     
     def handleRunButtonClicked(self):

@@ -42,7 +42,9 @@ class OpDataExport(Operator):
     RawDatasetInfo = InputSlot()
     WorkingDirectory = InputSlot() # Non-absolute paths are relative to this directory.  If not provided, paths must be absolute.
     
-    Input = InputSlot() # The results slot we want to export
+    Inputs = InputSlot(level=1) # The exportable slots (should all be of the same shape, except for channel)
+    InputSelection = InputSlot(value=0)
+    SelectionNames = InputSlot() # A list of names corresponding to the exportable inputs
 
     # Subregion params
     RegionStart = InputSlot(optional=True)
@@ -109,7 +111,6 @@ class OpDataExport(Operator):
 
         # Forward almost all inputs to the 'real' exporter
         opFormattedExport.TransactionSlot.connect( self.TransactionSlot )
-        opFormattedExport.Input.connect( self.Input )
         opFormattedExport.RegionStart.connect( self.RegionStart )
         opFormattedExport.RegionStop.connect( self.RegionStop )
         opFormattedExport.InputMin.connect( self.InputMin )
@@ -176,7 +177,7 @@ class OpDataExport(Operator):
         self.ImageOnDisk.connect( self._opImageOnDiskProvider.Output )
         
     def setupOutputs(self):
-        self.cleanupOnDiskView()        
+        self.cleanupOnDiskView()
 
         # FIXME: If RawData becomes unready() at the same time as RawDatasetInfo(), then 
         #          we have no guarantees about which one will trigger setupOutputs() first.
@@ -194,11 +195,22 @@ class OpDataExport(Operator):
                     oslot.meta.NOTREADY = True
             return
 
+        selection_index = self.InputSelection.value
+        if not self.Inputs[selection_index].ready():
+            for oslot in self.outputs.values():
+                if oslot.partner is None:
+                    oslot.meta.NOTREADY = True
+            return
+        self._opFormattedExport.Input.connect( self.Inputs[selection_index] )
+
         dataset_dir = PathComponents(rawInfo.filePath).externalDirectory
         abs_dataset_dir, _ = getPathVariants(dataset_dir, self.WorkingDirectory.value)
         known_keys = {}        
         known_keys['dataset_dir'] = abs_dataset_dir
-        known_keys['nickname'] = rawInfo.nickname
+        nickname = rawInfo.nickname.replace('*', '')
+        if '//' in nickname:
+            nickname = PathComponents(nickname.split('//')[0]).fileNameBase
+        known_keys['nickname'] = nickname
 
         # Disconnect to open the 'transaction'
         if self._opImageOnDiskProvider is not None:
@@ -408,7 +420,8 @@ def get_model_op(wrappedOp):
     # Choose a roi that can apply to all images in the original operator
     shape = None
     axes = None
-    for slot in wrappedOp.Input:
+    for multislot in wrappedOp.Inputs:
+        slot = multislot[ wrappedOp.InputSelection.value ]
         if slot.ready():
             if shape is None:
                 shape = slot.meta.shape
