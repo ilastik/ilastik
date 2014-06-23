@@ -294,25 +294,6 @@ class TestThresholdOneLevel(Generator1):
             out5d[out5d > 0] = 1
             numpy.testing.assert_array_equal(out5d.squeeze(), desiredResult[..., i, :])
 
-    def testReconnect(self):
-        predRaw = np.zeros((20, 22, 21, 3), dtype=np.uint32)
-        pred1 = vigra.taggedView(predRaw, axistags='xyzc')
-        pred2 = vigra.taggedView(predRaw, axistags='tyxc')
-
-        oper5d = OpThresholdTwoLevels(graph=Graph())
-        oper5d.InputImage.setValue(pred1)
-        oper5d.MinSize.setValue(self.minSize)
-        oper5d.MaxSize.setValue(self.maxSize)
-        oper5d.SingleThreshold.setValue(128)
-        oper5d.SmootherSigma.setValue(self.sigma)
-        oper5d.Channel.setValue(0)
-        oper5d.CurOperator.setValue(0)
-
-        out5d = oper5d.CachedOutput[:].wait()
-
-        oper5d.InputImage.setValue(pred2)
-        out5d = oper5d.CachedOutput[:].wait()
-
 
 @unittest.skipIf(not haveGraphCut(), "opengm not available")
 class TestObjectsSegment(TestThresholdOneLevel):
@@ -723,30 +704,6 @@ class TestThresholdGC(Generator2):
         oper5d.CurOperator.setValue(2)
         oper5d.UsePreThreshold.setValue(False)
 
-        out5d = oper5d.CachedOutput[:].wait()
-
-    def testReconnect(self):
-        g = Graph()
-        predRaw = np.zeros((20, 22, 21, 3), dtype=np.uint32)
-        pred1 = vigra.taggedView(predRaw, axistags='xyzc')
-        pred2 = vigra.taggedView(predRaw, axistags='tyxc')
-        pipe = OpArrayPiper(graph=g)
-
-        oper5d = OpThresholdTwoLevels(graph=g)
-        oper5d.InputImage.connect(pipe.Output)
-        oper5d.MinSize.setValue(self.minSize)
-        oper5d.MaxSize.setValue(self.maxSize)
-        oper5d.HighThreshold.setValue(self.highThreshold)
-        oper5d.LowThreshold.setValue(self.lowThreshold)
-        oper5d.SmootherSigma.setValue(self.sigma)
-        oper5d.Channel.setValue(0)
-        oper5d.CurOperator.setValue(2)
-        oper5d.UsePreThreshold.setValue(True)
-
-        pipe.Input.setValue(pred1)
-        out5d = oper5d.CachedOutput[:].wait()
-        print("### RESETTING ###")
-        pipe.Input.setValue(pred2)
         out5d = oper5d.CachedOutput[:].wait()
 
 
