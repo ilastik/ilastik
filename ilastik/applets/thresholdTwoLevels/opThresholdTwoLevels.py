@@ -38,6 +38,8 @@ from lazyflow.rtype import SubRegion
 from lazyflow.request import Request, RequestPool
 
 # local
+from ilastik.applets.base.applet import DatasetConstraintError
+
 from thresholdingTools import OpAnisotropicGaussianSmoothing
 from thresholdingTools import OpSelectLabels
 
@@ -103,6 +105,8 @@ class OpThresholdTwoLevels(Operator):
     def __init__(self, *args, **kwargs):
         super(OpThresholdTwoLevels, self).__init__(*args, **kwargs)
 
+        self.InputImage.notifyReady( self.checkConstraints )
+
         self._opReorder1 = OpReorderAxes(parent=self)
         self._opReorder1.AxisOrder.setValue('txyzc')
         self._opReorder1.Input.connect(self.InputImage)
@@ -135,14 +139,14 @@ class OpThresholdTwoLevels(Operator):
 
         # single threshold operator
         self.opThreshold1 = _OpThresholdOneLevel(parent=self)
-        self.opThreshold1.InputImage.connect(self.Smoothed)
+        self.opThreshold1.InputImage.connect(self._smoothStacker.Output)
         self.opThreshold1.Threshold.connect(self.SingleThreshold)
         self.opThreshold1.MinSize.connect(self.MinSize)
         self.opThreshold1.MaxSize.connect(self.MaxSize)
 
         # double threshold operator
         self.opThreshold2 = _OpThresholdTwoLevels(parent=self)
-        self.opThreshold2.InputImage.connect(self.Smoothed)
+        self.opThreshold2.InputImage.connect(self._smoothStacker.Output)
         self.opThreshold2.MinSize.connect(self.MinSize)
         self.opThreshold2.MaxSize.connect(self.MaxSize)
         self.opThreshold2.LowThreshold.connect(self.LowThreshold)
@@ -150,19 +154,19 @@ class OpThresholdTwoLevels(Operator):
 
         if haveGraphCut():
             self.opThreshold1GC = _OpThresholdOneLevel(parent=self)
-            self.opThreshold1GC.InputImage.connect(self.Smoothed)
+            self.opThreshold1GC.InputImage.connect(self._smoothStacker.Output)
             self.opThreshold1GC.Threshold.connect(self.SingleThresholdGC)
             self.opThreshold1GC.MinSize.connect(self.MinSize)
             self.opThreshold1GC.MaxSize.connect(self.MaxSize)
 
             self.opObjectsGraphCut = OpObjectsSegment(parent=self)
-            self.opObjectsGraphCut.Prediction.connect(self.Smoothed)
+            self.opObjectsGraphCut.Prediction.connect(self._smoothStacker.Output)
             self.opObjectsGraphCut.LabelImage.connect(self.opThreshold1GC.Output)
             self.opObjectsGraphCut.Beta.connect(self.Beta)
             self.opObjectsGraphCut.Margin.connect(self.Margin)
 
             self.opGraphCut = OpGraphCut(parent=self)
-            self.opGraphCut.Prediction.connect(self.Smoothed)
+            self.opGraphCut.Prediction.connect(self._smoothStacker.Output)
             self.opGraphCut.Beta.connect(self.Beta)
 
         # HACK: For backwards compatibility with old projects,
@@ -223,10 +227,21 @@ class OpThresholdTwoLevels(Operator):
         self._opReorder2.Input.connect(outputSlot)
         self._op5CacheInput.Input.connect(outputSlot)
         self._op5CacheOutput.AxisOrder.setValue(
-            self._op5CacheInput.Input.meta.getAxisKeys())
+        self._op5CacheInput.Input.meta.getAxisKeys())
         self._setBlockShape()
         # force the cache to emit a dirty signal
         self._opCache.Input.setDirty(slice(None))
+
+    def checkConstraints(self, *args):
+        if self.InputImage.ready():
+            numChannels = self.InputImage.meta.getTaggedShape()['c']
+            if self.Channel.value >= numChannels:
+                raise DatasetConstraintError(
+                    "Two-Level Thresholding",
+                    "Your project is configured to select data from channel #{},"
+                    " but your input data only has {} channels."
+                    .format( self.Channel.value, numChannels ) )
+
 
     def _disconnectAll(self):
         # start from back
