@@ -1,5 +1,6 @@
 import os
 import threading
+import warnings
 from functools import partial
 
 import numpy
@@ -51,11 +52,12 @@ class SeededWatershedGui(LabelingGui):
             self._labelControlUi.bodyIdEdit.setText( "{}".format( id_slot.value ) )
         id_slot.notifyDirty( _handleLabelChanged )
         
+        self.render = False
         try:
-            self.render = True
             self._renderMgr = RenderingManager( self.editor.view3d )
+            self.render = True
         except:
-            self.render = False
+            warnings.warn("Couldn't initialize 3D RenderManager")
     
     def _after_init(self):
         """
@@ -125,6 +127,9 @@ class SeededWatershedGui(LabelingGui):
         return layers
 
     def _update_rendering(self):
+        if not self.render:
+            return
+
         op = self.topLevelOperatorView
         if not self._renderMgr.ready:
             self._renderMgr.setup(op.InputImage.meta.shape[1:4])
