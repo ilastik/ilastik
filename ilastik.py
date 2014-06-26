@@ -35,10 +35,11 @@ def main():
     #parsed_args.headless = True
 
     #parsed_args.project = '/Users/bergs/NewProject.ilp'
-    #parsed_args.new_project = '/Users/bergs/NewProject.ilp'
+
+    #parsed_args.new_project = '/home/bergs/NewProject.ilp'
     #parsed_args.workflow = 'Seeded Watershed'
 
-    #workflow_cmdline_args.append( '--parameter-file=/Users/bergs/Documents/workspace/ilastik-meta/ilastik/ilastik/workflows/seededWatershed/example-params.json' )
+    #workflow_cmdline_args.append( '--parameter-file=/home/bergs/workspace/ilastik-meta/ilastik/ilastik/workflows/seededWatershed/example-params.json' )
 
     ilastik_main.main(parsed_args, workflow_cmdline_args)
 
