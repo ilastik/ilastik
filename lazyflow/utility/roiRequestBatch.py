@@ -67,7 +67,7 @@ class RoiRequestBatch( object ):
     >>> result_count = [0]
     >>> result_total_sum = [0]
     >>> def handle_block_result(roi, result):
-    ...     # No need for locking here.
+    ...     # No need for locking here if allowParallelResults=True.
     ...     result_count[0] += 1
     ...     result_total_sum[0] += result.sum()
     >>> batch_requester.resultSignal.subscribe( handle_block_result )
@@ -85,7 +85,7 @@ class RoiRequestBatch( object ):
     >>> print "Processed {} result blocks with a total sum of: {}".format( result_count[0], result_total_sum[0] )
     Processed 5 result blocks with a total sum of: 14500
     """
-    def __init__( self, outputSlot, roiIterator, totalVolume=None, batchSize=2 ):
+    def __init__( self, outputSlot, roiIterator, totalVolume=None, batchSize=2, allowParallelResults=False ):
         """
         Constructor.
 
@@ -95,6 +95,8 @@ class RoiRequestBatch( object ):
                             Used to provide the progress reporting signal. 
                             If not provided, then no intermediate progress will be signaled.
         :param batchSize: The maximum number of requests to launch in parallel.
+        :param allowParallelResults: If True, The resultSignal will not be called in parallel.
+                                     In that case, your handler function has no need for locks.
         """
         self._resultSignal = OrderedSignal()
         self._progressSignal = OrderedSignal()
@@ -104,6 +106,7 @@ class RoiRequestBatch( object ):
         self._outputSlot = outputSlot
         self._roiIter = roiIterator
         self._batchSize = batchSize
+        self._allowParallelResults = allowParallelResults
         
         self._condition = SimpleRequestCondition()
 
@@ -193,19 +196,24 @@ class RoiRequestBatch( object ):
         req.submit()
 
     def _handleCompletedRequest(self, roi, result):
-        with self._condition:
-            # Signal the user with the result
+        if self._allowParallelResults:
+            # Signal the user with the result before the critical section
             self.resultSignal(roi, result)
-            
+
+        with self._condition:
+            if not self._allowParallelResults:
+                # Signal here, inside the critical section.
+                self.resultSignal(roi, result)
+
             # Report progress (if possible)
             if self._totalVolume is not None:
                 self._processedVolume += numpy.prod( numpy.subtract(roi[1], roi[0]) )
                 progress = 100 * self._processedVolume / self._totalVolume
                 self.progressSignal( progress )
-
+    
             self._completed_count += 1
             self._condition.notify()
-
+    
 if __name__ == "__main__":
     import doctest
     doctest.testmod()
