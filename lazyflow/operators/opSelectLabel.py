@@ -21,6 +21,10 @@
 ###############################################################################
 import numpy
 from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.utility import Timer
+
+import logging
+logger = logging.getLogger(__name__)
 
 class OpSelectLabel(Operator):
     """
@@ -43,8 +47,11 @@ class OpSelectLabel(Operator):
     def execute(self, slot, subindex, roi, result):
         assert slot == self.Output, "Unknown output slot: {}".format( slot.name )
         if self.SelectedLabel.value == 0:
+            # Special case: Label zero selects nothing.
             result[:] = 0
-        else:
+            return
+
+        with Timer() as timer: 
             # Can't use writeInto() here because dtypes don't match.
             inputLabels = self.Input(roi.start, roi.stop).wait()
             
@@ -54,7 +61,8 @@ class OpSelectLabel(Operator):
             numpy.bitwise_xor(inputLabels, self.SelectedLabel.value, out=inputLabels) # All 
             numpy.logical_not(inputLabels, out=inputLabels)
             result[:] = inputLabels # Copy from uint32 to uint8
-            
+        
+        logger.debug( "OpSelectLabel took {} seconds for roi {}".format( timer.seconds(), roi ) )
         return result
     
     def propagateDirty(self, slot, subindex, roi):
