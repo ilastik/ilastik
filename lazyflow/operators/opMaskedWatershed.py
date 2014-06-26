@@ -22,8 +22,8 @@
 import numpy
 import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.utility import Timer, BigRequestStreamer
-from lazyflow.roi import roiToSlice
+from lazyflow.operators import OpArrayCache
+from lazyflow.utility import Timer
 
 import logging
 logger = logging.getLogger(__name__)
@@ -42,14 +42,23 @@ class OpMaskedWatershed(Operator):
     def __init__(self, *args, **kwargs):
         super( OpMaskedWatershed, self ).__init__(*args, **kwargs)
 
-        # Use an internal operator to prepare the data, for easier parallelization.
+        # Use an internal operator to prepare the data, 
+        #  for easy caching/parallelization.
         self._opPrepInput = _OpPrepWatershedInput( parent=self )
         self._opPrepInput.Input.connect( self.Input )
         self._opPrepInput.Mask.connect( self.Mask )
+        
+        self._opPreppedInputCache = OpArrayCache( parent=self )
+        self._opPreppedInputCache.Input.connect( self._opPrepInput.Output )
 
     def setupOutputs(self):
         if self.Input.ready():
             assert self.Input.meta.drange is not None, "Masked watershed requires input drange to be specified"
+
+        # Cache the prepared input in 8 blocks
+        blockshape = numpy.array( self._opPrepInput.Output.meta.shape ) / 2
+        blockshape = numpy.maximum( 1, blockshape )
+        self._opPreppedInputCache.blockShape.setValue( tuple(blockshape) )
         
         self.Output.meta.assignFrom( self.Mask.meta )
         self.Output.meta.dtype = numpy.uint32
@@ -58,27 +67,7 @@ class OpMaskedWatershed(Operator):
         # The input preparation involves converting to uint8 and combining 
         #  the mask so we can use the StopAtThreshold mechanism
         with Timer() as prep_timer:
-            PARALLEL_INPUT_PREP = True
-            if not PARALLEL_INPUT_PREP:
-                # This is the simple single-threaded version.
-                input_data = self._opPrepInput.Output(roi.start, roi.stop).wait()
-            else:
-                input_data = numpy.zeros( shape=self._opPrepInput.Output.meta.shape,
-                                          dtype=numpy.uint8 )
-                # Use a BigRequestStreamer to parallelize the input prep work.
-                # (Since the prep work is mostly limited to the speed of RAM, not CPU,
-                #   this seems to make very little difference in performance.)
-                blockshape = numpy.array( self._opPrepInput.Output.meta.shape ) / 4
-                blockshape = numpy.maximum( 1, blockshape )
-                streamer = BigRequestStreamer( self._opPrepInput.Output, 
-                                               (roi.start, roi.stop),
-                                               blockshape,
-                                               allowParallelResults=True )
-                def write_result(result_roi, result):
-                    input_data[roiToSlice(*result_roi)] = result
-                streamer.resultSignal.subscribe(write_result)
-                streamer.execute()
-
+            input_data = self._opPreppedInputCache.Output(roi.start, roi.stop).wait()
         logger.debug("Input prep took {} seconds".format( prep_timer.seconds() ) )
 
         input_axistags = self._opPrepInput.Output.meta.axistags
