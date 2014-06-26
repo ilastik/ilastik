@@ -7,17 +7,17 @@
         "_schema_name" : "dataset-info",
         "_schema_version" : 0.1,
 
-        "##filepath" : "/groups/flyem/data/medulla-FIB-Z1211-25-production/align2/substacks/00076_4508-5007_3259-3758_2000-2499/grayscale_maps/*.png",
+        "filepath" : "/groups/flyem/data/medulla-FIB-Z1211-25-production/align2/substacks/00076_4508-5007_3259-3758_2000-2499/grayscale_maps/*.png",
         "##filepath" : "/magnetic/split-body-data/test_data2/raw_250.h5/data",
         "##filepath" : "dvid://localhost:8000/api/node/aaa/grayscale_250",
 
-        "filepath" : "dvid://emdata1:9000/api/node/b4/grayscale",
+        "##filepath" : "dvid://emdata1:9000/api/node/b4/grayscale",
         "nickname" : "raw",
 
         "##NOTE" : "subvolume_roi is ordered zyxc!!",
         "##NOTE" : "These coordinates have been remapped for the DVID volume at emdata1:9000",
         "ORIGINAL subvolume_roi" : [[1990,3249,4498,0], [2510,3769,5018,1]],
-        "subvolume_roi" : [[1990, 560, 620, 0], [2510, 1080, 1140, 1]],
+        "##subvolume_roi" : [[1990, 560, 620, 0], [2510, 1080, 1140, 1]],
         "##" : "00076_4508-5007_3259-3758_2000-2499"
     },
     "pixel_probabilities_info" :
@@ -32,7 +32,7 @@
         "##subvolume_roi" : [[25,0,150,0], [175,200,250,1]],        
 
         "##filepath" : "/groups/flyem/data/medulla-FIB-Z1211-25-production/align2/substacks/00076_4508-5007_3259-3758_2000-2499/gala-segmentation-pipeline/output/STACKED_prediction.h5/volume/predictions",
-        "filepath" : "/Volumes/flyemdata/medulla-FIB-Z1211-25-production/align2/substacks/00076_4508-5007_3259-3758_2000-2499/gala-segmentation-pipeline/output/STACKED_prediction.h5/volume/predictions",
+        "filepath" : "/groups/flyem/data/medulla-FIB-Z1211-25-production/align2/substacks/00076_4508-5007_3259-3758_2000-2499/gala-segmentation-pipeline/output/STACKED_prediction.h5/volume/predictions",
         "nickname" : "predictions"
     },
     "undersegmentation_info" :
@@ -42,21 +42,24 @@
 
         "##filepath" : "/magnetic/split-body-data/test_data2/seg_250.h5/data",
         "##filepath" : "dvid://localhost:8000/api/node/aaa/undersegmentation_250",
-        "##axistags" : "zyx",
 
-        "filepath" : "dvid://emdata1:9000/api/node/b4/bodies",
+        "filepath" : "/groups/flyem/data/medulla-FIB-Z1211-25-production/align2/substacks/00076_4508-5007_3259-3758_2000-2499/gala-segmentation-pipeline/output/seg_data/seg-0.1-23baccfe8a66b32fd592412fa2f78fa7-v2.h5/stack",
+        "axistags" : "zyx",
+
+        "##filepath" : "dvid://emdata1:9000/api/node/b4/bodies",
         "nickname" : "original_labels",
 
         "##NOTE" : "subvolume_roi is ordered zyxc!!",
         "##NOTE" : "These coordinates have been remapped for the DVID volume at emdata1:9000",
         "ORIGINAL subvolume_roi" : [[1990,3249,4498,0], [2510,3769,5018,1]],
-        "subvolume_roi" : [[1990, 560, 620, 0], [2510, 1080, 1140, 1]],
+        "##subvolume_roi" : [[1990, 560, 620, 0], [2510, 1080, 1140, 1]],
         
         "##" : "00076_4508-5007_3259-3758_2000-2499"
     },
 
     "available_body_ids" : [100000,100001,100002,100003,100004,100005,100006,100007,100008,100009,100010],    
     "##NOTE" : "These coordinates have been remapped for the DVID volume at emdata1:9000",
-    "##original focus_coordinates" : {"z" : 2033, "y" : 3260, "x" : 5358},
-    "focus_coordinates" : {"z" : 2033, "y" : 571, "x" : 1480}    
+    "##focus_coordinates" : {"z" : 2033, "y" : 571, "x" : 1480},    
+    
+    "focus_coordinates" : {"z" : 53, "y" : 21, "x" : 158}
 }
