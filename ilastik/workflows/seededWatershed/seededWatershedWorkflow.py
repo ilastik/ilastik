@@ -153,6 +153,10 @@ class SeededWatershedWorkflow(Workflow):
         if workflow_params.focus_coordinates:
             focus_coordinates = copy.copy(workflow_params.focus_coordinates)
 
+            tagged_offset = {'x': 0, 'y': 0, 'z' : 0 }
+            tagged_stop = opDataSelection.getLane(0).ImageGroup[ROLE_RAW].meta.getTaggedShape()
+            offset_tagged_stop = tagged_stop
+
             # Focus coordinates are provided in DVID coordinate space
             # Offset the focus coordinates for the subvolume in our viewer
             if workflow_params.raw_data_info.subvolume_roi:
@@ -160,21 +164,25 @@ class SeededWatershedWorkflow(Workflow):
                 axis_keys = [tag.key for tag in volume_axistags]
                 offset = workflow_params.raw_data_info.subvolume_roi[0]
                 tagged_offset = collections.OrderedDict( zip( axis_keys, offset ) )
+
                 for k in focus_coordinates.keys():
                     focus_coordinates[k] -= tagged_offset[k]
 
-                subvolume_stop = workflow_params.raw_data_info.subvolume_roi[1]
+                subvolume_stop = numpy.array( workflow_params.raw_data_info.subvolume_roi[1] )
                 tagged_stop = collections.OrderedDict( zip( axis_keys, subvolume_stop ) )
-                
-                for k in focus_coordinates.keys():
-                    if ( focus_coordinates[k] < 0 or
-                         focus_coordinates[k] >= tagged_stop[k] ):
-                        msg = "The focus coordinate in your parameter file appears to be out-of-range for the subvolume you want to view:\n"
-                        msg += "focus_coordinates = {}\n".format( workflow_params.focus_coordinates )
-                        msg += "subvolume start = {}\n".format( dict(tagged_offset) )
-                        msg += "subvolume stop = {}\n".format( dict(tagged_stop) )
-                        raise Exception(msg)
-                
+                subvolume_stop -= subvolume_stop - numpy.array( workflow_params.raw_data_info.subvolume_roi[0] )
+                offset_tagged_stop = collections.OrderedDict( zip( axis_keys, subvolume_stop ) )
+
+            for k in focus_coordinates.keys():
+                if ( focus_coordinates[k] < 0 or
+                     focus_coordinates[k] >= offset_tagged_stop[k] ):
+                    msg = "The focus coordinate in your parameter file appears to be out-of-range for the subvolume you want to view:\n"
+                    msg += "focus_coordinates = {}\n".format( workflow_params.focus_coordinates )
+                    msg += "subvolume start = {}\n".format( dict(tagged_offset) )
+                    msg += "subvolume stop = {}\n".format( dict(tagged_stop) )
+                    raise Exception(msg)                
+
+
             opSeededWatershed.FocusCoordinates.setValue( focus_coordinates )
         
         if workflow_params.available_body_ids is not None:
