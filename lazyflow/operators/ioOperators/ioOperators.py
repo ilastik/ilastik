@@ -50,10 +50,10 @@ class OpStackLoader(Operator):
     :param globstring: A glob string as defined by the glob module. We
         also support the following special extension to globstring
         syntax: A single string can hold a *list* of globstrings. Each
-        separate globstring in the list is separated by two forward
-        slashes (//). For, example,
+        separate globstring in the list is separated by a semicolon (;).
+        For, example,
 
-            '/a/b/c.txt///d/e/f.txt//../g/i/h.txt'
+            '/a/b/c.txt;/d/e/f.txt;../g/i/h.txt'
 
         is parsed as
 
@@ -73,12 +73,7 @@ class OpStackLoader(Operator):
             super(OpStackLoader.FileOpenError, self).__init__( self.msg )
 
     def setupOutputs(self):
-        self.fileNameList = []
-        globStrings = self.globstring.value
-
-        # Parse list into separate globstrings and combine them
-        for globString in sorted(globStrings.split("//")):
-            self.fileNameList += sorted(glob.glob(globString))
+        self.fileNameList = self.expandGlobStrings(self.globstring.value)
 
         num_files = len(self.fileNameList)
         if len(self.fileNameList) == 0:
@@ -87,7 +82,8 @@ class OpStackLoader(Operator):
         try:
             self.info = vigra.impex.ImageInfo(self.fileNameList[0])
             self.slices_per_file = vigra.impex.numberImages(self.fileNameList[0])
-        except RuntimeError:
+        except RuntimeError as e:
+            print(e)
             raise OpStackLoader.FileOpenError(self.fileNameList[0])
 
         slice_shape = self.info.getShape()
@@ -154,6 +150,15 @@ class OpStackLoader(Operator):
                                                            y_start:y_stop,
                                                            c_start:c_stop ].withAxes( *'yxc' )
         return result
+
+    @staticmethod
+    def expandGlobStrings(globStrings):
+        ret = []
+        # Parse list into separate globstrings and combine them
+        for globString in globStrings.split(";"):
+            s = globString.strip()
+            ret += sorted(glob.glob(s))
+        return ret
         
 
 
