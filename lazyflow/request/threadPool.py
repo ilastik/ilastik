@@ -94,7 +94,7 @@ class MemoryWatcher(threading.Thread):
     def __init__(self, thread_pool):
         threading.Thread.__init__(self)
         self.process = psutil.Process(os.getpid())
-        self.usage = self.process.get_memory_percent()
+        self.usage = self.process.memory_percent()
         self.tasks = FifoQueue()
         self.thread_pool = thread_pool
         self.threshold = 85 # threshold at which to 
@@ -108,7 +108,7 @@ class MemoryWatcher(threading.Thread):
         Flushes queued tasks, if memory usage is below a threshold.
         """
         while self.stopped is False:
-            self.usage = self.process.get_memory_percent()
+            self.usage = self.process.memory_percent()
             if self.usage < self.threshold:
                 self.flush()
             time.sleep(0.1)
