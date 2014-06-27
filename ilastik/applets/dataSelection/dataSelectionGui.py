@@ -574,7 +574,7 @@ class DataSelectionGui(QWidget):
             return
 
         info = DatasetInfo()
-        info.filePath = "//".join( files )
+        info.filePath = ";".join( files )
         prefix = os.path.commonprefix(files)
         info.nickname = PathComponents(prefix).filenameBase
         # Add an underscore for each wildcard digit
@@ -621,9 +621,8 @@ class DataSelectionGui(QWidget):
     @threadRouted
     def handleFailedStackLoad(self, files, originalNumLanes, exc, exc_info):
         msg = "Failed to load stack due to the following error:\n{}".format( exc )
-        msg += "Attempted stack files were:"
-        for f in files:
-            msg += f + "\n"
+        msg += "\nAttempted stack files were:\n"
+        msg += "\n".join(files)
         log_exception( logger, msg, exc_info )
         QMessageBox.critical(self, "Failed to load image stack", msg)
         self.topLevelOperator.DatasetGroup.resize(originalNumLanes)

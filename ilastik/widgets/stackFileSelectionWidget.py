@@ -33,6 +33,8 @@ from volumina.utility import PreferencesManager
 import ilastik.config
 from volumina.utility import encode_from_qstring, decode_to_qstring
 
+from lazyflow.operators.ioOperators import OpStackLoader
+
 class StackFileSelectionWidget(QDialog):
     
     def __init__(self, parent, files=None):
@@ -189,9 +191,9 @@ class StackFileSelectionWidget(QDialog):
         self._updateFileList( fileNames )
 
     def _applyPattern(self):
-        globstring = str( self.patternEdit.text() )
-        filenames = [k.replace('\\', '/') for k in glob.glob(globstring)]
-        self._updateFileList( sorted(filenames) )
+        globStrings = encode_from_qstring(self.patternEdit.text())
+        filenames = OpStackLoader.expandGlobStrings(globStrings)
+        self._updateFileList(filenames)
 
     def _updateFileList(self, files):
         self.selectedFiles = files
