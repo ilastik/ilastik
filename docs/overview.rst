@@ -1,7 +1,7 @@
 Overview
 ========
 
-The ilastik 0.6 code base consists of three separate projects, each of which has its own repository:
+The ilastik 1.0 code base consists of three separate projects, each of which has its own repository:
 
 * lazyflow - multithreaded computations implemented via data flow graphs
 * volumina - 5D image viewer GUI
