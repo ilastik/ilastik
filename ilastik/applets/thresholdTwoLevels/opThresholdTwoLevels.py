@@ -125,20 +125,12 @@ class OpThresholdTwoLevels(Operator):
 
         # single threshold operator
         self.opThreshold1 = _OpThresholdOneLevel(parent=self)
-<<<<<<< HEAD
-=======
-        self.opThreshold1.InputImage.connect(self._smoothStacker.Output)
->>>>>>> master
         self.opThreshold1.Threshold.connect(self.SingleThreshold)
         self.opThreshold1.MinSize.connect(self.MinSize)
         self.opThreshold1.MaxSize.connect(self.MaxSize)
 
         # double threshold operator
         self.opThreshold2 = _OpThresholdTwoLevels(parent=self)
-<<<<<<< HEAD
-=======
-        self.opThreshold2.InputImage.connect(self._smoothStacker.Output)
->>>>>>> master
         self.opThreshold2.MinSize.connect(self.MinSize)
         self.opThreshold2.MaxSize.connect(self.MaxSize)
         self.opThreshold2.LowThreshold.connect(self.LowThreshold)
@@ -146,10 +138,6 @@ class OpThresholdTwoLevels(Operator):
 
         if haveGraphCut():
             self.opThreshold1GC = _OpThresholdOneLevel(parent=self)
-<<<<<<< HEAD
-=======
-            self.opThreshold1GC.InputImage.connect(self._smoothStacker.Output)
->>>>>>> master
             self.opThreshold1GC.Threshold.connect(self.SingleThresholdGC)
             self.opThreshold1GC.MinSize.connect(self.MinSize)
             self.opThreshold1GC.MaxSize.connect(self.MaxSize)
@@ -208,13 +196,6 @@ class OpThresholdTwoLevels(Operator):
                 "Unknown index {} for current tab.".format(curIndex))
 
         self._opReorder2.Input.connect(outputSlot)
-<<<<<<< HEAD
-=======
-        self._op5CacheInput.Input.connect(outputSlot)
-        self._op5CacheOutput.AxisOrder.setValue(
-        self._op5CacheInput.Input.meta.getAxisKeys())
-        self._setBlockShape()
->>>>>>> master
         # force the cache to emit a dirty signal
         self._cache.Input.setDirty(slice(None))
 
