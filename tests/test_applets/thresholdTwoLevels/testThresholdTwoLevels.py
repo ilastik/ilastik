@@ -23,7 +23,7 @@ import vigra
 np = numpy
 
 from lazyflow.graph import Graph
-from lazyflow.operators import Op5ifyer
+from lazyflow.operators import Op5ifyer, OpArrayPiper
 from ilastik.applets.thresholdTwoLevels.opThresholdTwoLevels \
     import OpThresholdTwoLevels, OpSelectLabels
 
@@ -36,6 +36,8 @@ from ilastik.applets.thresholdTwoLevels.opGraphcutSegment import haveGraphCut
 import ilastik.ilastik_logging
 ilastik.ilastik_logging.default_config.init()
 import unittest
+
+from testOpGraphcutSegment import have_opengm
 
 
 ## for testing ThresholdOneLevel
@@ -422,6 +424,26 @@ class TestThresholdTwoLevels(Generator2):
         out5d = oper5d.Output[:].wait()
         numpy.testing.assert_array_equal(out5d.shape, self.data5d.shape)
 
+    def testReconnect(self):
+        predRaw = np.zeros((20, 22, 21, 3), dtype=np.uint32)
+        pred1 = vigra.taggedView(predRaw, axistags='xyzc')
+        pred2 = vigra.taggedView(predRaw, axistags='tyxc')
+
+        oper5d = OpThresholdTwoLevels(graph=Graph())
+        oper5d.InputImage.setValue(pred1)
+        oper5d.MinSize.setValue(self.minSize)
+        oper5d.MaxSize.setValue(self.maxSize)
+        oper5d.HighThreshold.setValue(self.highThreshold)
+        oper5d.LowThreshold.setValue(self.lowThreshold)
+        oper5d.SmootherSigma.setValue(self.sigma)
+        oper5d.Channel.setValue(0)
+        oper5d.CurOperator.setValue(1)
+
+        out5d = oper5d.CachedOutput[:].wait()
+
+        oper5d.InputImage.setValue(pred2)
+        out5d = oper5d.CachedOutput[:].wait()
+
     def testNoOp(self):
         oper5d = OpThresholdTwoLevels(graph=Graph())
         oper5d.InputImage.setValue(self.data5d)
@@ -609,12 +631,80 @@ class TestThresholdTwoLevels(Generator2):
         oper.LowThreshold.setValue(.3)
         oper.SmootherSigma.setValue({'x': 0, 'y': 0, 'z': 0})
         oper.CurOperator.setValue(1)
-        
+
         inspector = DirtyAssert(graph=g)
         inspector.Input.connect(oper.CachedOutput)
-        
+
         with self.assertRaises(DirtyAssert.WasSetDirty):
             oper.CurOperator.setValue(0)
+
+
+@unittest.skipIf(not have_opengm, "OpenGM not available")
+class TestThresholdGC(Generator2):
+
+    def testWithout(self):
+        oper5d = OpThresholdTwoLevels(graph=Graph())
+        oper5d.InputImage.setValue(self.data5d)
+        oper5d.MinSize.setValue(self.minSize)
+        oper5d.MaxSize.setValue(self.maxSize)
+        oper5d.HighThreshold.setValue(self.highThreshold)
+        oper5d.LowThreshold.setValue(self.lowThreshold)
+        oper5d.SmootherSigma.setValue(self.sigma)
+        oper5d.Channel.setValue(0)
+        oper5d.CurOperator.setValue(2)
+        oper5d.UsePreThreshold.setValue(False)
+
+        out5d = oper5d.CachedOutput[:].wait()
+        numpy.testing.assert_array_equal(out5d.shape, self.data5d.shape)
+
+    def testWith(self):
+        oper5d = OpThresholdTwoLevels(graph=Graph())
+        oper5d.InputImage.setValue(self.data5d)
+        oper5d.MinSize.setValue(self.minSize)
+        oper5d.MaxSize.setValue(self.maxSize)
+        oper5d.HighThreshold.setValue(self.highThreshold)
+        oper5d.LowThreshold.setValue(self.lowThreshold)
+        oper5d.SmootherSigma.setValue(self.sigma)
+        oper5d.Channel.setValue(0)
+        oper5d.CurOperator.setValue(2)
+        oper5d.UsePreThreshold.setValue(True)
+
+        out5d = oper5d.CachedOutput[:].wait()
+        numpy.testing.assert_array_equal(out5d.shape, self.data5d.shape)
+
+    def testStrangeAxesWith(self):
+        pred = np.zeros((20, 22, 21, 3), dtype=np.uint32)
+        pred = vigra.taggedView(pred, axistags='tyxc')
+
+        oper5d = OpThresholdTwoLevels(graph=Graph())
+        oper5d.InputImage.setValue(pred)
+        oper5d.MinSize.setValue(self.minSize)
+        oper5d.MaxSize.setValue(self.maxSize)
+        oper5d.HighThreshold.setValue(self.highThreshold)
+        oper5d.LowThreshold.setValue(self.lowThreshold)
+        oper5d.SmootherSigma.setValue(self.sigma)
+        oper5d.Channel.setValue(0)
+        oper5d.CurOperator.setValue(2)
+        oper5d.UsePreThreshold.setValue(True)
+
+        out5d = oper5d.CachedOutput[:].wait()
+
+    def testStrangeAxesWithout(self):
+        pred = np.zeros((20, 22, 21, 3), dtype=np.uint32)
+        pred = vigra.taggedView(pred, axistags='tyxc')
+
+        oper5d = OpThresholdTwoLevels(graph=Graph())
+        oper5d.InputImage.setValue(pred)
+        oper5d.MinSize.setValue(self.minSize)
+        oper5d.MaxSize.setValue(self.maxSize)
+        oper5d.HighThreshold.setValue(self.highThreshold)
+        oper5d.LowThreshold.setValue(self.lowThreshold)
+        oper5d.SmootherSigma.setValue(self.sigma)
+        oper5d.Channel.setValue(0)
+        oper5d.CurOperator.setValue(2)
+        oper5d.UsePreThreshold.setValue(False)
+
+        out5d = oper5d.CachedOutput[:].wait()
 
 
 from lazyflow.operator import Operator, InputSlot
