@@ -73,13 +73,6 @@ class OpGraphCut(Operator):
     def __init__(self, *args, **kwargs):
         super(OpGraphCut, self).__init__(*args, **kwargs)
 
-        cache = OpCompressedCache(parent=self)
-        cache.name = "{}._cache".format(self.name)
-        cache.Input.connect(self.Output)
-        self._cache = cache
-
-        self.CachedOutput.connect(self._cache.Output)
-
     def setupOutputs(self):
         # sanity checks
         shape = self.Prediction.meta.shape
@@ -90,6 +83,12 @@ class OpGraphCut(Operator):
         assert tags == 'txyzc',\
             "Prediction maps have wrong axes order"\
             "(expected: txyzc, got: {})".format(tags)
+
+        cache = OpCompressedCache(parent=self)
+        cache.name = "{}._cache".format(self.name)
+        cache.Input.connect(self.Output)
+        self._cache = cache
+        self.CachedOutput.connect(self._cache.Output)
 
         self.Output.meta.assignFrom(self.Prediction.meta)
         # output is a label image
