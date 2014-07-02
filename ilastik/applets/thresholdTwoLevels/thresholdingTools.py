@@ -55,6 +55,107 @@ def getMemoryUsageMb():
     return mem_usage_mb
 
 
+class OpAnisotropicGaussianSmoothing5d(Operator):
+    # raw volume, in 5d 'txyzc' order
+    Input = InputSlot()
+    Sigmas = InputSlot(value={'x': 1.0, 'y': 1.0, 'z': 1.0})
+
+    Output = OutputSlot()
+
+    def setupOutputs(self):
+        self.Output.meta.assignFrom(self.Input.meta)
+        self.Output.meta.dtype = numpy.float32 # vigra gaussian only supports float32
+        self._sigmas = self.Sigmas.value
+        assert isinstance(self.Sigmas.value, dict), "Sigmas slot expects a dict"
+        assert set(self._sigmas.keys()) == set('xyz'), "Sigmas slot expects three key-value pairs for x,y,z"
+
+    def execute(self, slot, subindex, roi, result):
+        assert all(roi.stop <= self.Input.meta.shape),\
+            "Requested roi {} is too large for this input image of shape {}.".format(roi, self.Input.meta.shape)
+
+        # Determine how much input data we'll need, and where the result will be
+        # relative to that input roi
+        # inputRoi is a 5d roi, computeRoi depends on the number of singletons
+        # in shape, but is at most 3d
+        inputRoi, computeRoi = self._getInputComputeRois(roi)
+
+        # Obtain the input data
+        with Timer() as resultTimer:
+            data = self.Input(*inputRoi).wait()
+        logger.debug("Obtaining input data took {} seconds for roi {}".format(
+            resultTimer.seconds(), inputRoi))
+
+        # input is in txyzc order
+        tIndex = 0
+        cIndex = 4
+
+        # Must be float32
+        if data.dtype != numpy.float32:
+            data = data.astype(numpy.float32)
+
+        # we need to remove a singleton z axis, otherwise we get 
+        # 'kernel longer than line' errors
+        ts = self.Input.meta.getTaggedShape()
+        tags = [k for k in 'xyz' if ts[k] > 1]
+        sigma = [self._sigmas[k] for k in tags]
+
+        # Check if we need to smooth
+        if any([x < 0.1 for x in sigma]):
+            # just pipe the input through
+            result[...] = data
+            return
+
+        for i, t in enumerate(xrange(roi.start[tIndex], roi.stop[tIndex])):
+            for j, c in enumerate(xrange(roi.start[cIndex], roi.stop[cIndex])):
+                # prepare the result as an argument
+                resview = vigra.taggedView(result[i, ..., j].squeeze(),
+                                           axistags="".join(tags))
+                # Smooth the input data
+                print(computeRoi)
+                vigra.filters.gaussianSmoothing(
+                    data[i, ..., j].squeeze(), sigma, window_size=2.0,
+                    roi=computeRoi, out=resview)
+
+    def _getInputComputeRois(self, roi):
+        shape = self.Input.meta.shape
+        start = numpy.asarray(roi.start)
+        stop = numpy.asarray(roi.stop)
+        n = len(stop)
+        spatStart = [roi.start[i] for i in range(n) if shape[i] > 1]
+        spatStop = [roi.stop[i] for i in range(n) if shape[i] > 1]
+        sigma = [0] + map(self._sigmas.get, 'xyz') + [0]
+        spatialRoi = (spatStart, spatStop)
+
+        inputSpatialRoi = extendSlice(roi.start, roi.stop, shape,
+                                      sigma, window=2.0)
+
+        # Determine the roi within the input data we're going to request
+        inputRoiOffset = roi.start - inputSpatialRoi[0]
+        computeRoi = [inputRoiOffset, inputRoiOffset + stop - start]
+        for i in (0, 1):
+            computeRoi[i] = [computeRoi[i][j] for j in range(n)
+                             if shape[j] > 1 and j not in (0, 4)]
+
+        # make sure that vigra understands our integer types
+        computeRoi = (tuple(map(int, computeRoi[0])),
+                      tuple(map(int, computeRoi[1])))
+
+        inputRoi = (list(inputSpatialRoi[0]), list(inputSpatialRoi[1]))
+
+        return inputRoi, computeRoi
+
+    def propagateDirty(self, slot, subindex, roi):
+        if slot == self.Input:
+            # Halo calculation is bidirectional, so we can re-use the function
+            # that computes the halo during execute()
+            inputRoi, _ = self._getInputComputeRois(roi)
+            self.Output.setDirty(inputRoi[0], inputRoi[1])
+        elif slot == self.Sigmas:
+            self.Output.setDirty(slice(None))
+        else:
+            assert False, "Unknown input slot: {}".format(slot.name)
+
+
 class OpAnisotropicGaussianSmoothing(Operator):
     Input = InputSlot()
     Sigmas = InputSlot( value={'x':1.0, 'y':1.0, 'z':1.0} )
@@ -62,6 +163,7 @@ class OpAnisotropicGaussianSmoothing(Operator):
     Output = OutputSlot()
 
     def setupOutputs(self):
+        
         self.Output.meta.assignFrom(self.Input.meta)
         #if there is a time of dim 1, output won't have that
         timeIndex = self.Output.meta.axistags.index('t')
@@ -74,8 +176,8 @@ class OpAnisotropicGaussianSmoothing(Operator):
         self._sigmas = self.Sigmas.value
         assert isinstance(self.Sigmas.value, dict), "Sigmas slot expects a dict"
         assert set(self._sigmas.keys()) == set('xyz'), "Sigmas slot expects three key-value pairs for x,y,z"
-        
-        self.Output.setDirty( slice(None) )
+        print("Assigning output: {} ====> {}".format(self.Input.meta.getTaggedShape(), self.Output.meta.getTaggedShape()))
+        #self.Output.setDirty( slice(None) )
     
     def execute(self, slot, subindex, roi, result):
         assert all(roi.stop <= self.Input.meta.shape), "Requested roi {} is too large for this input image of shape {}.".format( roi, self.Input.meta.shape )
