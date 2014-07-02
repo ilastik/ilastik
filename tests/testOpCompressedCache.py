@@ -236,6 +236,30 @@ class TestOpCompressedCache( object ):
         #logger.debug("Checking data...")    
         assert (readData == expectedData).all(), "Incorrect output!"
 
+    def testReconnectWithoutRequest(self):
+        vol = numpy.zeros((200, 100, 50), dtype=numpy.float32)
+        vol1 = vigra.taggedView(vol, axistags='xyz')
+        vol2 = vigra.taggedView(vol, axistags='zyx').withAxes(*'xyz')
+        graph = Graph()
+
+        opData1 = OpArrayPiper(graph=graph)
+        opData1.Input.setValue(vol1)
+
+        op = OpCompressedCache(graph=graph)
+        op.Input.connect(opData1.Output)
+        op.BlockShape.setValue((200, 100, 10))
+        out = op.Output[...].wait()
+
+        op.BlockShape.setValue((50, 100, 10))
+
+        # this must throw an exception
+        try:
+            out = op.Output[...].wait()
+        except Exception:
+            pass
+        else:
+            raise Exception("Cache was not set invalid after reconfiguration")
+
         
 
 if __name__ == "__main__":
