@@ -176,7 +176,16 @@ reports the names of the features it supports, and handles the actual
 calculation. The GUI queries all plugins for the features they provide
 and present them to the user. The user selects some features, and the
 selection is sent to the operator, which calls the appropriate plugins
-and aggregates the results.
+and aggregates the results. A detailed example of a user-defined plugin 
+with object features can be found in the $ILASTIK/examples directory. 
+To get your plugins discovered by ilastik, you have to add their path 
+to the .ilastikrc file in your home directory. The file should look
+as follows:
+    [ilastik]
+    
+    plugin_directories: /path/to/cool_features
+
+The cool_features directory in this case should contain the .py and the .yapsy-plugin files.
 
 .. currentmodule:: ilastik.applets.objectExtraction.objectExtractionApplet
 .. autoclass:: ObjectExtractionApplet
