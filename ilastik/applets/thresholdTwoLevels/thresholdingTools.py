@@ -111,7 +111,6 @@ class OpAnisotropicGaussianSmoothing5d(Operator):
                 resview = vigra.taggedView(result[i, ..., j].squeeze(),
                                            axistags="".join(tags))
                 # Smooth the input data
-                print(computeRoi)
                 vigra.filters.gaussianSmoothing(
                     data[i, ..., j].squeeze(), sigma, window_size=2.0,
                     roi=computeRoi, out=resview)
