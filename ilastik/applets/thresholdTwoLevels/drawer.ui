@@ -32,7 +32,7 @@
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select the channel of the input data which you want to threshold. Look at &lt;span style=&quot; font-weight:600;&quot;&gt;&amp;quot;Input Channel x&amp;quot;&lt;/span&gt; layer for the results of this operation.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="maximum">
-        <number>1</number>
+        <number>0</number>
        </property>
       </widget>
      </item>

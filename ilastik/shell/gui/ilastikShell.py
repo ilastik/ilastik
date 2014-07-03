@@ -728,7 +728,7 @@ class IlastikShell( QMainWindow ):
         """
         Update the title bar and allowable shell actions based on the state of the currently loaded project.
         """
-        windowTitle = "ilastik for Conservation Tracking - "
+        windowTitle = "ilastik - "
         if self.projectManager is None or self.projectManager.closed:
             windowTitle += "No Project Loaded"
         else:
