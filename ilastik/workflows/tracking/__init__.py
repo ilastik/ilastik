@@ -18,32 +18,3 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-import logging
-logger = logging.getLogger(__name__)
-
-try:
-    from chaingraph.chaingraphTrackingWorkflow import ChaingraphTrackingWorkflow 
-except ImportError as e:
-    logger.warn( "Failed to import automatic tracking workflow (chaingraph). For this workflow, see the installation"\
-                 "instructions on our website ilastik.org; check dependencies: " + str(e) )
-
-try:    
-    from manual.manualTrackingWorkflow import ManualTrackingWorkflow
-except ImportError as e:
-    logger.warn( "Failed to import manual tracking workflow; check dependencies: " + str(e) )
-    
-try:    
-    from conservation.conservationTrackingWorkflow import ConservationTrackingWorkflow
-except ImportError as e:
-    logger.warn( "Failed to import conservation tracking workflow; check dependencies: " + str(e) )
-    
-#try:    
-#    from conservation.conservationTrackingWorkflow import ConservationTrackingWorkflowWithOptTrans
-#except ImportError as e:
-#    logger.warn( "Failed to import conservation tracking workflow; check dependencies: " + str(e) )
-    
-try:    
-    from conservation.conservationTrackingWorkflow import ConservationTrackingWorkflowFromBinary
-except ImportError as e:
-    logger.warn( "Failed to import conservation tracking workflow (from binary); check dependencies: " + str(e) )
-    

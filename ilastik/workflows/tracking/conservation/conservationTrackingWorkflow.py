@@ -11,22 +11,20 @@ from ilastik.applets.trackingFeatureExtraction import config
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
 
-class ConservationTrackingWorkflow( Workflow ):
-    workflowName = "Automatic Tracking Workflow (Conservation Tracking) from prediction map"
+class ConservationTrackingWorkflowBase( Workflow ):
+    workflowName = "Automatic Tracking Workflow (Conservation Tracking) BASE"
 
-    withOptTrans = False
-    fromBinary = False
-    def __init__( self, shell, headless, workflow_cmdline_args, withOptTrans=False, fromBinary=False, *args, **kwargs ):
+    def __init__( self, shell, headless, workflow_cmdline_args, *args, **kwargs ):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
         if 'graph' in kwargs: del kwargs['graph']
-        if 'withOptTrans' in kwargs:
-            self.withOptTrans = kwargs['withOptTrans']
-        if 'fromBinary' in kwargs:
-            self.fromBinary = kwargs['fromBinary']
-        super(ConservationTrackingWorkflow, self).__init__(shell, headless, graph=graph, *args, **kwargs)
+        # if 'withOptTrans' in kwargs:
+        #     self.withOptTrans = kwargs['withOptTrans']
+        # if 'fromBinary' in kwargs:
+        #     self.fromBinary = kwargs['fromBinary']
+        super(ConservationTrackingWorkflowBase, self).__init__(shell, headless, graph=graph, *args, **kwargs)
 
         data_instructions = 'Use the "Raw Data" tab to load your intensity image(s).\n\n'
-        if fromBinary:
+        if self.fromBinary:
             data_instructions += 'Use the "Binary Image" tab to load your segmentation image(s).'
         else:
             data_instructions += 'Use the "Prediction Maps" tab to load your pixel-wise probability image(s).'
@@ -42,7 +40,7 @@ class ConservationTrackingWorkflow( Workflow ):
                                                        )
         
         opDataSelection = self.dataSelectionApplet.topLevelOperator
-        if fromBinary:
+        if self.fromBinary:
             opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Binary Image'] )
         else:
             opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Prediction Maps'] )
@@ -131,7 +129,7 @@ class ConservationTrackingWorkflow( Workflow ):
         # # Connect operators ##       
         vigra_features = list((set(config.vigra_features)).union(config.selected_features_objectcount[config.features_vigra_name])) 
         feature_names_vigra = {}
-        feature_names_vigra[config.features_vigra_name] = { name: {} for name in vigra_features }                
+        feature_names_vigra[config.features_vigra_name] = { name: {} for name in vigra_features }
         opObjExtraction.RawImage.connect(op5Raw.Output)
         opObjExtraction.BinaryImage.connect(op5Binary.Output)
         if self.withOptTrans:
@@ -180,8 +178,7 @@ class ConservationTrackingWorkflow( Workflow ):
         opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeaturesVigra )
         opTracking.DivisionProbabilities.connect( opDivDetection.Probabilities )
         opTracking.DetectionProbabilities.connect( opCellClassification.Probabilities )
-        opTracking.NumLabels.connect( opCellClassification.NumLabels )        
-#        opTracking.RegionLocalCenters.connect( opObjExtraction.RegionLocalCenters )        
+        opTracking.NumLabels.connect( opCellClassification.NumLabels )
     
         opDataExport.Inputs.resize(1)
         opDataExport.Inputs[0].connect( opTracking.Output )
@@ -213,12 +210,7 @@ class ConservationTrackingWorkflow( Workflow ):
             opThresholding = self.thresholdTwoLevelsApplet.topLevelOperator
             thresholdingOutput = opThresholding.CachedOutput
             thresholding_ready = input_ready and \
-                           len(thresholdingOutput) > 0 #and \
-            #               thresholdingOutput.meta.shape != None and \
-            #               len(thresholdingOutput.meta.shape) > 0
-            #print len(thresholdingOutput) > 0, thresholdingOutput.meta.shape != None
-            #if thresholdingOutput.meta.shape != None:
-            #    print len(thresholdingOutput.meta.shape) > 0
+                           len(thresholdingOutput) > 0
         else:
             thresholding_ready = True and input_ready
 
@@ -252,23 +244,15 @@ class ConservationTrackingWorkflow( Workflow ):
         
 
 
-#class ConservationTrackingWorkflowWithOptTrans( ConservationTrackingWorkflow ):
-#    workflowName = "Automatic Tracking Workflow (Conservation Tracking) with optical translation"
-#
-#    def __init__( self, shell, headless, workflow_cmdline_args, *args, **kwargs ):
-#        graph = kwargs['graph'] if 'graph' in kwargs else Graph()
-#        if 'graph' in kwargs: del kwargs['graph']
-#        self.withOptTrans = True
-#        super(ConservationTrackingWorkflowWithOptTrans, self).__init__(shell, headless, workflow_cmdline_args, graph=graph, withOptTrans=self.withOptTrans, *args, **kwargs)
-
-
-class ConservationTrackingWorkflowFromBinary( ConservationTrackingWorkflow ):
+class ConservationTrackingWorkflowFromBinary( ConservationTrackingWorkflowBase ):
     workflowName = "Automatic Tracking Workflow (Conservation Tracking) from binary image"
 
-    def __init__( self, shell, headless, workflow_cmdline_args, *args, **kwargs ):
-        graph = kwargs['graph'] if 'graph' in kwargs else Graph()
-        if 'graph' in kwargs: del kwargs['graph']
-        self.withOptTrans = False
-        self.fromBinary = True
-        super(ConservationTrackingWorkflowFromBinary, self).__init__(shell, headless, workflow_cmdline_args, graph=graph, fromBinary=self.fromBinary, *args, **kwargs)
-       
+    withOptTrans = False
+    fromBinary = True
+
+
+class ConservationTrackingWorkflowFromPrediction( ConservationTrackingWorkflowBase ):
+    workflowName = "Automatic Tracking Workflow (Conservation Tracking) from prediction image"
+
+    withOptTrans = False
+    fromBinary = False
