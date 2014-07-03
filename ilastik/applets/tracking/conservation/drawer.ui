@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>1050</height>
+    <height>1096</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -334,6 +334,19 @@
      </item>
      <item>
       <layout class="QGridLayout" name="gridLayout_2">
+       <item row="9" column="1">
+        <widget class="QLineEdit" name="timeoutBox"/>
+       </item>
+       <item row="7" column="1">
+        <widget class="QSpinBox" name="appearanceBox">
+         <property name="maximum">
+          <number>9999999</number>
+         </property>
+         <property name="value">
+          <number>500</number>
+         </property>
+        </widget>
+       </item>
        <item row="2" column="1">
         <widget class="QDoubleSpinBox" name="divThreshBox">
          <property name="maximum">
@@ -442,25 +455,46 @@
          </property>
         </widget>
        </item>
-       <item row="8" column="0">
+       <item row="10" column="0">
         <widget class="QLabel" name="label_20">
          <property name="text">
           <string>Border Width (abs.)</string>
          </property>
         </widget>
        </item>
-       <item row="8" column="1">
+       <item row="10" column="1">
         <widget class="QSpinBox" name="bordWidthBox"/>
        </item>
-       <item row="7" column="0">
+       <item row="9" column="0">
         <widget class="QLabel" name="label_21">
          <property name="text">
           <string>Timeout (sec.)</string>
          </property>
         </widget>
        </item>
-       <item row="7" column="1">
-        <widget class="QLineEdit" name="timeoutBox"/>
+       <item row="8" column="1">
+        <widget class="QSpinBox" name="disappearanceBox">
+         <property name="maximum">
+          <number>9999999</number>
+         </property>
+         <property name="value">
+          <number>500</number>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="0">
+        <widget class="QLabel" name="label_22">
+         <property name="text">
+          <string>Appearance Cost</string>
+         </property>
+        </widget>
+       </item>
+       <item row="8" column="0">
+        <widget class="QLabel" name="label_23">
+         <property name="text">
+          <string>Disappearance Cost</string>
+         </property>
+        </widget>
        </item>
       </layout>
      </item>

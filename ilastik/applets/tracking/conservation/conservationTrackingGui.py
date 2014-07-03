@@ -59,6 +59,10 @@ class ConservationTrackingGui( TrackingBaseGui ):
             self._drawer.bordWidthBox.setValue(parameters['borderAwareWidth'])
         if 'cplex_timeout' in parameters.keys():
             self._drawer.timeoutBox.setText(str(parameters['cplex_timeout']))
+        if 'appearanceCost' in parameters.keys():
+            self._drawer.appearanceBox.setValue(parameters['appearanceCost'])
+        if 'disappearanceCost' in parameters.keys():
+            self._drawer.disappearanceBox.setValue(parameters['disappearanceCost'])
         
         return self._drawer
 
@@ -164,6 +168,8 @@ class ConservationTrackingGui( TrackingBaseGui ):
             withMergerResolution = self._drawer.mergerResolutionBox.isChecked()
             borderAwareWidth = self._drawer.bordWidthBox.value()
             withArmaCoordinates = True
+            appearanceCost = self._drawer.appearanceBox.value()
+            disappearanceCost = self._drawer.disappearanceBox.value()
     
             ndim=3
             if (to_z - from_z == 0):
@@ -194,7 +200,9 @@ class ConservationTrackingGui( TrackingBaseGui ):
                     withMergerResolution=withMergerResolution,
                     borderAwareWidth = borderAwareWidth,
                     withArmaCoordinates = withArmaCoordinates,
-                    cplex_timeout = cplex_timeout
+                    cplex_timeout = cplex_timeout,
+                    appearance_cost = appearanceCost,
+                    disappearance_cost = disappearanceCost
                     )
             except Exception:           
                 ex_type, ex, tb = sys.exc_info()
