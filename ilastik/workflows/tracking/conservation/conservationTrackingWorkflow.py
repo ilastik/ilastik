@@ -58,11 +58,11 @@ class ConservationTrackingWorkflow( Workflow ):
                                                                       name="Object Feature Computation")                                                                      
         
         self.divisionDetectionApplet = ObjectClassificationApplet(workflow=self,
-                                                                     name="Division Detection",
+                                                                     name="Division Detection (optional)",
                                                                      projectFileGroupName="DivisionDetection")
         
         self.cellClassificationApplet = ObjectClassificationApplet(workflow=self,
-                                                                     name="Object Count Classification",
+                                                                     name="Object Count Classification (optional)",
                                                                      projectFileGroupName="CountClassification")
                 
         self.trackingApplet = ConservationTrackingApplet( workflow=self )
