@@ -159,6 +159,7 @@ class ConservationTrackingWorkflow( Workflow ):
         opDivDetection.LabelNames.setValue(['Not Dividing', 'Dividing'])        
         opDivDetection.AllowDeleteLabels.setValue(False)
         opDivDetection.AllowAddLabel.setValue(False)
+        opDivDetection.EnableLabelTransfer.setValue(False)
         
         selected_features_objectcount = {}
         for plugin_name in config.selected_features_objectcount.keys():
@@ -172,6 +173,7 @@ class ConservationTrackingWorkflow( Workflow ):
         opCellClassification.SelectedFeatures.setValue( selected_features_objectcount )        
         opCellClassification.SuggestedLabelNames.setValue( ['false detection',] + [str(i) + ' Objects' for i in range(1,10) ] )
         opCellClassification.AllowDeleteLastLabelOnly.setValue(True)
+        opCellClassification.EnableLabelTransfer.setValue(False)
         
         opTracking.RawImage.connect( op5Raw.Output )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
