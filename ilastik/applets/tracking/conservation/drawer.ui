@@ -519,9 +519,12 @@
       </widget>
      </item>
      <item>
-      <widget class="QRadioButton" name="sizeDepBox">
+      <widget class="QRadioButton" name="classifierPriorBox">
        <property name="text">
-        <string>Use size dependent probabilities</string>
+        <string>Use object count classifier</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
        </property>
        <attribute name="buttonGroup">
         <string notr="true">buttonGroup</string>
@@ -529,12 +532,9 @@
       </widget>
      </item>
      <item>
-      <widget class="QRadioButton" name="classifierPriorBox">
+      <widget class="QRadioButton" name="sizeDepBox">
        <property name="text">
-        <string>Use object count classifier</string>
-       </property>
-       <property name="checked">
-        <bool>true</bool>
+        <string>Use size dependent probabilities</string>
        </property>
        <attribute name="buttonGroup">
         <string notr="true">buttonGroup</string>
@@ -833,9 +833,13 @@
   <tabstop>avgSizeBox</tabstop>
   <tabstop>divWeightBox</tabstop>
   <tabstop>transWeightBox</tabstop>
+  <tabstop>appearanceBox</tabstop>
+  <tabstop>disappearanceBox</tabstop>
+  <tabstop>timeoutBox</tabstop>
+  <tabstop>bordWidthBox</tabstop>
   <tabstop>hardPriorBox</tabstop>
-  <tabstop>sizeDepBox</tabstop>
   <tabstop>classifierPriorBox</tabstop>
+  <tabstop>sizeDepBox</tabstop>
   <tabstop>trackletsBox</tabstop>
   <tabstop>divisionsBox</tabstop>
   <tabstop>opticalBox</tabstop>
@@ -855,6 +859,7 @@
   <tabstop>z_scale</tabstop>
   <tabstop>exportButton</tabstop>
   <tabstop>exportTifButton</tabstop>
+  <tabstop>TrackButton</tabstop>
  </tabstops>
  <resources/>
  <connections/>
