@@ -75,19 +75,15 @@ class ConservationTrackingGui( TrackingBaseGui ):
         if not ilastik_config.getboolean("ilastik", "debug"):
             assert self._drawer.trackletsBox.isChecked()
             self._drawer.trackletsBox.hide()
-
-            # assert not self._drawer.sizeDepBox.isChecked()
-            # self._drawer.sizeDepBox.hide()
             
             assert not self._drawer.hardPriorBox.isChecked()
             self._drawer.hardPriorBox.hide()
 
-            # assert self._drawer.classifierPriorBox.isChecked()
-            # self._drawer.classifierPriorBox.hide()
-
             assert not self._drawer.opticalBox.isChecked()
             self._drawer.opticalBox.hide()
 
+            self._drawer.maxDistBox.hide() # hide the maximal distance box
+            self._drawer.label_2.hide() # hie the maximal distance label
             self._drawer.label_5.hide() # hide division threshold label
             self._drawer.divThreshBox.hide()
             self._drawer.label_25.hide() # hide avg. obj size label
