@@ -30,6 +30,7 @@ import logging
 import os
 import numpy as np
 import vigra
+from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.applets.tracking.base.trackingUtilities import relabel,write_events
 from volumina.layer import GrayscaleLayer
 from volumina.utility import encode_from_qstring
@@ -250,16 +251,9 @@ class TrackingBaseGui( LayerViewerGui ):
         
 
     def _initColors(self):
-        self.mergerColors = [
-                             QColor(0,0,0,0),
-                             QColor(1,1,1,0),
-                             QColor(255,0,0,255),
-                             QColor(0,255,0,255),
-                             QColor(0,0,255,255),
-                             QColor(255,128,128,255),
-                             QColor(128,255,128,255),
-                             QColor(128,128,255,255)
-                             ]
+        self.mergerColors = [ QColor(c) for c in LabelingGui._createDefault16ColorColorTable()[1:] ]
+        self.mergerColors[0] = QColor(0,0,0,0) # 0 and 1 must be transparent
+        self.mergerColors[1] = QColor(0,0,0,0)
         
     def _labelSetStyleSheet(self, qlabel, qcolor):        
         qlabel.setAutoFillBackground(True)                 
