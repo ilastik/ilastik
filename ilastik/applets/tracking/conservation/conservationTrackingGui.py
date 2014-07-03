@@ -76,14 +76,14 @@ class ConservationTrackingGui( TrackingBaseGui ):
             assert self._drawer.trackletsBox.isChecked()
             self._drawer.trackletsBox.hide()
 
-            assert not self._drawer.sizeDepBox.isChecked()
-            self._drawer.sizeDepBox.hide()
+            # assert not self._drawer.sizeDepBox.isChecked()
+            # self._drawer.sizeDepBox.hide()
             
             assert not self._drawer.hardPriorBox.isChecked()
             self._drawer.hardPriorBox.hide()
 
-            assert self._drawer.classifierPriorBox.isChecked()
-            self._drawer.classifierPriorBox.hide()
+            # assert self._drawer.classifierPriorBox.isChecked()
+            # self._drawer.classifierPriorBox.hide()
 
             assert not self._drawer.opticalBox.isChecked()
             self._drawer.opticalBox.hide()
