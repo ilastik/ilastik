@@ -669,28 +669,28 @@ class RequestLock(object):
             return self._acquire_from_within_request(current_request, blocking)
 
     def _acquire_from_within_request(self, current_request, blocking):
-            with self._selfProtectLock:
-                # Try to get it immediately.
-                got_it = self._modelLock.acquire(False)
-                if not blocking:
-                    return got_it
-                if not got_it:
-                    # We have to wait.  Add ourselves to the list of waiters.
-                    self._pendingRequests.append(current_request)
-
+        with self._selfProtectLock:
+            # Try to get it immediately.
+            got_it = self._modelLock.acquire(False)
+            if not blocking:
+                return got_it
             if not got_it:
-                # Suspend the current request.
-                # When it is woken, it owns the _modelLock.
-                current_request._suspend()
+                # We have to wait.  Add ourselves to the list of waiters.
+                self._pendingRequests.append(current_request)
 
-                # Now we're back (no longer suspended)
-                # Was the current request cancelled while it was waiting for the lock?
-                if current_request.cancelled:
-                    raise Request.CancellationException()
+        if not got_it:
+            # Suspend the current request.
+            # When it is woken, it owns the _modelLock.
+            current_request._suspend()
 
-            # Guaranteed to own _modelLock now (see release()).
-            return True
-        
+            # Now we're back (no longer suspended)
+            # Was the current request cancelled while it was waiting for the lock?
+            if current_request.cancelled:
+                raise Request.CancellationException()
+
+        # Guaranteed to own _modelLock now (see release()).
+        return True
+    
     def _acquire_from_within_thread(self, blocking):
         if not blocking:
             return self._modelLock.acquire(blocking)
