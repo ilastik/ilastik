@@ -83,6 +83,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
     LabelsAllowedFlags = InputSlot(stype='bool', level=1)
     AllowDeleteLabels = InputSlot(stype='bool', value=True)
+    AllowDeleteLastLabelOnly = InputSlot(stype='bool', value=False)
     AllowAddLabel = InputSlot(stype='bool', value=True)
     SuggestedLabelNames = InputSlot(stype=Opaque, value=[])
     LabelInputs = InputSlot(stype=Opaque, rtype=List, optional=True, level=1)

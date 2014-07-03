@@ -357,7 +357,7 @@ class ObjectClassificationGui(LabelingGui):
                     predict_enabled = False
             else:
                 predict_enabled = False
-        else:            
+        else:
             predict_enabled = False
 
         if not predict_enabled:
@@ -369,6 +369,7 @@ class ObjectClassificationGui(LabelingGui):
         self.labelingDrawerUi.checkShowPredictions.setEnabled(predict_enabled)
         self.labelingDrawerUi.AddLabelButton.setEnabled(labels_enabled)
         self.labelingDrawerUi.labelListView.allowDelete = ( True and self.op.AllowDeleteLabels([]).wait()[0] )
+        self.allowDeleteLastLabelOnly(False or self.op.AllowDeleteLastLabelOnly([]).wait()[0])
 
         self.op._predict_enabled = predict_enabled
         self.applet.predict_enabled = predict_enabled

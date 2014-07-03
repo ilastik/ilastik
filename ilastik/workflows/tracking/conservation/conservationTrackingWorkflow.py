@@ -171,6 +171,7 @@ class ConservationTrackingWorkflow( Workflow ):
         opCellClassification.ComputedFeatureNames.connect(opObjExtraction.ComputedFeatureNamesVigra)
         opCellClassification.SelectedFeatures.setValue( selected_features_objectcount )        
         opCellClassification.SuggestedLabelNames.setValue( ['false detection',] + [str(i) + ' Objects' for i in range(1,10) ] )
+        opCellClassification.AllowDeleteLastLabelOnly.setValue(True)
         
         opTracking.RawImage.connect( op5Raw.Output )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
