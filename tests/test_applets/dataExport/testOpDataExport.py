@@ -54,9 +54,13 @@ class TestOpDataExport(object):
         rawInfo.filePath = './somefile.h5'
         opExport.RawDatasetInfo.setValue( rawInfo )
 
+        opExport.SelectionNames.setValue(['Mock Export Data'])
+
         data = numpy.random.random( (100,100) ).astype( numpy.float32 ) * 100
         data = vigra.taggedView( data, vigra.defaultAxistags('xy') )
-        opExport.Input.setValue(data)
+        
+        opExport.Inputs.resize(1)
+        opExport.Inputs[0].setValue(data)
 
         sub_roi = [(10, 20), (90, 80)]
         opExport.RegionStart.setValue( sub_roi[0] )

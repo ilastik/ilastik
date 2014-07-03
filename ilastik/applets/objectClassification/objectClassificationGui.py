@@ -50,6 +50,7 @@ import volumina.colortables as colortables
 from volumina.api import \
     LazyflowSource, GrayscaleLayer, ColortableLayer, AlphaModulatedLayer, \
     ClickableColortableLayer, LazyflowSinkSource
+from volumina.utility import encode_from_qstring
 
 from volumina.interpreter import ClickInterpreter
 
@@ -228,7 +229,6 @@ class ObjectClassificationGui(LabelingGui):
             
             dlg = ExportToKnimeDialog(rawLayer, objLayer, computedFeatures)
             if dlg.exec_() == QDialog.Accepted:
-                print "exporting"
                 if self._knime_exporter is None:
                     #topLevelOp = self.topLevelOperatorView.viewed_operator()
                     #imageIndex = topLevelOp.LabelInputs.index( self.topLevelOperatorView.LabelInputs )
@@ -238,21 +238,17 @@ class ObjectClassificationGui(LabelingGui):
                     
                     self._knime_exporter.RawImage.connect(mainOperator.RawImages)
                     self._knime_exporter.CCImage.connect(mainOperator.SegmentationImages)
-                    feature_table = mainOperator.createExportTable(0)
+                    #FIXME: pass the time region here, read it from the GUI somehow?
+                    feature_table = mainOperator.createExportTable(0, [])
                     if feature_table is None:
                         return
                     self._knime_exporter.ObjectFeatures.setValue(feature_table)
                     self._knime_exporter.ImagePerObject.setValue(True)
                     self._knime_exporter.ImagePerTime.setValue(False)
                 
-                success = self._knime_exporter.run_export()
+                success = self._knime_exporter.WriteData([]).wait()
                 print "EXPORTED:", success
                         
-
-            else:
-                print "not exporting" 
-            
-
     @property
     def labelMode(self):
         return self._labelMode
@@ -713,7 +709,7 @@ class ObjectClassificationGui(LabelingGui):
         label_actions = []
         for l in range(numLabels):
             color_icon = self.labelListData.createIconForLabel(l)
-            act_text = "Label object {} with label {}".format(obj, l+1)
+            act_text = 'Label object {} as "{}"'.format(obj, self.labelListData[l].name)
             act = QAction(color_icon, act_text, menu)
             act.setIconVisibleInMenu(True)
             label_actions.append(act_text)
@@ -810,6 +806,7 @@ class ObjectClassificationGui(LabelingGui):
             if sum(len(v) for v in labels_lost.itervalues()) > 0:
                 self.warnLost(labels_lost)
 
+    @threadRouted
     def warnLost(self, labels_lost):
         box = QMessageBox(QMessageBox.Warning,
                           'Warning',
@@ -833,8 +830,8 @@ class ObjectClassificationGui(LabelingGui):
                                     for item in val])
                 cases.append("\n".join([msg, axis, coords]))
         box.setDetailedText("\n\n".join(cases))
+        self.logBox(box)
         box.show()
-
 
     @threadRouted
     def handleWarnings(self, *args, **kwargs):
@@ -854,5 +851,31 @@ class ObjectClassificationGui(LabelingGui):
         box.setText(warning['text'])
         box.setInformativeText(warning.get('info', ''))
         box.setDetailedText(warning.get('details', ''))
+
+        self.logBox(box)
         box.show()
         self.badObjectBox = box
+
+    def logBox(self, box):
+        # log the warning message in any case
+        logger.warn(box.text())
+
+        # make a callback for printing the whole error to the log file
+        def printToLog(*args, **kwargs):
+            parts = []
+            for s in (box.text(), box.informativeText(), box.detailedText()):
+                if len(s) > 0:
+                    parts.append(encode_from_qstring(s))
+            msg = "\n".join(parts)
+            logger.warn(msg)
+
+        # make a button to connect to the logging callback
+        button = QPushButton(parent=box)
+        button.setText("Print Details To Log...")
+
+        box.addButton(QMessageBox.Close)
+        box.addButton(button, QMessageBox.ActionRole)
+        #HACK do not close the dialog when print is clicked
+        # => remove the 'close' callback
+        button.clicked.disconnect()
+        button.clicked.connect(printToLog)

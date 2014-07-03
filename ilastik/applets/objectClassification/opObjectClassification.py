@@ -551,12 +551,12 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         return new_labels, old_labels_lost, new_labels_lost
 
 
-    def createExportTable(self, lane):
+    def createExportTable(self, lane, roi):
         numLanes = len(self.SegmentationImages)
         assert lane < numLanes, \
             "Can't export features for lane {} (only {} lanes exist)"\
             .format( lane, numLanes )
-        return self.opPredict[lane].createExportTable()
+        return self.opPredict[lane].createExportTable(roi)
     
     def addLane(self, laneIndex):
         numLanes = len(self.SegmentationImages)
@@ -767,7 +767,7 @@ class OpObjectTrain(Operator):
 
         featMatrix = _concatenate(featList, axis=0)
         labelsMatrix = _concatenate(labelsList, axis=0)
-        
+
         logger.info("training on matrix of shape {}".format(featMatrix.shape))
 
         if featMatrix.size == 0 or labelsMatrix.size == 0:
@@ -787,9 +787,10 @@ class OpObjectTrain(Operator):
             self.outputs["Classifier"].setDirty(slcs)
 
     def _warnBadObjects(self, bad_objects, bad_feats):
-        messageTesting = False
-        if len(bad_feats)>0 or any([len(bad_objects[i])>0 for i in bad_objects.keys()]) or messageTesting:
-            self.BadObjects.setValue( {'objects': bad_objects, 'feats': bad_feats} )
+        if len(bad_feats) > 0 or\
+                any([len(bad_objects[i]) > 0 for i in bad_objects.keys()]):
+            self.BadObjects.setValue({'objects': bad_objects,
+                                      'feats': bad_feats})
 
 
 class OpObjectPredict(Operator):
@@ -955,14 +956,14 @@ class OpObjectPredict(Operator):
         self.Probabilities.setDirty(())
         self.ProbabilityChannels.setDirty(())
 
-    def createExportTable(self):
+    def createExportTable(self, roi):
         if not self.Predictions.ready() or not self.Features.ready():
             return None
         
-        features = self.Features([]).wait()
+        features = self.Features(roi).wait()
         feature_table = OpObjectExtraction.createExportTable(features)
-        predictions = self.Predictions([]).wait()
-        probs = self.Probabilities([]).wait()
+        predictions = self.Predictions(roi).wait()
+        probs = self.Probabilities(roi).wait()
         nobjs = []
         for t, preds in predictions.iteritems():
             nobjs.append(preds.shape[0])
@@ -977,6 +978,7 @@ class OpObjectPredict(Operator):
                 start = 0
                 finish = start
                 for t, values in slot_value.iteritems():
+                    #FIXME: remove the first object, it's always background
                     finish = start + nobjs[t]
                     if channel is None:
                         column[name][start:finish] = values[:]

@@ -46,6 +46,7 @@ class HeadlessShell(object):
                                               headless=True,
                                               workflow_cmdline_args=self._workflow_cmdline_args  )
         self.projectManager._loadProject(hdf5File, newProjectFilePath, readOnly)
+        self.projectManager.saveProject()
         
     def openProjectFile(self, projectFilePath):
         # Make sure all workflow sub-classes have been loaded,

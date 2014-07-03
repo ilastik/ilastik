@@ -48,7 +48,7 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
         # This code depends on a specific order for the export slots.
         # If those change, update this function!
         selection_names = opLane.SelectionNames.value
-        assert selection_names == ['Probabilities', 'Simple Segmentation'] # see comment above
+        assert selection_names == ['Probabilities', 'Simple Segmentation', 'Uncertainty'] # see comment above
         
         selection = selection_names[ opLane.InputSelection.value ]
 
@@ -76,6 +76,27 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
                 previewLayer.visible = False
                 previewLayer.name = previewLayer.name + " - Preview"
                 layers.append( previewLayer )
+        elif selection == "Uncertainty":
+            if opLane.ImageToExport.ready():
+                previewUncertaintySource = LazyflowSource(opLane.ImageToExport)
+                previewLayer = AlphaModulatedLayer( previewUncertaintySource,
+                                                    tintColor=QColor(0,255,255), # cyan
+                                                    range=(0.0, 1.0),
+                                                    normalize=(0.0,1.0) )
+                previewLayer.opacity = 0.5
+                previewLayer.visible = False
+                previewLayer.name = "Uncertainty - Preview"
+                layers.append(previewLayer)
+            if opLane.ImageOnDisk.ready():
+                exportedUncertaintySource = LazyflowSource(opLane.ImageOnDisk)
+                exportedLayer = AlphaModulatedLayer( exportedUncertaintySource,
+                                                     tintColor=QColor(0,255,255), # cyan
+                                                     range=(0.0, 1.0),
+                                                     normalize=(0.0,1.0) )
+                exportedLayer.opacity = 0.5
+                exportedLayer.visible = True
+                exportedLayer.name = "Uncertainty - Exported"
+                layers.append(exportedLayer)
 
         # If available, also show the raw data layer
         rawSlot = opLane.FormattedRawData

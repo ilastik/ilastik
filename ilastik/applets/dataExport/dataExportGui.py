@@ -201,14 +201,14 @@ class DataExportGui(QWidget):
 
     def showEvent(self, event):
         super( DataExportGui, self ).showEvent(event)
-        for opLaneView in self.topLevelOperator:
-            opLaneView.setupOnDiskView()
+        self.showSelectedDataset()
     
     def hideEvent(self, event):
         super( DataExportGui, self ).hideEvent(event)
+        
+        # Make sure all 'on disk' layers are discarded so we aren't using those files any more.
         for opLaneView in self.topLevelOperator:
-            opLaneView.cleanupOnDiskView()
-    
+            opLaneView.cleanupOnDiskView()    
 
     def _chooseSettings(self):
         opExportModelOp, opSubRegion = get_model_op( self.topLevelOperator )
@@ -403,11 +403,19 @@ class DataExportGui(QWidget):
         QMessageBox.critical(self, "Failed to export", msg )
 
     def exportResultsForSlot(self, opLane):
+        # Make sure all 'on disk' layers are discarded so we aren't using those files any more.
+        for opLaneView in self.topLevelOperator:
+            opLaneView.cleanupOnDiskView()
+        
         # Do this in a separate thread so the UI remains responsive
         exportThread = threading.Thread(target=bind(self.exportSlots, [opLane]), name="DataExportThread")
         exportThread.start()
     
     def exportAllResults(self):
+        # Make sure all 'on disk' layers are discarded so we aren't using those files any more.
+        for opLaneView in self.topLevelOperator:
+            opLaneView.cleanupOnDiskView()
+
         # Do this in a separate thread so the UI remains responsive
         exportThread = threading.Thread(target=bind(self.exportSlots, self.topLevelOperator), name="DataExportThread")
         exportThread.start()
@@ -434,11 +442,17 @@ class DataExportGui(QWidget):
             return
         row = selectedRanges[0].topRow()
         
-        imageMultiSlot = self.topLevelOperator.Inputs[row]
+        # Hide all layers that come from the disk.
+        for opLaneView in self.topLevelOperator:
+            opLaneView.cleanupOnDiskView()
+
+        # Activate the 'on disk' layers for this lane (if possible)
+        opLane = self.topLevelOperator.getLane(row)
+        opLane.setupOnDiskView()
         
         # Create if necessary
+        imageMultiSlot = self.topLevelOperator.Inputs[row]
         if imageMultiSlot not in self.layerViewerGuis.keys():
-            opLane = self.topLevelOperator.getLane(row)
             layerViewer = self.createLayerViewer(opLane)
 
             # Maximize the x-y view by default.

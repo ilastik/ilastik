@@ -417,7 +417,7 @@ class TestFullOperator(unittest.TestCase):
         probs = self.classOp.PredictionImages[0][:].wait()
         
     def testExport(self):
-        table = self.classOp.createExportTable(0)
+        table = self.classOp.createExportTable(0, [])
         print table["Object id"]
         print table["Default features, RegionCenter_ch_1"]
         print table["Prediction"]
