@@ -6,6 +6,9 @@ from ilastik.applets.tracking.base.opTrackingBase import OpTrackingBase
 from ilastik.applets.tracking.base.trackingUtilities import relabelMergers
 from ilastik.applets.tracking.base.trackingUtilities import get_events
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class OpConservationTracking(OpTrackingBase):
     DivisionProbabilities = InputSlot(stype=Opaque, rtype=List)    
@@ -123,7 +126,7 @@ class OpConservationTracking(OpTrackingBase):
         if avgSize[0] > 0:
             median_obj_size = avgSize
         
-        print 'median_obj_size = ', median_obj_size
+        logger.info( 'median_obj_size = {}'.format( median_obj_size ) )
 
         ep_gap = 0.05
         transition_parameter = 5
@@ -137,14 +140,14 @@ class OpConservationTracking(OpTrackingBase):
                                       (y_range[1]-1) * y_scale,
                                       (z_range[1]-1) * z_scale,)
         
-        print 'fov =', (time_range[0] * 1.0,
+        logger.info( 'fov = {},{},{},{},{},{},{},{}'.format( time_range[0] * 1.0,
                                       x_range[0] * x_scale,
                                       y_range[0] * y_scale,
                                       z_range[0] * z_scale,
                                       time_range[-1] * 1.0,
                                       (x_range[1]-1) * x_scale,
                                       (y_range[1]-1) * y_scale,
-                                      (z_range[1]-1) * z_scale,)
+                                      (z_range[1]-1) * z_scale, ) )
         
         if ndim == 2:
             assert z_range[0] * z_scale == 0 and (z_range[1]-1) * z_scale == 0, "fov of z must be (0,0) if ndim==2"
