@@ -183,3 +183,13 @@ class OpConservationTracking(OpTrackingBase):
         self.Parameters.setValue(parameters, check_changed=False)
         self.EventsVector.setValue(events, check_changed=False)
         
+
+    def propagateDirty(self, inputSlot, subindex, roi):
+        super(OpConservationTracking, self).propagateDirty(inputSlot, subindex, roi)
+
+        if inputSlot == self.NumLabels:
+            if self.parent.parent.trackingApplet._gui \
+                    and self.parent.parent.trackingApplet._gui.currentGui() \
+                    and self.NumLabels.ready() \
+                    and self.NumLabels.value > 1:
+                self.parent.parent.trackingApplet._gui.currentGui()._drawer.maxObjectsBox.setValue(self.NumLabels.value-1)
