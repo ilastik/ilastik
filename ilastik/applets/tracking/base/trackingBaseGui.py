@@ -349,7 +349,6 @@ class TrackingBaseGui( LayerViewerGui ):
 
                 for i in sorted(events.keys()):
                     events_at = events[i]
-                    print i
                     i = int(i)
                     t = t_from + i            
                     key[0] = slice(t,t+1)
