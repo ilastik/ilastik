@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>1028</height>
+    <height>1050</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -404,7 +404,7 @@
           <number>7</number>
          </property>
          <property name="value">
-          <number>2</number>
+          <number>1</number>
          </property>
         </widget>
        </item>
@@ -442,15 +442,25 @@
          </property>
         </widget>
        </item>
-       <item row="7" column="0">
+       <item row="8" column="0">
         <widget class="QLabel" name="label_20">
          <property name="text">
           <string>Border Width (abs.)</string>
          </property>
         </widget>
        </item>
-       <item row="7" column="1">
+       <item row="8" column="1">
         <widget class="QSpinBox" name="bordWidthBox"/>
+       </item>
+       <item row="7" column="0">
+        <widget class="QLabel" name="label_21">
+         <property name="text">
+          <string>Timeout (sec.)</string>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="1">
+        <widget class="QLineEdit" name="timeoutBox"/>
        </item>
       </layout>
      </item>

@@ -84,6 +84,7 @@ class OpConservationTracking(OpTrackingBase):
             parameters['cplex_timeout'] = cplex_timeout
         else:
             parameters['cplex_timeout'] = ''
+            cplex_timeout = float(1e75)
         
         if withClassifierPrior:
             if not self.DetectionProbabilities.ready() or len(self.DetectionProbabilities([0]).wait()[0]) == 0:
@@ -167,6 +168,7 @@ class OpConservationTracking(OpTrackingBase):
                                          borderAwareWidth,
                                          fov,
                                          True, #with_constraints
+                                         cplex_timeout,
                                          "none" # dump traxelstore
                                          )
 
@@ -183,3 +185,13 @@ class OpConservationTracking(OpTrackingBase):
         self.Parameters.setValue(parameters, check_changed=False)
         self.EventsVector.setValue(events, check_changed=False)
         
+
+    def propagateDirty(self, inputSlot, subindex, roi):
+        super(OpConservationTracking, self).propagateDirty(inputSlot, subindex, roi)
+
+        if inputSlot == self.NumLabels:
+            if self.parent.parent.trackingApplet._gui \
+                    and self.parent.parent.trackingApplet._gui.currentGui() \
+                    and self.NumLabels.ready() \
+                    and self.NumLabels.value > 1:
+                self.parent.parent.trackingApplet._gui.currentGui()._drawer.maxObjectsBox.setValue(self.NumLabels.value-1)

@@ -784,7 +784,8 @@ class LabelingGui(LayerViewerGui):
 
         return layers
 
-    def _createDefault16ColorColorTable(self):
+    @staticmethod
+    def _createDefault16ColorColorTable():
         colors = []
         # Transparent for the zero label
         colors.append(QColor(0,0,0,0))

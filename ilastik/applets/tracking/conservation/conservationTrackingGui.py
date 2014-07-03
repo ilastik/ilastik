@@ -2,6 +2,7 @@ from PyQt4 import uic, QtGui
 import os
 import logging
 import sys
+import re
 import traceback
 from ilastik.applets.tracking.base.trackingBaseGui import TrackingBaseGui
 from ilastik.utility.gui.threadRouter import threadRouted
@@ -56,13 +57,16 @@ class ConservationTrackingGui( TrackingBaseGui ):
             self._drawer.mergerResolutionBox.setChecked(parameters['withMergerResolution'])
         if 'borderAwareWidth' in parameters.keys():
             self._drawer.bordWidthBox.setValue(parameters['borderAwareWidth'])
-#        if 'cplex_timeout' in parameters.keys():
-#            self._drawer.timeoutBox.setText(parameters['cplex_timeout']          
+        if 'cplex_timeout' in parameters.keys():
+            self._drawer.timeoutBox.setText(str(parameters['cplex_timeout']))
         
         return self._drawer
 
     def initAppletDrawerUi(self):
         super(ConservationTrackingGui, self).initAppletDrawerUi()        
+
+        self._allowedTimeoutInputRegEx = re.compile('^[0-9]*$')
+        self._drawer.timeoutBox.textChanged.connect(self._onTimeoutBoxChanged)
 
         if not ilastik_config.getboolean("ilastik", "debug"):
             assert self._drawer.trackletsBox.isChecked()
@@ -97,6 +101,12 @@ class ConservationTrackingGui( TrackingBaseGui ):
         
         self._onMaxObjectsBoxChanged()
         self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)                
+
+    @threadRouted
+    def _onTimeoutBoxChanged(self, *args):
+        inString = str(self._drawer.timeoutBox.text())
+        if self._allowedTimeoutInputRegEx.match(inString) is None:
+            self._drawer.timeoutBox.setText(inString.decode("utf8").encode("ascii", "replace")[:-1])
 
     def _setRanges(self, *args):
         super(ConservationTrackingGui, self)._setRanges()        
@@ -138,7 +148,11 @@ class ConservationTrackingGui( TrackingBaseGui ):
             
             self.time_range =  range(from_t, to_t + 1)
             avgSize = [self._drawer.avgSizeBox.value()]
-                    
+
+            cplex_timeout = None
+            if len(str(self._drawer.timeoutBox.text())):
+                cplex_timeout = int(self._drawer.timeoutBox.text())
+
             withTracklets = self._drawer.trackletsBox.isChecked()
             sizeDependent = self._drawer.sizeDepBox.isChecked()
             hardPrior = self._drawer.hardPriorBox.isChecked()
@@ -179,7 +193,8 @@ class ConservationTrackingGui( TrackingBaseGui ):
                     ndim=ndim,
                     withMergerResolution=withMergerResolution,
                     borderAwareWidth = borderAwareWidth,
-                    withArmaCoordinates = withArmaCoordinates
+                    withArmaCoordinates = withArmaCoordinates,
+                    cplex_timeout = cplex_timeout
                     )
             except Exception:           
                 ex_type, ex, tb = sys.exc_info()
@@ -211,4 +226,4 @@ class ConservationTrackingGui( TrackingBaseGui ):
         req.notify_finished( _handle_finished )
         req.submit()
                 
-            
+
