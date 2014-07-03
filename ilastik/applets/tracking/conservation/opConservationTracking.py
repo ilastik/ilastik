@@ -84,6 +84,7 @@ class OpConservationTracking(OpTrackingBase):
             parameters['cplex_timeout'] = cplex_timeout
         else:
             parameters['cplex_timeout'] = ''
+            cplex_timeout = float(1e75)
         
         if withClassifierPrior:
             if not self.DetectionProbabilities.ready() or len(self.DetectionProbabilities([0]).wait()[0]) == 0:
@@ -167,6 +168,7 @@ class OpConservationTracking(OpTrackingBase):
                                          borderAwareWidth,
                                          fov,
                                          True, #with_constraints
+                                         cplex_timeout,
                                          "none" # dump traxelstore
                                          )
 
