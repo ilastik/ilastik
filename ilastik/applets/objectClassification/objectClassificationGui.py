@@ -754,15 +754,18 @@ class ObjectClassificationGui(LabelingGui):
             topLevelOp = self.topLevelOperatorView.viewed_operator()
             imageIndex = topLevelOp.LabelInputs.index( self.topLevelOperatorView.LabelInputs )
             self.topLevelOperatorView.assignObjectLabel(imageIndex, position5d, 0)
-        elif action.text()==knime_hilite:
-            data = {'command': 0, 'objectid': 'Row'+str(obj)}
-            self.applet.sendMessageToServer.emit('knime', data)
-        elif action.text()==knime_unhilite:
-            data = {'command': 1, 'objectid': 'Row'+str(obj)}
-            self.applet.sendMessageToServer.emit('knime', data)
-        elif action.text()==knime_clearhilite:
-            data = {'command': 2}
-            self.applet.sendMessageToServer.emit('knime', data)
+            
+        elif self.applet.connected_to_knime: 
+            if action.text()==knime_hilite:
+                data = {'command': 0, 'objectid': 'Row'+str(obj)}
+                self.applet.sendMessageToServer.emit('knime', data)
+            elif action.text()==knime_unhilite:
+                data = {'command': 1, 'objectid': 'Row'+str(obj)}
+                self.applet.sendMessageToServer.emit('knime', data)
+            elif action.text()==knime_clearhilite:
+                data = {'command': 2}
+                self.applet.sendMessageToServer.emit('knime', data)
+        
         else:
             try:
                 label = label_actions.index(action.text())
