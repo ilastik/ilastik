@@ -170,11 +170,7 @@ class OpTrackingBase(Operator):
         parameters = self.Parameters.value
         time_min, time_max = parameters['time_range']
         time_range = range(time_min, time_max)
-        
-#         x_range = parameters['x_range']
-#         y_range = parameters['y_range']
-#         z_range = parameters['z_range']
-#         
+
         filtered_labels = self.FilteredLabels.value
                                                     
         label2color = []
@@ -214,7 +210,7 @@ class OpTrackingBase(Operator):
                     label2color[-1][int(e[0])] = np.random.randint(1, 255)
 
             for e in mov:                
-                if not label2color[-2].has_key(int(e[0])) or int(e[0]) in moves_at:
+                if not label2color[-2].has_key(int(e[0])):
                     if successive_ids:
                         label2color[-2][int(e[0])] = maxId
                         maxId += 1
