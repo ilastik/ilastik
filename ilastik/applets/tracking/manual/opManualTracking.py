@@ -116,7 +116,7 @@ class OpManualTracking(Operator):
         elif slot is self.UntrackedImage:
             for t in range(roi.start[0],roi.stop[0]):
                 result[t-roi.start[0],...] = self.LabelImage.get(roi).wait()[t-roi.start[0],...]
-                labels_at = []
+                labels_at = {}
                 if t in self.labels.keys():
                     labels_at = self.labels[t]
                 result[t-roi.start[0],...,0] = self._relabelUntracked(result[t-roi.start[0],...,0], labels_at)
