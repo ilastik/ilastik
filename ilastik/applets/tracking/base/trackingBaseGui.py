@@ -111,15 +111,20 @@ class TrackingBaseGui( LayerViewerGui ):
     def setupLayers( self ):        
         layers = []
         
-        if "MergerOutput" in self.topLevelOperatorView.outputs and self.topLevelOperatorView.MergerOutput.ready():
+        if "MergerOutput" in self.topLevelOperatorView.outputs:
             ct = colortables.create_default_8bit()
             for i in range(7):
                 ct[i] = self.mergerColors[i].rgba()
-            self.mergersrc = LazyflowSource( self.topLevelOperatorView.MergerOutput )
+
+            if self.topLevelOperatorView.MergerCachedOutput.ready():
+                self.mergersrc = LazyflowSource( self.topLevelOperatorView.MergerCachedOutput )
+            else:
+                self.mergersrc = LazyflowSource( self.topLevelOperatorView.ZeroOutput )
+
             mergerLayer = ColortableLayer( self.mergersrc, ct )
             mergerLayer.name = "Merger"
             mergerLayer.visible = True
-            layers.append(mergerLayer)     
+            layers.append(mergerLayer)
             
         ct = colortables.create_random_16bit()
         ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent

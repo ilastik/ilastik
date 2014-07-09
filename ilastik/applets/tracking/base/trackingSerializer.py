@@ -25,7 +25,6 @@ class TrackingSerializer(AppletSerializer):
     
     def __init__(self, mainOperator, projectFileGroupName):
         slots = [SerialDictSlot(mainOperator.Parameters, selfdepends=True),
-#                  SerialSlot(mainOperator.Output, selfdepends=True),
                  SerialHdf5BlockSlot(mainOperator.OutputHdf5,
                                      mainOperator.InputHdf5,
                                      mainOperator.CleanBlocks,
@@ -33,8 +32,13 @@ class TrackingSerializer(AppletSerializer):
                  SerialDictSlot(mainOperator.EventsVector, transform=str, selfdepends=True),
                  SerialDictSlot(mainOperator.FilteredLabels, transform=str, selfdepends=True),
                  ]
+
         if 'MergerOutput' in mainOperator.outputs:
-            slots.append(SerialSlot(mainOperator.MergerOutput, selfdepends=True))            
+            slots.append(SerialHdf5BlockSlot(mainOperator.MergerOutputHdf5,
+                                     mainOperator.MergerInputHdf5,
+                                     mainOperator.MergerCleanBlocks,
+                                     name="MergerCachedOutput"),
+                          )
 
         super( TrackingSerializer, self ).__init__( projectFileGroupName, slots=slots )
         

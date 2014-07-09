@@ -5,21 +5,40 @@ import pgmlink
 from ilastik.applets.tracking.base.opTrackingBase import OpTrackingBase
 from ilastik.applets.tracking.base.trackingUtilities import relabelMergers
 from ilastik.applets.tracking.base.trackingUtilities import get_events
+from lazyflow.operators.opCompressedCache import OpCompressedCache
+from lazyflow.roi import sliceToRoi
 
 import logging
 logger = logging.getLogger(__name__)
 
 
 class OpConservationTracking(OpTrackingBase):
-    DivisionProbabilities = InputSlot(stype=Opaque, rtype=List)    
+    DivisionProbabilities = InputSlot(stype=Opaque, rtype=List)
     DetectionProbabilities = InputSlot(stype=Opaque, rtype=List)
     NumLabels = InputSlot()
-    
-    MergerOutput = OutputSlot()    
-    
+
+    # compressed cache for merger output
+    MergerInputHdf5 = InputSlot(optional=True)
+    MergerCleanBlocks = OutputSlot()
+    MergerOutputHdf5 = OutputSlot()
+    MergerCachedOutput = OutputSlot() # For the GUI (blockwise access)
+    MergerOutput = OutputSlot()
+
+    def __init__(self, parent=None, graph=None):
+        super(OpConservationTracking, self).__init__(parent=parent, graph=graph)
+
+        self._mergerOpCache = OpCompressedCache( parent=self )
+        self._mergerOpCache.InputHdf5.connect(self.MergerInputHdf5)
+        self._mergerOpCache.Input.connect(self.MergerOutput)
+        self.MergerCleanBlocks.connect(self._mergerOpCache.CleanBlocks)
+        self.MergerOutputHdf5.connect(self._mergerOpCache.OutputHdf5)
+        self.MergerCachedOutput.connect(self._mergerOpCache.Output)
+
     def setupOutputs(self):
-        super(OpConservationTracking, self).setupOutputs()        
+        super(OpConservationTracking, self).setupOutputs()
         self.MergerOutput.meta.assignFrom(self.LabelImage.meta)
+
+        self._mergerOpCache.BlockShape.setValue( self._blockshape )
     
     def execute(self, slot, subindex, roi, result):
         result = super(OpConservationTracking, self).execute(slot, subindex, roi, result)
@@ -36,6 +55,9 @@ class OpConservationTracking(OpTrackingBase):
                     result[t-roi.start[0],...][:] = 0
             
         return result     
+
+    def setInSlot(self, slot, subindex, roi, value):
+        assert slot == self.InputHdf5 or slot == self.MergerInputHdf5, "Invalid slot for setInSlot(): {}".format( slot.name )
 
     def track(self,
             time_range,
