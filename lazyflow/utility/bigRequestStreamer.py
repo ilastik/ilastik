@@ -60,7 +60,7 @@ class BigRequestStreamer(object):
     >>> result_count = [0]
     >>> result_total_sum = [0]
     >>> def handle_block_result(roi, result):
-    ...     # No need for locking here.
+    ...     # No need for locking here if allowParallelResults=True.
     ...     result_count[0] += 1
     ...     result_total_sum[0] += result.sum()
     >>> streamer.resultSignal.subscribe( handle_block_result )
@@ -78,7 +78,7 @@ class BigRequestStreamer(object):
     >>> print "Processed {} result blocks with a total sum of: {}".format( result_count[0], result_total_sum[0] )
     Processed 6 result blocks with a total sum of: 68400
     """
-    def __init__(self, outputSlot, roi, blockshape=None, batchSize=None, blockAlignment='absolute'):
+    def __init__(self, outputSlot, roi, blockshape=None, batchSize=None, blockAlignment='absolute', allowParallelResults=False):
         """
         Constructor.
         
@@ -87,6 +87,8 @@ class BigRequestStreamer(object):
         :param blockshape: The amount of data to request in each request. If omitted, a default blockshape is chosen by inspecting the metadata of the given slot.
         :param batchSize: The maximum number of requests to launch in parallel.  This should not be necessary if the blockshape is small enough that you won't run out of RAM.
         :param blockAlignment: Determines how block the requests. Choices are 'absolute' or 'relative'.
+        :param allowParallelResults: If True, The resultSignal will not be called in parallel.
+                                     In that case, your handler function has no need for locks.
         """
         self._outputSlot = outputSlot
         self._bigRoi = roi
@@ -139,7 +141,7 @@ class BigRequestStreamer(object):
                     logger.debug( "Requesting Roi: {}".format( block_bounds ) )
                     yield block_intersecting_portion
                 
-        self._requestBatch = RoiRequestBatch( self._outputSlot, roiGen(), totalVolume, batchSize )
+        self._requestBatch = RoiRequestBatch( self._outputSlot, roiGen(), totalVolume, batchSize, allowParallelResults )
 
     def _determine_blockshape(self, outputSlot):
         """

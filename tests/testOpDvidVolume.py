@@ -30,16 +30,11 @@ import h5py
 
 from lazyflow.graph import Graph
 
-from lazyflow.operators.ioOperators import OpDvidVolume
-# Must be imported AFTER lazyflow, which adds pydvid to sys.path
-from mockserver.h5mockserver import H5MockServer, H5MockServerDataFile 
-
-from pydvid import voxels
-
 try:
     from lazyflow.operators.ioOperators import OpDvidVolume
     # Must be imported AFTER lazyflow, which adds pydvid to sys.path
-    from mockserver.h5mockserver import H5MockServer, H5MockServerDataFile 
+    from mockserver.h5mockserver import H5MockServer, H5MockServerDataFile
+    from pydvid import voxels
 except ImportError:
     have_dvid = False
 else:

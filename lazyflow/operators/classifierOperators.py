@@ -327,6 +327,7 @@ class OpClassifierPredict(Operator):
         elif self._mode == 'pixelwise':
             self._prediction_op = OpPixelwiseClassifierPredict( parent=self )            
 
+        self._prediction_op.PredictionMask.connect( self.PredictionMask )
         self._prediction_op.Image.connect( self.Image )
         self._prediction_op.LabelsCount.connect( self.LabelsCount )
         self._prediction_op.Classifier.connect( self.Classifier )
@@ -557,52 +558,6 @@ class OpVectorwiseClassifierPredict(Operator):
             self.PMaps.setDirty()
         elif slot == self.PredictionMask:
             self.PMaps.setDirty(roi.start, roi.stop)
-
-
-class OpSegmentation(Operator):
-    name = "OpSegmentation"
-    description = "displaying highest probability class for each pixel"
-
-    inputSlots = [InputSlot("Input")]
-    outputSlots = [OutputSlot("Output")]
-    
-    logger = logging.getLogger(__name__+".OpSegmentation")
-
-    def setupOutputs(self):
-        inputSlot = self.inputs["Input"]
-        self.outputs["Output"].meta.shape = inputSlot.meta.shape[:-1] + (1,)
-        self.outputs["Output"].meta.dtype = numpy.uint8 #who is going to have more than 256 classes?
-        self.outputs["Output"].meta.axistags = inputSlot.meta.axistags
-
-    def execute(self, slot, subindex, roi, result):
-        key = roiToSlice(roi.start,roi.stop)
-        shape = self.inputs["Input"].meta.shape
-
-        rstart, rstop = sliceToRoi(key, self.outputs["Output"].meta.shape)
-        rstart[-1] = 0
-        rstop[-1] = shape[-1]
-        rkey = roiToSlice(rstart, rstop)
-        img = self.inputs["Input"][rkey].wait()
-        axis = img.ndim - 1
-        result = numpy.argmax(img, axis=axis)
-        result.resize(result.shape + (1,))
-        return result
-
-    def propagateDirty(self, slot, subindex, roi):
-        key = roi.toSlice()
-        ndim = len(self.outputs['Output'].meta.shape)
-        if len(key) > ndim:
-            key = key[:ndim]
-        self.outputs["Output"].setDirty(key)
-
-    @property
-    def shape(self):
-        return self.outputs["Output"].meta.shape
-
-    @property
-    def dtype(self):
-        return self.outputs["Output"].meta.dtype
-
 
 class OpAreas(Operator):
     name = "OpAreas"

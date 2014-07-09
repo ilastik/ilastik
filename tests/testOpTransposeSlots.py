@@ -44,13 +44,25 @@ class TestOpTransposeSlots(object):
         opTranspose.OutputLength.setValue( 2 )
         assert len( opTranspose.Outputs ) == 2
     
+        # Input is 3x2.
         op1.Inputs.resize( 3 )
+        op1.Inputs[0].resize(2)
+        op1.Inputs[1].resize(2)
+        op1.Inputs[2].resize(2)
+
+        op1.Inputs[0][0].setValue( (0,0) )
+        op1.Inputs[0][1].setValue( (0,1) )
+        
+        # don't configure the middle multi-input (see assert test below)
+        #op1.Inputs[1][0].setValue( (1,0) )
+        #op1.Inputs[1][0].setValue( (1,1) )
+        
+        op1.Inputs[2][0].setValue( (2,0) )
+        op1.Inputs[2][1].setValue( (2,1) )
+        
         assert len( op1.Outputs ) == 3
         assert len( opTranspose.Outputs[0] ) == 3
     
-        op1.Inputs[0].resize(2)
-        op1.Inputs[0][0].setValue( (0,0) )
-        
         # Sanity check...
         assert op1.Outputs[0][0].ready()
         assert op1.Outputs[0][0].value == (0,0)
@@ -86,7 +98,7 @@ class TestOpTransposeSlots(object):
         assert opTranspose.Outputs[1][2].ready()
         assert opTranspose.Outputs[1][2].value == (2,1)
 
-        # The middle input multi-slot was never configured.
+        # The middle input multi-input was never configured.
         # Therefore, the middle slot of each multi-output is not ready.    
         assert not opTranspose.Outputs[0,1].ready()
         assert not opTranspose.Outputs[1,1].ready()

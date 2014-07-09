@@ -19,10 +19,13 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
-import vigra
-from lazyflow.graph import Operator, OutputSlot
 import httplib
 import socket
+
+import numpy
+import vigra
+from lazyflow.graph import Operator, OutputSlot
+from lazyflow.roi import determineBlockShape
 
 import pydvid
 
@@ -35,7 +38,8 @@ class OpDvidVolume(Operator):
     def __init__(self, hostname, uuid, dataname, transpose_axes, *args, **kwargs):
         super( OpDvidVolume, self ).__init__(*args, **kwargs)
         self._transpose_axes = transpose_axes
-        self._volume_client = None
+        self._default_accessor = None
+        self._throttled_accessor = None
         self._hostname = hostname
         self._uuid = uuid
         self._dataname = dataname
@@ -53,7 +57,8 @@ class OpDvidVolume(Operator):
         """
         try:
             self._connection = pydvid.dvid_connection.DvidConnection( self._hostname )
-            self._volume_client = pydvid.voxels.VoxelsAccessor( self._connection, self._uuid, self._dataname )
+            self._default_accessor = pydvid.voxels.VoxelsAccessor( self._connection, self._uuid, self._dataname )
+            self._throttled_accessor = pydvid.voxels.VoxelsAccessor( self._connection, self._uuid, self._dataname, throttle=True )
         except pydvid.errors.DvidHttpError as ex:
             if ex.status_code == httplib.NOT_FOUND:
                 raise OpDvidVolume.DatasetReadError("Host not found: {}".format( self._hostname ))
@@ -69,7 +74,7 @@ class OpDvidVolume(Operator):
         super( OpDvidVolume, self ).cleanUp()
     
     def setupOutputs(self):
-        shape, dtype, axiskeys = self._volume_client.shape, self._volume_client.dtype, self._volume_client.axiskeys
+        shape, dtype, axiskeys = self._default_accessor.shape, self._default_accessor.dtype, self._default_accessor.axiskeys
         num_channels = shape[0]
         if self._transpose_axes:
             shape = tuple(reversed(shape))
@@ -79,20 +84,32 @@ class OpDvidVolume(Operator):
         self.Output.meta.dtype = dtype.type
         self.Output.meta.axistags = vigra.defaultAxistags( axiskeys ) # FIXME: Also copy resolution, etc.
         
+        # To avoid requesting extremely large blocks, limit each request to 500MB each.
+        max_pixels = 2**29 / self.Output.meta.dtype().nbytes
+        self.Output.meta.ideal_blockshape = determineBlockShape( self.Output.meta.shape, max_pixels )
+        
         # For every request, we probably need room RAM for the array and for the http buffer
         # (and hopefully nothing more)
         self.Output.meta.ram_usage_per_requested_pixel = 2 * dtype.type().nbytes * num_channels
 
     def execute(self, slot, subindex, roi, result):
-        # TODO: Modify volume client implementation to accept a pre-allocated array.
+        # TODO: Modify accessor implementation to accept a pre-allocated array.
+
+        # For "heavy" requests, we'll use the throttled accessor
+        HEAVY_REQ_SIZE = 256**3
+        if numpy.prod(result.shape) > HEAVY_REQ_SIZE:
+            accessor = self._throttled_accessor
+        else:
+            accessor = self._default_accessor
+        
         if self._transpose_axes:
             roi_start = tuple(reversed(roi.start))
             roi_stop = tuple(reversed(roi.stop))
-            result[:] = self._volume_client.get_ndarray(roi_start, roi_stop).transpose()
+            result[:] = accessor.get_ndarray(roi_start, roi_stop).transpose()
         else:
-            result[:] = self._volume_client.get_ndarray(roi.start, roi.stop)
+            result[:] = accessor.get_ndarray(roi.start, roi.stop)
         return result
-    
+
     def propagateDirty(self, *args):
         pass
 

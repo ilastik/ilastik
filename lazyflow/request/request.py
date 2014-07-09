@@ -27,7 +27,9 @@ import collections
 import threading
 import multiprocessing
 import platform
-import traceback
+
+import logging
+logger = logging.getLogger(__name__)
 
 # Third-party
 import greenlet
@@ -182,6 +184,12 @@ class Request( object ):
         """
         return self._priority < other._priority
 
+    def __str__(self):
+        return "fn={}, assigned_worker={}, started={}, execution_complete={}, exception={}, "\
+               "greenlet={}, current_foreign_thread={}, uncancellable={}"\
+               .format( self.fn, self.assigned_worker, self.started, self.execution_complete, \
+                        self.exception, self.greenlet, self._current_foreign_thread, self.uncancellable )
+
     def clean(self, _fullClean=True):
         """
         Delete all state from the request, for cleanup purposes.
@@ -301,7 +309,12 @@ class Request( object ):
         """
         Switch to this request's greenlet
         """
-        self.greenlet.switch()
+        try:
+            self.greenlet.switch()
+        except greenlet.error:
+            logger.critical( "Current thread ({}) could not start/resume task: {}"
+                             .format( threading.current_thread().name, self ) )
+            raise
 
     def __call__(self):
         """
@@ -317,7 +330,12 @@ class Request( object ):
         Suspend this request so another one can be woken up by the worker.
         """
         # Switch back to the worker that we're currently running in.
-        self.greenlet.parent.switch()
+        try:
+            self.greenlet.parent.switch()
+        except greenlet.error:
+            logger.critical( "Current thread ({}) could not suspend task: {}.  (parent greenlet={})"
+                             .format( threading.current_thread().name, self, self.greenlet.parent ) )
+            raise
 
     def wait(self, timeout=None):
         """
@@ -669,28 +687,28 @@ class RequestLock(object):
             return self._acquire_from_within_request(current_request, blocking)
 
     def _acquire_from_within_request(self, current_request, blocking):
-            with self._selfProtectLock:
-                # Try to get it immediately.
-                got_it = self._modelLock.acquire(False)
-                if not blocking:
-                    return got_it
-                if not got_it:
-                    # We have to wait.  Add ourselves to the list of waiters.
-                    self._pendingRequests.append(current_request)
-
+        with self._selfProtectLock:
+            # Try to get it immediately.
+            got_it = self._modelLock.acquire(False)
+            if not blocking:
+                return got_it
             if not got_it:
-                # Suspend the current request.
-                # When it is woken, it owns the _modelLock.
-                current_request._suspend()
+                # We have to wait.  Add ourselves to the list of waiters.
+                self._pendingRequests.append(current_request)
 
-                # Now we're back (no longer suspended)
-                # Was the current request cancelled while it was waiting for the lock?
-                if current_request.cancelled:
-                    raise Request.CancellationException()
+        if not got_it:
+            # Suspend the current request.
+            # When it is woken, it owns the _modelLock.
+            current_request._suspend()
 
-            # Guaranteed to own _modelLock now (see release()).
-            return True
-        
+            # Now we're back (no longer suspended)
+            # Was the current request cancelled while it was waiting for the lock?
+            if current_request.cancelled:
+                raise Request.CancellationException()
+
+        # Guaranteed to own _modelLock now (see release()).
+        return True
+    
     def _acquire_from_within_thread(self, blocking):
         if not blocking:
             return self._modelLock.acquire(blocking)

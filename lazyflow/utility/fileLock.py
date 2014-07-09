@@ -37,13 +37,19 @@ Modifications in this version:
    - ``__exit__`` always calls ``release()``.  It is therefore a bug to call ``release()`` from within a context manager.
    - Added ``locked()`` function. 
    - Added blocking parameter to ``acquire()`` method
+
+WARNINGS: 
+ - The locking mechanism used here may need to be changed to support NFS filesystems:
+   http://lwn.net/Articles/251004
+ - This code has not been thoroughly tested on Windows, and there has been one report of incorrect results on Windows XP and Windows 7.
+   The locking mechanism used in this class should (in theory) be cross-platform, but use at your own risk.
 """
 
 import os
 import sys
 import time
 import errno
- 
+
 class FileLock(object):
     """ A file locking mechanism that has context-manager support so 
         you can use it in a ``with`` statement. This should be relatively cross

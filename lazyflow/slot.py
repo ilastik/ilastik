@@ -25,6 +25,7 @@ import logging
 import itertools
 import threading
 import functools
+import warnings
 
 #SciPy
 import numpy
@@ -148,7 +149,7 @@ class Slot(object):
         
         if not hasattr(self, "_type"):
             self._type = None
-        if type(stype) == str:
+        if type(stype) is str:
             stype = ArrayLike
         self.partners = []
         self.name = name
@@ -423,17 +424,17 @@ class Slot(object):
 
             my_op = self.getRealOperator()
             partner_op = partner.getRealOperator()
-            if not( partner_op.parent == my_op.parent or \
-                    (self._type == "output" and partner_op.parent == my_op) or \
-                    (self._type == "input" and my_op.parent == partner_op) or \
-                    my_op == partner_op):
+            if partner_op and not( partner_op.parent is my_op.parent or \
+                    (self._type == "output" and partner_op.parent is my_op) or \
+                    (self._type == "input" and my_op.parent is partner_op) or \
+                    my_op is partner_op):
                 msg = "It is forbidden to connect slots of operators that are not siblings "\
                       "or not directly related as parent and child."
                 if partner_op.parent is None or my_op.parent is None:
                     msg += "\n(For one of your operators, parent=None.  Was it already cleaned up?"
                 raise Exception(msg)
     
-            if self.partner == partner and partner.level == self.level:
+            if self.partner is partner and partner.level == self.level:
                 return
             if self.level == 0:
                 self.disconnect()
@@ -508,19 +509,29 @@ class Slot(object):
                     partner.notifyValueChanged(self._sig_value_changed)
 
         except:
-            # If anything went wrong, we revert to the disconnected state.
             try:
-                exc_info = sys.exc_info()
-                self.disconnect()
-            except:
-                # Well, this is bad.  We caused an exception while handling an exception.
-                # We're more interested in the FIRST excpetion, so print this one out and
-                #  continue unwinding the stack with the first one.
-                self.logger.error("Error: Caught a secondary exception while handling a different exception.")                
-                import traceback
-                traceback.print_exc() 
-                raise exc_info[0], exc_info[1], exc_info[2]
-            raise
+                raise
+            finally:
+                try:
+                    # We would like to clean up by calling self.disconnect()
+                    # ... but if that raises an exception, it OVERWRITES the original exception.
+                    # This complicated nest of try/except/finally is supposed to prevent that from happening.
+                    # For example, see the bottom of this site:
+                    # http://doughellmann.com/2009/06/19/python-exception-handling-techniques.html
+                    # And yet, that DOESN'T work here for some unknown reason.
+                    # Hence, we can't actually clean up.
+                    # What a bummer.
+
+                    ##self.disconnect() # commented out because it might throw and hide the original exception. See note above.
+                    pass
+                except:
+                    # Well, this is bad.  We caused an exception while handling an exception.
+                    # We're more interested in the FIRST excpetion, so print this one out and
+                    #  continue unwinding the stack with the first one.
+                    self.logger.error("Error: Caught a secondary exception while handling a different exception.")                
+                    import traceback
+                    traceback.print_exc()
+                    pass
             
 
     @is_setup_fn    
@@ -528,7 +539,7 @@ class Slot(object):
         """
         Disconnect a InputSlot from its partner
         """
-        if self.backpropagate_values and not self.getRealOperator()._cleaningUp:
+        if self.backpropagate_values and self.getRealOperator() and not self.getRealOperator()._cleaningUp:
             if self.partner is not None:
                 self.partner.disconnect()
             return
@@ -549,7 +560,7 @@ class Slot(object):
         oldReady = self.meta._ready
         self.meta = MetaDict()
 
-        if len(self._subSlots) > 0 and not self.getRealOperator()._cleaningUp:
+        if len(self._subSlots) > 0 and self.getRealOperator() and not self.getRealOperator()._cleaningUp:
             self.resize(0)
 
         # call callbacks
@@ -631,8 +642,11 @@ class Slot(object):
             return self[position]
 
         slot =  self._insertNew(position)
+        operator_name = '<NO OPERATOR>'
+        if self.operator:
+            operator_name = self.operator.name
         self.logger.debug("Inserting slot {} into slot {} of operator {} to size {}".format(
-            position, self.name, self.operator.name, finalsize))
+            position, self.name, operator_name, finalsize))
         if propagate:
             if self.partner is not None and self.partner.level == self.level:
                 self.partner.insertSlot(position, finalsize)
@@ -665,8 +679,9 @@ class Slot(object):
         self._sig_remove(self, position, finalsize)
 
         slot = self._subSlots.pop(position)
-        slot.operator = None
         slot.disconnect()
+        slot.operator = None
+        slot._real_operator = None
         if propagate:
             if self.partner is not None and self.partner.level == self.level:
                 self.partner.removeSlot(position, finalsize)
@@ -709,7 +724,12 @@ class Slot(object):
                 msg = "Can't get data from slot {}.{} yet."\
                       " It isn't ready."\
                       "First upstream problem slot is: {}"
-                msg = msg.format( self.getRealOperator().__class__, self.name, Slot._findUpstreamProblemSlot(self) )
+                problem_slot = Slot._findUpstreamProblemSlot(self)
+                problem_str = str( problem_slot )
+                if isinstance( problem_slot, Slot ):
+                    problem_op = problem_slot.getRealOperator()
+                    problem_str = problem_op.name + '/' + str( problem_slot )
+                msg = msg.format( self.getRealOperator() and self.getRealOperator().__class__, self.name, problem_str )
                 raise Slot.SlotNotReadyError(msg)
 
             # If someone is asking for data from an inputslot that has
@@ -732,9 +752,10 @@ class Slot(object):
     def _findUpstreamProblemSlot(slot):
         if slot.partner is not None:
             return Slot._findUpstreamProblemSlot( slot.partner )
-        for inputSlot in slot.getRealOperator().inputs.values():
-            if not inputSlot._optional and not inputSlot.ready():
-                return inputSlot
+        if slot.getRealOperator() is not None:
+            for inputSlot in slot.getRealOperator().inputs.values():
+                if not inputSlot._optional and not inputSlot.ready():
+                    return inputSlot
         return "Couldn't find an upstream problem slot."
 
     class RequestExecutionWrapper(object):
@@ -892,12 +913,20 @@ class Slot(object):
                 Request.raise_if_cancelled()
                 if not self.ready():
                     msg = "This slot ({}.{}) isn't ready yet, which means " \
-                          "you can't ask for its data.  Is it connected?".format(self.getRealOperator().name, self.name)
+                          "you can't ask for its data.  Is it connected?".format(self.getRealOperator() and self.getRealOperator().name, self.name)
                     self.logger.error(msg)
+                    problem_slot = Slot._findUpstreamProblemSlot(self)
+                    problem_str = str( problem_slot )
+                    if isinstance( problem_slot, Slot ):
+                        problem_op = problem_slot.getRealOperator()
+                        if problem_op is not None:
+                            problem_str = problem_op.name + '/' + str( problem_slot )
+                        else:
+                            problem_str = '<NO OPERATOR> /' + str( problem_slot )                            
                     slotInfoMsg = "Can't get data from slot {}.{} yet."\
                                   " It isn't ready."\
                                   "First upstream problem slot is: {}"\
-                                  "".format( self.getRealOperator().__class__, self.name, Slot._findUpstreamProblemSlot(self) )
+                                  "".format( self.getRealOperator() and self.getRealOperator().__class__, self.name, problem_str )
                     self.logger.error(slotInfoMsg)
                     raise Slot.SlotNotReadyError("Slot isn't ready.  See error log.")
                 assert self.meta.shape is not None, \
@@ -984,9 +1013,9 @@ class Slot(object):
         elif isinstance(temp, list):
             return temp[0]
         else:
-            self.logger.warn("FIXME: Slot.value for slot {} is {},"
-                             " which should be wrapped in an ndarray.".format(
-                                 self.name, temp))
+            warnings.warn("FIXME: Slot.value for slot {} is {},"
+                          " which should be wrapped in an ndarray."
+                          .format(self.name, temp))
             return temp
 
     @is_setup_fn    
@@ -1080,17 +1109,28 @@ class Slot(object):
                     self.setDirty(slice(None))
         except:
             try:
-                exc_info = sys.exc_info()
-                self.disconnect()
-            except:
-                # Well, this is bad.  We caused an exception while handling an exception.
-                # We're more interested in the FIRST excpetion, so print this one out and
-                #  continue unwinding the stack with the first one.
-                self.logger.error("Error: Caught a secondary exception while handling a different exception.")                
-                import traceback
-                traceback.print_exc() 
-                raise exc_info[0], exc_info[1], exc_info[2]
-            raise
+                raise
+            finally:
+                try:
+                    # We would like to clean up by calling self.disconnect()
+                    # ... but if that raises an exception, it OVERWRITES the original exception.
+                    # This complicated nest of try/except/finally is supposed to prevent that from happening.
+                    # For example, see the bottom of this site:
+                    # http://doughellmann.com/2009/06/19/python-exception-handling-techniques.html
+                    # And yet, that DOESN'T work here for some unknown reason.
+                    # Hence, we can't actually clean up.
+                    # What a bummer.
+
+                    ##self.disconnect() # commented out because it might throw and hide the original exception. See note above.
+                    pass
+                except:
+                    # Well, this is bad.  We caused an exception while handling an exception.
+                    # We're more interested in the FIRST excpetion, so print this one out and
+                    #  continue unwinding the stack with the first one.
+                    self.logger.error("Error: Caught a secondary exception while handling a different exception.")                
+                    import traceback
+                    traceback.print_exc()
+                    pass
 
     @is_setup_fn    
     def setValues(self, values):
@@ -1286,7 +1326,7 @@ class Slot(object):
         value in case of self._value != None
 
         """
-        if type(slot) == int:
+        if type(slot) is int:
             index = slot
             slot = self._subSlots[slot]
         else:
@@ -1344,7 +1384,10 @@ class Slot(object):
         if self.level > 0 or isinstance(self.operator, Slot):
             mslot_info += "["
             if isinstance(self.operator, Slot):
-                mslot_info += " index={}".format( self.operator.index(self) )
+                if self in self.operator._subSlots:
+                    mslot_info += " index={}".format( self.operator.index(self) )
+                else:
+                    mslot_info += " index=NOTFOUND"
             if self.level > 0:
                 mslot_info += " len={}".format( len(self) )
                 if self.level > 1:

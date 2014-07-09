@@ -2,10 +2,12 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List
+import logging
+logger = logging.getLogger(__name__)
 
 import h5py
 import numpy
-import numpy.lib.recfunctions as rfn
+import math
 
 def write_numpy_structured_array_to_HDF5(fid, internalPath, data, overwrite = False):
     """
@@ -101,21 +103,25 @@ class OpExportToKnime(Operator):
     ObjectFeatures = InputSlot(rtype=List, stype=Opaque)
     ImagePerObject = InputSlot(stype="bool")
     ImagePerTime = InputSlot(stype="bool")
+    FileType = InputSlot(value="h5", stype="str") #can be "csv" or "h5"
+    OutputFileName = InputSlot(value="test_export_for_now.h5", stype="str")
     
-    WriteImage = OutputSlot(stype='bool')
+    WriteData = OutputSlot(stype='bool', rtype=List)
     
     def __init__(self, *args, **kwargs):
         super(OpExportToKnime, self).__init__(*args, **kwargs)
-        self.outputFileName = "test_export_for_now.h5"
         self.imagePerObject = False
         self.imagePerTime = False
+        self.delim = "\t"
         
     def setupOutputs(self):
         self.imagePerObject = self.ImagePerObject.value
         self.imagePerTime = self.ImagePerTime.value
         
-    def execute(self, slot, subindex, roi, result):
-        pass
+        self.WriteData.meta.shape = (1,)
+        self.WriteData.meta.dtype = object
+        
+    
     def propagateDirty(self, slot, subindex, roi): 
         pass
     
@@ -129,22 +135,20 @@ class OpExportToKnime(Operator):
                 newrecarray[name] = a[name]
         return newrecarray
     
-    def run_export(self, constraints={}):
+    def write_to_h5(self, table, image_paths, roi):
         
-        if not self.RawImage.ready() or not self.CCImage.ready():
-            print "NOT READY"
-            return False
+        times = roi._l
+        if len(times) == 0:
+            # we assume that 0-length requests are requesting everything
+            times = range(self.RawImage.meta.shape[0])
         
-        table = self.ObjectFeatures.value
-        
-        image_paths = numpy.zeros(table.shape[0], dtype={"names":["raw", "labels"], "formats":['a50', 'a50']})
-        
-        #image_paths = numpy.zeros(table.shape[0], dtype=[('raw', 'S', 100),('labeled', 'S', 100)])
-        
-        with h5py.File(self.outputFileName, "w") as fout:
+        with h5py.File(self.OutputFileName.value, "w") as fout:
             gr_images = fout.create_group("images")
             if not self.imagePerObject and not self.imagePerTime:
-                #one image for everything
+                # One image for everything. 
+                # FIXME: what if a subrange in time is requested? Stack different time
+                # values on top of each other?
+                
                 raw_image = self.RawImage[:].wait()
                 cc_image = self.CCImage[:].wait()
                 
@@ -162,69 +166,62 @@ class OpExportToKnime(Operator):
                 
             
             elif self.imagePerObject and not self.imagePerTime:
-                minxs = table["Default features, Coord<Minimum>_ch_0"].astype(numpy.int32)
-                minys = table["Default features, Coord<Minimum>_ch_1"].astype(numpy.int32)
-                maxxs = table["Default features, Coord<Maximum>_ch_0"].astype(numpy.int32)
-                maxys = table["Default features, Coord<Maximum>_ch_1"].astype(numpy.int32)
-                
+                # We export a bounding box image for every object individually
+                raw_shape = self.RawImage.meta.getTaggedShape()
+                nchannels = raw_shape['c']
                 try:
-                    minzs = table["Default features, Coord<Minimum>_ch_2"].astype(numpy.int32)
-                    maxzs = table["Default features, Coord<Maximum>_ch_2"].astype(numpy.int32)
+                    minxs = table["Default features, Coord<Minimum>_ch_0"].astype(numpy.int32)
+                    minys = table["Default features, Coord<Minimum>_ch_1"].astype(numpy.int32)
+                    maxxs = table["Default features, Coord<Maximum>_ch_0"].astype(numpy.int32)
+                    maxys = table["Default features, Coord<Maximum>_ch_1"].astype(numpy.int32)
+                    time_values = table["Time"].astype(numpy.int32)
                 except ValueError:
-                    minzs = None
-                    maxzs = None    
-                
-                for i, minx in enumerate(minxs):
-                    bbox = [slice(0, 1, None), slice(minx, maxxs[i], None), slice(minys[i], maxys[i], None)]
-                    if minzs is not None:
-                        bbox.append(slice(minzs[i], maxzs[i], None))
-                    else:
-                        bbox.append(slice(0, 1, None))
-                        #FIXME: only 1 channel!!!!!!!
-                    bbox.append(slice(0, 1, None))
+                    logger.info("Object bounding boxes are not passed as features. Object images will not be saved")
+                    for i in range(table.shape[0]):
+                        image_paths["raw"][i] = ""
+                        image_paths["labels"][i] = ""
+                else:
+                    try:
+                        minzs = table["Default features, Coord<Minimum>_ch_2"].astype(numpy.int32)
+                        maxzs = table["Default features, Coord<Maximum>_ch_2"].astype(numpy.int32)
+                    except ValueError:
+                        minzs = None
+                        maxzs = None    
                     
+                    for i, minx in enumerate(minxs):
+                        bbox = [slice(time_values[i], time_values[i]+1, None), slice(minx, maxxs[i], None), slice(minys[i], maxys[i], None)]
+                        if minzs is not None:
+                            bbox.append(slice(minzs[i], maxzs[i], None))
+                        else:
+                            bbox.append(slice(0, 1, None))
+                        bbox.append(slice(0, nchannels, None))
+                        
+                        
+                        raw_image = self.RawImage[bbox].wait()
+                        cc_image = self.CCImage[bbox].wait()
+                        
+                        #ensure the right order
+                        ndigits = int(math.floor( math.log10( table.shape[0] ) ) + 1)
+                        formatstring = "{:0>"+str(ndigits)+"d}"
+                        numstring = formatstring.format(i)
+                        
+                        gr_images_obj = gr_images.create_group(numstring)
+                        rawname = numstring+"/raw"
+                        ccname = numstring+"/labels"
+                        
+                        image_paths["raw"][i] = rawname
+                        image_paths["labels"][i] = ccname
+                        
+                        ri = gr_images_obj.create_dataset("raw", data=raw_image.squeeze())
+                        cci = gr_images_obj.create_dataset("labels", data=cc_image.squeeze())
+                        
+                        ri.attrs["type"] = "image"
+                        cci.attrs["type"] = "labeling"
                     
-                    raw_image = self.RawImage[bbox].wait()
-                    cc_image = self.CCImage[bbox].wait()
-                
-                    
-                    #print rawname, ccname
-                    
-                    #newtable["raw"][i] = rawname
-                    #newtable["labeled"][i] = ccname
-                    gr_images_obj = gr_images.create_group("{}".format(i))
-                    rawname = "{}/raw".format(i)
-                    ccname = "{}/labels".format(i)
-                    
-                    image_paths["raw"][i] = rawname
-                    image_paths["labels"][i] = ccname
-                    
-                    ri = gr_images_obj.create_dataset("raw", data=raw_image.squeeze())
-                    cci = gr_images_obj.create_dataset("labels", data=cc_image.squeeze())
-                    
-                    ri.attrs["type"] = "image"
-                    cci.attrs["type"] = "labeling"
-                    
-                #print image_paths.shape, table.shape
                 assert image_paths.shape[0] == table.shape[0]
-                #newtable = self.join_struct_arrays((table, image_paths))
             
             elif self.imagePerTime and not self.imagePerObject:
-                # check for constraints passed with function call
-                try:
-                    if 't' in constraints:                    
-                        tmin = constraints['t']['min']
-                        tmax = constraints['t']['max']
-                    else:
-                        raise Exception("Constraints on an axis have to be defined by 'min' and 'max' value")
-                except:
-                    tmin, tmax = (-1, -1)
-                
-                # sanity check given constraint values
-                tmax = max(min(tmax, self.RawImage.meta.getTaggedShape()['t']), 0)
-                tmin = min(max(tmin, 0), tmax)
-                
-                for t in range(tmin, tmax):                                              
+                for t in times:                                              
                     bbox = [slice(t, t+1, None), slice(None), slice(None), slice(None), slice(None)]      
                     
                     raw_image = self.RawImage[bbox].wait()
@@ -247,10 +244,59 @@ class OpExportToKnime(Operator):
 
             write_numpy_structured_array_to_HDF5(fout, "tables/FeatureTable", table, True)
             write_numpy_structured_array_to_HDF5(fout, "tables/ImagePathTable", image_paths, True)
-            #gr = fout.create_group("table")
-            #gr.create_dataset("Table", data = table)
-            #gr.create_dataset("Image_paths", data=image_paths)
+        
+    def write_to_csv(self, table):
+        
+        with open(self.OutputFileName.value, "w") as fout:
+            names = table.dtype.names
+            header = self.delim.join(names)
+
+            fout.write(header+"\n")
             
+            for sublist in table:
+                fout.write(self.delim.join([str(item) for item in sublist])+"\n")
+        
+        
+        
+    def execute(self, slot, subindex, roi, result):
+        assert slot==self.WriteData
+
+        
+        #request the right time values from the feature table? But then it has to be a slot!
+        #the correct requesting has to happen before
+        table = self.ObjectFeatures.value
+        filetype = self.FileType.value
+        if filetype=="h5":
+            if not self.RawImage.ready() or not self.CCImage.ready():
+                logger.info("Image slots are not ready for export!")
+                result[0] = False
+                return
+            image_paths = numpy.zeros(table.shape[0], dtype={"names":["raw", "labels"], "formats":['a50', 'a50']})
+            self.write_to_h5(table, image_paths, roi)
+        elif filetype=="csv":
+            self.write_to_csv(table)
+        
+        # We're finished.
+        result[0] = True
+    
+    def run_export(self, constraints={}):
+        #FIXME: constraints should be replaced by a real roi, like we 
+        #usually do in execute() functions
+        
+        if not self.RawImage.ready() or not self.CCImage.ready():
+            print "NOT READY"
+            return False
+        
+        table = self.ObjectFeatures.value
+        
+        image_paths = numpy.zeros(table.shape[0], dtype={"names":["raw", "labels"], "formats":['a50', 'a50']})
+        
+        filetype = self.FileType.value
+        
+        if filetype=="h5":
+            self.write_to_h5(table, image_paths, constraints)
+        elif filetype=="csv":
+            self.write_to_csv(table)
             
         return True
             

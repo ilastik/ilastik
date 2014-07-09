@@ -114,7 +114,12 @@ class OpMultiArraySlicer(Operator):
         outshape=list(self.inputs["Input"].meta.shape)
         n=outshape.pop(indexAxis)
         outshape=tuple(outshape)
-
+        
+        if self.Input.meta.ideal_blockshape:
+            ideal_blockshape = list( self.Input.meta.ideal_blockshape )
+            ideal_blockshape.pop(indexAxis)
+            ideal_blockshape = tuple(ideal_blockshape)
+        
         outaxistags=copy.copy(self.inputs["Input"].meta.axistags)
         del outaxistags[flag]
 
@@ -127,6 +132,9 @@ class OpMultiArraySlicer(Operator):
             o.meta.shape = outshape
             if self.Input.meta.drange is not None:
                 o.meta.drange = self.Input.meta.drange
+
+            if self.Input.meta.ideal_blockshape:
+                o.meta.ideal_blockshape = ideal_blockshape
 
     def execute(self, slot, subindex, rroi, result):
         key = roiToSlice(rroi.start, rroi.stop)
@@ -331,6 +339,10 @@ class OpMultiArrayStacker(Operator):
             else:
                 #FIXME axisindex is not necessarily defined yet (try setValue on subslot)
                 newshape.insert(axisindex, c)
+                ideal_blockshape = self.Output.meta.ideal_blockshape
+                if ideal_blockshape is not None:
+                    ideal_blockshape = ideal_blockshape[:axisindex] + (1,) + ideal_blockshape[axisindex:]
+                    self.Output.meta.ideal_blockshape = ideal_blockshape
             self.outputs["Output"].meta.shape=tuple(newshape)
         else:
             self.outputs["Output"].meta.shape = None
@@ -494,7 +506,8 @@ class OpSubRegion(Operator):
         stop = self.inputs["Stop"].value
         assert isinstance(start, tuple)
         assert isinstance(stop, tuple)
-        assert len(start) == len(self.inputs["Input"].meta.shape)
+        assert len(start) == len(self.inputs["Input"].meta.shape), \
+            "dimension mismatch: {} vs {}".format( start, self.Input.meta.shape )
         assert len(start) == len(stop)
         assert (numpy.array(stop)>= numpy.array(start)).all()
     
@@ -856,7 +869,8 @@ class OpTransposeSlots(Operator):
     configured (e.g. if not all input multi-slots have the same length).
     The length of the output multi-slot must be specified explicitly.
     """
-    OutputLength = InputSlot() # The length of the j dimension = J.
+    OutputLength = InputSlot(value=0)   # The MINIMUM length of the j dimension = J. If the input isn't configured yet, 
+                                        #   the output slot will be at least this long (with empty subslots).
     Inputs = InputSlot(level=2, optional=True) # Optional so that the Output mslot is configured even if len(Inputs) == 0
     Outputs = OutputSlot(level=2)   # A level-2 multislot of len J.
                                     # For each inner (level-1) multislot, len(multislot) == len(self.Inputs)
@@ -867,7 +881,19 @@ class OpTransposeSlots(Operator):
         super( OpTransposeSlots, self ).__init__(*args, **kwargs)
 
     def setupOutputs(self):
-        self.Outputs.resize( self.OutputLength.value )
+        if len( self.Inputs ) == 0:
+            self.Outputs.resize( self.OutputLength.value )
+            for oslot in self.Outputs:
+                oslot.resize(0)
+            return
+
+        # If the inputs are in sync (all inner inputs have the same len)
+        #  then we'll resize the output.
+        # Otherwise, the output is not resized, but its inner slots are 
+        #  still connected if possible or marked 'not ready' otherwise.        
+        input_lens = map( lambda slot: len(slot), self.Inputs )
+        if len( set(input_lens) ) == 1:
+            self.Outputs.resize( max(input_lens[0], self.OutputLength.value ) )
         for j, mslot in enumerate( self.Outputs ):
             mslot.resize( len(self.Inputs) )
             for i, oslot in enumerate( mslot ):
