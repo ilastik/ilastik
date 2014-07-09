@@ -218,7 +218,8 @@ class OpThresholdTwoLevels(Operator):
             slot.disconnect()
             slot.meta.NOTREADY = True
         self._opReorder2.Input.disconnect()
-        self.opThreshold1GC.InputImage.disconnect()
+        if haveGraphCut():
+            self.opThreshold1GC.InputImage.disconnect()
         self.opThreshold1.InputImage.disconnect()
         self.opThreshold2.InputImage.disconnect()
 
