@@ -116,26 +116,26 @@ def areOnSameDrive(path1,path2):
 
 def compressPathForDisplay(pathstr,maxlength):
     '''Add alternatingly parts of the start and the end of the path
-    until the length s increased. Result: Drive/Dir1/.../Dirn/file'''
-    if len(pathstr)<=maxlength:
+    until maxlength is exceeded. Result: Drive/Dir1/.../Dirn/file'''
+    if len(pathstr) <= maxlength:
         return pathstr
-    suffix = ""
-    prefix = ""
+    dots = '...'
     component_list = pathstr.split("/")
+    prefix = ""
+    suffix = "/" + component_list.pop(-1)
     while component_list:
-        c = component_list.pop(-1)
-        newlength = len(suffix)+1+len(c)+len(prefix)
-        if newlength>maxlength:
-            suffix = c[-min(len(c)-3,maxlength-3):]
+        restlength = maxlength - len(prefix) - len(dots)
+        suffix = '/' + component_list.pop(-1) + suffix
+        if len(suffix) > restlength:
+            suffix = suffix[-restlength:]
             break
-        suffix="/"+c+suffix
         if not component_list:
             break
-        c = component_list.pop(0)
-        if len(suffix)+len(prefix)+1+len(prefix)>maxlength:
+        c = prefix + component_list.pop(0) + "/"
+        if len(c)+len(dots)+len(suffix) > maxlength:
             break
-        prefix=prefix+c+"/"
-    return prefix+"..."+suffix
+        prefix = c
+    return prefix + dots + suffix
 
 def isUrl(path):
     # For now, the simplest rule will work.
