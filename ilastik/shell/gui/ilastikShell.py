@@ -19,9 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 # Standard
-import sys
 import re
-import traceback
 import os
 import time
 from functools import partial
@@ -61,7 +59,6 @@ from ilastik.applets.base.singleToMultiGuiAdapter import SingleToMultiGuiAdapter
 from ilastik.shell.projectManager import ProjectManager
 from ilastik.config import cfg as ilastik_config
 from iconMgr import ilastikIcons
-from lazyflow.utility.pathHelpers import compressPathForDisplay
 from ilastik.shell.gui.errorMessageFilter import ErrorMessageFilter
 from ilastik.shell.gui.memUsageDialog import MemUsageDialog
 from ilastik.shell.shellAbc import ShellABC
@@ -70,6 +67,7 @@ from ilastik.shell.gui.splashScreen import showSplashScreen
 from ilastik.shell.gui.licenseDialog import LicenseDialog
 
 from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox
+from ilastik.widgets.filePathButton import FilePathButton
 
 from ilastik.shell.gui.messageServer import MessageServer
 
@@ -462,18 +460,9 @@ class IlastikShell( QMainWindow ):
             for path,workflow in projects[::-1]:
                 if not os.path.exists(path):
                     continue
-                b = QToolButton(self.startscreen)
+                b = FilePathButton(path, " ({})".format( workflow ), parent=self.startscreen)
                 styleStartScreenButton(b, ilastikIcons.Open)
 
-                #parse path
-                b.setToolTip(path)
-                compressedpath = compressPathForDisplay(path,50)
-                if len(workflow)>30:
-                    compressedworkflow = workflow[:27]+"..."
-                else:
-                    compressedworkflow = workflow
-                text = "{0} ({1})".format(compressedpath,compressedworkflow)
-                b.setText(text)
                 b.clicked.connect(partial(self.openFileAndCloseStartscreen,path))
                 
                 # Insert the new button after all the other controls, 
