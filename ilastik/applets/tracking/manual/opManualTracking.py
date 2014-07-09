@@ -124,20 +124,9 @@ class OpManualTracking(Operator):
         return result
         
     def propagateDirty(self, inputSlot, subindex, roi):
-        pass
-#        print 'opManualTracking::propagateDirty: roi =', roi        
-#        if inputSlot is self.Labels:
-#            if len(roi._l) == 0:
-#                self.TrackImage.setDirty(slice(None))
-#            elif isinstance(roi._l[0], int):
-#                for t in roi._l:
-#                    self.TrackImage.setDirty(slice(t))
-#            else:
-#                print 'cannot propagate dirtyness: ', roi
-                
-#        if inputSlot is self.LabelImage:
-#            self.Output.setDirty(roi)
-
+        if inputSlot == self.LabelImage:
+            self.labels = {}
+            self.divisions = {}
  
     def _relabel(self, volume, replace):
         mp = np.arange(0, np.amax(volume) + 1, dtype=volume.dtype)
