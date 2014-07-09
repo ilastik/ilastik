@@ -53,6 +53,10 @@ class TestThreadPool(object):
         # This is just to make sure the test is doing what its supposed to.
         assert f1.assigned_worker != f2.assigned_worker
 
+    def test(self):
+        for i in range(100):
+            self.testAssignmentConsistency()
+
     def testAssignmentConsistency(self):
         """
         If a callable is woken up (executed) more than once from the ThreadPool, it will execute on the same thread every time.
@@ -94,6 +98,20 @@ class TestThreadPool(object):
         e.clear()
         self.thread_pool.wake_up( g )
         e.wait()
+
+        # Overload the threadpool with work, 
+        #  which should encourage random assignment of threads if something is broken
+        def delay1(): time.sleep(0.2)
+        def delay2(): time.sleep(0.2)
+        def delay3(): time.sleep(0.2)
+        def delay4(): time.sleep(0.2)
+        def delay5(): time.sleep(0.2)
+        
+        self.thread_pool.wake_up( delay1 )
+        self.thread_pool.wake_up( delay2 )
+        self.thread_pool.wake_up( delay3 )
+        self.thread_pool.wake_up( delay4 )
+        self.thread_pool.wake_up( delay5 )
         
         # Second time, same callable
         e.clear()
