@@ -69,7 +69,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         self.dataExportApplet = TrackingBaseDataExportApplet(self, "Tracking Result Export")
         
         opDataExport = self.dataExportApplet.topLevelOperator
-        opDataExport.SelectionNames.setValue( ['Tracking'] )
+        opDataExport.SelectionNames.setValue( ['Tracking Result', 'Merger Result', 'Object Identities'] )
         opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
         
         self._applets = []                
@@ -180,8 +180,10 @@ class ConservationTrackingWorkflowBase( Workflow ):
         opTracking.DetectionProbabilities.connect( opCellClassification.Probabilities )
         opTracking.NumLabels.connect( opCellClassification.NumLabels )
     
-        opDataExport.Inputs.resize(1)
+        opDataExport.Inputs.resize(3)
         opDataExport.Inputs[0].connect( opTracking.Output )
+        opDataExport.Inputs[1].connect( opTracking.MergerOutput )
+        opDataExport.Inputs[2].connect( opTracking.LabelImage )
         opDataExport.RawData.connect( op5Raw.Output )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
 
