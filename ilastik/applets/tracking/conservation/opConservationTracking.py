@@ -30,7 +30,7 @@ class OpConservationTracking(OpTrackingBase):
             
             trange = range(roi.start[0], roi.stop[0])
             for t in trange:
-                if ('time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0] and len(self.mergers) > t and len(self.mergers[t])):            
+                if ('time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0] and len(self.mergers) > t and len(self.mergers[t])):
                     result[t-roi.start[0],...,0] = relabelMergers(result[t-roi.start[0],...,0], self.mergers[t])
                 else:
                     result[t-roi.start[0],...][:] = 0

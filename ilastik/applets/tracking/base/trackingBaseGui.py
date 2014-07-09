@@ -339,7 +339,7 @@ class TrackingBaseGui( LayerViewerGui ):
             labelImage = labelImage[0,...,0]
             
             try:
-                write_events([], str(directory), t_from, labelImage)
+                # write_events([], str(directory), t_from, labelImage)
                 
                 events = self.mainOperator.EventsVector.value
                 logger.info( "Saving events..." )
