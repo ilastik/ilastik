@@ -23,6 +23,8 @@ logger = logging.getLogger(__name__)
 # The labeling is computed **seperately** per time slice and per channel.
 class OpLabelVolume(Operator):
 
+    name = "OpLabelVolume"
+
     ## provide the volume to label here
     # (arbitrary shape, dtype could be restricted, see the implementations
     # property supportedDtypes below)
@@ -68,7 +70,10 @@ class OpLabelVolume(Operator):
     # input changes for the respective time-channel-slice.
     CachedOutput = OutputSlot()
 
-    name = "OpLabelVolume"
+    # cache access, see OpCompressedCache
+    InputHdf5 = InputSlot(optional=True)
+    CleanBlocks = OutputSlot()
+    OutputHdf5 = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super(OpLabelVolume, self).__init__(*args, **kwargs)
@@ -76,7 +81,7 @@ class OpLabelVolume(Operator):
         # we just want to have 5d data internally
         op5 = OpReorderAxes(parent=self)
         op5.Input.connect(self.Input)
-        op5.AxisOrder.setValue('xyzct')
+        op5.AxisOrder.setValue('txyzc')
         self._op5 = op5
 
         self._opLabel = None
@@ -115,6 +120,11 @@ class OpLabelVolume(Operator):
         self._op5_2.AxisOrder.setValue(origOrder)
         self._op5_2_cached.AxisOrder.setValue(origOrder)
 
+        # connect cache access slots
+        self._opLabel.InputHdf5.connect(self.InputHdf5)
+        self.OutputHdf5.connect(self._opLabel.OutputHdf5)
+        self.CleanBlocks.connect(self._opLabel.CleanBlocks)
+
         # set background values
         self._setBG()
 
@@ -131,6 +141,13 @@ class OpLabelVolume(Operator):
             # internal operator
             self._setBG()
 
+    def setInSlot(self, slot, subindex, roi, value):
+        assert slot == self.InputHdf5,\
+            "Invalid slot for setInSlot(): {}".format( slot.name )
+        # Nothing to do here.
+        # Our Input slots are directly fed into the cache,
+        #  so all calls to __setitem__ are forwarded automatically
+
     ## set the background values of inner operator
     def _setBG(self):
         if self.Background.ready():
@@ -138,14 +155,16 @@ class OpLabelVolume(Operator):
         else:
             val = 0
         bg = np.asarray(val)
+        t = self._op5.Output.meta.shape[0]
+        c = self._op5.Output.meta.shape[4]
         if bg.size == 1:
-            bg = np.zeros(self._op5.Output.meta.shape[3:])
+            bg = np.zeros((c, t))
             bg[:] = val
             bg = vigra.taggedView(bg, axistags='ct')
         else:
             bg = vigra.taggedView(val, axistags=self.Background.meta.axistags)
             bg = bg.withAxes(*'ct')
-        bg = bg.withAxes(*'xyzct')
+        bg = bg.withAxes(*'txyzc')
         self._opLabel.Background.setValue(bg)
 
 
@@ -162,6 +181,11 @@ class OpLabelingABC(Operator):
     Output = OutputSlot()
     CachedOutput = OutputSlot()
 
+    # cache access, see OpCompressedCache
+    InputHdf5 = InputSlot(optional=True)
+    CleanBlocks = OutputSlot()
+    OutputHdf5 = OutputSlot()
+
     # the numeric type that is used for labeling
     labelType = np.uint32
 
@@ -176,6 +200,9 @@ class OpLabelingABC(Operator):
         self._cache.name = "OpLabelVolume.OutputCache"
         self._cache.Input.connect(self.Output)
         self.CachedOutput.connect(self._cache.Output)
+        self._cache.InputHdf5.connect(self.InputHdf5)
+        self.OutputHdf5.connect(self._cache.OutputHdf5)
+        self.CleanBlocks.connect(self._cache.CleanBlocks)
 
     def setupOutputs(self):
 
@@ -190,7 +217,8 @@ class OpLabelingABC(Operator):
 
         # set cache chunk shape to the whole spatial volume
         shape = np.asarray(self.Input.meta.shape, dtype=np.int)
-        shape[3:5] = 1
+        shape[0] = 1
+        shape[4] = 1
         self._cache.BlockShape.setValue(tuple(shape))
 
         # setup meta for Output
@@ -201,10 +229,17 @@ class OpLabelingABC(Operator):
         # a change in either input or background makes the whole
         # time-channel-slice dirty (CCL is a global operation)
         outroi = roi.copy()
-        outroi.start[:3] = (0, 0, 0)
-        outroi.stop[:3] = self.Input.meta.shape[:3]
+        outroi.start[1:4] = (0, 0, 0)
+        outroi.stop[1:4] = self.Input.meta.shape[1:4]
         self.Output.setDirty(outroi)
         self.CachedOutput.setDirty(outroi)
+
+    def setInSlot(self, slot, subindex, roi, value):
+        assert slot == self.InputHdf5,\
+            "Invalid slot for setInSlot(): {}".format( slot.name )
+        # Nothing to do here.
+        # Our Input slots are directly fed into the cache,
+        #  so all calls to __setitem__ are forwarded automatically
 
     def execute(self, slot, subindex, roi, result):
         if slot == self.Output:
@@ -219,8 +254,11 @@ class OpLabelingABC(Operator):
         bg = self.Background[...].wait()
         bg = vigra.taggedView(bg, axistags=self.Background.meta.axistags)
         bg = bg.withAxes(*'ct')
-        assert np.all(self.Background.meta.shape[3:] ==
-                      self.Input.meta.shape[3:]),\
+        assert np.all(self.Background.meta.shape[0] ==
+                      self.Input.meta.shape[0]),\
+            "Shape of background values incompatible to shape of Input"
+        assert np.all(self.Background.meta.shape[4] ==
+                      self.Input.meta.shape[4]),\
             "Shape of background values incompatible to shape of Input"
 
         # do labeling in parallel over channels and time slices
@@ -228,13 +266,13 @@ class OpLabelingABC(Operator):
 
         start = np.asarray(roi.start, dtype=np.int)
         stop = np.asarray(roi.stop, dtype=np.int)
-        for ti, t in enumerate(range(roi.start[4], roi.stop[4])):
-            start[4], stop[4] = t, t+1
-            for ci, c in enumerate(range(roi.start[3], roi.stop[3])):
-                start[3], stop[3] = c, c+1
+        for ti, t in enumerate(range(roi.start[0], roi.stop[0])):
+            start[0], stop[0] = t, t+1
+            for ci, c in enumerate(range(roi.start[4], roi.stop[4])):
+                start[4], stop[4] = c, c+1
                 newRoi = SubRegion(self.Output,
                                    start=tuple(start), stop=tuple(stop))
-                resView = result[..., ci, ti].withAxes(*'xyz')
+                resView = result[ti, ..., ci].withAxes(*'xyz')
                 req = Request(partial(self._label3d, newRoi,
                                       bg[c, t], resView))
                 pool.add(req)
@@ -262,7 +300,7 @@ class _OpLabelVigra(OpLabelingABC):
 
     def _label3d(self, roi, bg, result):
         source = vigra.taggedView(self.Input.get(roi).wait(),
-                                  axistags='xyzct').withAxes(*'xyz')
+                                  axistags='txyzc').withAxes(*'xyz')
         if source.shape[2] > 1:
             result[:] = vigra.analysis.labelVolumeWithBackground(
                 source, background_value=int(bg))
