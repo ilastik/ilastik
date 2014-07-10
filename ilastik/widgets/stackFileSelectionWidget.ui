@@ -71,6 +71,19 @@
          <property name="text">
           <string>Specify Pattern:</string>
          </property>
+         <property name="toolTip">
+          <string>Unix path name pattern: 
+  * matches 0 or more characters, ? matches any 1 character. 
+  Seperate multiple patterns by a semicolon (;). 
+Examples:
+  Linux/Mac: 
+    /home/me/data/stack_*.jpg
+    /home/me/this/stack_*.pgm;/home/me/that/stack_*.pgm
+  Windows: 
+    D:\data\stack_*.jpg
+    D:\this\stack_*.pgm;D:\that\stack_*.pgm
+</string>
+         </property>
         </widget>
        </item>
        <item row="2" column="1" colspan="2">
