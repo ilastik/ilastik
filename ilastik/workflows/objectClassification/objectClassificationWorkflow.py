@@ -731,7 +731,7 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
 
 class ObjectClassificationWorkflowBinary(ObjectClassificationWorkflow):
     workflowName = "Object Classification (from binary image)"
-    workflowDisplayName = "Object Classification [Inputs: Raw Data and Segmentation]"
+    workflowDisplayName = "Object Classification [Inputs: Raw Data, Segmentation]"
 
     def setupInputs(self):
         data_instructions = 'Use the "Raw Data" tab to load your intensity image(s).\n\n'\
@@ -771,7 +771,7 @@ class ObjectClassificationWorkflowBinary(ObjectClassificationWorkflow):
 
 class ObjectClassificationWorkflowPrediction(ObjectClassificationWorkflow):
     workflowName = "Object Classification (from prediction image)"
-    workflowDisplayName = "Object Classification [Inputs: Raw Data and Pixel Prediction Map]"
+    workflowDisplayName = "Object Classification [Inputs: Raw Data, Pixel Prediction Map]"
 
     def setupInputs(self):
         data_instructions = 'Use the "Raw Data" tab to load your intensity image(s).\n\n'\

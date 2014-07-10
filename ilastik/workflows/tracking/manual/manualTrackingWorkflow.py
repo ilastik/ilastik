@@ -29,6 +29,7 @@ from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingB
 
 class ManualTrackingWorkflow( Workflow ):
     workflowName = "Manual Tracking Workflow"
+    workflowDisplayName = "Manual Tracking Workflow [Inputs: Raw Data, Pixel Prediction Map]"
     workflowDescription = "Manual tracking of objects, based on Prediction Maps or (binary) Segmentation Images"    
 
     @property
