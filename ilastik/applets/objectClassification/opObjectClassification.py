@@ -89,7 +89,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     LabelInputs = InputSlot(stype=Opaque, rtype=List, optional=True, level=1)
     
     FreezePredictions = InputSlot(stype='bool', value=False)
-    EnableLabelTransfer = InputSlot(stype='bool', value=True)
+    EnableLabelTransfer = InputSlot(stype='bool', value=False)
 
     # for reading from disk
     InputProbabilities = InputSlot(level=1, stype=Opaque, rtype=List, optional=True)
