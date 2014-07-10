@@ -61,7 +61,7 @@ class OpDataExport(Operator):
     OutputAxisOrder = InputSlot(optional=True)
     
     # File settings
-    OutputFilenameFormat = InputSlot(value='{dataset_dir}/{nickname}_export') # A format string allowing {dataset_dir} {nickname}, {roi}, {x_start}, {x_stop}, etc.
+    OutputFilenameFormat = InputSlot(value='{dataset_dir}/{nickname}_{result_type}') # A format string allowing {dataset_dir} {nickname}, {roi}, {x_start}, {x_stop}, etc.
     OutputInternalPath = InputSlot(value='exported_data')
     OutputFormat = InputSlot(value='hdf5')
     
@@ -212,6 +212,8 @@ class OpDataExport(Operator):
         if os.path.pathsep in nickname:
             nickname = PathComponents(nickname.split(os.path.pathsep)[0]).fileNameBase
         known_keys['nickname'] = nickname
+        result_types = self.SelectionNames.value
+        known_keys['result_type'] = result_types[selection_index]
 
         # Disconnect to open the 'transaction'
         if self._opImageOnDiskProvider is not None:
