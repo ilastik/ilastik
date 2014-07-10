@@ -49,11 +49,13 @@ class OpStackLoader(Operator):
 
     :param globstring: A glob string as defined by the glob module. We
         also support the following special extension to globstring
-        syntax: A single string can hold a *list* of globstrings. Each
-        separate globstring in the list is separated by a semicolon (;).
-        For, example,
+        syntax: A single string can hold a *list* of globstrings. 
+        The delimiter that separates the globstrings in the list is 
+        OS-specific via os.path.pathsep.
+        
+        For example, on Linux the pathsep is':', so
 
-            '/a/b/c.txt;/d/e/f.txt;../g/i/h.txt'
+            '/a/b/c.txt:/d/e/f.txt:../g/i/h.txt'
 
         is parsed as
 
@@ -83,7 +85,7 @@ class OpStackLoader(Operator):
             self.info = vigra.impex.ImageInfo(self.fileNameList[0])
             self.slices_per_file = vigra.impex.numberImages(self.fileNameList[0])
         except RuntimeError as e:
-            print(e)
+            logger.error(str(e))
             raise OpStackLoader.FileOpenError(self.fileNameList[0])
 
         slice_shape = self.info.getShape()
@@ -155,7 +157,7 @@ class OpStackLoader(Operator):
     def expandGlobStrings(globStrings):
         ret = []
         # Parse list into separate globstrings and combine them
-        for globString in globStrings.split(";"):
+        for globString in globStrings.split(os.path.pathsep):
             s = globString.strip()
             ret += sorted(glob.glob(s))
         return ret
