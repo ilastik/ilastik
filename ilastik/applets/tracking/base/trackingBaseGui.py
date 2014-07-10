@@ -82,6 +82,7 @@ class TrackingBaseGui( LayerViewerGui ):
         self.applet = self.mainOperator.parent.parent.trackingApplet
 
 
+    @threadRouted
     def _onMetaChanged( self, slot ):
         if slot is self.mainOperator.LabelImage:
             if slot.meta.shape:                
