@@ -31,7 +31,7 @@ class Workflow( Operator ):
     Base class for all workflows.
     """
     name = "Workflow (base class)"
-    workflowDisplayName = None #override in your own workflow if you need it
+    workflowDisplayName = None #override in your own workflow if you need it different from name
 
     ###############################
     # Abstract methods/properties #
@@ -63,6 +63,7 @@ class Workflow( Operator ):
             wname+=i
         if wname.endswith(" Workflow"):
             wname = wname[:-9]
+            
         return wname
     
     @property
@@ -220,10 +221,9 @@ def getAvailableWorkflows():
             continue
 
         if isinstance(W.workflowName, str):
-            if W.workflowDisplayName is not None:
-                yield W, W.workflowName, W.workflowDisplayName
-            else:
-                yield W, W.workflowName, W.workflowName
+            if W.workflowDisplayName is None:
+                W.workflowDisplayName = W.workflowName
+            yield W, W.workflowName, W.workflowDisplayName
         else:
             originalName = W.__name__
             wname = originalName[0]
@@ -233,10 +233,10 @@ def getAvailableWorkflows():
                 wname += i
             if wname.endswith(" Workflow"):
                 wname = wname[:-9]
-            if W.workflowDisplayName is not None:
-                yield W, wname, W.workflowDisplayName
-            else:
-                yield W, wname, wname
+            if W.workflowDisplayName is None:
+                W.workflowDisplayName = wname
+           
+            yield W, wname, W.workflowDisplayName
 
 def getWorkflowFromName(Name):
     '''return workflow by naming its workflowName variable'''

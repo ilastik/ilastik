@@ -722,7 +722,7 @@ class IlastikShell( QMainWindow ):
             windowTitle += "No Project Loaded"
         else:
             windowTitle += self.projectManager.currentProjectPath + " - "
-            if self.projectManager.workflow.workflowDisplayName:
+            if self.projectManager.workflow.workflowDisplayName is not None:
                 windowTitle += self.projectManager.workflow.workflowDisplayName
             else:
                 windowTitle += self.projectManager.workflow.workflowName
@@ -1211,12 +1211,13 @@ class IlastikShell( QMainWindow ):
                     mostRecentProjectPaths = []
 
                 workflowName = self.projectManager.workflow.workflowName
+                workflowDisplayName = self.projectManager.workflow.workflowDisplayName
 
                 for proj,work in mostRecentProjectPaths[:]:
                     if proj==projectFilePath and (proj,work) in mostRecentProjectPaths:
                         mostRecentProjectPaths.remove((proj,work))
 
-                mostRecentProjectPaths.insert(0,(projectFilePath,workflowName))
+                mostRecentProjectPaths.insert(0,(projectFilePath,workflowDisplayName))
 
                 #cut list of stored files at randomly chosen number of 5
                 if len(mostRecentProjectPaths) > 5:
