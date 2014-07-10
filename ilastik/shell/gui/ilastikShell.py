@@ -370,7 +370,7 @@ class IlastikShell( QMainWindow ):
 
     def getWorkflow(self,w = None):
 
-        listOfItems = [workflowName for _,workflowName in getAvailableWorkflows()]
+        listOfItems = [workflowDisplayName for _,__, workflowDisplayName in getAvailableWorkflows()]
         if w is not None and w in listOfItems:
             cur = listOfItems.index(w)
         else:
@@ -490,10 +490,10 @@ class IlastikShell( QMainWindow ):
         self.startscreen.browseFilesButton.clicked.connect(self.onOpenProjectActionTriggered)
 
         pos = 1
-        for workflow,_name in getAvailableWorkflows():
+        for workflow,_name, displayName in getAvailableWorkflows():
             b = QToolButton(self.startscreen, objectName="NewProjectButton_"+workflow.__name__)
             styleStartScreenButton(b, ilastikIcons.GoNext)
-            b.setText(_name)
+            b.setText(displayName)
             b.clicked.connect(partial(self.loadWorkflow,workflow))
             self.startscreen.VL1.insertWidget(pos,b)
             pos += 1
@@ -722,7 +722,7 @@ class IlastikShell( QMainWindow ):
             windowTitle += "No Project Loaded"
         else:
             windowTitle += self.projectManager.currentProjectPath + " - "
-            windowTitle += self.projectManager.workflow.workflowName
+            windowTitle += self.projectManager.workflow.workflowDisplayName
 
             readOnly = self.projectManager.currentProjectIsReadOnly
             if readOnly:
