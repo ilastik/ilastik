@@ -722,7 +722,10 @@ class IlastikShell( QMainWindow ):
             windowTitle += "No Project Loaded"
         else:
             windowTitle += self.projectManager.currentProjectPath + " - "
-            windowTitle += self.projectManager.workflow.workflowDisplayName
+            if self.projectManager.workflow.workflowDisplayName:
+                windowTitle += self.projectManager.workflow.workflowDisplayName
+            else:
+                windowTitle += self.projectManager.workflow.workflowName
 
             readOnly = self.projectManager.currentProjectIsReadOnly
             if readOnly:
