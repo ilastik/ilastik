@@ -196,7 +196,8 @@ class OpTrackingBase(Operator):
             logger.info( " {} app at {}".format( len(app), i ) )
             logger.info( " {} div at {}".format( len(div), i ) )
             logger.info( " {} mov at {}".format( len(mov), i ) )
-            logger.info( " {} merger at {}\n".format( len(merger), i ) )
+            logger.info( " {} merger at {}".format( len(merger), i ) )
+            logger.info( " {} multiMoves at {}\n".format( len(multi), i ) )
             
             label2color.append({})
             mergers.append({})
