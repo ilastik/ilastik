@@ -202,8 +202,8 @@ class DataSelectionApplet( Applet ):
                 # Remove globstring syntax.
                 if '*' in info.nickname:
                     info.nickname = info.nickname.replace('*', '')
-                if '//' in info.nickname:
-                    info.nickname = PathComponents(info.nickname.split('//')[0]).fileNameBase
+                if os.path.pathsep in info.nickname:
+                    info.nickname = PathComponents(info.nickname.split(os.path.pathsep)[0]).fileNameBase
                 input_infos.append(info)
     
             opDataSelection = self.topLevelOperator

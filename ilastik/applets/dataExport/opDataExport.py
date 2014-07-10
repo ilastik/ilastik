@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+import os
 import collections
 import numpy
 
@@ -208,8 +209,8 @@ class OpDataExport(Operator):
         known_keys = {}        
         known_keys['dataset_dir'] = abs_dataset_dir
         nickname = rawInfo.nickname.replace('*', '')
-        if '//' in nickname:
-            nickname = PathComponents(nickname.split('//')[0]).fileNameBase
+        if os.path.pathsep in nickname:
+            nickname = PathComponents(nickname.split(os.path.pathsep)[0]).fileNameBase
         known_keys['nickname'] = nickname
 
         # Disconnect to open the 'transaction'

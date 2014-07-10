@@ -181,7 +181,7 @@ class DataSelectionSerializer( AppletSerializer ):
         Does not update the topLevelOperator.
         
         :param info: A DatasetInfo object.
-                     Note: info.filePath must be a stack files must be separated by '//' tokens.
+                     Note: info.filePath must be a str which lists the stack files, delimited with os.path.pathsep
                      Note: info will be MODIFIED by this function.  Use the modified info when assigning it to a dataset.
         """
         try:
@@ -193,13 +193,13 @@ class DataSelectionSerializer( AppletSerializer ):
 
             globstring = info.filePath
             info.location = DatasetInfo.Location.ProjectInternal
-            firstPathParts = PathComponents(info.filePath.split('//')[0])
+            firstPathParts = PathComponents(info.filePath.split(os.path.pathsep)[0])
             info.filePath = firstPathParts.externalDirectory + '/??' + firstPathParts.extension
             info.fromstack = True
 
             # Use absolute path
             cwd = self.topLevelOperator.WorkingDirectory
-            if '//' not in globstring and not os.path.isabs(globstring):
+            if os.path.pathsep not in globstring and not os.path.isabs(globstring):
                 globstring = os.path.normpath( os.path.join(cwd, globstring) )
             
             opWriter = OpStackToH5Writer(parent=self.topLevelOperator.parent, graph=self.topLevelOperator.graph)
@@ -323,7 +323,7 @@ class DataSelectionSerializer( AppletSerializer ):
         except KeyError:
             # Guess based on the storage setting and original filepath
             datasetInfo.fromstack = ( datasetInfo.location == DatasetInfo.Location.ProjectInternal
-                                      and ( ('?' in datasetInfo._filePath) or ('//' in datasetInfo._filePath) ) )
+                                      and ( ('?' in datasetInfo._filePath) or (os.path.pathsep in datasetInfo._filePath) ) )
 
         try:
             tags = vigra.AxisTags.fromJSON( infoGroup['axistags'].value )

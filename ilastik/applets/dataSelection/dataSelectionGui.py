@@ -574,7 +574,7 @@ class DataSelectionGui(QWidget):
             return
 
         info = DatasetInfo()
-        info.filePath = ";".join( files )
+        info.filePath = os.path.pathsep.join( files )
         prefix = os.path.commonprefix(files)
         info.nickname = PathComponents(prefix).filenameBase
         # Add an underscore for each wildcard digit

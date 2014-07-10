@@ -123,24 +123,29 @@ class StackFileSelectionWidget(QDialog):
             self.patternEdit.setText( decode_to_qstring(globstring) )
 
     def _getGlobString(self, directory):
-        filenames = []
+        all_filenames = []
         globstrings = []
 
         exts = vigra.impex.listExtensions().split()
         for ext in exts:
             fullGlob = directory + '/*.' + ext
             globFileNames = glob.glob(fullGlob)
-            filenames += [k.replace('\\', '/') for k in globFileNames]
+            new_filenames = [k.replace('\\', '/') for k in globFileNames]
 
-            globstrings.append(fullGlob)
+            if len(new_filenames) > 0:
+                # Be helpful: find the longest globstring we can
+                prefix = os.path.commonprefix(new_filenames)
+                globstring = prefix + '*.' + ext
+                globstrings.append(globstring)
+                all_filenames += new_filenames
 
-        if len(filenames) == 0:
+        if len(all_filenames) == 0:
             msg = 'Cannot create stack: There were no image files in the selected directory:\n'
             msg += directory
             QMessageBox.warning(self, "Invalid selection", msg )
             return None
 
-        if len(filenames) == 1:
+        if len(all_filenames) == 1:
             msg = 'Cannot create stack: There is only one image file in the selected directory:\n'
             msg += directory + '\n'
             msg += 'If your stack is contained in a single file (e.g. a multi-page tiff or hdf5 volume),'
@@ -148,7 +153,8 @@ class StackFileSelectionWidget(QDialog):
             QMessageBox.warning(self, "Invalid selection", msg )
             return None
 
-        return ";".join(globstrings)
+        # Combine into one string, delimited with os.path.sep
+        return os.path.pathsep.join(globstrings)
 
     def _selectFiles(self):
         # Find the directory of the most recently opened image file
