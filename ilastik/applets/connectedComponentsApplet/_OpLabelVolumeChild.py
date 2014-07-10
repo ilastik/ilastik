@@ -78,7 +78,7 @@ class _OpLazyCCWrapper(OpLabelingABC):
                 #TODO
                 ops[i, j] = op
         self._ops = ops
-        self.Debug.connect(ops[0][0]._NonGlobalOutput)
+        #self.Debug.connect(ops[0][0]._NonGlobalOutput)
 
     def _label3d(self, roi, _, result):
         currOp = self._ops[roi.start[3], roi.start[4]]
