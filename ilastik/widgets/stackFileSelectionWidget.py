@@ -116,25 +116,23 @@ class StackFileSelectionWidget(QDialog):
 
         self.directoryEdit.setText( decode_to_qstring(directory) )
         globstring = self._getGlobString(directory)
-        if globstring is not None:
-            filenames = [k.replace('\\', '/') for k in glob.glob(globstring)]
+        if len(globstring) > 0:
+            filenames = OpStackLoader.expandGlobStrings(globstring)
             self._updateFileList( sorted(filenames) )
-        
             # As a convenience, also show the glob string in the pattern field
             self.patternEdit.setText( decode_to_qstring(globstring) )
 
     def _getGlobString(self, directory):
+        filenames = []
+        globstrings = []
+
         exts = vigra.impex.listExtensions().split()
         for ext in exts:
             fullGlob = directory + '/*.' + ext
-            filenames = glob.glob(fullGlob)
-            filenames = [k.replace('\\', '/') for k in filenames]
+            globFileNames = glob.glob(fullGlob)
+            filenames += [k.replace('\\', '/') for k in globFileNames]
 
-            if len(filenames) > 0:
-                # Be helpful: find the longest globstring we can
-                prefix = os.path.commonprefix(filenames)
-                globstring = prefix + '*.' + ext
-                break
+            globstrings.append(fullGlob)
 
         if len(filenames) == 0:
             msg = 'Cannot create stack: There were no image files in the selected directory:\n'
@@ -150,7 +148,7 @@ class StackFileSelectionWidget(QDialog):
             QMessageBox.warning(self, "Invalid selection", msg )
             return None
 
-        return globstring
+        return ";".join(globstrings)
 
     def _selectFiles(self):
         # Find the directory of the most recently opened image file
