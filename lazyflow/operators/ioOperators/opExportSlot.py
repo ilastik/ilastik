@@ -443,10 +443,10 @@ class FormatValidity(object):
 
         if s < cls.axes[realfmt][0] or s > cls.axes[realfmt][0]:
             print(s)
-            msgs.append("wrong number of axes for format {}".format(realfmt))
+            msgs.append("wrong number of non-channel axes for format {}".format(realfmt))
 
         if len(cls.colors[realfmt]) > 0 and c not in cls.colors[realfmt]:
             msgs.append("wrong number of channels for format {}".format(realfmt))
 
-        return "\n".join(msgs)
+        return "; ".join(msgs)
 
