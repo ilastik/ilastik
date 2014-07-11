@@ -442,7 +442,6 @@ class FormatValidity(object):
             msgs.append("data type {} not supported by format {}".format(dtype, realfmt))
 
         if s < cls.axes[realfmt][0] or s > cls.axes[realfmt][0]:
-            print(s)
             msgs.append("wrong number of non-channel axes for format {}".format(realfmt))
 
         if len(cls.colors[realfmt]) > 0 and c not in cls.colors[realfmt]:
