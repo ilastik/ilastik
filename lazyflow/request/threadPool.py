@@ -163,8 +163,8 @@ class ThreadPool(object):
         """
         self.job_condition = threading.Condition()
         self.unassigned_tasks = queue_type()
-        self.memory = MemoryWatcher(self)
-        self.memory.start()
+        #self.memory = MemoryWatcher(self)
+        #self.memory.start()
         self.num_workers = num_workers
         self.workers = self._start_workers( num_workers, queue_type )
 
@@ -189,7 +189,7 @@ class ThreadPool(object):
         Stop all threads in the pool, and block for them to complete.
         Postcondition: All worker threads have stopped.  Unfinished tasks are simply dropped.
         """
-        self.memory.stop()
+        #self.memory.stop()
         
         for w in self.workers:
             w.stop()
@@ -304,7 +304,8 @@ class _Worker(threading.Thread):
 
         # Otherwise, try to claim a job from the global unassigned list            
         try:
-            task = self.thread_pool.memory.filter(self.thread_pool.unassigned_tasks.pop())
+            #task = self.thread_pool.memory.filter(self.thread_pool.unassigned_tasks.pop())
+            task = self.thread_pool.unassigned_tasks.pop()
         except IndexError:
             return None
         else:
