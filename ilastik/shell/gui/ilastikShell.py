@@ -19,9 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 # Standard
-import sys
 import re
-import traceback
 import os
 import time
 from functools import partial
@@ -61,7 +59,6 @@ from ilastik.applets.base.singleToMultiGuiAdapter import SingleToMultiGuiAdapter
 from ilastik.shell.projectManager import ProjectManager
 from ilastik.config import cfg as ilastik_config
 from iconMgr import ilastikIcons
-from lazyflow.utility.pathHelpers import compressPathForDisplay
 from ilastik.shell.gui.errorMessageFilter import ErrorMessageFilter
 from ilastik.shell.gui.memUsageDialog import MemUsageDialog
 from ilastik.shell.shellAbc import ShellABC
@@ -70,6 +67,7 @@ from ilastik.shell.gui.splashScreen import showSplashScreen
 from ilastik.shell.gui.licenseDialog import LicenseDialog
 
 from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox
+from ilastik.widgets.filePathButton import FilePathButton
 
 from ilastik.shell.gui.messageServer import MessageServer
 
@@ -372,7 +370,7 @@ class IlastikShell( QMainWindow ):
 
     def getWorkflow(self,w = None):
 
-        listOfItems = [workflowName for _,workflowName in getAvailableWorkflows()]
+        listOfItems = [workflowDisplayName for _,__, workflowDisplayName in getAvailableWorkflows()]
         if w is not None and w in listOfItems:
             cur = listOfItems.index(w)
         else:
@@ -462,18 +460,9 @@ class IlastikShell( QMainWindow ):
             for path,workflow in projects[::-1]:
                 if not os.path.exists(path):
                     continue
-                b = QToolButton(self.startscreen)
+                b = FilePathButton(path, " ({})".format( workflow ), parent=self.startscreen)
                 styleStartScreenButton(b, ilastikIcons.Open)
 
-                #parse path
-                b.setToolTip(path)
-                compressedpath = compressPathForDisplay(path,50)
-                if len(workflow)>30:
-                    compressedworkflow = workflow[:27]+"..."
-                else:
-                    compressedworkflow = workflow
-                text = "{0} ({1})".format(compressedpath,compressedworkflow)
-                b.setText(text)
                 b.clicked.connect(partial(self.openFileAndCloseStartscreen,path))
                 
                 # Insert the new button after all the other controls, 
@@ -501,10 +490,10 @@ class IlastikShell( QMainWindow ):
         self.startscreen.browseFilesButton.clicked.connect(self.onOpenProjectActionTriggered)
 
         pos = 1
-        for workflow,_name in getAvailableWorkflows():
+        for workflow,_name, displayName in getAvailableWorkflows():
             b = QToolButton(self.startscreen, objectName="NewProjectButton_"+workflow.__name__)
             styleStartScreenButton(b, ilastikIcons.GoNext)
-            b.setText(_name)
+            b.setText(displayName)
             b.clicked.connect(partial(self.loadWorkflow,workflow))
             self.startscreen.VL1.insertWidget(pos,b)
             pos += 1
@@ -733,7 +722,10 @@ class IlastikShell( QMainWindow ):
             windowTitle += "No Project Loaded"
         else:
             windowTitle += self.projectManager.currentProjectPath + " - "
-            windowTitle += self.projectManager.workflow.workflowName
+            if self.projectManager.workflow.workflowDisplayName is not None:
+                windowTitle += self.projectManager.workflow.workflowDisplayName
+            else:
+                windowTitle += self.projectManager.workflow.workflowName
 
             readOnly = self.projectManager.currentProjectIsReadOnly
             if readOnly:
@@ -1219,12 +1211,13 @@ class IlastikShell( QMainWindow ):
                     mostRecentProjectPaths = []
 
                 workflowName = self.projectManager.workflow.workflowName
+                workflowDisplayName = self.projectManager.workflow.workflowDisplayName
 
                 for proj,work in mostRecentProjectPaths[:]:
                     if proj==projectFilePath and (proj,work) in mostRecentProjectPaths:
                         mostRecentProjectPaths.remove((proj,work))
 
-                mostRecentProjectPaths.insert(0,(projectFilePath,workflowName))
+                mostRecentProjectPaths.insert(0,(projectFilePath,workflowDisplayName))
 
                 #cut list of stored files at randomly chosen number of 5
                 if len(mostRecentProjectPaths) > 5:

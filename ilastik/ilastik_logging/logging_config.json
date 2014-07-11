@@ -57,6 +57,7 @@
         "volumina":                                                 { "level":"INFO" },
         "volumina.pixelpipeline":                                   { "level":"INFO" },
         "volumina.imageScene2D":                                    { "level":"INFO" },
+        "volumina.utility.shortcutManager":                         { "level":"INFO" },
 
         "TRACE": { "level":"INFO", "handlers":["console_trace","console_warn"] },
         "TRACE.lazyflow.graph.Slot":                                { "level":"INFO" },

@@ -53,11 +53,12 @@ except ImportError as e:
 # Examples
 import ilastik.config
 
+import examples.dataConversion
+
 if ilastik.config.cfg.getboolean('ilastik', 'debug'):
     import vigraWatershed
     import examples.layerViewer
     import examples.thresholdMasking
     import examples.deviationFromMean
     import examples.labeling
-    import examples.dataConversion
     import tracking.chaingraph

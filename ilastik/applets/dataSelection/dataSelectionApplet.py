@@ -112,6 +112,10 @@ class DataSelectionApplet( Applet ):
             
         arg_parser.add_argument('--preconvert_stacks', help="Convert image stacks to temporary hdf5 files before loading them.", action='store_true', default=False)
         parsed_args, unused_args = arg_parser.parse_known_args(cmdline_args)
+
+        for i, path in enumerate( parsed_args.input_files ):
+            # Replace '~' with home dir
+            parsed_args.input_files[i] = os.path.expanduser( path )
         
         # Check for errors: Do all input files exist?
         all_input_paths = list(parsed_args.input_files)
@@ -198,8 +202,8 @@ class DataSelectionApplet( Applet ):
                 # Remove globstring syntax.
                 if '*' in info.nickname:
                     info.nickname = info.nickname.replace('*', '')
-                if '//' in info.nickname:
-                    info.nickname = PathComponents(info.nickname.split('//')[0]).fileNameBase
+                if os.path.pathsep in info.nickname:
+                    info.nickname = PathComponents(info.nickname.split(os.path.pathsep)[0]).fileNameBase
                 input_infos.append(info)
     
             opDataSelection = self.topLevelOperator

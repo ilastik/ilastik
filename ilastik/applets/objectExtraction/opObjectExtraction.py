@@ -32,7 +32,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List, SubRegion
 from lazyflow.roi import roiToSlice, sliceToRoi
-from lazyflow.operators import OpCachedLabelImage, OpMultiArraySlicer2, OpMultiArrayStacker, OpArrayCache, OpCompressedCache
+from lazyflow.operators import OpLabelVolume, OpMultiArraySlicer2, OpMultiArrayStacker, OpArrayCache, OpCompressedCache
 
 import logging
 logger = logging.getLogger(__name__)
@@ -660,19 +660,21 @@ class OpObjectExtraction(Operator):
         super(OpObjectExtraction, self).__init__(*args, **kwargs)
 
         # internal operators
-        self._opLabelImage = OpCachedLabelImage(parent=self)
-        self._opLabelImage.name = "OpObjectExtraction._opLabelImage"
+        #TODO BinaryImage is not binary in some workflows, could be made more
+        # efficient
+        self._opLabelVolume = OpLabelVolume(parent=self)
+        self._opLabelVolume.name = "OpObjectExtraction._opLabelVolume"
         self._opRegFeats = OpCachedRegionFeatures(parent=self)
         self._opRegFeatsAdaptOutput = OpAdaptTimeListRoi(parent=self)
         self._opObjectCenterImage = OpObjectCenterImage(parent=self)
 
         # connect internal operators
-        self._opLabelImage.Input.connect(self.BinaryImage)
-        self._opLabelImage.InputHdf5.connect(self.LabelInputHdf5)
-        self._opLabelImage.BackgroundLabels.connect(self.BackgroundLabels)
+        self._opLabelVolume.Input.connect(self.BinaryImage)
+        self._opLabelVolume.InputHdf5.connect(self.LabelInputHdf5)
+        self._opLabelVolume.Background.connect(self.BackgroundLabels)
 
         self._opRegFeats.RawImage.connect(self.RawImage)
-        self._opRegFeats.LabelImage.connect(self._opLabelImage.Output)
+        self._opRegFeats.LabelImage.connect(self._opLabelVolume.CachedOutput)
         self._opRegFeats.Features.connect(self.Features)
         self.RegionFeaturesCleanBlocks.connect(self._opRegFeats.CleanBlocks)
 
@@ -688,12 +690,12 @@ class OpObjectExtraction(Operator):
         self._opCenterCache.Input.connect(self._opObjectCenterImage.Output)
 
         # connect outputs
-        self.LabelImage.connect(self._opLabelImage.Output)
+        self.LabelImage.connect(self._opLabelVolume.CachedOutput)
         self.ObjectCenterImage.connect(self._opCenterCache.Output)
         self.RegionFeatures.connect(self._opRegFeatsAdaptOutput.Output)
         self.BlockwiseRegionFeatures.connect(self._opRegFeats.Output)
-        self.LabelOutputHdf5.connect(self._opLabelImage.OutputHdf5)
-        self.CleanLabelBlocks.connect(self._opLabelImage.CleanBlocks)
+        self.LabelOutputHdf5.connect(self._opLabelVolume.OutputHdf5)
+        self.CleanLabelBlocks.connect(self._opLabelVolume.CleanBlocks)
         self.ComputedFeatureNames.connect(self.Features)
 
         # As soon as input data is available, check its constraints

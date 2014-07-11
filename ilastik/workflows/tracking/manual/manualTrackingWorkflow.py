@@ -29,6 +29,7 @@ from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingB
 
 class ManualTrackingWorkflow( Workflow ):
     workflowName = "Manual Tracking Workflow"
+    workflowDisplayName = "Manual Tracking Workflow [Inputs: Raw Data, Pixel Prediction Map]"
     workflowDescription = "Manual tracking of objects, based on Prediction Maps or (binary) Segmentation Images"    
 
     @property
@@ -70,7 +71,7 @@ class ManualTrackingWorkflow( Workflow ):
         self.dataExportApplet = TrackingBaseDataExportApplet(self, "Tracking Result Export")
         
         opDataExport = self.dataExportApplet.topLevelOperator
-        opDataExport.SelectionNames.setValue( ['Tracking'] )
+        opDataExport.SelectionNames.setValue( ['Manual Tracking', 'Object Identities'] )
         opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
 
         self._applets = []        
@@ -108,8 +109,9 @@ class ManualTrackingWorkflow( Workflow ):
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
         opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeatures )        
 
-        opDataExport.Inputs.resize(1)
+        opDataExport.Inputs.resize(2)
         opDataExport.Inputs[0].connect( opTracking.TrackImage )
+        opDataExport.Inputs[1].connect( opTracking.LabelImage )
         opDataExport.RawData.connect( op5Raw.Output )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
     

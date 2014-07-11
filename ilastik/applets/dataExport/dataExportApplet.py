@@ -91,6 +91,9 @@ class DataExportApplet( Applet ):
         
         parsed_args, unused_args = arg_parser.parse_known_args(cmdline_args)
 
+        # Replace '~' with home dir
+        parsed_args.output_filename_format = os.path.expanduser( parsed_args.output_filename_format )
+
         ### Convert from strings, check for obvious errors
 
         msg = "Error parsing command-line arguments for data export applet.\n"
