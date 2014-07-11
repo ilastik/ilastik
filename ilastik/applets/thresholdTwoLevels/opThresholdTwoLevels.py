@@ -202,8 +202,8 @@ class OpThresholdTwoLevels(Operator):
         self._cache.Input.setDirty(slice(None))
 
     def checkConstraints(self, *args):
-        if self.InputImage.ready():
-            numChannels = self.InputImage.meta.getTaggedShape()['c']
+        if self._opReorder1.Output.ready():
+            numChannels = self._opReorder1.Output.meta.getTaggedShape()['c']
             if self.Channel.value >= numChannels:
                 raise DatasetConstraintError(
                     "Two-Level Thresholding",
