@@ -274,7 +274,7 @@ class TestOpExportSlot(object):
             opExport.OutputFormat.setValue(fmt)
             msg = opExport.FormatSelectionErrorMsg.value
             assert not msg,\
-                "{} not supported although it should be".format(fmt)
+                "{} not supported although it should be ({})".format(fmt, msg)
 
     def testInvalidDtype(self):
         data = 255 * numpy.random.random((50, 100))
