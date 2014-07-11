@@ -27,6 +27,8 @@ import collections
 import threading
 import multiprocessing
 import platform
+import traceback
+import StringIO
 
 import logging
 logger = logging.getLogger(__name__)
@@ -66,6 +68,24 @@ class SimpleSignal(object):
     def clean(self):
         self._cleaned = True
         self.callbacks = []
+
+def log_exception( logger, msg=None, exc_info=None, level=logging.ERROR ):
+    """
+    Log the current exception to the given logger, and also log the given error message.
+    If exc_info is provided, log that exception instead of the current exception provided by sys.exc_info.
+    
+    It is better to log exceptions this way instead of merely printing them to the console, 
+    so that other logger outputs (such as log files) show the exception, too.
+    """
+    sio = StringIO.StringIO()
+    if exc_info:
+        traceback.print_exception( exc_info[0], exc_info[1], exc_info[2], file=sio )
+    else:
+        traceback.print_exc( file=sio )
+
+    logger.log(level, sio.getvalue() )
+    if msg:
+        logger.log(level, msg )
 
 class Request( object ):
     
@@ -121,6 +141,13 @@ class Request( object ):
         """
         This is raised if a call to wait() times out in the context of a foreign thread.
         See ``Request.wait()`` for details.
+        """
+        pass
+    
+    class InternalError(Exception):
+        """
+        This is raised if an error is detected in the Request framework itself.
+        If this exception is raised, it implies a bug in this file (request.py).
         """
         pass
     
@@ -254,9 +281,11 @@ class Request( object ):
                 # The workload raised an exception.
                 # Save it so we can raise it in any requests that are waiting for us.
                 self.exception = ex
-                self.exception_info = sys.exc_info()   # Documentation warns of circular references here,
+                self.exception_info = sys.exc_info()    # Documentation warns of circular references here,
                                                         #  but that should be okay for us.
+        self._post_execute()
 
+    def _post_execute(self):
         # Guarantee that self.finished doesn't change while wait() owns self._lock
         with self._lock:
             self.finished = True
@@ -312,9 +341,24 @@ class Request( object ):
         try:
             self.greenlet.switch()
         except greenlet.error:
-            logger.critical( "Current thread ({}) could not start/resume task: {}"
-                             .format( threading.current_thread().name, self ) )
-            raise
+            # This is a serious error.
+            # If we are handling an exception here, it means there's a bug in the request framework,
+            #  not the client's code.
+            msg = "Current thread ({}) could not start/resume task: {}"\
+                  .format( threading.current_thread().name, self )
+            log_exception( logger, msg, level=logging.CRITICAL )
+            
+            # We still run the post-execute code, so that all requests waiting on this 
+            #  one will be notified of the error and produce their own tracebacks.
+            # Hopefully that will help us reproduce/debug the issue.
+            self.exception = Request.InternalError( "A serious error was detected while waiting for another request.  "
+                                                    "Check the log for other exceptions." )
+            self.exception_info = ( type(self.exception), 
+                                    self.exception, 
+                                    sys.exc_info()[2] ) 
+            self._post_execute()
+            
+            # And now we simply return instead of letting this worker die.
 
     def __call__(self):
         """
