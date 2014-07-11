@@ -18,3 +18,14 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+
+
+import logging
+logger = logging.getLogger(__name__)
+
+try:
+    from chaingraphTrackingWorkflow import ChaingraphTrackingWorkflow
+except ImportError as e:
+    logger.warn( "Failed to import automatic tracking workflow (chaingraph). For this workflow, see the installation"\
+                 "instructions on our website ilastik.org; check dependencies: " + str(e) )
+

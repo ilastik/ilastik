@@ -14,7 +14,14 @@ tests/images
 .project
 *.h5
 .pydevproject
+
+build/
+dist/
+ilastik.egg-info/
+
 .settings
+
+test.svg
 geany_run_script.bat
 
 *.lp

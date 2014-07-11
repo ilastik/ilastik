@@ -410,8 +410,8 @@ class PixelClassificationGui(LabelingGui):
                 layers.append(predictLayer)
 
         # Add the raw data last (on the bottom)
-        inputDataSlot = self.topLevelOperatorView.InputImages
-        if inputDataSlot.ready():
+        inputDataSlot = self.topLevelOperatorView.InputImages        
+        if inputDataSlot.ready():                        
             inputLayer = self.createStandardLayerFromSlot( inputDataSlot )
             inputLayer.name = "Input Data"
             inputLayer.visible = True

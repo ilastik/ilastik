@@ -356,7 +356,6 @@ class OpRegionFeatures3d(Operator):
                 # include background. FIXME: we should change that assumption.
                 value = np.vstack((np.zeros(value.shape[1]),
                                    value))
-
                 value = value.astype(np.float32) #turn Nones into numpy.NaNs
 
                 assert value.dtype == np.float32
