@@ -98,7 +98,8 @@ def isVersionCompatible(version):
     v2 = __version_info__[0:2]
     
     # Version 1.0 is compatible in all respects with version 0.6
-    if v1 in [(0,6), (1,0)] and v2 in [(0,6), (1,0)]:
+    compatible_set = [(0,6), (1,0), (1,1)]
+    if v1 in compatible_set and v2 in compatible_set:
         return True
     
     # Otherwise, we need an exact match (for now)
