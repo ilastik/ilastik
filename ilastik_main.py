@@ -16,6 +16,8 @@ parser.add_argument('--project', help='A project file to open on startup.', requ
 parser.add_argument('--new_project', help='Create a new project with the specified name.  Must also specify --workflow.', required=False)
 parser.add_argument('--workflow', help='When used with --new_project, specifies the workflow to use.', required=False)
 
+parser.add_argument('--clean_paths', help='Remove ilastik-unrelated directories from PATH and PYTHONPATH.', action='store_true', default=False)
+
 parser.add_argument('--debug', help='Start ilastik in debug mode.', action='store_true', default=False)
 parser.add_argument('--fullscreen', help='Show Window in fullscreen mode.', action='store_true', default=False)
 
@@ -26,6 +28,10 @@ parser.add_argument('--exit_on_failure', help='Immediately call exit(1) if an un
 parser.add_argument('--exit_on_success', help='Quit the app when the playback is complete.', action='store_true', default=False)
 
 def main( parsed_args, workflow_cmdline_args=[] ):
+    this_path = os.path.dirname(__file__)
+    ilastik_dir = os.path.abspath(os.path.join(this_path, "..%s.." % os.path.sep))
+    
+    _clean_paths( parsed_args, ilastik_dir )
     _update_debug_mode( parsed_args )
     _init_logging( parsed_args ) # Initialize logging before anything else
     _init_threading_monkeypatch()
@@ -47,9 +53,13 @@ def main( parsed_args, workflow_cmdline_args=[] ):
     eventcapture_mode, playback_args = _prepare_test_recording_and_playback( parsed_args )    
 
     if ilastik_config.getboolean("ilastik", "debug"):
-        logger.info("Starting ilastik in debug mode.")
+        message = 'Starting ilastik in debug mode from "%s".' % ilastik_dir
+        logger.info(message)
+        print message     # always print the startup message
     else:
-        logger.info("Starting ilastik.")
+        message = 'Starting ilastik from "%s".' % ilastik_dir
+        logger.info(message)
+        print message     # always print the startup message
     
     # Headless launch
     if parsed_args.headless:
@@ -62,6 +72,30 @@ def main( parsed_args, workflow_cmdline_args=[] ):
     else:
         from ilastik.shell.gui.startShellGui import startShellGui
         sys.exit(startShellGui(workflow_cmdline_args, eventcapture_mode, playback_args, *init_funcs))
+
+def _clean_paths( parsed_args, ilastik_dir ):
+    if parsed_args.clean_paths:
+        # remove undesired paths from PYTHONPATH and add ilastik's submodules
+        pythonpath = [k for k in sys.path if k.startswith(ilastik_dir)]
+        for k in ['/ilastik/lazyflow', '/ilastik/volumina', '/ilastik/ilastik']:
+            pythonpath.append(ilastik_dir + k.replace('/', os.path.sep))
+        sys.path = pythonpath
+        
+        if sys.platform.startswith('win'):
+            # empty PATH except for gurobi and CPLEX and add ilastik's installation paths
+            path = [k for k in os.environ.get('PATH').split(os.pathsep) \
+                       if k.count('CPLEX') > 0 or k.count('gurobi') > 0]
+            for k in ['/Qt4/bin', '/python', '/bin']:
+                path.append(ilastik_dir + k.replace('/', os.path.sep))
+            os.environ['PATH'] = os.pathsep.join(reversed(path))
+        else:
+            # clean LD_LIBRARY_PATH and add ilastik's installation paths
+            # (gurobi and CPLEX are supposed to be located there as well)
+            path = [k for k in os.environ['LD_LIBRARY_PATH'] if k.startswith(ilastik_dir)]
+            
+            for k in ['/lib/vtk-5.10', '/lib']:
+                path.append(ilastik_dir + k.replace('/', os.path.sep))
+            os.environ['LD_LIBRARY_PATH'] = os.pathsep.join(reversed(path))
 
 def _update_debug_mode( parsed_args ):
     # Force debug mode if any of these flags are active.
