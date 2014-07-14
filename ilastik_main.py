@@ -84,7 +84,8 @@ def _clean_paths( parsed_args, ilastik_dir ):
         if sys.platform.startswith('win'):
             # empty PATH except for gurobi and CPLEX and add ilastik's installation paths
             path = [k for k in os.environ.get('PATH').split(os.pathsep) \
-                       if k.count('CPLEX') > 0 or k.count('gurobi') > 0]
+                       if k.count('CPLEX') > 0 or k.count('gurobi') > 0 or \
+                          k.count('windows\\system32') > 0]
             for k in ['/Qt4/bin', '/python', '/bin']:
                 path.append(ilastik_dir + k.replace('/', os.path.sep))
             os.environ['PATH'] = os.pathsep.join(reversed(path))
