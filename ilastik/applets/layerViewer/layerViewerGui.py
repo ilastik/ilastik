@@ -266,10 +266,10 @@ class LayerViewerGui(QWidget):
                     "Your image has {} channels.".format(numChannels)
 
             # Automatically select Grayscale or RGBA based on number of channels
-            if numChannels == 1 or (numChannels > 4):
-                display_mode = "grayscale"
-            else:
+            if numChannels == 2 or numChannels == 3:
                 display_mode = "rgba"
+            else:
+                display_mode = "grayscale"
                 
         if display_mode == "grayscale":
             assert not lastChannelIsAlpha, "Can't have an alpha channel if there is no color channel"
