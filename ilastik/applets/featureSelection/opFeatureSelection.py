@@ -33,6 +33,7 @@ from lazyflow.operators import OpSlicedBlockedArrayCache, OpMultiArraySlicer2
 from lazyflow.operators import OpPixelFeaturesPresmoothed as OpPixelFeaturesPresmoothed_Original
 from lazyflow.operators import OpPixelFeaturesInterpPresmoothed as OpPixelFeaturesPresmoothed_Interpolated
 from lazyflow.operators.imgFilterOperators import OpPixelFeaturesPresmoothed as OpPixelFeaturesPresmoothed_Refactored
+from lazyflow.operators import OpReorderAxes, OperatorWrapper
 
 from ilastik.applets.base.applet import DatasetConstraintError
 
@@ -88,12 +89,29 @@ class OpFeatureSelectionNoCache(Operator):
         # Connect our internal operators to our external inputs 
         self.opPixelFeatures.Scales.connect( self.Scales )
         self.opPixelFeatures.FeatureIds.connect( self.FeatureIds )
-        self.opPixelFeatures.Input.connect( self.InputImage )
+        self.opReorderIn = OpReorderAxes(parent=self)
+        self.opReorderIn.Input.connect(self.InputImage)
+        self.opPixelFeatures.Input.connect(self.opReorderIn.Output)
+        self.opReorderOut = OpReorderAxes(parent=self)
+        self.opReorderOut.Input.connect(self.opPixelFeatures.Output)
+        self.opReorderLayers = OperatorWrapper(OpReorderAxes, parent=self,
+                                               broadcastingSlotNames=["AxisOrder"])
+        self.opReorderLayers.Input.connect(self.opPixelFeatures.Features)
+
         # We don't connect SelectionMatrix here because we want to 
         #  check it for errors (See setupOutputs)
         # self.opPixelFeatures.SelectionMatrix.connect( self.SelectionMatrix )
 
     def setupOutputs(self):
+        # drop non-channel singleton axes
+        allAxes = 'txyzc'
+        ts = self.InputImage.meta.getTaggedShape()
+        oldAxes = "".join(ts.keys())
+        newAxes = "".join([a for a in allAxes
+                           if a in ts and ts[a] > 1 or a == 'c'])
+        self.opReorderIn.AxisOrder.setValue(newAxes)
+        self.opReorderOut.AxisOrder.setValue(oldAxes)
+        self.opReorderLayers.AxisOrder.setValue(oldAxes)
         if self.FeatureListFilename.ready() and len(self.FeatureListFilename.value) > 0:
             f = open(self.FeatureListFilename.value, 'r')
             self._files = []
@@ -106,7 +124,7 @@ class OpFeatureSelectionNoCache(Operator):
             self.OutputImage.disconnect()
             self.FeatureLayers.disconnect()
             
-            axistags = self.inputs["InputImage"].meta.axistags
+            axistags = self.InputImage.meta.axistags
             
             self.FeatureLayers.resize(len(self._files))
             for i in range(len(self._files)):
@@ -138,8 +156,8 @@ class OpFeatureSelectionNoCache(Operator):
                 raise DatasetConstraintError( "Feature Selection", msg )
             
             # Connect our external outputs to our internal operators
-            self.OutputImage.connect( self.opPixelFeatures.Output )
-            self.FeatureLayers.connect( self.opPixelFeatures.Features )
+            self.OutputImage.connect( self.opReorderOut.Output )
+            self.FeatureLayers.connect( self.opReorderLayers.Output )
 
     def propagateDirty(self, slot, subindex, roi):
         # Output slots are directly connected to internal operators
@@ -158,7 +176,7 @@ class OpFeatureSelectionNoCache(Operator):
             f = h5py.File(self._files[index], 'r')
             result[...,0] = f["data"][key[0:3]]
             return result
-        elif slot == self.OutputImage or slot == self.CachedOutputImage:
+        elif slot == self.OutputImage:
             assert result.ndim == 4
             assert result.shape[-1] == len(self._files), "result.shape = %r" % result.shape 
             assert rroi.start == 0, "rroi = %r" % (rroi,)
@@ -191,11 +209,8 @@ class OpFeatureSelection( OpFeatureSelectionNoCache ):
         self.opPixelFeatureCache.name = "opPixelFeatureCache"
 
         # Connect the cache to the feature output
-        self.opPixelFeatureCache.Input.connect(self.opPixelFeatures.Output)
+        self.opPixelFeatureCache.Input.connect(self.OutputImage)
         self.opPixelFeatureCache.fixAtCurrent.setValue(False)
-
-        # Connect external output to internal output
-        self.CachedOutputImage.connect( self.opPixelFeatureCache.Output )
 
     def setupOutputs(self):
         super( OpFeatureSelection, self ).setupOutputs()
@@ -238,4 +253,7 @@ class OpFeatureSelection( OpFeatureSelectionNoCache ):
             # Configure the cache        
             self.opPixelFeatureCache.innerBlockShape.setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
             self.opPixelFeatureCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
+
+            # Connect external output to internal output
+            self.CachedOutputImage.connect( self.opPixelFeatureCache.Output )
 
