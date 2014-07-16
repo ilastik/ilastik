@@ -76,39 +76,11 @@ class TrackingBaseGui( LayerViewerGui ):
   
         if self.mainOperator.LabelImage.meta.shape:
             self.editor.dataShape = self.mainOperator.LabelImage.meta.shape
-        self.mainOperator.LabelImage.notifyMetaChanged( self._onMetaChanged)
         
         # get the applet reference from the workflow (needed for the progressSignal)
         self.applet = self.mainOperator.parent.parent.trackingApplet
 
 
-    @threadRouted
-    def _onMetaChanged( self, slot ):
-        if slot is self.mainOperator.LabelImage:
-            if slot.meta.shape:                
-                self.editor.dataShape = slot.meta.shape
-
-                maxt = slot.meta.shape[0] - 1
-                self._setRanges()
-                self._drawer.from_time.setValue(0)                
-                self._drawer.to_time.setValue(maxt)
-            
-        if slot is self.mainOperator.RawImage:    
-            if slot.meta.shape and not self.rawsrc:    
-                self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
-                layerraw = GrayscaleLayer( self.rawsrc )
-                layerraw.name = "Raw"
-                self.layerstack.append( layerraw )
-        
-    def _onReady( self, slot ):
-        if slot is self.mainOperator.RawImage:
-            if slot.meta.shape and not self.rawsrc:
-                self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
-                layerraw = GrayscaleLayer( self.rawsrc )    
-                layerraw.name = "Raw"
-                self.layerstack.append( layerraw )
-
-    
     def setupLayers( self ):        
         layers = []
         
@@ -159,9 +131,7 @@ class TrackingBaseGui( LayerViewerGui ):
 
 
         if self.mainOperator.RawImage.ready():
-            self.rawsrc = None
-            self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
-            rawLayer = GrayscaleLayer( self.rawsrc )
+            rawLayer = self.createStandardLayerFromSlot(self.mainOperator.RawImage)
             rawLayer.name = "Raw"        
             layers.insert( len(layers), rawLayer )   
         
@@ -223,9 +193,6 @@ class TrackingBaseGui( LayerViewerGui ):
                 self._drawer.y_scale.setValue(1)
                 self._drawer.z_scale.setValue(1)
                
-        
-        self.topLevelOperatorView.RawImage.notifyReady( self._onReady )
-        self.topLevelOperatorView.RawImage.notifyMetaChanged( self._onMetaChanged )
         
         return layers
 
