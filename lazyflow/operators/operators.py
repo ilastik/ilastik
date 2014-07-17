@@ -24,15 +24,6 @@ import psutil
 if psutil.__version__ < '0.6':
     raise RuntimeError("lazyflow requires psutil 0.6.  Please upgrade your version of psutil (e.g. easy_install -U psutil)")
 try:
-    import blist
-except:
-    err =  "##############################################################"
-    err += "#                                                            #"
-    err += "#           please install blist (easy_install blist)        #"
-    err += "#                                                            #"
-    err += "##############################################################"
-    raise RuntimeError(err)
-try:
     from  lazyflow.drtile import drtile
 except Exception, e:
     raise RuntimeError("Error importing drtile, please use cmake to compile lazyflow.drtile !\n" + str(e))
@@ -51,10 +42,10 @@ from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr
 from lazyflow.operators.opArrayCache import OpArrayCache
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
-from lazyflow.operators.opSparseLabelArray import OpSparseLabelArray
 from lazyflow.operators.opSlicedBlockedArrayCache import OpSlicedBlockedArrayCache
 
-# Don't import this obsolete operator by default.
+# Don't import these obsolete label operators by default.
+#from lazyflow.operators.opSparseLabelArray import OpSparseLabelArray
 #from lazyflow.operators.opBlockedSparseLabelArray import OpBlockedSparseLabelArray
 
 

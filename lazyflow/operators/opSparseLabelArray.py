@@ -26,8 +26,17 @@ from functools import partial
 #SciPy
 import numpy
 
+
 #third-party
-import blist
+try:
+    import blist
+except:
+    err =  "##############################################################"
+    err += "#                                                            #"
+    err += "#           please install blist (easy_install blist)        #"
+    err += "#                                                            #"
+    err += "##############################################################"
+    raise RuntimeError(err)
 
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
