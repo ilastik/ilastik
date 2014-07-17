@@ -61,6 +61,10 @@ class TestPixelClassificationHeadless(unittest.TestCase):
         # Load the ilastik startup script as a module.
         # Do it here in setupClass to ensure that it isn't loaded more than once.
         ilastik_entry_file_path = os.path.join( os.path.split( ilastik.__file__ )[0], "../ilastik.py" )
+        ilastik_entry_file_path = os.path.relpath(ilastik_entry_file_path)
+        if not os.path.exists( ilastik_entry_file_path ):
+            raise RuntimeError("Counldn't find ilastik.py startup script.")
+            
         cls.ilastik_startup = imp.load_source( 'ilastik_startup', ilastik_entry_file_path )
 
     @classmethod
