@@ -52,8 +52,10 @@ from lazyflow.operators.opArrayCache import OpArrayCache
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.operators.opSparseLabelArray import OpSparseLabelArray
-from lazyflow.operators.opBlockedSparseLabelArray import OpBlockedSparseLabelArray
 from lazyflow.operators.opSlicedBlockedArrayCache import OpSlicedBlockedArrayCache
+
+# Don't import this obsolete operator by default.
+#from lazyflow.operators.opBlockedSparseLabelArray import OpBlockedSparseLabelArray
 
 
 # create global Memory Manager instance

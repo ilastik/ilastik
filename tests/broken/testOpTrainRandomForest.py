@@ -25,7 +25,8 @@ import numpy
 import vigra
 
 from lazyflow.graph import Graph
-from lazyflow.operators import OpTrainRandomForestBlocked, OpPixelFeaturesPresmoothed, OpBlockedSparseLabelArray
+from lazyflow.operators import OpTrainRandomForestBlocked, OpPixelFeaturesPresmoothed
+from lazyflow.operators.opBlockedSparseLabelArray import OpBlockedSparseLabelArray
 
 import logging
 rootLogger = logging.getLogger()

@@ -22,7 +22,7 @@
 import numpy
 import vigra
 from lazyflow.graph import Graph
-from lazyflow.operators import OpBlockedSparseLabelArray
+from lazyflow.operators.opBlockedSparseLabelArray import OpBlockedSparseLabelArray
 
 from lazyflow.utility.slicingtools import sl, slicing2shape
 

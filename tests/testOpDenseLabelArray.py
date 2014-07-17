@@ -26,7 +26,7 @@ from lazyflow.operators.opDenseLabelArray import OpDenseLabelArray
 
 from lazyflow.utility.slicingtools import sl, slicing2shape
 
-class TestOpBlockedSparseLabelArray(object):
+class TestOpDenseLabelArray(object):
     """
     This is a bare-bones test, adapted from the OpBlockedSparseLabelArray test.
     This test doesn't really test anything except for the most basic functionality.
