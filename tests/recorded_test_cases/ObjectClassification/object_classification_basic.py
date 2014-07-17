@@ -148,7 +148,7 @@ def playback_events(player):
         from generate_test_data import generate_cube_data
         generate_cube_data(current_dir)
 
-    widget = 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.ap    pletStack.centralWidget_applet_1_lane_-1.QFileDialog.fileNameEdit'
+    widget = 'MainWindow.mainLayout.mainStackedWidget.contentPage.widget.sideSplitter.appletStack.centralWidget_applet_1_lane_-1.QFileDialog.fileNameEdit'
 
     # set the entire file name in one go ...
     player.getNamedObject(widget).setText(data_raw_file)
