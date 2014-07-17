@@ -1406,6 +1406,9 @@ class IlastikShell( QMainWindow ):
             quitApp - For testing purposes, set this to False if you just want to close the main window without quitting the app.
         """
         if force or self.confirmQuit():
+            # disable gui events
+            ThreadRouter.app_is_shutting_down = True
+
             self.closeAndQuit(quitApp)
 
     def confirmQuit(self):
