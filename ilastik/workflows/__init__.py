@@ -49,6 +49,11 @@ except ImportError as e:
     logger.warn( "Failed to import automatic tracking workflow (conservation tracking). For this workflow, see the installation"\
              "instructions on our website ilastik.org; check dependencies: " + str(e) )
 
+try:
+    import tracking.chaingraph
+except ImportError as e:
+    logger.warn( "Failed to import automatic tracking workflow (chaingraph tracking). For this workflow, see the installation"\
+             "instructions on our website ilastik.org; check dependencies: " + str(e) )
 
 # Examples
 import ilastik.config
@@ -61,4 +66,3 @@ if ilastik.config.cfg.getboolean('ilastik', 'debug'):
     import examples.thresholdMasking
     import examples.deviationFromMean
     import examples.labeling
-    import tracking.chaingraph
