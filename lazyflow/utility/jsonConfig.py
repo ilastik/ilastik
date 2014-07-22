@@ -124,7 +124,7 @@ class FormattedField(object):
         """
         x = str(x)
         for f in self._requiredFields:
-            fieldRegex = re.compile('{[^}]*' + f +  '}')
+            fieldRegex = re.compile('{' + f + '(:[^}]*)?' + '}')
             if fieldRegex.search(x) is None:
                 raise JsonConfigParser.ParsingError( "Format string is missing required field: {{{f}}}".format(f=f) )
 
