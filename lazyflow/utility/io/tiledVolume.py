@@ -49,8 +49,8 @@ class TiledVolume(object):
         "tile_url_format" : FormattedField( requiredFields=[],
                                             optionalFields=["x_start", "y_start", "z_start",
                                                             "x_stop",  "y_stop",  "z_stop",
-                                                            "x_index", "y_index", "z_index"] )
-                                            #optionalFields=["t_start", "t_stop", "c_start", "c_stop"] )
+                                                            "x_index", "y_index", "z_index"] ),
+        "extend_slices" : list
     }
     DescriptionSchema = JsonConfigParser( DescriptionFields )
 
@@ -82,6 +82,8 @@ class TiledVolume(object):
             "Only zyx order is allowed."
         description.axes = "zyx"
 
+        if not description.extend_slices:
+            description.extend_slices = []
 
     def __init__( self, descriptionFilePath ):
         self.description = TiledVolume.readDescription( descriptionFilePath )
@@ -96,7 +98,12 @@ class TiledVolume(object):
         
         assert self.description.tile_shape_2d.shape == (2,)
         assert self.description.bounds.shape == (3,)
-        
+
+        self._slice_remapping = {}
+        for source, destinations in self.description.extend_slices:
+            for dest in destinations:
+                self._slice_remapping[dest] = source
+
     def read(self, roi, result_out):
         """
         roi: (start, stop) tuples in zyx order.
@@ -114,7 +121,7 @@ class TiledVolume(object):
         pool = RequestPool()
         for tile_start in tile_starts:
             tile_roi_in = getBlockBounds( self.description.shape, tile_blockshape, tile_start )
-            tile_roi_in = map(tuple, tile_roi_in)
+            tile_roi_in = numpy.array(tile_roi_in)
 
             # This tile's portion of the roi
             intersecting_roi = getIntersection( roi, tile_roi_in )
@@ -126,8 +133,17 @@ class TiledVolume(object):
             
             # Get a view to the output slice
             result_region = result_out[roiToSlice(*destination_relative_intersection)]
+            
+            # Special feature: 
+            # Some slices are missing, in which case we provide fake data from a different slice.
+            # Overwrite the rest args to pull data from an alternate source tile.
+            z_start = tile_roi_in[0][0]
+            if z_start in self._slice_remapping:
+                new_source_slice = self._slice_remapping[z_start]
+                tile_roi_in[0][0] = new_source_slice
+                tile_roi_in[1][0] = new_source_slice+1
 
-            tile_index = numpy.array(tile_start) / tile_blockshape
+            tile_index = numpy.array(tile_roi_in[0]) / tile_blockshape
             rest_args = { 'z_start' : tile_roi_in[0][0],
                           'z_stop'  : tile_roi_in[1][0],
                           'y_start' : tile_roi_in[0][1],
@@ -142,7 +158,13 @@ class TiledVolume(object):
             assert rest_args['z_index'] == rest_args['z_start']
 
             retrieval_fn = partial( self._retrieve_tile, tmpdir, rest_args, tile_relative_intersection, result_region )
-            pool.add( Request( retrieval_fn ) )
+
+            PARALLEL_REQ = True
+            if PARALLEL_REQ:
+                pool.add( Request( retrieval_fn ) )
+            else:
+                # leave the pool empty
+                retrieval_fn()
         
         pool.wait()
         

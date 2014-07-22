@@ -18,13 +18,15 @@ REFERENCE_DATA = '/magnetic/megaslices.h5/data'
 #     "_schema_version" : 1.0,
 # 
 #     "name" : "My Tiled Data",
-#     "format" : "jpg",
+#     "format" : "png",
 #     "dtype" : "uint8",
 #     "bounds" : [50, 1020, 1020],
 # 
 #     "tile_shape_2d" : [200,200],
 # 
-#     "tile_url_format" : "http://localhost:8000/tile_z{z_start:05}_y{y_start:05}_x{x_start:05}.jpg"
+#     "tile_url_format" : "http://localhost:8000/tile_z{z_start:05}_y{y_start:05}_x{x_start:05}.png",
+#     "extend_slices" : [ [44, [45, 46, 47]],
+#                         [40, [41]] ]
 # }
 # """
 
@@ -44,22 +46,41 @@ class TestTiledVolume(object):
         roi = numpy.array( [(10, 150, 100), (30, 550, 550)] )
         result_out = numpy.zeros( roi[1] - roi[0], dtype=self.tiled_volume.description.dtype )
         self.tiled_volume.read( roi, result_out )
-        
+         
         ref_path_comp = PathComponents(REFERENCE_DATA)
         with h5py.File(ref_path_comp.externalPath, 'r') as f:
             ref_data = f[ref_path_comp.internalPath][:]
-
+ 
         expected = ref_data[roiToSlice(*roi)]
-        
+         
         #numpy.save('/tmp/expected.npy', expected)
         #numpy.save('/tmp/result_out.npy', result_out)
-
+ 
         # We can't expect the pixels to match exactly because compression was used to create the tiles...
         assert (expected == result_out).all()
-
+ 
     def testMissingTiles(self):
         # The test data should be missing slice 2
         roi = numpy.array( [(0, 150, 100), (10, 550, 550)] )
+        result_out = numpy.zeros( roi[1] - roi[0], dtype=self.tiled_volume.description.dtype )
+        self.tiled_volume.read( roi, result_out )
+         
+        ref_path_comp = PathComponents(REFERENCE_DATA)
+        with h5py.File(ref_path_comp.externalPath, 'r') as f:
+            ref_data = f[ref_path_comp.internalPath][:]
+ 
+        # Slice 2 is missing
+        expected = ref_data[roiToSlice(*roi)]
+        expected[2] = 0
+         
+        #numpy.save('/tmp/expected.npy', expected)
+        #numpy.save('/tmp/result_out.npy', result_out)
+ 
+        # We can't expect the pixels to match exactly because compression was used to create the tiles...
+        assert (expected == result_out).all()
+
+    def testRemappedTiles(self):
+        roi = numpy.array( [(40, 150, 100), (50, 550, 550)] )
         result_out = numpy.zeros( roi[1] - roi[0], dtype=self.tiled_volume.description.dtype )
         self.tiled_volume.read( roi, result_out )
         
@@ -69,7 +90,8 @@ class TestTiledVolume(object):
 
         # Slice 2 is missing
         expected = ref_data[roiToSlice(*roi)]
-        expected[2] = 0
+        expected[5:8] = expected[4]
+        expected[1] = expected[0]
         
         #numpy.save('/tmp/expected.npy', expected)
         #numpy.save('/tmp/result_out.npy', result_out)
