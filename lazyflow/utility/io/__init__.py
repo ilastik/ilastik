@@ -22,3 +22,4 @@
 from blockwiseFileset import BlockwiseFileset, BlockwiseFilesetFactory
 from RESTfulVolume import RESTfulVolume
 from RESTfulBlockwiseFileset import RESTfulBlockwiseFileset
+from tiledVolume import TiledVolume
