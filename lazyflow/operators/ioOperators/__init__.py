@@ -27,6 +27,7 @@ from opStreamingHdf5Reader import *
 from opRESTfulVolumeReader import *
 from opBlockwiseFilesetReader import *
 from opRESTfulBlockwiseFilesetReader import *
+from opTiledVolumeReader import *
 
 # Try to import the dvid-related operator.
 # If it fails, that's okay.

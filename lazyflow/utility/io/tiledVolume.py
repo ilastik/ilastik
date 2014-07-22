@@ -36,7 +36,7 @@ class TiledVolume(object):
         "tile_shape_2d" : AutoEval(numpy.array),
 
         # Axis order is hard-coded zyx.
-        #"axes" : str, 
+        "axes" : str, 
 
         # Offset not supported for now...
         #"origin_offset" : AutoEval(numpy.array),
@@ -71,7 +71,11 @@ class TiledVolume(object):
         #    description.origin_offset = numpy.array( [0]*len(description.bounds) )
         #description.shape = description.bounds - description.origin_offset
         
-        description.shape = description.bounds
+        description.bounds = description.bounds
+        description.shape = tuple(description.bounds)
+        assert description.axes is None or description.axes == "zyx", \
+            "Only zyx order is allowed."
+        description.axes = "zyx"
 
 
     def __init__( self, descriptionFilePath ):
