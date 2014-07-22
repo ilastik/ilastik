@@ -1,24 +1,28 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 from PyQt4.QtGui import QColor
 
 from lazyflow.operators.generic import OpMultiArraySlicer2
 
-from volumina.api import LazyflowSource, AlphaModulatedLayer
+from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer
 
 from ilastik.utility import bind
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
@@ -41,18 +45,59 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
         layers = []
         opLane = self.topLevelOperatorView
 
-        exportedLayers = self._initPredictionLayers(opLane.ImageOnDisk)
-        for layer in exportedLayers:
-            layer.visible = True
-            layer.name = layer.name + "- Exported"
-        layers += exportedLayers
+        # This code depends on a specific order for the export slots.
+        # If those change, update this function!
+        selection_names = opLane.SelectionNames.value
+        assert selection_names == ['Probabilities', 'Simple Segmentation', 'Uncertainty'] # see comment above
         
-        previewLayers = self._initPredictionLayers(opLane.ImageToExport)
-        for layer in previewLayers:
-            layer.visible = False
-            layer.name = layer.name + "- Preview"
-        layers += previewLayers
-        
+        selection = selection_names[ opLane.InputSelection.value ]
+
+        if selection == 'Probabilities':
+            exportedLayers = self._initPredictionLayers(opLane.ImageOnDisk)
+            for layer in exportedLayers:
+                layer.visible = True
+                layer.name = layer.name + "- Exported"
+            layers += exportedLayers
+            
+            previewLayers = self._initPredictionLayers(opLane.ImageToExport)
+            for layer in previewLayers:
+                layer.visible = False
+                layer.name = layer.name + "- Preview"
+            layers += previewLayers
+        elif selection == "Simple Segmentation":
+            exportedLayer = self._initSegmentationlayer(opLane.ImageOnDisk)
+            if exportedLayer:
+                exportedLayer.visible = True
+                exportedLayer.name = exportedLayer.name + " - Exported"
+                layers.append( exportedLayer )
+
+            previewLayer = self._initSegmentationlayer(opLane.ImageToExport)
+            if previewLayer:
+                previewLayer.visible = False
+                previewLayer.name = previewLayer.name + " - Preview"
+                layers.append( previewLayer )
+        elif selection == "Uncertainty":
+            if opLane.ImageToExport.ready():
+                previewUncertaintySource = LazyflowSource(opLane.ImageToExport)
+                previewLayer = AlphaModulatedLayer( previewUncertaintySource,
+                                                    tintColor=QColor(0,255,255), # cyan
+                                                    range=(0.0, 1.0),
+                                                    normalize=(0.0,1.0) )
+                previewLayer.opacity = 0.5
+                previewLayer.visible = False
+                previewLayer.name = "Uncertainty - Preview"
+                layers.append(previewLayer)
+            if opLane.ImageOnDisk.ready():
+                exportedUncertaintySource = LazyflowSource(opLane.ImageOnDisk)
+                exportedLayer = AlphaModulatedLayer( exportedUncertaintySource,
+                                                     tintColor=QColor(0,255,255), # cyan
+                                                     range=(0.0, 1.0),
+                                                     normalize=(0.0,1.0) )
+                exportedLayer.opacity = 0.5
+                exportedLayer.visible = True
+                exportedLayer.name = "Uncertainty - Exported"
+                layers.append(exportedLayer)
+
         # If available, also show the raw data layer
         rawSlot = opLane.FormattedRawData
         if rawSlot.ready():
@@ -63,6 +108,20 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
             layers.append( rawLayer )
 
         return layers 
+
+    def _initSegmentationlayer(self, segSlot):
+        if not segSlot.ready():
+            return None
+        opLane = self.topLevelOperatorView
+        colors = opLane.PmapColors.value
+        colortable = []
+        colortable.append( QColor(0,0,0).rgba() )
+        for color in colors:
+            colortable.append( QColor(*color).rgba() )
+        segsrc = LazyflowSource( segSlot )
+        seglayer = ColortableLayer( segsrc, colortable )
+        seglayer.name = "Simple Segmentation"
+        return seglayer
 
     def _initPredictionLayers(self, predictionSlot):
         opLane = self.topLevelOperatorView

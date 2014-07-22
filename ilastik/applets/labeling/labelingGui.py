@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 # Built-in
 import os
 import re
@@ -35,7 +39,7 @@ from ilastik.widgets.labelListView import Label
 from ilastik.widgets.labelListModel import LabelListModel
 
 # ilastik
-from ilastik.utility import bind 
+from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThunkEventHandler, threadRouted
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
@@ -49,6 +53,7 @@ class Tool():
     Navigation = 0 # Arrow
     Paint      = 1
     Erase      = 2
+    Threshold  = 3
 
 class LabelingGui(LayerViewerGui):
     """
@@ -173,6 +178,7 @@ class LabelingGui(LayerViewerGui):
 
         self.__initShortcuts()
         self._labelingSlots.labelEraserValue.setValue(self.editor.brushingModel.erasingNumber)
+        self._allowDeleteLastLabelOnly = False
 
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
@@ -218,11 +224,27 @@ class LabelingGui(LayerViewerGui):
         _labelControlUi.eraserToolButton.setCheckable(True)
         _labelControlUi.eraserToolButton.clicked.connect( lambda checked: self._handleToolButtonClicked(checked, Tool.Erase) )
 
-        # This maps tool types to the buttons that enable them
-        self.toolButtons = { Tool.Navigation : _labelControlUi.arrowToolButton,
-                             Tool.Paint      : _labelControlUi.paintToolButton,
-                             Tool.Erase      : _labelControlUi.eraserToolButton }
+        # Initialize the thresholding tool
+        if hasattr(_labelControlUi, "thresToolButton"):
+            thresholdIconPath = os.path.split(__file__)[0] \
+              + "/icons/threshold.png"
+            thresholdIcon = QIcon(thresholdIconPath)
+            _labelControlUi.thresToolButton.setIcon(thresholdIcon)
+            _labelControlUi.thresToolButton.setCheckable(True)
+            _labelControlUi.thresToolButton.clicked.connect( lambda checked: self._handleToolButtonClicked(checked, Tool.Threshold) )
 
+
+        # This maps tool types to the buttons that enable them
+        if hasattr(_labelControlUi, "thresToolButton"):
+            self.toolButtons = { Tool.Navigation : _labelControlUi.arrowToolButton,
+                                 Tool.Paint      : _labelControlUi.paintToolButton,
+                                 Tool.Erase      : _labelControlUi.eraserToolButton,
+                                 Tool.Threshold  : _labelControlUi.thresToolButton}
+        else:
+            self.toolButtons = { Tool.Navigation : _labelControlUi.arrowToolButton,
+                                 Tool.Paint      : _labelControlUi.paintToolButton,
+                                 Tool.Erase      : _labelControlUi.eraserToolButton}
+            
         self.brushSizes = [ 1, 3, 5, 7, 11, 23, 31, 61 ]
 
         for size in self.brushSizes:
@@ -261,6 +283,7 @@ class LabelingGui(LayerViewerGui):
         shortcutGroupName = "Labeling"
 
         if hasattr(self.labelingDrawerUi, "AddLabelButton"):
+
             mgr.register("a", ActionInfo( shortcutGroupName,
                                           "New Label",
                                           "Add New Label Class",
@@ -288,6 +311,14 @@ class LabelingGui(LayerViewerGui):
                                        self.labelingDrawerUi.eraserToolButton.click,
                                        self.labelingDrawerUi.eraserToolButton,
                                        self.labelingDrawerUi.eraserToolButton ) )
+        if hasattr(self.labelingDrawerUi, "thresToolButton"):
+            mgr.register( "t", ActionInfo( shortcutGroupName,
+                                           "Window Leveling",
+                                           "<p>Window Leveling can be used to adjust the data range used for visualization. Pressing the left mouse button while moving the mouse back and forth changes the window width (data range). Moving the mouse in the left-right plane changes the window mean. Pressing the right mouse button leads to an automatic range adjustment.",
+                                           self.labelingDrawerUi.thresToolButton.click,
+                                           self.labelingDrawerUi.thresToolButton,
+                                           self.labelingDrawerUi.thresToolButton ) )
+        
 
         self._labelShortcuts = []
 
@@ -354,9 +385,15 @@ class LabelingGui(LayerViewerGui):
             return
 
         # The volume editor expects one of two specific names
-        modeNames = { Tool.Navigation   : "navigation",
-                      Tool.Paint        : "brushing",
-                      Tool.Erase        : "brushing" }
+        if hasattr(self.labelingDrawerUi, "thresToolButton"):
+            modeNames = { Tool.Navigation   : "navigation",
+                          Tool.Paint        : "brushing",
+                          Tool.Erase        : "brushing" ,
+                          Tool.Threshold    : "thresholding"}
+        else:
+            modeNames = { Tool.Navigation   : "navigation",
+                          Tool.Paint        : "brushing",
+                          Tool.Erase        : "brushing" }
 
         # If the user can't label this image, disable the button and say why its disabled
         labelsAllowed = False
@@ -401,10 +438,17 @@ class LabelingGui(LayerViewerGui):
                 self.editor.brushingModel.setBrushSize(eraserSize)
                 # update GUI 
                 self._gui_setErasing()
+            elif toolId == Tool.Threshold:
+                self._gui_setThresholding()
 
         self.editor.setInteractionMode( modeNames[toolId] )
         self._toolId = toolId
         
+    def _gui_setThresholding(self):
+        self._labelControlUi.brushSizeComboBox.setEnabled(False)
+        self._labelControlUi.brushSizeCaption.setEnabled(False)
+        self._labelControlUi.thresToolButton.setChecked(True)
+
     def _gui_setErasing(self):
         self._labelControlUi.brushSizeComboBox.setEnabled(True)
         self._labelControlUi.brushSizeCaption.setEnabled(True)
@@ -415,7 +459,7 @@ class LabelingGui(LayerViewerGui):
         self._labelControlUi.brushSizeComboBox.setEnabled(False)
         self._labelControlUi.brushSizeCaption.setEnabled(False)
         self._labelControlUi.arrowToolButton.setChecked(True)
-        self._labelControlUi.arrowToolButton.setChecked(True)
+        # self._labelControlUi.arrowToolButton.setChecked(True) # why twice?
     def _gui_setBrushing(self):
         self._labelControlUi.brushSizeComboBox.setEnabled(True)
         self._labelControlUi.brushSizeCaption.setEnabled(True)
@@ -430,7 +474,6 @@ class LabelingGui(LayerViewerGui):
         self._labelControlUi.eraserToolButton.setEnabled(enable)
         self._labelControlUi.brushSizeCaption.setEnabled(enable)
         self._labelControlUi.brushSizeComboBox.setEnabled(enable)
-    
 
 
     def _onBrushSizeChange(self, index):
@@ -517,6 +560,12 @@ class LabelingGui(LayerViewerGui):
 
         newRow = self._labelControlUi.labelListModel.rowCount()
         self._labelControlUi.labelListModel.insertRow( newRow, label )
+
+        if self._allowDeleteLastLabelOnly:
+            # make previous label unremovable
+            if newRow > 0:
+                self._labelControlUi.labelListModel.makeRowPermanent(newRow - 1)
+
         newColorIndex = self._labelControlUi.labelListModel.index(newRow, 0)
         self.onLabelListDataChanged(newColorIndex, newColorIndex) # Make sure label layer colortable is in sync with the new color
 
@@ -524,7 +573,13 @@ class LabelingGui(LayerViewerGui):
         operator_names = self._labelingSlots.labelNames.value
         if len(operator_names) < self._labelControlUi.labelListModel.rowCount():
             operator_names.append( label.name )
-            self._labelingSlots.labelNames.setValue( operator_names, check_changed=False )
+            try:
+                self._labelingSlots.labelNames.setValue( operator_names, check_changed=False )
+            except:
+                # I have no idea why this is, but sometimes PyQt "loses" exceptions here.
+                # Print it out before it's too late!
+                log_exception( logger, "Logged the above exception just in case PyQt loses it." )
+                raise
 
         # Call the 'changed' callbacks immediately to initialize any listeners
         self.onLabelNameChanged()
@@ -621,6 +676,11 @@ class LabelingGui(LayerViewerGui):
 
         oldcount = self._labelControlUi.labelListModel.rowCount() + 1
         logger.debug("removing label {} out of {}".format( row, oldcount ))
+
+        if self._allowDeleteLastLabelOnly:
+            # make previous label removable again
+            if oldcount >= 2:
+                self._labelControlUi.labelListModel.makeRowRemovable(oldcount - 2)
 
         # Remove the deleted label's color from the color table so that renumbered labels keep their colors.
         oldColor = self._colorTable16.pop(row+1)
@@ -724,7 +784,8 @@ class LabelingGui(LayerViewerGui):
 
         return layers
 
-    def _createDefault16ColorColorTable(self):
+    @staticmethod
+    def _createDefault16ColorColorTable():
         colors = []
         # Transparent for the zero label
         colors.append(QColor(0,0,0,0))
@@ -747,3 +808,12 @@ class LabelingGui(LayerViewerGui):
         colors.append( QColor(240, 230, 140) ) #khaki
         assert len(colors) == 16
         return [c.rgba() for c in colors]
+
+
+    def allowDeleteLastLabelOnly(self, enabled):
+        """
+        In the TrackingWorkflow when labeling 0/1/2/.../N mergers we do not allow
+        to remove another label but the first, as the following processing steps
+        assume that all previous cell counts are given.
+        """
+        self._allowDeleteLastLabelOnly = enabled

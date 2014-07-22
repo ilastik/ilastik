@@ -1,21 +1,25 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import numpy
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialClassifierSlot, SerialBlockSlot, SerialListSlot
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialClassifierSlot, SerialBlockSlot, SerialListSlot, SerialPickledSlot
 
 class PixelClassificationSerializer(AppletSerializer):
     """Encapsulate the serialization scheme for pixel classification
@@ -25,8 +29,7 @@ class PixelClassificationSerializer(AppletSerializer):
     def __init__(self, operator, projectFileGroupName):
         self._serialClassifierSlot =  SerialClassifierSlot(operator.Classifier,
                                                            operator.classifier_cache,
-                                                           name="ClassifierForests",
-                                                           subname="Forest{:04d}")
+                                                           name="ClassifierForests")
         slots = [SerialListSlot(operator.LabelNames,
                                 transform=str),
                  SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
@@ -38,6 +41,7 @@ class PixelClassificationSerializer(AppletSerializer):
                                  subname='labels{:03d}',
                                  selfdepends=False,
                                  shrink_to_bb=True),
+                 SerialPickledSlot(operator.ClassifierFactory),
                  self._serialClassifierSlot ]
 
         super(PixelClassificationSerializer, self).__init__(projectFileGroupName, slots, operator)
@@ -49,7 +53,7 @@ class PixelClassificationSerializer(AppletSerializer):
         """
         # If this is an old project file that didn't save the label names to the project,
         #   create some default names.
-        if not self.operator.LabelNames.ready():
+        if not self.operator.LabelNames.ready() or len(self.operator.LabelNames.value) == 0:
             # How many labels are there?
             # We have to count them.  
             # This is slow, but okay for this special backwards-compatibilty scenario.

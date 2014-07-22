@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 from ilastik.workflow import Workflow
 
 from lazyflow.graph import Graph
@@ -43,6 +47,8 @@ class LayerViewerWorkflow(Workflow):
                                                        force5d=True)
         self.viewerApplet = LayerViewerApplet(self)
         self.dataExportApplet = DataExportApplet(self, "Data Export")
+        opDataExport = self.dataExportApplet.topLevelOperator
+        opDataExport.SelectionNames.setValue( ['Raw Data', 'Other Data'] )
 
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue( ["Raw Data", "Other Data"] )
@@ -70,9 +76,12 @@ class LayerViewerWorkflow(Workflow):
         opLayerViewerView.OtherInput.connect( opDataSelectionView.ImageGroup[1] )
 
         opDataExportView.RawData.connect( opDataSelectionView.ImageGroup[0] )
-        opDataExportView.Input.connect( opDataSelectionView.ImageGroup[1] )
         opDataExportView.RawDatasetInfo.connect( opDataSelectionView.DatasetGroup[0] )        
         opDataExportView.WorkingDirectory.connect( opDataSelectionView.WorkingDirectory )
+
+        opDataExportView.Inputs.resize(2)
+        opDataExportView.Inputs[0].connect( opDataSelectionView.ImageGroup[0] )
+        opDataExportView.Inputs[1].connect( opDataSelectionView.ImageGroup[1] )
 
     @property
     def applets(self):
@@ -93,9 +102,9 @@ class LayerViewerWorkflow(Workflow):
 
         opDataExport = self.dataExportApplet.topLevelOperator
         export_data_ready = input_ready and \
-                            len(opDataExport.Input) > 0 and \
-                            opDataExport.Input[0].ready() and \
-                            (TinyVector(opDataExport.Input[0].meta.shape) > 0).all()
+                            len(opDataExport.Inputs) > 0 and \
+                            opDataExport.Inputs[0][0].ready() and \
+                            (TinyVector(opDataExport.Inputs[0][0].meta.shape) > 0).all()
 
         self._shell.setAppletEnabled(self.viewerApplet, input_ready)
         self._shell.setAppletEnabled(self.dataExportApplet, export_data_ready)

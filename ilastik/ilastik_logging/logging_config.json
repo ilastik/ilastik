@@ -10,6 +10,7 @@
         "lazyflow":                                                 { "level":"INFO" },
         "lazyflow.graph":                                           { "level":"INFO" },
         "lazyflow.graph.Slot":                                      { "level":"INFO" },
+        "lazyflow.classifiers":                                     { "level":"INFO" },
         "lazyflow.operators":                                       { "level":"INFO" },
         "lazyflow.operators.ioOperators":                           { "level":"INFO" },
         "lazyflow.operators.ioOperators.opRESTfulVolumeReader":     { "level":"INFO" },
@@ -35,6 +36,7 @@
         "lazyflow.operators.ioOperators.ioOperators.OpH5WriterBigDataset":  	{ "level":"INFO" },
         "lazyflow.operators.classifierOperators":                   { "level":"INFO" },
         "lazyflow.operators.opCompressedCache":                     { "level":"INFO" },
+        "lazyflow.utility.bigRequestStreamer":                      { "level":"INFO" },
         "lazyflow.utility.io.RESTfulVolume":                        { "level":"INFO" },
         "ilastik":                                                  { "level":"INFO" },
         "ilastik.clusterOps":                                       { "level":"INFO" },
@@ -55,6 +57,7 @@
         "volumina":                                                 { "level":"INFO" },
         "volumina.pixelpipeline":                                   { "level":"INFO" },
         "volumina.imageScene2D":                                    { "level":"INFO" },
+        "volumina.utility.shortcutManager":                         { "level":"INFO" },
 
         "TRACE": { "level":"INFO", "handlers":["console_trace","console_warn"] },
         "TRACE.lazyflow.graph.Slot":                                { "level":"INFO" },

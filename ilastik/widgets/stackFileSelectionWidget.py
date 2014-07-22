@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import os
 import glob
 from functools import partial
@@ -28,6 +32,8 @@ from volumina.utility import PreferencesManager
 
 import ilastik.config
 from volumina.utility import encode_from_qstring, decode_to_qstring
+
+from lazyflow.operators.ioOperators import OpStackLoader
 
 class StackFileSelectionWidget(QDialog):
     
@@ -110,33 +116,36 @@ class StackFileSelectionWidget(QDialog):
 
         self.directoryEdit.setText( decode_to_qstring(directory) )
         globstring = self._getGlobString(directory)
-        if globstring is not None:
-            filenames = [k.replace('\\', '/') for k in glob.glob(globstring)]
+        if globstring:
+            filenames = OpStackLoader.expandGlobStrings(globstring)
             self._updateFileList( sorted(filenames) )
-        
             # As a convenience, also show the glob string in the pattern field
             self.patternEdit.setText( decode_to_qstring(globstring) )
 
     def _getGlobString(self, directory):
+        all_filenames = []
+        globstrings = []
+
         exts = vigra.impex.listExtensions().split()
         for ext in exts:
             fullGlob = directory + '/*.' + ext
-            filenames = glob.glob(fullGlob)
-            filenames = [k.replace('\\', '/') for k in filenames]
+            globFileNames = glob.glob(fullGlob)
+            new_filenames = [k.replace('\\', '/') for k in globFileNames]
 
-            if len(filenames) > 0:
+            if len(new_filenames) > 0:
                 # Be helpful: find the longest globstring we can
-                prefix = os.path.commonprefix(filenames)
+                prefix = os.path.commonprefix(new_filenames)
                 globstring = prefix + '*.' + ext
-                break
+                globstrings.append(globstring)
+                all_filenames += new_filenames
 
-        if len(filenames) == 0:
+        if len(all_filenames) == 0:
             msg = 'Cannot create stack: There were no image files in the selected directory:\n'
             msg += directory
             QMessageBox.warning(self, "Invalid selection", msg )
             return None
 
-        if len(filenames) == 1:
+        if len(all_filenames) == 1:
             msg = 'Cannot create stack: There is only one image file in the selected directory:\n'
             msg += directory + '\n'
             msg += 'If your stack is contained in a single file (e.g. a multi-page tiff or hdf5 volume),'
@@ -144,7 +153,8 @@ class StackFileSelectionWidget(QDialog):
             QMessageBox.warning(self, "Invalid selection", msg )
             return None
 
-        return globstring
+        # Combine into one string, delimited with os.path.sep
+        return os.path.pathsep.join(globstrings)
 
     def _selectFiles(self):
         # Find the directory of the most recently opened image file
@@ -185,9 +195,9 @@ class StackFileSelectionWidget(QDialog):
         self._updateFileList( fileNames )
 
     def _applyPattern(self):
-        globstring = str( self.patternEdit.text() )
-        filenames = [k.replace('\\', '/') for k in glob.glob(globstring)]
-        self._updateFileList( sorted(filenames) )
+        globStrings = encode_from_qstring(self.patternEdit.text())
+        filenames = OpStackLoader.expandGlobStrings(globStrings)
+        self._updateFileList(filenames)
 
     def _updateFileList(self, files):
         self.selectedFiles = files
@@ -195,7 +205,7 @@ class StackFileSelectionWidget(QDialog):
         self.fileListWidget.clear()
         
         for f in self.selectedFiles:
-            self.fileListWidget.addItem( f )
+            self.fileListWidget.addItem(decode_to_qstring(f))
 
     def eventFilter(self, watched, event):
         if watched == self.patternEdit:

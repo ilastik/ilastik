@@ -1,25 +1,29 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+##############################################################################
 
 
 # basic python modules
 import functools
 import logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 from threading import Lock as ThreadLock
 
 # required numerical modules
@@ -40,107 +44,102 @@ from lazyflow.operators.valueProviders import OpArrayCache
 from lazyflow.operators.opCompressedCache import OpCompressedCache
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
-from _OpGraphCut import segmentGC_fast
+from _OpGraphCut import segmentGC, OpGraphCut
 
 
-## TODO documentation
-class OpObjectsSegment(Operator):
+## segment predictions with pre-thresholding
+#
+# This operator segments an image into foreground and background and makes use
+# of a preceding thresholding step. After thresholding, connected components
+# are computed and are then considered to be "cores" of objects to be segmented.
+# The Graph Cut optimization (see _OpGraphCut.OpGraphCut) is then applied to
+# the bounding boxes of the object "cores, enlarged by a user-specified margin.
+# The pre-thresholding operation allows to apply Graph Cut segmentation on
+# large data volumes, in case the segmented foreground consists of sparse objects
+# of limited size and the probability map of the unaries is of high recall, but
+# possibly low precision. One particular application for this setup is
+# segmentation of synapses in anisotropic 3D Electron Microscopy image stacks.
+# 
+#
+# The slot CachedOutput guarantees consistent results, the slot Output computes
+# the roi on demand.
+#
+# The operator inherits from OpGraphCut because they share some details:
+#   * output meta
+#   * dirtiness propagation
+#   * input slots
+#
+class OpObjectsSegment(OpGraphCut):
     name = "OpObjectsSegment"
-
-    # prediction maps
-    Prediction = InputSlot()
 
     # thresholded predictions, or otherwise obtained ROI indicators
     # (a value of 0 is assumed to be background and ignored)
     LabelImage = InputSlot()
 
-    # which channel to use (if there are multiple channels)
-    Channel = InputSlot(value=0)
-
-    # graph cut parameter
-    Beta = InputSlot(value=.2)
-
     # margin around each object (always xyz!)
     Margin = InputSlot(value=np.asarray((20, 20, 20)))
 
-    ## intermediate results ##
-
-    # these slots are just piped
-    ConnectedComponents = OutputSlot()
-    CachedConnectedComponents = OutputSlot()
-
+    # bounding boxes of the labeled objects
+    # this slot returns an array of dicts with shape (t, c)
     BoundingBoxes = OutputSlot(stype=Opaque)
 
-    # segmentation image -> graph cut segmentation
-    Output = OutputSlot()
+    ### slots from OpGraphCut ###
 
-    CachedOutput = OutputSlot()
+    ## prediction maps
+    #Prediction = InputSlot()
+
+    ## graph cut parameter
+    #Beta = InputSlot(value=.2)
+
+    ## labeled segmentation image
+    #Output = OutputSlot()
+    #CachedOutput = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super(OpObjectsSegment, self).__init__(*args, **kwargs)
 
-        opReorder = OpReorderAxes(parent=self)
-        opReorder.Input.connect(self.Prediction)
-        opReorder.AxisOrder.setValue('xyztc')  # vigra order
-        self._opReorderPred = opReorder
-
-        opReorder = OpReorderAxes(parent=self)
-        opReorder.Input.connect(self.LabelImage)
-        opReorder.AxisOrder.setValue('xyztc')  # vigra order
-        self._opReorderLabels = opReorder
-
-        self.ConnectedComponents.connect(self.LabelImage)
-        self.CachedConnectedComponents.connect(self.LabelImage)
-
-        self._outputCache = OpCompressedCache(parent=self)
-        self._outputCache.name = "{}._outputCache".format(self.name)
-        self._outputCache.Input.connect(self.Output)
-
-        self._lock = ThreadLock()
-
     def setupOutputs(self):
+        super(OpObjectsSegment, self).setupOutputs()
         # sanity checks
-        tags = self.Prediction.meta.axistags
+        shape = self.LabelImage.meta.shape
+        assert len(shape) == 5,\
+            "Prediction maps must be a full 5d volume (txyzc)"
+        tags = self.LabelImage.meta.getAxisKeys()
+        tags = "".join(tags)
+        assert tags == 'txyzc',\
+            "Label image has wrong axes order"\
+            "(expected: txyzc, got: {})".format(tags)
+
+        # bounding boxes are just one element arrays of type object, but we
+        # want to request boxes from a specific region, therefore BoundingBoxes
+        # needs a shape
         shape = self.Prediction.meta.shape
-        haveAxes = [tags.index(c) < len(shape) for c in 'xyz']
-        if not all(haveAxes):
-            raise ValueError("Prediction maps must be a volume (XYZ)")
-        # bounding boxes are just one element arrays of type object
-        self.BoundingBoxes.meta.shape = (1,)
-
-        self.Output.meta.assignFrom(self.Prediction.meta)
-        self.Output.meta.dtype = np.uint8
-        self.Output.meta.shape = self._opReorderPred.Output.meta.shape[:3]
-        self.Output.meta.axistags = vigra.defaultAxistags('xyz')
-        self.CachedOutput.meta.assignFrom(self.Output.meta)
-
-        self._outputCache.BlockShape.setValue(self.Output.meta.shape)
+        self.BoundingBoxes.meta.shape = shape
+        self.BoundingBoxes.meta.dtype = np.object
+        self.BoundingBoxes.meta.axistags = vigra.defaultAxistags('txyzc')
 
     def execute(self, slot, subindex, roi, result):
-
+        # check the axes - cannot do this in setupOutputs because we could be
+        # in some invalid intermediate state where the dimensions do not agree
+        shape = self.LabelImage.meta.shape
+        agree = [i == j for i, j in zip(self.Prediction.meta.shape, shape)]
+        assert all(agree),\
+            "shape mismatch: {} vs. {}".format(self.Prediction.meta.shape,
+                                               shape)
         if slot == self.BoundingBoxes:
             return self._execute_bbox(roi, result)
         elif slot == self.Output:
-            return self._execute_graphcut(roi, result)
-        elif slot == self.CachedOutput:
-            self._lock.acquire()
-            newroi = roi.copy()
-            req = self._outputCache.Output.get(newroi)
-            req.writeInto(result)
-            req.block()
-            self._lock.release()
+            self._execute_graphcut(roi, result)
         else:
             raise NotImplementedError(
                 "execute() is not implemented for slot {}".format(str(slot)))
 
     def _execute_bbox(self, roi, result):
-        logger.debug("computing bboxes...")
-
-        cc = self._opReorderLabels.Output[...].wait()
-        cc = vigra.taggedView(cc, axistags=self._opReorderLabels.Output.meta.axistags)
-        #FIXME what about time slices???
+        cc = self.LabelImage.get(roi).wait()
+        cc = vigra.taggedView(cc, axistags=self.LabelImage.meta.axistags)
         cc = cc.withAxes(*'xyz')
 
+        logger.debug("computing bboxes...")
         feats = vigra.analysis.extractRegionFeatures(
             cc.astype(np.float32),
             cc.astype(np.uint32),
@@ -152,14 +151,20 @@ class OpObjectsSegment(Operator):
         return feats_dict
 
     def _execute_graphcut(self, roi, result):
+        for i in (0, 4):
+            assert roi.stop[i] - roi.start[i] == 1,\
+                "Invalid roi for graph-cut: {}".format(str(roi))
+        t = roi.start[0]
+        c = roi.start[4]
 
         margin = self.Margin.value
-        channel = self.Channel.value
         beta = self.Beta.value
         MAXBOXSIZE = 10000000  # FIXME justification??
 
         ## request the bounding box coordinates ##
-        feats = self.BoundingBoxes[0].wait()
+        # the trailing index brackets give us the dictionary (instead of an
+        # array of size 1)
+        feats = self.BoundingBoxes.get(roi).wait()
         mins = feats["Coord<Minimum>"]
         maxs = feats["Coord<Maximum>"]
         nobj = mins.shape[0]
@@ -168,34 +173,19 @@ class OpObjectsSegment(Operator):
         maxs = maxs.astype(np.uint32)
 
         ## request the prediction image ##
-        # add time and channel to roi (we reordered to full 'xyztc'!)
-        predRoi = roi.copy()
-        predRoi.insertDim(3, 0, 1)  # t
-        predRoi.insertDim(4, channel, channel+1)  # c
-
-        pred = self._opReorderPred.Output.get(predRoi).wait()
-        pred = vigra.taggedView(pred,
-                                axistags=self._opReorderPred.Output.meta.axistags)
-        #FIXME what about time slices???
+        pred = self.Prediction.get(roi).wait()
+        pred = vigra.taggedView(pred, axistags=self.Prediction.meta.axistags)
         pred = pred.withAxes(*'xyz')
 
         ## request the connected components image ##
-        ccRoi = roi.copy()
-        ccRoi.insertDim(3, 0, 1)  # t
-        ccRoi.insertDim(4, 0, 1)  # c
-        cc = self._opReorderLabels.Output.get(ccRoi).wait()
-        cc = vigra.taggedView(
-            cc, axistags=self._opReorderLabels.Output.meta.axistags)
-        #FIXME what about time slices???
+        cc = self.LabelImage.get(roi).wait()
+        cc = vigra.taggedView(cc, axistags=self.LabelImage.meta.axistags)
         cc = cc.withAxes(*'xyz')
 
-        # provide xyz view for the output
-        resultXYZ = vigra.taggedView(result, axistags=self.Output.meta.axistags
-                                     ).withAxes(*'xyz')
-        # initialize result
-        resultXYZ[:] = 0
+        # provide xyz view for the output (just need 8bit for segmentation
+        resultXYZ = vigra.taggedView(np.zeros(cc.shape, dtype=np.uint8),
+                                     axistags='xyz')
 
-        # let's hope the objects are not overlapping
         def processSingleObject(i):
             logger.debug("processing object {}".format(i))
             # maxs are inclusive, so we need to add 1
@@ -216,12 +206,16 @@ class OpObjectsSegment(Operator):
                 return
 
             probbox = pred[xmin:xmax, ymin:ymax, zmin:zmax]
-            gcsegm = segmentGC_fast(probbox, beta)
+            gcsegm = segmentGC(probbox, beta)
             gcsegm = vigra.taggedView(gcsegm, axistags='xyz')
             ccsegm = vigra.analysis.labelVolumeWithBackground(
                 gcsegm.astype(np.uint8))
 
-            #FIXME document what this part is doing
+            # Extended bboxes of different objects might overlap.
+            # To avoid conflicting segmentations, we find all connected
+            # components in the results and only take the one, which
+            # overlaps with the object "core" or "seed", defined by the
+            # pre-thresholding
             seed = ccbox == i
             filtered = seed*ccsegm
             passed = np.unique(filtered)
@@ -239,7 +233,7 @@ class OpObjectsSegment(Operator):
                 resbox[ccsegm == label] = 1
 
         pool = RequestPool()
-        #TODO make sure that the parallel computations fit into memory
+        #FIXME make sure that the parallel computations fit into memory
         for i in range(1, nobj):
             req = Request(functools.partial(processSingleObject, i))
             pool.add(req)
@@ -251,13 +245,30 @@ class OpObjectsSegment(Operator):
 
         logger.info("object loop done")
 
-        # convert from label image to segmentation
-        resultXYZ[resultXYZ > 0] = 1
+        # prepare result
+        resView = vigra.taggedView(result, axistags=self.Output.meta.axistags)
+        resView = resView.withAxes(*'xyz')
 
-        return result
+        # some labels could have been removed => relabel
+        vigra.analysis.labelVolumeWithBackground(resultXYZ, out=resView)
 
     def propagateDirty(self, slot, subindex, roi):
-        # all input slots affect the (global) graph cut computation
-        self.Output.setDirty(slice(None))
-        self.CachedOutput.setDirty(slice(None))
+        super(OpObjectsSegment, self).propagateDirty(slot, subindex, roi)
 
+        if slot == self.LabelImage:
+            # time-channel slices are pairwise independent
+
+            # determine t, c from input volume
+            t_ind = 0
+            c_ind = 4
+            t = (roi.start[t_ind], roi.stop[t_ind])
+            c = (roi.start[c_ind], roi.stop[c_ind])
+
+            # set output dirty
+            start = t[0:1] + (0,)*3 + c[0:1]
+            stop = t[1:2] + self.Output.meta.shape[1:4] + c[1:2]
+            roi = SubRegion(self.Output, start=start, stop=stop)
+            self.Output.setDirty(roi)
+        elif slot == self.Margin:
+            # margin affects the whole volume
+            self.Output.setDirty(slice(None))

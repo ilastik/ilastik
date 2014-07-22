@@ -1,20 +1,25 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import sys
+import re
 
 ################################
 ## Add Submodules to sys.path ##
@@ -38,7 +43,7 @@ def _format_version(t):
     """converts a tuple to a string"""
     return '.'.join(str(i) for i in t)
 
-__version_info__ = (1, 0, 4)
+__version_info__ = (1, 1, 0)
 __version__ = _format_version(__version_info__)
 
 core_developers = [ "Stuart Berg", 
@@ -68,7 +73,16 @@ developers = [ "Markus Doering",
 def convertVersion(vstring):
     if not isinstance(vstring, str):
         raise Exception('tried to convert non-string version: {}'.format(vstring))
-    return tuple(int(i) for i in vstring.split('.'))
+    
+    # We permit versions like '1.0.5b', in which case '5b' 
+    #  is simply converted to the integer 5 for compatibility purposes.
+    int_tuple = ()
+    for i in vstring.split('.'):
+        m = re.search('(\d+)', i)
+        assert bool(m), "Don't understand version component: {}".format( i )
+        next_int = int(m.groups()[0])
+        int_tuple = int_tuple + (next_int,)
+    return int_tuple
 
 
 def isVersionCompatible(version):
@@ -84,7 +98,8 @@ def isVersionCompatible(version):
     v2 = __version_info__[0:2]
     
     # Version 1.0 is compatible in all respects with version 0.6
-    if v1 in [(0,6), (1,0)] and v2 in [(0,6), (1,0)]:
+    compatible_set = [(0,6), (1,0), (1,1)]
+    if v1 in compatible_set and v2 in compatible_set:
         return True
     
     # Otherwise, we need an exact match (for now)

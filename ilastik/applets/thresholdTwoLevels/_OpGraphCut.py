@@ -1,18 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+##############################################################################
 
 
 # basic python modules
@@ -41,66 +46,126 @@ from lazyflow.operators.opCompressedCache import OpCompressedCache
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 
-## TODO documentation
+# This operator implements an interface to compute Graph Cut segmentations
+# via the OpenGM library (http://hci.iwr.uni-heidelberg.de/opengm2/).
+# Potts model is assumed, with a 4-neighborhood for 2D data and
+# a 6-neighborhood for 3D data. The prediction maps in the input
+# are used as unaries and are taken "as is", without an additional
+# Log operation (TODO: make optional log).
+#  - this operator assumes txyzc axis order
+#  - only ROIs with 1 channel, 1 time slice are valid for slot Output
+#  - requests to slot CachedOutput are guaranteed to be consistent
 class OpGraphCut(Operator):
     name = "OpGraphCut"
 
     # prediction maps
     Prediction = InputSlot()
 
-    # graph cut parameter
+    # graph cut parameter, usually called lambda
     Beta = InputSlot(value=.2)
 
-    ## intermediate results ##
-
-    # segmentation image -> graph cut segmentation
+    # labeled segmentation image
+    #     i=0: background
+    #     i>0: connected foreground object i
     Output = OutputSlot()
+    CachedOutput = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super(OpGraphCut, self).__init__(*args, **kwargs)
-
-        opReorder = OpReorderAxes(parent=self)
-        opReorder.Input.connect(self.Prediction)
-        opReorder.AxisOrder.setValue('xyztc')  # vigra order
-        self._opReorderPred = opReorder
+        self._cache = None
 
     def setupOutputs(self):
+        # sanity checks
+        shape = self.Prediction.meta.shape
+        assert len(shape) == 5,\
+            "Prediction maps must be a full 5d volume (txyzc)"
+        tags = self.Prediction.meta.getAxisKeys()
+        tags = "".join(tags)
+        assert tags == 'txyzc',\
+            "Prediction maps have wrong axes order"\
+            "(expected: txyzc, got: {})".format(tags)
+
+        if self._cache is not None:
+            self.CachedOutput.disconnect()
+            self._cache.cleanUp()
+            self._cache = None
+
+        cache = OpCompressedCache(parent=self)
+        cache.name = "{}._cache".format(self.name)
+        cache.Input.connect(self.Output)
+        self._cache = cache
+        self.CachedOutput.connect(self._cache.Output)
+
         self.Output.meta.assignFrom(self.Prediction.meta)
-        self.Output.meta.dtype = np.uint8
-        self.Output.meta.shape = self._opReorderPred.Output.meta.shape[:3]
-        self.Output.meta.axistags = vigra.defaultAxistags('xyz')
+        # output is a label image
+        self.Output.meta.dtype = np.uint32
+
+        # cache should hold entire c-t-slices in memory
+        shape = list(self.Prediction.meta.shape)
+        shape[0] = 1
+        shape[4] = 1
+        self._cache.BlockShape.setValue(tuple(shape))
 
     def execute(self, slot, subindex, roi, result):
-        self._execute_graphcut(roi, result)
-
-    def _execute_graphcut(self, roi, result):
-
-        beta = self.Beta.value
+        assert slot == self.Output, "Unknown slot requested: {}".format(slot)
+        for i in (0, 4):
+            assert roi.stop[i] - roi.start[i] == 1,\
+                "Invalid roi for graph-cut: {}".format(str(roi))
 
         ## request the prediction image ##
-        # add time and channel to roi (we reordered to full 'xyztc'!)
-        #FIXME support time slices
-        predRoi = roi.copy()
-        predRoi.insertDim(3, 0, 1)  # t
-        predRoi.insertDim(4, 0, 1)  # c
-
-        pred = self._opReorderPred.Output.get(predRoi).wait()
-        pred = vigra.taggedView(pred,
-                                axistags=self._opReorderPred.Output.meta.axistags)
+        pred = self.Prediction.get(roi).wait()
+        pred = vigra.taggedView(pred, axistags=self.Prediction.meta.axistags)
         pred = pred.withAxes(*'xyz')
 
-        logger.info("Running global graph-cut")
-        result[:] = segmentGC_fast(pred, beta)
+        # prepare result
+        resView = vigra.taggedView(result, axistags=self.Output.meta.axistags)
+        resView = resView.withAxes(*'xyz')
+
+        logger.info("Executing graph cut ... (this might take a while)")
+        tmp = segmentGC(pred, self.Beta.value)
         logger.info("Graph-cut done")
 
-        return result
+        # label the segmentation so that this operator is consistent with
+        # the other thresholding operators
+        vigra.analysis.labelVolumeWithBackground(tmp.astype(np.uint32),
+                                                 out=resView)
 
     def propagateDirty(self, slot, subindex, roi):
         # all input slots affect the (global) graph cut computation
-        #FIXME time slices?
-        self.Output.setDirty(slice(None))
 
-def segmentGC_fast(pred, beta):
+        if slot == self.Beta:
+            # beta value affects the whole volume
+            self.Output.setDirty(slice(None))
+        elif slot == self.Prediction:
+            # time-channel slices are pairwise independent
+
+            # determine t, c from input volume
+            t_ind = 0
+            c_ind = 4
+            t = (roi.start[t_ind], roi.stop[t_ind])
+            c = (roi.start[c_ind], roi.stop[c_ind])
+
+            # set output dirty
+            start = t[0:1] + (0,)*3 + c[0:1]
+            stop = t[1:2] + self.Output.meta.shape[1:4] + c[1:2]
+            roi = SubRegion(self.Output, start=start, stop=stop)
+            self.Output.setDirty(roi)
+
+
+def segmentGC(pred, beta):
+    '''
+       This function implements a call to the standard Graph Cut segmentation
+       in the OpenGM library (http://hci.iwr.uni-heidelberg.de/opengm2/).
+       Potts model is assumed, with a 4-neighborhood for 2D data and a 6-neighborhood 
+       for 3D data to define the pairwise terms.
+       Parameters:
+       -- pred - the unary terms, used directly (no Log applied, do it outside if needed)
+          This input is assumed to be 3D! 
+       -- beta - the weight of the pairwise potentials, usually called lambda
+       Return:
+       -- binary volume, as produced by OpenGM
+
+    '''
     nx, ny, nz = pred.shape
 
     numVar = pred.size
@@ -116,8 +181,8 @@ def segmentGC_fast(pred, beta):
         predflat = predflat.astype(np.float32)
         predflat = predflat/256.
 
-    functions[:, 0] = 2*predflat[:, 0]
-    functions[:, 1] = 1-2*predflat[:, 0]
+    functions[:, 0] = predflat[:, 0]
+    functions[:, 1] = 1-predflat[:, 0]
 
     fids = gm.addFunctions(functions)
     gm.addFactors(fids, np.arange(0, numVar))

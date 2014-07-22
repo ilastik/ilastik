@@ -1,23 +1,26 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 #Python
 import os
 import logging
-import traceback
 logger = logging.getLogger(__name__)
 
 #PyQt
@@ -26,7 +29,7 @@ from PyQt4.QtGui import QMainWindow, QIcon, QMessageBox
 
 #ilastik
 from ilastik.shell.gui.iconMgr import ilastikIcons
-from ilastik.utility import bind
+from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from preprocessingViewerGui import PreprocessingViewerGui
 
@@ -113,7 +116,7 @@ class PreprocessingGui(QMainWindow):
     
     @threadRouted 
     def onFailed(self, exception, exc_info):
-        traceback.print_tb(exc_info[2])
+        log_exception( logger, exc_info=exc_info )
         QMessageBox.critical(self, "error", str(exception))
     
     def handleRunButtonClicked(self):

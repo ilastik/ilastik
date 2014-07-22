@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 from functools import partial
 import numpy
 import h5py
@@ -24,7 +28,7 @@ from lazyflow.operators.ioOperators import OpH5WriterBigDataset
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 from lazyflow.utility import PathComponents
-from ilastik.utility import bind
+from ilastik.utility import bind, log_exception
 from ilastik.applets.splitBodyPostprocessing.opSplitBodyPostprocessing import OpAccumulateFragmentSegmentations, OpMaskedWatershed
 
 import logging
@@ -168,10 +172,8 @@ class OpSplitBodySupervoxelExport(Operator):
         def handleFailed( exc, exc_info ):
             cleanOps()        
             f.close()
-            import traceback
-            traceback.print_tb(exc_info[2])
             msg = "Final Supervoxel export FAILED due to the following error:\n{}".format( exc )
-            logger.error( msg )
+            log_exception( logger, msg, exc_info )
 
         def handleFinished( result ):
             # Generate the mapping transforms dataset

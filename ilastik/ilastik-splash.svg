@@ -291,9 +291,9 @@
      objecttolerance="10"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.42957821"
-     inkscape:cx="603.44547"
-     inkscape:cy="370.26577"
+     inkscape:zoom="0.33728602"
+     inkscape:cx="337.47972"
+     inkscape:cy="492.58835"
      inkscape:document-units="px"
      inkscape:current-layer="layer2"
      showgrid="false"
@@ -343,7 +343,7 @@
          x="840.50555"
          y="215.05829">ilastik <tspan
    style="fill:#ffffff"
-   id="tspan3091">1.0</tspan></tspan></text>
+   id="tspan3091">1.1</tspan></tspan></text>
     <text
        xml:space="preserve"
        style="font-size:36px;font-style:normal;font-weight:normal;text-align:end;text-anchor:end;fill:#000000;fill-opacity:1;stroke:none;font-family:Berta_Drug;-inkscape-font-specification:Berta_Drug"
@@ -559,7 +559,17 @@
          y="1088.86"
          x="1286.0176"
          sodipodi:role="line" /></text>
-  </g>
+    <flowRoot
+       xml:space="preserve"
+       id="flowRoot3107"
+       style="fill:black;stroke:none;stroke-opacity:1;stroke-width:1px;stroke-linejoin:miter;stroke-linecap:butt;fill-opacity:1;font-family:Sans;font-style:normal;font-weight:normal;font-size:24px;line-height:125%;letter-spacing:0px;word-spacing:0px;-inkscape-font-specification:Times;font-stretch:normal;font-variant:normal;text-anchor:start;text-align:start;writing-mode:lr"><flowRegion
+         id="flowRegion3109"><rect
+           id="rect3111"
+           width="2030.9172"
+           height="1497.2456"
+           x="-118.59371"
+           y="-135.18427" /></flowRegion><flowPara
+         id="flowPara3113"></flowPara></flowRoot>  </g>
   <g
      inkscape:groupmode="layer"
      id="layer3"

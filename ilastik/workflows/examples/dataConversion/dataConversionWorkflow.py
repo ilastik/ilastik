@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import sys
 import logging
 logger = logging.getLogger(__name__)
@@ -71,6 +75,7 @@ class DataConversionWorkflow(Workflow):
 
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
+        opDataExport.SelectionNames.setValue( ["Input"] )        
 
         self._applets.append( self.dataSelectionApplet )
         self._applets.append( self.dataExportApplet )
@@ -123,8 +128,9 @@ class DataConversionWorkflow(Workflow):
         opDataSelectionView = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opDataExportView = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
 
-        opDataExportView.Input.connect( opDataSelectionView.ImageGroup[0] )
         opDataExportView.RawDatasetInfo.connect( opDataSelectionView.DatasetGroup[0] )        
+        opDataExportView.Inputs.resize( 1 )
+        opDataExportView.Inputs[0].connect( opDataSelectionView.ImageGroup[0] )
 
         # There is no special "raw" display layer in this workflow.
         #opDataExportView.RawData.connect( opDataSelectionView.ImageGroup[0] )
@@ -147,9 +153,9 @@ class DataConversionWorkflow(Workflow):
 
         opDataExport = self.dataExportApplet.topLevelOperator
         export_data_ready = input_ready and \
-                            len(opDataExport.Input) > 0 and \
-                            opDataExport.Input[0].ready() and \
-                            (TinyVector(opDataExport.Input[0].meta.shape) > 0).all()
+                            len(opDataExport.Inputs[0]) > 0 and \
+                            opDataExport.Inputs[0][0].ready() and \
+                            (TinyVector(opDataExport.Inputs[0][0].meta.shape) > 0).all()
 
         self._shell.setAppletEnabled(self.dataExportApplet, export_data_ready)
         

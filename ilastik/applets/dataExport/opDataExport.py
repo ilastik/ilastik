@@ -1,19 +1,24 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
+import os
 import collections
 import numpy
 
@@ -38,7 +43,9 @@ class OpDataExport(Operator):
     RawDatasetInfo = InputSlot()
     WorkingDirectory = InputSlot() # Non-absolute paths are relative to this directory.  If not provided, paths must be absolute.
     
-    Input = InputSlot() # The results slot we want to export
+    Inputs = InputSlot(level=1) # The exportable slots (should all be of the same shape, except for channel)
+    InputSelection = InputSlot(value=0)
+    SelectionNames = InputSlot() # A list of names corresponding to the exportable inputs
 
     # Subregion params
     RegionStart = InputSlot(optional=True)
@@ -54,7 +61,7 @@ class OpDataExport(Operator):
     OutputAxisOrder = InputSlot(optional=True)
     
     # File settings
-    OutputFilenameFormat = InputSlot(value='{dataset_dir}/{nickname}_export') # A format string allowing {dataset_dir} {nickname}, {roi}, {x_start}, {x_stop}, etc.
+    OutputFilenameFormat = InputSlot(value='{dataset_dir}/{nickname}_{result_type}') # A format string allowing {dataset_dir} {nickname}, {roi}, {x_start}, {x_stop}, etc.
     OutputInternalPath = InputSlot(value='exported_data')
     OutputFormat = InputSlot(value='hdf5')
     
@@ -65,7 +72,7 @@ class OpDataExport(Operator):
 
     ImageOnDisk = OutputSlot() # This slot reads the exported image from disk (after the export is complete)
     Dirty = OutputSlot() # Whether or not the result currently matches what's on disk
-    FormatSelectionIsValid = OutputSlot()
+    FormatSelectionErrorMsg = OutputSlot()
 
     ALL_FORMATS = OpFormattedDataExport.ALL_FORMATS
 
@@ -105,7 +112,6 @@ class OpDataExport(Operator):
 
         # Forward almost all inputs to the 'real' exporter
         opFormattedExport.TransactionSlot.connect( self.TransactionSlot )
-        opFormattedExport.Input.connect( self.Input )
         opFormattedExport.RegionStart.connect( self.RegionStart )
         opFormattedExport.RegionStop.connect( self.RegionStop )
         opFormattedExport.InputMin.connect( self.InputMin )
@@ -119,7 +125,7 @@ class OpDataExport(Operator):
         self.ConvertedImage.connect( opFormattedExport.ConvertedImage )
         self.ImageToExport.connect( opFormattedExport.ImageToExport )
         self.ExportPath.connect( opFormattedExport.ExportPath )
-        self.FormatSelectionIsValid.connect( opFormattedExport.FormatSelectionIsValid )
+        self.FormatSelectionErrorMsg.connect( opFormattedExport.FormatSelectionErrorMsg )
         self.progressSignal = opFormattedExport.progressSignal
 
         self.Dirty.setValue(True) # Default to Dirty
@@ -172,7 +178,7 @@ class OpDataExport(Operator):
         self.ImageOnDisk.connect( self._opImageOnDiskProvider.Output )
         
     def setupOutputs(self):
-        self.cleanupOnDiskView()        
+        self.cleanupOnDiskView()
 
         # FIXME: If RawData becomes unready() at the same time as RawDatasetInfo(), then 
         #          we have no guarantees about which one will trigger setupOutputs() first.
@@ -190,11 +196,24 @@ class OpDataExport(Operator):
                     oslot.meta.NOTREADY = True
             return
 
+        selection_index = self.InputSelection.value
+        if not self.Inputs[selection_index].ready():
+            for oslot in self.outputs.values():
+                if oslot.partner is None:
+                    oslot.meta.NOTREADY = True
+            return
+        self._opFormattedExport.Input.connect( self.Inputs[selection_index] )
+
         dataset_dir = PathComponents(rawInfo.filePath).externalDirectory
         abs_dataset_dir, _ = getPathVariants(dataset_dir, self.WorkingDirectory.value)
         known_keys = {}        
         known_keys['dataset_dir'] = abs_dataset_dir
-        known_keys['nickname'] = rawInfo.nickname
+        nickname = rawInfo.nickname.replace('*', '')
+        if os.path.pathsep in nickname:
+            nickname = PathComponents(nickname.split(os.path.pathsep)[0]).fileNameBase
+        known_keys['nickname'] = nickname
+        result_types = self.SelectionNames.value
+        known_keys['result_type'] = result_types[selection_index]
 
         # Disconnect to open the 'transaction'
         if self._opImageOnDiskProvider is not None:
@@ -404,7 +423,8 @@ def get_model_op(wrappedOp):
     # Choose a roi that can apply to all images in the original operator
     shape = None
     axes = None
-    for slot in wrappedOp.Input:
+    for multislot in wrappedOp.Inputs:
+        slot = multislot[ wrappedOp.InputSelection.value ]
         if slot.ready():
             if shape is None:
                 shape = slot.meta.shape

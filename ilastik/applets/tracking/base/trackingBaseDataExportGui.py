@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 from PyQt4.QtCore import Qt
 from PyQt4.QtGui import QColor
 import volumina.colortables as colortables
@@ -40,14 +44,14 @@ class TrackingBaseResultsViewer(DataExportLayerViewerGui):
         fromDiskSlot = self.topLevelOperatorView.ImageOnDisk
         if fromDiskSlot.ready():
             exportLayer = ColortableLayer( LazyflowSource(fromDiskSlot), colorTable=self.ct )
-            exportLayer.name = "Tracking - Exported"
+            exportLayer.name = "Selected Output - Exported"
             exportLayer.visible = True
             layers.append(exportLayer)
 
         previewSlot = self.topLevelOperatorView.ImageToExport
         if previewSlot.ready():
             previewLayer = ColortableLayer( LazyflowSource(previewSlot), colorTable=self.ct )
-            previewLayer.name = "Tracking - Preview"
+            previewLayer.name = "Selected Output - Preview"
             previewLayer.visible = False
             layers.append(previewLayer)
 

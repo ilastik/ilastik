@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import sys
 import os
 from functools import partial
@@ -38,15 +42,16 @@ from bodySplitInfoWidget import BodySplitInfoWidget
 from ilastik.applets.labeling.labelingGui import Tool
 
 from ilastik.utility.gui import threadRouted, ThunkEventHandler, ThunkEvent
+from ilastik.utility import log_exception
 
 import logging
 logger = logging.getLogger(__name__)
 
 class SplitBodyCarvingGui(CarvingGui):
     
-    def __init__(self, topLevelOperatorView):
+    def __init__(self, parentApplet, topLevelOperatorView):
         drawerUiPath = os.path.join( os.path.split(__file__)[0], 'splitBodyCarvingDrawer.ui' )
-        super( SplitBodyCarvingGui, self ).__init__(topLevelOperatorView, drawerUiPath=drawerUiPath)
+        super( SplitBodyCarvingGui, self ).__init__(parentApplet, topLevelOperatorView, drawerUiPath=drawerUiPath)
         self._splitInfoWidget = BodySplitInfoWidget(self, self.topLevelOperatorView)
         self._splitInfoWidget.navigationRequested.connect( self._handleNavigationRequest )
         self._labelControlUi.annotationWindowButton.pressed.connect( self._splitInfoWidget.show )
@@ -127,9 +132,8 @@ class SplitBodyCarvingGui(CarvingGui):
         # (Because this function is running in the context of a dirty notification!)
         req = Request( self.__update_rendering )
         def handle_rendering_failure( exc, exc_info ):
-            import traceback
-            traceback.print_exception(*exc_info)
-            sys.stderr.write("Exception raised during volume rendering update.  See traceack above.\n")
+            msg = "Exception raised during volume rendering update.  See traceack above.\n"
+            log_exception( logger, msg, exc_info )
         req.notify_failed( handle_rendering_failure )
         req.submit()
     
@@ -155,7 +159,7 @@ class SplitBodyCarvingGui(CarvingGui):
 
         # Block must not exceed total bounds.
         # Shift start up if necessary
-        rendering_start_3d = TinyVector(self.editor.posModel.slicingPos) - TinyVector(rendered_volume_shape)/2.0
+        rendering_start_3d = TinyVector(self.editor.posModel.slicingPos) - TinyVector(rendered_volume_shape)/2
         rendering_start_3d = numpy.maximum( (0,0,0), rendering_start_3d )
 
         # Compute stop and shift down if necessary
@@ -305,18 +309,19 @@ class SplitBodyCarvingGui(CarvingGui):
                 baseCarvingLayers.remove(layer)
 
         # Don't show carving layers that aren't relevant to the split-body workflow
-        removeBaseLayer( "uncertainty" )
-        removeBaseLayer( "done seg" )
-        removeBaseLayer( "pmap" )
-        removeBaseLayer( "hints" )
-        removeBaseLayer( "done" )
-        removeBaseLayer( "done" )
+        removeBaseLayer( "Uncertainty" )
+        removeBaseLayer( "Segmentation" )
+        removeBaseLayer( "Completed segments (unicolor)" )
+        #removeBaseLayer( "pmap" )
+        #removeBaseLayer( "hints" )
+        #removeBaseLayer( "done" )
+        #removeBaseLayer( "done" )
         
         ActionInfo = ShortcutManager.ActionInfo
         
         # Attach a shortcut to the raw data layer
         if self.topLevelOperatorView.RawData.ready():
-            rawLayer = findLayer(lambda l: l.name == "raw", baseCarvingLayers)
+            rawLayer = findLayer(lambda l: l.name == "Raw Data", baseCarvingLayers)
             assert rawLayer is not None, "Couldn't find the raw data layer.  Did it's name change?"
             rawLayer.shortcutRegistration = ( "f", ActionInfo( "Carving",
                                                                "Raw Data to Top",

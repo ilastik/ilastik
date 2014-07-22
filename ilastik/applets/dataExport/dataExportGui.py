@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import os
 import threading
 from functools import partial
@@ -24,7 +28,7 @@ from PyQt4.QtGui import QApplication, QWidget, QIcon, QHeaderView, QStackedWidge
 
 from lazyflow.graph import Slot
 
-from ilastik.utility import bind
+from ilastik.utility import bind, log_exception
 from lazyflow.utility import PathComponents
 from ilastik.utility.gui import ThreadRouter, threadRouted, ThunkEvent, ThunkEventHandler
 from ilastik.shell.gui.iconMgr import ilastikIcons
@@ -119,7 +123,7 @@ class DataExportGui(QWidget):
             if subslot.ready():
                 self.updateTableForSlot(subslot)
     
-        def handleImageRemoved( multislot, index, finalLength ):
+        def handleLaneRemoved( multislot, index, finalLength ):
             if self.batchOutputTableWidget.rowCount() <= finalLength:
                 return
 
@@ -127,14 +131,14 @@ class DataExportGui(QWidget):
             self.batchOutputTableWidget.removeRow( index )
 
             # Remove the viewer for this dataset
-            imageSlot = self.topLevelOperator.Input[index]
-            if imageSlot in self.layerViewerGuis.keys():
-                layerViewerGui = self.layerViewerGuis[imageSlot]
+            imageMultiSlot = self.topLevelOperator.Inputs[index]
+            if imageMultiSlot in self.layerViewerGuis.keys():
+                layerViewerGui = self.layerViewerGuis[imageMultiSlot]
                 self.viewerStack.removeWidget( layerViewerGui )
                 self._viewerControlWidgetStack.removeWidget( layerViewerGui.viewerControlWidget() )
                 layerViewerGui.stopAndCleanUp()
 
-        self.topLevelOperator.Input.notifyRemove( bind( handleImageRemoved ) )
+        self.topLevelOperator.Inputs.notifyRemove( bind( handleLaneRemoved ) )
     
     def _initAppletDrawerUic(self):
         """
@@ -149,6 +153,17 @@ class DataExportGui(QWidget):
         self.drawer.exportAllButton.setIcon( QIcon(ilastikIcons.Save) )
         self.drawer.deleteAllButton.clicked.connect( self.deleteAllResults )
         self.drawer.deleteAllButton.setIcon( QIcon(ilastikIcons.Clear) )
+        
+        def _handleNewSelectionNames( *args ):
+            input_names = self.topLevelOperator.SelectionNames.value
+            self.drawer.inputSelectionCombo.addItems( input_names )
+        self.topLevelOperator.SelectionNames.notifyDirty( _handleNewSelectionNames )
+        _handleNewSelectionNames()
+
+        def _handleInputComboSelectionChanged( index ):
+            assert index < len(self.topLevelOperator.SelectionNames.value)
+            self.topLevelOperator.InputSelection.setValue( index )
+        self.drawer.inputSelectionCombo.currentIndexChanged.connect( _handleInputComboSelectionChanged )
 
     def initCentralUic(self):
         """
@@ -186,14 +201,14 @@ class DataExportGui(QWidget):
 
     def showEvent(self, event):
         super( DataExportGui, self ).showEvent(event)
-        for opLaneView in self.topLevelOperator:
-            opLaneView.setupOnDiskView()
+        self.showSelectedDataset()
     
     def hideEvent(self, event):
         super( DataExportGui, self ).hideEvent(event)
+        
+        # Make sure all 'on disk' layers are discarded so we aren't using those files any more.
         for opLaneView in self.topLevelOperator:
-            opLaneView.cleanupOnDiskView()
-    
+            opLaneView.cleanupOnDiskView()    
 
     def _chooseSettings(self):
         opExportModelOp, opSubRegion = get_model_op( self.topLevelOperator )
@@ -361,11 +376,8 @@ class DataExportGui(QWidget):
                     else:
                         msg = "Failed to generate export file."
                         msg += "\n{}".format( ex )
+                    log_exception( logger, msg )
                     self.showExportError(msg)
-                    
-                    logger.error( msg )
-                    import traceback
-                    traceback.print_exc()
 
                 # We're finished with this file. 
                 self.progressSignal.emit( 100*(i+1)/float(len(laneViewList)) )
@@ -391,11 +403,19 @@ class DataExportGui(QWidget):
         QMessageBox.critical(self, "Failed to export", msg )
 
     def exportResultsForSlot(self, opLane):
+        # Make sure all 'on disk' layers are discarded so we aren't using those files any more.
+        for opLaneView in self.topLevelOperator:
+            opLaneView.cleanupOnDiskView()
+        
         # Do this in a separate thread so the UI remains responsive
         exportThread = threading.Thread(target=bind(self.exportSlots, [opLane]), name="DataExportThread")
         exportThread.start()
     
     def exportAllResults(self):
+        # Make sure all 'on disk' layers are discarded so we aren't using those files any more.
+        for opLaneView in self.topLevelOperator:
+            opLaneView.cleanupOnDiskView()
+
         # Do this in a separate thread so the UI remains responsive
         exportThread = threading.Thread(target=bind(self.exportSlots, self.topLevelOperator), name="DataExportThread")
         exportThread.start()
@@ -421,22 +441,29 @@ class DataExportGui(QWidget):
         if len(selectedRanges) == 0:
             return
         row = selectedRanges[0].topRow()
-        imageSlot = self.topLevelOperator.Input[row]
+        
+        # Hide all layers that come from the disk.
+        for opLaneView in self.topLevelOperator:
+            opLaneView.cleanupOnDiskView()
+
+        # Activate the 'on disk' layers for this lane (if possible)
+        opLane = self.topLevelOperator.getLane(row)
+        opLane.setupOnDiskView()
         
         # Create if necessary
-        if imageSlot not in self.layerViewerGuis.keys():
-            opLane = self.topLevelOperator.getLane(row)
+        imageMultiSlot = self.topLevelOperator.Inputs[row]
+        if imageMultiSlot not in self.layerViewerGuis.keys():
             layerViewer = self.createLayerViewer(opLane)
 
             # Maximize the x-y view by default.
             layerViewer.volumeEditorWidget.quadview.ensureMaximized(2)
             
-            self.layerViewerGuis[imageSlot] = layerViewer
+            self.layerViewerGuis[imageMultiSlot] = layerViewer
             self.viewerStack.addWidget( layerViewer )
             self._viewerControlWidgetStack.addWidget( layerViewer.viewerControlWidget() )
 
         # Show the right one
-        layerViewer = self.layerViewerGuis[imageSlot]
+        layerViewer = self.layerViewerGuis[imageMultiSlot]
         self.viewerStack.setCurrentWidget( layerViewer )
         self._viewerControlWidgetStack.setCurrentWidget( layerViewer.viewerControlWidget() )
 

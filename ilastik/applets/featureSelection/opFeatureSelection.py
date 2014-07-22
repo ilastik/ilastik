@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 #Python
 import os
 import logging
@@ -109,7 +113,7 @@ class OpFeatureSelectionNoCache(Operator):
                 f = h5py.File(self._files[i], 'r')
                 shape = f["data"].shape
                 assert len(shape) == 3
-                dtype = f["data"].dtype
+                dtype = f["data"].dtype.type
                 f.close()
                 self.FeatureLayers[i].meta.shape    = shape+(1,)
                 self.FeatureLayers[i].meta.dtype    = dtype
@@ -197,8 +201,8 @@ class OpFeatureSelection( OpFeatureSelectionNoCache ):
         super( OpFeatureSelection, self ).setupOutputs()
 
         if self.FeatureListFilename.ready() and len(self.FeatureListFilename.value) > 0:
-            self.CachedOutputImage.disconnect()
-            self.CachedOutputImage.meta.dtype = self.OutputImage.meta.dtype 
+            self.CachedOutputImage.disconnect()            
+            self.CachedOutputImage.meta.assignFrom(self.OutputImage.meta)
         
         else:
             # We choose block shapes that have only 1 channel because the channels may be 

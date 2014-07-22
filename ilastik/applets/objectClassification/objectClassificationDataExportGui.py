@@ -1,24 +1,29 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 from PyQt4.QtCore import Qt
 from PyQt4.QtGui import QColor
 
-from volumina.api import LazyflowSource, ColortableLayer
+from volumina.api import LazyflowSource, ColortableLayer, AlphaModulatedLayer
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
+from lazyflow.operators import OpMultiArraySlicer2
 
 class ObjectClassificationDataExportGui( DataExportGui ):
     """
@@ -68,19 +73,57 @@ class ObjectClassificationResultsViewer(DataExportLayerViewerGui):
     def setupLayers(self):
         layers = []
 
-        fromDiskSlot = self.topLevelOperatorView.ImageOnDisk
-        if fromDiskSlot.ready():
-            exportLayer = ColortableLayer( LazyflowSource(fromDiskSlot), colorTable=self._colorTable16 )
-            exportLayer.name = "Prediction - Exported"
-            exportLayer.visible = True
-            layers.append(exportLayer)
+        opLane = self.topLevelOperatorView
 
-        previewSlot = self.topLevelOperatorView.ImageToExport
-        if previewSlot.ready():
-            previewLayer = ColortableLayer( LazyflowSource(previewSlot), colorTable=self._colorTable16 )
-            previewLayer.name = "Prediction - Preview"
-            previewLayer.visible = False
-            layers.append(previewLayer)
+        selection_names = opLane.SelectionNames.value
+        selection = selection_names[ opLane.InputSelection.value ]
+
+        # This code depends on a specific order for the export slots.
+        # If those change, update this function!
+        assert selection in ['Object Predictions', 'Object Probabilities', 'Pixel Probabilities']
+    
+        if selection == "Object Predictions":
+            fromDiskSlot = self.topLevelOperatorView.ImageOnDisk
+            if fromDiskSlot.ready():
+                exportLayer = ColortableLayer( LazyflowSource(fromDiskSlot), colorTable=self._colorTable16 )
+                exportLayer.name = "Prediction - Exported"
+                exportLayer.visible = True
+                layers.append(exportLayer)
+    
+            previewSlot = self.topLevelOperatorView.ImageToExport
+            if previewSlot.ready():
+                previewLayer = ColortableLayer( LazyflowSource(previewSlot), colorTable=self._colorTable16 )
+                previewLayer.name = "Prediction - Preview"
+                previewLayer.visible = False
+                layers.append(previewLayer)
+
+        elif selection == "Object Probabilities":
+            exportedLayers = self._initPredictionLayers(opLane.ImageOnDisk)
+            for layer in exportedLayers:
+                layer.visible = True
+                layer.name = layer.name + "- Exported"
+            layers += exportedLayers
+            
+            previewLayers = self._initPredictionLayers(opLane.ImageToExport)
+            for layer in previewLayers:
+                layer.visible = False
+                layer.name = layer.name + "- Preview"
+            layers += previewLayers
+        
+        elif selection == 'Pixel Probabilities':
+            exportedLayers = self._initPredictionLayers(opLane.ImageOnDisk)
+            for layer in exportedLayers:
+                layer.visible = True
+                layer.name = layer.name + "- Exported"
+            layers += exportedLayers
+            
+            previewLayers = self._initPredictionLayers(opLane.ImageToExport)
+            for layer in previewLayers:
+                layer.visible = False
+                layer.name = layer.name + "- Preview"
+            layers += previewLayers
+        else:
+            assert False, "Unknown selection."
 
         rawSlot = self.topLevelOperatorView.RawData
         if rawSlot.ready():
@@ -91,3 +134,27 @@ class ObjectClassificationResultsViewer(DataExportLayerViewerGui):
 
         return layers 
 
+    def _initPredictionLayers(self, predictionSlot):
+        layers = []
+        opLane = self.topLevelOperatorView
+
+        # Use a slicer to provide a separate slot for each channel layer
+        opSlicer = OpMultiArraySlicer2( parent=opLane.viewed_operator().parent )
+        opSlicer.Input.connect( predictionSlot )
+        opSlicer.AxisFlag.setValue('c')
+
+        for channel, channelSlot in enumerate(opSlicer.Slices):
+            if channelSlot.ready():
+                drange = channelSlot.meta.drange or (0.0, 1.0)
+                predictsrc = LazyflowSource(channelSlot)
+                predictLayer = AlphaModulatedLayer( predictsrc,
+                                                    tintColor=QColor.fromRgba(self._colorTable16[channel+1]),
+                                                    # FIXME: This is weird.  Why are range and normalize both set to the same thing?
+                                                    range=drange,
+                                                    normalize=drange )
+                predictLayer.opacity = 1.0
+                predictLayer.visible = True
+                predictLayer.name = "Probability Channel #{}".format( channel+1 )
+                layers.append(predictLayer)
+
+        return layers

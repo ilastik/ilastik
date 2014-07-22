@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import sys
 import os
 from functools import partial
@@ -25,8 +29,12 @@ from PyQt4.QtGui import QWidget, QFileDialog, QMessageBox, QTreeWidgetItem, QTab
 
 from volumina.utility import encode_from_qstring, decode_to_qstring
 from ilastik.shell.gui.iconMgr import ilastikIcons
+from ilastik.utility import log_exception
 
 from opParseAnnotations import OpParseAnnotations
+
+import logging
+logger = logging.getLogger(__name__)
 
 class BodyProgressBar(QProgressBar):
     
@@ -60,17 +68,18 @@ class BodySplitInfoWidget( QWidget ):
         self.opSplitBodyCarving = opSplitBodyCarving
         self._bodyTreeParentItems = {} # This is easier to maintain than using setData/find
         
-        annotation_filepath = None
+        self._annotation_filepath = None
         if self.opSplitBodyCarving.AnnotationFilepath.ready():
-            annotation_filepath = self.opSplitBodyCarving.AnnotationFilepath.value
+            self._annotation_filepath = self.opSplitBodyCarving.AnnotationFilepath.value
         self._annotations = {} # coordinate : Annotation
         self._ravelerLabels = set()
         
         self._initUi()
         
-        if annotation_filepath is not None:
-            self._loadAnnotationFile( annotation_filepath )
-        self.refreshButton.setEnabled( annotation_filepath is not None )
+        if self._annotation_filepath is not None:
+            self._loadAnnotationFile( self._annotation_filepath )
+        self.refreshButton.setEnabled( self._annotation_filepath is not None )
+
 
     def _initUi(self):
         # Load the ui file into this class (find it in our own directory)
@@ -104,8 +113,8 @@ class BodySplitInfoWidget( QWidget ):
         Ask the user for a new annotation filepath, and then load it.
         """
         navDir = ""
-        if self._annotationFilepath is not None:
-            navDir = os.path.split( self._annotationFilepath )[0]
+        if self._annotation_filepath is not None:
+            navDir = os.path.split( self._annotation_filepath )[0]
 
         selected_file = QFileDialog.getOpenFileName(self,
                                     "Load Split Annotation File",
@@ -136,12 +145,10 @@ class BodySplitInfoWidget( QWidget ):
             self.annotationFilepathEdit.setText( decode_to_qstring(annotation_filepath) )
             
         except OpParseAnnotations.AnnotationParsingException as ex :
-            import traceback
             if ex.original_exc is not None:
-                traceback.print_exception( type(ex.original_exc), ex.original_exc, sys.exc_info()[2] )
-                sys.stderr.write( ex.msg )
+                log_exception( logger, exc_info=( type(ex.original_exc), ex.original_exc, sys.exc_info[2]) )
             else:
-                traceback.print_exc()
+                log_exception( logger )
             QMessageBox.critical(self,
                                  "Failed to parse",
                                  ex.msg + "\n\nSee console output for details." )
@@ -150,11 +157,9 @@ class BodySplitInfoWidget( QWidget ):
             self._ravelerLabels = None
             self.annotationFilepathEdit.setText("")
         except:
-            import traceback
-            traceback.print_exc()
-            QMessageBox.critical(self,
-                                 "Failed to parse",
-                                 "Wasn't able to parse your bookmark file.  See console output for details." )
+            msg = "Wasn't able to parse your bookmark file.  See console output for details."
+            QMessageBox.critical(self, "Failed to parse", msg )
+            log_exception( logger, msg )
             self._annotations = None
             self._ravelerLabels = None
             self.annotationFilepathEdit.setText("")

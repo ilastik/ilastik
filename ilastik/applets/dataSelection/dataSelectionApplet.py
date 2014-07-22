@@ -1,22 +1,27 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import os
 import glob
 import argparse
+import collections
 import logging
 logger = logging.getLogger(__name__)
 
@@ -86,23 +91,41 @@ class DataSelectionApplet( Applet ):
         
         Relative paths are converted to absolute paths **according to ``os.getcwd()``**, 
         not according to the project file location, since this more likely to be what headless users expect.
-        
-        .. note: Currently, this command-line interface only supports workflows with a SINGLE dataset role.
-                 Workflows that take multiple files per lane will need to configure the data selection applet 
-                 by some other means.  :py:meth:`DatasetInfo.updateFromJson()` might be useful in that case.
-        
+
+        .. note: If the top-level operator was configured with multiple 'roles', then the input files for 
+                 each role can be configured separately:
+                 $ python ilastik.py [other workflow options] --my-role-A inputA1.png inputA2.png --my-role-B inputB1.png, inputB2.png
+                 If the workflow has only one role (or only one required role), then the role-name flag can be omitted:
+                 # python ilastik.py [other workflow options] input1.png input2.png
+
         See also: :py:meth:`configure_operator_with_parsed_args()`.
         """
-        # Currently, we don't support any special options -- just a list of files        
+        role_names = self.topLevelOperator.DatasetRoles.value
         arg_parser = argparse.ArgumentParser()
+        if role_names:
+            for role_name in role_names:
+                arg_name = self._role_name_to_arg_name(role_name)
+                arg_parser.add_argument('--' + arg_name, nargs='+', help='List of input files for the {} role'.format( role_name ))
+        
+        # Finally, a catch-all for role 0 (if the workflow only has one role, there's no need to provide role names
         arg_parser.add_argument('input_files', nargs='*', help='List of input files to process.')
+            
         arg_parser.add_argument('--preconvert_stacks', help="Convert image stacks to temporary hdf5 files before loading them.", action='store_true', default=False)
         parsed_args, unused_args = arg_parser.parse_known_args(cmdline_args)
+
+        for i, path in enumerate( parsed_args.input_files ):
+            # Replace '~' with home dir
+            parsed_args.input_files[i] = os.path.expanduser( path )
         
         # Check for errors: Do all input files exist?
-        input_paths = parsed_args.input_files
+        all_input_paths = list(parsed_args.input_files)
+        for role_name in role_names:
+            arg_name = self._role_name_to_arg_name(role_name)
+            role_paths = getattr(parsed_args, arg_name)
+            if role_paths:
+                all_input_paths += role_paths
         error = False
-        for p in input_paths:
+        for p in all_input_paths:
             if isUrl(p):
                 # Don't error-check urls in advance.
                 continue
@@ -120,6 +143,12 @@ class DataSelectionApplet( Applet ):
 
         return parsed_args, unused_args
 
+    def _role_name_to_arg_name(self, role_name):
+        arg_name = role_name
+        arg_name = arg_name.lower()
+        arg_name = arg_name.replace(' ', '_').replace('-', '_')
+        return arg_name
+
     def configure_operator_with_parsed_args(self, parsed_args):
         """
         Helper function for headless workflows.
@@ -127,36 +156,62 @@ class DataSelectionApplet( Applet ):
         
         :param parsed_args: Must be an ``argparse.Namespace`` as returned by :py:meth:`parse_known_cmdline_args()`.
         """
-        input_paths = parsed_args.input_files
+        role_names = self.topLevelOperator.DatasetRoles.value
+        role_paths = collections.OrderedDict()
+        if role_names:
+            for role_index, role_name in enumerate(role_names):
+                arg_name = self._role_name_to_arg_name(role_name)
+                input_paths = getattr(parsed_args, arg_name)
+                role_paths[role_index] = input_paths
 
-        # If the user doesn't want image stacks to be copied inte the project file,
-        #  we generate hdf5 volumes in a temporary directory and use those files instead.        
-        if parsed_args.preconvert_stacks:
-            import tempfile
-            input_paths = self.convertStacksToH5( input_paths, tempfile.gettempdir() )
-        
-        input_infos = []
-        for p in input_paths:
-            info = DatasetInfo()
-            info.location = DatasetInfo.Location.FileSystem
-            info.filePath = p
+        if parsed_args.input_files:
+            # We allow the file list to go to the 'default' role, but only if no other roles were explicitly configured.
+            for role_index, input_paths in role_paths.items():
+                if input_paths:
+                    # FIXME: This error message could be more helpful.
+                    role_args = map( self._role_name_to_arg_name, role_names )
+                    role_args = map( lambda s: '--' + s, role_args )
+                    role_args_str = ", ".join( role_args )
+                    raise Exception("Invalid command line arguments: All roles must be configured explicitly.\n"
+                                    "Use the following flags to specify which files are matched with which inputs:\n"
+                                    + role_args_str )
+            role_paths = { 0 : parsed_args.input_files }
 
-            comp = PathComponents(p)
-
-            # Convert all (non-url) paths to absolute 
-            # (otherwise they are relative to the project file, which probably isn't what the user meant)        
-            if not isUrl(p):
-                comp.externalPath = os.path.abspath(comp.externalPath)
-                info.filePath = comp.totalPath()
-            info.nickname = comp.filenameBase
-            input_infos.append(info)
-
-        opDataSelection = self.topLevelOperator
-        opDataSelection.DatasetGroup.resize( len(input_infos) )
-        for lane_index, info in enumerate(input_infos):
-            # Only one dataset role in pixel classification
-            opDataSelection.DatasetGroup[lane_index][0].setValue( info )
-        
+        for role_index, input_paths in role_paths.items():
+            # If the user doesn't want image stacks to be copied into the project file,
+            #  we generate hdf5 volumes in a temporary directory and use those files instead.        
+            if parsed_args.preconvert_stacks:
+                import tempfile
+                input_paths = self.convertStacksToH5( input_paths, tempfile.gettempdir() )
+            
+            input_infos = []
+            for p in input_paths:
+                info = DatasetInfo()
+                info.location = DatasetInfo.Location.FileSystem
+                info.filePath = p
+    
+                comp = PathComponents(p)
+    
+                # Convert all (non-url) paths to absolute 
+                # (otherwise they are relative to the project file, which probably isn't what the user meant)        
+                if not isUrl(p):
+                    comp.externalPath = os.path.abspath(comp.externalPath)
+                    info.filePath = comp.totalPath()
+                info.nickname = comp.filenameBase
+                
+                # Remove globstring syntax.
+                if '*' in info.nickname:
+                    info.nickname = info.nickname.replace('*', '')
+                if os.path.pathsep in info.nickname:
+                    info.nickname = PathComponents(info.nickname.split(os.path.pathsep)[0]).fileNameBase
+                input_infos.append(info)
+    
+            opDataSelection = self.topLevelOperator
+            existing_lanes = len(opDataSelection.DatasetGroup)
+            opDataSelection.DatasetGroup.resize( max(len(input_infos), existing_lanes) )
+            for lane_index, info in enumerate(input_infos):
+                opDataSelection.DatasetGroup[lane_index][role_index].setValue( info )
+            
     @classmethod
     def convertStacksToH5(cls, filePaths, stackVolumeCacheDir):
         """
@@ -214,4 +269,23 @@ class DataSelectionApplet( Applet ):
                         assert success, "Something went wrong when generating an hdf5 file from an image sequence."
             
         return filePaths
-            
+
+    def configureRoleFromJson(self, lane, role, dataset_info_namespace):
+        opDataSelection = self.topLevelOperator
+        logger.debug( "Configuring dataset for role {}".format( role ) )
+        logger.debug( "Params: {}".format(dataset_info_namespace) )
+        datasetInfo = DatasetInfo()
+        datasetInfo.updateFromJson( dataset_info_namespace )
+
+        # Check for globstring, which means we need to import the stack first.            
+        if '*' in datasetInfo.filePath:
+            totalProgress = [-100]
+            def handleStackImportProgress( progress ):
+                if progress / 10 != totalProgress[0] / 10:
+                    totalProgress[0] = progress
+                    logger.info( "Importing stack: {}%".format( totalProgress[0] ) )
+            serializer = self.dataSerializers[0]
+            serializer.progressSignal.connect( handleStackImportProgress )
+            serializer.importStackAsLocalDataset( datasetInfo )
+        
+        opDataSelection.DatasetGroup[lane][role].setValue( datasetInfo )

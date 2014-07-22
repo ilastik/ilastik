@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import logging
 logger = logging.getLogger(__name__)
 
@@ -28,6 +32,7 @@ import vigra
 import h5py
 import numpy
 import warnings
+import cPickle as pickle
 
 from lazyflow.roi import TinyVector, roiToSlice, sliceToRoi
 from lazyflow.utility import timeLogged
@@ -99,9 +104,7 @@ class SerialSlot(object):
           should be able to call subname.format(i), where i is an
           integer.
 
-        :param default: the default value when unload() is called. If it is
-          None, the slot will just be disconnected (for level 0 slots) or
-          resized to length 0 (for multislots)
+        :param default: DEPRECATED
 
         :param depends: a list of slots which must be ready before this slot
           can be serialized. If None, defaults to [].
@@ -273,17 +276,6 @@ class SerialSlot(object):
                     # we disconnect the subslot.
                     subslot.disconnect()
 
-    def unload(self):
-        """see AppletSerializer.unload()"""
-        if self.slot.level == 0:
-            if self.default is None:
-                self.slot.disconnect()
-            else:
-                self.inslot.setValue(self.default)
-        else:
-            self.slot.resize(0)
-
-
 #######################################################
 # some serial slots that are used in multiple applets #
 #######################################################
@@ -325,10 +317,7 @@ class SerialListSlot(SerialSlot):
         isempty = (len(value) == 0)
         if isempty:
             value = numpy.empty((1,))
-        try:
-            sg = group.create_dataset(name, data=map(self._store_transform, value))
-        except:
-            raise
+        sg = group.create_dataset(name, data=map(self._store_transform, value))
         sg.attrs['isEmpty'] = isempty
 
     @timeLogged(logger, logging.DEBUG)
@@ -336,26 +325,18 @@ class SerialListSlot(SerialSlot):
         logger.debug("Deserializing ListSlot: {}".format(self.name))
         try:
             subgroup = group[self.name]
-        except KeyError:
-            self.unload()
+        except:
+            warnings.warn("Deserialization: Could not locate value for slot '{}'.  Skipping.".format( self.name ))
+            return
+        if 'isEmpty' in subgroup.attrs and subgroup.attrs['isEmpty']:
+            self.inslot.setValue( self._iterable([]) )
         else:
-            if 'isEmpty' in subgroup.attrs and subgroup.attrs['isEmpty']:
-                self.inslot.setValue( self._iterable([]) )
+            if len(subgroup.shape) == 0 or subgroup.shape[0] == 0:
+                # How can this happen, anyway...?
+                return
             else:
-                try:
-                    self.inslot.setValue(self._iterable(map(self.transform, subgroup[()])))
-                except:
-                    self.unload()
-        finally:
-            self.dirty = False
-
-    def unload(self):
-        if self.slot.level == 0:
-            self.inslot.disconnect()
-        else:
-            self.slot.resize(0)
+                self.inslot.setValue(self._iterable(map(self.transform, subgroup[()])))
         self.dirty = False
-
 
 class SerialBlockSlot(SerialSlot):
     """A slot which only saves nonzero blocks."""
@@ -447,49 +428,30 @@ class SerialHdf5BlockSlot(SerialBlockSlot):
 
 class SerialClassifierSlot(SerialSlot):
     """For saving a random forest classifier."""
-    def __init__(self, slot, cache, inslot=None, name=None, subname=None,
+    def __init__(self, slot, cache, inslot=None, name=None,
                  default=None, depends=None, selfdepends=True):
         super(SerialClassifierSlot, self).__init__(
-            slot, inslot, name, subname, default, depends, selfdepends
+            slot, inslot, name, None, default, depends, selfdepends
         )
         self.cache = cache
         if self.name is None:
             self.name = slot.name
-        if self.subname is None:
-            self.subname = "Forest{:04d}"
         self._bind(cache.Output)
-
-    def unload(self):
-        self.cache.Input.setDirty(slice(None))
 
     def _serialize(self, group, name, slot):
         if self.cache._dirty:
             return
 
-        classifier_forests = self.cache._value
+        cache_contents = self.cache._value
+        assert cache_contents.shape == (1,)
+        classifier = cache_contents[0]
 
         # Classifier can be None if there isn't any training data yet.
-        if classifier_forests is None:
+        if classifier is None:
             return
-        for forest in classifier_forests:
-            if forest is None:
-                return
 
-        # Due to non-shared hdf5 dlls, vigra can't write directly to
-        # our open hdf5 group. Instead, we'll use vigra to write the
-        # classifier to a temporary file.
-        tmpDir = tempfile.mkdtemp()
-        cachePath = os.path.join(tmpDir, 'tmp_classifier_cache.h5').replace('\\', '/')
-        for i, forest in enumerate(classifier_forests):
-            targetname = '{0}/{1}'.format(name, self.subname.format(i))
-            forest.writeHDF5(cachePath, targetname)
-
-        # Open the temp file and copy to our project group
-        with h5py.File(cachePath, 'r') as cacheFile:
-            group.copy(cacheFile[name], name)
-
-        os.remove(cachePath)
-        os.rmdir(tmpDir)
+        classifier_group = group.create_group( name )
+        classifier.serialize_hdf5( classifier_group )
 
     def deserialize(self, group):
         """
@@ -499,21 +461,19 @@ class SerialClassifierSlot(SerialSlot):
         self.dirty = False
 
     def _deserialize(self, classifierGroup, slot):
-        # Due to non-shared hdf5 dlls, vigra can't read directly
-        # from our open hdf5 group. Instead, we'll copy the
-        # classfier data to a temporary file and give it to vigra.
-        tmpDir = tempfile.mkdtemp()
-        cachePath = os.path.join(tmpDir, 'tmp_classifier_cache.h5').replace('\\', '/')
-        with h5py.File(cachePath, 'w') as cacheFile:
-            cacheFile.copy(classifierGroup, self.name)
-
-        forests = []
-        for name, forestGroup in sorted(classifierGroup.items()):
-            targetname = '{0}/{1}'.format(self.name, name)
-            forests.append(vigra.learning.RandomForest(cachePath, targetname))
-
-        os.remove(cachePath)
-        os.rmdir(tmpDir)
+        try:
+            classifier_type = pickle.loads( classifierGroup['pickled_type'][()] )
+        except KeyError:
+            # For compatibility with old project files, choose the default classifier.
+            from lazyflow.classifiers import ParallelVigraRfLazyflowClassifier
+            classifier_type = ParallelVigraRfLazyflowClassifier
+        
+        try:
+            classifier = classifier_type.deserialize_hdf5( classifierGroup )
+        except:
+            warnings.warn( "Wasn't able to deserialize the saved classifier.  "
+                           "It will need to be retrainied" )
+            return
 
         # Now force the classifier into our classifier cache. The
         # downstream operators (e.g. the prediction operator) can
@@ -522,7 +482,7 @@ class SerialClassifierSlot(SerialSlot):
         # consistent with the images and labels that we just
         # loaded. As soon as training input changes, it will be
         # retrained.)
-        self.cache.forceValue(numpy.array(forests))
+        self.cache.forceValue( classifier )
 
 class SerialCountingSlot(SerialSlot):
     """For saving a random forest classifier."""
@@ -537,9 +497,6 @@ class SerialCountingSlot(SerialSlot):
         if self.subname is None:
             self.subname = "wrapper{:04d}"
         self._bind(cache.Output)
-
-    def unload(self):
-        self.cache.Input.setDirty(slice(None))
 
     def _serialize(self, group, name, slot):
         if self.cache._dirty:
@@ -586,16 +543,20 @@ class SerialCountingSlot(SerialSlot):
         with h5py.File(cachePath, 'w') as cacheFile:
             cacheFile.copy(classifierGroup, self.name)
 
-        forests = []
-        for name, forestGroup in sorted(classifierGroup.items()):
-            targetname = '{0}/{1}'.format(self.name, name)
-            #forests.append(vigra.learning.RandomForest(cachePath, targetname))
-            from ilastik.applets.counting.countingsvr import SVR
-            forests.append(SVR.load(cachePath, targetname))
-            
-
-        os.remove(cachePath)
-        os.rmdir(tmpDir)
+        try:
+            forests = []
+            for name, forestGroup in sorted(classifierGroup.items()):
+                targetname = '{0}/{1}'.format(self.name, name)
+                #forests.append(vigra.learning.RandomForest(cachePath, targetname))
+                from ilastik.applets.counting.countingsvr import SVR
+                forests.append(SVR.load(cachePath, targetname))
+        except:
+            warnings.warn( "Wasn't able to deserialize the saved classifier.  "
+                           "It will need to be retrainied" )
+            return
+        finally:
+            os.remove(cachePath)
+            os.rmdir(tmpDir)
 
         # Now force the classifier into our classifier cache. The
         # downstream operators (e.g. the prediction operator) can
@@ -648,6 +609,18 @@ class SerialDictSlot(SerialSlot):
         except AssertionError as e:
             warnings.warn('setValue() failed. message: {}'.format(e.message))
 
+class SerialPickledSlot(SerialSlot):
+    def __init__(self, slot, name=None):
+        super( SerialPickledSlot, self ).__init__( slot, name=name )
+    
+    def _saveValue(self, group, name, value):
+        pickled = pickle.dumps( value )
+        group.create_dataset(name, data=pickled)
+
+    def _getValue(self, dset, slot):
+        pickled = dset[()]
+        value = pickle.loads(pickled)
+        slot.setValue( value )         
 
 ####################################
 # the base applet serializer class #
@@ -729,22 +702,6 @@ class AppletSerializer(object):
         self._ignoreDirty = value
         for ss in self.serialSlots:
             ss.ignoreDirty = value
-
-    def unload(self):
-        """Called if either
-
-        (1) the user closed the project or
-
-        (2) the project opening process needs to be aborted for some
-            reason (e.g. not all items could be deserialized
-            properly due to a corrupted ilp)
-
-        This way we can avoid invalid state due to a partially loaded
-        project.
-
-        """
-        for ss in self.serialSlots:
-            ss.unload()
 
     def progressIncrement(self, group=None):
         """Get the percentage progress for each slot.

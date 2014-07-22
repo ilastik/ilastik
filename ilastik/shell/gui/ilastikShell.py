@@ -1,23 +1,25 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 # Standard
-import sys
 import re
-import traceback
 import os
 import time
 from functools import partial
@@ -49,26 +51,30 @@ from volumina.utility import PreferencesManager, ShortcutManagerDlg, ShortcutMan
 
 # ilastik
 from ilastik.workflow import getAvailableWorkflows, getWorkflowFromName
-from ilastik.utility import bind
+from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThunkEventHandler, ThreadRouter, threadRouted
 from ilastik.applets.base.applet import Applet, ShellRequest
-from ilastik.applets.base.appletGuiInterface import AppletGuiInterface
+from ilastik.applets.base.appletGuiInterface import AppletGuiInterface, VolumeViewerGui
+from ilastik.applets.base.singleToMultiGuiAdapter import SingleToMultiGuiAdapter
 from ilastik.shell.projectManager import ProjectManager
 from ilastik.config import cfg as ilastik_config
 from iconMgr import ilastikIcons
-from lazyflow.utility.pathHelpers import compressPathForDisplay
 from ilastik.shell.gui.errorMessageFilter import ErrorMessageFilter
 from ilastik.shell.gui.memUsageDialog import MemUsageDialog
 from ilastik.shell.shellAbc import ShellABC
 
 from ilastik.shell.gui.splashScreen import showSplashScreen
+from ilastik.shell.gui.licenseDialog import LicenseDialog
 
 from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox
+from ilastik.widgets.filePathButton import FilePathButton
+
+from ilastik.shell.gui.messageServer import MessageServer
 
 # Import all known workflows now to make sure they are all registered with getWorkflowFromName()
 import ilastik.workflows
 
-ILASTIKFont = QFont("Helvetica",10,QFont.Bold)
+ILASTIKFont = QFont("Helvetica",12,QFont.Bold)
 
 logger = logging.getLogger(__name__)
 
@@ -239,7 +245,10 @@ class IlastikShell( QMainWindow ):
         #self.setFixedSize(1680,1050) #ilastik manuscript resolution
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
-
+        
+        # Server/client for inter process communication
+        self.socketServer = MessageServer(self, 'localhost', 9997)
+        
         self.openFileButtons = []
         self.cleanupFunctions = []
 
@@ -290,7 +299,6 @@ class IlastikShell( QMainWindow ):
             assert self._settingsMenu.thread() == self.thread()
 
         self.appletBar.currentChanged.connect(self.handleAppletBarItemExpanded)
-        #self.appletBar.clicked.connect(self.handleAppletBarClick)
         #self.appletBar.setVerticalScrollMode( QAbstractItemView.ScrollPerPixel )
 
         self.currentAppletIndex = 0
@@ -362,7 +370,7 @@ class IlastikShell( QMainWindow ):
 
     def getWorkflow(self,w = None):
 
-        listOfItems = [workflowName for _,workflowName in getAvailableWorkflows()]
+        listOfItems = [workflowDisplayName for _,__, workflowDisplayName in getAvailableWorkflows()]
         if w is not None and w in listOfItems:
             cur = listOfItems.index(w)
         else:
@@ -452,20 +460,15 @@ class IlastikShell( QMainWindow ):
             for path,workflow in projects[::-1]:
                 if not os.path.exists(path):
                     continue
-                b = QToolButton(self.startscreen)
+                b = FilePathButton(path, " ({})".format( workflow ), parent=self.startscreen)
                 styleStartScreenButton(b, ilastikIcons.Open)
 
-                #parse path
-                b.setToolTip(path)
-                compressedpath = compressPathForDisplay(path,50)
-                if len(workflow)>30:
-                    compressedworkflow = workflow[:27]+"..."
-                else:
-                    compressedworkflow = workflow
-                text = "{0} ({1})".format(compressedpath,compressedworkflow)
-                b.setText(text)
                 b.clicked.connect(partial(self.openFileAndCloseStartscreen,path))
-                self.startscreen.VL1.insertWidget(self.startscreen.VL1.count(),b)
+                
+                # Insert the new button after all the other controls, 
+                #  but before the vertical spacer at the end of the list.
+                insertion_index = self.startscreen.VL1.count()-1
+                self.startscreen.VL1.insertWidget(insertion_index, b)
                 self.openFileButtons.append(b)
 
     def _loaduifile(self):
@@ -487,15 +490,20 @@ class IlastikShell( QMainWindow ):
         self.startscreen.browseFilesButton.clicked.connect(self.onOpenProjectActionTriggered)
 
         pos = 1
-        for workflow,_name in getAvailableWorkflows():
+        for workflow,_name, displayName in getAvailableWorkflows():
             b = QToolButton(self.startscreen, objectName="NewProjectButton_"+workflow.__name__)
             styleStartScreenButton(b, ilastikIcons.GoNext)
-            b.setText(_name)
+            b.setText(displayName)
             b.clicked.connect(partial(self.loadWorkflow,workflow))
             self.startscreen.VL1.insertWidget(pos,b)
             pos += 1
 
     def openFileAndCloseStartscreen(self,path):
+        if self.projectManager is not None:
+            # If the user double-clicked a "recent project" button,
+            #  then this handler function might get called twice.
+            # In that case, just ignore the second click.
+            return
         #self.startscreen.setParent(None)
         #del self.startscreen
         self.openProjectFile(path)
@@ -505,6 +513,8 @@ class IlastikShell( QMainWindow ):
         menu.setObjectName("help_menu")
         aboutIlastikAction = menu.addAction("&About ilastik")
         aboutIlastikAction.triggered.connect(showSplashScreen)
+        licenseAction = menu.addAction("License")
+        licenseAction.triggered.connect(partial(LicenseDialog, self))
         return menu
 
     def _createDebugMenu(self):
@@ -707,12 +717,15 @@ class IlastikShell( QMainWindow ):
         """
         Update the title bar and allowable shell actions based on the state of the currently loaded project.
         """
-        windowTitle = "ilastik for Conservation Tracking - "
+        windowTitle = "ilastik - "
         if self.projectManager is None or self.projectManager.closed:
             windowTitle += "No Project Loaded"
         else:
             windowTitle += self.projectManager.currentProjectPath + " - "
-            windowTitle += self.projectManager.workflow.workflowName
+            if self.projectManager.workflow.workflowDisplayName is not None:
+                windowTitle += self.projectManager.workflow.workflowDisplayName
+            else:
+                windowTitle += self.projectManager.workflow.workflowName
 
             readOnly = self.projectManager.currentProjectIsReadOnly
             if readOnly:
@@ -907,18 +920,6 @@ class IlastikShell( QMainWindow ):
         drawerTitleItem = self.appletBar.widget(drawerIndex)
         return self.appletBar.indexOf(drawerTitleItem)
 
-    def handleAppletBarClick(self, modelIndex):
-        #bug #193
-        drawerTitleItem = self.appletBar.widget(modelIndex)
-        if drawerTitleItem.isDisabled():
-            return
-
-        # If the user clicks on a top-level item, automatically expand it.
-        if modelIndex.parent() == self.appletBar.rootIndex():
-            self.appletBar.expand(modelIndex)
-        else:
-            self.appletBar.setCurrentIndex( modelIndex.parent() )
-
     def addApplet( self, applet_index, app ):
         assert isinstance( app, Applet ), "Applets must inherit from Applet base class."
         assert app.base_initialized, "Applets must call Applet.__init__ upon construction."
@@ -1011,6 +1012,7 @@ class IlastikShell( QMainWindow ):
 
         newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath, workflow_class, self._workflow_cmdline_args, h5_file_kwargs)
         self._loadProject(newProjectFile, newProjectFilePath, workflow_class, readOnly=False)
+        self.projectManager.saveProject()
 
     def getProjectPathToCreate(self, defaultPath=None, caption="Create Ilastik Project"):
         """
@@ -1124,8 +1126,9 @@ class IlastikShell( QMainWindow ):
         except ProjectManager.FileMissingError:
             QMessageBox.warning(self, "Missing File", "Could not find project file: " + projectFilePath)
         except:
-            logger.error( traceback.format_exc() )
-            QMessageBox.warning(self, "Corrupted Project", "Unable to open project file: " + projectFilePath)
+            msg = "Corrupted Project", "Unable to open project file: " + projectFilePath
+            log_exception( logger, msg )
+            QMessageBox.warning(self, msg)
         else:
             #as load project can take a while, show a wait cursor
             QApplication.setOverrideCursor(Qt.WaitCursor)
@@ -1164,8 +1167,9 @@ class IlastikShell( QMainWindow ):
                                                   project_creation_args=project_creation_args)
 
         except Exception, e:
-            traceback.print_exc()
-            QMessageBox.warning(self, "Failed to Load", "Could not load project file.\n" + str(e))
+            msg = "Could not load project file.\n" + str(e)
+            log_exception( logger, msg )
+            QMessageBox.warning(self, "Failed to Load",  msg)
 
             # no project will be loaded, free the file resource
             hdf5File.close()
@@ -1185,7 +1189,7 @@ class IlastikShell( QMainWindow ):
                     assert not readOnly, "Can't import into a read-only file."
                     self.projectManager._importProject(importFromPath, hdf5File, projectFilePath)
             except Exception as ex:
-                traceback.print_exc()
+                log_exception( logger )
                 self.closeCurrentProject()
 
                 # _loadProject failed, so we cannot expect it to clean up
@@ -1207,12 +1211,13 @@ class IlastikShell( QMainWindow ):
                     mostRecentProjectPaths = []
 
                 workflowName = self.projectManager.workflow.workflowName
+                workflowDisplayName = self.projectManager.workflow.workflowDisplayName
 
                 for proj,work in mostRecentProjectPaths[:]:
                     if proj==projectFilePath and (proj,work) in mostRecentProjectPaths:
                         mostRecentProjectPaths.remove((proj,work))
 
-                mostRecentProjectPaths.insert(0,(projectFilePath,workflowName))
+                mostRecentProjectPaths.insert(0,(projectFilePath,workflowDisplayName))
 
                 #cut list of stored files at randomly chosen number of 5
                 if len(mostRecentProjectPaths) > 5:
@@ -1401,6 +1406,9 @@ class IlastikShell( QMainWindow ):
             quitApp - For testing purposes, set this to False if you just want to close the main window without quitting the app.
         """
         if force or self.confirmQuit():
+            # disable gui events
+            ThreadRouter.app_is_shutting_down = True
+
             self.closeAndQuit(quitApp)
 
     def confirmQuit(self):
@@ -1446,6 +1454,32 @@ class IlastikShell( QMainWindow ):
     def setAppletEnabled(self, applet, enabled):
         # Post this to the gui thread
         self.thunkEventHandler.post(self._setAppletEnabled, applet, enabled)
+    
+    def newServerConnected(self, name):
+        # iterate over all other applets and inform about new connection if relevant
+        for applet in self._applets:
+            if name == "knime":
+                if hasattr(applet, "connected_to_knime"):
+                    applet.connected_to_knime = True
+    
+    def setAllViewersPosition(self, pos):
+        # operate on currently displayed applet first
+        self._setViewerPosition(self._applets[self.currentAppletIndex], pos) 
+        
+        # now iterate over all other applets and change the viewer focus
+        for applet in self._applets:
+            if not applet is self._applets[self.currentAppletIndex]:
+                self._setViewerPosition(applet, pos)
+        
+    @threadRouted
+    def _setViewerPosition(self, applet, pos):
+        gui = applet.getMultiLaneGui()
+        # test if gui is a Gui on its own or just created by a SingleToMultiGuiAdapter
+        if isinstance(gui, SingleToMultiGuiAdapter):
+            gui = gui.currentGui()
+        # test if gui implements "setViewerPos()" method
+        if issubclass(type(gui), VolumeViewerGui):
+            gui.setViewerPos(pos, setTime=True, setChannel=True)
 
     def enableProjectChanges(self, enabled):
         # Post this to the gui thread
@@ -1478,7 +1512,7 @@ class IlastikShell( QMainWindow ):
                 # That can cause lots of problems for us (e.g. it trigger's the
                 #  creation of applet guis that haven't been created yet.)
                 # Therefore, only disable the title button of a drawer if it isn't already selected.
-                if enabled or self.appletBar.currentIndex() != applet_index:
+                if self.appletBar.currentIndex() != applet_index:
                     self.appletBar.setItemEnabled(applet_index, enabled)
 
 assert issubclass( IlastikShell, ShellABC ), "IlastikShell does not satisfy the generic shell interface!"

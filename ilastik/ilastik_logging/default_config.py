@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import os
 import logging.config
 import warnings
@@ -134,6 +138,7 @@ def get_default_config(prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ER
             "lazyflow.graph":                                           { "level":"INFO" },
             "lazyflow.graph.Slot":                                      { "level":"INFO" },
             "lazyflow.operators":                                       { "level":"INFO" },
+            "lazyflow.classifiers":                                     { "level":"INFO" },
             "lazyflow.operators.ioOperators":                           { "level":"INFO" },
             "lazyflow.operators.opVigraWatershed":                      { "level":"INFO" },
             "lazyflow.operators.ioOperators.opRESTfulVolumeReader":     { "level":"INFO" },
@@ -146,6 +151,7 @@ def get_default_config(prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ER
             "lazyflow.utility.io.RESTfulVolume":                        { "level":"INFO" },
             "lazyflow.operators.opFeatureMatrixCache":                  { "level":"INFO" },
             "lazyflow.operators.opConcatenateFeatureMatrices":          { "level":"INFO" },
+            "lazyflow.utility.bigRequestStreamer":                      { "level":"INFO" },
             "ilastik":                                                  { "level":"INFO" },
             "ilastik.clusterOps":                                       { "level":"INFO" },
             "ilastik.applets":                                          { "level":"INFO" },
@@ -165,6 +171,7 @@ def get_default_config(prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ER
             "volumina":                                                 { "level":"INFO" },
             "volumina.pixelpipeline":                                   { "level":"INFO" },
             "volumina.imageScene2D":                                    { "level":"INFO" },
+            "volumina.utility.shortcutManager":                         { "level":"INFO" },
             # Python doesn't provide a trace log level, so we use a workaround.
             # By convention, trace loggers have the same hierarchy as the regular loggers, but are prefixed with 'TRACE' and always emit DEBUG messages
             # To enable trace messages, change one or more of these to use level DEBUG

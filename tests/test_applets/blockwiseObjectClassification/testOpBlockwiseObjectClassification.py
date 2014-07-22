@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import sys
 import warnings
 import tempfile
@@ -57,6 +61,18 @@ class TestOpBlockwiseObjectClassification(object):
                 "Blockwise prediction operator did not produce the same prediction image" \
                 "as the non-blockwise prediction operator!"
 
+    def testPredictionChannelImage(self):
+        # First, try with the default block/halo sizes, which will yield only one block with our test volume
+        pred = self.op.ProbabilityChannelImage[:].wait()
+        assert pred.shape[:-1] == self.prediction_volume.shape[:-1]
+        assert pred.shape[-1] == 2
+        argmax_pred = numpy.argmax( pred, axis=-1 )[...,None] + 1
+        argmax_pred[pred.sum(-1) == 0] = 0
+        if not (argmax_pred == self.prediction_volume).all():
+            self.logImage(pred, "standard_blocksize_prediction_channels_")
+            assert False, \
+                "Blockwise prediction channels did not correspond to the expected prediction image"
+
     def testSmallerBlocks(self):
         # this block and halo size combination should be large enough for our cubes
         # Note: To produce results that are identical to the non-blockwise classification,
@@ -65,14 +81,14 @@ class TestOpBlockwiseObjectClassification(object):
         #       (e.g. in our test data, no more than 10 pixels)
         self.op.BlockShape3dDict.setValue( {'x' : 42, 'y' : 42, 'z' : 42} )
         self.op.HaloPadding3dDict.setValue( {'x' : 35, 'y' : 35, 'z' : 30} )
-        
+         
         pred = self.op.PredictionImage[:].wait()
         if not (pred == self.prediction_volume).all():
             self.logImage(pred, "smaller_blocksize_prediction_")
             assert False, \
                 "Blockwise prediction operator did not produce the same prediction image" \
                 "as the non-blockwise prediction operator!"
-            
+             
     def testTinyBlocks(self):
         # 5x5x5 cubes should fit into a 10x10x10 halo
         # Note: To produce results that are identical to the non-blockwise classification,
@@ -81,27 +97,27 @@ class TestOpBlockwiseObjectClassification(object):
         #       (e.g. in our test data, no more than 10 pixels)
         self.op.BlockShape3dDict.setValue( {'x' : 40, 'y' : 40, 'z' : 40} )
         self.op.HaloPadding3dDict.setValue( {'x' : 10, 'y' : 10, 'z' : 10} )
-        
+         
         pred = self.op.PredictionImage[:].wait()
         if not (pred == self.prediction_volume).all():
             self.logImage(pred, "tiny_blocksize_failed_prediction_")
             assert False, \
                 "Blockwise prediction operator did not produce the same prediction image" \
                 "as the non-blockwise prediction operator!"
-
+ 
     def testZeroHalo(self):
         # If we shrink the halo down to zero, then we get different predictions...
         # This block shape/halo combination will slice through some of the big blocks, causing mis-classification.
         # That's what we expect.
         self.op.BlockShape3dDict.setValue( {'x' : 42, 'y' : 42, 'z' : 42} )
         self.op.HaloPadding3dDict.setValue( {'x' : 0, 'y' : 0, 'z' : 0} )
-        
+         
         blockwise_prediction_volume = self.op.PredictionImage[:].wait()
         assert not (blockwise_prediction_volume == self.prediction_volume).all(), \
             "Blockwise prediction operator produced the same prediction image" \
             "as the non-blockwise prediction operator, despite having a pathological block/halo combination!"
-            
-                
+             
+                 
     def setUpSources(self):
         """
         Create big cubes with starting corners at multiples of 20, and small cubes offset 10 from that.

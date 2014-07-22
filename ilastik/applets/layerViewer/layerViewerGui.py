@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 #Python
 import os
 from functools import partial
@@ -98,12 +102,6 @@ class LayerViewerGui(QWidget):
         # Unsubscribe to all signals
         for fn in self.__cleanup_fns:
             fn()
-
-        # Stop rendering
-        for scene in self.editor.imageScenes:
-            if scene._tileProvider:
-                scene._tileProvider.notifyThreadsToStop()
-            scene.joinRendering()
             
         for op in self._orphanOperators:
             op.cleanUp()
@@ -247,102 +245,68 @@ class LayerViewerGui(QWidget):
     def createStandardLayerFromSlot(cls, slot, lastChannelIsAlpha=False):
         """
         Convenience function.
-        Generates a volumina layer using the given slot.
-        Chooses between grayscale or RGB depending on the number of channels in the slot.
-
-        * If *slot* has 1 channel or more than 4 channels, a GrayscaleLayer is created.
-        * If *slot* has 2 non-alpha channels, an RGBALayer is created with R and G channels.
-        * If *slot* has 3 non-alpha channels, an RGBALayer is created with R,G, and B channels.
-        * If *slot* has 4 channels, an RGBA layer is created
+        Generates a volumina layer using the given slot.  
+        Will be either a GrayscaleLayer or RGBALayer, depending on the channel metadata.
 
         :param slot: The slot to generate a layer from
         :param lastChannelIsAlpha: If True, the last channel in the slot is assumed to be an alpha channel.
-                                   If slot has 4 channels, this parameter has no effect.
         """
-        def getRange(meta):
-            return meta.drange
-                    
-        def getNormalize(meta):
-            if meta.drange is not None and meta.normalizeDisplay is False:
-                # do not normalize if the user provided a range and set normalization to False
-                return False
-            else:
-                # If we don't know the range of the data and normalization is allowed
-                # by the user, create a layer that is auto-normalized.
-                # See volumina.pixelpipeline.datasources for details.
-                #
-                # Even in the case of integer data, which has more than 255 possible values,
-                # (like uint16), it seems reasonable to use this setting as default
-                return None # means autoNormalize
-                   
-        shape = slot.meta.shape
-        
-        try:
-            channelAxisIndex = slot.meta.axistags.index('c')
-            #assert channelAxisIndex < len(slot.meta.axistags), \
-            #    "slot %s has shape = %r, axistags = %r, but no channel dimension" \
-            #    % (slot.name, slot.meta.shape, slot.meta.axistags)
-            numChannels = shape[channelAxisIndex]
-            axisinfo = slot.meta.axistags["c"].description
-        except:
-            numChannels = 1
-            axisinfo = "" # == no info on channels given
-        
-        rindex = None
-        bindex = None
-        gindex = None
-        aindex = None
-        
-        if axisinfo == "" or axisinfo == "default":
-            # Examine channel dimension to determine Grayscale vs. RGB
-
-            if numChannels == 4:
-                lastChannelIsAlpha = True
+        numChannels = 1
+        display_mode = "default"
+        c_index = slot.meta.axistags.index('c')
+        if c_index < len(slot.meta.axistags):
+            numChannels = slot.meta.shape[c_index]
+            display_mode = slot.meta.axistags["c"].description
                 
+        if display_mode == "" or display_mode == "default":
+            ## Figure out whether the default should be rgba or grayscale
             if lastChannelIsAlpha:
-                assert numChannels <= 4, "Can't display a standard layer with more than four channels (with alpha).  Your image has {} channels.".format(numChannels)
+                assert numChannels <= 4, \
+                    "This function doesn't support alpha for slots with more than 4 channels.  "\
+                    "Your image has {} channels.".format(numChannels)
 
-            if numChannels == 1 or (numChannels > 4):
-                assert not lastChannelIsAlpha, "Can't have an alpha channel if there is no color channel"
-                source = LazyflowSource(slot)
-                layer = GrayscaleLayer(source)
-                layer.numberOfChannels = numChannels
-                normalize = getNormalize(slot.meta)
-                range = getRange(slot.meta)
-                layer.set_range(0,range)
-                layer.set_normalize(0,normalize)
-                return layer
-
+            # Automatically select Grayscale or RGBA based on number of channels
+            if numChannels == 2 or numChannels == 3:
+                display_mode = "rgba"
+            else:
+                display_mode = "grayscale"
+                
+        if display_mode == "grayscale":
+            assert not lastChannelIsAlpha, "Can't have an alpha channel if there is no color channel"
+            return cls._create_grayscale_layer_from_slot( slot, numChannels )
+        elif display_mode == "rgba":
             assert numChannels > 2 or (numChannels == 2 and not lastChannelIsAlpha), \
-                "Unhandled combination of channels.  numChannels={}, lastChannelIsAlpha={}, axistags={}".format( numChannels, lastChannelIsAlpha, slot.meta.axistags )
-            
-            rindex = 0
-            gindex = 1
-            if numChannels > 3 or (numChannels == 3 and not lastChannelIsAlpha):
-                bindex = 2
-            if lastChannelIsAlpha:
-                aindex = numChannels-1
-        
-        elif axisinfo == "grayscale":
-            source = LazyflowSource(slot)
-            layer = GrayscaleLayer(source)
-            layer.numberOfChannels = numChannels
-            normalize = getNormalize(slot.meta)
-            range = getRange(slot.meta)
-            layer.set_range(0,range)
-            layer.set_normalize(0,normalize)
-            return layer
-        
-        elif axisinfo == "rgba":
-            rindex = 0
-            if numChannels>=2:
-                gindex = 1
-            if numChannels>=3:
-                bindex = 2
-            if numChannels>=4:
-                aindex = numChannels-1
+                "Unhandled combination of channels.  numChannels={}, lastChannelIsAlpha={}, axistags={}"\
+                .format( numChannels, lastChannelIsAlpha, slot.meta.axistags )
+            return cls._create_rgba_layer_from_slot(slot, numChannels, lastChannelIsAlpha)
         else:
             raise RuntimeError("unknown channel display mode")
+
+    @classmethod
+    def _create_grayscale_layer_from_slot(cls, slot, n_channels):
+        source = LazyflowSource(slot)
+        layer = GrayscaleLayer(source)
+        layer.numberOfChannels = n_channels
+        layer.set_range(0, slot.meta.drange)
+        normalize = cls._should_normalize_display(slot)
+        layer.set_normalize( 0, normalize )
+        return layer
+        
+    @classmethod
+    def _create_rgba_layer_from_slot(cls, slot, numChannels, lastChannelIsAlpha):
+        bindex = aindex = None
+        rindex, gindex = 0,1
+        if numChannels > 3 or (numChannels == 3 and not lastChannelIsAlpha):
+            bindex = 2
+        if lastChannelIsAlpha:
+            aindex = numChannels-1
+
+        if numChannels>=2:
+            gindex = 1
+        if numChannels>=3:
+            bindex = 2
+        if numChannels>=4:
+            aindex = numChannels-1
 
         redSource = None
         if rindex is not None:
@@ -362,11 +326,11 @@ class LayerViewerGui(QWidget):
         
         blueSource = None
         if bindex is not None:
-                blueProvider = OpSingleChannelSelector(parent=slot.getRealOperator().parent)
-                blueProvider.Input.connect(slot)
-                blueProvider.Index.setValue( bindex )
-                blueSource = LazyflowSource( blueProvider.Output )
-                blueSource.additional_owned_ops.append( blueProvider )
+            blueProvider = OpSingleChannelSelector(parent=slot.getRealOperator().parent)
+            blueProvider.Input.connect(slot)
+            blueProvider.Index.setValue( bindex )
+            blueSource = LazyflowSource( blueProvider.Output )
+            blueSource.additional_owned_ops.append( blueProvider )
 
         alphaSource = None
         if aindex is not None:
@@ -377,17 +341,30 @@ class LayerViewerGui(QWidget):
             alphaSource.additional_owned_ops.append( alphaProvider )
         
         layer = RGBALayer( red=redSource, green=greenSource, blue=blueSource, alpha=alphaSource)
-        
-
-        
-        normalize = getNormalize(slot.meta)
-        range = getRange(slot.meta)
+        normalize = cls._should_normalize_display(slot)
         for i in xrange(4):
             if [redSource,greenSource,blueSource,alphaSource][i]:
-                layer.set_range(i,range)
-                layer.set_normalize(i,normalize)
+                layer.set_range(i, slot.meta.drange)
+                layer.set_normalize(i, normalize)
 
         return layer
+    
+    def _get_numchannels(self, slot, n_channels):
+        pass
+    
+    @classmethod
+    def _should_normalize_display(cls, slot):
+        if slot.meta.drange is not None and slot.meta.normalizeDisplay is False:
+            # do not normalize if the user provided a range and set normalization to False
+            return False
+        else:
+            # If we don't know the range of the data and normalization is allowed
+            # by the user, create a layer that is auto-normalized.
+            # See volumina.pixelpipeline.datasources for details.
+            #
+            # Even in the case of integer data, which has more than 255 possible values,
+            # (like uint16), it seems reasonable to use this setting as default
+            return None # means autoNormalize
 
     @threadRouted
     def updateAllLayers(self, slot=None):
@@ -424,11 +401,9 @@ class LayerViewerGui(QWidget):
                        
             # Find the xyz midpoint
             midpos5d = [x/2 for x in newDataShape]
-            midpos3d = midpos5d[1:4]
-
-            # Start in the center of the volume
-            self.editor.posModel.slicingPos = midpos3d
-            self.editor.navCtrl.panSlicingViews( midpos3d, [0,1,2] )
+            
+            # center viewer there
+            self.setViewerPos(midpos5d)
 
         # Old layers are deleted if
         # (1) They are not in the new set or
@@ -484,6 +459,39 @@ class LayerViewerGui(QWidget):
                 if newDataShape is None:
                     newDataShape = self.getVoluminaShapeForSlot(slot)
         return newDataShape
+
+    @threadRouted
+    def setViewerPos(self, pos, setTime=False, setChannel=False):
+        try:
+            pos5d = self.validatePos(pos, dims=5)
+            
+            # set xyz position
+            pos3d = pos5d[1:4]
+            self.editor.posModel.slicingPos = pos3d
+            
+            # set time and channel if requested
+            if setTime:
+                self.editor.posModel.time = pos5d[0]
+            if setChannel:
+                self.editor.posModel.channel = pos5d[4]
+
+            self.editor.navCtrl.panSlicingViews( pos3d, [0,1,2] )
+        except Exception, e:
+            logger.warn("Failed to navigate to position (%s): %s" % (pos, e))
+        return
+    
+    def validatePos(self, pos, dims=5):
+        if not isinstance(pos, list):
+            raise Exception("Wrong data format")
+        if not len(pos) == dims:
+            raise Exception("Wrong data format")
+        ds = self.editor.dataShape
+        for i in range(dims):
+            try:
+                pos[i] = max(0, min(int(pos[i]), ds[i]-1))
+            except:
+                pos[i] = 0                
+        return pos
 
     @classmethod
     def getVoluminaShapeForSlot(self, slot):

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>1028</height>
+    <height>1096</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -334,6 +334,19 @@
      </item>
      <item>
       <layout class="QGridLayout" name="gridLayout_2">
+       <item row="9" column="1">
+        <widget class="QLineEdit" name="timeoutBox"/>
+       </item>
+       <item row="7" column="1">
+        <widget class="QSpinBox" name="appearanceBox">
+         <property name="maximum">
+          <number>9999999</number>
+         </property>
+         <property name="value">
+          <number>500</number>
+         </property>
+        </widget>
+       </item>
        <item row="2" column="1">
         <widget class="QDoubleSpinBox" name="divThreshBox">
          <property name="maximum">
@@ -373,6 +386,9 @@
        </item>
        <item row="5" column="0">
         <widget class="QLabel" name="label_6">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The weight to&lt;span style=&quot; font-weight:600;&quot;&gt; balance division probabilities&lt;/span&gt; against transitions and detections. High values (≥10) give more weight to the division classifier, low values (≤10) will weigh the transition and detection probabilities higher than the division probabilities.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="text">
           <string>Division Weight</string>
          </property>
@@ -390,6 +406,9 @@
        </item>
        <item row="6" column="0">
         <widget class="QLabel" name="label_7">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The weight to&lt;span style=&quot; font-weight:600;&quot;&gt; balance transition probabilities&lt;/span&gt; against divisions and detections. High values (≥10) will make transitions overrule division and detection probabilities, low values (≤10) will weigh detection and division classifier higher than transition probabilities.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="text">
           <string>Transition Weight</string>
          </property>
@@ -404,7 +423,7 @@
           <number>7</number>
          </property>
          <property name="value">
-          <number>2</number>
+          <number>1</number>
          </property>
         </widget>
        </item>
@@ -420,6 +439,9 @@
        </item>
        <item row="3" column="0">
         <widget class="QLabel" name="label_3">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Specify how many objects are maximally contained in one connected component. For instance, if all objects are segmented without any occlusions (or merging), choose 1. If maximally 2 objects are touching in the segmentation, choose 2... Note that this number has to be consistent with the number of classes chosen in the object count classification if the count classifier is selected below.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="text">
           <string>Max. Object per Merger</string>
          </property>
@@ -428,10 +450,10 @@
        <item row="1" column="1">
         <widget class="QSpinBox" name="maxDistBox">
          <property name="maximum">
-          <number>1000</number>
+          <number>99999</number>
          </property>
          <property name="value">
-          <number>30</number>
+          <number>200</number>
          </property>
         </widget>
        </item>
@@ -442,15 +464,65 @@
          </property>
         </widget>
        </item>
-       <item row="7" column="0">
+       <item row="10" column="0">
         <widget class="QLabel" name="label_20">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Absolute number of pixels at the border of the field of view where appearance and disappearance cost less (linearly).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="text">
           <string>Border Width (abs.)</string>
          </property>
         </widget>
        </item>
-       <item row="7" column="1">
-        <widget class="QSpinBox" name="bordWidthBox"/>
+       <item row="10" column="1">
+        <widget class="QSpinBox" name="bordWidthBox">
+         <property name="maximum">
+          <number>999999</number>
+         </property>
+         <property name="value">
+          <number>10</number>
+         </property>
+        </widget>
+       </item>
+       <item row="9" column="0">
+        <widget class="QLabel" name="label_21">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Timeout in seconds for the &lt;span style=&quot; font-weight:600;&quot;&gt;optimization&lt;/span&gt;. Leave empty for not specifying a timeout (then, the best solution will be found no matter how long it takes). Note that the tracking can take much longer due to pre- and post-processing steps.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>Timeout (sec.)</string>
+         </property>
+        </widget>
+       </item>
+       <item row="8" column="1">
+        <widget class="QSpinBox" name="disappearanceBox">
+         <property name="maximum">
+          <number>9999999</number>
+         </property>
+         <property name="value">
+          <number>500</number>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="0">
+        <widget class="QLabel" name="label_22">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Costs to allow one object to &lt;span style=&quot; font-weight:600;&quot;&gt;appear&lt;/span&gt;, i.e. to start a new track other than at the beginning of the time range or the borders of the field of view. High values (≥500) forbid object appearances if possible.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>Appearance Cost</string>
+         </property>
+        </widget>
+       </item>
+       <item row="8" column="0">
+        <widget class="QLabel" name="label_23">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Costs to allow one object to &lt;span style=&quot; font-weight:600;&quot;&gt;disappear&lt;/span&gt;, i.e. to terminate an existing track other than at the end of the time range or the borders of the field of view. High values (≥500) forbid object disappearances if possible.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>Disappearance Cost</string>
+         </property>
+        </widget>
        </item>
       </layout>
      </item>
@@ -468,9 +540,15 @@
       </widget>
      </item>
      <item>
-      <widget class="QRadioButton" name="sizeDepBox">
+      <widget class="QRadioButton" name="classifierPriorBox">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Use the object count classifier for prior probabilities in the tracking model. If this option is chosen, the object count classifier must be trained.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
        <property name="text">
-        <string>Size Dependent Prior</string>
+        <string>Use object count classifier</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
        </property>
        <attribute name="buttonGroup">
         <string notr="true">buttonGroup</string>
@@ -478,12 +556,12 @@
       </widget>
      </item>
      <item>
-      <widget class="QRadioButton" name="classifierPriorBox">
-       <property name="text">
-        <string>Classifier Prior</string>
+      <widget class="QRadioButton" name="sizeDepBox">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Use object sizes to derive prior probabilities for the object count. If this option is chosen, the object count classifier will not be considered.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
-       <property name="checked">
-        <bool>true</bool>
+       <property name="text">
+        <string>Use size dependent probabilities</string>
        </property>
        <attribute name="buttonGroup">
         <string notr="true">buttonGroup</string>
@@ -502,8 +580,11 @@
      </item>
      <item>
       <widget class="QCheckBox" name="divisionsBox">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Tick if the objects to be tracked are able to divide. For instance, this option should be checked for the tracking of proliferating cells.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
        <property name="text">
-        <string>With Divisions</string>
+        <string>Divisible Objects</string>
        </property>
        <property name="checked">
         <bool>true</bool>
@@ -525,6 +606,9 @@
      </item>
      <item>
       <widget class="QCheckBox" name="mergerResolutionBox">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If mergers are considered in the tracking (Max. Object per Merger &amp;gt; 1), this option will resolve original identities of objects after &amp;quot;demerging&amp;quot;. Note that this involves another optimization step which may take long.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
        <property name="text">
         <string>With Merger Resolution</string>
        </property>
@@ -617,6 +701,9 @@
        </item>
        <item row="5" column="0">
         <widget class="QLabel" name="label_19">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Only track objects with sizes within the given range.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <property name="text">
           <string>Size</string>
          </property>
@@ -675,6 +762,9 @@
          <weight>75</weight>
          <bold>true</bold>
         </font>
+       </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:400;&quot;&gt;Configure here the scales of the dimensions. For instance, if the resolution of the pixels is (dx,dy,dz) = (1µm,0.8µm,0.5µm), then the scales to enter should be (x,y,z)=(1,1.25,2).&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
         <string>Data scales</string>
@@ -757,7 +847,7 @@
         <bool>true</bool>
        </property>
        <property name="text">
-        <string>Export Results as h5 ...</string>
+        <string>Export Results as h5 sequence ...</string>
        </property>
       </widget>
      </item>
@@ -767,7 +857,7 @@
         <bool>true</bool>
        </property>
        <property name="text">
-        <string>Export Results as tif ...</string>
+        <string>Export Results as tif sequence ...</string>
        </property>
       </widget>
      </item>
@@ -782,9 +872,13 @@
   <tabstop>avgSizeBox</tabstop>
   <tabstop>divWeightBox</tabstop>
   <tabstop>transWeightBox</tabstop>
+  <tabstop>appearanceBox</tabstop>
+  <tabstop>disappearanceBox</tabstop>
+  <tabstop>timeoutBox</tabstop>
+  <tabstop>bordWidthBox</tabstop>
   <tabstop>hardPriorBox</tabstop>
-  <tabstop>sizeDepBox</tabstop>
   <tabstop>classifierPriorBox</tabstop>
+  <tabstop>sizeDepBox</tabstop>
   <tabstop>trackletsBox</tabstop>
   <tabstop>divisionsBox</tabstop>
   <tabstop>opticalBox</tabstop>
@@ -804,6 +898,7 @@
   <tabstop>z_scale</tabstop>
   <tabstop>exportButton</tabstop>
   <tabstop>exportTifButton</tabstop>
+  <tabstop>TrackButton</tabstop>
  </tabstops>
  <resources/>
  <connections/>

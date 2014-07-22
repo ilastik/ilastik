@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 #Python
 from copy import copy
 import collections
@@ -28,7 +32,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List, SubRegion
 from lazyflow.roi import roiToSlice, sliceToRoi
-from lazyflow.operators import OpCachedLabelImage, OpMultiArraySlicer2, OpMultiArrayStacker, OpArrayCache, OpCompressedCache
+from lazyflow.operators import OpLabelVolume, OpMultiArraySlicer2, OpMultiArrayStacker, OpArrayCache, OpCompressedCache
 
 import logging
 logger = logging.getLogger(__name__)
@@ -656,19 +660,21 @@ class OpObjectExtraction(Operator):
         super(OpObjectExtraction, self).__init__(*args, **kwargs)
 
         # internal operators
-        self._opLabelImage = OpCachedLabelImage(parent=self)
-        self._opLabelImage.name = "OpObjectExtraction._opLabelImage"
+        #TODO BinaryImage is not binary in some workflows, could be made more
+        # efficient
+        self._opLabelVolume = OpLabelVolume(parent=self)
+        self._opLabelVolume.name = "OpObjectExtraction._opLabelVolume"
         self._opRegFeats = OpCachedRegionFeatures(parent=self)
         self._opRegFeatsAdaptOutput = OpAdaptTimeListRoi(parent=self)
         self._opObjectCenterImage = OpObjectCenterImage(parent=self)
 
         # connect internal operators
-        self._opLabelImage.Input.connect(self.BinaryImage)
-        self._opLabelImage.InputHdf5.connect(self.LabelInputHdf5)
-        self._opLabelImage.BackgroundLabels.connect(self.BackgroundLabels)
+        self._opLabelVolume.Input.connect(self.BinaryImage)
+        self._opLabelVolume.InputHdf5.connect(self.LabelInputHdf5)
+        self._opLabelVolume.Background.connect(self.BackgroundLabels)
 
         self._opRegFeats.RawImage.connect(self.RawImage)
-        self._opRegFeats.LabelImage.connect(self._opLabelImage.Output)
+        self._opRegFeats.LabelImage.connect(self._opLabelVolume.CachedOutput)
         self._opRegFeats.Features.connect(self.Features)
         self.RegionFeaturesCleanBlocks.connect(self._opRegFeats.CleanBlocks)
 
@@ -684,12 +690,12 @@ class OpObjectExtraction(Operator):
         self._opCenterCache.Input.connect(self._opObjectCenterImage.Output)
 
         # connect outputs
-        self.LabelImage.connect(self._opLabelImage.Output)
+        self.LabelImage.connect(self._opLabelVolume.CachedOutput)
         self.ObjectCenterImage.connect(self._opCenterCache.Output)
         self.RegionFeatures.connect(self._opRegFeatsAdaptOutput.Output)
         self.BlockwiseRegionFeatures.connect(self._opRegFeats.Output)
-        self.LabelOutputHdf5.connect(self._opLabelImage.OutputHdf5)
-        self.CleanLabelBlocks.connect(self._opLabelImage.CleanBlocks)
+        self.LabelOutputHdf5.connect(self._opLabelVolume.OutputHdf5)
+        self.CleanLabelBlocks.connect(self._opLabelVolume.CleanBlocks)
         self.ComputedFeatureNames.connect(self.Features)
 
         # As soon as input data is available, check its constraints
@@ -731,3 +737,74 @@ class OpObjectExtraction(Operator):
         # Nothing to do here.
         # Our Input slots are directly fed into the cache,
         #  so all calls to __setitem__ are forwarded automatically
+
+    @staticmethod
+    def createExportTable(features):
+        ''' This function takes the features as produced by the RegionFeatures slot
+            and transforms them into a flat table, which is later used for exporting
+            object-level data to csv and h5 files. The columns of the table are as follows:
+            (t, object index, feature 1, feature 2, ...). Row-wise object index increases
+            faster than time, so first all objects for time 0 are exported, then for time 1, etc  '''
+       
+        ntimes = len(features.keys())
+        nplugins = len(features[0].keys())
+        nchannels = 0
+        nobjects = []
+        dtype_names = []
+        dtype_types = []
+        for t, plugin_name in features.iteritems():
+            feat0 = plugin_name.values()[0]
+            feat0_name = feat0.keys()[0]
+            feat0_array = feat0.values()[0]
+            nobjects.append(feat0_array.shape[0])
+                
+                
+        for plugin_name, plugins in features[0].iteritems():
+            for feature_name, feature_array in plugins.iteritems():
+                feature_channels = feature_array.shape[-1]
+                nchannels += feature_channels
+                if feature_channels==1:
+                    dtype_names.append(plugin_name + ", "+feature_name)
+                    dtype_types.append(feature_array.dtype)
+                else:
+                    for ich in range(feature_channels):
+                        dtype_names.append(plugin_name + ", "+ feature_name+"_ch_%d"%ich)
+                        dtype_types.append(feature_array.dtype)
+                    
+        nchannels += 2 #true channels + time value + explicit object id
+        
+        dtype_names.insert(0, "Time")
+        dtype_names.insert(0, "Object id")
+        
+        # Some versions of numpy can't handle unicode names.
+        # Convert to str.
+        dtype_names = map(str, dtype_names)
+        
+        dtype_types.insert(0, np.dtype(np.uint32).str)
+        dtype_types.insert(0, np.dtype(np.uint32).str)
+        
+        nobjects_total = sum(nobjects)
+        
+        table = np.zeros(nobjects_total, dtype = {'names': dtype_names, 'formats': dtype_types})
+        
+        #table = np.zeros(4, dtype = {'names': ['Mean', 'Coord<Maximum>_ch_0'], \
+        #                           'formats': [np.dtype(np.uint32), np.dtype(np.uint8)]})
+        
+        
+        start = 0
+        finish = start
+        for itime in range(ntimes):
+            finish = start+nobjects[itime]
+            table["Object id"][start: finish] = np.arange(nobjects[itime])
+            table["Time"][start: finish] = itime
+            nfeat = 2
+            for plugin_name, plugins in features[itime].iteritems():
+                for feature_name, feature_array in plugins.iteritems():
+                    nchannels = feature_array.shape[-1]
+                    for ich in range(nchannels):
+                        table[dtype_names[nfeat]][start: finish] = feature_array[:, ich]
+                        nfeat += 1
+            start = finish
+        
+        return table
+        

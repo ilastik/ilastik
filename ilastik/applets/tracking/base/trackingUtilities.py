@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import h5py
 import numpy as np
 import os.path as path
@@ -64,8 +68,8 @@ def write_dict_value(dic, key, value):
 
 def get_events(eventsVector):
     events = {}
-    for t in range(1,len(eventsVector)+1): # +1 since the current pgmlink-eventsVector has length #timesteps-1
-        events[str(t)] = get_events_at(eventsVector, t-1)
+    for t in range(len(eventsVector)):
+        events[str(t)] = get_events_at(eventsVector, t)
     return events
 
 def get_events_at(eventsVector, t):  
@@ -88,7 +92,7 @@ def get_events_at(eventsVector, t):
         if hasattr(pgmlink.EventType, "Merger") and event.type == pgmlink.EventType.Merger:                    
             merger.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
         if hasattr(pgmlink.EventType, "MultiFrameMove") and event.type == pgmlink.EventType.MultiFrameMove:                    
-             mult_mov.append((event.traxel_ids[0], event.traxel_ids[1], event.traxel_ids[2], event.energy))             
+            mult_mov.append((event.traxel_ids[0], event.traxel_ids[1], event.traxel_ids[2], event.energy))
 
     # convert to ndarray for better indexing
     events_at = {}

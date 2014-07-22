@@ -1,20 +1,24 @@
 
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 from opDataSelection import OpDataSelection, DatasetInfo
 from lazyflow.operators.ioOperators import OpStackToH5Writer, OpH5WriterBigDataset
 
@@ -159,12 +163,15 @@ class DataSelectionSerializer( AppletSerializer ):
                     infoGroup.create_dataset('datasetId', data=datasetInfo.datasetId)
                     infoGroup.create_dataset('allowLabels', data=datasetInfo.allowLabels)
                     infoGroup.create_dataset('nickname', data=datasetInfo.nickname)
+                    infoGroup.create_dataset('fromstack', data=datasetInfo.fromstack)
                     if datasetInfo.drange is not None:
                         infoGroup.create_dataset('drange', data=datasetInfo.drange)
                     if datasetInfo.axistags is not None:
                         infoGroup.create_dataset('axistags', data=datasetInfo.axistags.toJSON())
                         axisorder = "".join(tag.key for tag in datasetInfo.axistags)
                         infoGroup.create_dataset('axisorder', data=axisorder)
+                    if datasetInfo.subvolume_roi is not None:
+                        infoGroup.create_dataset('subvolume_roi', data=datasetInfo.subvolume_roi)
 
         self._dirty = False
 
@@ -174,7 +181,7 @@ class DataSelectionSerializer( AppletSerializer ):
         Does not update the topLevelOperator.
         
         :param info: A DatasetInfo object.
-                     Note: info.filePath must be a stack files must be separated by '//' tokens.
+                     Note: info.filePath must be a str which lists the stack files, delimited with os.path.pathsep
                      Note: info will be MODIFIED by this function.  Use the modified info when assigning it to a dataset.
         """
         try:
@@ -186,12 +193,13 @@ class DataSelectionSerializer( AppletSerializer ):
 
             globstring = info.filePath
             info.location = DatasetInfo.Location.ProjectInternal
-            firstPathParts = PathComponents(info.filePath.split('//')[0])
+            firstPathParts = PathComponents(info.filePath.split(os.path.pathsep)[0])
             info.filePath = firstPathParts.externalDirectory + '/??' + firstPathParts.extension
+            info.fromstack = True
 
             # Use absolute path
             cwd = self.topLevelOperator.WorkingDirectory
-            if '//' not in globstring and not os.path.isabs(globstring):
+            if os.path.pathsep not in globstring and not os.path.isabs(globstring):
                 globstring = os.path.normpath( os.path.join(cwd, globstring) )
             
             opWriter = OpStackToH5Writer(parent=self.topLevelOperator.parent, graph=self.topLevelOperator.graph)
@@ -311,6 +319,13 @@ class DataSelectionSerializer( AppletSerializer ):
             datasetInfo.nickname = PathComponents(datasetInfo.filePath).filenameBase
         
         try:
+            datasetInfo.fromstack = infoGroup['fromstack'].value
+        except KeyError:
+            # Guess based on the storage setting and original filepath
+            datasetInfo.fromstack = ( datasetInfo.location == DatasetInfo.Location.ProjectInternal
+                                      and ( ('?' in datasetInfo._filePath) or (os.path.pathsep in datasetInfo._filePath) ) )
+
+        try:
             tags = vigra.AxisTags.fromJSON( infoGroup['axistags'].value )
             datasetInfo.axistags = tags
         except KeyError:
@@ -320,6 +335,12 @@ class DataSelectionSerializer( AppletSerializer ):
                 datasetInfo.axistags = vigra.defaultAxistags(axisorder)
             except KeyError:
                 pass
+        
+        try:
+            start, stop = map( tuple, infoGroup['subvolume_roi'].value )
+            datasetInfo.subvolume_roi = (start, stop)
+        except KeyError:
+            pass
         
         # If the data is supposed to be in the project,
         #  check for it now.

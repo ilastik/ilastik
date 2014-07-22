@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import ilastik.ilastik_logging
 ilastik.ilastik_logging.default_config.init()
 
@@ -25,6 +29,8 @@ from ilastik.applets.objectClassification.opObjectClassification import \
     OpRelabelSegmentation, OpObjectTrain, OpObjectPredict, OpObjectClassification, \
     OpBadObjectsToWarningMessage, OpMaxLabel
     
+from lazyflow.classifiers import ParallelVigraRfLazyflowClassifier
+
 from ilastik.applets import objectExtraction
 from ilastik.applets.objectExtraction.opObjectExtraction import \
     OpRegionFeatures, OpAdaptTimeListRoi, OpObjectExtraction
@@ -123,11 +129,8 @@ class TestOpObjectTrain(unittest.TestCase):
        
         self.assertTrue(self.op.Classifier.ready(), "The output of operator {} was not ready after connections took place.".format(self.op))
         
-        results = self.op.Classifier[:].wait()
-        self.assertEquals(len(results), self.nRandomForests)
-        
-        for randomForest in results:
-            self.assertIsInstance(randomForest, vigra.learning.RandomForest)
+        classifier = self.op.Classifier.value        
+        self.assertIsInstance(classifier, ParallelVigraRfLazyflowClassifier)
             
             
     def test_train_fail(self):
@@ -272,13 +275,13 @@ class TestFeatureSelection(unittest.TestCase):
 
         
     def test_predict(self):
-        rf = self.trainop.Classifier[0].wait()
+        rf = self.trainop.Classifier.value
         
         #pass a vector of 4 random features. vigra shouldn't complain
         #even though we computed more than 4
         dummy_feats = np.zeros((1,4), dtype=np.float32)
         dummy_feats[:] = 42
-        pred = rf[0].predictProbabilities(dummy_feats)
+        pred = rf.predict_probabilities(dummy_feats)
         
 
 class TestOpBadObjectsToWarningMessage(unittest.TestCase):
@@ -412,6 +415,12 @@ class TestFullOperator(unittest.TestCase):
     def test(self):
         self.assertTrue(self.classOp.Predictions.ready(), "Prediction slot of OpObjectClassification wasn't ready.")
         probs = self.classOp.PredictionImages[0][:].wait()
+        
+    def testExport(self):
+        table = self.classOp.createExportTable(0, [])
+        print table["Object id"]
+        print table["Default features, RegionCenter_ch_1"]
+        print table["Prediction"]
         
     def test_unfavorable_conditions(self):
         #TODO write test with not so nice input

@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import os
 import sys
 import argparse
@@ -66,23 +70,20 @@ def getlist(a, n=3):
     assert len(a)==n
     return a
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate a set of images in various formats for testing.")
-    parser.add_argument('output_dir', help='Directory to write the test images to.  Will be created if necessary')
-    parsed_args = parser.parse_args()
-    
-    output_dir = parsed_args.output_dir
-    
+def create_outdir(output_dir):
     if not os.path.exists(output_dir):
         try:
             os.makedirs(output_dir)
         except:
             sys.stderr("Wasn't able to create output directory: {}".format( output_dir ))
-            sys.exit(1)
+            return False
 
     if not os.path.isdir(output_dir):
         sys.stderr("Output location is not a directory! Giving up.")
-        sys.exit(2)
+        return False
+    return True
+
+def generate_random_data(output_dir):
 
     # Random data of various dimensionalities
     gen_rand_npy(shape=(1,100,100,20,1), dtype=numpy.uint8, drange=(0,255), output_dir=output_dir, filename='rand_uint8_5d.npy' )
@@ -90,7 +91,8 @@ if __name__ == "__main__":
     gen_rand_npy(shape=(100,100,20), dtype=numpy.uint8, drange=(0,255), output_dir=output_dir, filename='rand_uint8_3d.npy' )
     gen_rand_npy(shape=(100,100,20), dtype=numpy.uint8, drange=(0,255), output_dir=output_dir, filename='rand_uint8_3d.npy' )
     gen_rand_npy(shape=(100,100), dtype=numpy.uint8, drange=(0,255), output_dir=output_dir, filename='rand_uint8_2d.npy' )
-
+    
+def generate_cube_data(output_dir):
     ## Volumes suitable for object classification
     
     # Two sizes of cube, offset from eachother
@@ -107,16 +109,15 @@ if __name__ == "__main__":
     intensities[0:50] /= 2 # Left half is not as bright
     gen_cubes_npy( intensities, cube_params, numpy.uint8, output_dir, 'cube_objects_raw.npy' )
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Generate a set of images in various formats for testing.")
+    parser.add_argument('output_dir', help='Directory to write the test images to.  Will be created if necessary')
+    parsed_args = parser.parse_args()
+    
+    output_dir = parsed_args.output_dir
+    
+    if not create_outdir(output_dir):
+        sys.exit(1)
+        
+    generate_random_data(output_dir)
+    generate_cube_data(output_dir)

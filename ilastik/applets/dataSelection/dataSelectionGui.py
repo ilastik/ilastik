@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 #Python
 import os
 import threading
@@ -34,7 +38,7 @@ from volumina.utility import PreferencesManager, encode_from_qstring
 
 #ilastik
 from ilastik.config import cfg as ilastik_config
-from ilastik.utility import bind
+from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from lazyflow.utility.pathHelpers import getPathVariants, PathComponents
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
@@ -368,38 +372,41 @@ class DataSelectionGui(QWidget):
             PreferencesManager().set('DataSelection', 'recent image', fileNames[0])
             try:
                 self.addFileNames(fileNames, roleIndex, startingLane)
-            except RuntimeError as e:
-                QMessageBox.critical(self, "Error loading file", str(e))
+            except Exception as ex:
+                log_exception( logger )
+                QMessageBox.critical(self, "Error loading file", str(ex))
 
     def getImageFileNamesToOpen(self, defaultDirectory):
         """
         Launch an "Open File" dialog to ask the user for one or more image files.
         """
-        file_dialog = QFileDialog(self, "Select Images")
-
         extensions = OpDataSelection.SupportedExtensions
         filter_strs = ["*." + x for x in extensions]
         filters = ["{filt} ({filt})".format(filt=x) for x in filter_strs]
         filt_all_str = "Image files (" + ' '.join(filter_strs) + ')'
-        file_dialog.setFilters([filt_all_str] + filters)
 
-        # do not display file types associated with a filter
-        # the line for "Image files" is too long otherwise
-        file_dialog.setNameFilterDetailsVisible(False)
-        # select multiple files
-        file_dialog.setFileMode(QFileDialog.ExistingFiles)
-        file_dialog.setDirectory( defaultDirectory )
+        fileNames = []
         
         if ilastik_config.getboolean("ilastik", "debug"):
+            # use Qt dialog in debug mode (more portable?)
+            file_dialog = QFileDialog(self, "Select Images")
             file_dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+            # do not display file types associated with a filter
+            # the line for "Image files" is too long otherwise
+            file_dialog.setFilters([filt_all_str] + filters)
+            file_dialog.setNameFilterDetailsVisible(False)
+            # select multiple files
+            file_dialog.setFileMode(QFileDialog.ExistingFiles)
+            file_dialog.setDirectory( defaultDirectory )
 
-        if file_dialog.exec_():
-            fileNames = file_dialog.selectedFiles()
-            # Convert from QtString to python str
-            fileNames = map(encode_from_qstring, fileNames)
-            return fileNames
-
-        return []
+            if file_dialog.exec_():
+                fileNames = file_dialog.selectedFiles()
+        else:
+            # otherwise, use native dialog of the present platform
+            fileNames = QFileDialog.getOpenFileNames(self, "Select Images", defaultDirectory, filt_all_str)
+        # Convert from QtString to python str
+        fileNames = map(encode_from_qstring, fileNames)
+        return fileNames
 
     def _findFirstEmptyLane(self, roleIndex):
         opTop = self.topLevelOperator
@@ -413,11 +420,16 @@ class DataSelectionGui(QWidget):
                 break
         return firstNewLane
 
-    def addFileNames(self, fileNames, roleIndex, startingLane=None):
+    def addFileNames(self, fileNames, roleIndex, startingLane=None, rois=None):
         """
         Add the given filenames to both the GUI table and the top-level operator inputs.
         If startingLane is None, the filenames will be *appended* to the role's list of files.
+        
+        If rois is provided, it must be a list of (start,stop) tuples (one for each fileName)
         """
+        if rois is not None:
+            assert len(rois) == len(fileNames)
+            
         infos = []
 
         if startingLane is None or startingLane == -1:
@@ -445,8 +457,12 @@ class DataSelectionGui(QWidget):
 
         # Assign values to the new inputs we just allocated.
         # The GUI will be updated by callbacks that are listening to slot changes
-        for _, filePath in enumerate(fileNames):
+        for file_index, filePath in enumerate(fileNames):
             datasetInfo = DatasetInfo()
+            
+            if rois is not None:
+                datasetInfo.subvolume_roi = rois[file_index]
+            
             cwd = self.topLevelOperator.WorkingDirectory.value
             
             absPath, relPath = getPathVariants(filePath, cwd)
@@ -496,12 +512,11 @@ class DataSelectionGui(QWidget):
                     loaded_all = False
                     break
             except Exception as ex:
-                QMessageBox.critical( self, "Dataset Load Error", "Wasn't able to load your dataset into the workflow.  See error log for details." )
-                opTop.DatasetGroup.resize( originalSize )
                 loaded_all = False
-                logger.error(ex)
-                import sys, traceback
-                traceback.print_tb(sys.exc_info()[2])
+                msg = "Wasn't able to load your dataset into the workflow.  See error log for details."
+                log_exception( logger, msg )
+                QMessageBox.critical( self, "Dataset Load Error", msg )
+                opTop.DatasetGroup.resize( originalSize )
 
         # If we succeeded in adding all images, show the first one.
         if loaded_all:
@@ -559,7 +574,7 @@ class DataSelectionGui(QWidget):
             return
 
         info = DatasetInfo()
-        info.filePath = "//".join( files )
+        info.filePath = os.path.pathsep.join( files )
         prefix = os.path.commonprefix(files)
         info.nickname = PathComponents(prefix).filenameBase
         # Add an underscore for each wildcard digit
@@ -605,12 +620,10 @@ class DataSelectionGui(QWidget):
 
     @threadRouted
     def handleFailedStackLoad(self, files, originalNumLanes, exc, exc_info):
-        import traceback
-        traceback.print_tb(exc_info[2])
         msg = "Failed to load stack due to the following error:\n{}".format( exc )
-        msg += "Attempted stack files were:"
-        for f in files:
-            msg += f + "\n"
+        msg += "\nAttempted stack files were:\n"
+        msg += "\n".join(files)
+        log_exception( logger, msg, exc_info )
         QMessageBox.critical(self, "Failed to load image stack", msg)
         self.topLevelOperator.DatasetGroup.resize(originalNumLanes)
 
@@ -642,14 +655,28 @@ class DataSelectionGui(QWidget):
     
     def addDvidVolume(self, roleIndex, laneIndex):
         # TODO: Provide list of recently used dvid hosts, loaded from user preferences
-        from pydvid.gui.contents_browser import ContentsBrowser
-        browser = ContentsBrowser(["localhost:8000"], parent=self)
-        if browser.exec_() == ContentsBrowser.Rejected:
+        #from pydvid.gui.contents_browser import ContentsBrowser
+        from dvidDataSelectionBrowser import DvidDataSelectionBrowser
+        browser = DvidDataSelectionBrowser(["localhost:8000"], parent=self)
+        if browser.exec_() == DvidDataSelectionBrowser.Rejected:
             return
 
+        rois = None
         hostname, dset_index, volume_name, uuid = browser.get_selection()
-        dvid_url = 'http://{hostname}/api/node/{uuid}/{volume_name}'.format( **locals() )        
-        self.addFileNames([dvid_url], roleIndex, laneIndex)
+        dvid_url = 'http://{hostname}/api/node/{uuid}/{volume_name}'.format( **locals() )
+        subvolume_roi = browser.get_subvolume_roi()
+
+        if subvolume_roi is None:
+            self.addFileNames([dvid_url], roleIndex, laneIndex)
+        else:
+            # In ilastik, we display the dvid volume axes in C-order, despite the dvid convention of F-order
+            # Transpose the subvolume roi to match
+            # (see implementation of OpDvidVolume)
+            start, stop = subvolume_roi
+            start = tuple(reversed(start))
+            stop = tuple(reversed(stop))
+            self.addFileNames([dvid_url], roleIndex, laneIndex, [(start, stop)])
+            
 
 
 

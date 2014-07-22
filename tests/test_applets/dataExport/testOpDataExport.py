@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import os
 import tempfile
 import shutil
@@ -50,9 +54,13 @@ class TestOpDataExport(object):
         rawInfo.filePath = './somefile.h5'
         opExport.RawDatasetInfo.setValue( rawInfo )
 
+        opExport.SelectionNames.setValue(['Mock Export Data'])
+
         data = numpy.random.random( (100,100) ).astype( numpy.float32 ) * 100
         data = vigra.taggedView( data, vigra.defaultAxistags('xy') )
-        opExport.Input.setValue(data)
+        
+        opExport.Inputs.resize(1)
+        opExport.Inputs[0].setValue(data)
 
         sub_roi = [(10, 20), (90, 80)]
         opExport.RegionStart.setValue( sub_roi[0] )

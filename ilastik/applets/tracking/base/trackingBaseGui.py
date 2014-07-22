@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 from PyQt4.QtGui import QColor, QFileDialog, QMessageBox
 
 from volumina.api import LazyflowSource, ColortableLayer
@@ -26,6 +30,8 @@ import logging
 import os
 import numpy as np
 import vigra
+import h5py
+from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.applets.tracking.base.trackingUtilities import relabel,write_events
 from volumina.layer import GrayscaleLayer
 from volumina.utility import encode_from_qstring
@@ -34,6 +40,8 @@ from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.config import cfg as ilastik_config
 from lazyflow.request.request import Request
 from ilastik.utility.gui.threadRouter import threadRouted
+from ilastik.utility import log_exception
+
 
 logger = logging.getLogger(__name__)
 
@@ -68,50 +76,28 @@ class TrackingBaseGui( LayerViewerGui ):
   
         if self.mainOperator.LabelImage.meta.shape:
             self.editor.dataShape = self.mainOperator.LabelImage.meta.shape
-        self.mainOperator.LabelImage.notifyMetaChanged( self._onMetaChanged)
         
         # get the applet reference from the workflow (needed for the progressSignal)
         self.applet = self.mainOperator.parent.parent.trackingApplet
 
 
-    def _onMetaChanged( self, slot ):
-        if slot is self.mainOperator.LabelImage:
-            if slot.meta.shape:                
-                self.editor.dataShape = slot.meta.shape
-
-                maxt = slot.meta.shape[0] - 1
-                self._setRanges()
-                self._drawer.from_time.setValue(0)                
-                self._drawer.to_time.setValue(maxt)
-            
-        if slot is self.mainOperator.RawImage:    
-            if slot.meta.shape and not self.rawsrc:    
-                self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
-                layerraw = GrayscaleLayer( self.rawsrc )
-                layerraw.name = "Raw"
-                self.layerstack.append( layerraw )
-        
-    def _onReady( self, slot ):
-        if slot is self.mainOperator.RawImage:
-            if slot.meta.shape and not self.rawsrc:
-                self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
-                layerraw = GrayscaleLayer( self.rawsrc )    
-                layerraw.name = "Raw"
-                self.layerstack.append( layerraw )
-
-    
     def setupLayers( self ):        
         layers = []
         
-        if "MergerOutput" in self.topLevelOperatorView.outputs and self.topLevelOperatorView.MergerOutput.ready():
+        if "MergerOutput" in self.topLevelOperatorView.outputs:
             ct = colortables.create_default_8bit()
             for i in range(7):
                 ct[i] = self.mergerColors[i].rgba()
-            self.mergersrc = LazyflowSource( self.topLevelOperatorView.MergerOutput )
+
+            if self.topLevelOperatorView.MergerCachedOutput.ready():
+                self.mergersrc = LazyflowSource( self.topLevelOperatorView.MergerCachedOutput )
+            else:
+                self.mergersrc = LazyflowSource( self.topLevelOperatorView.ZeroOutput )
+
             mergerLayer = ColortableLayer( self.mergersrc, ct )
             mergerLayer.name = "Merger"
             mergerLayer.visible = True
-            layers.append(mergerLayer)     
+            layers.append(mergerLayer)
             
         ct = colortables.create_random_16bit()
         ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
@@ -145,9 +131,7 @@ class TrackingBaseGui( LayerViewerGui ):
 
 
         if self.mainOperator.RawImage.ready():
-            self.rawsrc = None
-            self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
-            rawLayer = GrayscaleLayer( self.rawsrc )
+            rawLayer = self.createStandardLayerFromSlot(self.mainOperator.RawImage)
             rawLayer.name = "Raw"        
             layers.insert( len(layers), rawLayer )   
         
@@ -210,9 +194,6 @@ class TrackingBaseGui( LayerViewerGui ):
                 self._drawer.z_scale.setValue(1)
                
         
-        self.topLevelOperatorView.RawImage.notifyReady( self._onReady )
-        self.topLevelOperatorView.RawImage.notifyMetaChanged( self._onMetaChanged )
-        
         return layers
 
 
@@ -245,16 +226,9 @@ class TrackingBaseGui( LayerViewerGui ):
         
 
     def _initColors(self):
-        self.mergerColors = [
-                             QColor(0,0,0,0),
-                             QColor(1,1,1,0),
-                             QColor(255,0,0,255),
-                             QColor(0,255,0,255),
-                             QColor(0,0,255,255),
-                             QColor(255,128,128,255),
-                             QColor(128,255,128,255),
-                             QColor(128,128,255,255)
-                             ]
+        self.mergerColors = [ QColor(c) for c in LabelingGui._createDefault16ColorColorTable()[1:] ]
+        self.mergerColors[0] = QColor(0,0,0,0) # 0 and 1 must be transparent
+        self.mergerColors[1] = QColor(0,0,0,0)
         
     def _labelSetStyleSheet(self, qlabel, qcolor):        
         qlabel.setAutoFillBackground(True)                 
@@ -273,9 +247,8 @@ class TrackingBaseGui( LayerViewerGui ):
         
         if not ilastik_config.getboolean("ilastik", "debug"):
             self._drawer.exportLabel.hide()
-            self._drawer.exportButton.hide()
             self._drawer.exportTifButton.hide()
-            
+
         self._drawer.TrackButton.pressed.connect(self._onTrackButtonPressed)
         self._drawer.exportButton.pressed.connect(self._onExportButtonPressed)
         self._drawer.exportTifButton.pressed.connect(self._onExportTifButtonPressed)
@@ -292,8 +265,6 @@ class TrackingBaseGui( LayerViewerGui ):
 
 
     def _onExportButtonPressed(self):
-        import h5py 
-
         options = QFileDialog.Options()
         if ilastik_config.getboolean("ilastik", "debug"):
             options |= QFileDialog.DontUseNativeDialog
@@ -308,6 +279,9 @@ class TrackingBaseGui( LayerViewerGui ):
             self.applet.progressSignal.emit(x)
         
         def _export():
+            self.applet.busy = True
+            self.applet.appletStateUpdateRequested.emit()
+
             t_from = None
             # determine from_time (it could has been changed in the GUI meanwhile)            
             for t_from, label2color_at in enumerate(self.mainOperator.label2color):
@@ -316,7 +290,8 @@ class TrackingBaseGui( LayerViewerGui ):
                 else:
                     break
             
-            if t_from == None:
+            if t_from is None:
+                self._criticalMessage("There is nothing to export.")
                 return
             
             t_from = int(t_from)
@@ -337,25 +312,26 @@ class TrackingBaseGui( LayerViewerGui ):
             labelImage = labelImage[0,...,0]
             
             try:
-                write_events([], str(directory), t_from, labelImage)
+                # write_events([], str(directory), t_from, labelImage)
                 
                 events = self.mainOperator.EventsVector.value
                 logger.info( "Saving events..." )
                 logger.info( "Length of events " + str(len(events)) )
                 
                 num_files = float(len(events))
-                for i in events.keys():
+
+                for i in sorted(events.keys()):
                     events_at = events[i]
                     i = int(i)
                     t = t_from + i            
-                    key[0] = slice(t+1,t+2)
+                    key[0] = slice(t,t+1)
                     roi = SubRegion(self.mainOperator.LabelImage, key)
                     labelImage = self.mainOperator.LabelImage.get(roi).wait()
                     labelImage = labelImage[0,...,0]
                     if self.withMergers:                
-                        write_events(events_at, str(directory), t+1, labelImage, self.mainOperator.mergers)
+                        write_events(events_at, str(directory), t, labelImage, self.mainOperator.mergers)
                     else:
-                        write_events(events_at, str(directory), t+1, labelImage)
+                        write_events(events_at, str(directory), t, labelImage)
                     _handle_progress(i/num_files * 100)
             except IOError as e:                    
                 self._criticalMessage("Cannot export the tracking results. Maybe these files already exist. "\
@@ -363,13 +339,16 @@ class TrackingBaseGui( LayerViewerGui ):
                 return
                 
         def _handle_finished(*args):
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()
             self._drawer.exportButton.setEnabled(True)
             self.applet.progressSignal.emit(100)
                
         def _handle_failure( exc, exc_info ):
-            import traceback, sys
-            traceback.print_exception(*exc_info)
-            sys.stderr.write("Exception raised during export.  See traceback above.\n")
+            self.applet.busy = False
+            self.applet.appletStateUpdateRequested.emit()
+            msg = "Exception raised during export.  See traceback above.\n"
+            log_exception( logger, msg, exc_info=exc_info )
             self.applet.progressSignal.emit(100)
             self._drawer.exportButton.setEnabled(True)
         
@@ -423,9 +402,8 @@ class TrackingBaseGui( LayerViewerGui ):
             self.applet.progressSignal.emit(100)
                
         def _handle_failure( exc, exc_info ):
-            import traceback, sys
-            traceback.print_exception(*exc_info)
-            sys.stderr.write("Exception raised during export.  See traceback above.\n")
+            msg = "Exception raised during export.  See traceback above.\n"
+            log_exception( logger, msg, exc_info )
             self.applet.progressSignal.emit(100)
             self._drawer.exportTifButton.setEnabled(True)
         

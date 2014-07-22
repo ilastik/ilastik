@@ -1,21 +1,25 @@
 #!/usr/bin/env python2.7
 
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 
 # Standard libs
 import Queue
@@ -48,6 +52,7 @@ from ilastik.clusterOps import OpClusterize, OpTaskWorker
 from ilastik.shell.headless.headlessShell import HeadlessShell
 from lazyflow.utility.pathHelpers import getPathVariants
 from ilastik.workflow import Workflow
+from ilastik.utility import log_exception
 
 import ilastik.workflows # Load all known workflow modules
 
@@ -64,8 +69,7 @@ def main(argv):
     try:
         runWorkflow(parsed_args)
     except:
-        tb = traceback.print_exc()
-        logger.error(tb)
+        log_exception( logger )
         return 1
     finally:
         logger.info("Finished at {}".format( datetime.datetime.now() ))

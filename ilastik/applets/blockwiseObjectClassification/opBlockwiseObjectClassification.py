@@ -1,22 +1,25 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 # Built-in
 import logging
-import collections
 
 # Third-party
 import numpy
@@ -25,14 +28,14 @@ import numpy
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.request import RequestLock
 from lazyflow.roi import getIntersectingBlocks, getBlockBounds, getIntersection, roiToSlice
-from lazyflow.operators import OpSubRegion
+from lazyflow.operators import OpSubRegion, OpMultiArrayStacker
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List
 
 # ilastik
 from ilastik.utility import bind
 from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
-from ilastik.applets.objectClassification.opObjectClassification import OpObjectPredict, OpRelabelSegmentation, OpMaxLabel
+from ilastik.applets.objectClassification.opObjectClassification import OpObjectPredict, OpRelabelSegmentation, OpMaxLabel, OpMultiRelabelSegmentation
 from ilastik.applets.base.applet import DatasetConstraintError
 
 logger = logging.getLogger(__name__)
@@ -48,6 +51,7 @@ class OpSingleBlockObjectPrediction( Operator ):
     LabelsCount = InputSlot()
     
     PredictionImage = OutputSlot()
+    ProbabilityChannelImage = OutputSlot()
     BlockwiseRegionFeatures = OutputSlot() # Indexed by (t,c)
 
     # Schematic:
@@ -58,7 +62,7 @@ class OpSingleBlockObjectPrediction( Operator ):
     #                                      /         \               /                    /
     #                 SelectedFeatures-----           \   Classifier                     /
     #                                                  \                                /
-    #                                                   (labels)------------------------
+    #                                                   (labels)---------------------------> opProbabilityChannelsToImage
 
     # +----------------------------------------------------------------+
     # | input_shape = RawImage.meta.shape                              |
@@ -122,6 +126,17 @@ class OpSingleBlockObjectPrediction( Operator ):
         self._opPredictionImage.Features.connect( self._opExtract.RegionFeatures )
         self._opPredictionImage.ObjectMap.connect( self._opPredict.Predictions )
         
+        self._opProbabilityChannelsToImage = OpMultiRelabelSegmentation( parent=self )
+        self._opProbabilityChannelsToImage.Image.connect( self._opExtract.LabelImage )
+        self._opProbabilityChannelsToImage.ObjectMaps.connect( self._opPredict.ProbabilityChannels )
+        self._opProbabilityChannelsToImage.Features.connect( self._opExtract.RegionFeatures )
+        
+        self._opProbabilityChannelStacker = OpMultiArrayStacker( parent=self )
+        self._opProbabilityChannelStacker.Images.connect( self._opProbabilityChannelsToImage.Output )
+        self._opProbabilityChannelStacker.AxisFlag.setValue('c')
+        
+        self.ProbabilityChannelImage.connect( self._opProbabilityChannelStacker.Output )
+
     def setupOutputs(self):
         tagged_input_shape = self.RawImage.meta.getTaggedShape()
         self._halo_roi = self.computeHaloRoi( tagged_input_shape, self._halo_padding, self.block_roi ) # In global coordinates
@@ -213,6 +228,7 @@ class OpBlockwiseObjectClassification( Operator ):
     HaloPadding3dDict = InputSlot( value={'x' : 64, 'y' : 64, 'z' : 64} ) # A dict of spatial block dims
 
     PredictionImage = OutputSlot()
+    ProbabilityChannelImage = OutputSlot()
     BlockwiseRegionFeatures = OutputSlot()
     
     def __init__(self, *args, **kwargs):
@@ -230,13 +246,19 @@ class OpBlockwiseObjectClassification( Operator ):
             if dict(rawTaggedShape) != dict(binTaggedShape):
                 msg = "Raw data and other data must have equal dimensions (different channels are okay).\n"\
                       "Your datasets have shapes: {} and {}".format( self.RawImage.meta.shape, self.BinaryImage.meta.shape )
-                raise DatasetConstraintError( "Layer Viewer", msg )
+                raise DatasetConstraintError( "Blockwise Object Classification", msg )
         
         self.PredictionImage.meta.assignFrom( self.RawImage.meta )
         self.PredictionImage.meta.dtype = numpy.uint8 # Ultimately determined by meta.mapping_dtype from OpRelabelSegmentation
         prediction_tagged_shape = self.RawImage.meta.getTaggedShape()
         prediction_tagged_shape['c'] = 1
         self.PredictionImage.meta.shape = tuple( prediction_tagged_shape.values() )
+
+        self.ProbabilityChannelImage.meta.assignFrom( self.RawImage.meta )
+        self.ProbabilityChannelImage.meta.dtype = numpy.float32
+        prediction_channels_tagged_shape = self.RawImage.meta.getTaggedShape()
+        prediction_channels_tagged_shape['c'] = self.LabelsCount.value
+        self.ProbabilityChannelImage.meta.shape = tuple( prediction_channels_tagged_shape.values() )
 
         self._block_shape_dict = self.BlockShape3dDict.value
         self._halo_padding_dict = self.HaloPadding3dDict.value
@@ -249,17 +271,19 @@ class OpBlockwiseObjectClassification( Operator ):
         self.BlockwiseRegionFeatures.meta.axistags = self.PredictionImage.meta.axistags
         
     def execute(self, slot, subindex, roi, destination):
-        if slot == self.PredictionImage:
-            return self._executePredictionImage( roi, destination )
+        if slot == self.PredictionImage or slot == self.ProbabilityChannelImage:
+            return self._executePredictionImage( slot, roi, destination )
         elif slot == self.BlockwiseRegionFeatures:
             return self._executeBlockwiseRegionFeatures( roi, destination )
         else:
             assert False, "Unknown output slot: {}".format( slot.name )
 
-    def _executePredictionImage(self, roi, destination):
+    def _executePredictionImage(self, slot, roi, destination):
+        roi_one_channel = numpy.array( (roi.start, roi.stop) )
+        roi_one_channel[...,-1] = (0,1)
         # Determine intersecting blocks
         block_shape = self._getFullShape( self.BlockShape3dDict.value )
-        block_starts = getIntersectingBlocks( block_shape, (roi.start, roi.stop) )
+        block_starts = getIntersectingBlocks( block_shape, roi_one_channel )
         block_starts = map( tuple, block_starts )
 
         # Ensure that block pipelines exist (create first if necessary)
@@ -271,12 +295,22 @@ class OpBlockwiseObjectClassification( Operator ):
         for block_start in block_starts:
             opBlockPipeline = self._blockPipelines[block_start]
             block_roi = opBlockPipeline.block_roi
-            block_intersection = getIntersection( block_roi, (roi.start, roi.stop) )
+            block_intersection = getIntersection( block_roi, roi_one_channel )
             block_relative_intersection = numpy.subtract(block_intersection, block_roi[0])
-            destination_relative_intersection = numpy.subtract(block_intersection, roi.start)
-            
+            destination_relative_intersection = numpy.subtract(block_intersection, roi_one_channel[0])
+
+            block_slot = opBlockPipeline.PredictionImage            
+            if slot == self.ProbabilityChannelImage:
+                block_slot = opBlockPipeline.ProbabilityChannelImage
+                # Add channels back to roi
+                # request all channels
+                block_relative_intersection[...,-1] = (0, opBlockPipeline.ProbabilityChannelImage.meta.shape[-1])
+                # But only write the ones that were specified in the original roi
+                destination_relative_intersection[...,-1] = ( roi.start[-1], roi.stop[-1] )
+
+            # Request the data
             destination_slice = roiToSlice( *destination_relative_intersection )
-            req = opBlockPipeline.PredictionImage( *block_relative_intersection )
+            req = block_slot( *block_relative_intersection )
             req.writeInto( destination[destination_slice] )
             req.wait()
 

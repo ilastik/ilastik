@@ -1,26 +1,33 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import unittest
 import numpy as np
 import vigra
 from lazyflow.graph import Graph
 from lazyflow.operators import OpLabelImage
-from ilastik.applets.objectExtraction.opObjectExtraction import OpAdaptTimeListRoi, OpRegionFeatures
+from ilastik.applets.objectExtraction.opObjectExtraction import OpAdaptTimeListRoi, OpRegionFeatures, OpObjectExtraction
 from ilastik.plugins import pluginManager
+
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning) 
 
 NAME = "Standard Object Features"
 
@@ -114,6 +121,14 @@ class TestOpRegionFeatures(object):
 
         assert np.any(feats[0][NAME]['Count'] != feats[1][NAME]['Count'])
         assert np.any(feats[0][NAME]['RegionCenter'] != feats[1][NAME]['RegionCenter'])
+        
+    def test_table_export(self):
+        opAdapt = OpAdaptTimeListRoi(graph=self.op.graph)
+        opAdapt.Input.connect(self.op.Output)
+
+        feats = opAdapt.Output([0, 1]).wait()
+        print "feature length:", len(feats)
+        OpObjectExtraction.createExportTable(feats)
 
 
 class testOpRegionFeaturesAgainstNumpy(object):

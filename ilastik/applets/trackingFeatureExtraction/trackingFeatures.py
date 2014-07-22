@@ -16,7 +16,7 @@ def angle(v1, v2):
         else:
             radians = math.acos(dotproduct(v1, v2) / (length(v1) * length(v2)))
     except Exception as e:
-        print str(e), ': math.acos(', dotproduct(v1, v2) / (length(v1) * length(v2)), '), v1 =', v1, ', v2 =', v2
+        #print str(e), ': math.acos(', dotproduct(v1, v2) / (length(v1) * length(v2)), '), v1 =', v1, ', v2 =', v2
         radians = 0
     return (radians*180)/math.pi
 
@@ -216,7 +216,7 @@ class FeatureManager( object ):
                 for idx,coord in enumerate(idx_cur):
                     start = max(coord - self.template_size/2, 0)
                     stop = min(coord + self.template_size/2, img_next.shape[idx])
-                    roi.append(slice(start,stop))
+                    roi.append(slice(int(start),int(stop)))
 
 
                 # find all coms in the neighborhood of com_cur

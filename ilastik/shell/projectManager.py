@@ -1,22 +1,27 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import os
 import gc
 import copy
+import platform
 import h5py
 import logging
 import time
@@ -26,6 +31,7 @@ import traceback
 
 import ilastik
 from ilastik import isVersionCompatible
+from ilastik.utility import log_exception
 from ilastik.workflow import getWorkflowFromName
 from lazyflow.utility.timer import Timer, timeLogged
 
@@ -112,6 +118,7 @@ class ProjectManager(object):
         If it doesn't exist, raise a ``ProjectManager.FileMissingError``.
         If its version is outdated, raise a ``ProjectManager.ProjectVersionError.``
         """
+        projectFilePath = os.path.expanduser(projectFilePath)
         logger.info("Opening Project: " + projectFilePath)
 
         if not os.path.exists(projectFilePath):
@@ -182,7 +189,7 @@ class ProjectManager(object):
         try:
             self._closeCurrentProject()
         except Exception,e:
-            traceback.print_exc()
+            log_exception( logger )
             raise e
 
 
@@ -232,8 +239,7 @@ class ProjectManager(object):
             self.currentProjectFile.create_dataset("workflowName",data = self.workflow.workflowName)
 
         except Exception, err:
-            logger.error("Project Save Action failed due to the following exception:")
-            traceback.print_exc()
+            log_exception( logger, "Project Save Action failed due to the exception shown above." )
             raise ProjectManager.SaveError( str(err) )
         finally:
             # save current time
@@ -277,11 +283,10 @@ class ProjectManager(object):
                             itemCopy = copy.copy(item)
                             itemCopy.serializeToHdf5(snapshotFile, snapshotPath)
             except Exception, err:
-                logger.error("Project Save Snapshot Action failed due to the following exception:")
-                traceback.print_exc()
+                log_exception( logger, "Project Save Snapshot Action failed due to the exception printed above." )
                 raise ProjectManager.SaveError(str(err))
             finally:
-                 # save current time
+                # save current time
                 try:
                     del snapshotFile["time"]
                 except:
@@ -309,17 +314,14 @@ class ProjectManager(object):
         """
         # If our project is read-only, we can't be efficient.
         # We have to take a snapshot, then close our current project and open the snapshot
-        if self.currentProjectIsReadOnly:
+        # Furthermore, windows does not permit renaming an open file, so we must take this approach.
+        if self.currentProjectIsReadOnly or platform.system() == 'Windows':
             self._takeSnapshotAndLoadIt(newPath)
             return
 
         oldPath = self.currentProjectPath
         try:
-            self.currentProjectFile.close()
-            if os.path.isfile(newPath):
-                os.remove(newPath)
             os.rename( oldPath, newPath )
-            self.currentProjectFile = h5py.File(newPath)
         except OSError, err:
             msg = 'Could not rename your project file to:\n'
             msg += newPath + '\n'
@@ -402,9 +404,9 @@ class ProjectManager(object):
 
             self.workflow.handleAppletStateUpdateRequested()            
         except:
-            logger.error("Project could not be loaded due to the following exception:")
-            traceback.print_exc()
-            logger.error("Aborting Project Open Action")
+            msg = "Project could not be loaded due to the exception shown above.\n"
+            msg += "Aborting Project Open Action"
+            log_exception( logger, msg )
             self._closeCurrentProject()
             raise
         finally:

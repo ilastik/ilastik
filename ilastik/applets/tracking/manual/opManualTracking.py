@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 from ilastik.applets.base.applet import DatasetConstraintError
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -112,7 +116,7 @@ class OpManualTracking(Operator):
         elif slot is self.UntrackedImage:
             for t in range(roi.start[0],roi.stop[0]):
                 result[t-roi.start[0],...] = self.LabelImage.get(roi).wait()[t-roi.start[0],...]
-                labels_at = []
+                labels_at = {}
                 if t in self.labels.keys():
                     labels_at = self.labels[t]
                 result[t-roi.start[0],...,0] = self._relabelUntracked(result[t-roi.start[0],...,0], labels_at)
@@ -120,20 +124,9 @@ class OpManualTracking(Operator):
         return result
         
     def propagateDirty(self, inputSlot, subindex, roi):
-        pass
-#        print 'opManualTracking::propagateDirty: roi =', roi        
-#        if inputSlot is self.Labels:
-#            if len(roi._l) == 0:
-#                self.TrackImage.setDirty(slice(None))
-#            elif isinstance(roi._l[0], int):
-#                for t in roi._l:
-#                    self.TrackImage.setDirty(slice(t))
-#            else:
-#                print 'cannot propagate dirtyness: ', roi
-                
-#        if inputSlot is self.LabelImage:
-#            self.Output.setDirty(roi)
-
+        if inputSlot == self.LabelImage:
+            self.labels = {}
+            self.divisions = {}
  
     def _relabel(self, volume, replace):
         mp = np.arange(0, np.amax(volume) + 1, dtype=volume.dtype)

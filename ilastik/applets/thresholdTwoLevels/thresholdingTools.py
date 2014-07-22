@@ -1,18 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+##############################################################################
 
 # Built-in
 import gc
@@ -50,6 +55,112 @@ def getMemoryUsageMb():
     return mem_usage_mb
 
 
+class OpAnisotropicGaussianSmoothing5d(Operator):
+    # raw volume, in 5d 'txyzc' order
+    Input = InputSlot()
+    Sigmas = InputSlot(value={'x': 1.0, 'y': 1.0, 'z': 1.0})
+
+    Output = OutputSlot()
+
+    def setupOutputs(self):
+        self.Output.meta.assignFrom(self.Input.meta)
+        self.Output.meta.dtype = numpy.float32 # vigra gaussian only supports float32
+        self._sigmas = self.Sigmas.value
+        assert isinstance(self.Sigmas.value, dict), "Sigmas slot expects a dict"
+        assert set(self._sigmas.keys()) == set('xyz'), "Sigmas slot expects three key-value pairs for x,y,z"
+
+    def execute(self, slot, subindex, roi, result):
+        assert all(roi.stop <= self.Input.meta.shape),\
+            "Requested roi {} is too large for this input image of shape {}.".format(roi, self.Input.meta.shape)
+
+        # Determine how much input data we'll need, and where the result will be
+        # relative to that input roi
+        # inputRoi is a 5d roi, computeRoi depends on the number of singletons
+        # in shape, but is at most 3d
+        inputRoi, computeRoi = self._getInputComputeRois(roi)
+
+        # Obtain the input data
+        with Timer() as resultTimer:
+            data = self.Input(*inputRoi).wait()
+        logger.debug("Obtaining input data took {} seconds for roi {}".format(
+            resultTimer.seconds(), inputRoi))
+        data = vigra.taggedView(data, axistags='txyzc')
+
+        # input is in txyzc order
+        tIndex = 0
+        cIndex = 4
+
+        # Must be float32
+        if data.dtype != numpy.float32:
+            data = data.astype(numpy.float32)
+
+        # we need to remove a singleton z axis, otherwise we get 
+        # 'kernel longer than line' errors
+        ts = self.Input.meta.getTaggedShape()
+        tags = [k for k in 'xyz' if ts[k] > 1]
+        sigma = [self._sigmas[k] for k in tags]
+
+        # Check if we need to smooth
+        if any([x < 0.1 for x in sigma]):
+            # just pipe the input through
+            result[...] = data
+            return
+
+        for i, t in enumerate(xrange(roi.start[tIndex], roi.stop[tIndex])):
+            for j, c in enumerate(xrange(roi.start[cIndex], roi.stop[cIndex])):
+                # prepare the result as an argument
+                resview = vigra.taggedView(result[i, ..., j],
+                                           axistags='xyz')
+                dataview = data[i, ..., j]
+                # TODO make this general, not just for z axis
+                resview = resview.withAxes(*tags)
+                dataview = dataview.withAxes(*tags)
+
+                # Smooth the input data
+                vigra.filters.gaussianSmoothing(
+                    dataview, sigma, window_size=2.0,
+                    roi=computeRoi, out=resview)
+
+    def _getInputComputeRois(self, roi):
+        shape = self.Input.meta.shape
+        start = numpy.asarray(roi.start)
+        stop = numpy.asarray(roi.stop)
+        n = len(stop)
+        spatStart = [roi.start[i] for i in range(n) if shape[i] > 1]
+        spatStop = [roi.stop[i] for i in range(n) if shape[i] > 1]
+        sigma = [0] + map(self._sigmas.get, 'xyz') + [0]
+        spatialRoi = (spatStart, spatStop)
+
+        inputSpatialRoi = extendSlice(roi.start, roi.stop, shape,
+                                      sigma, window=2.0)
+
+        # Determine the roi within the input data we're going to request
+        inputRoiOffset = roi.start - inputSpatialRoi[0]
+        computeRoi = [inputRoiOffset, inputRoiOffset + stop - start]
+        for i in (0, 1):
+            computeRoi[i] = [computeRoi[i][j] for j in range(n)
+                             if shape[j] > 1 and j not in (0, 4)]
+
+        # make sure that vigra understands our integer types
+        computeRoi = (tuple(map(int, computeRoi[0])),
+                      tuple(map(int, computeRoi[1])))
+
+        inputRoi = (list(inputSpatialRoi[0]), list(inputSpatialRoi[1]))
+
+        return inputRoi, computeRoi
+
+    def propagateDirty(self, slot, subindex, roi):
+        if slot == self.Input:
+            # Halo calculation is bidirectional, so we can re-use the function
+            # that computes the halo during execute()
+            inputRoi, _ = self._getInputComputeRois(roi)
+            self.Output.setDirty(inputRoi[0], inputRoi[1])
+        elif slot == self.Sigmas:
+            self.Output.setDirty(slice(None))
+        else:
+            assert False, "Unknown input slot: {}".format(slot.name)
+
+
 class OpAnisotropicGaussianSmoothing(Operator):
     Input = InputSlot()
     Sigmas = InputSlot( value={'x':1.0, 'y':1.0, 'z':1.0} )
@@ -57,6 +168,7 @@ class OpAnisotropicGaussianSmoothing(Operator):
     Output = OutputSlot()
 
     def setupOutputs(self):
+        
         self.Output.meta.assignFrom(self.Input.meta)
         #if there is a time of dim 1, output won't have that
         timeIndex = self.Output.meta.axistags.index('t')
@@ -69,8 +181,8 @@ class OpAnisotropicGaussianSmoothing(Operator):
         self._sigmas = self.Sigmas.value
         assert isinstance(self.Sigmas.value, dict), "Sigmas slot expects a dict"
         assert set(self._sigmas.keys()) == set('xyz'), "Sigmas slot expects three key-value pairs for x,y,z"
-        
-        self.Output.setDirty( slice(None) )
+        print("Assigning output: {} ====> {}".format(self.Input.meta.getTaggedShape(), self.Output.meta.getTaggedShape()))
+        #self.Output.setDirty( slice(None) )
     
     def execute(self, slot, subindex, roi, result):
         assert all(roi.stop <= self.Input.meta.shape), "Requested roi {} is too large for this input image of shape {}.".format( roi, self.Input.meta.shape )
@@ -188,7 +300,7 @@ class OpAnisotropicGaussianSmoothing(Operator):
 #
 #   Thresholds: High=4, Low=1
 #
-#     0 2 0        0 2 0 
+#     0 2 0        0 2 0
 #     2 5 2        2 3 2
 #     0 2 0        0 2 0
 #
@@ -283,98 +395,3 @@ class OpSelectLabels(Operator):
             self.Output.setDirty(slice(None))
         else:
             assert False, "Unknown input slot: {}".format(slot.name)
-
-
-## wrapper for OpFilterLabels
-# Wraps OpFilterLabels in time and channel dimension beacuse we want to filter
-# objects by size only in spatial dimensions.
-#   - Spawns a new request for each time/channel slice
-#   - Assumes that input is 5d in 'txyzc' order
-class OpFilterLabels5d(Operator):
-    name = "OpFilterLabels5d"
-    category = "generic"
-
-    # inherited
-
-    Input = InputSlot()
-    MinLabelSize = InputSlot(stype='int')
-    MaxLabelSize = InputSlot(optional=True, stype='int')
-    BinaryOut = InputSlot(optional=True, value=False, stype='bool')
-
-    _ReorderedOutput = OutputSlot()
-    Output = OutputSlot()
-
-    def __init__(self, *args, **kwargs):
-        super(OpFilterLabels5d, self).__init__(*args, **kwargs)
-        #FIXME move the reordering to high-level operator, assume txyzc
-        self._reorder1 = OpReorderAxes(parent=self)
-        self._reorder1.AxisOrder.setValue('txyzc')
-        self._reorder1.Input.connect(self.Input)
-
-        self._op = OpFilterLabels(parent=self)
-        self._op.Input.connect(self._reorder1.Output)
-        #self._op.Input.connect(self.Input)
-        self._op.MinLabelSize.connect(self.MinLabelSize)
-        self._op.MaxLabelSize.connect(self.MaxLabelSize)
-        self._op.BinaryOut.connect(self.BinaryOut)
-
-        self._reorder2 = OpReorderAxes(parent=self)
-        self._reorder2.Input.connect(self._ReorderedOutput)
-        self.Output.connect(self._reorder2.Output)
-        #self.Output.connect(self._)
-
-    def setupOutputs(self):
-        assert len(self._reorder1.Output.meta.shape) == 5
-        self.Output.meta.assignFrom(self.Input.meta)
-        self._ReorderedOutput.meta.assignFrom(self._reorder1.Output.meta)
-        self._reorder2.AxisOrder.setValue(self.Input.meta.getAxisKeys())
-
-    def execute(self, slot, subindex, roi, result):
-        assert slot == self._ReorderedOutput
-        pool = RequestPool()
-
-        t_ind = 0
-        for t in range(roi.start[0], roi.stop[0]):
-            c_ind = 0
-            for c in range(roi.start[-1], roi.stop[-1]):
-                newroi = roi.copy()
-                newroi.start[0] = t
-                newroi.stop[0] = t+1
-                newroi.start[-1] = c
-                newroi.stop[-1] = c+1
-
-                req = self._op.Output.get(newroi)
-                resView = result[t_ind:t_ind+1, ..., c_ind:c_ind+1]
-                req.writeInto(resView)
-
-                pool.add(req)
-
-                c_ind += 1
-
-            t_ind += 1
-
-        pool.wait()
-        pool.clean()
-
-    def propagateDirty(self, slot, subindex, roi):
-        inStop = numpy.asarray(self.Input.meta.shape)
-        inStart = inStop*0
-        if slot == self.Input:
-            # upstream dirtiness affects whole volume (per time/channel)
-            t_ind = self.Input.meta.axistags.index('t')
-            c_ind = self.Input.meta.axistags.index('c')
-            inStart[t_ind] = roi.start[t_ind]
-            inStop[t_ind] = roi.stop[t_ind]
-            inStart[c_ind] = roi.start[c_ind]
-            inStop[c_ind] = roi.stop[c_ind]
-        elif slot == self.MinLabelSize or slot == self.MaxLabelSize\
-                or slot == self.BinaryOut:
-            # changes in the size affect the entire volume including all time
-            # slices and channels
-            # if we change the semantics of the output, we have to set it dirty
-            pass
-        else:
-            assert False, "Invalid slot {}".format(slot)
-
-        roi = SubRegion(self.Output, start=inStart, stop=inStop)
-        self.Output.setDirty(roi)

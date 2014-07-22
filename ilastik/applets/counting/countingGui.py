@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 # Built-in
 import os
 import logging
@@ -129,8 +133,8 @@ class CountingGui(LabelingGui):
         labelSlots = LabelingGui.LabelingSlots()
         labelSlots.labelInput = topLevelOperatorView.LabelInputs
         labelSlots.labelOutput = topLevelOperatorView.LabelImages
-        labelSlots.labelEraserValue = topLevelOperatorView.opLabelPipeline.opLabelArray.eraser
-        labelSlots.labelDelete = topLevelOperatorView.opLabelPipeline.opLabelArray.deleteLabel
+        labelSlots.labelEraserValue = topLevelOperatorView.opLabelPipeline.opLabelArray.EraserLabelValue
+        labelSlots.labelDelete = topLevelOperatorView.opLabelPipeline.opLabelArray.DeleteLabel
         labelSlots.maxLabelValue = topLevelOperatorView.MaxLabelValue
         labelSlots.labelsAllowed = topLevelOperatorView.LabelsAllowedFlags
         labelSlots.labelNames = topLevelOperatorView.LabelNames
@@ -165,9 +169,7 @@ class CountingGui(LabelingGui):
         try:
             self.render = True
             self._renderedLayers = {} # (layer name, label number)
-            self._renderMgr = RenderingManager(
-                renderer=self.editor.view.qvtk.renderer,
-                qvtk=self.editor.view.qvtk)
+            self._renderMgr = RenderingManager( self.editor.view3d )
         except Exception,e:
             self.render = False
 
@@ -649,15 +651,17 @@ class CountingGui(LabelingGui):
 
 
 
-        slots = {'Prediction' : self.op.Density, 'LabelPreview': self.op.LabelPreview, 'Uncertainty' :
-                 self.op.UncertaintyEstimate}
+        slots = { 'Prediction' : (self.op.Density, 0.5), 
+                 'LabelPreview': (self.op.LabelPreview, 1.0), 
+                 'Uncertainty' : (self.op.UncertaintyEstimate, 1.0) }
 
-        for name, slot in slots.items():
+        for name, (slot, opacity) in slots.items():
             if slot.ready():
                 from volumina import colortables
                 layer = ColortableLayer(LazyflowSource(slot), colorTable = countingColorTable, normalize =
                                        (0,self.upperBound))
                 layer.name = name
+                layer.opacity = opacity
                 layer.visible = self.labelingDrawerUi.liveUpdateButton.isChecked()
                 layers.append(layer)
 

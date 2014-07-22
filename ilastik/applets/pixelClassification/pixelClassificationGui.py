@@ -1,35 +1,41 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 # Built-in
 import os
 import logging
+import collections
 from functools import partial
 
 # Third-party
 import numpy
 from PyQt4 import uic
-from PyQt4.QtCore import Qt, pyqtSlot
-from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QIcon
+from PyQt4.QtCore import Qt, pyqtSlot, QVariant
+from PyQt4.QtGui import QMessageBox, QColor, QIcon, QMenu, QDialog, QVBoxLayout, QDialogButtonBox, QListWidget, QListWidgetItem
 
 # HCI
-from volumina.api import LazyflowSource, AlphaModulatedLayer
+from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
 from volumina.utility import ShortcutManager
 
 # ilastik
+from ilastik.config import cfg as ilastik_config
 from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted
 from ilastik.shell.gui.iconMgr import ilastikIcons
@@ -37,7 +43,7 @@ from ilastik.applets.labeling.labelingGui import LabelingGui
 
 try:
     from volumina.view3d.volumeRendering import RenderingManager
-except:
+except ImportError:
     pass
 
 # Loggers
@@ -49,6 +55,89 @@ def _listReplace(old, new):
     else:
         return new
 
+class ClassifierSelectionDlg(QDialog):
+    """
+    A simple window to let the user select a classifier type.
+    """
+    def __init__(self, opPixelClassification, parent):
+        super( QDialog, self ).__init__(parent=parent)
+        self._op = opPixelClassification
+        classifier_listwidget = QListWidget(parent=self)
+        classifier_listwidget.setSelectionMode( QListWidget.SingleSelection )
+
+        classifer_factories = self._get_available_classifier_factories()
+        for name, classifier_factory in classifer_factories.items():
+            item = QListWidgetItem( name )
+            item.setData( Qt.UserRole, QVariant(classifier_factory) )
+            classifier_listwidget.addItem(item)
+
+        buttonbox = QDialogButtonBox( Qt.Horizontal, parent=self )
+        buttonbox.setStandardButtons( QDialogButtonBox.Ok | QDialogButtonBox.Cancel )
+        buttonbox.accepted.connect( self.accept )
+        buttonbox.rejected.connect( self.reject )
+        
+        layout = QVBoxLayout()
+        layout.addWidget( classifier_listwidget )
+        layout.addWidget( buttonbox )
+
+        self.setLayout(layout)
+        self.setWindowTitle( "Select Classifier Type" )
+        
+        # Save members
+        self._classifier_listwidget = classifier_listwidget
+        
+    def _get_available_classifier_factories(self):
+        # FIXME: Replace this logic with a proper plugin mechanism
+        from lazyflow.classifiers import VigraRfLazyflowClassifierFactory, SklearnLazyflowClassifierFactory, \
+                                         ParallelVigraRfLazyflowClassifierFactory, VigraRfPixelwiseClassifierFactory,\
+                                         LazyflowVectorwiseClassifierFactoryABC, LazyflowPixelwiseClassifierFactoryABC
+        classifiers = collections.OrderedDict()
+        classifiers["Parallel Random Forest (VIGRA)"] = ParallelVigraRfLazyflowClassifierFactory(10, 10)
+        
+        try:
+            from iiboostLazyflowClassifier import IIBoostLazyflowClassifierFactory
+            classifiers["IIBoost"] = IIBoostLazyflowClassifierFactory(numStumps=2, debugOutput=True)
+            assert issubclass( type(classifiers["IIBoost"]), LazyflowPixelwiseClassifierFactoryABC )
+        except ImportError:
+            import warnings
+            warnings.warn("Couldn't import IIBoost.")
+        
+        try:
+            from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
+            from sklearn.naive_bayes import GaussianNB
+            from sklearn.tree import DecisionTreeClassifier
+            from sklearn.neighbors import KNeighborsClassifier
+            from sklearn.lda import LDA
+            from sklearn.qda import QDA
+            from sklearn.svm import SVC, NuSVC
+            classifiers["Random Forest (scikit-learn)"] = SklearnLazyflowClassifierFactory( RandomForestClassifier, 100 )
+            classifiers["Gaussian Naive Bayes (scikit-learn)"] = SklearnLazyflowClassifierFactory( GaussianNB )
+            classifiers["AdaBoost (scikit-learn)"] = SklearnLazyflowClassifierFactory( AdaBoostClassifier, n_estimators=100 )
+            classifiers["Single Decision Tree (scikit-learn)"] = SklearnLazyflowClassifierFactory( DecisionTreeClassifier, max_depth=5 )
+            classifiers["K-Neighbors (scikit-learn)"] = SklearnLazyflowClassifierFactory( KNeighborsClassifier )
+            classifiers["LDA (scikit-learn)"] = SklearnLazyflowClassifierFactory( LDA )
+            classifiers["QDA (scikit-learn)"] = SklearnLazyflowClassifierFactory( QDA )
+            classifiers["SVM C-Support (scikit-learn)"] = SklearnLazyflowClassifierFactory( SVC, probability=True )
+            classifiers["SVM Nu-Support (scikit-learn)"] = SklearnLazyflowClassifierFactory( NuSVC, probability=True )
+        except ImportError:
+            import warnings
+            warnings.warn("Couldn't import sklearn. Scikit-learn classifiers not available.")
+
+        # Debug classifiers        
+        classifiers["(debug) Single-threaded Random Forest (VIGRA)"] = VigraRfLazyflowClassifierFactory(100)
+        classifiers["(debug) Pixelwise Random Forest (VIGRA)"] = VigraRfPixelwiseClassifierFactory(100)
+        
+        return classifiers
+        
+    def accept(self):
+        # Configure the operator with the newly selected classifier factory
+        selected_item = self._classifier_listwidget.selectedItems()[0]
+        selected_factory = selected_item.data(Qt.UserRole).toPyObject()
+        self._op.ClassifierFactory.setValue( selected_factory )
+
+        # Close the dlg
+        super( ClassifierSelectionDlg, self ).accept()
+    
 class PixelClassificationGui(LabelingGui):
 
     ###########################################
@@ -66,6 +155,22 @@ class PixelClassificationGui(LabelingGui):
 
     def viewerControlWidget(self):
         return self._viewerControlUi
+
+    def menus( self ):
+        menus = super( PixelClassificationGui, self ).menus()
+
+        # For now classifier selection is only available in debug mode
+        if ilastik_config.getboolean('ilastik', 'debug'):
+            def handleClassifierAction():
+                dlg = ClassifierSelectionDlg(self.topLevelOperatorView, parent=self)
+                dlg.exec_()
+            
+            advanced_menu = QMenu("Advanced", parent=self)
+            classifier_action = advanced_menu.addAction("Classifier...")
+            classifier_action.triggered.connect( handleClassifierAction )
+            menus += [advanced_menu]
+
+        return menus
 
     ###########################################
     ###########################################
@@ -107,14 +212,22 @@ class PixelClassificationGui(LabelingGui):
         
         self._initShortcuts()
 
-        try:
-            self.render = True
-            self._renderedLayers = {} # (layer name, label number)
-            self._renderMgr = RenderingManager(
-                renderer=self.editor.view3d.qvtk.renderer,
-                qvtk=self.editor.view3d.qvtk)
-        except:
-            self.render = False
+        # FIXME: We MUST NOT enable the render manager by default,
+        #        since it will drastically slow down the app for large volumes.
+        #        For now, we leave it off by default.
+        #        To re-enable rendering, we need to allow the user to render a segmentation 
+        #        and then initialize the render manager on-the-fly. 
+        #        (We might want to warn the user if her volume is not small.)
+        self.render = False
+        self._renderMgr = None
+        self._renderedLayers = {} # (layer name, label number)
+        
+        # Always off for now (see note above)
+        if self.render:
+            try:
+                self._renderMgr = RenderingManager( self.editor.view3d )
+            except:
+                self.render = False
 
         # toggle interactive mode according to freezePredictions.value
         self.toggleInteractive(not self.topLevelOperatorView.FreezePredictions.value)
@@ -303,6 +416,12 @@ class PixelClassificationGui(LabelingGui):
             inputLayer.name = "Input Data"
             inputLayer.visible = True
             inputLayer.opacity = 1.0
+            # the flag window_leveling is used to determine if the contrast 
+            # of the layer is adjustable
+            if isinstance( inputLayer, GrayscaleLayer ):
+                inputLayer.window_leveling = True
+            else:
+                inputLayer.window_leveling = False
 
             def toggleTopToBottom():
                 index = self.layerstack.layerIndex( inputLayer )
@@ -319,6 +438,12 @@ class PixelClassificationGui(LabelingGui):
                                                                  self.viewerControlWidget(),
                                                                  inputLayer ) )
             layers.append(inputLayer)
+            
+            # The thresholding button can only be used if the data is displayed as grayscale.
+            if inputLayer.window_leveling:
+                self.labelingDrawerUi.thresToolButton.show()
+            else:
+                self.labelingDrawerUi.thresToolButton.hide()
         
         self.handleLabelSelectionChange()
         return layers

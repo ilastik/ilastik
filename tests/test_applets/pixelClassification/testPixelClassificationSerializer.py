@@ -1,26 +1,31 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import os
 import numpy
 import h5py
 import vigra
 from lazyflow.roi import roiToSlice
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpTrainRandomForestBlocked, OpValueCache
+from lazyflow.operators import OpTrainClassifierBlocked, OpValueCache
+from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
 from ilastik.applets.pixelClassification.pixelClassificationSerializer import PixelClassificationSerializer
 
 import ilastik.ilastik_logging
@@ -37,6 +42,8 @@ class OpMockPixelClassifier(Operator):
     LabelInputs = InputSlot(optional = True, level=1) # Input for providing label data from an external source
 
     PredictionsFromDisk = InputSlot( optional = True, level=1 ) # TODO: Actually use this input for something
+
+    ClassifierFactory = InputSlot( value=ParallelVigraRfLazyflowClassifierFactory(10,10) )
 
     NonzeroLabelBlocks = OutputSlot(level=1, stype='object') # A list if slices that contain non-zero label values
     LabelImages = OutputSlot(level=1) # Labels from the user
@@ -64,7 +71,8 @@ class OpMockPixelClassifier(Operator):
         
         self.FreezePredictions.setValue(False)
         
-        self.opClassifier = OpTrainRandomForestBlocked(graph=self.graph, parent=self)
+        self.opClassifier = OpTrainClassifierBlocked(graph=self.graph, parent=self)
+        self.opClassifier.ClassifierFactory.connect( self.ClassifierFactory )
         self.opClassifier.Labels.connect(self.LabelImages)
         self.opClassifier.nonzeroLabelBlocks.connect(self.NonzeroLabelBlocks)
         self.opClassifier.MaxLabel.setValue(2)

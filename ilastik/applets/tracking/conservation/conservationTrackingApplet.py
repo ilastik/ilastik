@@ -1,7 +1,6 @@
 from ilastik.applets.base.standardApplet import StandardApplet
 from ilastik.applets.tracking.conservation.opConservationTracking import OpConservationTracking
 from ilastik.applets.tracking.base.trackingSerializer import TrackingSerializer
-from ilastik.applets.tracking.conservation.conservationTrackingGui import ConservationTrackingGui
 
 
 class ConservationTrackingApplet( StandardApplet ):
@@ -20,6 +19,7 @@ class ConservationTrackingApplet( StandardApplet ):
 
     @property
     def singleLaneGuiClass( self ):
+        from ilastik.applets.tracking.conservation.conservationTrackingGui import ConservationTrackingGui
         return ConservationTrackingGui
 
     @property

@@ -4,7 +4,7 @@ compress_labels = False
 # all these features are precalculated in opExtractObjects
 '''
 
-vigra_features = ['Count', 'RegionCenter', 'Mean', 'Variance', 'RegionRadii']
+vigra_features = ['Count', 'RegionCenter', 'Mean', 'Variance', 'RegionRadii', 'Maximum', 'Minimum', 'Skewness', 'Sum', 'Coord<Principal<Kurtosis>>', 'Coord<Principal<Skewness>>', 'Kurtosis']
 features_vigra_name = 'Standard Object Features'
 
 other_features = []

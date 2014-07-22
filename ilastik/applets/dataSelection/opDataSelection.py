@@ -1,24 +1,29 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 import uuid
 import numpy
 import vigra
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
+from lazyflow.utility.jsonConfig import RoiTuple
 from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpInputDataReader
 from lazyflow.operators.valueProviders import OpMetadataInjector
 from ilastik.applets.base.applet import DatasetConstraintError
@@ -45,6 +50,7 @@ class DatasetInfo(object):
         self.fromstack = False
         self.nickname = ""
         self.axistags = None
+        self.subvolume_roi = None
 
         if jsonNamespace is not None:
             self.updateFromJson( jsonNamespace )
@@ -71,7 +77,8 @@ class DatasetInfo(object):
         "filepath" : str,
         "drange" : tuple,
         "nickname" : str,
-        "axistags" : str
+        "axistags" : str,
+        "subvolume_roi" : RoiTuple()
     }
 
     def updateFromJson(self, namespace):
@@ -84,6 +91,7 @@ class DatasetInfo(object):
         self.nickname = namespace.nickname or self.nickname
         if namespace.axistags is not None:
             self.axistags = vigra.defaultAxistags(namespace.axistags)
+        self.subvolume_roi = namespace.subvolume_roi or self.subvolume_roi
 
 class OpDataSelection(Operator):
     """
@@ -161,6 +169,8 @@ class OpDataSelection(Operator):
             else:
                 # Use a normal (filesystem) reader
                 opReader = OpInputDataReader(parent=self)
+                if datasetInfo.subvolume_roi is not None:
+                    opReader.SubVolumeRoi.setValue( datasetInfo.subvolume_roi )
                 opReader.WorkingDirectory.setValue( self.WorkingDirectory.value )
                 opReader.FilePath.setValue(datasetInfo.filePath)
                 providerSlot = opReader.Output
@@ -182,7 +192,21 @@ class OpDataSelection(Operator):
                 if datasetInfo.normalizeDisplay is not None:
                     metadata['normalizeDisplay'] = datasetInfo.normalizeDisplay
                 if datasetInfo.axistags is not None:
+                    if len(datasetInfo.axistags) != len(providerSlot.meta.shape):
+                        raise Exception( "Your dataset's provided axistags ({}) do not have the "
+                                         "correct dimensionality for your dataset, which has {} dimensions."
+                                         .format( "".join(tag.key for tag in datasetInfo.axistags), len(providerSlot.meta.shape) ) )
                     metadata['axistags'] = datasetInfo.axistags
+                if datasetInfo.subvolume_roi is not None:
+                    metadata['subvolume_roi'] = datasetInfo.subvolume_roi
+                    
+                    # FIXME: We are overwriting the axistags metadata to intentionally allow 
+                    #        the user to change our interpretation of which axis is which.
+                    #        That's okay, but technically there's a special corner case if 
+                    #        the user redefines the channel axis index.  
+                    #        Technically, it invalidates the meaning of meta.ram_usage_per_requested_pixel.
+                    #        For most use-cases, that won't really matter, which is why I'm not worrying about it right now.
+                
                 opMetadataInjector = OpMetadataInjector( parent=self )
                 opMetadataInjector.Input.connect( providerSlot )
                 opMetadataInjector.Metadata.setValue( metadata )
@@ -263,7 +287,12 @@ class OpDataSelectionGroup( Operator ):
 
     # Outputs
     ImageGroup = OutputSlot(level=1)
+    
+    # These output slots are provided as a convenience, since otherwise it is tricky to create a lane-wise multislot of level-1 for only a single role.
+    # (It can be done, but requires OpTransposeSlots to invert the level-2 multislot indexes...) 
     Image = OutputSlot() # The first dataset. Equivalent to ImageGroup[0]
+    Image1 = OutputSlot() # The second dataset. Equivalent to ImageGroup[1]
+    Image2 = OutputSlot() # The third dataset. Equivalent to ImageGroup[2]
     AllowLabels = OutputSlot(stype='bool') # Pulled from the first dataset only.
 
     _NonTransposedImageGroup = OutputSlot(level=1)
@@ -290,6 +319,8 @@ class OpDataSelectionGroup( Operator ):
             # Clean up the old operators
             self.ImageGroup.disconnect()
             self.Image.disconnect()
+            self.Image1.disconnect()
+            self.Image2.disconnect()
             self._NonTransposedImageGroup.disconnect()
             if self._opDatasets is not None:
                 self._opDatasets.cleanUp()
@@ -305,13 +336,21 @@ class OpDataSelectionGroup( Operator ):
 
         if len( self._opDatasets.Image ) > 0:
             self.Image.connect( self._opDatasets.Image[0] )
+            if len(self._opDatasets.Image) >= 2:
+                self.Image1.connect( self._opDatasets.Image[1] )
+            if len(self._opDatasets.Image) >= 3:
+                self.Image2.connect( self._opDatasets.Image[2] )
             self.ImageName.connect( self._opDatasets.ImageName[0] )
             self.AllowLabels.connect( self._opDatasets.AllowLabels[0] )
         else:
             self.Image.disconnect()
+            self.Image1.disconnect()
+            self.Image2.disconnect()
             self.ImageName.disconnect()
             self.AllowLabels.disconnect()
             self.Image.meta.NOTREADY = True
+            self.Image1.meta.NOTREADY = True
+            self.Image2.meta.NOTREADY = True
             self.ImageName.meta.NOTREADY = True
             self.AllowLabels.meta.NOTREADY = True
 

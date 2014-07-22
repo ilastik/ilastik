@@ -1,21 +1,28 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 from PyQt4.QtGui import QColor, QPixmap, QIcon, QItemSelectionModel, QPainter, QPen, QImage
 from PyQt4.QtCore import QObject, QAbstractTableModel, Qt, QModelIndex, pyqtSignal
+
+# unicode support
+from volumina.utility import encode_from_qstring, decode_to_qstring
 
 import logging
 logger = logging.getLogger(__name__)
@@ -192,21 +199,21 @@ class ListModel(QAbstractTableModel):
         '''
 
         if role == Qt.EditRole and index.column() == self.ColumnID.Name:
-            return self._elements[index.row()].name
-
+            name = self._elements[index.row()].name
+            return decode_to_qstring(name)
 
         elif role == Qt.ToolTipRole and index.column() == self.ColumnID.Delete:
-            return "Delete {}".format(self._elements[index.row()].name)
+            s = "Delete {}".format(self._elements[index.row()].name)
+            return decode_to_qstring(s)
 
         elif role == Qt.ToolTipRole and index.column() == self.ColumnID.Name:
             suffix = self._getToolTipSuffix(index.row())
-            return "{}\nDouble click to rename {}".format(
+            s = "{}\nDouble click to rename {}".format(
                 self._elements[index.row()].name, suffix)
+            return decode_to_qstring(s)
         elif role == Qt.DisplayRole and index.column() == self.ColumnID.Name:
-            row = index.row()
-            value = self._elements[row]
-            return value.name
-
+            name = self._elements[index.row()].name
+            return decode_to_qstring(name)
 
         if role == Qt.DecorationRole and index.column() == self.ColumnID.Delete:
             if index.row() in self.unremovable_rows: return
@@ -252,8 +259,9 @@ class ListModel(QAbstractTableModel):
         '''
         if role == Qt.EditRole  and index.column() == self.ColumnID.Name:
             row = index.row()
-            name = value
-            self._elements[row].name = str(name.toString())
+            # value is a user provided QVariant, possibly with unicode
+            # characters in it. internally, we keep a str
+            self._elements[row].name = encode_from_qstring(value.toString())
             self.dataChanged.emit(index, index)
             return True
 

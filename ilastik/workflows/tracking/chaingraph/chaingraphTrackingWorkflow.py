@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 from lazyflow.graph import Graph
 from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
@@ -26,6 +30,7 @@ from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingB
 
 class ChaingraphTrackingWorkflow( Workflow ):
     workflowName = "Automatic Tracking Workflow (Chaingraph)"
+    workflowDisplayName = "Automatic Tracking Workflow (Chaingraph) [Inputs: Raw Data, Pixel Prediction Map]"
 
     def __init__( self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs ):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
@@ -53,9 +58,14 @@ class ChaingraphTrackingWorkflow( Workflow ):
                                                               workflow=self, interactive=False )
         
         self.trackingApplet = ChaingraphTrackingApplet( workflow=self )
+        opTracking = self.trackingApplet.topLevelOperator
         
         self.dataExportApplet = TrackingBaseDataExportApplet(self, "Tracking Result Export")
         
+        opDataExport = self.dataExportApplet.topLevelOperator
+        opDataExport.SelectionNames.setValue( ['Tracking'] )
+        opDataExport.WorkingDirectory.connect( self.dataSelectionApplet.topLevelOperator.WorkingDirectory )
+
         self._applets = []                
         self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.thresholdTwoLevelsApplet)
@@ -100,10 +110,10 @@ class ChaingraphTrackingWorkflow( Workflow ):
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
         opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeatures )        
         
-        opDataExport.WorkingDirectory.connect( self.dataSelectionApplet.topLevelOperator.WorkingDirectory )
         opDataExport.RawData.connect( op5Raw.Output )
-        opDataExport.Input.connect( opTracking.Output )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
+        opDataExport.Inputs.resize(1)
+        opDataExport.Inputs[0].connect( opTracking.Output )
         
     def _inputReady(self, nRoles):
         slot = self.dataSelectionApplet.topLevelOperator.ImageGroup
@@ -151,4 +161,5 @@ class ChaingraphTrackingWorkflow( Workflow ):
         self._shell.setAppletEnabled(self.thresholdTwoLevelsApplet, input_ready and not busy)
         self._shell.setAppletEnabled(self.objectExtractionApplet, thresholding_ready and not busy)        
         self._shell.setAppletEnabled(self.trackingApplet, features_ready and not busy)
-        self._shell.setAppletEnabled(self.dataExportApplet, tracking_ready and not busy)
+        self._shell.setAppletEnabled(self.dataExportApplet, tracking_ready and not busy and \
+                                    self.dataExportApplet.topLevelOperator.Inputs[0][0].ready() )

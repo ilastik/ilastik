@@ -1,19 +1,23 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 from abc import ABCMeta, abstractmethod
 
 def _has_attribute( cls, attr ):
@@ -22,6 +26,29 @@ def _has_attribute( cls, attr ):
 def _has_attributes( cls, attrs ):
     return True if all(_has_attribute(cls, a) for a in attrs) else False
 
+class VolumeViewerGui():
+    """
+    This class defines the methods which all GUIs with a volume editor/viewer should implement
+    """
+    
+    __metaclass__ = ABCMeta
+    
+    def __init__(self, topLevelOperatorView):
+        pass
+    
+    @abstractmethod
+    def setViewerPos(self, pos5d):
+        """
+        Abstract method. Manually set the viewer position.
+        """
+        raise NotImplementedError
+    
+    @classmethod
+    def __subclasshook__(cls, C):
+        if cls is VolumeViewerGui:
+            return _has_attribute(C, 'setViewerPos')
+        return NotImplemented
+    
 class AppletGuiInterface():
     """
     This is the abstract interface to which all applet GUI classes should adhere.

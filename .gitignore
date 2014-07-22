@@ -46,3 +46,6 @@ cscope.out
 
 # qt designer autosave
 *.autosave
+
+tests/recorded_test_cases/ObjectClassification/cube_objects_binary.npy
+tests/recorded_test_cases/ObjectClassification/cube_objects_raw.npy

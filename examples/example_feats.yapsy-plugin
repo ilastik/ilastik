@@ -1,0 +1,9 @@
+[Core]
+Name = Example Object Features
+Module = obj_feats_example
+
+[Documentation]
+Author = Anna Kreshuk
+Version = 0.1
+Website = todo
+Description = todo

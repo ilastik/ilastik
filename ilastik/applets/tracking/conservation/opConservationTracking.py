@@ -5,18 +5,40 @@ import pgmlink
 from ilastik.applets.tracking.base.opTrackingBase import OpTrackingBase
 from ilastik.applets.tracking.base.trackingUtilities import relabelMergers
 from ilastik.applets.tracking.base.trackingUtilities import get_events
+from lazyflow.operators.opCompressedCache import OpCompressedCache
+from lazyflow.roi import sliceToRoi
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 class OpConservationTracking(OpTrackingBase):
-    DivisionProbabilities = InputSlot(stype=Opaque, rtype=List)    
+    DivisionProbabilities = InputSlot(stype=Opaque, rtype=List)
     DetectionProbabilities = InputSlot(stype=Opaque, rtype=List)
     NumLabels = InputSlot()
-    
-    MergerOutput = OutputSlot()    
-    
+
+    # compressed cache for merger output
+    MergerInputHdf5 = InputSlot(optional=True)
+    MergerCleanBlocks = OutputSlot()
+    MergerOutputHdf5 = OutputSlot()
+    MergerCachedOutput = OutputSlot() # For the GUI (blockwise access)
+    MergerOutput = OutputSlot()
+
+    def __init__(self, parent=None, graph=None):
+        super(OpConservationTracking, self).__init__(parent=parent, graph=graph)
+
+        self._mergerOpCache = OpCompressedCache( parent=self )
+        self._mergerOpCache.InputHdf5.connect(self.MergerInputHdf5)
+        self._mergerOpCache.Input.connect(self.MergerOutput)
+        self.MergerCleanBlocks.connect(self._mergerOpCache.CleanBlocks)
+        self.MergerOutputHdf5.connect(self._mergerOpCache.OutputHdf5)
+        self.MergerCachedOutput.connect(self._mergerOpCache.Output)
+
     def setupOutputs(self):
-        super(OpConservationTracking, self).setupOutputs()        
+        super(OpConservationTracking, self).setupOutputs()
         self.MergerOutput.meta.assignFrom(self.LabelImage.meta)
+
+        self._mergerOpCache.BlockShape.setValue( self._blockshape )
     
     def execute(self, slot, subindex, roi, result):
         result = super(OpConservationTracking, self).execute(slot, subindex, roi, result)
@@ -27,12 +49,15 @@ class OpConservationTracking(OpTrackingBase):
             
             trange = range(roi.start[0], roi.stop[0])
             for t in trange:
-                if ('time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0] and len(self.mergers) > t and len(self.mergers[t])):            
+                if ('time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0] and len(self.mergers) > t and len(self.mergers[t])):
                     result[t-roi.start[0],...,0] = relabelMergers(result[t-roi.start[0],...,0], self.mergers[t])
                 else:
                     result[t-roi.start[0],...][:] = 0
             
         return result     
+
+    def setInSlot(self, slot, subindex, roi, value):
+        assert slot == self.InputHdf5 or slot == self.MergerInputHdf5, "Invalid slot for setInSlot(): {}".format( slot.name )
 
     def track(self,
             time_range,
@@ -58,7 +83,9 @@ class OpConservationTracking(OpTrackingBase):
             cplex_timeout=None,
             withMergerResolution=True,
             borderAwareWidth = 0.0,
-            withArmaCoordinates = True
+            withArmaCoordinates = True,
+            appearance_cost = 500,
+            disappearance_cost = 500
             ):
         
         if not self.Parameters.ready():
@@ -79,11 +106,14 @@ class OpConservationTracking(OpTrackingBase):
         parameters['withMergerResolution'] = withMergerResolution
         parameters['borderAwareWidth'] = borderAwareWidth
         parameters['withArmaCoordinates'] = withArmaCoordinates
+        parameters['appearanceCost'] = appearance_cost
+        parameters['disappearanceCost'] = disappearance_cost
                 
         if cplex_timeout:
             parameters['cplex_timeout'] = cplex_timeout
         else:
             parameters['cplex_timeout'] = ''
+            cplex_timeout = float(1e75)
         
         if withClassifierPrior:
             if not self.DetectionProbabilities.ready() or len(self.DetectionProbabilities([0]).wait()[0]) == 0:
@@ -118,13 +148,10 @@ class OpConservationTracking(OpTrackingBase):
         if avgSize[0] > 0:
             median_obj_size = avgSize
         
-        print 'median_obj_size = ', median_obj_size
-        
-        print 'appearance and disappearance cost set to 500'
+        logger.info( 'median_obj_size = {}'.format( median_obj_size ) )
+
         ep_gap = 0.05
         transition_parameter = 5
-        disappearance_cost = 500.0
-        appearance_cost = 500.0
         
         fov = pgmlink.FieldOfView(time_range[0] * 1.0,
                                       x_range[0] * x_scale,
@@ -135,14 +162,14 @@ class OpConservationTracking(OpTrackingBase):
                                       (y_range[1]-1) * y_scale,
                                       (z_range[1]-1) * z_scale,)
         
-        print 'fov =', (time_range[0] * 1.0,
+        logger.info( 'fov = {},{},{},{},{},{},{},{}'.format( time_range[0] * 1.0,
                                       x_range[0] * x_scale,
                                       y_range[0] * y_scale,
                                       z_range[0] * z_scale,
                                       time_range[-1] * 1.0,
                                       (x_range[1]-1) * x_scale,
                                       (y_range[1]-1) * y_scale,
-                                      (z_range[1]-1) * z_scale,)
+                                      (z_range[1]-1) * z_scale, ) )
         
         if ndim == 2:
             assert z_range[0] * z_scale == 0 and (z_range[1]-1) * z_scale == 0, "fov of z must be (0,0) if ndim==2"
@@ -166,7 +193,9 @@ class OpConservationTracking(OpTrackingBase):
                                          transition_parameter,
                                          borderAwareWidth,
                                          fov,
-                                         True #with_constraints
+                                         True, #with_constraints
+                                         cplex_timeout,
+                                         "none" # dump traxelstore
                                          )
 
         
@@ -182,3 +211,13 @@ class OpConservationTracking(OpTrackingBase):
         self.Parameters.setValue(parameters, check_changed=False)
         self.EventsVector.setValue(events, check_changed=False)
         
+
+    def propagateDirty(self, inputSlot, subindex, roi):
+        super(OpConservationTracking, self).propagateDirty(inputSlot, subindex, roi)
+
+        if inputSlot == self.NumLabels:
+            if self.parent.parent.trackingApplet._gui \
+                    and self.parent.parent.trackingApplet._gui.currentGui() \
+                    and self.NumLabels.ready() \
+                    and self.NumLabels.value > 1:
+                self.parent.parent.trackingApplet._gui.currentGui()._drawer.maxObjectsBox.setValue(self.NumLabels.value-1)

@@ -1,29 +1,37 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # as published by the Free Software Foundation; either version 2
 # of the License, or (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-# GNU General Public License for more details.
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
-#
-# Copyright 2011-2014, the ilastik developers
-
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#		   http://ilastik.org/license.html
+###############################################################################
 from abc import abstractproperty, abstractmethod
 from lazyflow.graph import Operator, Graph
 from string import ascii_uppercase
 from ilastik.shell.shellAbc import ShellABC
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Workflow( Operator ):
     """
     Base class for all workflows.
     """
     name = "Workflow (base class)"
+    workflowDisplayName = None #override in your own workflow if you need it different from name
 
     ###############################
     # Abstract methods/properties #
@@ -55,6 +63,7 @@ class Workflow( Operator ):
             wname+=i
         if wname.endswith(" Workflow"):
             wname = wname[:-9]
+            
         return wname
     
     @property
@@ -89,6 +98,13 @@ class Workflow( Operator ):
         """
         pass
 
+    def handleSendMessageToServer(self, name, data):
+        try:
+            server = self._shell.socketServer
+            server.send(name, data)
+        except Exception, e:
+            logger.error("Failed sending message to server '%s': %s" % (name, e))
+
     ##################
     # Public methods #
     ##################
@@ -116,6 +132,7 @@ class Workflow( Operator ):
         super(Workflow, self).__init__(parent=parent, graph=graph)
         self._shell = shell
         self._headless = headless
+        
 
     def cleanUp(self):
         """
@@ -153,6 +170,7 @@ class Workflow( Operator ):
         
         for applet in self.applets:
             applet.appletStateUpdateRequested.connect( self.handleAppletStateUpdateRequested )
+            applet.sendMessageToServer.connect( self.handleSendMessageToServer )
         
     def _createNewImageLane(self, multislot, index, *args):
         """
@@ -203,7 +221,9 @@ def getAvailableWorkflows():
             continue
 
         if isinstance(W.workflowName, str):
-            yield W, W.workflowName
+            if W.workflowDisplayName is None:
+                W.workflowDisplayName = W.workflowName
+            yield W, W.workflowName, W.workflowDisplayName
         else:
             originalName = W.__name__
             wname = originalName[0]
@@ -213,10 +233,13 @@ def getAvailableWorkflows():
                 wname += i
             if wname.endswith(" Workflow"):
                 wname = wname[:-9]
-            yield W, wname
+            if W.workflowDisplayName is None:
+                W.workflowDisplayName = wname
+           
+            yield W, wname, W.workflowDisplayName
 
 def getWorkflowFromName(Name):
     '''return workflow by naming its workflowName variable'''
-    for w,_name in getAvailableWorkflows():
-        if _name==Name or w.__name__==Name:
+    for w,_name, _displayName in getAvailableWorkflows():
+        if _name==Name or w.__name__==Name or _displayName==Name:
             return w
