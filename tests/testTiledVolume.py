@@ -57,6 +57,25 @@ class TestTiledVolume(object):
         # We can't expect the pixels to match exactly because compression was used to create the tiles...
         assert (expected == result_out).all()
 
+    def testMissingTiles(self):
+        # The test data should be missing slice 2
+        roi = numpy.array( [(0, 150, 100), (10, 550, 550)] )
+        result_out = numpy.zeros( roi[1] - roi[0], dtype=self.tiled_volume.description.dtype )
+        self.tiled_volume.read( roi, result_out )
+        
+        ref_path_comp = PathComponents(REFERENCE_DATA)
+        with h5py.File(ref_path_comp.externalPath, 'r') as f:
+            ref_data = f[ref_path_comp.internalPath][:]
+
+        # Slice 2 is missing
+        expected = ref_data[roiToSlice(*roi)]
+        expected[2] = 0
+        
+        #numpy.save('/tmp/expected.npy', expected)
+        #numpy.save('/tmp/result_out.npy', result_out)
+
+        # We can't expect the pixels to match exactly because compression was used to create the tiles...
+        assert (expected == result_out).all()
 
 if __name__ == "__main__":
     import sys

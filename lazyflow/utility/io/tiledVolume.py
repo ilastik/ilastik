@@ -1,14 +1,15 @@
 import os
-import sys
-import urllib
 import numpy
 import vigra
 import tempfile
 import shutil
+from functools import partial
 
-from lazyflow.utility import PathComponents
+# New dependency: requests is way more convenient than urllib or httplib
+import requests
+
 from lazyflow.utility.jsonConfig import JsonConfigParser, AutoEval, FormattedField
-from lazyflow.roi import getIntersectingBlocks, roiFromShape, getBlockBounds, roiToSlice, getIntersection
+from lazyflow.roi import getIntersectingBlocks, getBlockBounds, roiToSlice, getIntersection
 
 from lazyflow.request import Request, RequestPool
 
@@ -41,10 +42,14 @@ class TiledVolume(object):
         # Offset not supported for now...
         #"origin_offset" : AutoEval(numpy.array),
 
-        # For now, 3D-only
+        # For now, 3D-only, sliced across Z
         # TODO: support 5D.
-        "tile_url_format" : FormattedField( requiredFields=["x_start", "y_start", "z_start"],
-                                            optionalFields=["x_stop", "y_stop", "z_stop"] ) 
+        # Allow multiple url schemes: tiles might be addressed via pixel coordinates or row/column indexing
+        # (z_index and z_start are synonyms here -- either is allowed)
+        "tile_url_format" : FormattedField( requiredFields=[],
+                                            optionalFields=["x_start", "y_start", "z_start",
+                                                            "x_stop",  "y_stop",  "z_stop",
+                                                            "x_index", "y_index", "z_index"] )
                                             #optionalFields=["t_start", "t_stop", "c_start", "c_stop"] )
     }
     DescriptionSchema = JsonConfigParser( DescriptionFields )
@@ -106,6 +111,7 @@ class TiledVolume(object):
         # We use a fresh tmp dir for each read to avoid conflicts between parallel reads
         tmpdir = tempfile.mkdtemp()
         
+        pool = RequestPool()
         for tile_start in tile_starts:
             tile_roi_in = getBlockBounds( self.description.shape, tile_blockshape, tile_start )
             tile_roi_in = map(tuple, tile_roi_in)
@@ -120,38 +126,54 @@ class TiledVolume(object):
             
             # Get a view to the output slice
             result_region = result_out[roiToSlice(*destination_relative_intersection)]
+
+            tile_index = numpy.array(tile_start) / tile_blockshape
+            rest_args = { 'z_start' : tile_roi_in[0][0],
+                          'z_stop'  : tile_roi_in[1][0],
+                          'y_start' : tile_roi_in[0][1],
+                          'y_stop'  : tile_roi_in[1][1],
+                          'x_start' : tile_roi_in[0][2],
+                          'x_stop'  : tile_roi_in[1][2],
+                          'z_index' : tile_index[0],
+                          'y_index' : tile_index[1],
+                          'x_index' : tile_index[2] }
+
+            # Quick sanity check
+            assert rest_args['z_index'] == rest_args['z_start']
+
+            retrieval_fn = partial( self._retrieve_tile, tmpdir, rest_args, tile_relative_intersection, result_region )
+            pool.add( Request( retrieval_fn ) )
         
-            # TODO: parallelize...    
-            self._retrieve_tile(tmpdir, tile_roi_in, tile_relative_intersection, result_region)
+        pool.wait()
         
         # Clean up our temp files.
         shutil.rmtree(tmpdir)
 
-    def _retrieve_tile(self, tmpdir, tile_roi_in, tile_relative_intersection, data_out): 
-        rest_args = { 'z_start' : tile_roi_in[0][0],
-                      'z_stop'  : tile_roi_in[1][0],
-                      'y_start' : tile_roi_in[0][1],
-                      'y_stop'  : tile_roi_in[1][1],
-                      'x_start' : tile_roi_in[0][2],
-                      'x_stop'  : tile_roi_in[1][2] }
-        
+    def _retrieve_tile(self, tmpdir, rest_args, tile_relative_intersection, data_out): 
         tile_url = self.description.tile_url_format.format( **rest_args )
 
         tmp_filename = 'z{z_start}_y{y_start}_x{x_start}'.format( **rest_args )
         tmp_filename += '.' + self.description.format
         tmp_filepath = os.path.join(tmpdir, tmp_filename) 
-        
+
         logger.debug("Retrieving {}, saving to {}".format( tile_url, tmp_filepath ))
-        urllib.urlretrieve(tile_url, tmp_filepath)
+        r = requests.get(tile_url)
+        if r.status_code == requests.codes.not_found:
+            data_out[:] = 0
+        else:
+            with open(tmp_filepath, 'wb') as f:
+                CHUNK_SIZE = 10*1024
+                for chunk in r.iter_content(CHUNK_SIZE):
+                    f.write(chunk)
+    
+            # Read the image from the disk with vigra
+            img = vigra.impex.readImage(tmp_filepath, dtype='NATIVE')
+            assert img.ndim == 3
+            assert img.shape[-1] == 1
+            
+            # img has axes xyc, but we want zyx
+            img = img.transpose()[None,0,:,:]
+            assert img[roiToSlice(*tile_relative_intersection)].shape == data_out.shape
         
-        # Read the image from the disk with vigra
-        img = vigra.impex.readImage(tmp_filepath, dtype='NATIVE')
-        assert img.ndim == 3
-        assert img.shape[-1] == 1
-        
-        # img has axes xyc, but we want zyx
-        img = img.transpose()[None,0,:,:]
-        assert img[roiToSlice(*tile_relative_intersection)].shape == data_out.shape
-        
-        # Copy just the part we need into the destination array
-        data_out[:] = img[roiToSlice(*tile_relative_intersection)]
+            # Copy just the part we need into the destination array
+            data_out[:] = img[roiToSlice(*tile_relative_intersection)]
