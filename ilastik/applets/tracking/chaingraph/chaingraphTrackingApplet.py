@@ -20,7 +20,6 @@
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 from ilastik.applets.tracking.chaingraph.opChaingraphTracking import OpChaingraphTracking
-from ilastik.applets.tracking.chaingraph.chaingraphTrackingGui import ChaingraphTrackingGui
 from ilastik.applets.tracking.base.trackingSerializer import TrackingSerializer
 
 class ChaingraphTrackingApplet( StandardApplet ):
@@ -39,6 +38,7 @@ class ChaingraphTrackingApplet( StandardApplet ):
 
     @property
     def singleLaneGuiClass( self ):
+        from ilastik.applets.tracking.chaingraph.chaingraphTrackingGui import ChaingraphTrackingGui
         return ChaingraphTrackingGui
 
     @property
