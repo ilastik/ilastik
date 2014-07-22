@@ -23,7 +23,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpImageReader, OpBlockedArrayCache, OpMetadataInjector, OpSubRegion2
 from opStreamingHdf5Reader import OpStreamingHdf5Reader
 from opNpyFileReader import OpNpyFileReader
-from lazyflow.operators.ioOperators import OpStackLoader, OpBlockwiseFilesetReader, OpRESTfulBlockwiseFilesetReader
+from lazyflow.operators.ioOperators import OpStackLoader, OpBlockwiseFilesetReader, OpRESTfulBlockwiseFilesetReader, OpTiledVolumeReader
 from lazyflow.utility.jsonConfig import JsonConfigParser
 from lazyflow.utility.pathHelpers import isUrl
 
@@ -52,6 +52,7 @@ class OpInputDataReader(Operator):
     h5Exts = ['h5', 'hdf5', 'ilp']
     npyExts = ['npy']
     blockwiseExts = ['json']
+    tiledExts = ['json']
     vigraImpexExts = vigra.impex.listExtensions().split()
     SupportedExtensions = h5Exts + npyExts + vigraImpexExts + blockwiseExts
     if _supports_dvid:
@@ -124,6 +125,7 @@ class OpInputDataReader(Operator):
                       self._attemptOpenAsDvidVolume,
                       self._attemptOpenAsBlockwiseFileset,
                       self._attemptOpenAsRESTfulBlockwiseFileset,
+                      self._attemptOpenAsTiledVolume,
                       self._attemptOpenWithVigraImpex ]
 
         # Try every method of opening the file until one works.
@@ -287,6 +289,20 @@ class OpInputDataReader(Operator):
                 opReader.cleanUp()
             except OpRESTfulBlockwiseFilesetReader.MissingDatasetError as e:
                 raise OpInputDataReader.DatasetReadError(*e.args)
+        return (None, None)
+
+    def _attemptOpenAsTiledVolume(self, filePath):
+        fileExtension = os.path.splitext(filePath)[1].lower()
+        fileExtension = fileExtension.lstrip('.') # Remove leading dot
+
+        if fileExtension in OpInputDataReader.tiledExts:
+            opReader = OpTiledVolumeReader(parent=self)
+            try:
+                # This will raise a SchemaError if this is the wrong type of json config.
+                opReader.DescriptionFilePath.setValue( filePath )
+                return (opReader, opReader.Output)
+            except JsonConfigParser.SchemaError:
+                opReader.cleanUp()
         return (None, None)
 
     def _attemptOpenWithVigraImpex(self, filePath):
