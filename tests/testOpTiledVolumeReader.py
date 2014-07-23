@@ -4,7 +4,7 @@ import numpy
 import h5py
 
 from lazyflow.graph import Graph
-from lazyflow.operators.ioOperators import OpTiledVolumeReader
+from lazyflow.operators.ioOperators import OpTiledVolumeReader, OpCachedTiledVolumeReader
 from lazyflow.utility import PathComponents
 from lazyflow.roi import roiToSlice
 
@@ -42,6 +42,76 @@ class TestOpTiledVolumeReader(object):
     def testBasic(self):
         graph = Graph()
         op = OpTiledVolumeReader(graph=graph)
+        op.DescriptionFilePath.setValue( self.description_path )
+        
+        roi = numpy.array( [(10, 150, 100), (30, 550, 550)] )
+        result_out = op.Output(*roi).wait()
+        
+        # We expect a channel dimension to be added automatically...
+        assert (result_out.shape == roi[1] - roi[0]).all()
+    
+        ref_path_comp = PathComponents(REFERENCE_DATA)
+        with h5py.File(ref_path_comp.externalPath, 'r') as f:
+            ref_data = f[ref_path_comp.internalPath][:]
+
+        expected = ref_data[roiToSlice(*roi)]
+        
+        #numpy.save('/tmp/expected.npy', expected)
+        #numpy.save('/tmp/result_out.npy', result_out)
+
+        # We can't expect the pixels to match exactly because compression was used to create the tiles...
+        assert (expected == result_out).all()
+
+class TestOpTiledVolumeReader_Transposed(object):
+    
+    def setup(self):
+        self.description_path = os.path.join(TILE_DIRECTORY, 'transposed_volume_description.json')
+        if not os.path.exists( self.description_path ):
+            raise nose.SkipTest
+    
+        if not os.path.exists( PathComponents(REFERENCE_DATA).externalPath ):
+            raise nose.SkipTest
+
+    def test(self):
+        graph = Graph()
+        op = OpTiledVolumeReader(graph=graph)
+        op.DescriptionFilePath.setValue( self.description_path )
+        
+        roi = numpy.array( [(10, 150, 100), (30, 550, 550)] )
+        roi_t = numpy.array([tuple(reversed(roi[0])), tuple(reversed(roi[1]))])
+
+        result_out_t = op.Output(*roi_t).wait()
+        result_out = result_out_t.transpose()
+                
+        # We expect a channel dimension to be added automatically...
+        assert (result_out_t.shape == roi_t[1] - roi_t[0]).all()
+    
+        ref_path_comp = PathComponents(REFERENCE_DATA)
+        with h5py.File(ref_path_comp.externalPath, 'r') as f:
+            ref_data = f[ref_path_comp.internalPath][:]
+
+        expected = ref_data[roiToSlice(*roi)]
+        
+        #numpy.save('/tmp/expected.npy', expected)
+        #numpy.save('/tmp/result_out.npy', result_out)
+
+        # We can't expect the pixels to match exactly because compression was used to create the tiles...
+        assert (expected == result_out).all()
+
+
+class TestOpCachedTiledVolumeReader(object):
+
+    def setup(self):
+        self.description_path = os.path.join(TILE_DIRECTORY, 'volume_description.json')
+        if not os.path.exists( self.description_path ):
+            raise nose.SkipTest
+    
+        if not os.path.exists( PathComponents(REFERENCE_DATA).externalPath ):
+            raise nose.SkipTest
+
+    def testBasic(self):
+        graph = Graph()
+        op = OpCachedTiledVolumeReader(graph=graph)
         op.DescriptionFilePath.setValue( self.description_path )
         
         roi = numpy.array( [(10, 150, 100), (30, 550, 550)] )

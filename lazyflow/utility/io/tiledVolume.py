@@ -4,6 +4,8 @@ import vigra
 import tempfile
 import shutil
 from functools import partial
+from StringIO import StringIO
+from PIL import Image
 
 # New dependency: requests is way more convenient than urllib or httplib
 import requests
@@ -36,8 +38,9 @@ class TiledVolume(object):
 
         "tile_shape_2d" : AutoEval(numpy.array),
 
-        # Axis order is hard-coded zyx.
-        "axes" : str, 
+        # This doesn't change how the data is read from the server,
+        #  but instead specifies the indexing order of the numpy volumes produced.
+        "output_axes" : str,
 
         # Offset not supported for now...
         #"origin_offset" : AutoEval(numpy.array),
@@ -78,9 +81,10 @@ class TiledVolume(object):
         
         description.bounds = description.bounds
         description.shape = tuple(description.bounds)
-        assert description.axes is None or description.axes == "zyx", \
-            "Only zyx order is allowed."
-        description.axes = "zyx"
+        if not description.output_axes:
+            description.output_axes = "zyx"
+        assert description.output_axes is None or set(description.output_axes) == set("zyx"), \
+            "Axis order must include x,y,z (and nothing else)"
 
         if not description.extend_slices:
             description.extend_slices = []
@@ -88,16 +92,14 @@ class TiledVolume(object):
     def __init__( self, descriptionFilePath ):
         self.description = TiledVolume.readDescription( descriptionFilePath )
 
-        # Check for errors        
-        #assert False not in map(lambda a: a in 'xyz', self.description.axes), \
-        #    "Unknown axis type.  Known axes: xyz  Your axes:"\
-        #    .format(self.description.axes)
-        
         assert self.description.format in vigra.impex.listExtensions().split(), \
             "Unknown tile format: {}".format( self.description.format )
         
         assert self.description.tile_shape_2d.shape == (2,)
         assert self.description.bounds.shape == (3,)
+
+        shape_dict = dict( zip('zyx', self.description.bounds) )
+        self.output_shape = tuple( shape_dict[k] for k in self.description.output_axes )
 
         self._slice_remapping = {}
         for source, destinations in self.description.extend_slices:
@@ -106,8 +108,17 @@ class TiledVolume(object):
 
     def read(self, roi, result_out):
         """
-        roi: (start, stop) tuples in zyx order.
+        roi: (start, stop) tuples, ordered according to description.output_axes
         """
+        output_axes = self.description.output_axes
+        roi_transposed = zip(*roi)
+        roi_dict = dict( zip(output_axes, roi_transposed) )
+        roi = zip( *(roi_dict['z'], roi_dict['y'], roi_dict['x']) )
+
+        # First, normalize roi and result to zyx order
+        result_out = vigra.taggedView(result_out, output_axes)
+        result_out = result_out.withAxes(*'zyx')
+        
         assert numpy.array(roi).shape == (2,3), "Invalid roi for 3D volume: {}".format( roi )
         roi = numpy.array(roi)
         assert (result_out.shape == (roi[1] - roi[0])).all()
@@ -163,7 +174,7 @@ class TiledVolume(object):
             if PARALLEL_REQ:
                 pool.add( Request( retrieval_fn ) )
             else:
-                # leave the pool empty
+                # execute serially (leave the pool empty)
                 retrieval_fn()
         
         pool.wait()
@@ -181,21 +192,30 @@ class TiledVolume(object):
         logger.debug("Retrieving {}, saving to {}".format( tile_url, tmp_filepath ))
         r = requests.get(tile_url)
         if r.status_code == requests.codes.not_found:
+            logger.warn("NOTFOUND: {}".format( tile_url, tmp_filepath ))
             data_out[:] = 0
         else:
-            with open(tmp_filepath, 'wb') as f:
-                CHUNK_SIZE = 10*1024
-                for chunk in r.iter_content(CHUNK_SIZE):
-                    f.write(chunk)
-    
-            # Read the image from the disk with vigra
-            img = vigra.impex.readImage(tmp_filepath, dtype='NATIVE')
-            assert img.ndim == 3
-            assert img.shape[-1] == 1
+            USE_PIL = True
+            if USE_PIL:
+                img = numpy.asarray( Image.open(StringIO(r.content)) )
+                assert img.ndim == 2
+                # img has axes xy, but we want zyx
+                img = img[None]
+                #img = img.transpose()[None]
+            else: 
+                with open(tmp_filepath, 'wb') as f:
+                    CHUNK_SIZE = 10*1024
+                    for chunk in r.iter_content(CHUNK_SIZE):
+                        f.write(chunk)
+
+                # Read the image from the disk with vigra
+                img = vigra.impex.readImage(tmp_filepath, dtype='NATIVE')
+                assert img.ndim == 3
+                assert img.shape[-1] == 1
+                
+                # img has axes xyc, but we want zyx
+                img = img.transpose()[None,0,:,:]
             
-            # img has axes xyc, but we want zyx
-            img = img.transpose()[None,0,:,:]
-            assert img[roiToSlice(*tile_relative_intersection)].shape == data_out.shape
-        
             # Copy just the part we need into the destination array
+            assert img[roiToSlice(*tile_relative_intersection)].shape == data_out.shape
             data_out[:] = img[roiToSlice(*tile_relative_intersection)]
