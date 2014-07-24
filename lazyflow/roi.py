@@ -295,7 +295,7 @@ def getIntersection( roiA, roiB, assertIntersect=True ):
 
     if numpy.prod(stop - start) <= 0:
         if assertIntersect:
-            assert ((stop - start) > 0).all(), "Rois do not intersect!"
+            assert ((stop - start) > 0).all(), "Rois do not intersect: {} and {}".format( roiA, roiB )
         else:
             return None    
     return (start, stop)
