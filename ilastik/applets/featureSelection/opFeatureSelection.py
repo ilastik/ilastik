@@ -236,6 +236,9 @@ class OpFeatureSelection( OpFeatureSelectionNoCache ):
             outerBlockShapeZ = tuple( blockDimsZ[k][1] for k in axisOrder )
     
             # Configure the cache        
-            self.opPixelFeatureCache.innerBlockShape.setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
-            self.opPixelFeatureCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
+#             self.opPixelFeatureCache.innerBlockShape.setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
+#             self.opPixelFeatureCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
+
+            self.opPixelFeatureCache.innerBlockShape.setValue( (innerBlockShapeZ,) )
+            self.opPixelFeatureCache.outerBlockShape.setValue( (outerBlockShapeZ,) )
 
