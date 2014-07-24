@@ -405,7 +405,7 @@ class Slot(object):
             self._sig_unready(self)
 
     @is_setup_fn
-    def connect(self, partner, notify=True):
+    def connect(self, partner, notify=True, permit_distant_connection=False):
         """
         Connect a slot to another slot
 
@@ -428,11 +428,12 @@ class Slot(object):
                     (self._type == "output" and partner_op.parent is my_op) or \
                     (self._type == "input" and my_op.parent is partner_op) or \
                     my_op is partner_op):
-                msg = "It is forbidden to connect slots of operators that are not siblings "\
-                      "or not directly related as parent and child."
-                if partner_op.parent is None or my_op.parent is None:
-                    msg += "\n(For one of your operators, parent=None.  Was it already cleaned up?"
-                raise Exception(msg)
+                if not permit_distant_connection:
+                    msg = "It is forbidden to connect slots of operators that are not siblings "\
+                          "or not directly related as parent and child."
+                    if partner_op.parent is None or my_op.parent is None:
+                        msg += "\n(For one of your operators, parent=None.  Was it already cleaned up?"
+                    raise Exception(msg)
     
             if self.partner is partner and partner.level == self.level:
                 return
