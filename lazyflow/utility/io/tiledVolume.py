@@ -5,10 +5,14 @@ import tempfile
 import shutil
 from functools import partial
 from StringIO import StringIO
-from PIL import Image
 
+## Instead of importing requests and PIL here, 
+## use late imports (below) so people who don't use TiledVolume don't have to have them
 # New dependency: requests is way more convenient than urllib or httplib
-import requests
+#import requests
+
+# Use PIL instead of vigra since it allows us to open images in-memory
+#from PIL import Image
 
 from lazyflow.utility.jsonConfig import JsonConfigParser, AutoEval, FormattedField
 from lazyflow.roi import getIntersectingBlocks, getBlockBounds, roiToSlice, getIntersection
@@ -182,7 +186,17 @@ class TiledVolume(object):
         # Clean up our temp files.
         shutil.rmtree(tmpdir)
 
-    def _retrieve_tile(self, tmpdir, rest_args, tile_relative_intersection, data_out): 
+    # For late imports
+    requests = None
+    PIL = None
+    
+    def _retrieve_tile(self, tmpdir, rest_args, tile_relative_intersection, data_out):
+        # Late import
+        if not TiledVolume.requests:
+            import requests
+            TiledVolume.requests = requests
+        requests = TiledVolume.requests
+
         tile_url = self.description.tile_url_format.format( **rest_args )
 
         tmp_filename = 'z{z_start}_y{y_start}_x{x_start}'.format( **rest_args )
@@ -197,7 +211,14 @@ class TiledVolume(object):
         else:
             USE_PIL = True
             if USE_PIL:
-                img = numpy.asarray( Image.open(StringIO(r.content)) )
+                # late import
+                if not TiledVolume.PIL:
+                    import PIL
+                    import PIL.Image
+                    TiledVolume.PIL = PIL
+                PIL = TiledVolume.PIL
+
+                img = numpy.asarray( PIL.Image.open(StringIO(r.content)) )
                 assert img.ndim == 2
                 # img has axes xy, but we want zyx
                 img = img[None]
