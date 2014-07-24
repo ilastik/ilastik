@@ -36,18 +36,19 @@ class OpTiledVolumeReader(Operator):
 
     def __init__(self, *args, **kwargs):
         super(OpTiledVolumeReader, self).__init__(*args, **kwargs)
-        self._volumeObject = None
+        self.tiled_volume = None
 
     def setupOutputs(self):
         # Create a TiledVolume object to read the description file and do the downloads.
-        self._volumeObject = TiledVolume( self.DescriptionFilePath.value )
+        self.tiled_volume = TiledVolume( self.DescriptionFilePath.value )
 
-        self.Output.meta.shape = tuple(self._volumeObject.description.shape)
-        self.Output.meta.dtype = self._volumeObject.description.dtype
-        self.Output.meta.axistags = vigra.defaultAxistags(self._volumeObject.description.axes)
+        self.Output.meta.shape = tuple(self.tiled_volume.output_shape)
+        self.Output.meta.dtype = self.tiled_volume.description.dtype
+        self.Output.meta.axistags = vigra.defaultAxistags(self.tiled_volume.description.output_axes)
+        self.Output.meta.prefer_2d = True
 
     def execute(self, slot, subindex, roi, result):
-        self._volumeObject.read( (roi.start, roi.stop), result )
+        self.tiled_volume.read( (roi.start, roi.stop), result )
         return result
 
     def propagateDirty(self, slot, subindex, roi):

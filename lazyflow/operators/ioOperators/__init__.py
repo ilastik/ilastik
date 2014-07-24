@@ -28,6 +28,7 @@ from opRESTfulVolumeReader import *
 from opBlockwiseFilesetReader import *
 from opRESTfulBlockwiseFilesetReader import *
 from opTiledVolumeReader import *
+from opCachedTiledVolumeReader import *
 
 # Try to import the dvid-related operator.
 # If it fails, that's okay.
