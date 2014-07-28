@@ -19,7 +19,6 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
-import threading
 from functools import partial
 
 import numpy
@@ -27,6 +26,10 @@ import numpy
 import lazyflow.stype
 from lazyflow.utility import OrderedSignal
 from lazyflow.request import Request, SimpleRequestCondition
+
+
+import logging
+logger = logging.getLogger(__name__)
 
 class RoiRequestBatch( object ):
     """
@@ -196,23 +199,42 @@ class RoiRequestBatch( object ):
         req.submit()
 
     def _handleCompletedRequest(self, roi, result):
-        if self._allowParallelResults:
-            # Signal the user with the result before the critical section
-            self.resultSignal(roi, result)
+        logger.debug("Request completed for roi: {}".format(roi))
+
+        try:
+            if self._allowParallelResults:
+                # Signal the user with the result before the critical section
+                logger.debug("Signaling serially for roi: {}".format(roi))
+                self.resultSignal(roi, result)
+        except:
+            with self._condition:
+                logger.debug("Notifying after exception...")
+                self._completed_count += 1
+                self._condition.notify()
+            raise
 
         with self._condition:
-            if not self._allowParallelResults:
-                # Signal here, inside the critical section.
-                self.resultSignal(roi, result)
-
-            # Report progress (if possible)
-            if self._totalVolume is not None:
-                self._processedVolume += numpy.prod( numpy.subtract(roi[1], roi[0]) )
-                progress = 100 * self._processedVolume / self._totalVolume
-                self.progressSignal( progress )
+            try:
+                if not self._allowParallelResults:
+                    # Signal here, inside the critical section.
+                    logger.debug("Signaling in parallel for roi: {}".format(roi))
+                    self.resultSignal(roi, result)
     
-            self._completed_count += 1
-            self._condition.notify()
+                # Report progress (if possible)
+                if self._totalVolume is not None:
+                    self._processedVolume += numpy.prod( numpy.subtract(roi[1], roi[0]) )
+                    progress = 100 * self._processedVolume / self._totalVolume
+                    logger.debug("Signaling progress for roi: {}".format(roi))
+                    self.progressSignal( progress )
+            except:
+                logger.debug("Error raised...")
+                raise
+            finally:
+                # Always notify in this finally section, 
+                #  even if the client result/progress handler raised.
+                logger.debug("Notifying condition...")
+                self._completed_count += 1
+                self._condition.notify()
     
 if __name__ == "__main__":
     import doctest

@@ -19,7 +19,7 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
-from lazyflow.request.request import Request, RequestLock, SimpleRequestCondition
+from lazyflow.request.request import Request, RequestLock, SimpleRequestCondition, RequestPool
 import os
 import time
 import random
@@ -798,6 +798,13 @@ class TestRequestExceptions(object):
         # Subscribing to notify_failed on a request that's already failed should call the failure handler immediately.
         req2.notify_failed( failure_handler )
         assert len(signaled_exceptions) == 3
+
+    
+class TestRequestPool(object):
+        
+    def testBasic(self):
+        pass
+        #pool = 
         
 if __name__ == "__main__":
 
