@@ -442,9 +442,7 @@ class SerialClassifierSlot(SerialSlot):
         if self.cache._dirty:
             return
 
-        cache_contents = self.cache._value
-        assert cache_contents.shape == (1,)
-        classifier = cache_contents[0]
+        classifier = self.cache.Output.value
 
         # Classifier can be None if there isn't any training data yet.
         if classifier is None:
