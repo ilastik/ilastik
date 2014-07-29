@@ -25,7 +25,7 @@ import numpy
 
 import lazyflow.stype
 from lazyflow.utility import OrderedSignal
-from lazyflow.request import Request, SimpleRequestCondition
+from lazyflow.request import Request, SimpleRequestCondition, log_exception
 
 
 import logging
@@ -115,6 +115,8 @@ class RoiRequestBatch( object ):
 
         self._activated_count = 0
         self._completed_count = 0
+        
+        self._failed = False
 
         # Progress bookkeeping
         self._totalVolume = totalVolume
@@ -163,14 +165,20 @@ class RoiRequestBatch( object ):
             while True:
                 # Wait for at least one active request to finish
                 with self._condition:
-                    while (self._activated_count - self._completed_count) == self._batchSize:
+                    while not self._failed and (self._activated_count - self._completed_count) == self._batchSize:
                         self._condition.wait()
 
+                if self._failed:
+                    break
+
                 # Launch new requests until we have the correct number of active requests
-                while self._activated_count - self._completed_count < self._batchSize:
+                while not self._failed and self._activated_count - self._completed_count < self._batchSize:
                     with self._condition:
                         self._activateNewRequest() # Eventually raises StopIteration
                         self._activated_count += 1
+
+                if self._failed:
+                    break
         except StopIteration:
             # We've run out of requests to launch.
             # Wait for the remaining active requests to finish.
@@ -196,20 +204,19 @@ class RoiRequestBatch( object ):
             "Can't use RoiRequestBatch with non-standard requests.  See comment above."
         
         req.notify_finished( partial( self._handleCompletedRequest, roi ) )
+        req.notify_failed( partial( self._handleFailedRequest, roi ) )
+        req.notify_cancelled( partial( self._handleCancelledRequest, roi ) )
         req.submit()
 
     def _handleCompletedRequest(self, roi, result):
-        logger.debug("Request completed for roi: {}".format(roi))
-
         try:
             if self._allowParallelResults:
                 # Signal the user with the result before the critical section
-                logger.debug("Signaling serially for roi: {}".format(roi))
                 self.resultSignal(roi, result)
         except:
+            # Always notify.
             with self._condition:
-                logger.debug("Notifying after exception...")
-                self._completed_count += 1
+                self._failed = True
                 self._condition.notify()
             raise
 
@@ -217,24 +224,31 @@ class RoiRequestBatch( object ):
             try:
                 if not self._allowParallelResults:
                     # Signal here, inside the critical section.
-                    logger.debug("Signaling in parallel for roi: {}".format(roi))
                     self.resultSignal(roi, result)
     
                 # Report progress (if possible)
                 if self._totalVolume is not None:
                     self._processedVolume += numpy.prod( numpy.subtract(roi[1], roi[0]) )
                     progress = 100 * self._processedVolume / self._totalVolume
-                    logger.debug("Signaling progress for roi: {}".format(roi))
                     self.progressSignal( progress )
-            except:
-                logger.debug("Error raised...")
-                raise
+
+                logger.debug("Request completed for roi: {}".format(roi))
+                self._completed_count += 1
             finally:
                 # Always notify in this finally section, 
                 #  even if the client result/progress handler raised.
-                logger.debug("Notifying condition...")
-                self._completed_count += 1
                 self._condition.notify()
+
+    def _handleFailedRequest(self, roi, exc, exc_info):
+        with self._condition:
+            msg = "Encountered exception while processing roi: {}".format( roi )
+            log_exception( logger, msg, exc_info )
+            self._failed = True
+            self._condition.notify()
+    
+    def _handleCancelledRequest(self, roi):
+        # This class doesn't yet support request cancellation.
+        raise NotImplementedError
     
 if __name__ == "__main__":
     import doctest
