@@ -321,6 +321,15 @@ class OpValueCache(OpCache):
             self._dirty = False
         self.Output.setDirty()
         
+    def resetValue(self):
+        """
+        Remove the value from the cache.
+        """
+        with self._lock:
+            self._value = None
+            self._dirty = True
+        self.Output.setDirty()
+        
 class OpPrecomputedInput(Operator):
     """
     Think of this operator like a railroad switch.  The output is connected to one of the two inputs.
