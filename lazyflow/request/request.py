@@ -982,10 +982,13 @@ class RequestPool(object):
         If the pool hasn't been submitted yet, submit it. 
         Then wait for all requests in the pool to complete in the simplest way possible.
         """
-        logger.debug("waiting for {} requests.".format( len(self._requests) ))
+        if not self._started:
+            self.submit()
+
+        RequestPool.logger.debug("waiting for {} requests.".format( len(self._requests) ))
         for req in self._requests:
             req.block()
-        logger.debug("DONE waiting for {} requests.".format( len(self._requests) ))
+        RequestPool.logger.debug("DONE waiting for {} requests.".format( len(self._requests) ))
 
     def cancel(self):
         """
