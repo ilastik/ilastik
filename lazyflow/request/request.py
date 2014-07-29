@@ -700,6 +700,7 @@ class RequestLock(object):
     
     Implementation detail:  Depends on the ability to call two *private* Request methods: _suspend() and _wake_up().
     """
+    logger = logging.getLogger(__name__ + ".RequestLock")
     def __init__(self):
         # This member holds the state of this RequestLock
         self._modelLock = threading.Lock()
@@ -779,6 +780,7 @@ class RequestLock(object):
         Release the lock so that another request or thread can acquire it.
         """
         assert self._modelLock.locked(), "Can't release a RequestLock that isn't already acquired!"
+
         with self._selfProtectLock:
             if len(self._pendingRequests) == 0:
                 # There were no waiting requests or threads, so the lock is free to be acquired again.
@@ -849,6 +851,8 @@ class SimpleRequestCondition(object):
         process_all_data()
         
     """
+    logger = logging.getLogger(__name__ + ".SimpleRequestCondition")
+    
     def __init__(self):
         self._ownership_lock = RequestLock()
         self._waiter_lock = RequestLock()   # Only one "waiter".  
@@ -918,6 +922,8 @@ class RequestPool(object):
     Not threadsafe (don't add requests from more than one thread).
     """
 
+    logger = logging.getLogger(__name__ + ".RequestPool")
+
     class RequestPoolError(Exception):
         """
         Raised if you attempt to use the Pool in a manner that it isn't designed for.
@@ -956,6 +962,9 @@ class RequestPool(object):
         If the pool hasn't been submitted yet, submit it. 
         Then wait for all requests in the pool to complete in the simplest way possible.
         """
+        if not self._started:
+            self.submit()
+
         for req in self._requests:
             req.block()
 
