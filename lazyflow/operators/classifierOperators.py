@@ -529,11 +529,16 @@ class OpVectorwiseClassifierPredict(Operator):
         features = input_data.reshape((prod, shape[-1]))
 
         probabilities = classifier.predict_probabilities( features )
+
+        assert probabilities.shape[1] <= self.PMaps.meta.shape[-1], \
+            "Error: Somehow the classifier has more label classes than expected:"\
+            " Got {} classes, expected {} classes"\
+            .format( probabilities.shape[1], self.PMaps.meta.shape[-1] )
         
         # We're expecting a channel for each label class.
         # If we didn't provide at least one sample for each label,
         #  we may get back fewer channels.
-        if probabilities.shape[1] != self.PMaps.meta.shape[-1]:
+        if probabilities.shape[1] < self.PMaps.meta.shape[-1]:
             # Copy to an array of the correct shape
             # This is slow, but it's an unusual case
             assert probabilities.shape[-1] == len(classifier.known_classes)
