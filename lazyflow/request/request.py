@@ -725,17 +725,11 @@ class RequestLock(object):
         
         :param blocking: Same as in threading.Lock 
         """
-        try:
-            RequestLock.logger.debug("Thread {}: Acquiring >->-> RequestLock {}"\
-                                     .format(threading.current_thread().name, id(self)))
-            current_request = Request._current_request()
-            if current_request is None:
-                return self._acquire_from_within_thread(blocking)
-            else:
-                return self._acquire_from_within_request(current_request, blocking)
-        finally:
-            RequestLock.logger.debug("Thread {}: Acquired <-<-< RequestLock {}"\
-                                     .format(threading.current_thread().name, id(self)))
+        current_request = Request._current_request()
+        if current_request is None:
+            return self._acquire_from_within_thread(blocking)
+        else:
+            return self._acquire_from_within_request(current_request, blocking)
 
     def _acquire_from_within_request(self, current_request, blocking):
         with self._selfProtectLock:
@@ -787,9 +781,6 @@ class RequestLock(object):
         """
         assert self._modelLock.locked(), "Can't release a RequestLock that isn't already acquired!"
 
-        RequestLock.logger.debug("Thread {}: Releasing >->-> RequestLock {}"\
-                                 .format(threading.current_thread().name, id(self)))
-
         with self._selfProtectLock:
             if len(self._pendingRequests) == 0:
                 # There were no waiting requests or threads, so the lock is free to be acquired again.
@@ -805,9 +796,6 @@ class RequestLock(object):
                     # The pending "request" is a real thread.
                     # Release the lock to wake it up (he'll remove the _pendingRequest entry)
                     self._modelLock.release()
-
-        RequestLock.logger.debug("Thread {}: Released <-<-< RequestLock {}"\
-                                 .format(threading.current_thread().name, id(self)))
 
     def __enter__(self):
         self.acquire()
@@ -875,18 +863,10 @@ class SimpleRequestCondition(object):
         self.release = self._ownership_lock.release
 
     def __enter__(self):
-        SimpleRequestCondition.logger.debug("Thread: {} Acquiring >->-> {}"
-                                            .format(threading.current_thread().name, id(self)))
         self._ownership_lock.__enter__()
-        SimpleRequestCondition.logger.debug("Thread: {} Acquired <-<-< {}"
-                                            .format(threading.current_thread().name, id(self)))
         
     def __exit__(self, *args):
-        SimpleRequestCondition.logger.debug("Thread: {} Releasing >->-> {}"
-                                            .format(threading.current_thread().name, id(self)))
         self._ownership_lock.__exit__(*args)
-        SimpleRequestCondition.logger.debug("Thread: {} Released <-<-< {}"
-                                            .format(threading.current_thread().name, id(self)))
 
     def wait(self):
         """
@@ -985,10 +965,8 @@ class RequestPool(object):
         if not self._started:
             self.submit()
 
-        RequestPool.logger.debug("waiting for {} requests.".format( len(self._requests) ))
         for req in self._requests:
             req.block()
-        RequestPool.logger.debug("DONE waiting for {} requests.".format( len(self._requests) ))
 
     def cancel(self):
         """
