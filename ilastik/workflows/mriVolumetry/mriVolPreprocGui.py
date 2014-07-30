@@ -6,10 +6,11 @@ from PyQt4.QtCore import Qt, QEvent
 from PyQt4.QtGui import QColor
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
-from ilastik.utility.gui import threadRouted
-from ilastik.utility import bind
-from volumina.api import LazyflowSource, AlphaModulatedLayer
-from lazyflow.operators.generic import OpSingleChannelSelector
+# from ilastik.utility.gui import threadRouted
+# from ilastik.utility import bind
+from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer
+# from lazyflow.operators.generic import OpSingleChannelSelector
+from lazyflow.operators import OpMultiArraySlicer
 
 
 class MriVolPreprocGui( LayerViewerGui ):
@@ -34,14 +35,15 @@ class MriVolPreprocGui( LayerViewerGui ):
         localDir = os.path.split(__file__)[0]
         
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
-        '''
+
         self._drawer.applyButton.clicked.connect( self._onApplyButtonClicked )
-        self._allWatchedWidgets = [ self._drawer.sigmaSpinBox ]
+        self._allWatchedWidgets = [ self._drawer.sigmaSpinBox,
+                                    self._drawer.thresSpinBox]
         
         # If the user pressed enter inside a spinbox, auto-click "Apply"
         for widget in self._allWatchedWidgets:
             widget.installEventFilter( self )
-        '''
+
         '''
         self._updateGuiFromOperator()
         self.topLevelOperatorView.InputImage.notifyReady( bind(self._updateGuiFromOperator) )
@@ -56,6 +58,11 @@ class MriVolPreprocGui( LayerViewerGui ):
         # Read Sigma
         sigma = self._drawer.sigmaSpinBox.value()
         op.Sigma.setValue(sigma)
+        # Read Threshold
+        thres = self._drawer.thresSpinBox.value()
+        op.Threshold.setValue(thres)
+
+
     '''    
     @threadRouted
     def _updateGuiFromOperator(self):
@@ -63,7 +70,7 @@ class MriVolPreprocGui( LayerViewerGui ):
     '''
     def _onApplyButtonClicked(self):
         self._updateOperatorFromGui()
-        print 'Sigma value: {}'.format(self.topLevelOperatorView.Sigma)
+        # print 'Sigma value: {}'.format(self.topLevelOperatorView.Sigma)
 
     def eventFilter(self, watched, event):
         """
@@ -80,34 +87,85 @@ class MriVolPreprocGui( LayerViewerGui ):
         layers = []
         op = self.topLevelOperatorView
 
-        if op.PredImage.ready():
-            numChannels = op.PredImage.meta.getTaggedShape()['c']
-            print 'Number of channels: {}'.format(numChannels)
-            for channel in range(numChannels):
-                channelProvider = OpSingleChannelSelector(parent=op.PredImage.getRealOperator().parent)
-                channelProvider.Input.connect(op.PredImage)
-                channelProvider.Index.setValue( channel )
-                channelSrc = LazyflowSource( channelProvider.Output )
-                inputChannelLayer = AlphaModulatedLayer( channelSrc,
-                                                    tintColor=QColor(self._channelColors[channel]),
-                                                    range=(0.0, 1.0),
-                                                    normalize=(0.0, 1.0) )
+
+        if op.FinalOutput.ready():
+            outLayer = ColortableLayer( LazyflowSource(op.FinalOutput),
+                                        colorTable=self._channelColors)
+            outLayer.name = "Output"
+            outLayer.visible = True
+            outLayer.opacity = 1.0
+            layers.append( outLayer )
+
+
+        if op.Output.ready():
+            numChannels = op.Output.meta.getTaggedShape()['c']
+            # print 'Number of channels: {}'.format(numChannels)
+            slicer = OpMultiArraySlicer(parent=\
+                                        op.Output.getRealOperator().parent)
+            slicer.Input.connect(op.Output)
+            slicer.AxisFlag.setValue('c')  # slice along c
+
+            for i in range(numChannels):
+                # slicer maps each channel to a subslot of slicer.Slices
+                # i.e. slicer.Slices is not really slot, but a list of slots
+                channelSrc = LazyflowSource( slicer.Slices[i] )
+                inputChannelLayer = AlphaModulatedLayer(
+                    channelSrc,
+                    tintColor=QColor(self._channelColors[i]),
+                    range=(0.0, 1.0),
+                    normalize=(0.0, 1.0) )
                 inputChannelLayer.opacity = 0.5
                 inputChannelLayer.visible = True
-                inputChannelLayer.name = "Input Channel " + str(channel)
-                inputChannelLayer.setToolTip("Select input channel " + str(channel) + \
-                                             " if this prediction image contains the objects of interest.")                    
+                inputChannelLayer.name = "Input Channel " + str(i)
+                # TODO change to label name
+                inputChannelLayer.setToolTip(
+                    "Select input channel " + str(i) + \
+                    " if this prediction image contains the objects of interest.")                    
                 layers.append(inputChannelLayer)
-        '''
-        rawSlot = self.topLevelOperatorView.RawInput
-        if rawSlot.ready():
-            rawLayer = self.createStandardLayerFromSlot( rawSlot )
+
+        # raw layer
+        if op.RawInput.ready():
+            rawLayer = self.createStandardLayerFromSlot( op.RawInput )
             rawLayer.name = "Raw data"
             rawLayer.visible = True
             rawLayer.opacity = 1.0
             layers.append(rawLayer)
-        '''
         return layers
+
+        # if op.Output.ready():
+        #     numChannels = op.Output.meta.getTaggedShape()['c']
+        #     print 'Number of channels: {}'.format(numChannels)
+
+        #     for channel in range(numChannels):
+        #         channelProvider = OpSingleChannelSelector(parent=op.Output.getRealOperator().parent)
+        #         # channelProvider.Input.connect(op.Output)
+        #         channelProvider.Input.connect(op.CachedOutput)
+        #         # channelProvider.Output.connect(op.Output)
+        #         # put cache here, with blocksize over all channels
+        #         # XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+        #         channelProvider.Index.setValue( channel )
+        #         channelSrc = LazyflowSource( channelProvider.Output )
+        #         inputChannelLayer = AlphaModulatedLayer( channelSrc,
+        #                                             tintColor=QColor(self._channelColors[channel]),
+        #                                             range=(0.0, 1.0),
+        #                                             normalize=(0.0, 1.0) )
+        #         inputChannelLayer.opacity = 0.5
+        #         inputChannelLayer.visible = True
+        #         inputChannelLayer.name = "Input Channel " + str(channel)
+        #         # TODO change to label name
+        #         inputChannelLayer.setToolTip("Select input channel " + str(channel) + \
+        #                                      " if this prediction image contains the objects of interest.")                    
+        #         layers.append(inputChannelLayer)
+        # '''
+        # rawSlot = self.topLevelOperatorView.RawInput
+        # if rawSlot.ready():
+        #     rawLayer = self.createStandardLayerFromSlot( rawSlot )
+        #     rawLayer.name = "Raw data"
+        #     rawLayer.visible = True
+        #     rawLayer.opacity = 1.0
+        #     layers.append(rawLayer)
+        # '''
+        # return layers
 
 
     def _createDefault16ColorColorTable(self):

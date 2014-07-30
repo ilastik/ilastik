@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>291</width>
-    <height>122</height>
+    <height>291</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,7 +15,7 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_2">
+    <layout class="QHBoxLayout" name="horizontalLayout_sigma">
      <property name="spacing">
       <number>0</number>
      </property>
@@ -38,10 +38,10 @@
      <item>
       <widget class="QDoubleSpinBox" name="sigmaSpinBox">
        <property name="toolTip">
-        <string>Smoothing sigma: Z dimension</string>
+        <string>sigma for cost volume filter</string>
        </property>
        <property name="decimals">
-        <number>1</number>
+        <number>2</number>
        </property>
        <property name="minimum">
         <double>0.000000000000000</double>
@@ -56,6 +56,23 @@
         <double>1.000000000000000</double>
        </property>
       </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_thres" stretch="0,0">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="QLabel" name="thresLabel">
+       <property name="text">
+        <string>Threshold:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QDoubleSpinBox" name="thresSpinBox"/>
      </item>
     </layout>
    </item>

@@ -22,7 +22,8 @@ class MriVolumetryWorkflow(Workflow):
                                                        force5d=True)
 
         opDataSelection = self.dataSelectionApplet.topLevelOperator
-        opDataSelection.DatasetRoles.setValue( ['Prediction Maps'] )
+        opDataSelection.DatasetRoles.setValue( ['Raw Data',
+                                                'Prediction Maps'] )
 
         self.mriVolPreprocApplet = MriVolPreprocApplet(self, 
                                                        'Prediction Filter',
@@ -39,7 +40,8 @@ class MriVolumetryWorkflow(Workflow):
         opMriVolPreproc = self.mriVolPreprocApplet.topLevelOperator.getLane(laneIndex)
 
         # Connect top-level operators
-        opMriVolPreproc.PredImage.connect( opData.ImageGroup[0] )
+        opMriVolPreproc.RawInput.connect( opData.ImageGroup[0] )
+        opMriVolPreproc.Input.connect( opData.ImageGroup[1] )
 
     @property
     def applets(self):

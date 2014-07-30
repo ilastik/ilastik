@@ -1,11 +1,11 @@
 from ilastik.applets.base.standardApplet import StandardApplet
 
-from opMriVolPreproc import OpMriVolPreproc
+from opCostVolumeFilter import OpMriVolPreproc
 
 class MriVolPreprocApplet( StandardApplet ):
     """
-    Applet that applies fast cost volume filtering to 'polish' the prediction 
-    maps
+    Applet that applies fast cost volume filtering 
+    to 'polish' the prediction maps
     """
 
     def __init__( self, workflow, guiName, projectFileGroupName ):
@@ -18,9 +18,10 @@ class MriVolPreprocApplet( StandardApplet ):
 
     @property
     def broadcastingSlots(self):
-        return [ 'Sigma' ]
+        return [ 'Sigma', 'Threshold']
 
     @property
     def singleLaneGuiClass(self):
         from mriVolPreprocGui import MriVolPreprocGui
         return MriVolPreprocGui
+
