@@ -187,7 +187,7 @@ class OpExportSlot(Operator):
                 return ""
 
         # None of the remaining formats support more than 4 channels.
-        if 'c' in tagged_shape and tagged_shape['c'] > 4:
+        if 'c' in tagged_shape and tagged_shape['c'] > 4 and not filter(lambda fmt: fmt.name == output_format, self._3d_sequence_formats):
             return "Too many channels."
 
         # HDR format supports float32 only, and must have exactly 3 channels
@@ -242,7 +242,7 @@ class OpExportSlot(Operator):
             if len(nonchannel_axes) == 2:
                 return ""
             else:
-                return "Can't export 3D stack: Input is not 3D."
+                return "Can't export 3D stack: Input is not 3D or axis are in the wrong order."
 
         # 4D sequences of 3D images require a 4D image
         # (singleton/channel axes excepted, unless channel is the 'step' axis)
