@@ -23,10 +23,12 @@
 import logging
 import time
 
-#SciPy
+import numpy
 import vigra
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
+
+logger = logging.getLogger(__name__)    
 
 class OpStreamingHdf5Reader(Operator):
     """
@@ -43,9 +45,6 @@ class OpStreamingHdf5Reader(Operator):
 
     # Output data
     OutputImage = OutputSlot()
-    
-    loggingName = __name__ + ".OpStreamingHdf5Reader"
-    logger = logging.getLogger(loggingName)
     
     class DatasetReadError(Exception):
         def __init__(self, internalPath):
@@ -101,6 +100,13 @@ class OpStreamingHdf5Reader(Operator):
         # If the dataset specifies a datarange, add it to the slot metadata
         if 'drange' in self._hdf5File[internalPath].attrs:
             self.OutputImage.meta.drange = tuple( self._hdf5File[internalPath].attrs['drange'] )
+        
+        total_volume = numpy.prod(numpy.array(self._hdf5File[internalPath].shape))
+        if not self._hdf5File[internalPath].chunks and total_volume > 1e8:
+            self.OutputImage.meta.inefficient_format = True
+            logger.warn("This dataset ({}{}) is NOT chunked.  "
+                        "Performance for 3D access patterns will be bad!"
+                        .format( self._hdf5File.filename, internalPath ))
 
     def execute(self, slot, subindex, roi, result):
         t = time.time()
@@ -114,9 +120,9 @@ class OpStreamingHdf5Reader(Operator):
             hdf5File[internalPath].read_direct( result[...], key )
         else:
             result[...] = hdf5File[internalPath][key]
-        if self.logger.getEffectiveLevel() >= logging.DEBUG:
+        if logger.getEffectiveLevel() >= logging.DEBUG:
             t = 1000.0*(time.time()-t)
-            self.logger.debug("took %f msec." % t)
+            logger.debug("took %f msec." % t)
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.Hdf5File or slot == self.InternalPath:
