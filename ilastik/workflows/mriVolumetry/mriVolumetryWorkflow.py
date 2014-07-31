@@ -4,6 +4,7 @@ from lazyflow.graph import Graph
 
 from ilastik.applets.dataSelection import DataSelectionApplet
 from mriVolPreprocApplet import MriVolPreprocApplet
+from mriVolConnectedComponentsApplet import MriVolConnectedComponentsApplet
 
 class MriVolumetryWorkflow(Workflow):
     def __init__(self, shell, headless, workflow_cmdline_args, *args, **kwargs):
@@ -29,19 +30,29 @@ class MriVolumetryWorkflow(Workflow):
                                                        'Prediction Filter',
                                                        'PredictionFilter')
 
+        self.mriVolCCApplet = MriVolConnectedComponentsApplet(self, \
+                                                'Connected Components',
+                                                'ConnectedComponents')
+
         self._applets = []
         self._applets.append( self.dataSelectionApplet )
         self._applets.append( self.mriVolPreprocApplet )
+        self._applets.append( self.mriVolCCApplet )
 
         # self._workflow_cmdline_args = workflow_cmdline_args
 
     def connectLane(self, laneIndex):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opMriVolPreproc = self.mriVolPreprocApplet.topLevelOperator.getLane(laneIndex)
+        opMriVolCC = self.mriVolCCApplet.topLevelOperator.getLane(laneIndex)
 
         # Connect top-level operators
         opMriVolPreproc.RawInput.connect( opData.ImageGroup[0] )
         opMriVolPreproc.Input.connect( opData.ImageGroup[1] )
+
+        
+        opMriVolCC.Input.connect( opMriVolPreproc.FinalOutput )
+        opMriVolCC.RawInput.connect( opData.ImageGroup[0] )
 
     @property
     def applets(self):

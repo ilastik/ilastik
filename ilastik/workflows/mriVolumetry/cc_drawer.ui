@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Form</class>
+ <widget class="QWidget" name="Form">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>291</width>
+    <height>291</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_thres" stretch="0,0">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="QLabel" name="thresLabel">
+       <property name="text">
+        <string>Threshold:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QDoubleSpinBox" name="thresSpinBox">
+       <property name="decimals">
+        <number>0</number>
+       </property>
+       <property name="maximum">
+        <double>100000.000000000000000</double>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_slider">
+     <property name="spacing">
+      <number>0</number>
+     </property>
+     <item>
+      <widget class="QSlider" name="slider">
+       <property name="maximum">
+        <number>100000</number>
+       </property>
+       <property name="singleStep">
+        <number>10</number>
+       </property>
+       <property name="pageStep">
+        <number>100</number>
+       </property>
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QPushButton" name="applyButton">
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Apply all the settings and compute results. If you want to see the final filtering results, don't forget to enable the &lt;span style=&quot; font-weight:600;&quot;&gt;&amp;quot;Final output&amp;quot;&lt;/span&gt; layer in the layer selection widget.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
+     <property name="text">
+      <string>Remove CCs</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

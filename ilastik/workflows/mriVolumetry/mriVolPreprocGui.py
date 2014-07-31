@@ -34,7 +34,7 @@ class MriVolPreprocGui( LayerViewerGui ):
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
         
-        self._drawer = uic.loadUi(localDir+"/drawer.ui")
+        self._drawer = uic.loadUi(localDir+"/preproc_drawer.ui")
 
         self._drawer.applyButton.clicked.connect( self._onApplyButtonClicked )
         self._allWatchedWidgets = [ self._drawer.sigmaSpinBox,
