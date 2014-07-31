@@ -33,7 +33,7 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 from ilastik.applets.splitBodyCarving.opSplitBodyCarving import OpFragmentSetLut
 
-from ilastik.utility import bind
+from ilastik.utility import bind, log_exception
 
 import logging
 logger = logging.getLogger(__name__)
@@ -212,9 +212,8 @@ class OpSplitBodyPostprocessing(Operator):
         def handleFailed( exc, exc_info ):
             cleanOps()        
             f.close()
-            import traceback
-            traceback.print_tb(exc_info[2])
             msg = "Final Segmentation export FAILED due to the following error:\n{}".format( exc )
+            log_exception( logger, msg )            
             logger.error( msg )
 
         def handleFinished( result ):

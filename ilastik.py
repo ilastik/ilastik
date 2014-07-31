@@ -23,14 +23,28 @@
 
 import ilastik_main
 
-if __name__ == "__main__":
-    # Special command-line control over default tmp dir
-    import ilastik.monkey_patches
-    ilastik.monkey_patches.extend_arg_parser(ilastik_main.parser)
+# Special command-line control over default tmp dir
+import ilastik.monkey_patches
+ilastik.monkey_patches.extend_arg_parser(ilastik_main.parser)
+
+def main():
+    parsed_args, workflow_cmdline_args = ilastik_main.parser.parse_known_args()
     
+    # allow to start-up by double-clicking an '.ilp' file
+    if len(workflow_cmdline_args) == 1 and \
+       workflow_cmdline_args[0].endswith('.ilp') and \
+       parsed_args.project is None:
+            parsed_args.project = workflow_cmdline_args[0]
+            workflow_cmdline_args = []
+
+    # DEBUG EXAMPLES
+    #parsed_args.project='/Users/bergs/MyProject.ilp'
+    #parsed_args.headless = True
+
+    ilastik_main.main(parsed_args, workflow_cmdline_args)
+
+if __name__ == "__main__":
     # Examples:
     # python ilastik.py --headless --project=MyProject.ilp --output_format=hdf5 raw_input.h5/volumes/data
     # python ilastik.py --playback_speed=2.0 --exit_on_failure --exit_on_success --debug --playback_script=my_recording.py
-    
-    parsed_args, workflow_cmdline_args = ilastik_main.parser.parse_known_args()        
-    ilastik_main.main(parsed_args, workflow_cmdline_args)
+    main()

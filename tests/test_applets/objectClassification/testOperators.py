@@ -29,6 +29,8 @@ from ilastik.applets.objectClassification.opObjectClassification import \
     OpRelabelSegmentation, OpObjectTrain, OpObjectPredict, OpObjectClassification, \
     OpBadObjectsToWarningMessage, OpMaxLabel
     
+from lazyflow.classifiers import ParallelVigraRfLazyflowClassifier
+
 from ilastik.applets import objectExtraction
 from ilastik.applets.objectExtraction.opObjectExtraction import \
     OpRegionFeatures, OpAdaptTimeListRoi, OpObjectExtraction
@@ -127,11 +129,8 @@ class TestOpObjectTrain(unittest.TestCase):
        
         self.assertTrue(self.op.Classifier.ready(), "The output of operator {} was not ready after connections took place.".format(self.op))
         
-        results = self.op.Classifier[:].wait()
-        self.assertEquals(len(results), self.nRandomForests)
-        
-        for randomForest in results:
-            self.assertIsInstance(randomForest, vigra.learning.RandomForest)
+        classifier = self.op.Classifier.value        
+        self.assertIsInstance(classifier, ParallelVigraRfLazyflowClassifier)
             
             
     def test_train_fail(self):
@@ -276,13 +275,13 @@ class TestFeatureSelection(unittest.TestCase):
 
         
     def test_predict(self):
-        rf = self.trainop.Classifier[0].wait()
+        rf = self.trainop.Classifier.value
         
         #pass a vector of 4 random features. vigra shouldn't complain
         #even though we computed more than 4
         dummy_feats = np.zeros((1,4), dtype=np.float32)
         dummy_feats[:] = 42
-        pred = rf[0].predictProbabilities(dummy_feats)
+        pred = rf.predict_probabilities(dummy_feats)
         
 
 class TestOpBadObjectsToWarningMessage(unittest.TestCase):
@@ -416,6 +415,12 @@ class TestFullOperator(unittest.TestCase):
     def test(self):
         self.assertTrue(self.classOp.Predictions.ready(), "Prediction slot of OpObjectClassification wasn't ready.")
         probs = self.classOp.PredictionImages[0][:].wait()
+        
+    def testExport(self):
+        table = self.classOp.createExportTable(0, [])
+        print table["Object id"]
+        print table["Default features, RegionCenter_ch_1"]
+        print table["Prediction"]
         
     def test_unfavorable_conditions(self):
         #TODO write test with not so nice input

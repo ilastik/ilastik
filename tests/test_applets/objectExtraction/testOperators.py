@@ -23,8 +23,11 @@ import numpy as np
 import vigra
 from lazyflow.graph import Graph
 from lazyflow.operators import OpLabelImage
-from ilastik.applets.objectExtraction.opObjectExtraction import OpAdaptTimeListRoi, OpRegionFeatures
+from ilastik.applets.objectExtraction.opObjectExtraction import OpAdaptTimeListRoi, OpRegionFeatures, OpObjectExtraction
 from ilastik.plugins import pluginManager
+
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning) 
 
 NAME = "Standard Object Features"
 
@@ -118,6 +121,14 @@ class TestOpRegionFeatures(object):
 
         assert np.any(feats[0][NAME]['Count'] != feats[1][NAME]['Count'])
         assert np.any(feats[0][NAME]['RegionCenter'] != feats[1][NAME]['RegionCenter'])
+        
+    def test_table_export(self):
+        opAdapt = OpAdaptTimeListRoi(graph=self.op.graph)
+        opAdapt.Input.connect(self.op.Output)
+
+        feats = opAdapt.Output([0, 1]).wait()
+        print "feature length:", len(feats)
+        OpObjectExtraction.createExportTable(feats)
 
 
 class testOpRegionFeaturesAgainstNumpy(object):

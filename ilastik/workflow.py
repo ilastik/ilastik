@@ -22,12 +22,16 @@ from abc import abstractproperty, abstractmethod
 from lazyflow.graph import Operator, Graph
 from string import ascii_uppercase
 from ilastik.shell.shellAbc import ShellABC
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Workflow( Operator ):
     """
     Base class for all workflows.
     """
     name = "Workflow (base class)"
+    workflowDisplayName = None #override in your own workflow if you need it different from name
 
     ###############################
     # Abstract methods/properties #
@@ -59,6 +63,7 @@ class Workflow( Operator ):
             wname+=i
         if wname.endswith(" Workflow"):
             wname = wname[:-9]
+            
         return wname
     
     @property
@@ -93,6 +98,13 @@ class Workflow( Operator ):
         """
         pass
 
+    def handleSendMessageToServer(self, name, data):
+        try:
+            server = self._shell.socketServer
+            server.send(name, data)
+        except Exception, e:
+            logger.error("Failed sending message to server '%s': %s" % (name, e))
+
     ##################
     # Public methods #
     ##################
@@ -120,6 +132,7 @@ class Workflow( Operator ):
         super(Workflow, self).__init__(parent=parent, graph=graph)
         self._shell = shell
         self._headless = headless
+        
 
     def cleanUp(self):
         """
@@ -157,6 +170,7 @@ class Workflow( Operator ):
         
         for applet in self.applets:
             applet.appletStateUpdateRequested.connect( self.handleAppletStateUpdateRequested )
+            applet.sendMessageToServer.connect( self.handleSendMessageToServer )
         
     def _createNewImageLane(self, multislot, index, *args):
         """
@@ -207,7 +221,9 @@ def getAvailableWorkflows():
             continue
 
         if isinstance(W.workflowName, str):
-            yield W, W.workflowName
+            if W.workflowDisplayName is None:
+                W.workflowDisplayName = W.workflowName
+            yield W, W.workflowName, W.workflowDisplayName
         else:
             originalName = W.__name__
             wname = originalName[0]
@@ -217,10 +233,13 @@ def getAvailableWorkflows():
                 wname += i
             if wname.endswith(" Workflow"):
                 wname = wname[:-9]
-            yield W, wname
+            if W.workflowDisplayName is None:
+                W.workflowDisplayName = wname
+           
+            yield W, wname, W.workflowDisplayName
 
 def getWorkflowFromName(Name):
     '''return workflow by naming its workflowName variable'''
-    for w,_name in getAvailableWorkflows():
-        if _name==Name or w.__name__==Name:
+    for w,_name, _displayName in getAvailableWorkflows():
+        if _name==Name or w.__name__==Name or _displayName==Name:
             return w

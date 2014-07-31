@@ -76,8 +76,11 @@ class OpPixelClassification( Operator ):
 
     HeadlessPredictionProbabilities = OutputSlot(level=1) # Classification predictions ( via no image caches (except for the classifier itself )
     HeadlessUint8PredictionProbabilities = OutputSlot(level=1) # Same as above, but 0-255 uint8 instead of 0.0-1.0 float32
+    HeadlessUncertaintyEstimate = OutputSlot(level=1) # Same as uncertaintly estimate, but does not rely on cached data.
 
     UncertaintyEstimate = OutputSlot(level=1)
+    
+    SimpleSegmentation = OutputSlot(level=1) # For debug, for now
 
     # GUI-only (not part of the pipeline, but saved to the project)
     LabelNames = OutputSlot()
@@ -163,6 +166,8 @@ class OpPixelClassification( Operator ):
         self.PredictionProbabilityChannels.connect( self.opPredictionPipeline.PredictionProbabilityChannels )
         self.SegmentationChannels.connect( self.opPredictionPipeline.SegmentationChannels )
         self.UncertaintyEstimate.connect( self.opPredictionPipeline.UncertaintyEstimate )
+        self.SimpleSegmentation.connect( self.opPredictionPipeline.SimpleSegmentation )
+        self.HeadlessUncertaintyEstimate.connect( self.opPredictionPipeline.HeadlessUncertaintyEstimate )
 
         def inputResizeHandler( slot, oldsize, newsize ):
             if ( newsize == 0 ):
@@ -335,6 +340,8 @@ class OpPredictionPipelineNoCache(Operator):
     
     HeadlessPredictionProbabilities = OutputSlot() # drange is 0.0 to 1.0
     HeadlessUint8PredictionProbabilities = OutputSlot() # drange 0 to 255
+    SimpleSegmentation = OutputSlot()
+    HeadlessUncertaintyEstimate = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super( OpPredictionPipelineNoCache, self ).__init__( *args, **kwargs )
@@ -357,6 +364,15 @@ class OpPredictionPipelineNoCache(Operator):
         self.opConvertToUint8.Function.setValue( lambda a: (255*a).astype(numpy.uint8) )
         self.HeadlessUint8PredictionProbabilities.connect( self.opConvertToUint8.Output )
 
+        self.opArgmaxChannel = OpArgmaxChannel( parent=self )
+        self.opArgmaxChannel.Input.connect( self.cacheless_predict.PMaps )
+        self.SimpleSegmentation.connect( self.opArgmaxChannel.Output )
+        
+        # Create a layer for uncertainty estimate
+        self.opUncertaintyEstimator = OpEnsembleMargin( parent=self )
+        self.opUncertaintyEstimator.Input.connect( self.cacheless_predict.PMaps )
+        self.HeadlessUncertaintyEstimate.connect( self.opUncertaintyEstimator.Output )
+
     def setupOutputs(self):
         pass
 
@@ -366,6 +382,37 @@ class OpPredictionPipelineNoCache(Operator):
     def propagateDirty(self, slot, subindex, roi):
         # Our output changes when the input changed shape, not when it becomes dirty.
         pass
+
+class OpArgmaxChannel( Operator ):
+    """
+    At each pixel output the index of the channel with the highest value.
+    NOTE: The index is incremented, so the returned channel indexes are 1-based (not 0-based).
+    """
+    Input = InputSlot()
+    Output = OutputSlot()
+    
+    def setupOutputs(self):
+        self.Output.meta.assignFrom( self.Input.meta )
+        self.Output.meta.dtype = numpy.uint8 # Assumes no more than 255 channels
+        self.Output.meta.shape = self.Input.meta.shape[:-1] + (1,)
+        assert self.Input.meta.getAxisKeys()[-1] == 'c'
+        assert self.Input.meta.shape[-1] <= 255
+    
+    def execute(self, slot, subindex, roi, result):
+        # Request all input channels
+        start = tuple(roi.start)
+        stop = tuple(roi.stop[:-1]) + (self.Input.meta.shape[-1],)
+        data = self.Input(start, stop).wait()
+        
+        result[:] = numpy.argmax( data, axis=-1 )[...,numpy.newaxis] # numpy.argmax drops the channel axis.
+        result[:] += 1 # Class labels start at 1
+        return result
+
+    def propagateDirty(self, slot, subindex, roi):
+        roi = roi.copy()
+        roi.start[-1] = 0
+        roi.stop[-1] = 1
+        self.Output.setDirty( roi.start, roi.stop )        
 
 class OpPredictionPipeline(OpPredictionPipelineNoCache):
     """

@@ -43,6 +43,7 @@ class Applet( object ):
         self.name = name
         self.syncWithImageIndex = syncWithImageIndex
         self.__interactive = interactive
+        self.busy = False
 
         #: Progress signal.
         #: When the applet is doing something time-consuming, this signal tells the shell to show a progress bar.
@@ -65,6 +66,11 @@ class Applet( object ):
         #:  affect the usability of various applets in the workflow.
         #: Signature: ``emit()``
         self.appletStateUpdateRequested = SimpleSignal()
+        
+        #: This signal tells the shell to send the dict 'data' to the (TCP) server 
+        #: 'name' (if connected)
+        #: Signature: ``emit(servername, data)``
+        self.sendMessageToServer = SimpleSignal()
 
         self._base_initialized = True
 

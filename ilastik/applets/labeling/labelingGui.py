@@ -39,7 +39,7 @@ from ilastik.widgets.labelListView import Label
 from ilastik.widgets.labelListModel import LabelListModel
 
 # ilastik
-from ilastik.utility import bind 
+from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThunkEventHandler, threadRouted
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
@@ -178,6 +178,7 @@ class LabelingGui(LayerViewerGui):
 
         self.__initShortcuts()
         self._labelingSlots.labelEraserValue.setValue(self.editor.brushingModel.erasingNumber)
+        self._allowDeleteLastLabelOnly = False
 
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
@@ -559,6 +560,12 @@ class LabelingGui(LayerViewerGui):
 
         newRow = self._labelControlUi.labelListModel.rowCount()
         self._labelControlUi.labelListModel.insertRow( newRow, label )
+
+        if self._allowDeleteLastLabelOnly:
+            # make previous label unremovable
+            if newRow > 0:
+                self._labelControlUi.labelListModel.makeRowPermanent(newRow - 1)
+
         newColorIndex = self._labelControlUi.labelListModel.index(newRow, 0)
         self.onLabelListDataChanged(newColorIndex, newColorIndex) # Make sure label layer colortable is in sync with the new color
 
@@ -566,7 +573,13 @@ class LabelingGui(LayerViewerGui):
         operator_names = self._labelingSlots.labelNames.value
         if len(operator_names) < self._labelControlUi.labelListModel.rowCount():
             operator_names.append( label.name )
-            self._labelingSlots.labelNames.setValue( operator_names, check_changed=False )
+            try:
+                self._labelingSlots.labelNames.setValue( operator_names, check_changed=False )
+            except:
+                # I have no idea why this is, but sometimes PyQt "loses" exceptions here.
+                # Print it out before it's too late!
+                log_exception( logger, "Logged the above exception just in case PyQt loses it." )
+                raise
 
         # Call the 'changed' callbacks immediately to initialize any listeners
         self.onLabelNameChanged()
@@ -663,6 +676,11 @@ class LabelingGui(LayerViewerGui):
 
         oldcount = self._labelControlUi.labelListModel.rowCount() + 1
         logger.debug("removing label {} out of {}".format( row, oldcount ))
+
+        if self._allowDeleteLastLabelOnly:
+            # make previous label removable again
+            if oldcount >= 2:
+                self._labelControlUi.labelListModel.makeRowRemovable(oldcount - 2)
 
         # Remove the deleted label's color from the color table so that renumbered labels keep their colors.
         oldColor = self._colorTable16.pop(row+1)
@@ -766,7 +784,8 @@ class LabelingGui(LayerViewerGui):
 
         return layers
 
-    def _createDefault16ColorColorTable(self):
+    @staticmethod
+    def _createDefault16ColorColorTable():
         colors = []
         # Transparent for the zero label
         colors.append(QColor(0,0,0,0))
@@ -789,3 +808,12 @@ class LabelingGui(LayerViewerGui):
         colors.append( QColor(240, 230, 140) ) #khaki
         assert len(colors) == 16
         return [c.rgba() for c in colors]
+
+
+    def allowDeleteLastLabelOnly(self, enabled):
+        """
+        In the TrackingWorkflow when labeling 0/1/2/.../N mergers we do not allow
+        to remove another label but the first, as the following processing steps
+        assume that all previous cell counts are given.
+        """
+        self._allowDeleteLastLabelOnly = enabled

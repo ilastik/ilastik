@@ -34,15 +34,20 @@ except ImportError as e:
     logger.warn( "Failed to import carving workflow; check cylemon dependency: " + str(e) )
 
 try:
-    import tracking
+    import tracking.manual
 except ImportError as e:
     logger.warn( "Failed to import tracking workflow; check pgmlink dependency: " + str(e) )
-    
+
 try:
     import counting
 except ImportError as e:
     logger.warn("Failed to import counting workflow; check dependencies: " + str(e))
 
+try:
+    import tracking.conservation
+except ImportError as e:
+    logger.warn( "Failed to import automatic tracking workflow (conservation tracking). For this workflow, see the installation"\
+             "instructions on our website ilastik.org; check dependencies: " + str(e) )
 try:
     import mriVolumetry
 except ImportError as e:
@@ -52,10 +57,12 @@ except ImportError as e:
 # Examples
 import ilastik.config
 
+import examples.dataConversion
+
 if ilastik.config.cfg.getboolean('ilastik', 'debug'):
     import vigraWatershed
     import examples.layerViewer
     import examples.thresholdMasking
     import examples.deviationFromMean
     import examples.labeling
-    import examples.dataConversion
+    import tracking.chaingraph

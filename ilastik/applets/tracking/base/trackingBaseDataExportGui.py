@@ -44,14 +44,14 @@ class TrackingBaseResultsViewer(DataExportLayerViewerGui):
         fromDiskSlot = self.topLevelOperatorView.ImageOnDisk
         if fromDiskSlot.ready():
             exportLayer = ColortableLayer( LazyflowSource(fromDiskSlot), colorTable=self.ct )
-            exportLayer.name = "Tracking - Exported"
+            exportLayer.name = "Selected Output - Exported"
             exportLayer.visible = True
             layers.append(exportLayer)
 
         previewSlot = self.topLevelOperatorView.ImageToExport
         if previewSlot.ready():
             previewLayer = ColortableLayer( LazyflowSource(previewSlot), colorTable=self.ct )
-            previewLayer.name = "Tracking - Preview"
+            previewLayer.name = "Selected Output - Preview"
             previewLayer.visible = False
             layers.append(previewLayer)
 

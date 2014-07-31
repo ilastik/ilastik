@@ -49,7 +49,7 @@ else:
     # We'll handle this manually in the custom run() function, below.
     dylib_forced_removal = ['libcplex.dylib', 'libconcert.dylib', 'libilocplex.dylib']
 
-OPTIONS = {'argv_emulation': False, 'includes':includes, 'excludes':excludes, 'iconfile' : 'appIcon.icns'}
+OPTIONS = {'argv_emulation': False, 'includes':includes, 'excludes':excludes, 'iconfile' : 'appIcon.icns', 'extra_scripts':['bin/mac_execfile.py']}
 
 packages=find_packages(exclude=["tests", "tests.*"])
 package_data={'ilastik': ['ilastik-splash.png',

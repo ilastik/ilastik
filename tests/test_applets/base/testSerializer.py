@@ -95,7 +95,7 @@ class TestSerializer(unittest.TestCase):
         self.assertTrue(not ss.dirty)
 
     def _testMultiSlot(self, mslot, mss, values, rvalues):
-        """test whether serialzing and then deserializing works for a
+        """test whether serializing and then deserializing works for a
         level-1 slot
 
         """

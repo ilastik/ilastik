@@ -26,8 +26,8 @@ class LabelingSingleLaneApplet( StandardApplet ):
     """
     This applet demonstrates how to use the LabelingGui base class, which serves as a reusable base class for other applet GUIs that need a labeling UI.  
     """
-    def __init__( self, workflow, projectFileGroupName, blockDims=None ):
-        super(LabelingSingleLaneApplet, self).__init__( "Simple Labeling", workflow )
+    def __init__( self, workflow, projectFileGroupName, blockDims=None, appletName="Simple Labeling" ):
+        super(LabelingSingleLaneApplet, self).__init__( appletName, workflow )
             
     @property
     def singleLaneOperatorClass(self):

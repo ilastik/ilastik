@@ -91,7 +91,7 @@ class OpObjectsSegment(OpGraphCut):
     ## graph cut parameter
     #Beta = InputSlot(value=.2)
 
-    ## segmentation image -> graph cut segmentation
+    ## labeled segmentation image
     #Output = OutputSlot()
     #CachedOutput = OutputSlot()
 
@@ -102,10 +102,6 @@ class OpObjectsSegment(OpGraphCut):
         super(OpObjectsSegment, self).setupOutputs()
         # sanity checks
         shape = self.LabelImage.meta.shape
-        agree = [i == j for i, j in zip(self.Prediction.meta.shape, shape)]
-        assert all(agree),\
-            "shape mismatch: {} vs. {}".format(self.Prediction.meta.shape,
-                                               shape)
         assert len(shape) == 5,\
             "Prediction maps must be a full 5d volume (txyzc)"
         tags = self.LabelImage.meta.getAxisKeys()
@@ -114,14 +110,22 @@ class OpObjectsSegment(OpGraphCut):
             "Label image has wrong axes order"\
             "(expected: txyzc, got: {})".format(tags)
 
-        # bounding boxes are just one element arrays of type object
+        # bounding boxes are just one element arrays of type object, but we
+        # want to request boxes from a specific region, therefore BoundingBoxes
+        # needs a shape
         shape = self.Prediction.meta.shape
         self.BoundingBoxes.meta.shape = shape
         self.BoundingBoxes.meta.dtype = np.object
         self.BoundingBoxes.meta.axistags = vigra.defaultAxistags('txyzc')
 
     def execute(self, slot, subindex, roi, result):
-
+        # check the axes - cannot do this in setupOutputs because we could be
+        # in some invalid intermediate state where the dimensions do not agree
+        shape = self.LabelImage.meta.shape
+        agree = [i == j for i, j in zip(self.Prediction.meta.shape, shape)]
+        assert all(agree),\
+            "shape mismatch: {} vs. {}".format(self.Prediction.meta.shape,
+                                               shape)
         if slot == self.BoundingBoxes:
             return self._execute_bbox(roi, result)
         elif slot == self.Output:
@@ -178,7 +182,7 @@ class OpObjectsSegment(OpGraphCut):
         cc = vigra.taggedView(cc, axistags=self.LabelImage.meta.axistags)
         cc = cc.withAxes(*'xyz')
 
-        # provide xyz view for the output
+        # provide xyz view for the output (just need 8bit for segmentation
         resultXYZ = vigra.taggedView(np.zeros(cc.shape, dtype=np.uint8),
                                      axistags='xyz')
 
@@ -245,8 +249,8 @@ class OpObjectsSegment(OpGraphCut):
         resView = vigra.taggedView(result, axistags=self.Output.meta.axistags)
         resView = resView.withAxes(*'xyz')
 
-        # convert from label image to segmentation
-        resView[:] = resultXYZ > 0
+        # some labels could have been removed => relabel
+        vigra.analysis.labelVolumeWithBackground(resultXYZ, out=resView)
 
     def propagateDirty(self, slot, subindex, roi):
         super(OpObjectsSegment, self).propagateDirty(slot, subindex, roi)

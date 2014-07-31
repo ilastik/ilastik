@@ -28,6 +28,7 @@ import sys
 import traceback
 import re
 from ilastik.utility.gui.threadRouter import threadRouted
+from ilastik.utility import log_exception
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
@@ -128,11 +129,10 @@ class ChaingraphTrackingGui( TrackingBaseGui ):
                             cplex_timeout=cplex_timeout)
             except Exception:
                 ex_type, ex, tb = sys.exc_info()
-                traceback.print_tb(tb)    
+                log_exception( logger )    
                 self._criticalMessage("Exception(" + str(ex_type) + "): " + str(ex))                        
                 return
     
-        
         def _handle_finished(*args):
             self.applet.progressSignal.emit(100)
             self._drawer.TrackButton.setEnabled(True)
@@ -144,8 +144,8 @@ class ChaingraphTrackingGui( TrackingBaseGui ):
             
         def _handle_failure( exc, exc_info ):
             self.applet.progressSignal.emit(100)
-            traceback.print_exception(*exc_info)
-            sys.stderr.write("Exception raised during tracking.  See traceback above.\n")
+            msg = "Exception raised during tracking.  See traceback above.\n"
+            log_exception( logger, msg, exc_info )    
             self._drawer.TrackButton.setEnabled(True)
             self.applet.busy = False
             self.applet.appletStateUpdateRequested.emit()
@@ -158,5 +158,3 @@ class ChaingraphTrackingGui( TrackingBaseGui ):
         req.notify_finished( _handle_finished )
         req.submit()
 
-        
-            

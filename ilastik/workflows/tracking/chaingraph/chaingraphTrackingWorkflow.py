@@ -30,6 +30,7 @@ from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingB
 
 class ChaingraphTrackingWorkflow( Workflow ):
     workflowName = "Automatic Tracking Workflow (Chaingraph)"
+    workflowDisplayName = "Automatic Tracking Workflow (Chaingraph) [Inputs: Raw Data, Pixel Prediction Map]"
 
     def __init__( self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs ):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
@@ -57,9 +58,14 @@ class ChaingraphTrackingWorkflow( Workflow ):
                                                               workflow=self, interactive=False )
         
         self.trackingApplet = ChaingraphTrackingApplet( workflow=self )
+        opTracking = self.trackingApplet.topLevelOperator
         
         self.dataExportApplet = TrackingBaseDataExportApplet(self, "Tracking Result Export")
         
+        opDataExport = self.dataExportApplet.topLevelOperator
+        opDataExport.SelectionNames.setValue( ['Tracking'] )
+        opDataExport.WorkingDirectory.connect( self.dataSelectionApplet.topLevelOperator.WorkingDirectory )
+
         self._applets = []                
         self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.thresholdTwoLevelsApplet)
@@ -104,10 +110,10 @@ class ChaingraphTrackingWorkflow( Workflow ):
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
         opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeatures )        
         
-        opDataExport.WorkingDirectory.connect( self.dataSelectionApplet.topLevelOperator.WorkingDirectory )
         opDataExport.RawData.connect( op5Raw.Output )
-        opDataExport.Input.connect( opTracking.Output )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
+        opDataExport.Inputs.resize(1)
+        opDataExport.Inputs[0].connect( opTracking.Output )
         
     def _inputReady(self, nRoles):
         slot = self.dataSelectionApplet.topLevelOperator.ImageGroup
@@ -155,4 +161,5 @@ class ChaingraphTrackingWorkflow( Workflow ):
         self._shell.setAppletEnabled(self.thresholdTwoLevelsApplet, input_ready and not busy)
         self._shell.setAppletEnabled(self.objectExtractionApplet, thresholding_ready and not busy)        
         self._shell.setAppletEnabled(self.trackingApplet, features_ready and not busy)
-        self._shell.setAppletEnabled(self.dataExportApplet, tracking_ready and not busy)
+        self._shell.setAppletEnabled(self.dataExportApplet, tracking_ready and not busy and \
+                                    self.dataExportApplet.topLevelOperator.Inputs[0][0].ready() )

@@ -52,6 +52,7 @@ from ilastik.clusterOps import OpClusterize, OpTaskWorker
 from ilastik.shell.headless.headlessShell import HeadlessShell
 from lazyflow.utility.pathHelpers import getPathVariants
 from ilastik.workflow import Workflow
+from ilastik.utility import log_exception
 
 import ilastik.workflows # Load all known workflow modules
 
@@ -68,8 +69,7 @@ def main(argv):
     try:
         runWorkflow(parsed_args)
     except:
-        tb = traceback.print_exc()
-        logger.error(tb)
+        log_exception( logger )
         return 1
     finally:
         logger.info("Finished at {}".format( datetime.datetime.now() ))

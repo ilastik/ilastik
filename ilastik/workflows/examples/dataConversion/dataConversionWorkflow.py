@@ -75,6 +75,7 @@ class DataConversionWorkflow(Workflow):
 
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
+        opDataExport.SelectionNames.setValue( ["Input"] )        
 
         self._applets.append( self.dataSelectionApplet )
         self._applets.append( self.dataExportApplet )
@@ -127,8 +128,9 @@ class DataConversionWorkflow(Workflow):
         opDataSelectionView = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opDataExportView = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
 
-        opDataExportView.Input.connect( opDataSelectionView.ImageGroup[0] )
         opDataExportView.RawDatasetInfo.connect( opDataSelectionView.DatasetGroup[0] )        
+        opDataExportView.Inputs.resize( 1 )
+        opDataExportView.Inputs[0].connect( opDataSelectionView.ImageGroup[0] )
 
         # There is no special "raw" display layer in this workflow.
         #opDataExportView.RawData.connect( opDataSelectionView.ImageGroup[0] )
@@ -151,9 +153,9 @@ class DataConversionWorkflow(Workflow):
 
         opDataExport = self.dataExportApplet.topLevelOperator
         export_data_ready = input_ready and \
-                            len(opDataExport.Input) > 0 and \
-                            opDataExport.Input[0].ready() and \
-                            (TinyVector(opDataExport.Input[0].meta.shape) > 0).all()
+                            len(opDataExport.Inputs[0]) > 0 and \
+                            opDataExport.Inputs[0][0].ready() and \
+                            (TinyVector(opDataExport.Inputs[0][0].meta.shape) > 0).all()
 
         self._shell.setAppletEnabled(self.dataExportApplet, export_data_ready)
         

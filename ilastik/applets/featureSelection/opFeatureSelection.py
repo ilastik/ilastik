@@ -113,7 +113,7 @@ class OpFeatureSelectionNoCache(Operator):
                 f = h5py.File(self._files[i], 'r')
                 shape = f["data"].shape
                 assert len(shape) == 3
-                dtype = f["data"].dtype
+                dtype = f["data"].dtype.type
                 f.close()
                 self.FeatureLayers[i].meta.shape    = shape+(1,)
                 self.FeatureLayers[i].meta.dtype    = dtype
@@ -201,8 +201,8 @@ class OpFeatureSelection( OpFeatureSelectionNoCache ):
         super( OpFeatureSelection, self ).setupOutputs()
 
         if self.FeatureListFilename.ready() and len(self.FeatureListFilename.value) > 0:
-            self.CachedOutputImage.disconnect()
-            self.CachedOutputImage.meta.dtype = self.OutputImage.meta.dtype 
+            self.CachedOutputImage.disconnect()            
+            self.CachedOutputImage.meta.assignFrom(self.OutputImage.meta)
         
         else:
             # We choose block shapes that have only 1 channel because the channels may be 

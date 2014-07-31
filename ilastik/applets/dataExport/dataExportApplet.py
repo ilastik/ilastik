@@ -35,7 +35,7 @@ class DataExportApplet( Applet ):
         self.__topLevelOperator = None
         if self.topLevelOperator is None:
             self.__topLevelOperator = OpMultiLaneWrapper( OpDataExport, parent=workflow,
-                                         promotedSlotNames=set(['RawData', 'Input', 'RawDatasetInfo']) )
+                                         promotedSlotNames=set(['RawData', 'Inputs', 'RawDatasetInfo']) )
         # Users can temporarily disconnect the 'transaction' 
         #  slot to force all slots to be applied atomically.
         self.topLevelOperator.TransactionSlot.setValue(True)
@@ -90,6 +90,10 @@ class DataExportApplet( Applet ):
         arg_parser.add_argument( '--output_internal_path', help='Specifies dataset name within an hdf5 dataset (applies to hdf5 output only), e.g. /volume/data', required=False )
         
         parsed_args, unused_args = arg_parser.parse_known_args(cmdline_args)
+
+        # Replace '~' with home dir
+        if parsed_args.output_filename_format is not None:
+            parsed_args.output_filename_format = os.path.expanduser( parsed_args.output_filename_format )
 
         ### Convert from strings, check for obvious errors
 

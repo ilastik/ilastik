@@ -19,7 +19,6 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 import os
-import traceback
 import copy
 import collections
 
@@ -33,9 +32,13 @@ from PyQt4.QtGui import QDialog, QMessageBox, QDoubleSpinBox, QApplication
 
 from volumina.utility import encode_from_qstring, decode_to_qstring
 
+from ilastik.utility import log_exception
 from ilastik.applets.base.applet import DatasetConstraintError
 from lazyflow.utility import getPathVariants, PathComponents, isUrl
 from opDataSelection import OpDataSelection, DatasetInfo
+
+import logging
+logger = logging.getLogger(__name__)
 
 class StorageLocation(object):
     ProjectFile = 0
@@ -252,11 +255,12 @@ class DatasetInfoEditorWidget(QDialog):
                 msg = "Failed to apply your new settings to the workflow " \
                       "because they violate a constraint of the {} applet.\n\n".format( ex.appletName ) + \
                       ex.message
+                log_exception( logger, msg, level=logging.INFO )
                 QMessageBox.critical( self, "Unacceptable Settings", msg )
             else:
-                traceback.print_exc()
                 msg = "Failed to apply dialog settings due to an exception:\n"
                 msg += "{}".format( ex )
+                log_exception( logger, msg )
                 QMessageBox.critical(self, "Error", msg)
                 return False
 
@@ -310,10 +314,10 @@ class DatasetInfoEditorWidget(QDialog):
                 for laneIndex, op in self.tempOps.items():
                     op.Dataset.setValue( oldInfos[laneIndex] )
                 
-                traceback.print_exc()
                 msg = "Could not set new nickname due to an exception:\n"
                 msg += "{}".format( e )
                 QMessageBox.warning(self, "Error", msg)
+                log_exception( logger, msg )
                 self._error_fields += 'Nickname'
                 return False
 
@@ -468,9 +472,9 @@ class DatasetInfoEditorWidget(QDialog):
                 for laneIndex, op in self.tempOps.items():
                     op.Dataset.setValue( oldInfos[laneIndex] )
                 
-                traceback.print_exc()
                 msg = "Could not apply axis settings due to an exception:\n"
                 msg += "{}".format( e )
+                log_exception( logger, msg )
                 QMessageBox.warning(self, "Error", msg)
                 self._error_fields.add('Axis Order')
                 return False
@@ -514,9 +518,9 @@ class DatasetInfoEditorWidget(QDialog):
             for laneIndex, op in self.tempOps.items():
                 op.Dataset.setValue( oldInfos[laneIndex] )
             
-            traceback.print_exc()
             msg = "Could not apply normalization settings due to an exception:\n"
             msg += "{}".format( e )
+            log_exception( logger, msg )
             QMessageBox.warning(self, "Error", msg)
             self._error_fields.add('Normalize Display')
             return False
@@ -579,9 +583,9 @@ class DatasetInfoEditorWidget(QDialog):
                 for laneIndex, op in self.tempOps.items():
                     op.Dataset.setValue( oldInfos[laneIndex] )
                 
-                traceback.print_exc()
                 msg = "Could not apply data range settings due to an exception:\n"
                 msg += "{}".format( e )
+                log_exception( logger, msg )
                 QMessageBox.warning(self, "Error", msg)
                 self._error_fields.add('Data Range')
                 return False
@@ -707,9 +711,9 @@ class DatasetInfoEditorWidget(QDialog):
             for laneIndex, op in self.tempOps.items():
                 op.Dataset.setValue( oldInfos[laneIndex] )
             
-            traceback.print_exc()
             msg = "Could not set new internal path settings due to an exception:\n"
             msg += "{}".format( e )
+            log_exception( logger, msg )
             QMessageBox.warning(self, "Error", msg)
             self._error_fields.add('Internal Dataset Name')
             return False
@@ -724,7 +728,11 @@ class DatasetInfoEditorWidget(QDialog):
             cwd = op.WorkingDirectory.value
             filePath = PathComponents(info.filePath).externalPath
             absPath, relPath = getPathVariants(filePath, cwd)
-            showpaths = not info.fromstack
+            
+            # commented out: 
+            # Show the paths even if the data is from a stack (they are grayed out, but potentially informative)
+            #showpaths = not info.fromstack
+            showpaths = True
 
         if showpaths:
             self.storageComboBox.addItem( "Copied to Project File", userData=StorageLocation.ProjectFile )
@@ -834,9 +842,9 @@ class DatasetInfoEditorWidget(QDialog):
             for laneIndex, op in self.tempOps.items():
                 op.Dataset.setValue( oldInfos[laneIndex] )
             
-            traceback.print_exc()
             msg = "Could not set new storage location settings due to an exception:\n"
             msg += "{}".format( e )
+            log_exception( logger, msg )
             QMessageBox.warning(self, "Error", msg)
             self._error_fields.add('Storage Location')
             return False
@@ -914,9 +922,9 @@ class DatasetInfoEditorWidget(QDialog):
             for laneIndex, op in self.tempOps.items():
                 op.Dataset.setValue( oldInfos[laneIndex] )
             
-            traceback.print_exc()
             msg = "Could not set new channel display settings due to an exception:\n"
             msg += "{}".format( e )
+            log_exception( logger, msg )
             QMessageBox.warning(self, "Error", msg)
             self._error_fields.add('Channel Display')
             return False

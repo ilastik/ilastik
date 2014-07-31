@@ -68,8 +68,8 @@ def write_dict_value(dic, key, value):
 
 def get_events(eventsVector):
     events = {}
-    for t in range(1,len(eventsVector)+1): # +1 since the current pgmlink-eventsVector has length #timesteps-1
-        events[str(t)] = get_events_at(eventsVector, t-1)
+    for t in range(len(eventsVector)):
+        events[str(t)] = get_events_at(eventsVector, t)
     return events
 
 def get_events_at(eventsVector, t):  
@@ -78,6 +78,7 @@ def get_events_at(eventsVector, t):
     div = []
     mov = []
     merger = []
+    mult_mov = []
                 
     for event in eventsVector[t]:
         if event.type == pgmlink.EventType.Appearance:
@@ -90,6 +91,8 @@ def get_events_at(eventsVector, t):
             mov.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
         if hasattr(pgmlink.EventType, "Merger") and event.type == pgmlink.EventType.Merger:                    
             merger.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
+        if hasattr(pgmlink.EventType, "MultiFrameMove") and event.type == pgmlink.EventType.MultiFrameMove:                    
+            mult_mov.append((event.traxel_ids[0], event.traxel_ids[1], event.traxel_ids[2], event.energy))
 
     # convert to ndarray for better indexing
     events_at = {}
@@ -98,6 +101,7 @@ def get_events_at(eventsVector, t):
     write_dict_value(events_at, "div", np.asarray(div))
     write_dict_value(events_at, "mov", np.asarray(mov))
     write_dict_value(events_at, "merger", np.asarray(merger))
+    write_dict_value(events_at, "multiMove", np.asarray(mult_mov))
 
     return events_at
 
@@ -112,13 +116,14 @@ def write_events(events_at, directory, t, labelImage, mergers=None):
             mov = []
             div = []
             merger = []
+            mult_movs = []
         else:        
             dis = get_dict_value(events_at, "dis", [])
             app = get_dict_value(events_at, "app", [])
             mov = get_dict_value(events_at, "mov", [])
             div = get_dict_value(events_at, "div", [])
             merger = get_dict_value(events_at, "merger", [])
-        
+            mult_movs = get_dict_value(events_at, "multiMove", [])
         try:
             with LineageH5(fn, 'w-') as f_curr:
                 # delete old label image
@@ -160,6 +165,11 @@ def write_events(events_at, directory, t, labelImage, mergers=None):
                     ds = tg.create_dataset("Mergers", data=merger[:, :-1], dtype=np.uint32, compression=1)
                     ds.attrs["Format"] = "descendant (current file), number of objects"    
                     ds = tg.create_dataset("Mergers-Energy", data=merger[:, -1], dtype=np.double, compression=1)
+                    ds.attrs["Format"] = "lower energy -> higher confidence"
+                if len(mult_movs):
+                    ds = tg.create_dataset("MultiFrameMoves", data=mult_movs[:, :-1], dtype=np.int32, compression=1)
+                    ds.attrs["Format"] = "from (given by timestep), to (current file), timestep"
+                    ds = tg.create_dataset("MultiFrameMoves-Energy", data=mult_movs[:, -1], dtype=np.double)
                     ds.attrs["Format"] = "lower energy -> higher confidence"
         except IOError:                    
             raise IOError("File " + str(fn) + " exists already. Please choose a different folder or delete the file(s).")

@@ -110,7 +110,6 @@ class VigraObjFeats(ObjectFeaturesPlugin):
         return result
 
     def _do_4d(self, image, labels, features, axes):
-        
         if self.ndim==2:
             result = vigra.analysis.extractRegionFeatures(image.squeeze().astype(np.float32), labels.squeeze().astype(np.uint32), features, ignoreLabel=0)
         else:

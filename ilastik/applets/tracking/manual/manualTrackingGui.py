@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+from ilastik.utility import log_exception
 
 import volumina.colortables as colortables
 from volumina.api import LazyflowSource, GrayscaleLayer, ColortableLayer
@@ -135,6 +136,7 @@ class ManualTrackingGui(LayerViewerGui):
         if self.mainOperator.LabelImage.meta.shape:
             self.editor.dataShape = self.mainOperator.LabelImage.meta.shape
         self.mainOperator.LabelImage.notifyMetaChanged( self._onMetaChanged)
+        self.mainOperator.LabelImage.notifyDirty( self._reset )
         
         self.ct = colortables.create_random_16bit()        
         
@@ -166,7 +168,7 @@ class ManualTrackingGui(LayerViewerGui):
                 layerraw = GrayscaleLayer( self.rawsrc )
                 layerraw.name = "Raw"
                 self.layerstack.append( layerraw )
-        
+
     def _onReady( self, slot ):
         if slot is self.mainOperator.RawImage:
             if slot.meta.shape and not self.rawsrc:
@@ -253,11 +255,17 @@ class ManualTrackingGui(LayerViewerGui):
         self.topLevelOperatorView.RawImage.notifyReady( self._onReady )
         self.topLevelOperatorView.RawImage.notifyMetaChanged( self._onMetaChanged )
         
-        self._setDivisionsList()
-        self._setActiveTrackList()
+        self._reset()
         
         return layers
 
+    @threadRouted
+    def _reset(self, *args, **kwargs):
+        self._setDivisionsList()
+        self._setActiveTrackList()
+        self._drawer.logOutput.clear()
+
+    @threadRouted
     def _addDivisionToListWidget(self, trackid, child1, child2, t_parent):
         divItem = QtGui.QListWidgetItem("%d: %d, %d" % (trackid, child1, child2))
         divItem.setBackground(QColor(self.ct[trackid]))
@@ -271,16 +279,23 @@ class ManualTrackingGui(LayerViewerGui):
         self.labelsWithDivisions[t_parent+1].append(child1)
         self.labelsWithDivisions[t_parent+1].append(child2)
 
+    @threadRouted
     def _setDivisionsList(self):
+        self._drawer.divisionsList.clear()
+
         for trackid in self.mainOperator.divisions.keys():
             self._addDivisionToListWidget(trackid, self.mainOperator.divisions[trackid][0][0], self.mainOperator.divisions[trackid][0][1],
                                           self.mainOperator.divisions[trackid][-1])
         # set all items checked
         for idx in range(self._drawer.divisionsList.count()):
             self._drawer.divisionsList.item(idx).setCheckState(True)
-    
+
+    @threadRouted
     def _setActiveTrackList(self):
         activeTrackBox = self._drawer.activeTrackBox
+
+        activeTrackBox.clear()
+
         allTracks = set()
         for t in self.mainOperator.labels.keys():            
             for oid in self.mainOperator.labels[t].keys():
@@ -294,8 +309,9 @@ class ManualTrackingGui(LayerViewerGui):
         for tid in sorted(allTracks):
             if tid not in items:
                 activeTrackBox.addItem(str(tid), self.ct[tid])
-        
-        activeTrackBox.setCurrentIndex(activeTrackBox.count()-1)
+
+        if activeTrackBox.count() >= 1:
+            activeTrackBox.setCurrentIndex(activeTrackBox.count()-1)
     
     def _incrementActiveTrack(self):
         activeTrackBox = self._drawer.activeTrackBox
@@ -700,9 +716,8 @@ class ManualTrackingGui(LayerViewerGui):
         def _handle_failure( exc, exc_info ):
             self.applet.busy = False
             self.applet.appletStateUpdateRequested.emit()
-            import traceback, sys
-            traceback.print_exception(*exc_info)
-            sys.stderr.write("Exception raised during tracking.  See traceback above.\n")            
+            msg = "Exception raised during tracking.  See traceback above.\n"
+            log_exception( logger, msg, exc_info )
         
         self.applet.busy = True
         self.applet.appletStateUpdateRequested.emit()
@@ -1076,11 +1091,10 @@ class ManualTrackingGui(LayerViewerGui):
             self.applet.appletStateUpdateRequested.emit()
                
         def _handle_failure( exc, exc_info ):
+            msg = "Exception raised during export.  See traceback above.\n"
+            log_exception( logger, msg, exc_info )
             self.applet.busy = False
             self.applet.appletStateUpdateRequested.emit()
-            import traceback, sys
-            traceback.print_exception(*exc_info)
-            sys.stderr.write("Exception raised during export.  See traceback above.\n")
             self.applet.progressSignal.emit(100)
         
         self.applet.progressSignal.emit(0)  
@@ -1155,11 +1169,10 @@ class ManualTrackingGui(LayerViewerGui):
             self.applet.progressSignal.emit(100)
                
         def _handle_failure( exc, exc_info ):
+            msg = "Exception raised during export.  See traceback above.\n"
+            log_exception( logger, msg, exc_info )
             self.applet.busy = False
             self.applet.appletStateUpdateRequested.emit()
-            import traceback, sys
-            traceback.print_exception(*exc_info)
-            sys.stderr.write("Exception raised during export.  See traceback above.\n")     
             self.applet.progressSignal.emit(100)       
                 
         self.applet.progressSignal.emit(0)

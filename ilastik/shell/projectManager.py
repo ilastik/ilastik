@@ -21,6 +21,7 @@
 import os
 import gc
 import copy
+import platform
 import h5py
 import logging
 import time
@@ -30,6 +31,7 @@ import traceback
 
 import ilastik
 from ilastik import isVersionCompatible
+from ilastik.utility import log_exception
 from ilastik.workflow import getWorkflowFromName
 from lazyflow.utility.timer import Timer, timeLogged
 
@@ -187,7 +189,7 @@ class ProjectManager(object):
         try:
             self._closeCurrentProject()
         except Exception,e:
-            traceback.print_exc()
+            log_exception( logger )
             raise e
 
 
@@ -237,8 +239,7 @@ class ProjectManager(object):
             self.currentProjectFile.create_dataset("workflowName",data = self.workflow.workflowName)
 
         except Exception, err:
-            logger.error("Project Save Action failed due to the following exception:")
-            traceback.print_exc()
+            log_exception( logger, "Project Save Action failed due to the exception shown above." )
             raise ProjectManager.SaveError( str(err) )
         finally:
             # save current time
@@ -282,11 +283,10 @@ class ProjectManager(object):
                             itemCopy = copy.copy(item)
                             itemCopy.serializeToHdf5(snapshotFile, snapshotPath)
             except Exception, err:
-                logger.error("Project Save Snapshot Action failed due to the following exception:")
-                traceback.print_exc()
+                log_exception( logger, "Project Save Snapshot Action failed due to the exception printed above." )
                 raise ProjectManager.SaveError(str(err))
             finally:
-                 # save current time
+                # save current time
                 try:
                     del snapshotFile["time"]
                 except:
@@ -314,17 +314,14 @@ class ProjectManager(object):
         """
         # If our project is read-only, we can't be efficient.
         # We have to take a snapshot, then close our current project and open the snapshot
-        if self.currentProjectIsReadOnly:
+        # Furthermore, windows does not permit renaming an open file, so we must take this approach.
+        if self.currentProjectIsReadOnly or platform.system() == 'Windows':
             self._takeSnapshotAndLoadIt(newPath)
             return
 
         oldPath = self.currentProjectPath
         try:
-            self.currentProjectFile.close()
-            if os.path.isfile(newPath):
-                os.remove(newPath)
             os.rename( oldPath, newPath )
-            self.currentProjectFile = h5py.File(newPath)
         except OSError, err:
             msg = 'Could not rename your project file to:\n'
             msg += newPath + '\n'
@@ -407,9 +404,9 @@ class ProjectManager(object):
 
             self.workflow.handleAppletStateUpdateRequested()            
         except:
-            logger.error("Project could not be loaded due to the following exception:")
-            traceback.print_exc()
-            logger.error("Aborting Project Open Action")
+            msg = "Project could not be loaded due to the exception shown above.\n"
+            msg += "Aborting Project Open Action"
+            log_exception( logger, msg )
             self._closeCurrentProject()
             raise
         finally:

@@ -64,19 +64,15 @@ class OpGraphCut(Operator):
     # graph cut parameter, usually called lambda
     Beta = InputSlot(value=.2)
 
-    # segmentation image -> graph cut segmentation
+    # labeled segmentation image
+    #     i=0: background
+    #     i>0: connected foreground object i
     Output = OutputSlot()
     CachedOutput = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super(OpGraphCut, self).__init__(*args, **kwargs)
-
-        cache = OpCompressedCache(parent=self)
-        cache.name = "{}._cache".format(self.name)
-        cache.Input.connect(self.Output)
-        self._cache = cache
-
-        self.CachedOutput.connect(self._cache.Output)
+        self._cache = None
 
     def setupOutputs(self):
         # sanity checks
@@ -89,9 +85,20 @@ class OpGraphCut(Operator):
             "Prediction maps have wrong axes order"\
             "(expected: txyzc, got: {})".format(tags)
 
+        if self._cache is not None:
+            self.CachedOutput.disconnect()
+            self._cache.cleanUp()
+            self._cache = None
+
+        cache = OpCompressedCache(parent=self)
+        cache.name = "{}._cache".format(self.name)
+        cache.Input.connect(self.Output)
+        self._cache = cache
+        self.CachedOutput.connect(self._cache.Output)
+
         self.Output.meta.assignFrom(self.Prediction.meta)
-        # output is a binary image
-        self.Output.meta.dtype = np.uint8
+        # output is a label image
+        self.Output.meta.dtype = np.uint32
 
         # cache should hold entire c-t-slices in memory
         shape = list(self.Prediction.meta.shape)
@@ -115,8 +122,13 @@ class OpGraphCut(Operator):
         resView = resView.withAxes(*'xyz')
 
         logger.info("Executing graph cut ... (this might take a while)")
-        resView[:] = segmentGC(pred, self.Beta.value)
+        tmp = segmentGC(pred, self.Beta.value)
         logger.info("Graph-cut done")
+
+        # label the segmentation so that this operator is consistent with
+        # the other thresholding operators
+        vigra.analysis.labelVolumeWithBackground(tmp.astype(np.uint32),
+                                                 out=resView)
 
     def propagateDirty(self, slot, subindex, roi):
         # all input slots affect the (global) graph cut computation
@@ -152,7 +164,7 @@ def segmentGC(pred, beta):
        -- beta - the weight of the pairwise potentials, usually called lambda
        Return:
        -- binary volume, as produced by OpenGM
-       
+
     '''
     nx, ny, nz = pred.shape
 

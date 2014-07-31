@@ -32,7 +32,7 @@ class CountingDataExportApplet( DataExportApplet ):
     def __init__( self, workflow, title, isBatch=False ):
         # Our operator is a subclass of the generic data export operator
         self._topLevelOperator = OpMultiLaneWrapper( OpCountingDataExport, parent=workflow,
-                                     promotedSlotNames=set(['RawData', 'Input', 'RawDatasetInfo', 'ConstraintDataset']) )
+                                     promotedSlotNames=set(['RawData', 'Inputs', 'RawDatasetInfo', 'ConstraintDataset']) )
         self._gui = None
         self._title = title
         self._serializers = [ DataExportSerializer(self._topLevelOperator, title) ]

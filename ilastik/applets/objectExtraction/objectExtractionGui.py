@@ -32,6 +32,7 @@ from ilastik.applets.objectExtraction.opObjectExtraction import max_margin
 
 from ilastik.plugins import pluginManager
 from ilastik.utility.gui import threadRouted
+from ilastik.utility import log_exception
 from ilastik.config import cfg as ilastik_config
 
 from volumina.api import LazyflowSource, GrayscaleLayer, ColortableLayer
@@ -269,7 +270,6 @@ class ObjectExtractionGui(LayerViewerGui):
                 layerraw.name = "Raw data"
                 self.layerstack.append(layerraw)
 
-
     def initAppletDrawerUi(self):
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
@@ -408,9 +408,8 @@ class ObjectExtractionGui(LayerViewerGui):
 
     @threadRouted
     def handleFeatureComputationFailure(self, exc, exc_info):
-        import traceback
-        traceback.print_tb(exc_info[2])
         msg = "Feature computation failed due to the following error:\n{}".format( exc )
+        log_exception( logger, msg, exc_info )
         QMessageBox.critical(self, "Feature computation failed", msg)
 
     def _exportFeaturesButtonPressed(self):

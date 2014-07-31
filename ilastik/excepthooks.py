@@ -21,6 +21,7 @@
 import sys
 import traceback
 import threading
+import StringIO
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel( logging.INFO )
@@ -34,7 +35,7 @@ def init_early_exit_excepthook():
     """
     from PyQt4.QtGui import QApplication
     def print_exc_and_exit(*exc_info):
-        logger.error( "".join( traceback.format_exception( *exc_info ) ) )
+        _log_exception( *exc_info )
         logger.error("Exiting early due to an unhandled exception.  See error output above.\n")
         QApplication.exit(1)
     sys.excepthook = print_exc_and_exit
@@ -49,15 +50,18 @@ def init_user_mode_excepthook():
     """
     def display_and_log(*exc_info):
         # Slot-not-ready errors in the render thread are logged, but not shown to the user.
-        if "TileProvider" in threading.current_thread().name:
+        thread_name = threading.current_thread().name
+        if "TileProvider" in thread_name:
             from lazyflow.graph import Slot
             if isinstance(exc_info[1], Slot.SlotNotReadyError):
                 logger.warn( "Caught unhandled SlotNotReadyError exception in the volumina tile rendering thread:" )
-                logger.error( "".join( traceback.format_exception( *exc_info ) ) )
+                sio = StringIO.StringIO()
+                traceback.print_exception( exc_info[0], exc_info[1], exc_info[2], file=sio )
+                logger.error( sio.getvalue() )
                 return
         
         # All other exceptions are treated as true errors
-        logger.error( "".join( traceback.format_exception( *exc_info ) ) )
+        _log_exception( *exc_info )
         try:
             from ilastik.shell.gui.startShellGui import shell
             msg = str(exc_info[1])
@@ -66,7 +70,9 @@ def init_user_mode_excepthook():
             shell.postErrorMessage( exc_info[0].__name__, msg )
         except:
             logger.error( "UNHANDLED EXCEPTION WHILE DISPLAYING AN ERROR TO THE USER:" )
-            logger.error( "".join( traceback.format_exception( *exc_info ) ) )
+            sio = StringIO.StringIO()
+            traceback.print_exception( exc_info[0], exc_info[1], exc_info[2], file=sio )
+            logger.error( sio.getvalue() )
             raise
     
     sys.excepthook = display_and_log
@@ -76,10 +82,15 @@ def init_developer_mode_excepthook():
     """
     This excepthook is used in debug mode (for developers).  It simply logs the exception.
     """
-    def log_exception(*exc_info):
-        logger.error( "".join( traceback.format_exception( *exc_info ) ) )
-    sys.excepthook = log_exception
+    sys.excepthook = _log_exception
     _install_thread_excepthook()
+
+def _log_exception(*exc_info):
+    thread_name = threading.current_thread().name
+    logger.error( "Unhandled exception in thread: '{}'".format(thread_name) )
+    sio = StringIO.StringIO()
+    traceback.print_exception( exc_info[0], exc_info[1], exc_info[2], file=sio )
+    logger.error( sio.getvalue() )
 
 def _install_thread_excepthook():
     # This function was copied from: http://bugs.python.org/issue1230540
