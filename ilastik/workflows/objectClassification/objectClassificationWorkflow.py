@@ -320,6 +320,16 @@ class ObjectClassificationWorkflow(Workflow):
 
     def onProjectLoaded(self, projectManager):
         if self._headless and self._batch_input_args and self._batch_export_args:
+            
+            # Check for problems: Is the project file ready to use?
+            opObjClassification = self.objectClassificationApplet.topLevelOperator
+            if not opObjClassification.Classifier.ready():
+                logger.error( "Can't run batch prediction.\n"
+                              "Couldn't obtain a classifier from your project file: {}.\n"
+                              "Please make sure your project is fully configured with a trained classifier."
+                              .format(projectManager.currentProjectPath) )
+                return
+
             # Configure the batch data selection operator.
             if self._batch_input_args and self._batch_input_args.raw_data:
                 self.dataSelectionAppletBatch.configure_operator_with_parsed_args( self._batch_input_args )
