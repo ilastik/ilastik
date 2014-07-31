@@ -1568,6 +1568,7 @@ class OpImageReader(Operator):
 
                 oslot.meta.shape = tuple(dim for (key, dim) in taggedShape)
                 oslot.meta.axistags = tags
+                oslot.meta.prefer_2d = True
         else:
             oslot = self.outputs["Image"]
             oslot.meta.shape    = None
