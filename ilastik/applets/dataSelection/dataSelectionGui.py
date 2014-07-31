@@ -449,6 +449,8 @@ class DataSelectionGui(QWidget):
         # If they should be copied to the project file, say so.
         self._reconfigureDatasetLocations(roleIndex, startingLane, endingLane)
 
+        self._checkDataFormatWarnings(roleIndex, startingLane, endingLane)
+
         # If we succeeded in adding all images, show the first one.
         if loaded_all:
             self.showDataset(startingLane, roleIndex)
@@ -606,6 +608,20 @@ class DataSelectionGui(QWidget):
                         "  It will now be copied to the project file.")
             opWorkflow = self.topLevelOperator.parent
             opWorkflow.shell.onSaveProjectActionTriggered()
+
+    def _checkDataFormatWarnings(self, roleIndex, startingLane, endingLane):
+        warn_needed = False
+        opTop = self.topLevelOperator
+        for lane_index in range(startingLane, endingLane+1):
+            output_slot = opTop.ImageGroup[lane_index][roleIndex]
+            if output_slot.meta.inefficient_format:
+                warn_needed = True
+
+        if warn_needed:        
+            QMessageBox.warning( self, "Inefficient Data Format", 
+                              "Your data cannot be accessed efficiently in its current format.  "
+                              "Check the console output for details.\n"
+                              "(For HDF5 files, be sure to enable chunking on your dataset.)" )
 
     @threadRouted
     def handleDatasetConstraintError(self, info, filename, ex, roleIndex, laneIndex, return_val=[False]):
