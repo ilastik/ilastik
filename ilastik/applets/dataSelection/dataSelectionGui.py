@@ -22,6 +22,7 @@
 import os
 import threading
 import h5py
+import numpy
 from functools import partial
 import logging
 logger = logging.getLogger(__name__)
@@ -135,7 +136,7 @@ class DataSelectionGui(QWidget):
         :param max_lanes: The maximum number of lanes that the user is permitted to add to this workflow.  If ``None``, there is no maximum.
         """
         super(DataSelectionGui, self).__init__()
-
+        
         self.parentApplet = parentApplet
         self._max_lanes = max_lanes
 
@@ -160,6 +161,11 @@ class DataSelectionGui(QWidget):
                 editor.stopAndCleanUp()
 
         self.topLevelOperator.Image.notifyRemove( bind( handleImageRemoved ) )
+        
+        opWorkflow = self.topLevelOperator.parent
+        assert hasattr(opWorkflow.shell, 'onSaveProjectActionTriggered'), \
+            "This class uses the IlastikShell.onSaveProjectActionTriggered function.  Did you rename it?"
+
 
     def _initCentralUic(self):
         """
@@ -438,6 +444,10 @@ class DataSelectionGui(QWidget):
         
         # If no exception was thrown so far, set up the operator now
         loaded_all = self._configureOpWithInfos(roleIndex, startingLane, endingLane, infos)
+        
+        # Now check the resulting slots.
+        # If they should be copied to the project file, say so.
+        self._reconfigureDatasetLocations(roleIndex, startingLane, endingLane)
 
         # If we succeeded in adding all images, show the first one.
         if loaded_all:
@@ -567,6 +577,35 @@ class DataSelectionGui(QWidget):
                 return False
         
         return True
+
+    def _reconfigureDatasetLocations(self, roleIndex, startingLane, endingLane):
+        """
+        Check the metadata for the given slots.  
+        If the data is stored a format that is poorly optimized for 3D access, 
+        then configure it to be copied to the project file.
+        Finally, save the project if we changed something. 
+        """
+        save_needed = False
+        opTop = self.topLevelOperator
+        for lane_index in range(startingLane, endingLane+1):
+            output_slot = opTop.ImageGroup[lane_index][roleIndex]
+            if output_slot.meta.prefer_2d:
+                shape = numpy.array(output_slot.meta.shape)
+                total_volume = numpy.prod(shape)
+                
+                # Only copy to the project file if the total volume is reasonably small
+                if total_volume < 10e9:
+                    info_slot = opTop.DatasetGroup[lane_index][roleIndex]
+                    info = info_slot.value
+                    info.location = DatasetInfo.Location.ProjectInternal
+                    info_slot.setValue( info, check_changed=False )
+                    save_needed = True
+
+        if save_needed:
+            logger.info("Some of your data cannot be accessed efficiently in 3D in its current format."
+                        "  It will now be copied to the project file.")
+            opWorkflow = self.topLevelOperator.parent
+            opWorkflow.shell.onSaveProjectActionTriggered()
 
     @threadRouted
     def handleDatasetConstraintError(self, info, filename, ex, roleIndex, laneIndex, return_val=[False]):
