@@ -427,11 +427,34 @@ class DataSelectionGui(QWidget):
         
         If rois is provided, it must be a list of (start,stop) tuples (one for each fileName)
         """
-        if rois is not None:
-            assert len(rois) == len(fileNames)
-            
-        infos = []
+        # What lanes will we touch?
+        startingLane, endingLane = self._determineLaneRange(fileNames, roleIndex, startingLane)
+        if startingLane is None:
+            # Something went wrong.
+            return
 
+        # Create a list of DatasetInfos
+        infos = self._createDatasetInfos(fileNames, rois)
+        
+        # If no exception was thrown so far, set up the operator now
+        loaded_all = self._configureOpWithInfos(roleIndex, startingLane, endingLane, infos)
+
+        # If we succeeded in adding all images, show the first one.
+        if loaded_all:
+            self.showDataset(startingLane, roleIndex)
+
+        # Notify the workflow that something that could affect applet readyness has occurred.
+        self.parentApplet.appletStateUpdateRequested.emit()
+
+        self.updateInternalPathVisiblity()
+
+    def _determineLaneRange(self, fileNames, roleIndex, startingLane=None):
+        """
+        Determine which lanes should be configured if the user wants to add the 
+            given fileNames to the specified role, starting at startingLane.
+        If startingLane is None, assume the user wants to APPEND the 
+            files to the role's slots.
+        """
         if startingLane is None or startingLane == -1:
             startingLane = len(self.topLevelOperator.DatasetGroup)
             endingLane = startingLane+len(fileNames)-1
@@ -446,54 +469,81 @@ class DataSelectionGui(QWidget):
                               .format(num_selected=len(fileNames),
                                       num_slots=max_files)
                 QMessageBox.critical( self, "Too many files", msg )
-                return
+                return (None, None)
             endingLane = min(startingLane+len(fileNames)-1,
                     len(self.topLevelOperator.DatasetGroup))
             
         if self._max_lanes and endingLane >= self._max_lanes:
             msg = "You may not add more than {} file(s) to this workflow.  Please try again.".format( self._max_lanes )
             QMessageBox.critical( self, "Too many files", msg )
-            return
+            return (None, None)
 
-        # Assign values to the new inputs we just allocated.
-        # The GUI will be updated by callbacks that are listening to slot changes
-        for file_index, filePath in enumerate(fileNames):
-            datasetInfo = DatasetInfo()
+        return (startingLane, endingLane)
+
+    def _createDatasetInfos(self, filePaths, rois):
+        """
+        Create a list of DatasetInfos for the given filePaths and rois
+        rois may be None, in which case it is ignored.
+        """
+        if rois is None:
+            rois = [None]*len(filePaths)
+        assert len(rois) == len(filePaths)
+
+        infos = []
+        for filePath, roi in zip(filePaths, rois):
+            info = self._createDatasetInfo(filePath, roi)
+            infos.append(info)
+        return infos
+
+    def _createDatasetInfo(self, filePath, roi):
+        """
+        Create a DatasetInfo object for the given filePath and roi.
+        roi may be None, in which case it is ignored.
+        """
+        datasetInfo = DatasetInfo()
+        
+        if roi is not None:
+            datasetInfo.subvolume_roi = roi
+        
+        cwd = self.topLevelOperator.WorkingDirectory.value
+        
+        absPath, relPath = getPathVariants(filePath, cwd)
+        
+        # Relative by default, unless the file is in a totally different tree from the working directory.
+        if relPath is not None and len(os.path.commonprefix([cwd, absPath])) > 1:
+            datasetInfo.filePath = relPath
+        else:
+            datasetInfo.filePath = absPath
             
-            if rois is not None:
-                datasetInfo.subvolume_roi = rois[file_index]
-            
-            cwd = self.topLevelOperator.WorkingDirectory.value
-            
-            absPath, relPath = getPathVariants(filePath, cwd)
-            
-            # Relative by default, unless the file is in a totally different tree from the working directory.
-            if relPath is not None and len(os.path.commonprefix([cwd, absPath])) > 1:
-                datasetInfo.filePath = relPath
+        datasetInfo.nickname = PathComponents(absPath).filenameBase
+
+        h5Exts = ['.ilp', '.h5', '.hdf5']
+        if os.path.splitext(datasetInfo.filePath)[1] in h5Exts:
+            datasetNames = self.getPossibleInternalPaths( absPath )
+            if len(datasetNames) > 0:
+                datasetInfo.filePath += str(datasetNames[0])
             else:
-                datasetInfo.filePath = absPath
-                
-            datasetInfo.nickname = PathComponents(absPath).filenameBase
+                raise RuntimeError("HDF5 file %s has no image datasets" % datasetInfo.filePath)
 
-            h5Exts = ['.ilp', '.h5', '.hdf5']
-            if os.path.splitext(datasetInfo.filePath)[1] in h5Exts:
-                datasetNames = self.getPossibleInternalPaths( absPath )
-                if len(datasetNames) > 0:
-                    datasetInfo.filePath += str(datasetNames[0])
-                else:
-                    raise RuntimeError("HDF5 file %s has no image datasets" % datasetInfo.filePath)
+        # Allow labels by default if this gui isn't being used for batch data.
+        datasetInfo.allowLabels = ( self.guiMode == GuiMode.Normal )
+        return datasetInfo
 
-            # Allow labels by default if this gui isn't being used for batch data.
-            datasetInfo.allowLabels = ( self.guiMode == GuiMode.Normal )
-            infos.append(datasetInfo)
-
-        # if no exception was thrown, set up the operator now
+    def _configureOpWithInfos(self, roleIndex, startingLane, endingLane, infos):
+        """
+        Attempt to configure the specified role and lanes of the 
+        top-level operator with the given DatasetInfos.
+        
+        Returns True if all lanes were configured successfully, or False if something went wrong.
+        """
         opTop = self.topLevelOperator
         originalSize = len(opTop.DatasetGroup)
-            
+
+        # Resize the slot if necessary            
         if len( opTop.DatasetGroup ) < endingLane+1:
             opTop.DatasetGroup.resize( endingLane+1 )
-        loaded_all = True
+        
+        # Configure each subslot
         for laneIndex, info in zip(range(startingLane, endingLane+1), infos):
             try:
                 self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue( info )
@@ -504,28 +554,19 @@ class DataSelectionGui(QWidget):
                 if not return_val[0]:
                     # Not successfully repaired.  Roll back the changes and give up.
                     opTop.DatasetGroup.resize( originalSize )
-                    loaded_all = False
-                    break
+                    return False
             except OpDataSelection.InvalidDimensionalityError as ex:
                     opTop.DatasetGroup.resize( originalSize )
                     QMessageBox.critical( self, "Dataset has different dimensionality", ex.message )
-                    loaded_all = False
-                    break
+                    return False
             except Exception as ex:
-                loaded_all = False
                 msg = "Wasn't able to load your dataset into the workflow.  See error log for details."
                 log_exception( logger, msg )
                 QMessageBox.critical( self, "Dataset Load Error", msg )
                 opTop.DatasetGroup.resize( originalSize )
-
-        # If we succeeded in adding all images, show the first one.
-        if loaded_all:
-            self.showDataset(startingLane, roleIndex)
-
-        # Notify the workflow that something that could affect applet readyness has occurred.
-        self.parentApplet.appletStateUpdateRequested.emit()
-
-        self.updateInternalPathVisiblity()
+                return False
+        
+        return True
 
     @threadRouted
     def handleDatasetConstraintError(self, info, filename, ex, roleIndex, laneIndex, return_val=[False]):
