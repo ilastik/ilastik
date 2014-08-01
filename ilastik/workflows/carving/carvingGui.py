@@ -468,6 +468,11 @@ class CarvingGui(LabelingGui):
         """
         Export all objects in the project as separate .obj files, stored to a user-specified directory.
         """
+        mst = self.topLevelOperatorView.MST.value
+        if not mst.object_lut.keys():
+            QMessageBox.critical(self, "Can't Export", "You have no saved objets, so there are no meshes to export.")
+            return
+        
         recent_dir = PreferencesManager().get( 'carving', 'recent export mesh directory' )
         if recent_dir is None:
             defaultPath = os.path.join( os.path.expanduser('~') )
@@ -484,12 +489,12 @@ class CarvingGui(LabelingGui):
         # Get the list of all object names
         object_names = []
         obj_filepaths = []
-        mst = self.topLevelOperatorView.MST.value
         for object_name in mst.object_lut.keys():
             object_names.append( object_name )
             obj_filepaths.append( os.path.join( export_dir, "{}.obj".format( object_name ) ) )
         
-        self._exportMeshes( object_names, obj_filepaths )
+        if object_names:
+            self._exportMeshes( object_names, obj_filepaths )
 
     def _exportMeshes(self, object_names, obj_filepaths):
         """
