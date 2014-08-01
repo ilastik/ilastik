@@ -192,7 +192,7 @@ class CarvingGui(LabelingGui):
 
         ## clear
 
-        self.labelingDrawerUi.clear.clicked.connect(self.topLevelOperatorView.clearCurrentLabeling)
+        self.labelingDrawerUi.clear.clicked.connect(self._onClearAction)
         
         ## object names
         
@@ -441,8 +441,13 @@ class CarvingGui(LabelingGui):
             menu.addAction("Save object").triggered.connect( self.onSaveButton )
         menu.addAction("Browse objects").triggered.connect( self.onShowObjectNames )
         menu.addAction("Segment").triggered.connect( self.onSegmentButton )
-        menu.addAction("Clear").triggered.connect( self.topLevelOperatorView.clearCurrentLabeling )
+        menu.addAction("Clear").triggered.connect( self._onClearAction )
         return menu
+
+    def _onClearAction(self):
+        confirm = QMessageBox.warning(self, "Really Clear?", "Clear all brushtrokes?", QMessageBox.Ok | QMessageBox.Cancel)
+        if confirm == QMessageBox.Ok:
+            self.topLevelOperatorView.clearCurrentLabeling()
 
     def _onContextMenuExportMesh(self, _name):
         """
