@@ -27,8 +27,15 @@ import ilastik_main
 import ilastik.monkey_patches
 ilastik.monkey_patches.extend_arg_parser(ilastik_main.parser)
 
-def main():    
+def main():
     parsed_args, workflow_cmdline_args = ilastik_main.parser.parse_known_args()
+    
+    # allow to start-up by double-clicking an '.ilp' file
+    if len(workflow_cmdline_args) == 1 and \
+       workflow_cmdline_args[0].endswith('.ilp') and \
+       parsed_args.project is None:
+            parsed_args.project = workflow_cmdline_args[0]
+            workflow_cmdline_args = []
 
     # DEBUG EXAMPLES
     #parsed_args.project='/Users/bergs/MyProject.ilp'

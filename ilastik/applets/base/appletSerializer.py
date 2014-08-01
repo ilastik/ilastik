@@ -427,7 +427,7 @@ class SerialHdf5BlockSlot(SerialBlockSlot):
                 self.inslot[index][roiToSlice( *blockRoi )] = blockDataset
 
 class SerialClassifierSlot(SerialSlot):
-    """For saving a random forest classifier."""
+    """For saving a classifier.  Here we assume the classifier is stored in the ."""
     def __init__(self, slot, cache, inslot=None, name=None,
                  default=None, depends=None, selfdepends=True):
         super(SerialClassifierSlot, self).__init__(
@@ -436,15 +436,19 @@ class SerialClassifierSlot(SerialSlot):
         self.cache = cache
         if self.name is None:
             self.name = slot.name
-        self._bind(cache.Output)
+        
+        # We want to bind to the INPUT, not Output:
+        # - if the input becomes dirty, we want to make sure the cache is deleted
+        # - if the input becomes dirty and then the cache is reloaded, we'll save the classifier.
+        self._bind(cache.Input)
 
     def _serialize(self, group, name, slot):
+        # Is the cache up-to-date?
+        # if not, we'll just return (don't recompute the classifier just to save it)
         if self.cache._dirty:
             return
 
-        cache_contents = self.cache._value
-        assert cache_contents.shape == (1,)
-        classifier = cache_contents[0]
+        classifier = self.cache.Output.value
 
         # Classifier can be None if there isn't any training data yet.
         if classifier is None:

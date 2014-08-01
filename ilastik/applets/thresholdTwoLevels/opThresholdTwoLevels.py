@@ -27,6 +27,9 @@ from functools import partial
 import numpy
 import vigra
 
+# ilastik
+from ilastik.applets.base.applet import DatasetConstraintError
+
 # Lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpPixelOperator, OpLabelVolume,\
@@ -38,7 +41,8 @@ from lazyflow.rtype import SubRegion
 from lazyflow.request import Request, RequestPool
 
 # local
-from thresholdingTools import OpAnisotropicGaussianSmoothing
+from thresholdingTools import OpAnisotropicGaussianSmoothing5d
+
 from thresholdingTools import OpSelectLabels
 
 from opGraphcutSegment import haveGraphCut
@@ -103,46 +107,32 @@ class OpThresholdTwoLevels(Operator):
     def __init__(self, *args, **kwargs):
         super(OpThresholdTwoLevels, self).__init__(*args, **kwargs)
 
+        self.InputImage.notifyReady( self.checkConstraints )
+
         self._opReorder1 = OpReorderAxes(parent=self)
         self._opReorder1.AxisOrder.setValue('txyzc')
         self._opReorder1.Input.connect(self.InputImage)
 
-        # slice in time for anisotropic gauss
-        self._opTimeSlicer = OpMultiArraySlicer(parent=self)
-        self._opTimeSlicer.AxisFlag.setValue('t')
-        self._opTimeSlicer.Input.connect(self._opReorder1.Output)
-        assert self._opTimeSlicer.Slices.level == 1
-
-        self._opChannelSelector = OperatorWrapper(OpSingleChannelSelector, parent=self)
-        self._opChannelSelector.Input.connect(self._opTimeSlicer.Slices)
+        self._opChannelSelector = OpSingleChannelSelector(parent=self)
+        self._opChannelSelector.Input.connect(self._opReorder1.Output)
         self._opChannelSelector.Index.connect(self.Channel)
 
         # anisotropic gauss
-        self._opSmoother = OperatorWrapper(OpAnisotropicGaussianSmoothing,
-                                           parent=self,
-                                           broadcastingSlotNames=['Sigmas'])
+        self._opSmoother = OpAnisotropicGaussianSmoothing5d(parent=self)
         self._opSmoother.Sigmas.connect(self.SmootherSigma)
         self._opSmoother.Input.connect(self._opChannelSelector.Output)
 
-        # stack output again, everything is now going to work for arbitrary dimensions
-        self._smoothStacker = OpMultiArrayStacker(parent=self)
-        self._smoothStacker.AxisFlag.setValue('t')
-        self._smoothStacker.AxisIndex.setValue(0)
-        self._smoothStacker.Images.connect(self._opSmoother.Output)
-
         # debug output
-        self.Smoothed.connect(self._smoothStacker.Output)
+        self.Smoothed.connect(self._opSmoother.Output)
 
         # single threshold operator
         self.opThreshold1 = _OpThresholdOneLevel(parent=self)
-        self.opThreshold1.InputImage.connect(self.Smoothed)
         self.opThreshold1.Threshold.connect(self.SingleThreshold)
         self.opThreshold1.MinSize.connect(self.MinSize)
         self.opThreshold1.MaxSize.connect(self.MaxSize)
 
         # double threshold operator
         self.opThreshold2 = _OpThresholdTwoLevels(parent=self)
-        self.opThreshold2.InputImage.connect(self.Smoothed)
         self.opThreshold2.MinSize.connect(self.MinSize)
         self.opThreshold2.MaxSize.connect(self.MaxSize)
         self.opThreshold2.LowThreshold.connect(self.LowThreshold)
@@ -150,7 +140,6 @@ class OpThresholdTwoLevels(Operator):
 
         if haveGraphCut():
             self.opThreshold1GC = _OpThresholdOneLevel(parent=self)
-            self.opThreshold1GC.InputImage.connect(self.Smoothed)
             self.opThreshold1GC.Threshold.connect(self.SingleThresholdGC)
             self.opThreshold1GC.MinSize.connect(self.MinSize)
             self.opThreshold1GC.MaxSize.connect(self.MaxSize)
@@ -165,36 +154,24 @@ class OpThresholdTwoLevels(Operator):
             self.opGraphCut.Prediction.connect(self.Smoothed)
             self.opGraphCut.Beta.connect(self.Beta)
 
-        # HACK: For backwards compatibility with old projects,
-        #       the cache must by in xyzct order,
-        #       because the cache is loaded directly from the serializer
-        self._op5CacheInput = OpReorderAxes(parent=self)
-        self._op5CacheInput.AxisOrder.setValue("xyzct")
-
-        #cache our own output, don't propagate from internal operator
-        self._opCache = OpCompressedCache(parent=self)
-        self._opCache.name = "OpThresholdTwoLevels._opCache"
-        self._opCache.InputHdf5.connect(self.InputHdf5)
-        self._opCache.Input.connect(self._op5CacheInput.Output)
-
         self._op5CacheOutput = OpReorderAxes(parent=self)
-        self._op5CacheOutput.Input.connect(self._opCache.Output)
 
         self._opReorder2 = OpReorderAxes(parent=self)
         self.Output.connect(self._opReorder2.Output)
 
-        self.CachedOutput.connect(self._op5CacheOutput.Output)
+        #cache our own output, don't propagate from internal operator
+        self._cache = _OpCacheWrapper(parent=self)
+        self._cache.name = "OpThresholdTwoLevels.OpCacheWrapper"
+        self._cache.Input.connect(self.Output)
+        self.CachedOutput.connect(self._cache.Output)
 
-        # Serialization outputs
-        self.CleanBlocks.connect(self._opCache.CleanBlocks)
-        self.OutputHdf5.connect(self._opCache.OutputHdf5)
+        # Serialization slots
+        self._cache.InputHdf5.connect(self.InputHdf5)
+        self.CleanBlocks.connect(self._cache.CleanBlocks)
+        self.OutputHdf5.connect(self._cache.OutputHdf5)
 
         #Debug outputs
-        self._inputStacker = OpMultiArrayStacker(parent=self)
-        self._inputStacker.AxisFlag.setValue('t')
-        self._inputStacker.AxisIndex.setValue(0)
-        self._inputStacker.Images.connect(self._opChannelSelector.Output)
-        self.InputChannel.connect(self._inputStacker.Output)
+        self.InputChannel.connect(self._opChannelSelector.Output)
 
     def setupOutputs(self):
 
@@ -221,12 +198,18 @@ class OpThresholdTwoLevels(Operator):
                 "Unknown index {} for current tab.".format(curIndex))
 
         self._opReorder2.Input.connect(outputSlot)
-        self._op5CacheInput.Input.connect(outputSlot)
-        self._op5CacheOutput.AxisOrder.setValue(
-            self._op5CacheInput.Input.meta.getAxisKeys())
-        self._setBlockShape()
         # force the cache to emit a dirty signal
-        self._opCache.Input.setDirty(slice(None))
+        self._cache.Input.setDirty(slice(None))
+
+    def checkConstraints(self, *args):
+        if self._opReorder1.Output.ready():
+            numChannels = self._opReorder1.Output.meta.getTaggedShape()['c']
+            if self.Channel.value >= numChannels:
+                raise DatasetConstraintError(
+                    "Two-Level Thresholding",
+                    "Your project is configured to select data from channel"
+                    " #{}, but your input data only has {} channels."
+                    .format(self.Channel.value, numChannels))
 
     def _disconnectAll(self):
         # start from back
@@ -234,13 +217,17 @@ class OpThresholdTwoLevels(Operator):
                      self.FilteredSmallLabels, self.BeforeSizeFilter]:
             slot.disconnect()
             slot.meta.NOTREADY = True
-        self._op5CacheInput.Input.disconnect()
         self._opReorder2.Input.disconnect()
+        if haveGraphCut():
+            self.opThreshold1GC.InputImage.disconnect()
+        self.opThreshold1.InputImage.disconnect()
+        self.opThreshold2.InputImage.disconnect()
 
     def _connectForSingleThreshold(self, threshOp):
         # connect the operators for SingleThreshold
         self.BeforeSizeFilter.connect(threshOp.BeforeSizeFilter)
         self.BeforeSizeFilter.meta.NOTREADY = None
+        threshOp.InputImage.connect(self.Smoothed)
         return threshOp.Output
 
     def _connectForTwoLevelThreshold(self):
@@ -251,6 +238,7 @@ class OpThresholdTwoLevels(Operator):
         for slot in [self.BigRegions, self.SmallRegions,
                      self.FilteredSmallLabels]:
             slot.meta.NOTREADY = None
+        self.opThreshold2.InputImage.connect(self.Smoothed)
 
         return self.opThreshold2.Output
 
@@ -261,16 +249,6 @@ class OpThresholdTwoLevels(Operator):
             return self.opObjectsGraphCut.Output
         else:
             return self.opGraphCut.Output
-
-    def _setBlockShape(self):
-        # Blockshape is the entire spatial block
-        tagged_shape = self._opCache.Input.meta.getTaggedShape()
-        tagged_shape['t'] = 1
-        tagged_shape['c'] = 1
-
-        # Blockshape must correspond to cachsetInSlote input order
-        blockshape = map(lambda k: tagged_shape[k], 'xyzct')
-        self._opCache.BlockShape.setValue(tuple(blockshape))
 
     # raise an error if setInSlot is called, we do not pre-cache input
     #def setInSlot(self, slot, subindex, roi, value):
@@ -290,7 +268,6 @@ class OpThresholdTwoLevels(Operator):
         pass
         # InputHDF5 is connected to the cache so we don't have to do
         # anything, all other slots are rejected
-        
 
 
 ## internal operator for one level thresholding
@@ -521,3 +498,82 @@ class _OpThresholdTwoLevels(Operator):
         # Nothing to do here.
         # Our Input slots are directly fed into the cache,
         #  so all calls to __setitem__ are forwarded automatically
+
+
+#HACK this ensures backwards compatibility by providing serialization slots
+# with xyzct axes
+class _OpCacheWrapper(Operator):
+    name = "OpCacheWrapper"
+    Input = InputSlot()
+
+    Output = OutputSlot()
+
+    InputHdf5 = InputSlot(optional=True)
+    CleanBlocks = OutputSlot()
+    OutputHdf5 = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super(_OpCacheWrapper, self).__init__(*args, **kwargs)
+        op1 = OpReorderAxes(parent=self)
+        op1.name = "op1"
+        op2 = OpReorderAxes(parent=self)
+        op2.name = "op2"
+
+        op1.AxisOrder.setValue('xyzct')
+        op2.AxisOrder.setValue('txyzc')
+
+        op1.Input.connect(self.Input)
+        self.Output.connect(op2.Output)
+
+        self._op1 = op1
+        self._op2 = op2
+        self._cache = None
+
+    def setupOutputs(self):
+        self._disconnectInternals()
+
+        # we need a new cache
+        cache = OpCompressedCache(parent=self)
+        cache.name = self.name + "WrappedCache"
+
+        # connect cache outputs
+        self.CleanBlocks.connect(cache.CleanBlocks)
+        self.OutputHdf5.connect(cache.OutputHdf5)
+        self._op2.Input.connect(cache.Output)
+
+        # connect cache inputs
+        cache.InputHdf5.connect(self.InputHdf5)
+        cache.Input.connect(self._op1.Output)
+
+        # set the cache block shape
+        tagged_shape = self._op1.Output.meta.getTaggedShape()
+        tagged_shape['t'] = 1
+        tagged_shape['c'] = 1
+        blockshape = map(lambda k: tagged_shape[k], 'xyzct')
+        cache.BlockShape.setValue(tuple(blockshape))
+
+        self._cache = cache
+
+    def execute(self, slot, subindex, roi, result):
+        assert False
+
+    def propagateDirty(self, slot, subindex, roi):
+        pass
+
+    def setInSlot(self, slot, subindex, key, value):
+        assert slot == self.InputHdf5,\
+            "setInSlot not implemented for slot {}".format(slot.name)
+        assert self._cache is not None,\
+            "setInSlot called before input was configured"
+        self._cache.setInSlot(self._cache.InputHdf5, subindex, key, value)
+
+    def _disconnectInternals(self):
+        self.CleanBlocks.disconnect()
+        self.OutputHdf5.disconnect()
+        self._op2.Input.disconnect()
+
+        if self._cache is not None:
+            self._cache.InputHdf5.disconnect()
+            self._cache.Input.disconnect()
+            del self._cache
+

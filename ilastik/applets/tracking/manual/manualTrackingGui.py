@@ -136,6 +136,7 @@ class ManualTrackingGui(LayerViewerGui):
         if self.mainOperator.LabelImage.meta.shape:
             self.editor.dataShape = self.mainOperator.LabelImage.meta.shape
         self.mainOperator.LabelImage.notifyMetaChanged( self._onMetaChanged)
+        self.mainOperator.LabelImage.notifyDirty( self._reset )
         
         self.ct = colortables.create_random_16bit()        
         
@@ -167,7 +168,7 @@ class ManualTrackingGui(LayerViewerGui):
                 layerraw = GrayscaleLayer( self.rawsrc )
                 layerraw.name = "Raw"
                 self.layerstack.append( layerraw )
-        
+
     def _onReady( self, slot ):
         if slot is self.mainOperator.RawImage:
             if slot.meta.shape and not self.rawsrc:
@@ -254,11 +255,17 @@ class ManualTrackingGui(LayerViewerGui):
         self.topLevelOperatorView.RawImage.notifyReady( self._onReady )
         self.topLevelOperatorView.RawImage.notifyMetaChanged( self._onMetaChanged )
         
-        self._setDivisionsList()
-        self._setActiveTrackList()
+        self._reset()
         
         return layers
 
+    @threadRouted
+    def _reset(self, *args, **kwargs):
+        self._setDivisionsList()
+        self._setActiveTrackList()
+        self._drawer.logOutput.clear()
+
+    @threadRouted
     def _addDivisionToListWidget(self, trackid, child1, child2, t_parent):
         divItem = QtGui.QListWidgetItem("%d: %d, %d" % (trackid, child1, child2))
         divItem.setBackground(QColor(self.ct[trackid]))
@@ -272,16 +279,23 @@ class ManualTrackingGui(LayerViewerGui):
         self.labelsWithDivisions[t_parent+1].append(child1)
         self.labelsWithDivisions[t_parent+1].append(child2)
 
+    @threadRouted
     def _setDivisionsList(self):
+        self._drawer.divisionsList.clear()
+
         for trackid in self.mainOperator.divisions.keys():
             self._addDivisionToListWidget(trackid, self.mainOperator.divisions[trackid][0][0], self.mainOperator.divisions[trackid][0][1],
                                           self.mainOperator.divisions[trackid][-1])
         # set all items checked
         for idx in range(self._drawer.divisionsList.count()):
             self._drawer.divisionsList.item(idx).setCheckState(True)
-    
+
+    @threadRouted
     def _setActiveTrackList(self):
         activeTrackBox = self._drawer.activeTrackBox
+
+        activeTrackBox.clear()
+
         allTracks = set()
         for t in self.mainOperator.labels.keys():            
             for oid in self.mainOperator.labels[t].keys():
@@ -295,8 +309,9 @@ class ManualTrackingGui(LayerViewerGui):
         for tid in sorted(allTracks):
             if tid not in items:
                 activeTrackBox.addItem(str(tid), self.ct[tid])
-        
-        activeTrackBox.setCurrentIndex(activeTrackBox.count()-1)
+
+        if activeTrackBox.count() >= 1:
+            activeTrackBox.setCurrentIndex(activeTrackBox.count()-1)
     
     def _incrementActiveTrack(self):
         activeTrackBox = self._drawer.activeTrackBox

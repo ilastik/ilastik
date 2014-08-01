@@ -133,7 +133,6 @@ class ChaingraphTrackingGui( TrackingBaseGui ):
                 self._criticalMessage("Exception(" + str(ex_type) + "): " + str(ex))                        
                 return
     
-        
         def _handle_finished(*args):
             self.applet.progressSignal.emit(100)
             self._drawer.TrackButton.setEnabled(True)
@@ -159,5 +158,3 @@ class ChaingraphTrackingGui( TrackingBaseGui ):
         req.notify_finished( _handle_finished )
         req.submit()
 
-        
-            

@@ -320,6 +320,16 @@ class ObjectClassificationWorkflow(Workflow):
 
     def onProjectLoaded(self, projectManager):
         if self._headless and self._batch_input_args and self._batch_export_args:
+            
+            # Check for problems: Is the project file ready to use?
+            opObjClassification = self.objectClassificationApplet.topLevelOperator
+            if not opObjClassification.Classifier.ready():
+                logger.error( "Can't run batch prediction.\n"
+                              "Couldn't obtain a classifier from your project file: {}.\n"
+                              "Please make sure your project is fully configured with a trained classifier."
+                              .format(projectManager.currentProjectPath) )
+                return
+
             # Configure the batch data selection operator.
             if self._batch_input_args and self._batch_input_args.raw_data:
                 self.dataSelectionAppletBatch.configure_operator_with_parsed_args( self._batch_input_args )
@@ -501,6 +511,7 @@ class ObjectClassificationWorkflow(Workflow):
 
 class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
     workflowName = "Object Classification (from pixel classification)"
+    workflowDisplayName = "Pixel Classification + Object Classification"
 
     def setupInputs(self):
         data_instructions = 'Use the "Raw Data" tab on the right to load your intensity image(s).'
@@ -730,6 +741,7 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
 
 class ObjectClassificationWorkflowBinary(ObjectClassificationWorkflow):
     workflowName = "Object Classification (from binary image)"
+    workflowDisplayName = "Object Classification [Inputs: Raw Data, Segmentation]"
 
     def setupInputs(self):
         data_instructions = 'Use the "Raw Data" tab to load your intensity image(s).\n\n'\
@@ -769,6 +781,7 @@ class ObjectClassificationWorkflowBinary(ObjectClassificationWorkflow):
 
 class ObjectClassificationWorkflowPrediction(ObjectClassificationWorkflow):
     workflowName = "Object Classification (from prediction image)"
+    workflowDisplayName = "Object Classification [Inputs: Raw Data, Pixel Prediction Map]"
 
     def setupInputs(self):
         data_instructions = 'Use the "Raw Data" tab to load your intensity image(s).\n\n'\

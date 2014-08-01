@@ -18,3 +18,11 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+
+import logging
+logger = logging.getLogger(__name__)
+
+try:
+    from manualTrackingWorkflow import ManualTrackingWorkflow
+except ImportError as e:
+    logger.warn( "Failed to import manual tracking workflow; check dependencies: " + str(e) )

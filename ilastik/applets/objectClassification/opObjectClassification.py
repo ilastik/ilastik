@@ -82,9 +82,14 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
     SelectedFeatures = InputSlot(rtype=List, stype=Opaque)
 
     LabelsAllowedFlags = InputSlot(stype='bool', level=1)
+    AllowDeleteLabels = InputSlot(stype='bool', value=True)
+    AllowDeleteLastLabelOnly = InputSlot(stype='bool', value=False)
+    AllowAddLabel = InputSlot(stype='bool', value=True)
+    SuggestedLabelNames = InputSlot(stype=Opaque, value=[])
     LabelInputs = InputSlot(stype=Opaque, rtype=List, optional=True, level=1)
     
     FreezePredictions = InputSlot(stype='bool', value=False)
+    EnableLabelTransfer = InputSlot(stype='bool', value=False)
 
     # for reading from disk
     InputProbabilities = InputSlot(level=1, stype=Opaque, rtype=List, optional=True)
@@ -420,6 +425,10 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
             #nothing to transfer
             self._needLabelTransfer = False
             return None
+        if not self.EnableLabelTransfer:
+            self._resetLabelInputs(imageIndex)
+            self._needLabelTransfer = False
+            return None
 
         labels = dict()
         for timeCoord in range(self.SegmentationImages[imageIndex].meta.shape[0]):
@@ -677,7 +686,7 @@ class OpObjectTrain(Operator):
     def __init__(self, *args, **kwargs):
         super(OpObjectTrain, self).__init__(*args, **kwargs)
         self._tree_count = 100
-        self.FixClassifier.setValue(False)
+        self.FixClassifier.setValue(False)        
 
     def setupOutputs(self):
         if self.FixClassifier.value == False:
@@ -758,7 +767,7 @@ class OpObjectTrain(Operator):
 
         featMatrix = _concatenate(featList, axis=0)
         labelsMatrix = _concatenate(labelsList, axis=0)
-        
+
         logger.info("training on matrix of shape {}".format(featMatrix.shape))
 
         if featMatrix.size == 0 or labelsMatrix.size == 0:
@@ -778,9 +787,10 @@ class OpObjectTrain(Operator):
             self.outputs["Classifier"].setDirty(slcs)
 
     def _warnBadObjects(self, bad_objects, bad_feats):
-        messageTesting = False
-        if len(bad_feats)>0 or any([len(bad_objects[i])>0 for i in bad_objects.keys()]) or messageTesting:
-            self.BadObjects.setValue( {'objects': bad_objects, 'feats': bad_feats} )
+        if len(bad_feats) > 0 or\
+                any([len(bad_objects[i]) > 0 for i in bad_objects.keys()]):
+            self.BadObjects.setValue({'objects': bad_objects,
+                                      'feats': bad_feats})
 
 
 class OpObjectPredict(Operator):

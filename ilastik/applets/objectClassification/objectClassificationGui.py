@@ -50,6 +50,7 @@ import volumina.colortables as colortables
 from volumina.api import \
     LazyflowSource, GrayscaleLayer, ColortableLayer, AlphaModulatedLayer, \
     ClickableColortableLayer, LazyflowSinkSource
+from volumina.utility import encode_from_qstring
 
 from volumina.interpreter import ClickInterpreter
 
@@ -198,7 +199,11 @@ class ObjectClassificationGui(LabelingGui):
         
         self.op.SelectedFeatures.notifyDirty(bind(self.checkEnableButtons))
         self.__cleanup_fns.append( partial( op.SelectedFeatures.unregisterDirty, bind(self.checkEnableButtons) ) )
-        
+ 
+        if not self.op.AllowAddLabel([]).wait()[0]:
+            self.labelingDrawerUi.AddLabelButton.hide()
+            self.labelingDrawerUi.AddLabelButton.clicked.disconnect()
+
         self.checkEnableButtons()
 
     def menus(self):
@@ -250,7 +255,7 @@ class ObjectClassificationGui(LabelingGui):
 
     @labelMode.setter
     def labelMode(self, val):
-        self.labelingDrawerUi.labelListView.allowDelete = val
+        self.labelingDrawerUi.labelListView.allowDelete = ( val and self.op.AllowDeleteLabels([]).wait()[0] ) 
         self.labelingDrawerUi.AddLabelButton.setEnabled(val)
         self._labelMode = val
 
@@ -315,6 +320,7 @@ class ObjectClassificationGui(LabelingGui):
         if dlg.result() == QDialog.Accepted:
             if len(dlg.selectedFeatures) == 0:
                 self.interactiveMode = False
+
             mainOperator.SelectedFeatures.setValue(dlg.selectedFeatures)
             nfeatures = 0
             for plugin_features in dlg.selectedFeatures.itervalues():
@@ -358,8 +364,10 @@ class ObjectClassificationGui(LabelingGui):
         self.labelingDrawerUi.checkInteractive.setEnabled(predict_enabled)
         self.labelingDrawerUi.checkShowPredictions.setEnabled(predict_enabled)
         self.labelingDrawerUi.AddLabelButton.setEnabled(labels_enabled)
-        self.labelingDrawerUi.labelListView.allowDelete = True
+        self.labelingDrawerUi.labelListView.allowDelete = ( True and self.op.AllowDeleteLabels([]).wait()[0] )
+        self.allowDeleteLastLabelOnly(False or self.op.AllowDeleteLastLabelOnly([]).wait()[0])
 
+        self.op._predict_enabled = predict_enabled
         self.applet.predict_enabled = predict_enabled
         self.applet.appletStateUpdateRequested.emit()
 
@@ -391,9 +399,17 @@ class ObjectClassificationGui(LabelingGui):
         old = slot.value
         slot.setValue(_listReplace(old, new))
 
+    def _getNextSuggestedLabelName(self):
+        row_idx = self._labelControlUi.labelListModel.rowCount()
+        return self.topLevelOperatorView.SuggestedLabelNames([]).wait()[row_idx]
+
     def getNextLabelName(self):
-        return self._getNext(self.topLevelOperatorView.LabelNames,
+        if self._labelControlUi.labelListModel.rowCount() >= len(self.topLevelOperatorView.SuggestedLabelNames([]).wait()):
+            return self._getNext(self.topLevelOperatorView.LabelNames,
                              super(ObjectClassificationGui, self).getNextLabelName)
+        else:
+            return self._getNext(self.topLevelOperatorView.LabelNames, 
+                             self._getNextSuggestedLabelName)
 
     def getNextLabelColor(self):
         return self._getNext(
@@ -753,15 +769,18 @@ class ObjectClassificationGui(LabelingGui):
             topLevelOp = self.topLevelOperatorView.viewed_operator()
             imageIndex = topLevelOp.LabelInputs.index( self.topLevelOperatorView.LabelInputs )
             self.topLevelOperatorView.assignObjectLabel(imageIndex, position5d, 0)
-        elif action.text()==knime_hilite:
-            data = {'command': 0, 'objectid': 'Row'+str(obj)}
-            self.applet.sendMessageToServer.emit('knime', data)
-        elif action.text()==knime_unhilite:
-            data = {'command': 1, 'objectid': 'Row'+str(obj)}
-            self.applet.sendMessageToServer.emit('knime', data)
-        elif action.text()==knime_clearhilite:
-            data = {'command': 2}
-            self.applet.sendMessageToServer.emit('knime', data)
+            
+        elif self.applet.connected_to_knime: 
+            if action.text()==knime_hilite:
+                data = {'command': 0, 'objectid': 'Row'+str(obj)}
+                self.applet.sendMessageToServer.emit('knime', data)
+            elif action.text()==knime_unhilite:
+                data = {'command': 1, 'objectid': 'Row'+str(obj)}
+                self.applet.sendMessageToServer.emit('knime', data)
+            elif action.text()==knime_clearhilite:
+                data = {'command': 2}
+                self.applet.sendMessageToServer.emit('knime', data)
+        
         else:
             try:
                 label = label_actions.index(action.text())
@@ -790,6 +809,7 @@ class ObjectClassificationGui(LabelingGui):
             if sum(len(v) for v in labels_lost.itervalues()) > 0:
                 self.warnLost(labels_lost)
 
+    @threadRouted
     def warnLost(self, labels_lost):
         box = QMessageBox(QMessageBox.Warning,
                           'Warning',
@@ -813,8 +833,8 @@ class ObjectClassificationGui(LabelingGui):
                                     for item in val])
                 cases.append("\n".join([msg, axis, coords]))
         box.setDetailedText("\n\n".join(cases))
+        self.logBox(box)
         box.show()
-
 
     @threadRouted
     def handleWarnings(self, *args, **kwargs):
@@ -834,5 +854,31 @@ class ObjectClassificationGui(LabelingGui):
         box.setText(warning['text'])
         box.setInformativeText(warning.get('info', ''))
         box.setDetailedText(warning.get('details', ''))
+
+        self.logBox(box)
         box.show()
         self.badObjectBox = box
+
+    def logBox(self, box):
+        # log the warning message in any case
+        logger.warn(box.text())
+
+        # make a callback for printing the whole error to the log file
+        def printToLog(*args, **kwargs):
+            parts = []
+            for s in (box.text(), box.informativeText(), box.detailedText()):
+                if len(s) > 0:
+                    parts.append(encode_from_qstring(s))
+            msg = "\n".join(parts)
+            logger.warn(msg)
+
+        # make a button to connect to the logging callback
+        button = QPushButton(parent=box)
+        button.setText("Print Details To Log...")
+
+        box.addButton(QMessageBox.Close)
+        box.addButton(button, QMessageBox.ActionRole)
+        #HACK do not close the dialog when print is clicked
+        # => remove the 'close' callback
+        button.clicked.disconnect()
+        button.clicked.connect(printToLog)

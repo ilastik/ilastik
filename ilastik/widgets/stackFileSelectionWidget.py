@@ -33,6 +33,8 @@ from volumina.utility import PreferencesManager
 import ilastik.config
 from volumina.utility import encode_from_qstring, decode_to_qstring
 
+from lazyflow.operators.ioOperators import OpStackLoader
+
 class StackFileSelectionWidget(QDialog):
     
     def __init__(self, parent, files=None):
@@ -114,33 +116,36 @@ class StackFileSelectionWidget(QDialog):
 
         self.directoryEdit.setText( decode_to_qstring(directory) )
         globstring = self._getGlobString(directory)
-        if globstring is not None:
-            filenames = [k.replace('\\', '/') for k in glob.glob(globstring)]
+        if globstring:
+            filenames = OpStackLoader.expandGlobStrings(globstring)
             self._updateFileList( sorted(filenames) )
-        
             # As a convenience, also show the glob string in the pattern field
             self.patternEdit.setText( decode_to_qstring(globstring) )
 
     def _getGlobString(self, directory):
+        all_filenames = []
+        globstrings = []
+
         exts = vigra.impex.listExtensions().split()
         for ext in exts:
             fullGlob = directory + '/*.' + ext
-            filenames = glob.glob(fullGlob)
-            filenames = [k.replace('\\', '/') for k in filenames]
+            globFileNames = glob.glob(fullGlob)
+            new_filenames = [k.replace('\\', '/') for k in globFileNames]
 
-            if len(filenames) > 0:
+            if len(new_filenames) > 0:
                 # Be helpful: find the longest globstring we can
-                prefix = os.path.commonprefix(filenames)
+                prefix = os.path.commonprefix(new_filenames)
                 globstring = prefix + '*.' + ext
-                break
+                globstrings.append(globstring)
+                all_filenames += new_filenames
 
-        if len(filenames) == 0:
+        if len(all_filenames) == 0:
             msg = 'Cannot create stack: There were no image files in the selected directory:\n'
             msg += directory
             QMessageBox.warning(self, "Invalid selection", msg )
             return None
 
-        if len(filenames) == 1:
+        if len(all_filenames) == 1:
             msg = 'Cannot create stack: There is only one image file in the selected directory:\n'
             msg += directory + '\n'
             msg += 'If your stack is contained in a single file (e.g. a multi-page tiff or hdf5 volume),'
@@ -148,7 +153,8 @@ class StackFileSelectionWidget(QDialog):
             QMessageBox.warning(self, "Invalid selection", msg )
             return None
 
-        return globstring
+        # Combine into one string, delimited with os.path.sep
+        return os.path.pathsep.join(globstrings)
 
     def _selectFiles(self):
         # Find the directory of the most recently opened image file
@@ -189,9 +195,9 @@ class StackFileSelectionWidget(QDialog):
         self._updateFileList( fileNames )
 
     def _applyPattern(self):
-        globstring = str( self.patternEdit.text() )
-        filenames = [k.replace('\\', '/') for k in glob.glob(globstring)]
-        self._updateFileList( sorted(filenames) )
+        globStrings = encode_from_qstring(self.patternEdit.text())
+        filenames = OpStackLoader.expandGlobStrings(globStrings)
+        self._updateFileList(filenames)
 
     def _updateFileList(self, files):
         self.selectedFiles = files
@@ -199,7 +205,7 @@ class StackFileSelectionWidget(QDialog):
         self.fileListWidget.clear()
         
         for f in self.selectedFiles:
-            self.fileListWidget.addItem( f )
+            self.fileListWidget.addItem(decode_to_qstring(f))
 
     def eventFilter(self, watched, event):
         if watched == self.patternEdit:

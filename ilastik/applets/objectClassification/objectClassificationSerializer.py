@@ -24,6 +24,20 @@ from ilastik.applets.base.appletSerializer import \
   AppletSerializer, SerialSlot, SerialDictSlot, \
   SerialClassifierSlot, SerialListSlot
 
+class SerialDictSlotWithoutDeserialization(SerialDictSlot):
+    
+    def __init__(self, slot, mainOperator, **kwargs):
+        super(SerialDictSlotWithoutDeserialization, self).__init__(slot, **kwargs)
+        self.mainOperator = mainOperator
+    
+    def serialize(self, group):
+        #if self.slot.ready() and self.mainOperator._predict_enabled:
+        return SerialDictSlot.serialize(self, group)
+    
+    def deserialize(self, group):
+        # Do not deserialize this slot
+        pass
+
 
 class ObjectClassificationSerializer(AppletSerializer):
     # FIXME: predictions can only be saved, not loaded, because it
@@ -43,6 +57,7 @@ class ObjectClassificationSerializer(AppletSerializer):
             SerialDictSlot(operator.CachedProbabilities,
                            operator.InputProbabilities,
                            transform=int),
+            #SerialDictSlotWithoutDeserialization(operator.Probabilities, operator, transform=str)
         ]
 
         super(ObjectClassificationSerializer, self ).__init__(topGroupName,
