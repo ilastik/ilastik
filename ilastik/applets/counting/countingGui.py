@@ -166,6 +166,8 @@ class CountingGui(LabelingGui):
         self.labelingDrawerUi.liveUpdateButton.toggled.connect( self.toggleInteractive )
         self.topLevelOperatorView.MaxLabelValue.notifyDirty( bind(self.handleLabelSelectionChange) )
 
+        self.toggleInteractive(not self.topLevelOperatorView.FreezePredictions.value)
+
         try:
             self.render = True
             self._renderedLayers = {} # (layer name, label number)

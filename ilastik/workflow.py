@@ -133,6 +133,9 @@ class Workflow( Operator ):
         self._shell = shell
         self._headless = headless
         
+    @property
+    def shell(self):
+        return self._shell
 
     def cleanUp(self):
         """

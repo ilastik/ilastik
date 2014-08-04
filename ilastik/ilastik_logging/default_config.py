@@ -130,6 +130,9 @@ def get_default_config(prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ER
             "py.warnings":                             {  "level":"WARN", "handlers":warnings_module_handlers, "propagate": False },
 
             "PyQt4": {"level":"INFO"},
+            
+            # The requests module spits out a lot of INFO messages by default.
+            "requests": {"level":"WARN"},
     
             # When copying to a json file, remember to remove comments and change True/False to true/false
             "__main__":                                                 { "level":"INFO" },

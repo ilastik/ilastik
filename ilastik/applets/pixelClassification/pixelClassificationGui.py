@@ -345,7 +345,7 @@ class PixelClassificationGui(LabelingGui):
                         # This layer has been removed from the layerstack already.
                         # Don't touch it.
                         return
-                    segLayer.tintColor = c
+                    segLayer_.tintColor = c
                     self._update_rendering()
 
                 def setSegLayerName(n, segLayer_=segLayer, initializing=False):
@@ -353,9 +353,9 @@ class PixelClassificationGui(LabelingGui):
                         # This layer has been removed from the layerstack already.
                         # Don't touch it.
                         return
-                    oldname = segLayer.name
+                    oldname = segLayer_.name
                     newName = "Segmentation (%s)" % n
-                    segLayer.name = newName
+                    segLayer_.name = newName
                     if not self.render:
                         return
                     if oldname in self._renderedLayers:

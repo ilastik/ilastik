@@ -166,10 +166,14 @@ class DataSelectionSerializer( AppletSerializer ):
                     infoGroup.create_dataset('fromstack', data=datasetInfo.fromstack)
                     if datasetInfo.drange is not None:
                         infoGroup.create_dataset('drange', data=datasetInfo.drange)
-                    if datasetInfo.axistags is not None:
-                        infoGroup.create_dataset('axistags', data=datasetInfo.axistags.toJSON())
-                        axisorder = "".join(tag.key for tag in datasetInfo.axistags)
-                        infoGroup.create_dataset('axisorder', data=axisorder)
+
+                    # Pull the axistags from the NonTransposedImage, 
+                    #  which is what the image looks like before 'force5d' is applied, 
+                    #  and before 'c' is automatically appended
+                    axistags = self.topLevelOperator._NonTransposedImageGroup[laneIndex][roleIndex].meta.axistags
+                    infoGroup.create_dataset('axistags', data=axistags.toJSON())
+                    axisorder = "".join(tag.key for tag in axistags)
+                    infoGroup.create_dataset('axisorder', data=axisorder)
                     if datasetInfo.subvolume_roi is not None:
                         infoGroup.create_dataset('subvolume_roi', data=datasetInfo.subvolume_roi)
 
