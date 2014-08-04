@@ -97,7 +97,7 @@ class OpDvidVolume(Operator):
         # TODO: Modify accessor implementation to accept a pre-allocated array.
 
         # For "heavy" requests, we'll use the throttled accessor
-        HEAVY_REQ_SIZE = 256**3
+        HEAVY_REQ_SIZE = 256*256*10
         if numpy.prod(result.shape) > HEAVY_REQ_SIZE:
             accessor = self._throttled_accessor
         else:
