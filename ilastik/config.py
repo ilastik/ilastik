@@ -36,10 +36,23 @@ default_config = """
 [ilastik]
 debug: false
 plugin_directories: ~/.ilastik/plugins,
+
+[lazyflow]
+threads: 0
+total_ram_mb: 0
 """
 
 cfg = ConfigParser.SafeConfigParser()
-cfg.readfp(io.BytesIO(default_config))
-userConfig = os.path.expanduser("~/.ilastikrc")
-if os.path.exists(userConfig):
-    cfg.read(userConfig)
+def init_ilastik_config( userConfig=None ):
+    global cfg
+    cfg.readfp(io.BytesIO(default_config))
+
+    if userConfig is not None and not os.path.exists(userConfig):
+        raise Exception("ilastik config file does not exist: {}".format( userConfig ))
+
+    if userConfig is None:    
+        userConfig = os.path.expanduser("~/.ilastikrc")
+    if os.path.exists(userConfig):
+        cfg.read(userConfig)
+
+init_ilastik_config()
