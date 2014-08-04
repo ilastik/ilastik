@@ -36,6 +36,8 @@ submodule_dir = os.path.join( lazyflow_repo_dir, 'submodules' )
 import expose_submodules
 expose_submodules.expose_submodules(submodule_dir)
 
+AVAILABLE_RAM_MB = 0 # 0 means "determine with psutil"
+
 import utility
 import roi
 import rtype

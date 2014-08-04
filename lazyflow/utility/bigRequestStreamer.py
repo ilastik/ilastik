@@ -23,6 +23,7 @@ import numpy
 from lazyflow.request import Request
 from lazyflow.utility import RoiRequestBatch
 from lazyflow.roi import getIntersectingBlocks, getBlockBounds, getIntersection, determine_optimal_request_blockshape, determineBlockShape
+import lazyflow
 
 import logging
 import psutil
@@ -153,18 +154,21 @@ class BigRequestStreamer(object):
         ram_usage_per_requested_pixel = outputSlot.meta.ram_usage_per_requested_pixel
         
         num_threads = Request.global_thread_pool.num_workers
-        available_ram = psutil.virtual_memory().available
-        
-        # Fudge factor: Reduce RAM usage by a bit
-        available_ram *= 0.5
-
-        if ram_usage_per_requested_pixel is None:
-            # Make a conservative guess: (bytes for dtype) * (num channels) + (fudge factor=4)
-            ram_usage_per_requested_pixel = 4 + 2*outputSlot.meta.dtype().nbytes*outputSlot.meta.shape[-1]
-            logger.warn( "Unknown RAM usage.  Making a guess." )
+        if lazyflow.AVAILABLE_RAM_MB != 0:
+            available_ram = lazyflow.AVAILABLE_RAM_MB * 1e6
         else:
-            logger.info( "Estimated RAM usage per pixel is {} bytes"
-                               .format( ram_usage_per_requested_pixel ) )
+            available_ram = psutil.virtual_memory().available
+        
+        if ram_usage_per_requested_pixel is None:
+            # Make a conservative guess: 2*(bytes for dtype) * (num channels) + (fudge factor=4)
+            ram_usage_per_requested_pixel = 2*outputSlot.meta.dtype().nbytes*outputSlot.meta.shape[-1] + 4
+            logger.warn( "Unknown per-pixel RAM requirement.  Making a guess." )
+
+        # Safety factor (fudge factor): Double the estimated RAM usage per pixel
+        safety_factor = 2.0
+        logger.info( "Estimated RAM usage per pixel is {} bytes * safety factor ({})"
+                           .format( ram_usage_per_requested_pixel, safety_factor ) )
+        ram_usage_per_requested_pixel *= safety_factor
         
         if ideal_blockshape is None:
             blockshape = determineBlockShape( input_shape, available_ram/(num_threads*ram_usage_per_requested_pixel) )
