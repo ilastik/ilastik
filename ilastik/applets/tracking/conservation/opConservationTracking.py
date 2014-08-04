@@ -23,6 +23,7 @@ class OpConservationTracking(OpTrackingBase):
     MergerOutputHdf5 = OutputSlot()
     MergerCachedOutput = OutputSlot() # For the GUI (blockwise access)
     MergerOutput = OutputSlot()
+    
 
     def __init__(self, parent=None, graph=None):
         super(OpConservationTracking, self).__init__(parent=parent, graph=graph)
@@ -33,6 +34,9 @@ class OpConservationTracking(OpTrackingBase):
         self.MergerCleanBlocks.connect(self._mergerOpCache.CleanBlocks)
         self.MergerOutputHdf5.connect(self._mergerOpCache.OutputHdf5)
         self.MergerCachedOutput.connect(self._mergerOpCache.Output)
+        
+        self.Tracker = None
+
 
     def setupOutputs(self):
         super(OpConservationTracking, self).setupOutputs()
@@ -85,7 +89,8 @@ class OpConservationTracking(OpTrackingBase):
             borderAwareWidth = 0.0,
             withArmaCoordinates = True,
             appearance_cost = 500,
-            disappearance_cost = 500
+            disappearance_cost = 500,
+            graph_building_parameter_changed = True
             ):
         
         if not self.Parameters.ready():
@@ -132,6 +137,8 @@ class OpConservationTracking(OpTrackingBase):
         coordinate_map = pgmlink.TimestepIdCoordinateMap()
         if withArmaCoordinates:
             coordinate_map.initialize()
+            
+            
         ts, empty_frame = self._generate_traxelstore(time_range, x_range, y_range, z_range, 
                                                                       size_range, x_scale, y_scale, z_scale, 
                                                                       median_object_size=median_obj_size, 
@@ -174,7 +181,8 @@ class OpConservationTracking(OpTrackingBase):
         if ndim == 2:
             assert z_range[0] * z_scale == 0 and (z_range[1]-1) * z_scale == 0, "fov of z must be (0,0) if ndim==2"
 
-        tracker = pgmlink.ConsTracking(maxObj,
+        if(self.Tracker == None or graph_building_parameter_changed):
+            self.Tracker = pgmlink.ConsTracking(maxObj,
                                          float(maxDist),
                                          float(divThreshold),
                                          "none",  # detection_rf_filename
@@ -197,10 +205,11 @@ class OpConservationTracking(OpTrackingBase):
                                          cplex_timeout,
                                          "none" # dump traxelstore
                                          )
-
+            self.Tracker.buildGraph(ts)
+            
         
         try:
-            eventsVector = tracker(ts, coordinate_map.get())
+            eventsVector = self.Tracker.track(coordinate_map.get())
         except Exception as e:
             raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
         

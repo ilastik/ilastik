@@ -198,7 +198,8 @@ class ConservationTrackingGui( TrackingBaseGui ):
                     withArmaCoordinates = withArmaCoordinates,
                     cplex_timeout = cplex_timeout,
                     appearance_cost = appearanceCost,
-                    disappearance_cost = disappearanceCost
+                    disappearance_cost = disappearanceCost,
+                    graph_building_parameter_changed = True
                     )
             except Exception:           
                 ex_type, ex, tb = sys.exc_info()

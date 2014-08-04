@@ -306,6 +306,8 @@ class OpTrackingBase(Operator):
         logger.info( "fetching region features and division probabilities" )
         feats = self.ObjectFeatures(time_range).wait()        
         
+        print '\033[94m'+"div "+str(with_div)+'\033[0m'
+        
         if with_div:
             if not self.DivisionProbabilities.ready() or len(self.DivisionProbabilities([0]).wait()[0]) == 0:
                raise Exception, "Classifier not yet ready. Did you forget to train the Division Detection Classifier?"
