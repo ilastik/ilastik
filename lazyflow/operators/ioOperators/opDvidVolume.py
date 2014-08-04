@@ -56,9 +56,10 @@ class OpDvidVolume(Operator):
         This serves as an alternative init function, from which we are allowed to raise exceptions.
         """
         try:
-            self._connection = pydvid.dvid_connection.DvidConnection( self._hostname )
+            self._connection = pydvid.dvid_connection.DvidConnection( self._hostname, timeout=60.0 )
             self._default_accessor = pydvid.voxels.VoxelsAccessor( self._connection, self._uuid, self._dataname )
-            self._throttled_accessor = pydvid.voxels.VoxelsAccessor( self._connection, self._uuid, self._dataname, throttle=True )
+            self._throttled_accessor = pydvid.voxels.VoxelsAccessor( self._connection, self._uuid, self._dataname, 
+                                                                     throttle=True, retry_timeout=30*60.0 ) # 30 minute retry period
         except pydvid.errors.DvidHttpError as ex:
             if ex.status_code == httplib.NOT_FOUND:
                 raise OpDvidVolume.DatasetReadError("Host not found: {}".format( self._hostname ))
