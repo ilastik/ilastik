@@ -30,6 +30,7 @@ from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingB
 
 class ChaingraphTrackingWorkflow( Workflow ):
     workflowName = "Automatic Tracking Workflow (Chaingraph)"
+    workflowDisplayName = "Automatic Tracking Workflow (Chaingraph) [Inputs: Raw Data, Pixel Prediction Map]"
 
     def __init__( self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs ):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()

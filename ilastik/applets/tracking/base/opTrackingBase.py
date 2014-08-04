@@ -27,6 +27,7 @@ import pgmlink
 from ilastik.applets.tracking.base.trackingUtilities import relabel,\
     get_dict_value
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
+from ilastik.applets.objectExtraction import config
 from ilastik.applets.base.applet import DatasetConstraintError
 from lazyflow.operators.opCompressedCache import OpCompressedCache
 from lazyflow.operators.valueProviders import OpZeroDefault
@@ -58,7 +59,8 @@ class OpTrackingBase(Operator):
     
     def __init__(self, parent=None, graph=None):
         super(OpTrackingBase, self).__init__(parent=parent, graph=graph)        
-        self.label2color = []    
+        self.label2color = []  
+        self.mergers = []
     
         self._opCache = OpCompressedCache( parent=self )        
         self._opCache.InputHdf5.connect( self.InputHdf5 )
@@ -73,6 +75,7 @@ class OpTrackingBase(Operator):
         # As soon as input data is available, check its constraints
         self.RawImage.notifyReady( self._checkConstraints )
         self.LabelImage.notifyReady( self._checkConstraints )
+        
     
     def setupOutputs(self):        
         self.Output.meta.assignFrom(self.LabelImage.meta)
@@ -167,17 +170,12 @@ class OpTrackingBase(Operator):
         parameters = self.Parameters.value
         time_min, time_max = parameters['time_range']
         time_range = range(time_min, time_max)
-        
-#         x_range = parameters['x_range']
-#         y_range = parameters['y_range']
-#         z_range = parameters['z_range']
-#         
+
         filtered_labels = self.FilteredLabels.value
                                                     
         label2color = []
         label2color.append({})
         mergers = []
-        mergers.append({})
         
         maxId = 2 #  misdetections have id 1
         
@@ -187,20 +185,23 @@ class OpTrackingBase(Operator):
             mergers.append({})
         
         for i in time_range:
-            dis = get_dict_value(events[str(i-time_range[0]+1)], "dis", [])            
+            dis = get_dict_value(events[str(i-time_range[0]+1)], "dis", [])
             app = get_dict_value(events[str(i-time_range[0]+1)], "app", [])
             div = get_dict_value(events[str(i-time_range[0]+1)], "div", [])
             mov = get_dict_value(events[str(i-time_range[0]+1)], "mov", [])
-            merger = get_dict_value(events[str(i-time_range[0]+1)], "merger", [])
+            merger = get_dict_value(events[str(i-time_range[0])], "merger", [])
+            multi = get_dict_value(events[str(i-time_range[0]+1)], "multiMove", [])
             
             logger.info( " {} dis at {}".format( len(dis), i ) )
             logger.info( " {} app at {}".format( len(app), i ) )
             logger.info( " {} div at {}".format( len(div), i ) )
             logger.info( " {} mov at {}".format( len(mov), i ) )
-            logger.info( " {} merger at {}\n".format( len(merger), i ) )
+            logger.info( " {} merger at {}".format( len(merger), i ) )
+            logger.info( " {} multiMoves at {}\n".format( len(multi), i ) )
             
             label2color.append({})
             mergers.append({})
+            moves_at = []
                         
             for e in app:
                 if successive_ids:
@@ -217,6 +218,7 @@ class OpTrackingBase(Operator):
                     else:
                         label2color[-2][int(e[0])] = np.random.randint(1, 255)
                 label2color[-1][int(e[1])] = label2color[-2][int(e[0])]
+                moves_at.append(int(e[0]))
 
             for e in div:
                 if not label2color[-2].has_key(int(e[0])):
@@ -231,7 +233,23 @@ class OpTrackingBase(Operator):
             
             for e in merger:
                 mergers[-1][int(e[0])] = int(e[1])
-                
+
+            for e in multi:
+                if int(e[2]) >= 0 and not label2color[time_range[0] + int(e[2])].has_key(int(e[0])):
+                    if successive_ids:
+                        label2color[time_range[0] + int(e[2])][int(e[0])] = maxId
+                        maxId += 1
+                    else:
+                        label2color[time_range[0] + int(e[2])][int(e[0])] = np.random.randint(1, 255)
+                label2color[-1][int(e[1])] = label2color[time_range[0] + int(e[2])][int(e[0])]
+
+        # last timestep
+        merger = get_dict_value(events[str(time_range[-1] - time_range[0] + 1)], "merger", [])
+        mergers.append({})
+        for e in merger:
+            mergers[-1][int(e[0])] = int(e[1])
+
+
         # mark the filtered objects
         for i in filtered_labels.keys():
             if int(i)+time_range[0] >= len(label2color):
@@ -246,6 +264,10 @@ class OpTrackingBase(Operator):
         
         self.Output._value = None
         self.Output.setDirty(slice(None))
+
+        if 'MergerOutput' in self.outputs:
+            self.MergerOutput._value = None
+            self.MergerOutput.setDirty(slice(None))            
         
 
     def _generate_traxelstore(self,
@@ -260,10 +282,17 @@ class OpTrackingBase(Operator):
                                with_div=False,
                                with_local_centers=False,
                                median_object_size=None,
-                               max_traxel_id_at=None):
+                               max_traxel_id_at=None,
+                               with_opt_correction=False,
+                               with_coordinate_list=False,
+                               with_classifier_prior=False,
+                               coordinate_map = None):
                 
         if not self.Parameters.ready():
             raise Exception("Parameter slot is not ready")
+
+        if coordinate_map is not None and not with_coordinate_list:
+            coordinate_map.initialize()
         
         parameters = self.Parameters.value
         parameters['scales'] = [x_scale,y_scale,z_scale] 
@@ -278,11 +307,18 @@ class OpTrackingBase(Operator):
         feats = self.ObjectFeatures(time_range).wait()        
         
         if with_div:
-            divProbs = self.ClassMapping(time_range).wait()
+            if not self.DivisionProbabilities.ready() or len(self.DivisionProbabilities([0]).wait()[0]) == 0:
+               raise Exception, "Classifier not yet ready. Did you forget to train the Division Detection Classifier?"
+            divProbs = self.DivisionProbabilities(time_range).wait()
         
         if with_local_centers:
             localCenters = self.RegionLocalCenters(time_range).wait()
         
+        if with_classifier_prior:
+            if not self.DetectionProbabilities.ready() or len(self.DetectionProbabilities([0]).wait()[0]) == 0:
+               raise Exception, "Classifier not yet ready. Did you forget to train the Object Count Classifier?"
+            detProbs = self.DetectionProbabilities(time_range).wait()
+            
         logger.info( "filling traxelstore" )
         ts = pgmlink.TraxelStore()
                 
@@ -293,12 +329,25 @@ class OpTrackingBase(Operator):
         empty_frame = False
         for t in feats.keys():
             rc = feats[t][default_features_key]['RegionCenter']
+            lower = feats[t][default_features_key]['Coord<Minimum>']
+            upper = feats[t][default_features_key]['Coord<Maximum>']
             if rc.size:
                 rc = rc[1:, ...]
+                lower = lower[1:, ...]
+                upper = upper[1:, ...]
+                
+            if with_opt_correction:
+                try:
+                    rc_corr = feats[t][config.features_vigra_name]['RegionCenter_corr']
+                except:
+                    raise Exception, 'cannot consider optical correction since it has not been computed before'
+                if rc_corr.size:
+                    rc_corr = rc_corr[1:,...]
 
             ct = feats[t][default_features_key]['Count']
             if ct.size:
                 ct = ct[1:, ...]
+
             
             logger.info( "at timestep {}, {} traxels found".format( t, rc.shape[0] ) )
             count = 0
@@ -327,16 +376,34 @@ class OpTrackingBase(Operator):
                 tr.set_z_scale(z_scale)
                 tr.Id = int(idx + 1)
                 tr.Timestep = t
-                
+
                 # pgmlink expects always 3 coordinates, z=0 for 2d data
                 tr.add_feature_array("com", 3)
                 for i, v in enumerate([x,y,z]):
-                    tr.set_feature_value('com', i, float(v))                    
+                    tr.set_feature_value('com', i, float(v))            
                 
+                if with_opt_correction:
+                    tr.add_feature_array("com_corrected", 3)
+                    for i, v in enumerate(rc_corr[idx]):
+                        tr.set_feature_value("com_corrected", i, float(v))
+                    if len(rc_corr[idx]) == 2:
+                        tr.set_feature_value("com_corrected", 2, 0.)
+
                 if with_div:
                     tr.add_feature_array("divProb", 1)
                     # idx+1 because rc and ct start from 1, divProbs starts from 0
                     tr.set_feature_value("divProb", 0, float(divProbs[t][idx+1][1]))
+
+                if with_classifier_prior:
+                    tr.add_feature_array("detProb", len(detProbs[t][idx+1]))
+                    for i, v in enumerate(detProbs[t][idx+1]):
+                        val = float(v)
+                        if val < 0.0000001:
+                            val = 0.0000001
+                        if val > 0.99999999:
+                            val = 0.99999999
+                        tr.set_feature_value("detProb", i, float(v))
+                        
                 
                 # FIXME: check whether it is 2d or 3d data!
                 if with_local_centers:
@@ -347,12 +414,38 @@ class OpTrackingBase(Operator):
                         tr.set_feature_value("localCentersX", i, float(v[0]))
                         tr.set_feature_value("localCentersY", i, float(v[1]))
                         tr.set_feature_value("localCentersZ", i, float(v[2]))                
-                
+
                 tr.add_feature_array("count", 1)
                 tr.set_feature_value("count", 0, float(size))
                 if median_object_size is not None:
                     obj_sizes.append(float(size))
-                ts.add(tr)   
+
+                    
+                ts.add(tr)
+
+                # add coordinate lists
+
+                if with_coordinate_list and coordinate_map is not None: # store coordinates in arma::mat
+                    # generate roi: assume the following order: txyzc
+                    n_dim = len(rc[idx])
+                    roi = [0]*5
+                    roi[0] = slice(int(t), int(t+1))
+                    roi[1] = slice(int(lower[idx][0]), int(upper[idx][0] + 1))
+                    roi[2] = slice(int(lower[idx][1]), int(upper[idx][1] + 1))
+                    if n_dim == 3:
+                        roi[3] = slice(int(lower[idx][2]), int(upper[idx][2] + 1))
+                    else:
+                        assert n_dim == 2
+                    image_excerpt = self.LabelImage[roi].wait()
+                    if n_dim == 2:
+                        image_excerpt = image_excerpt[0, ..., 0, 0]
+                    elif n_dim ==3:
+                        image_excerpt = image_excerpt[0, ..., 0]
+                    else:
+                        raise Exception, "n_dim = %s instead of 2 or 3"
+
+                    pgmlink.extract_coordinates(coordinate_map, image_excerpt, lower[idx].astype(np.int64), tr)
+                    
             
             if len(filtered_labels_at) > 0:
                 filtered_labels[str(int(t)-time_range[0])] = filtered_labels_at

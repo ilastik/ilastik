@@ -112,6 +112,10 @@ class DataSelectionApplet( Applet ):
             
         arg_parser.add_argument('--preconvert_stacks', help="Convert image stacks to temporary hdf5 files before loading them.", action='store_true', default=False)
         parsed_args, unused_args = arg_parser.parse_known_args(cmdline_args)
+
+        for i, path in enumerate( parsed_args.input_files ):
+            # Replace '~' with home dir
+            parsed_args.input_files[i] = os.path.expanduser( path )
         
         # Check for errors: Do all input files exist?
         all_input_paths = list(parsed_args.input_files)
@@ -198,8 +202,8 @@ class DataSelectionApplet( Applet ):
                 # Remove globstring syntax.
                 if '*' in info.nickname:
                     info.nickname = info.nickname.replace('*', '')
-                if '//' in info.nickname:
-                    info.nickname = PathComponents(info.nickname.split('//')[0]).fileNameBase
+                if os.path.pathsep in info.nickname:
+                    info.nickname = PathComponents(info.nickname.split(os.path.pathsep)[0]).fileNameBase
                 input_infos.append(info)
     
             opDataSelection = self.topLevelOperator
@@ -208,6 +212,19 @@ class DataSelectionApplet( Applet ):
             for lane_index, info in enumerate(input_infos):
                 opDataSelection.DatasetGroup[lane_index][role_index].setValue( info )
             
+            need_warning = False
+            for lane_index in range(len(input_infos)):
+                output_slot = opDataSelection.ImageGroup[lane_index][role_index]
+                if output_slot.meta.prefer_2d:
+                    need_warning = True
+                    break
+
+            if need_warning:
+                logger.warn("*******************************************************************************************")
+                logger.warn("Some of your input data is stored in a format that is not efficient for 3D access patterns.")
+                logger.warn("Performance may suffer as a result.  For best performance, use a chunked HDF5 volume.")                
+                logger.warn("*******************************************************************************************")
+
     @classmethod
     def convertStacksToH5(cls, filePaths, stackVolumeCacheDir):
         """

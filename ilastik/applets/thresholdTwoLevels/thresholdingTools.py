@@ -84,6 +84,7 @@ class OpAnisotropicGaussianSmoothing5d(Operator):
             data = self.Input(*inputRoi).wait()
         logger.debug("Obtaining input data took {} seconds for roi {}".format(
             resultTimer.seconds(), inputRoi))
+        data = vigra.taggedView(data, axistags='txyzc')
 
         # input is in txyzc order
         tIndex = 0
@@ -108,11 +109,16 @@ class OpAnisotropicGaussianSmoothing5d(Operator):
         for i, t in enumerate(xrange(roi.start[tIndex], roi.stop[tIndex])):
             for j, c in enumerate(xrange(roi.start[cIndex], roi.stop[cIndex])):
                 # prepare the result as an argument
-                resview = vigra.taggedView(result[i, ..., j].squeeze(),
-                                           axistags="".join(tags))
+                resview = vigra.taggedView(result[i, ..., j],
+                                           axistags='xyz')
+                dataview = data[i, ..., j]
+                # TODO make this general, not just for z axis
+                resview = resview.withAxes(*tags)
+                dataview = dataview.withAxes(*tags)
+
                 # Smooth the input data
                 vigra.filters.gaussianSmoothing(
-                    data[i, ..., j].squeeze(), sigma, window_size=2.0,
+                    dataview, sigma, window_size=2.0,
                     roi=computeRoi, out=resview)
 
     def _getInputComputeRois(self, roi):

@@ -130,6 +130,9 @@ def get_default_config(prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ER
             "py.warnings":                             {  "level":"WARN", "handlers":warnings_module_handlers, "propagate": False },
 
             "PyQt4": {"level":"INFO"},
+            
+            # The requests module spits out a lot of INFO messages by default.
+            "requests": {"level":"WARN"},
     
             # When copying to a json file, remember to remove comments and change True/False to true/false
             "__main__":                                                 { "level":"INFO" },
@@ -171,6 +174,7 @@ def get_default_config(prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ER
             "volumina":                                                 { "level":"INFO" },
             "volumina.pixelpipeline":                                   { "level":"INFO" },
             "volumina.imageScene2D":                                    { "level":"INFO" },
+            "volumina.utility.shortcutManager":                         { "level":"INFO" },
             # Python doesn't provide a trace log level, so we use a workaround.
             # By convention, trace loggers have the same hierarchy as the regular loggers, but are prefixed with 'TRACE' and always emit DEBUG messages
             # To enable trace messages, change one or more of these to use level DEBUG

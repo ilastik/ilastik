@@ -166,10 +166,14 @@ class DataSelectionSerializer( AppletSerializer ):
                     infoGroup.create_dataset('fromstack', data=datasetInfo.fromstack)
                     if datasetInfo.drange is not None:
                         infoGroup.create_dataset('drange', data=datasetInfo.drange)
-                    if datasetInfo.axistags is not None:
-                        infoGroup.create_dataset('axistags', data=datasetInfo.axistags.toJSON())
-                        axisorder = "".join(tag.key for tag in datasetInfo.axistags)
-                        infoGroup.create_dataset('axisorder', data=axisorder)
+
+                    # Pull the axistags from the NonTransposedImage, 
+                    #  which is what the image looks like before 'force5d' is applied, 
+                    #  and before 'c' is automatically appended
+                    axistags = self.topLevelOperator._NonTransposedImageGroup[laneIndex][roleIndex].meta.axistags
+                    infoGroup.create_dataset('axistags', data=axistags.toJSON())
+                    axisorder = "".join(tag.key for tag in axistags)
+                    infoGroup.create_dataset('axisorder', data=axisorder)
                     if datasetInfo.subvolume_roi is not None:
                         infoGroup.create_dataset('subvolume_roi', data=datasetInfo.subvolume_roi)
 
@@ -181,7 +185,7 @@ class DataSelectionSerializer( AppletSerializer ):
         Does not update the topLevelOperator.
         
         :param info: A DatasetInfo object.
-                     Note: info.filePath must be a stack files must be separated by '//' tokens.
+                     Note: info.filePath must be a str which lists the stack files, delimited with os.path.pathsep
                      Note: info will be MODIFIED by this function.  Use the modified info when assigning it to a dataset.
         """
         try:
@@ -193,13 +197,13 @@ class DataSelectionSerializer( AppletSerializer ):
 
             globstring = info.filePath
             info.location = DatasetInfo.Location.ProjectInternal
-            firstPathParts = PathComponents(info.filePath.split('//')[0])
+            firstPathParts = PathComponents(info.filePath.split(os.path.pathsep)[0])
             info.filePath = firstPathParts.externalDirectory + '/??' + firstPathParts.extension
             info.fromstack = True
 
             # Use absolute path
             cwd = self.topLevelOperator.WorkingDirectory
-            if '//' not in globstring and not os.path.isabs(globstring):
+            if os.path.pathsep not in globstring and not os.path.isabs(globstring):
                 globstring = os.path.normpath( os.path.join(cwd, globstring) )
             
             opWriter = OpStackToH5Writer(parent=self.topLevelOperator.parent, graph=self.topLevelOperator.graph)
@@ -323,7 +327,7 @@ class DataSelectionSerializer( AppletSerializer ):
         except KeyError:
             # Guess based on the storage setting and original filepath
             datasetInfo.fromstack = ( datasetInfo.location == DatasetInfo.Location.ProjectInternal
-                                      and ( ('?' in datasetInfo._filePath) or ('//' in datasetInfo._filePath) ) )
+                                      and ( ('?' in datasetInfo._filePath) or (os.path.pathsep in datasetInfo._filePath) ) )
 
         try:
             tags = vigra.AxisTags.fromJSON( infoGroup['axistags'].value )

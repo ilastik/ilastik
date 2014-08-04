@@ -23,7 +23,6 @@ import sys
 import imp
 import numpy
 import h5py
-import unittest
 import tempfile
 
 from lazyflow.graph import Graph
@@ -43,13 +42,15 @@ import logging
 logger = logging.getLogger(__name__)
 #logger.setLevel(logging.DEBUG)
 
-class TestPixelClassificationHeadless(unittest.TestCase):
+class TestPixelClassificationHeadless(object):
     dir = tempfile.mkdtemp()
     PROJECT_FILE = os.path.join(dir, 'test_project.ilp')
     #SAMPLE_DATA = os.path.split(__file__)[0] + '/synapse_small.npy'
 
     @classmethod
     def setupClass(cls):
+        print 'starting setup...'
+
         if hasattr(cls, 'SAMPLE_DATA'):
             cls.using_random_data = False
         else:
@@ -58,9 +59,13 @@ class TestPixelClassificationHeadless(unittest.TestCase):
 
         cls.create_new_tst_project()
 
+        print 'looking for ilastik.py...'
         # Load the ilastik startup script as a module.
         # Do it here in setupClass to ensure that it isn't loaded more than once.
-        ilastik_entry_file_path = os.path.join( os.path.split( ilastik.__file__ )[0], "../ilastik.py" )
+        ilastik_entry_file_path = os.path.join( os.path.split( os.path.realpath(ilastik.__file__) )[0], "../ilastik.py" )
+        if not os.path.exists( ilastik_entry_file_path ):
+            raise RuntimeError("Couldn't find ilastik.py startup script: {}".format( ilastik_entry_file_path ))
+            
         cls.ilastik_startup = imp.load_source( 'ilastik_startup', ilastik_entry_file_path )
 
     @classmethod
@@ -233,12 +238,16 @@ class TestPixelClassificationHeadless(unittest.TestCase):
         opReader.cleanUp()
 
 if __name__ == "__main__":
+    print 'hola'
     #make the program quit on Ctrl+C
     import signal
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     import sys
     import nose
-    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+    print 'yep...'
+#     sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
+#     sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+    print 'okay...'
+    print "__file__ is", __file__
     nose.run(defaultTest=__file__)
