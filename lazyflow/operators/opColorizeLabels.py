@@ -87,6 +87,7 @@ class OpColorizeLabels(Operator):
         self.Output.meta.shape = applyToChannel(inputShape, 4) # RGBA
         self.Output.meta.dtype = numpy.uint8
         self.Output.meta.drange = (0, 255)
+        self.Output.meta.axistags["c"].description = "rgba"
 
         newOverrideColors = self.OverrideColors.value
         if newOverrideColors != self.overrideColors:
