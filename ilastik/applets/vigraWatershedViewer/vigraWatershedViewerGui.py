@@ -54,6 +54,11 @@ class VigraWatershedViewerGui(LayerViewerGui):
     def appletDrawer(self):
         return self.getAppletDrawerUi()
 
+    def stopAndCleanUp(self):
+        # Unsubscribe to all signals
+        for fn in self.__cleanup_fns:
+            fn()
+
     # (Other methods already provided by our base class)
 
     ###########################################
@@ -64,41 +69,53 @@ class VigraWatershedViewerGui(LayerViewerGui):
         """
         super(VigraWatershedViewerGui, self).__init__( parentApplet, topLevelOperatorView )
         self.topLevelOperatorView = topLevelOperatorView
+        op = self.topLevelOperatorView
         
-        self.topLevelOperatorView.FreezeCache.setValue(True)
-        self.topLevelOperatorView.OverrideLabels.setValue( { 0: (0,0,0,0) } )
+        op.FreezeCache.setValue(True)
+        op.OverrideLabels.setValue( { 0: (0,0,0,0) } )
 
         # Default settings (will be overwritten by serializer)
-        self.topLevelOperatorView.InputChannelIndexes.setValue( [] )
-        self.topLevelOperatorView.SeedThresholdValue.setValue( 0.0 )
-        self.topLevelOperatorView.MinSeedSize.setValue( 0 )
+        op.InputChannelIndexes.setValue( [] )
+        op.SeedThresholdValue.setValue( 0.0 )
+        op.MinSeedSize.setValue( 0 )
 
         # Init padding gui updates
         blockPadding = PreferencesManager().get( 'vigra watershed viewer', 'block padding', 10)
-        self.topLevelOperatorView.WatershedPadding.notifyDirty( self.updatePaddingGui )
-        self.topLevelOperatorView.WatershedPadding.setValue( blockPadding )
+        op.WatershedPadding.notifyDirty( self.updatePaddingGui )
+        op.WatershedPadding.setValue( blockPadding )
         self.updatePaddingGui()
         
         # Init block shape gui updates
         cacheBlockShape = PreferencesManager().get( 'vigra watershed viewer', 'cache block shape', (256, 10))
-        self.topLevelOperatorView.CacheBlockShape.notifyDirty( self.updateCacheBlockGui )
-        self.topLevelOperatorView.CacheBlockShape.setValue( tuple(cacheBlockShape) )
+        op.CacheBlockShape.notifyDirty( self.updateCacheBlockGui )
+        op.CacheBlockShape.setValue( tuple(cacheBlockShape) )
         self.updateCacheBlockGui()
 
         # Init seeds gui updates
-        self.topLevelOperatorView.SeedThresholdValue.notifyDirty( self.updateSeedGui )
-        self.topLevelOperatorView.SeedThresholdValue.notifyReady( self.updateSeedGui )
-        self.topLevelOperatorView.SeedThresholdValue.notifyUnready( self.updateSeedGui )
-        self.topLevelOperatorView.MinSeedSize.notifyDirty( self.updateSeedGui )
+        op.SeedThresholdValue.notifyDirty( self.updateSeedGui )
+        op.SeedThresholdValue.notifyReady( self.updateSeedGui )
+        op.SeedThresholdValue.notifyUnready( self.updateSeedGui )
+        op.MinSeedSize.notifyDirty( self.updateSeedGui )
         self.updateSeedGui()
         
         # Init input channel gui updates
-        self.topLevelOperatorView.InputChannelIndexes.notifyDirty( self.updateInputChannelGui )
-        self.topLevelOperatorView.InputChannelIndexes.setValue( [0] )
-        self.topLevelOperatorView.InputImage.notifyMetaChanged( bind(self.updateInputChannelGui) )
+        op.InputChannelIndexes.notifyDirty( self.updateInputChannelGui )
+        op.InputChannelIndexes.setValue( [0] )
+        op.InputImage.notifyMetaChanged( bind(self.updateInputChannelGui) )
         self.updateInputChannelGui()
 
         self.thunkEventHandler = ThunkEventHandler(self)
+        
+        # Remember to unsubscribe during shutdown
+        self.__cleanup_fns = []
+        self.__cleanup_fns.append( partial( op.WatershedPadding.unregisterDirty, self.updatePaddingGui ) )
+        self.__cleanup_fns.append( partial( op.CacheBlockShape.unregisterDirty, self.updateCacheBlockGui ) )
+        self.__cleanup_fns.append( partial( op.SeedThresholdValue.unregisterDirty, self.updateSeedGui ) )
+        self.__cleanup_fns.append( partial( op.SeedThresholdValue.unregisterReady, self.updateSeedGui ) )
+        self.__cleanup_fns.append( partial( op.SeedThresholdValue.unregisterUnready, self.updateSeedGui ) )
+        self.__cleanup_fns.append( partial( op.MinSeedSize.unregisterDirty, self.updateSeedGui ) )
+        self.__cleanup_fns.append( partial( op.InputChannelIndexes.unregisterDirty, self.updateInputChannelGui ) )
+        self.__cleanup_fns.append( partial( op.InputImage.unregisterDirty, self.updateInputChannelGui ) )
     
     def initAppletDrawerUi(self):
         # Load the ui file (find it in our own directory)
@@ -251,7 +268,7 @@ class VigraWatershedViewerGui(LayerViewerGui):
             # Wait for the image to be rendered into all three image views
             time.sleep(2)
             for imgView in self.editor.imageViews:
-                imgView.scene().joinRendering()
+                imgView.scene().joinRenderingAllTiles()
             self.topLevelOperatorView.FreezeCache.setValue(True)
 
             self.updateSupervoxelStats()
@@ -405,5 +422,6 @@ class VigraWatershedViewerGui(LayerViewerGui):
         if self.topLevelOperatorView.InputChannelIndexes.ready():
             inputChannels = self.topLevelOperatorView.InputChannelIndexes.value
             for i, checkbox in enumerate( self._inputChannelCheckboxes ):
-                checkbox.setChecked( i in inputChannels )
+                if not sip.isdeleted(checkbox):
+                    checkbox.setChecked( i in inputChannels )
 
