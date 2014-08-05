@@ -93,6 +93,8 @@ class OpFeatureSelectionNoCache(Operator):
         #  check it for errors (See setupOutputs)
         # self.opPixelFeatures.SelectionMatrix.connect( self.SelectionMatrix )
 
+        self.WINDOW_SIZE = self.opPixelFeatures.WINDOW_SIZE
+
     def setupOutputs(self):
         if self.FeatureListFilename.ready() and len(self.FeatureListFilename.value) > 0:
             f = open(self.FeatureListFilename.value, 'r')

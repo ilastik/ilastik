@@ -281,7 +281,7 @@ class FeatureSelectionGui(LayerViewerGui):
                 featureName = self.FeatureNames[featureId]
                 featureEntries.append( FeatureEntry(featureName) )
             groupedNames.append( (group, featureEntries) )
-        self.featureDlg.createFeatureTable( groupedNames, self.ScalesList )
+        self.featureDlg.createFeatureTable( groupedNames, self.ScalesList, self.topLevelOperatorView.WINDOW_SIZE )
         self.featureDlg.setImageToPreView(None)
 
         # Init with no features
