@@ -21,10 +21,10 @@
 ###############################################################################
 #Python
 import gc
+import os
 import time
 import threading
 import logging
-import platform
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
 
@@ -34,18 +34,23 @@ import psutil
 
 #lazyflow
 from lazyflow.utility import OrderedSignal
+import lazyflow
+
+this_process = psutil.Process(os.getpid())
 
 def memoryUsagePercentage():
-    vmem = psutil.virtual_memory()
-    if 'Linux' in platform.platform():
-        return 100 * (vmem.total - vmem.available) / vmem.total
-    return 100 * (vmem.total - vmem.free) / vmem.total
-    
+    current_usage = this_process.memory_info().rss
+    return 100.0* float(current_usage) / getAvailableRamMb()
+
+def getAvailableRamMb():
+    if lazyflow.AVAILABLE_RAM_MB == 0:
+        return psutil.virtual_memory().total
+    else:
+        # AVAILABLE_RAM_MB is the total RAM the user wants us to limit ourselves to.
+        return lazyflow.AVAILABLE_RAM_MB * 1024**2
+
 def memoryUsageGB():
-    vmem = psutil.virtual_memory()
-    if 'Linux' in platform.platform():
-        return (vmem.total - vmem.available) / (1.0e9)
-    return (vmem.total - vmem.free) / (1.0e9)
+    return this_process.memory_info().rss / 1024**3
 
 class MemInfoNode:
     def __init__(self):

@@ -143,7 +143,7 @@ class OpArrayCache(OpCache):
                     self._cache.resize((1,), refcheck = refcheck)
                 except ValueError:
                     freed = 0
-                    self.logger.warn("OpArrayCache: freeing failed due to view references")
+                    self.logger.debug("OpArrayCache (name={}): freeing failed due to view references".format(self.name))
                 if freed > 0:
                     self.logger.debug("OpArrayCache: freed cache of shape:{}".format(fshape))
     
