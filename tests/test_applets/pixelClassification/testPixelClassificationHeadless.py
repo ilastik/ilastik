@@ -148,6 +148,10 @@ class TestPixelClassificationHeadless(object):
         labels2 = 2 * numpy.ones(slicing2shape(slicing2), dtype=numpy.uint8)
         opPixelClass.LabelInputs[0][slicing2] = labels2
 
+        # Train the classifier
+        opPixelClass.FreezePredictions.setValue(False)
+        _ = opPixelClass.Classifier.value
+
         # Save and close
         shell.projectManager.saveProject()
         del shell
@@ -159,6 +163,7 @@ class TestPixelClassificationHeadless(object):
         #       See if __name__ == __main__ section, below.
         args = "--project=" + self.PROJECT_FILE
         args += " --headless"
+        
         #args += " --sys_tmp_dir=/tmp"
 
         # Batch export options
