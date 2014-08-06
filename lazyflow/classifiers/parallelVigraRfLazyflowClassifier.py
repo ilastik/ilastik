@@ -52,8 +52,8 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
 
     @property
     def description(self):
-        temp_rf = vigra.learning.RandomForest( *self._args, **self._kwargs )
-        return "Vigra Random Forest ({} trees)".format( temp_rf.treeCount() )
+        return "Vigra Random Forest ({} forests, {} trees each)"\
+               .format( self._num_forests, self._trees_per_forest )
 
 assert issubclass( ParallelVigraRfLazyflowClassifierFactory, LazyflowVectorwiseClassifierFactoryABC )
 
