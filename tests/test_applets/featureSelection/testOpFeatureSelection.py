@@ -24,6 +24,7 @@ from lazyflow.roi import sliceToRoi
 from lazyflow.graph import Graph, OperatorWrapper
 from lazyflow.operators.ioOperators import OpInputDataReader
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
+import vigra
 
 import ilastik.ilastik_logging
 ilastik.ilastik_logging.default_config.init()
@@ -106,6 +107,23 @@ class TestOpFeatureSelection(object):
                 featureSlice = list(topSlice)
                 featureSlice[-1] = featureIndex
                 vigra.impex.writeImage(result[featureSlice], "test_feature" + str(featureIndex) + ".bmp")
+    
+    def test_2d(self):
+        graph = Graph()
+        data2d = numpy.random.random((2,100,100,1,3))
+        data2d = vigra.taggedView(data2d, axistags='txyzc')
+        # Define operators
+        opFeatures = OpFeatureSelection('Original', graph=graph)
+        opFeatures.Scales.connect(self.opFeatures.Scales[0])
+        opFeatures.FeatureIds.connect(self.opFeatures.FeatureIds[0])
+        opFeatures.SelectionMatrix.connect(self.opFeatures.SelectionMatrix[0])
+
+        # Set input data
+        opFeatures.InputImage.setValue(data2d)
+
+        # Compute results for the top slice only
+        topSlice = [0, slice(None), slice(None), 0, slice(None)]
+        result = opFeatures.OutputImage[topSlice].wait()
 
     def testDirtyPropagation(self):
         opFeatures = self.opFeatures
