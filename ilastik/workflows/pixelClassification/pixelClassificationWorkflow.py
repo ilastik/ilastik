@@ -363,6 +363,12 @@ class PixelClassificationWorkflow(Workflow):
         if self._batch_export_args:
             self.batchResultsApplet.configure_operator_with_parsed_args( self._batch_export_args )
 
+        if self.pcApplet.topLevelOperator.classifier_cache._dirty:
+            logger.warn("Your project file has no classifier.  A new classifier will be trained for this run.")
+
+        # Let's see the messages from the training operator.
+        logging.getLogger("lazyflow.operators.classifierOperators").setLevel(logging.DEBUG)
+        
         if self.retrain:
             # Cause the classifier to be dirty so it is forced to retrain.
             # (useful if the stored labels were changed outside ilastik)
