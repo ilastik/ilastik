@@ -78,7 +78,7 @@ class PixelClassificationWorkflow(Workflow):
         parser.add_argument('--generate-random-labels', help="Add random labels to the project file.", action="store_true")
         parser.add_argument('--random-label-value', help="The label value to use injecting random labels", default=1, type=int)
         parser.add_argument('--random-label-count', help="The number of random labels to inject via --generate-random-labels", default=2000, type=int)
-        parser.add_argument('--retrain', help="Re-train the classifier based on labels stored in project file", action="store_true")
+        parser.add_argument('--retrain', help="Re-train the classifier based on labels stored in project file, and re-save.", action="store_true")
 
         # Parse the creation args: These were saved to the project file when this project was first created.
         parsed_creation_args, unused_args = parser.parse_known_args(project_creation_args)
@@ -374,14 +374,14 @@ class PixelClassificationWorkflow(Workflow):
             # (useful if the stored labels were changed outside ilastik)
             self.pcApplet.topLevelOperator.opTrain.ClassifierFactory.setDirty()
             
-            # Request the classifier to force training
-            _ = self.pcApplet.topLevelOperator.opTrain.value
+            # Request the classifier, which forces training
+            self.pcApplet.topLevelOperator.FreezePredictions.setValue(False)
+            _ = self.pcApplet.topLevelOperator.Classifier.value
 
             # store new classifier to project file
             projectManager.saveProject(force_all_save=False)
 
         if self._headless and self._batch_input_args and self._batch_export_args:
-
             # Make sure we're using the up-to-date classifier.
             self.pcApplet.topLevelOperator.FreezePredictions.setValue(False)
         
