@@ -367,6 +367,12 @@ class PixelClassificationWorkflow(Workflow):
             # Cause the classifier to be dirty so it is forced to retrain.
             # (useful if the stored labels were changed outside ilastik)
             self.pcApplet.topLevelOperator.opTrain.ClassifierFactory.setDirty()
+            
+            # Request the classifier to force training
+            _ = self.pcApplet.topLevelOperator.opTrain.value
+
+            # store new classifier to project file
+            projectManager.saveProject(force_all_save=False)
 
         if self._headless and self._batch_input_args and self._batch_export_args:
 
@@ -392,9 +398,6 @@ class PixelClassificationWorkflow(Workflow):
                 # Finished.
                 sys.stdout.write("\n")
 
-            if self.retrain:
-                # store re-trained classifier to file
-                projectManager.saveProject(force_all_save=False)
 
     def _print_labels_by_slice(self, search_value):
         """
