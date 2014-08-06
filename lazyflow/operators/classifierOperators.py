@@ -36,6 +36,8 @@ from lazyflow.classifiers import LazyflowVectorwiseClassifierABC, LazyflowVector
 from opFeatureMatrixCache import OpFeatureMatrixCache
 from opConcatenateFeatureMatrices import OpConcatenateFeatureMatrices
 
+logger = logging.getLogger(__name__)
+
 class OpTrainClassifierBlocked(Operator):
     Images = InputSlot(level=1)
     Labels = InputSlot(level=1)
@@ -162,6 +164,7 @@ class OpTrainPixelwiseClassifierBlocked(Operator):
                 label_data_blocks.append( block_label_data )
                 image_data_blocks.append( block_image_data )
                 
+        logger.debug("Training new classifier: {}".format( classifier_factory.description ))
         classifier = classifier_factory.create_and_train_pixelwise( image_data_blocks, label_data_blocks )
         assert issubclass(type(classifier), LazyflowPixelwiseClassifierABC), \
             "Classifier is of type {}, which does not satisfy the LazyflowPixelwiseClassifierABC interface."\
@@ -267,6 +270,7 @@ class OpTrainClassifierFromFeatureVectors(Operator):
             "Factory is of type {}, which does not satisfy the LazyflowVectorwiseClassifierFactoryABC interface."\
             "".format( type(classifier_factory) )
 
+        logger.debug("Training new classifier: {}".format( classifier_factory.description ))
         classifier = classifier_factory.create_and_train( featMatrix, labelsMatrix[:,0] )
         assert issubclass(type(classifier), LazyflowVectorwiseClassifierABC), \
             "Classifier is of type {}, which does not satisfy the LazyflowVectorwiseClassifierABC interface."\
