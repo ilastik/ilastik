@@ -8,6 +8,7 @@ from lazyflow.operators import OpLabelVolume
 from lazyflow.operator import Operator
 from lazyflow.slot import InputSlot, OutputSlot
 from lazyflow.rtype import SubRegion
+from lazyflow.utility.testing import assertEquivalentLabeling
 
 from numpy.testing import assert_array_equal, assert_array_almost_equal
 
@@ -22,7 +23,7 @@ class TestVigra(unittest.TestCase):
         self.method = np.asarray(['vigra'], dtype=np.object)
 
     def testSimpleUsage(self):
-        vol = np.random.randint(255, size=(1000, 100, 10))
+        vol = np.random.randint(255, size=(100, 30, 4))
         vol = vol.astype(np.uint8)
         vol = vigra.taggedView(vol, axistags='xyz')
 
@@ -258,6 +259,7 @@ class TestVigra(unittest.TestCase):
         tags = op.Output.meta.getTaggedShape()
         out = vigra.taggedView(out, axistags="".join([s for s in tags]))
 
+        assert np.all(out[20:40, 10:30, 2:4] == 0)
         assertEquivalentLabeling(1-vol, out)
 
         vol = vol.withAxes(*'xyzct')
@@ -305,27 +307,48 @@ if haveBlocked():
             super(TestBlocked, self).testBackground()
 
 
-def assertEquivalentLabeling(x, y):
-    assert np.all(x.shape == y.shape),\
-        "Shapes do not agree ({} vs {})".format(x.shape, y.shape)
+class TestLazy(TestVigra):
 
-    # identify labels used in x
-    labels = set(x.flat)
-    for label in labels:
-        if label == 0:
-            continue
-        idx = np.where(x == label)
-        block = y[idx]
-        # check that labels are the same
-        an_index = [a[0] for a in idx]
-        print("Inspecting block of shape {} at".format(block.shape))
-        print(an_index)
-        assert np.all(block == block[0]),\
-            "Block at {} has multiple labels".format(an_index)
-        # check that nothing else is labeled with this label
-        m = block.size
-        n = len(np.where(y == block[0])[0])
-        assert m == n, "Label {} is used somewhere else.".format(label)
+    def setUp(self):
+        self.method = np.asarray(['lazy'], dtype=np.object)
+
+    @unittest.skip("This test does not make sense with lazy connected components")
+    def testCorrectBlocking(self):
+        pass
+
+    @unittest.skip("This test does not make sense with lazy connected components")
+    def testNoRecomputation(self):
+        pass
+
+    # setting particular regions dirty is currently not supported by lazy
+    # connected components
+    @unittest.expectedFailure
+    def testSetDirty(self):
+        super(TestLazy, self).testSetDirty()
+
+    def testThreadSafety(self):
+        g = Graph()
+
+        vol = np.zeros((1000, 100, 10))
+        vol = vol.astype(np.uint8)
+        vol = vigra.taggedView(vol, axistags='xyz')
+        vol[:200, ...] = 1
+        vol[800:, ...] = 1
+
+        opCount = CountExecutes(graph=g)
+        opCount.Input.setValue(vol)
+        opCount.Output.meta["ideal_blockshape"] = vol.shape
+
+        op = OpLabelVolume(graph=g)
+        op.Method.setValue(self.method)
+        op.Input.connect(opCount.Output)
+
+        reqs = [op.CachedOutput[...] for i in range(4)]
+        [r.submit() for r in reqs]
+        [r.block() for r in reqs]
+        assert opCount.numExecutes == 1,\
+            "Parallel requests to CachedOutput resulted in recomputation "\
+            "({}/4)".format(opCount.numExecutes)
 
 
 class DirtyAssert(Operator):
@@ -366,3 +389,18 @@ class CountExecutes(Operator):
 
 class PropagateDirtyCalled(Exception):
     pass
+
+
+if __name__ == "__main__":
+    method = np.asarray(['lazy'], dtype=np.object)
+    vol = np.random.randint(255, size=(10, 10, 10))
+    vol = vol.astype(np.uint8)
+    vol = vigra.taggedView(vol, axistags='xyz')
+
+    op = OpLabelVolume(graph=Graph())
+    op.Method.setValue(method)
+    op.Input.setValue(vol)
+
+    out = op.Output[...].wait()
+
+    assert_array_equal(vol.shape, out.shape)
