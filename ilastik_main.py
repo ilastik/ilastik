@@ -170,7 +170,12 @@ def _prepare_lazyflow_config( parsed_args ):
         def _configure_lazyflow_settings(shell):
             import lazyflow
             import lazyflow.request
-            lazyflow.request.Request.reset_thread_pool(n_threads)
+            if n_threads > 0:
+                lazyflow.request.Request.reset_thread_pool(n_threads)
+            if total_ram_mb < 500:
+                raise Exception("Your config says available RAM is only {} MB.  "
+                                "Remember to specify RAM in MB, not GB."
+                                .format( total_ram_mb ))
             lazyflow.AVAILABLE_RAM_MB = total_ram_mb
         return _configure_lazyflow_settings
     return None
