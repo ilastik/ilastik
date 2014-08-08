@@ -51,7 +51,7 @@ class PixelClassificationWorkflow(Workflow):
     DATA_ROLE_RAW = 0
     DATA_ROLE_PREDICTION_MASK = 1
     
-    EXPORT_NAMES = ['Probabilities', 'Simple Segmentation', 'Uncertainty']
+    EXPORT_NAMES = ['Probabilities', 'Simple Segmentation', 'Uncertainty', 'Features']
     
     @property
     def applets(self):
@@ -188,6 +188,7 @@ class PixelClassificationWorkflow(Workflow):
         opDataExport.Inputs[0].connect( opClassify.HeadlessPredictionProbabilities )
         opDataExport.Inputs[1].connect( opClassify.SimpleSegmentation )
         opDataExport.Inputs[2].connect( opClassify.HeadlessUncertaintyEstimate )
+        opDataExport.Inputs[3].connect( opClassify.FeatureImages )
         for slot in opDataExport.Inputs:
             assert slot.partner is not None
 
@@ -262,6 +263,7 @@ class PixelClassificationWorkflow(Workflow):
         opTransposeBatchInputs.Inputs[0].connect( opBatchPredictionPipeline.HeadlessPredictionProbabilities ) # selection 0
         opTransposeBatchInputs.Inputs[1].connect( opBatchPredictionPipeline.SimpleSegmentation ) # selection 1
         opTransposeBatchInputs.Inputs[2].connect( opBatchPredictionPipeline.HeadlessUncertaintyEstimate ) # selection 2
+        opTransposeBatchInputs.Inputs[3].connect( opBatchPredictionPipeline.FeatureImages ) # selection 3
         for slot in opTransposeBatchInputs.Inputs:
             assert slot.partner is not None
         
