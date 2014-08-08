@@ -336,10 +336,19 @@ class OpDataSelectionGroup( Operator ):
 
         if len( self._opDatasets.Image ) > 0:
             self.Image.connect( self._opDatasets.Image[0] )
+            
             if len(self._opDatasets.Image) >= 2:
                 self.Image1.connect( self._opDatasets.Image[1] )
+            else:
+                self.Image1.disconnect()
+                self.Image1.meta.NOTREADY = True
+
             if len(self._opDatasets.Image) >= 3:
                 self.Image2.connect( self._opDatasets.Image[2] )
+            else:
+                self.Image2.disconnect()
+                self.Image2.meta.NOTREADY = True
+                
             self.ImageName.connect( self._opDatasets.ImageName[0] )
             self.AllowLabels.connect( self._opDatasets.AllowLabels[0] )
         else:
@@ -355,7 +364,7 @@ class OpDataSelectionGroup( Operator ):
             self.AllowLabels.meta.NOTREADY = True
 
     def execute(self, slot, subindex, rroi, result):
-            assert False, "Unknown or unconnected output slot."
+            assert False, "Unknown or unconnected output slot: {}".format( slot.name )
 
     def propagateDirty(self, slot, subindex, roi):
         # Output slots are directly connected to internal operators
