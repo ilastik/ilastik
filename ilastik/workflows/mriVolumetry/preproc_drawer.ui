@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>291</width>
-    <height>291</height>
+    <width>343</width>
+    <height>569</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,66 +15,120 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_sigma">
-     <property name="spacing">
+    <widget class="QTabWidget" name="tabWidget">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>200</height>
+      </size>
+     </property>
+     <property name="currentIndex">
       <number>0</number>
      </property>
-     <item>
-      <widget class="QLabel" name="blockLabel">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
+     <widget class="QWidget" name="costVolTab">
+      <attribute name="title">
+       <string>Gaussian</string>
+      </attribute>
+      <widget class="QWidget" name="layoutWidget">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>30</y>
+         <width>291</width>
+         <height>26</height>
+        </rect>
        </property>
-       <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Smooth the input data with a Gaussian with user-defined sigma values for x, y and z. Anisotropic smoothing is allowed, i.e. sigmas can all be different. Look at &lt;span style=&quot; font-weight:600;&quot;&gt;&amp;quot;Smoothed input&amp;quot;&lt;/span&gt; layer for the results (first check the &amp;quot;Show intermediate results&amp;quot; checkbox).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="text">
-        <string>Sigma:</string>
-       </property>
+       <layout class="QHBoxLayout" name="horizontalLayout_sigma" stretch="0,0,0,0">
+        <property name="spacing">
+         <number>-1</number>
+        </property>
+        <item>
+         <spacer name="horizontalSpacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+        <item>
+         <widget class="QLabel" name="sigmaLabel">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="toolTip">
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Smooth the input data with a Gaussian with user-defined sigma values for x, y and z. Anisotropic smoothing is allowed, i.e. sigmas can all be different. Look at &lt;span style=&quot; font-weight:600;&quot;&gt;&amp;quot;Smoothed input&amp;quot;&lt;/span&gt; layer for the results (first check the &amp;quot;Show intermediate results&amp;quot; checkbox).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          </property>
+          <property name="text">
+           <string>Sigma:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QDoubleSpinBox" name="sigmaSpinBox">
+          <property name="toolTip">
+           <string>sigma for cost volume filter</string>
+          </property>
+          <property name="decimals">
+           <number>2</number>
+          </property>
+          <property name="minimum">
+           <double>0.000000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>100.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>0.100000000000000</double>
+          </property>
+          <property name="value">
+           <double>1.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="horizontalSpacer_2">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>40</width>
+            <height>20</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
       </widget>
-     </item>
-     <item>
-      <widget class="QDoubleSpinBox" name="sigmaSpinBox">
-       <property name="toolTip">
-        <string>sigma for cost volume filter</string>
-       </property>
-       <property name="decimals">
-        <number>2</number>
-       </property>
-       <property name="minimum">
-        <double>0.000000000000000</double>
-       </property>
-       <property name="maximum">
-        <double>100.000000000000000</double>
-       </property>
-       <property name="singleStep">
-        <double>0.100000000000000</double>
-       </property>
-       <property name="value">
-        <double>1.000000000000000</double>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
-   <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_thres" stretch="0,0">
-     <property name="spacing">
-      <number>0</number>
-     </property>
-     <item>
-      <widget class="QLabel" name="thresLabel">
-       <property name="text">
-        <string>Threshold:</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QDoubleSpinBox" name="thresSpinBox"/>
-     </item>
-    </layout>
+     </widget>
+     <widget class="QWidget" name="guidedTab">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <attribute name="title">
+       <string>Guided Filter</string>
+      </attribute>
+     </widget>
+     <widget class="QWidget" name="opengmTab">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <attribute name="title">
+       <string>OpenGM</string>
+      </attribute>
+     </widget>
+    </widget>
    </item>
    <item>
     <widget class="QPushButton" name="applyButton">
@@ -85,6 +139,32 @@
       <string>Apply</string>
      </property>
     </widget>
+   </item>
+   <item>
+    <layout class="QVBoxLayout" name="verticalLayout_2">
+     <property name="leftMargin">
+      <number>12</number>
+     </property>
+     <property name="rightMargin">
+      <number>12</number>
+     </property>
+     <item>
+      <widget class="QLabel" name="label">
+       <property name="font">
+        <font>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>Label Names</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QListView" name="listView"/>
+     </item>
+    </layout>
    </item>
    <item>
     <spacer name="verticalSpacer">
@@ -101,9 +181,6 @@
    </item>
   </layout>
  </widget>
- <tabstops>
-  <tabstop>sigmaSpinBox</tabstop>
- </tabstops>
  <resources/>
  <connections/>
 </ui>

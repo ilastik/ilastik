@@ -48,14 +48,11 @@
        <property name="maximum">
         <number>100000</number>
        </property>
-       <property name="singleStep">
-        <number>10</number>
-       </property>
-       <property name="pageStep">
-        <number>100</number>
-       </property>
        <property name="orientation">
-        <enum>Qt::Horizontal</enum>
+        <enum>Qt::Vertical</enum>
+       </property>
+       <property name="tickPosition">
+        <enum>QSlider::NoTicks</enum>
        </property>
       </widget>
      </item>

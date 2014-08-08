@@ -3,7 +3,7 @@ from functools import partial
 
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QEvent
-from PyQt4.QtGui import QColor
+from PyQt4.QtGui import QColor, QMessageBox
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 # from ilastik.utility.gui import threadRouted
@@ -12,6 +12,7 @@ from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer
 # from lazyflow.operators.generic import OpSingleChannelSelector
 from lazyflow.operators import OpMultiArraySlicer
 
+import numpy as np
 
 class MriVolPreprocGui( LayerViewerGui ):
     
@@ -37,12 +38,17 @@ class MriVolPreprocGui( LayerViewerGui ):
         self._drawer = uic.loadUi(localDir+"/preproc_drawer.ui")
 
         self._drawer.applyButton.clicked.connect( self._onApplyButtonClicked )
-        self._allWatchedWidgets = [ self._drawer.sigmaSpinBox,
-                                    self._drawer.thresSpinBox]
+        self._allWatchedWidgets = [ self._drawer.sigmaSpinBox ] 
+        #, self._drawer.thresSpinBox]
         
         # If the user pressed enter inside a spinbox, auto-click "Apply"
         for widget in self._allWatchedWidgets:
             widget.installEventFilter( self )
+
+        # Set Maximum Value of Sigma
+        tagged_shape = self.topLevelOperatorView.Input.meta.getTaggedShape()
+        shape = map(lambda k: tagged_shape[k], 'xyz')
+        self._drawer.sigmaSpinBox.setMaximum(np.floor(np.min(shape)/6)-1)
 
         '''
         self._updateGuiFromOperator()
@@ -57,10 +63,29 @@ class MriVolPreprocGui( LayerViewerGui ):
         op = self.topLevelOperatorView
         # Read Sigma
         sigma = self._drawer.sigmaSpinBox.value()
+
+
+        '''
+        # avoid 'kernel longer than line' errors
+        # FIXME Set maximum value in spinbox during setupOutputs
+        shape = op.Input.meta.getTaggedShape()
+        ref_sigma = sigma
+        for ax in [item for item in 'xyz' if item in shape and shape[item] > 1]:
+            tmp_sigma = np.floor(shape[ax]/3.5)-1
+            if tmp_sigma < ref_sigma:
+                ref_sigma = tmp_sigma
+        if sigma > ref_sigma:
+            mexBox = QMessageBox()
+            mexBox.setText("The sigma value {} "
+                           "is too high, should be at most {:.1f}.".format( \
+                                                            sigma, ref_sigma))
+            mexBox.exec_()
+            return
+        '''
         op.Sigma.setValue(sigma)
         # Read Threshold
-        thres = self._drawer.thresSpinBox.value()
-        op.Threshold.setValue(thres)
+        # thres = self._drawer.thresSpinBox.value()
+        # op.Threshold.setValue(thres)
 
 
     '''    
@@ -131,41 +156,6 @@ class MriVolPreprocGui( LayerViewerGui ):
             rawLayer.opacity = 1.0
             layers.append(rawLayer)
         return layers
-
-        # if op.Output.ready():
-        #     numChannels = op.Output.meta.getTaggedShape()['c']
-        #     print 'Number of channels: {}'.format(numChannels)
-
-        #     for channel in range(numChannels):
-        #         channelProvider = OpSingleChannelSelector(parent=op.Output.getRealOperator().parent)
-        #         # channelProvider.Input.connect(op.Output)
-        #         channelProvider.Input.connect(op.CachedOutput)
-        #         # channelProvider.Output.connect(op.Output)
-        #         # put cache here, with blocksize over all channels
-        #         # XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-        #         channelProvider.Index.setValue( channel )
-        #         channelSrc = LazyflowSource( channelProvider.Output )
-        #         inputChannelLayer = AlphaModulatedLayer( channelSrc,
-        #                                             tintColor=QColor(self._channelColors[channel]),
-        #                                             range=(0.0, 1.0),
-        #                                             normalize=(0.0, 1.0) )
-        #         inputChannelLayer.opacity = 0.5
-        #         inputChannelLayer.visible = True
-        #         inputChannelLayer.name = "Input Channel " + str(channel)
-        #         # TODO change to label name
-        #         inputChannelLayer.setToolTip("Select input channel " + str(channel) + \
-        #                                      " if this prediction image contains the objects of interest.")                    
-        #         layers.append(inputChannelLayer)
-        # '''
-        # rawSlot = self.topLevelOperatorView.RawInput
-        # if rawSlot.ready():
-        #     rawLayer = self.createStandardLayerFromSlot( rawSlot )
-        #     rawLayer.name = "Raw data"
-        #     rawLayer.visible = True
-        #     rawLayer.opacity = 1.0
-        #     layers.append(rawLayer)
-        # '''
-        # return layers
 
 
     def _createDefault16ColorColorTable(self):

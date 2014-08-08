@@ -27,11 +27,11 @@ class MriVolumetryWorkflow(Workflow):
                                                 'Prediction Maps'] )
 
         self.mriVolPreprocApplet = MriVolPreprocApplet(self, 
-                                                       'Prediction Filter',
+                                                       'Filter Predictions',
                                                        'PredictionFilter')
 
         self.mriVolCCApplet = MriVolConnectedComponentsApplet(self, \
-                                                'Connected Components',
+                                                'Remove Connected Components',
                                                 'ConnectedComponents')
 
         self._applets = []
@@ -50,8 +50,8 @@ class MriVolumetryWorkflow(Workflow):
         opMriVolPreproc.RawInput.connect( opData.ImageGroup[0] )
         opMriVolPreproc.Input.connect( opData.ImageGroup[1] )
 
-        
-        opMriVolCC.Input.connect( opMriVolPreproc.FinalOutput )
+        # opMriVolCC.Input.connect( opMriVolPreproc.FinalOutput )
+        opMriVolCC.Input.connect( opMriVolPreproc.FanOutOutput )
         opMriVolCC.RawInput.connect( opData.ImageGroup[0] )
 
     @property
@@ -61,6 +61,29 @@ class MriVolumetryWorkflow(Workflow):
     @property
     def imageNameListSlot(self):
         return self.dataSelectionApplet.topLevelOperator.ImageName
+
+    def handleAppletStateUpdateRequested(self):
+        """
+        Overridden from Workflow base class
+        Called when an applet has fired the
+        :py:attr:`Applet.appletStateUpdateRequested`
+        
+        This method will be called by the child classes with the result of
+        their own applet readyness findings as keyword argument.
+        """
+        nRoles = 1
+        slot = self.dataSelectionApplet.topLevelOperator.ImageGroup
+        if len(slot) > 0:
+            input_ready = True
+            for sub in slot:
+                input_ready = input_ready and \
+                              all([sub[i].ready() for i in range(nRoles)])
+        else:
+            input_ready = False
+        for applet in self.applets[1:]:
+            self._shell.setAppletEnabled(applet, input_ready)
+        self._shell.enableProjectChanges(True)
+
 
 '''
 Questions:
