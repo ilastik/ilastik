@@ -27,9 +27,8 @@ from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
 
 from lazyflow.graph import Graph, OperatorWrapper
-from lazyflow.operators.opReorderAxes import OpReorderAxes
 
-from ilastik.applets.connectedComponentsApplet import ConnectedComponentsApplet
+from connectedComponentsApplet import ConnectedComponentsApplet
 
 import logging
 logger = logging.getLogger(__name__)
@@ -37,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 class ConnectedComponentsWorkflow(Workflow):
     workflowName = "Connected Components Testing"
-    defaultAppletIndex = 1 # show DataSelection by default
+    defaultAppletIndex = 0 # show DataSelection by default
 
     def __init__(self, shell, headless,
                  workflow_cmdline_args,
@@ -50,18 +49,6 @@ class ConnectedComponentsWorkflow(Workflow):
 
         self._applets = []
         self.setupInputs()
-
-        #self.dataExportApplet = ObjectClassificationDataExportApplet(self, "Object Prediction Export")
-        #opDataExport = self.dataExportApplet.topLevelOperator
-        #opDataExport.WorkingDirectory.connect( self.dataSelectionApplet.topLevelOperator.WorkingDirectory )
-
-        ## See EXPORT_SELECTION_PREDICTIONS and EXPORT_SELECTION_PROBABILITIES, above
-        #opDataExport.SelectionNames.setValue( ['Object Predictions', 'Object Probabilities'] )        
-        #if self.input_types == 'raw':
-            ## Re-configure to add the pixel probabilities option
-            ## See EXPORT_SELECTION_PIXEL_PROBABILITIES, above
-            #opDataExport.SelectionNames.setValue( ['Object Predictions', 'Object Probabilities', 'Pixel Probabilities'] )
-        #self._applets.append(self.dataExportApplet)
 
     @property
     def applets(self):
@@ -90,7 +77,7 @@ class ConnectedComponentsWorkflow(Workflow):
         return input_ready
 
     def setupInputs(self):
-        data_instructions = 'Use the "Raw Data" tab to load your image(s).'
+        data_instructions = 'Use the "Segmentation" tab to load your volume.'
 
         self.dataSelectionApplet = DataSelectionApplet( self,
                                                         "Input Data",
@@ -100,21 +87,14 @@ class ConnectedComponentsWorkflow(Workflow):
                                                         instructionText=data_instructions )
 
         opData = self.dataSelectionApplet.topLevelOperator
-        opData.DatasetRoles.setValue(['Raw Data'])
+        opData.DatasetRoles.setValue(['Segmentation'])
         self._applets.append(self.dataSelectionApplet)
 
         self.CCApplet = ConnectedComponentsApplet(self, "Connected Components")
         self._applets.append(self.CCApplet)
-        #self.thresholdingApplet = ThresholdTwoLevelsApplet(self, "Threshold and Size Filter", "ThresholdTwoLevels")
-        #self._applets.append(self.thresholdingApplet)
 
     def handleAppletStateUpdateRequested(self):
-        """
-        Overridden from Workflow base class
-        Called when an applet has fired the :py:attr:`Applet.appletStateUpdateRequested`
-        """
         input_ready = self._inputReady(1)
-        #self._shell.setAppletEnabled(self.thresholdingApplet, cumulated_readyness)
 
         self._shell.setAppletEnabled(self.CCApplet, input_ready)
 

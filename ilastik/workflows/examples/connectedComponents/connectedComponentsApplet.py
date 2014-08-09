@@ -18,5 +18,25 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from connectedComponentsApplet import ConnectedComponentsApplet
-#from opConnectedComponents import OpConnectedComponents
+from ilastik.applets.base.standardApplet import StandardApplet
+
+from lazyflow.operators import OpLabelVolume
+
+
+class ConnectedComponentsApplet(StandardApplet):
+
+    def __init__(self, workflow, guiName):
+        super(self.__class__, self).__init__(guiName, workflow)
+
+    @property
+    def singleLaneOperatorClass(self):
+        return OpLabelVolume
+
+    @property
+    def broadcastingSlots(self):
+        return ['Method', 'Background']
+
+    @property
+    def singleLaneGuiClass(self):
+        from connectedComponentsGui import ConnectedComponentsGui
+        return ConnectedComponentsGui

@@ -27,37 +27,26 @@ from PyQt4.QtCore import Qt, QEvent
 from PyQt4.QtGui import QColor
 from PyQt4.QtGui import QMessageBox
 
-from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer
+from volumina.api import LazyflowSource, ColortableLayer
 from volumina.colortables import create_default_16bit
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
-from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted
 
 # always available
 import numpy as np
 
 logger = logging.getLogger(__name__)
-traceLogger = logging.getLogger("TRACE." + __name__)
-
-_methods = {'vigra': 0, 'lazy': 1}
 
 
 class ConnectedComponentsGui(LayerViewerGui):
 
-    def stopAndCleanUp(self):
-        # Unsubscribe to all signals
-        for fn in self.__cleanup_fns:
-            fn()
-
-        super(ConnectedComponentsGui, self).stopAndCleanUp()
+    _methods = {'vigra': 0, 'lazy': 1}
 
     def __init__(self, *args, **kwargs):
-        self.__cleanup_fns = []
         super(ConnectedComponentsGui, self).__init__(*args, **kwargs)
-        self._channelColors = self._createDefault16ColorColorTable()
 
-        # connect callbacks last -> avoid undefined behaviour
-        self._connectCallbacks()
+        self._drawer.applyButton.clicked.connect(
+            self._onApplyButtonClicked)
 
     def initAppletDrawerUi(self):
         """
@@ -68,7 +57,7 @@ class ConnectedComponentsGui(LayerViewerGui):
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
 
         box = self._drawer.methodSelectingBox
-        for k, v in _methods.iteritems():
+        for k, v in self._methods.iteritems():
             box.insertItem(v, k, k)
 
         self._allWatchedWidgets = [box]
@@ -78,28 +67,20 @@ class ConnectedComponentsGui(LayerViewerGui):
             widget.installEventFilter(self)
 
         self._updateGuiFromOperator()
+
+        '''
         self.topLevelOperatorView.Input.notifyReady(
-            bind(self._updateGuiFromOperator))
-        self.__cleanup_fns.append(partial(
-            self.topLevelOperatorView.Input.unregisterUnready,
-            bind(self._updateGuiFromOperator)))
-
+            self._updateGuiFromOperator)
         self.topLevelOperatorView.Input.notifyMetaChanged(
-            bind(self._updateGuiFromOperator))
-        self.__cleanup_fns.append(partial(
-            self.topLevelOperatorView.Input.unregisterMetaChanged,
-            bind(self._updateGuiFromOperator)))
-
-    def _connectCallbacks(self):
-        self._drawer.applyButton.clicked.connect(
-            bind(self._onApplyButtonClicked))
+            self._updateGuiFromOperator)
+        '''
 
     @threadRouted
     def _updateGuiFromOperator(self):
         op = self.topLevelOperatorView
 
         # Thresholds
-        val = _methods[op.Method.value]
+        val = self._methods[op.Method.value]
         self._drawer.methodSelectingBox.setCurrentIndex(val)
 
     def _updateOperatorFromGui(self):
@@ -130,11 +111,12 @@ class ConnectedComponentsGui(LayerViewerGui):
         layers = []
         op = self.topLevelOperatorView
         binct = [QColor(Qt.black), QColor(Qt.white)]
-        binct[0] = 0
+        #binct[0] = 0
         ct = create_default_16bit()
+        # associate label 0 with black/transparent?
         ct[0] = 0
-        # Show the cached output, since it goes through a blocked cache
 
+        # Show the cached output, since it goes through a blocked cache
         if op.CachedOutput.ready():
             outputSrc = LazyflowSource(op.CachedOutput)
             outputLayer = ColortableLayer(outputSrc, ct)
@@ -144,18 +126,10 @@ class ConnectedComponentsGui(LayerViewerGui):
             outputLayer.setToolTip("Results of connected component analysis")
             layers.append(outputLayer)
 
-        if op.Debug.ready():
-            outputSrc = LazyflowSource(op.Debug)
-            outputLayer = ColortableLayer(outputSrc, ct)
-            outputLayer.name = "Debug output"
-            outputLayer.visible = False
-            outputLayer.opacity = 1.0
-            outputLayer.setToolTip("Non-globalized indices")
-            layers.append(outputLayer)
-
-        rawSlot = self.topLevelOperatorView.Input
-        if rawSlot.ready():
-            rawLayer = self.createStandardLayerFromSlot(rawSlot)
+        if op.Input.ready():
+            rawSrc = LazyflowSource(op.Input)
+            rawLayer = ColortableLayer(outputSrc, binct)
+            #rawLayer = self.createStandardLayerFromSlot(op.Input)
             rawLayer.name = "Raw data"
             rawLayer.visible = True
             rawLayer.opacity = 1.0
@@ -163,37 +137,3 @@ class ConnectedComponentsGui(LayerViewerGui):
 
         return layers
 
-    #FIXME: why do we do it here? why not take the one from volumina?
-    def _createDefault16ColorColorTable(self):
-        colors = []
-
-        # SKIP: Transparent for the zero label
-        #colors.append(QColor(0,0,0,0))
-
-        # ilastik v0.5 colors
-        colors.append( QColor( Qt.red ) )
-        colors.append( QColor( Qt.green ) )
-        colors.append( QColor( Qt.yellow ) )
-        colors.append( QColor( Qt.blue ) )
-        colors.append( QColor( Qt.magenta ) )
-        colors.append( QColor( Qt.darkYellow ) )
-        colors.append( QColor( Qt.lightGray ) )
-
-        # Additional colors
-        colors.append( QColor(255, 105, 180) ) #hot pink
-        colors.append( QColor(102, 205, 170) ) #dark aquamarine
-        colors.append( QColor(165,  42,  42) ) #brown
-        colors.append( QColor(0, 0, 128) )     #navy
-        colors.append( QColor(255, 165, 0) )   #orange
-        colors.append( QColor(173, 255,  47) ) #green-yellow
-        colors.append( QColor(128,0, 128) )    #purple
-        colors.append( QColor(240, 230, 140) ) #khaki
-
-        colors.append( QColor(192, 192, 192) ) #silver
-
-#        colors.append( QColor(69, 69, 69) )    # dark grey
-#        colors.append( QColor( Qt.cyan ) )
-
-        assert len(colors) == 16
-
-        return [c.rgba() for c in colors]
