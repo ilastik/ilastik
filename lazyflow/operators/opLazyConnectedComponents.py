@@ -23,11 +23,10 @@
 import numpy as np
 import vigra
 import h5py
-import logging
 
 from collections import defaultdict
 from functools import partial, wraps
-#from _tools import InfiniteLabelIterator
+import itertools
 
 from lazyflow.operator import Operator, InputSlot, OutputSlot
 from lazyflow.rtype import SubRegion
@@ -39,16 +38,14 @@ from threading import Lock as HardLock
 Lock = HardLock
 from threading import Condition
 
-#from _mockup import UnionFindArray
-#from lazycc import UnionFindArray
-
-# logging.basicConfig()
+import logging
 logger = logging.getLogger(__name__)
-# logger.setLevel(logging.DEBUG)
 
 _LABEL_TYPE = np.uint32
 
 
+# Method decorator locking a method for the whole program. Needs the
+# property self._lock to expose the Lock interface.
 def threadsafe(method):
     @wraps(method)
     def wrapped(self, *args, **kwargs):
@@ -57,32 +54,49 @@ def threadsafe(method):
     return wrapped
 
 
+# Locking decorator similar to threadsafe() that locks per chunk. The
+# first arguent of the wrapped method must be the chunk index.
+def _chunksynchronized(method):
+    @wraps(method)
+    def synchronizedmethod(self, chunkIndex, *args, **kwargs):
+        with self._chunk_locks[chunkIndex]:
+            return method(self, chunkIndex, *args, **kwargs)
+    return synchronizedmethod
+
+
+# This class manages parallel executions of the lazy connected
+# components algorithm. It tracks which process is responsible for
+# finalizing which chunks / labels.
 class _LabelManager(object):
 
     def __init__(self):
         self._lock = Condition()
         self._managedLabels = defaultdict(dict)
-        self._iterator = InfiniteLabelIterator(1, dtype=int)
+        self._iterator = InfiniteLabelIterator(1, dtype=_LABEL_TYPE)
         self._registered = set()
         self._total = 0
         self._asleep = 0
 
+    # Call this before interacting with the manager object. Just used
+    # for detecting cyclic wait() calls now.
     @threadsafe
     def hello(self):
         self._total += 1
 
+    # Call at the end of execute()
     @threadsafe
     def goodbye(self):
         self._total -= 1
 
-    # call before doing anything
+    # Call this if you are going to take responsibility for some chunks
+    # or labels.
     @threadsafe
     def register(self):
         n = self._iterator.next()
         self._registered.add(n)
         return n
 
-    # call when done with everything
+    # Call when done with all registered chunks.
     @threadsafe
     def unregister(self, n):
         self._registered.remove(n)
@@ -101,7 +115,18 @@ class _LabelManager(object):
             self._asleep -= 1
             remaining &= self._registered
 
-    # get a list of labels that _really_ need to be globalized by you
+    # Now that you are planning to finalize some labels in a chunk,
+    # call this method to see which ones you really have to do and
+    # which ones are being processed by some other process right now.
+    # @param chunkIndex 
+    # @param labels a set of local labels you want to process
+    # @param n result of the previous call to register()
+    # @returns a 2-tuple, consisting of
+    #           - the set of labels that you will have to process
+    #           - the process numbers you will have to wait for such
+    #             that all labels you requested are finalized 
+    # This method must not be called without being register()'ed first,
+    # an you are _required_ to finalize the labels in the return value!
     @threadsafe
     def checkoutLabels(self, chunkIndex, labels, n):
         others = set()
@@ -115,21 +140,53 @@ class _LabelManager(object):
             d[n] = labels
         return labels, others
 
-
-# locking decorator that locks per chunk
-def _chunksynchronized(method):
-    @wraps(method)
-    def synchronizedmethod(self, chunkIndex, *args, **kwargs):
-        with self._chunk_locks[chunkIndex]:
-            return method(self, chunkIndex, *args, **kwargs)
-    return synchronizedmethod
-
-
-# general approach
-# ================
+# OpLazyConnectedComponents
+# =========================
+#
+# This operator provides a connected components (labeling) algorithm
+# that evaluates lazyly, i.e. you don't need to process a full volume
+# for getting the connected components in some ROI. The operator just
+# computes spatial connected components, channels and time slices are
+# treated independently.
+#
+# Guarantees
+# ==========
+#
+# The resulting label image is equivalent[1] to the label image of
+# the vigra function acting on the whole volume. The output is
+# guaranteed to have exactly one label per connected component, and to
+# have a contiguous set of labels *over the entire spatial volume*. 
+# This means that your first request to some subregion *could* give
+# you labels [120..135], but somewhere else in the volume there will be
+# at least one pixel labeled with each of [1..119]. Furthermore, the
+# output is computed as lazy as possible, meaning that only the chunks
+# that intersect with an object in the requested ROI are computed. The
+# operator.execute() method is thread safe, but does not spawn new
+# requests besides the ones needed for gathering input data.
+# This operator conforms to OpLabelingABC, meaning that it can be used
+# as an implementation backend in lazyflow.OpLabelVolume.
+#
+# [1] The labels might not be equal, but the uniquely labeled objects
+#     are the same for both versions.
+#
+# Parallelization
+# ===============
+#
+# The operator is thread safe, but has no parallelization of its own.
+# The user (the GUI) is responsible for tiling the volume and spawning
+# parallel requests to the operator's output slots.
+#
+# Implementation Details
+# ======================
+#
+# The connected components algorithm used internally (chunk wise) is
+#       vigra.labelMultiArrayWithBackground()
+# with the default 4/6-neighborhood. See 
+#       http://ukoethe.github.io/vigra/doc/vigra/group__Labeling.html
+# for details.
 #
 # There are 3 kinds of labels that we need to consider throughout the operator:
-#     * local labels: The output of the chunk wise labelVolume calls. These are
+#     * local labels: The output of the chunk wise labeling calls. These are
 #       stored in self._cache, a compressed VigraArray.
 #       aka 'local'
 #     * global indices: The mapping of local labels to unique global indices.
@@ -141,17 +198,34 @@ def _chunksynchronized(method):
 #       The actual implementation is hidden in self.globalToFinal().
 #       aka 'final'
 #
+# The strategy we are using could be written as the following piece of
+# pseudocode:
+#   - put all requested chunks in the processing queue
+#   - for each chunk in processing queue:
+#       * label the chunk, store the labels
+#       * for each neighbour of chunk:
+#           + identify objects extending to this neighbour, call makeUnion()
+#           + if there were such objects, put chunk in processing queue
+#
+# In addition to this short algorithm, there is some bookkeeping going
+# on that allows us to map the different label types to one another,
+# and avoids excessive computation by tracking which process is 
+# responsible for which particular set of local labels.
+#
 class OpLazyConnectedComponents(Operator):
     name = "OpLazyConnectedComponents"
     supportedDtypes = [np.uint8, np.uint32, np.float32]
 
-    # input data (usually segmented), in 'txyzc' order
+    # input data (usually segmented)
     Input = InputSlot()
 
     # the spatial shape of one chunk, in 'xyz' order
+    # (even if the input does lack some axis, you *have* to provide a
+    # 3-tuple here) 
     ChunkShape = InputSlot(optional=True)
 
     # background with axes 'txyzc', spatial axes must be singletons
+    # (this layout is needed to be compatible with OpLabelVolume)
     Background = InputSlot(optional=True)
 
     # the labeled output, internally cached (the two slots are the same)
@@ -208,9 +282,6 @@ class OpLazyConnectedComponents(Operator):
         # go back to original order
         self._opOut.AxisOrder.setValue(self.Input.meta.getAxisKeys())
 
-        # TODO support background values
-        # if self.Background.ready():
-
     def execute(self, slot, subindex, roi, result):
         if slot is self._Output:
             logger.debug("Execute for {}".format(roi))
@@ -232,10 +303,14 @@ class OpLazyConnectedComponents(Operator):
             raise ValueError("Request to invalid slot {}".format(str(slot)))
 
     def propagateDirty(self, slot, subindex, roi):
-        # TODO: this is already correct, but may be over-zealous
-        # we would have to label each chunk that was set dirty and check
-        # for changed labels. Therefore, we would have to check if the
-        # dirty region is 'small enough', etc etc.
+        # Dirty handling is not trivial with this operator. The worst
+        # case happens when an object disappears entirely, meaning that
+        # the assigned labels would not be contiguous anymore. We could
+        # check for that here, and set everything dirty if it's the
+        # case, but this would require us to run the entire algorithm
+        # once again, which is not desireable in propagateDirty(). The
+        # simplest valid decision is to set the whole output dirty in
+        # every case.
         self._setDefaultInternals()
         self.Output.setDirty(slice(None))
 
@@ -300,13 +375,19 @@ class OpLazyConnectedComponents(Operator):
                 # add the neighbour to our processing queue only if it actually
                 # shares objects
                 if extendingLabels.size > 0:
-                    # TODO check if already in queue
-                    '''
-                    if other in chunksToProcess:
-                        extendingLabels = np.union1d(chunksToProcess[other],
-                                                     extendingLabels)
-                    '''
-                    chunksToProcess.append((other, extendingLabels))
+                    # check if already in queue
+                    found = False
+                    for i in xrange(len(chunksToProcess)):
+                        if chunksToProcess[i][0] == other:
+                            extendingLabels = np.union1d(
+                                chunksToProcess[i][1],
+                                extendingLabels)
+                            chunksToProcess[i] = (other,
+                                                  extendingLabels)
+                            found = True
+                            break
+                    if not found:
+                        chunksToProcess.append((other, extendingLabels))
 
         self._manager.unregister(ticket)
         return othersToWaitFor
@@ -329,12 +410,14 @@ class OpLazyConnectedComponents(Operator):
         assert self._background_valid,\
             "Background values are configured incorrectly"
         bg = self._background[chunkIndex[0], chunkIndex[4]]
+        # a vigra bug forces us to convert to int here
         bg = int(bg)
+        # TODO use labelMultiArray once available
         labeled = vigra.analysis.labelVolumeWithBackground(inputChunk,
                                                            background_value=bg)
         labeled = vigra.taggedView(labeled, axistags='xyz').withAxes(*'txyzc')
         del inputChunk
-        #TODO this could be more efficiently combined with merging
+        # TODO this could be more efficiently combined with merging
 
         # store the labeled data in cache
         self._cache[roi.toSlice()] = labeled
@@ -402,7 +485,7 @@ class OpLazyConnectedComponents(Operator):
     # get a rectangular region with final global labels
     # @param roi region of interest
     # @param result array of shape roi.stop - roi.start, will be filled
-    def _mapArray(self, roi, result, global_labels=True):
+    def _mapArray(self, roi, result):
         assert np.all(roi.stop - roi.start == result.shape)
 
         logger.debug("mapping roi {}".format(roi))
@@ -418,6 +501,7 @@ class OpLazyConnectedComponents(Operator):
             s = newroi.toSlice()
             result[s] = chunk
 
+    # Store a chunk with final labels in cache
     @_chunksynchronized
     def _mapChunk(self, chunkIndex):
         if self._isFinal[chunkIndex]:
@@ -494,14 +578,8 @@ class OpLazyConnectedComponents(Operator):
         stop_cs = stop / cs
         # add one if division was not even
         stop_cs += np.where(stop % cs, 1, 0)
-        chunks = []
-        #TODO do this smarter, perhaps?
-        for t in range(start_cs[0], stop_cs[0]):
-            for x in range(start_cs[1], stop_cs[1]):
-                for y in range(start_cs[2], stop_cs[2]):
-                    for z in range(start_cs[3], stop_cs[3]):
-                        for c in range(start_cs[4], stop_cs[4]):
-                            chunks.append((t, x, y, z, c))
+        iters = [xrange(start_cs[i], stop_cs[i]) for i in range(5)]
+        chunks = list(itertools.product(*iters))
         return chunks
 
     # compute the adjacent hyperplanes of two chunks (1 pix wide)
@@ -549,7 +627,6 @@ class OpLazyConnectedComponents(Operator):
     # fills attributes with standard values, call on each setupOutputs
     def _setDefaultInternals(self):
         # chunk array shape calculation
-        #TODO change here when removing OpReorder
         shape = self._Input.meta.shape
         if self.ChunkShape.ready():
             chunkShape = (1,) + self.ChunkShape.value + (1,)
@@ -557,9 +634,8 @@ class OpLazyConnectedComponents(Operator):
                 np.prod(self._Input.meta.ideal_blockshape) > 0:
             chunkShape = self._Input.meta.ideal_blockshape
         else:
-            # TODO choose better automatic chunk shape (this is 16 million
-            # pixels per chunk)
-            chunkShape = (1, 256, 256, 256, 1)
+            chunkShape = self._automaticChunkShape(
+                self._Input.meta.shape)
         assert len(shape) == len(chunkShape),\
             "Encountered an invalid chunkShape"
         chunkShape = np.minimum(shape, chunkShape)
@@ -670,13 +746,14 @@ class OpLazyConnectedComponents(Operator):
             self._cache[cacheroi.toSlice()] = value[dsroi.toSlice()]
             self._isFinal[idx] = True
 
+    # print a summary of blocks in use and their storage volume
     def _report(self):
         m = {np.uint8: 1, np.uint16: 2, np.uint32: 4, np.uint64: 8}
         nStoredChunks = self._isFinal.sum()
         nChunks = self._isFinal.size
         cachedMB = self._cache.data_bytes/1024.0**2
         rawMB = self._cache.size * m[_LABEL_TYPE]
-        logger.info("Currently stored chunks: {}/{} ({:.1f} MB)".format(
+        logger.debug("Currently stored chunks: {}/{} ({:.1f} MB)".format(
             nStoredChunks, nChunks, cachedMB))
 
     # order a pair of chunk indices lexicographically
@@ -690,6 +767,17 @@ class OpLazyConnectedComponents(Operator):
                 return tupB, tupA
         raise ValueError("tupA={} and tupB={} are the same".format(tupA, tupB))
         return tupA, tupB
+
+    # choose chunk shape appropriate for a particular dataset
+    # TODO: this is by no means an optimal decision -> extend
+    @staticmethod
+    def _automaticChunkShape(shape):
+        # use about 16 million pixels per chunk 
+        default = (1, 256, 256, 256, 1)
+        if np.prod(shape) < 2*np.prod(default):
+            return (1,) + shape[1:4] + (1,)
+        else:
+            return default
 
 
 ###########
