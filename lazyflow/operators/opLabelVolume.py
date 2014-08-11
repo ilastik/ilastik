@@ -13,6 +13,7 @@ from lazyflow.rtype import SubRegion
 from lazyflow.metaDict import MetaDict
 from lazyflow.request import Request, RequestPool
 from lazyflow.operators import OpCompressedCache, OpReorderAxes
+from opLazyConnectedComponents import OpLazyConnectedComponents
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +94,9 @@ class OpLabelVolume(Operator):
         self.CachedOutput.connect(self._op5_2_cached.Output)
 
         # available OpLabelingABCs:
-        self._labelOps = {'vigra': _OpLabelVigra, 'blocked': _OpLabelBlocked}
+        self._labelOps = {'vigra': _OpLabelVigra,
+                          'blocked': _OpLabelBlocked,
+                          'lazy': OpLazyConnectedComponents}
 
     def setupOutputs(self):
 
@@ -172,10 +175,10 @@ class OpLabelVolume(Operator):
 class OpLabelingABC(Operator):
     __metaclass__ = ABCMeta
 
-    ## input with axes 'xyzct'
+    ## input with axes 'txyzc'
     Input = InputSlot()
 
-    ## background with axes 'xyzct', spatial axes must be singletons
+    ## background with axes 'txyzc', spatial axes must be singletons
     Background = InputSlot()
 
     Output = OutputSlot()
