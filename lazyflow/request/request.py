@@ -251,6 +251,7 @@ class Request( object ):
         Assign this request to the given worker thread.  (A request cannot switch between threads.)
         Must be called from the worker thread.
         """
+        assert self._assigned_worker is None
         self._assigned_worker = worker
 
         # Create our greenlet now (so the greenlet has the correct parent, i.e. the worker)
