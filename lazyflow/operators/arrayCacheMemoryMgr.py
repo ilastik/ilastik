@@ -50,7 +50,7 @@ def getAvailableRamMb():
         return lazyflow.AVAILABLE_RAM_MB * 1024**2
 
 def memoryUsageGB():
-    return this_process.memory_info().rss / 1024**3
+    return float(this_process.memory_info().rss) / 1024**3
 
 class MemInfoNode:
     def __init__(self):
