@@ -657,16 +657,11 @@ Old API Backwards Compatibility
 
 As a temporary convenience for migration to the latest version of the Request Framework, a few methods from the old API have been provided:
 
-- ``Request.onFinish()`` (now replaced with ``Request.notify_finished()``)
-- ``Request.onCancel()`` (now replaced with ``Request.notify_cancelled()``)
-- ``notify()`` (now replaced with ``Request.submit()`` followed by ``Request.notify_finished()``)
-- ``Request.allocate()`` (not supported any more)
 - ``Request.getResult()`` (now replaced with ``Request.result``)
 - ``Request.writeInto()`` (This member is specific to the Lazyflow Graph Framework.  It will soon be implemented there, in a special subclass of ``Request``.)
 
 .. note:: Backwards-compatibility support will be removed soon.  
           If you are depending on the old API, please upgrade your code.  
-          If you suspect a bug in the new implementation, verify that it does not occur under the old implementation by editing lazyflow/request/__init__.py. 
 
 Class Reference
 ===============
