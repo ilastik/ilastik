@@ -185,7 +185,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         # avoid 'kernel longer than line' errors
         shape = self.topLevelOperatorView.InputImage.meta.getTaggedShape()
         for ax in [item for item in 'xyz' if item in shape and shape[item] > 1]:
-            req_sigma = np.floor(shape[ax]/2-1)
+            req_sigma = np.floor(shape[ax]/3)
             if block_shape_dict[ax] > req_sigma:
                 mexBox = QMessageBox()
                 mexBox.setText("The sigma value {} for dimension '{}'"
