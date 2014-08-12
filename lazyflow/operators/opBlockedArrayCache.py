@@ -32,6 +32,7 @@ import numpy
 
 #lazyflow
 from lazyflow.roi import roiToSlice
+from lazyflow.utility import RamMeasurementContext
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.rtype import SubRegion
 from lazyflow.request import RequestPool
@@ -72,86 +73,92 @@ class OpBlockedArrayCache(OpCache):
         self._opSub_list = {}
         self._cache_list = {}
 
+        #self.setup_ram_context = RamMeasurementContext()
+
     def setupOutputs(self):
-        self._fixed = self.inputs["fixAtCurrent"].value
-        self._forward_dirty = self.forward_dirty.value
-
-        inputSlot = self.inputs["Input"]
-        shape = inputSlot.meta.shape
-        if (    shape != self.Output.meta.shape
-             or self._outerBlockShape != self.outerBlockShape.value
-             or self._innerBlockShape != self.innerBlockShape.value ):
-            self._configured = False
-            
-        if min(shape) == 0:
-            self._configured = False
-            return
-        else:
-            if self.Output.partner is not None:
-                self.Output.disconnect()
-
-        if not self._configured:
-            self.Output.meta.assignFrom(inputSlot.meta)
-            with self._lock:
-                self._innerBlockShape = self.innerBlockShape.value
-                self._outerBlockShape = self.outerBlockShape.value
-                if len(self._fixed_dirty_blocks) > 0:
-                    self._fixed_dirty_blocks = set()
-                    notifyOutputDirty = True # Notify dirty output after we're fully configured
-                else:
-                    notifyOutputDirty = False
-
-                self.shape = self.Input.meta.shape
-                self._blockShape = self.inputs["outerBlockShape"].value
-                self._blockShape = tuple(numpy.minimum(self._blockShape, self.shape))
-                assert numpy.array(self._blockShape).min() > 0, "ERROR in OpBlockedArrayCache: invalid blockShape = {blockShape}".format(blockShape=self._blockShape)
-                self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) /
-                                              numpy.array(self._blockShape)).astype(numpy.int)
-                assert numpy.array(self._dirtyShape).min() > 0, "ERROR in OpBlockedArrayCache: invalid dirtyShape = {dirtyShape}".format(dirtyShape=self._dirtyShape)
-
-                self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)
+        #with self.setup_ram_context:
+            self._fixed = self.inputs["fixAtCurrent"].value
+            self._forward_dirty = self.forward_dirty.value
+    
+            inputSlot = self.inputs["Input"]
+            shape = inputSlot.meta.shape
+            if (    shape != self.Output.meta.shape
+                 or self._outerBlockShape != self.outerBlockShape.value
+                 or self._innerBlockShape != self.innerBlockShape.value ):
+                self._configured = False
                 
-                # Estimate ram usage            
-                ram_per_pixel = 0
-                if self.Output.meta.dtype == object or self.Output.meta.dtype == numpy.object_:
-                    ram_per_pixel = sys.getsizeof(None)
-                elif numpy.issubdtype(self.Output.meta.dtype, numpy.dtype):
-                    ram_per_pixel = self.Output.meta.dtype().nbytes
-
-                tagged_shape = self.Output.meta.getTaggedShape()
-                if 'c' in tagged_shape:
-                    ram_per_pixel *= float(tagged_shape['c'])
+            if min(shape) == 0:
+                self._configured = False
+                return
+            else:
+                if self.Output.partner is not None:
+                    self.Output.disconnect()
     
-                if self.Output.meta.ram_usage_per_requested_pixel is not None:
-                    ram_per_pixel = max( ram_per_pixel, self.Output.meta.ram_usage_per_requested_pixel )
+            if not self._configured:
+                self.Output.meta.assignFrom(inputSlot.meta)
+                with self._lock:
+                    self._innerBlockShape = self.innerBlockShape.value
+                    self._outerBlockShape = self.outerBlockShape.value
+                    if len(self._fixed_dirty_blocks) > 0:
+                        self._fixed_dirty_blocks = set()
+                        notifyOutputDirty = True # Notify dirty output after we're fully configured
+                    else:
+                        notifyOutputDirty = False
     
-                self.Output.meta.ram_usage_per_requested_pixel = ram_per_pixel
-
-
-            _blockNumbers = numpy.dstack(numpy.nonzero(self._blockState.ravel()))
-            _blockNumbers.shape = self._dirtyShape
-
-            _blockIndices = numpy.dstack(numpy.nonzero(self._blockState))
-            _blockIndices.shape = self._blockState.shape + (_blockIndices.shape[-1],)
-
-            self._blockNumbers = _blockNumbers
-
-            # allocate queryArray object
-            self._flatBlockIndices =  _blockIndices[:]
-            self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
-
-            for op in self._cache_list.values():
-                op.cleanUp()
-            for op in self._opSub_list.values():
-                op.cleanUp()
-
-            self._opSub_list = {}
-            self._cache_list = {}
-
-            self._configured = True
-
-            if notifyOutputDirty:
-                self.Output.setDirty(slice(None))
+                    self.shape = self.Input.meta.shape
+                    self._blockShape = self.inputs["outerBlockShape"].value
+                    self._blockShape = tuple(numpy.minimum(self._blockShape, self.shape))
+                    assert numpy.array(self._blockShape).min() > 0, "ERROR in OpBlockedArrayCache: invalid blockShape = {blockShape}".format(blockShape=self._blockShape)
+                    self._dirtyShape = numpy.ceil(1.0 * numpy.array(self.shape) /
+                                                  numpy.array(self._blockShape)).astype(numpy.int)
+                    assert numpy.array(self._dirtyShape).min() > 0, "ERROR in OpBlockedArrayCache: invalid dirtyShape = {dirtyShape}".format(dirtyShape=self._dirtyShape)
+    
+                    self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)
+                    
+                    # Estimate ram usage            
+                    ram_per_pixel = 0
+                    if self.Output.meta.dtype == object or self.Output.meta.dtype == numpy.object_:
+                        ram_per_pixel = sys.getsizeof(None)
+                    elif numpy.issubdtype(self.Output.meta.dtype, numpy.dtype):
+                        ram_per_pixel = self.Output.meta.dtype().nbytes
+    
+                    tagged_shape = self.Output.meta.getTaggedShape()
+                    if 'c' in tagged_shape:
+                        ram_per_pixel *= float(tagged_shape['c'])
+        
+                    if self.Output.meta.ram_usage_per_requested_pixel is not None:
+                        ram_per_pixel = max( ram_per_pixel, self.Output.meta.ram_usage_per_requested_pixel )
+        
+                    self.Output.meta.ram_usage_per_requested_pixel = ram_per_pixel
+    
+                _blockNumbers = numpy.arange( self._blockState.size )
+                _blockNumbers.shape = self._dirtyShape
+                
+                #print numpy.prod(_blockNumbers.shape) * _blockNumbers.dtype.type().nbytes / 1e6
+    
+                _blockIndices = numpy.indices(self._blockState.shape)
+                _blockIndices = numpy.rollaxis(_blockIndices, axis=0, start=_blockIndices.ndim) # make coord index last, not first
+                
+                #print numpy.prod(_blockIndices.shape) * _blockIndices.dtype.type().nbytes / 1e6
+    
+                self._blockNumbers = _blockNumbers
+    
+                # allocate queryArray object
+                self._flatBlockIndices =  _blockIndices[:]
+                self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
+    
+                for op in self._cache_list.values():
+                    op.cleanUp()
+                for op in self._opSub_list.values():
+                    op.cleanUp()
+    
+                self._opSub_list = {}
+                self._cache_list = {}
+    
+                self._configured = True
+    
+                if notifyOutputDirty:
+                    self.Output.setDirty(slice(None))
 
     def generateReport(self, report):
         report.name = self.name
