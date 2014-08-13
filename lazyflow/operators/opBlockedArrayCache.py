@@ -155,7 +155,18 @@ class OpBlockedArrayCache(OpCache):
         """
         For the given start/stop roi of blocks (i.e. in block coordinate space, not image space),
         Return an array (shape = stop - start) of the raveled block numbers.
-        """
+
+        As a better explanation, consider the following equivalent function.  
+        (This version can't be used because all_block_numbers uses lots of RAM if self._dirtyShape is large.)
+        
+        def _get_block_numbers(start, stop):
+            all_block_numbers = numpy.arange( self._dirtyShape )
+            all_block_numbers = numpy.reshape(all_block_numbers, self._dirtyShape)
+            block_numbers = all_block_numbers[roiToSlice(start, stop)]
+            return block_numbers
+            
+        Below, we achieve the same result without allocating a huge array of all possible block numbers.
+        """        
         shape = numpy.array(stop_block_multi_index) - numpy.array(start_block_multi_index)
         block_indices = numpy.indices( shape )
         
