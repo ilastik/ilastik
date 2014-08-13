@@ -11,6 +11,9 @@ class OpCachedTiledVolumeReader(Operator):
     VolumeDescription = OutputSlot()
     CachedOutput = OutputSlot()
     UncachedOutput = OutputSlot()
+    
+    SpecifiedOutput = OutputSlot()  # specified as either Cached or Uncached in the 
+                                    # volume description file, depending on the 'cache_tiles' setting.
 
     def __init__(self, *args, **kwargs):
         super( OpCachedTiledVolumeReader, self ).__init__( *args, **kwargs )
@@ -36,6 +39,11 @@ class OpCachedTiledVolumeReader(Operator):
         self._opCache.outerBlockShape.setValue( tuple(tile_shape) )
 
         self.VolumeDescription.setValue( self._opReader.tiled_volume.description )
+        
+        if self._opReader.tiled_volume.description.cache_tiles:
+            self.SpecifiedOutput.connect( self._opCache.Output )
+        else:
+            self.SpecifiedOutput.connect( self._opReader.Output )
 
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here."

@@ -117,6 +117,7 @@ class TestOpCachedTiledVolumeReader(object):
         roi = numpy.array( [(10, 150, 100), (30, 550, 550)] )
         cached_result_out = op.CachedOutput(*roi).wait()
         uncached_result_out = op.UncachedOutput(*roi).wait()
+        specified_result_out = op.CachedOutput(*roi).wait()
         
         # We expect a channel dimension to be added automatically...
         assert (cached_result_out.shape == roi[1] - roi[0]).all()
@@ -133,6 +134,8 @@ class TestOpCachedTiledVolumeReader(object):
         # We can't expect the pixels to match exactly because compression was used to create the tiles...
         assert (expected == cached_result_out).all()
         assert (expected == uncached_result_out).all()
+        assert (expected == specified_result_out).all()
+        
 
 if __name__ == "__main__":
     import sys

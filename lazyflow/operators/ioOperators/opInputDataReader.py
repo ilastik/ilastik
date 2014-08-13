@@ -300,13 +300,7 @@ class OpInputDataReader(Operator):
             try:
                 # This will raise a SchemaError if this is the wrong type of json config.
                 opReader.DescriptionFilePath.setValue( filePath )
-                
-                # Choose the cached or uncached version depending on
-                #   the setting in the volume description file
-                if opReader.VolumeDescription.value.cache_tiles:
-                    return (opReader, opReader.CachedOutput)
-                else:
-                    return (opReader, opReader.UncachedOutput)
+                return (opReader, opReader.SpecifiedOutput)
             except JsonConfigParser.SchemaError:
                 opReader.cleanUp()
         return (None, None)
