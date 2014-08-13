@@ -1,5 +1,5 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators.opArrayCache import OpArrayCache
+from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.operators.ioOperators import OpTiledVolumeReader
 
 import logging
@@ -7,17 +7,23 @@ logger = logging.getLogger(__name__)
 
 class OpCachedTiledVolumeReader(Operator):
     DescriptionFilePath = InputSlot(stype='filestring')
-    Output = OutputSlot()
+
+    VolumeDescription = OutputSlot()
+    CachedOutput = OutputSlot()
+    UncachedOutput = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super( OpCachedTiledVolumeReader, self ).__init__( *args, **kwargs )
         self._opReader = OpTiledVolumeReader(parent=self)
         self._opReader.DescriptionFilePath.connect( self.DescriptionFilePath )
         
-        self._opCache = OpArrayCache(parent=self)        
-        self._opCache.Input.connect( self._opReader.Output )
+        self.UncachedOutput.connect( self._opReader.Output )
         
-        self.Output.connect( self._opCache.Output )
+        self._opCache = OpBlockedArrayCache(parent=self)        
+        self._opCache.Input.connect( self._opReader.Output )
+        self._opCache.fixAtCurrent.setValue(False)
+        
+        self.CachedOutput.connect( self._opCache.Output )
     
     def setupOutputs(self):
         # Set the cache blockshape to match the source tiles.
@@ -26,8 +32,11 @@ class OpCachedTiledVolumeReader(Operator):
         
         z_index = self._opReader.Output.meta.getAxisKeys().index('z')
         tile_shape.insert(z_index, 1)
-        self._opCache.blockShape.setValue( tuple(tile_shape) )
-        
+        self._opCache.innerBlockShape.setValue( tuple(tile_shape) )
+        self._opCache.outerBlockShape.setValue( tuple(tile_shape) )
+
+        self.VolumeDescription.setValue( self._opReader.tiled_volume.description )
+
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here."
 
