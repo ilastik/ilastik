@@ -114,8 +114,6 @@ class OpBlockedArrayCache(OpCache):
                                                   numpy.array(self._blockShape)).astype(numpy.int)
                     assert numpy.array(self._dirtyShape).min() > 0, "ERROR in OpBlockedArrayCache: invalid dirtyShape = {dirtyShape}".format(dirtyShape=self._dirtyShape)
     
-                    self._blockState = numpy.ones(self._dirtyShape, numpy.uint8)
-                    
                     # Estimate ram usage            
                     ram_per_pixel = 0
                     if self.Output.meta.dtype == object or self.Output.meta.dtype == numpy.object_:
@@ -149,13 +147,13 @@ class OpBlockedArrayCache(OpCache):
         """
         Convert a given block number (i.e. a raveled block index) into a multi_index.
         """
-        multi_index = numpy.unravel_index( (block_flat_index,), self._blockState.shape )
+        multi_index = numpy.unravel_index( (block_flat_index,), self._dirtyShape )
         multi_index = numpy.array(multi_index)[:,0]
         return multi_index
 
     def _get_block_numbers(self, start_block_multi_index, stop_block_multi_index):
         """
-        For the given start/stop roi within self._blockState (i.e. in block coordinate space, not image space),
+        For the given start/stop roi of blocks (i.e. in block coordinate space, not image space),
         Return an array (shape = stop - start) of the raveled block numbers.
         """
         shape = numpy.array(stop_block_multi_index) - numpy.array(start_block_multi_index)
@@ -171,7 +169,7 @@ class OpBlockedArrayCache(OpCache):
         block_indices = numpy.reshape( block_indices, (num_indexes, axiscount) )
         
         # Convert multi_indexes to block numbers via ravel_multi_index
-        raveled_indices = numpy.ravel_multi_index(block_indices.transpose(), self._blockState.shape)
+        raveled_indices = numpy.ravel_multi_index(block_indices.transpose(), self._dirtyShape)
         
         # Reshape to fit original roi start/stop
         raveled_indices_block = numpy.reshape(raveled_indices, shape)
@@ -292,7 +290,7 @@ class OpBlockedArrayCache(OpCache):
                 
                 with self._lock:
                     # check wether the dirty region encompasses the whole cache
-                    if (blockStart == 0).all() and (blockStop == self._blockState.shape).all():
+                    if (blockStart == 0).all() and (blockStop == self._dirtyShape).all():
                         self._fixed_all_dirty = True
 
                     # shortcut, if everything is dirty already, dont loop over the blocks

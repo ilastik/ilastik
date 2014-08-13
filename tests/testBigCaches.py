@@ -1,9 +1,7 @@
-import threading
 import numpy
 import vigra
 from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot
-from lazyflow.roi import sliceToRoi, roiToSlice
-from lazyflow.operators import OpArrayPiper, OpBlockedArrayCache
+from lazyflow.operators.operators import OpBlockedArrayCache
 
 class OpOnes(Operator):
     Output = OutputSlot()
@@ -37,7 +35,8 @@ class TestOpBlockedArrayCache_BIG_INPUT(object):
         opCache.outerBlockShape.setValue( (1,256,256,999) )
         opCache.fixAtCurrent.setValue(False)
         
-        assert opCache.setup_ram_context.ram_increase_mb < 100
+        assert opCache.setup_ram_context.ram_increase_mb < 10, \
+            "Cache book-keeping members are consuming more RAM than expected."
 
         data = opCache.Output((1500,10000, 20000, 3), (1510, 10050, 20200, 4)).wait()
         assert (data == 1).all()
