@@ -46,6 +46,8 @@ class TiledVolume(object):
         #  but instead specifies the indexing order of the numpy volumes produced.
         "output_axes" : str,
 
+        "cache_tiles" : bool,
+
         # Offset not supported for now...
         #"origin_offset" : AutoEval(numpy.array),
 
@@ -92,6 +94,9 @@ class TiledVolume(object):
 
         if not description.extend_slices:
             description.extend_slices = []
+        
+        if description.cache_tiles is None:
+            description.cache_tiles = False
 
     def __init__( self, descriptionFilePath ):
         self.description = TiledVolume.readDescription( descriptionFilePath )

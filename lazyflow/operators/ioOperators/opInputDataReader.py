@@ -23,7 +23,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpImageReader, OpBlockedArrayCache, OpMetadataInjector, OpSubRegion2
 from opStreamingHdf5Reader import OpStreamingHdf5Reader
 from opNpyFileReader import OpNpyFileReader
-from lazyflow.operators.ioOperators import OpStackLoader, OpBlockwiseFilesetReader, OpRESTfulBlockwiseFilesetReader, OpTiledVolumeReader
+from lazyflow.operators.ioOperators import OpStackLoader, OpBlockwiseFilesetReader, OpRESTfulBlockwiseFilesetReader, OpCachedTiledVolumeReader
 from lazyflow.utility.jsonConfig import JsonConfigParser
 from lazyflow.utility.pathHelpers import isUrl
 
@@ -296,11 +296,17 @@ class OpInputDataReader(Operator):
         fileExtension = fileExtension.lstrip('.') # Remove leading dot
 
         if fileExtension in OpInputDataReader.tiledExts:
-            opReader = OpTiledVolumeReader(parent=self)
+            opReader = OpCachedTiledVolumeReader(parent=self)
             try:
                 # This will raise a SchemaError if this is the wrong type of json config.
                 opReader.DescriptionFilePath.setValue( filePath )
-                return (opReader, opReader.Output)
+                
+                # Choose the cached or uncached version depending on
+                #   the setting in the volume description file
+                if opReader.VolumeDescription.value.cache_tiles:
+                    return (opReader, opReader.CachedOutput)
+                else:
+                    return (opReader, opReader.UncachedOutput)
             except JsonConfigParser.SchemaError:
                 opReader.cleanUp()
         return (None, None)
