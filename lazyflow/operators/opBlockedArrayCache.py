@@ -73,10 +73,11 @@ class OpBlockedArrayCache(OpCache):
         self._opSub_list = {}
         self._cache_list = {}
 
-        #self.setup_ram_context = RamMeasurementContext()
+        # This member is used by tests that check RAM usage.
+        self.setup_ram_context = RamMeasurementContext()
 
     def setupOutputs(self):
-        #with self.setup_ram_context:
+        with self.setup_ram_context:
             self._fixed = self.inputs["fixAtCurrent"].value
             self._forward_dirty = self.forward_dirty.value
     
@@ -130,23 +131,7 @@ class OpBlockedArrayCache(OpCache):
                         ram_per_pixel = max( ram_per_pixel, self.Output.meta.ram_usage_per_requested_pixel )
         
                     self.Output.meta.ram_usage_per_requested_pixel = ram_per_pixel
-    
-                _blockNumbers = numpy.arange( self._blockState.size )
-                _blockNumbers.shape = self._dirtyShape
-                
-                #print numpy.prod(_blockNumbers.shape) * _blockNumbers.dtype.type().nbytes / 1e6
-    
-                _blockIndices = numpy.indices(self._blockState.shape)
-                _blockIndices = numpy.rollaxis(_blockIndices, axis=0, start=_blockIndices.ndim) # make coord index last, not first
-                
-                #print numpy.prod(_blockIndices.shape) * _blockIndices.dtype.type().nbytes / 1e6
-    
-                self._blockNumbers = _blockNumbers
-    
-                # allocate queryArray object
-                self._flatBlockIndices =  _blockIndices[:]
-                self._flatBlockIndices = self._flatBlockIndices.reshape(self._flatBlockIndices.size/self._flatBlockIndices.shape[-1],self._flatBlockIndices.shape[-1],)
-    
+        
                 for op in self._cache_list.values():
                     op.cleanUp()
                 for op in self._opSub_list.values():
@@ -160,6 +145,38 @@ class OpBlockedArrayCache(OpCache):
                 if notifyOutputDirty:
                     self.Output.setDirty(slice(None))
 
+    def _get_block_multi_index(self, block_flat_index):
+        """
+        Convert a given block number (i.e. a raveled block index) into a multi_index.
+        """
+        multi_index = numpy.unravel_index( (block_flat_index,), self._blockState.shape )
+        multi_index = numpy.array(multi_index)[:,0]
+        return multi_index
+
+    def _get_block_numbers(self, start_block_multi_index, stop_block_multi_index):
+        """
+        For the given start/stop roi within self._blockState (i.e. in block coordinate space, not image space),
+        Return an array (shape = stop - start) of the raveled block numbers.
+        """
+        shape = numpy.array(stop_block_multi_index) - numpy.array(start_block_multi_index)
+        block_indices = numpy.indices( shape )
+        
+        # Create an array of multi_indexes
+        block_indices = numpy.rollaxis( block_indices, 0, block_indices.ndim )
+        block_indices += start_block_multi_index
+
+        # Reshape into a 2D array so we can pass to numpy.ravel_multi_index
+        num_indexes = numpy.prod(block_indices.shape[:-1])
+        axiscount = block_indices.shape[-1]
+        block_indices = numpy.reshape( block_indices, (num_indexes, axiscount) )
+        
+        # Convert multi_indexes to block numbers via ravel_multi_index
+        raveled_indices = numpy.ravel_multi_index(block_indices.transpose(), self._blockState.shape)
+        
+        # Reshape to fit original roi start/stop
+        raveled_indices_block = numpy.reshape(raveled_indices, shape)
+        return raveled_indices_block
+
     def generateReport(self, report):
         report.name = self.name
         report.fractionOfUsedMemoryDirty = self.fractionOfUsedMemoryDirty()
@@ -169,7 +186,7 @@ class OpBlockedArrayCache(OpCache):
         report.id = id(self)
        
         for b_ind, block in self._cache_list.iteritems():
-            start = self._blockShape*self._flatBlockIndices[b_ind]
+            start = self._blockShape*self._get_block_multi_index(b_ind)
             stop  = numpy.minimum(start + self._blockShape, self.Output.meta.shape)
             
             n = MemInfoNode()
@@ -191,29 +208,23 @@ class OpBlockedArrayCache(OpCache):
         
         t = time.time()
 
-        #find the block key
-        key = roi.toSlice()
         start, stop = roi.start, roi.stop
 
         blockStart = (start / self._blockShape)
         blockStop = (stop * 1.0 / self._blockShape).ceil()
-        #blockStop = numpy.where(stop == self.shape, self._dirtyShape, blockStop)
-        blockKey = roiToSlice(blockStart,blockStop)
-        innerBlocks = self._blockNumbers[blockKey]
+        innerBlocks = self._get_block_numbers(blockStart, blockStop)
 
         pool = RequestPool()
         for b_ind in innerBlocks.flat:
             #which part of the original key does this block fill?
-            offset = self._blockShape*self._flatBlockIndices[b_ind]
+            block_multi_index = self._get_block_multi_index(b_ind)
+            offset = self._blockShape*block_multi_index
             bigstart = numpy.maximum(offset, start)
             bigstop = numpy.minimum(offset + self._blockShape, stop)
 
 
             smallstart = bigstart-offset
             smallstop = bigstop - offset
-
-            diff = smallstop - smallstart
-            smallkey = roiToSlice(smallstart, smallstop)
 
             bigkey = roiToSlice(bigstart-start, bigstop-start)
 
@@ -223,8 +234,8 @@ class OpBlockedArrayCache(OpCache):
 
                         self._opSub_list[b_ind] = generic.OpSubRegion(parent=self)
                         self._opSub_list[b_ind].inputs["Input"].connect(self.inputs["Input"])
-                        tstart = self._blockShape*self._flatBlockIndices[b_ind]
-                        tstop = numpy.minimum((self._flatBlockIndices[b_ind]+numpy.ones(self._flatBlockIndices[b_ind].shape, numpy.uint8))*self._blockShape, self.shape)
+                        tstart = self._blockShape*block_multi_index
+                        tstop = numpy.minimum((block_multi_index+numpy.ones(block_multi_index.shape, numpy.uint8))*self._blockShape, self.shape)
     
                         self._opSub_list[b_ind].inputs["Start"].setValue(tuple(tstart))
                         self._opSub_list[b_ind].inputs["Stop"].setValue(tuple(tstop))
@@ -281,13 +292,12 @@ class OpBlockedArrayCache(OpCache):
                 
                 with self._lock:
                     # check wether the dirty region encompasses the whole cache
-                    if (blockStart == 0).all() and (blockStop == self._blockNumbers.shape).all():
+                    if (blockStart == 0).all() and (blockStop == self._blockState.shape).all():
                         self._fixed_all_dirty = True
 
                     # shortcut, if everything is dirty already, dont loop over the blocks
                     if self._fixed_all_dirty is False:
-                        blockKey = roiToSlice(blockStart,blockStop)
-                        innerBlocks = self._blockNumbers[blockKey]
+                        innerBlocks = self._get_block_numbers(blockStart, blockStop)
                         for b_ind in innerBlocks.flat:
                             self._fixed_dirty_blocks.add(b_ind)            
 
@@ -305,7 +315,7 @@ class OpBlockedArrayCache(OpCache):
                         dirtystart = self.Output.meta.shape
                         dirtystop = [0] * len(self.Output.meta.shape)
                         for b_ind in self._fixed_dirty_blocks:
-                            offset = self._blockShape*self._flatBlockIndices[b_ind]
+                            offset = self._blockShape*self._get_block_multi_index(b_ind)
                             bigstart = offset
                             bigstop = numpy.minimum(offset + self._blockShape, self.Output.meta.shape)
                             
