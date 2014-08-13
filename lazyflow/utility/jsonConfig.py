@@ -63,6 +63,9 @@ class Namespace(object):
         """
         Compare two Namespace objects, with special treatment of numpy arrays to make sure they are compared correctly.
         """
+        if not isinstance(other, Namespace):
+            return False
+        
         eq = True
         for (k1,v1),(k2,v2) in zip( self.__dict__.items(), other.__dict__.items() ):
             eq &= (k1 == k2)
