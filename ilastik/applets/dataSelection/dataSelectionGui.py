@@ -751,16 +751,38 @@ class DataSelectionGui(QWidget):
     
     def addDvidVolume(self, roleIndex, laneIndex):
         # TODO: Provide list of recently used dvid hosts, loaded from user preferences
-        #from pydvid.gui.contents_browser import ContentsBrowser
+        recent_hosts_pref = PreferencesManager.Setting("DataSelection", "Recent DVID Hosts")
+        recent_hosts = recent_hosts_pref.get()
+        recent_hosts = filter(lambda h: h, recent_hosts)
+        if not recent_hosts:
+            recent_hosts = ["localhost:8000"]
+            
         from dvidDataSelectionBrowser import DvidDataSelectionBrowser
-        browser = DvidDataSelectionBrowser(["localhost:8000"], parent=self)
+        browser = DvidDataSelectionBrowser(recent_hosts, parent=self)
         if browser.exec_() == DvidDataSelectionBrowser.Rejected:
+            return
+
+        if None in browser.get_selection():
+            QMessageBox.critical("Couldn't use your selection.")
             return
 
         rois = None
         hostname, dset_index, volume_name, uuid = browser.get_selection()
         dvid_url = 'http://{hostname}/api/node/{uuid}/{volume_name}'.format( **locals() )
         subvolume_roi = browser.get_subvolume_roi()
+
+        # Relocate host to top of 'recent' list, and limit list to 10 items.
+        try:
+            i = recent_hosts.index(recent_hosts)
+            del recent_hosts[i]
+        except ValueError:
+            pass
+        finally:
+            recent_hosts.insert(0, hostname)        
+            recent_hosts = recent_hosts[:10]
+
+        # Save pref
+        recent_hosts_pref.set(recent_hosts)
 
         if subvolume_roi is None:
             self.addFileNames([dvid_url], roleIndex, laneIndex)
