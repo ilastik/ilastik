@@ -1,75 +1,186 @@
 import os
 import sys
-import nose
+import tempfile
 import numpy
 import h5py
+import copy
+import SimpleHTTPServer
+import SocketServer
 
 from lazyflow.utility.io.tiledVolume import TiledVolume
-from lazyflow.utility import PathComponents
+from lazyflow.utility import PathComponents, export_to_tiles
+from lazyflow.utility.jsonConfig import JsonConfigParser
 from lazyflow.roi import roiToSlice
 
 import logging
 logger = logging.getLogger(__file__)
 
-# Data for this test can be generated with the helper script in lazyflow/bin/make_tiles.py
-TILE_DIRECTORY = '/magnetic/png_tiles'
-REFERENCE_DATA = '/magnetic/megaslices.h5/data'
+volume_description_text = \
+"""
+{
+    "_schema_name" : "tiled-volume-description",
+    "_schema_version" : 1.0,
+ 
+    "name" : "My Tiled Data",
+    "format" : "png",
+    "dtype" : "uint8",
+    "bounds" : [100, 600, 600],
+ 
+    "tile_shape_2d" : [200,200],
+ 
+    "tile_url_format" : "http://localhost:8000/tile_z{z_start:05}_y{y_start:05}_x{x_start:05}.png",
+    "extend_slices" : [ [44, [45, 46, 47]],
+                        [40, [41]] ]
+}
+"""
+TILE_DIRECTORY = None
+REFERENCE_DATA = None
+REFERENCE_VOL_FILE = None
+REFERENCE_VOL_PATH = None
+VOLUME_DESCRIPTION_FILE = None
+TRANSPOSED_VOLUME_DESCRIPTION_FILE = None
 
-# Example schema:
-# """
-# {
-#     "_schema_name" : "tiled-volume-description",
-#     "_schema_version" : 1.0,
-# 
-#     "name" : "My Tiled Data",
-#     "format" : "png",
-#     "dtype" : "uint8",
-#     "bounds" : [50, 1020, 1020],
-# 
-#     "tile_shape_2d" : [200,200],
-# 
-#     "tile_url_format" : "http://localhost:8000/tile_z{z_start:05}_y{y_start:05}_x{x_start:05}.png",
-#     "extend_slices" : [ [44, [45, 46, 47]],
-#                         [40, [41]] ]
-# }
-# """
+teardown_module = lambda: None
+
+def setup_module():
+    """
+    Generate a directory with all the files needed for this test.
+    We use the same temporary directory every time, so hopefully we don't 
+    waste time regenerating the data if the test has already been run recently.
+    
+    The directory consists of the following files:
+    - reference_volume.h5
+    - volume_description.json
+    - transposed_volume_description.json
+    - [lots of png tiles..]
+    """
+    global TILE_DIRECTORY
+    global REFERENCE_DATA
+    global REFERENCE_VOL_FILE
+    global REFERENCE_VOL_PATH
+    global VOLUME_DESCRIPTION_FILE
+    global TRANSPOSED_VOLUME_DESCRIPTION_FILE
+    
+    tmp = tempfile.gettempdir()
+    TILE_DIRECTORY = os.path.join( tmp, 'testTiledVolume_data' )
+    REFERENCE_VOL_PATH = os.path.join( TILE_DIRECTORY, 'reference_volume.h5/data' )
+    ref_vol_path_comp = PathComponents(REFERENCE_VOL_PATH)
+    REFERENCE_VOL_FILE = ref_vol_path_comp.externalPath
+    VOLUME_DESCRIPTION_FILE = os.path.join( TILE_DIRECTORY, 'volume_description.json' )
+    TRANSPOSED_VOLUME_DESCRIPTION_FILE = os.path.join( TILE_DIRECTORY, 'transposed_volume_description.json' )
+
+    if not os.path.exists(TILE_DIRECTORY):
+        print "Creating new tile directory: {}".format( TILE_DIRECTORY )
+        os.mkdir(TILE_DIRECTORY)
+
+    if not os.path.exists(REFERENCE_VOL_FILE):
+        ref_vol = numpy.random.randint(0,255, (100,600,600) ).astype(numpy.uint8)
+        with h5py.File(REFERENCE_VOL_FILE, 'w') as ref_file:
+            ref_file[ref_vol_path_comp.internalPath] = ref_vol
+    else:
+        with h5py.File(REFERENCE_VOL_FILE, 'r') as ref_file:
+            ref_vol = ref_file[ref_vol_path_comp.internalPath][:] 
+
+    need_rewrite = False
+    if not os.path.exists( VOLUME_DESCRIPTION_FILE ):
+        need_rewrite = True
+    else:
+        with open(VOLUME_DESCRIPTION_FILE, 'r') as f:
+            if f.read() != volume_description_text:
+                need_rewrite = True
+    
+    if need_rewrite:
+        with open(VOLUME_DESCRIPTION_FILE, 'w') as f:
+            f.write(volume_description_text)
+
+        # Read the volume description as a JsonConfig Namespace
+        volume_description = TiledVolume.readDescription(VOLUME_DESCRIPTION_FILE)
+
+        # Write out a copy of the description, but with custom output axes
+        config_helper = JsonConfigParser( TiledVolume.DescriptionFields )
+        transposed_description = copy.copy(volume_description)
+        transposed_description.output_axes = "xyz"
+        config_helper.writeConfigFile(TRANSPOSED_VOLUME_DESCRIPTION_FILE, transposed_description)
+
+        # Remove all old image tiles in the tile directory
+        files = os.listdir(TILE_DIRECTORY)
+        for name in files:
+            if os.path.splitext(name)[1] == '.' + volume_description.format:
+                os.remove( os.path.join(TILE_DIRECTORY, name) )
+
+        # Write the new tiles
+        export_to_tiles( ref_vol, volume_description.tile_shape_2d[0], TILE_DIRECTORY, print_progress=False )    
+
+        # To support testMissingTiles (below), remove slice 2
+        files = os.listdir(TILE_DIRECTORY)
+        for name in files:
+            if name.startswith("tile_z00002"):
+                p = os.path.join(TILE_DIRECTORY, name)
+                print "removing:", p
+                os.remove( p )
+            
+
+    # lastly, start the server
+    _start_server()
+
+def _start_server():
+    original_cwd = os.getcwd()
+    os.chdir(TILE_DIRECTORY)
+    class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+        def log_request(self, *args, **kwargs):
+            if logger.level == logging.DEBUG:
+                SimpleHTTPServer.SimpleHTTPRequestHandler.log_request( self, *args, **kwargs )
+
+        def log_error(self, *args, **kwargs):
+            if logger.level == logging.DEBUG:
+                SimpleHTTPServer.SimpleHTTPRequestHandler.log_error( self, *args, **kwargs )
+    
+    class Server(SocketServer.TCPServer):
+        # http://stackoverflow.com/questions/10613977/a-simple-python-server-using-simplehttpserver-and-socketserver-how-do-i-close-t
+        allow_reuse_address = True
+    server = Server(("", 8000), Handler)
+    import threading
+    server_thread = threading.Thread(target=server.serve_forever)
+    server_thread.start()
+    
+    def shutdown_server():
+        logger.debug("Shutting down server...")
+        server.shutdown()
+        server.server_close()
+        os.chdir(original_cwd)
+        server_thread.join()
+
+    # Set the module teardown function so nosetests shuts the server down before exit.
+    global teardown_module
+    teardown_module = shutdown_server
 
 class TestTiledVolume(object):
 
-    def setup(self):
-        description_path = os.path.join(TILE_DIRECTORY, 'volume_description.json')
-        if not os.path.exists( description_path ):
-            raise nose.SkipTest
-    
-        if not os.path.exists( PathComponents(REFERENCE_DATA).externalPath ):
-            raise nose.SkipTest
-        
-        self.tiled_volume = TiledVolume( description_path )
-    
     def testBasic(self):
+        tiled_volume = TiledVolume( VOLUME_DESCRIPTION_FILE )
         roi = numpy.array( [(10, 150, 100), (30, 550, 550)] )
-        result_out = numpy.zeros( roi[1] - roi[0], dtype=self.tiled_volume.description.dtype )
-        self.tiled_volume.read( roi, result_out )
+        result_out = numpy.zeros( roi[1] - roi[0], dtype=tiled_volume.description.dtype )
+        tiled_volume.read( roi, result_out )
          
-        ref_path_comp = PathComponents(REFERENCE_DATA)
+        ref_path_comp = PathComponents(REFERENCE_VOL_PATH)
         with h5py.File(ref_path_comp.externalPath, 'r') as f:
             ref_data = f[ref_path_comp.internalPath][:]
  
         expected = ref_data[roiToSlice(*roi)]
          
-        numpy.save('/tmp/expected.npy', expected)
-        numpy.save('/tmp/result_out.npy', result_out)
+        #numpy.save('/tmp/expected.npy', expected)
+        #numpy.save('/tmp/result_out.npy', result_out)
  
-        # We can't expect the pixels to match exactly because compression was used to create the tiles...
         assert (expected == result_out).all()
  
     def testMissingTiles(self):
+        tiled_volume = TiledVolume( VOLUME_DESCRIPTION_FILE )
         # The test data should be missing slice 2
         roi = numpy.array( [(0, 150, 100), (10, 550, 550)] )
-        result_out = numpy.zeros( roi[1] - roi[0], dtype=self.tiled_volume.description.dtype )
-        self.tiled_volume.read( roi, result_out )
+        result_out = numpy.zeros( roi[1] - roi[0], dtype=tiled_volume.description.dtype )
+        tiled_volume.read( roi, result_out )
             
-        ref_path_comp = PathComponents(REFERENCE_DATA)
+        ref_path_comp = PathComponents(REFERENCE_VOL_PATH)
         with h5py.File(ref_path_comp.externalPath, 'r') as f:
             ref_data = f[ref_path_comp.internalPath][:]
     
@@ -80,15 +191,15 @@ class TestTiledVolume(object):
         #numpy.save('/tmp/expected.npy', expected)
         #numpy.save('/tmp/result_out.npy', result_out)
     
-        # We can't expect the pixels to match exactly because compression was used to create the tiles...
         assert (expected == result_out).all()
    
     def testRemappedTiles(self):
+        tiled_volume = TiledVolume( VOLUME_DESCRIPTION_FILE )
         roi = numpy.array( [(40, 150, 100), (50, 550, 550)] )
-        result_out = numpy.zeros( roi[1] - roi[0], dtype=self.tiled_volume.description.dtype )
-        self.tiled_volume.read( roi, result_out )
+        result_out = numpy.zeros( roi[1] - roi[0], dtype=tiled_volume.description.dtype )
+        tiled_volume.read( roi, result_out )
            
-        ref_path_comp = PathComponents(REFERENCE_DATA)
+        ref_path_comp = PathComponents(REFERENCE_VOL_PATH)
         with h5py.File(ref_path_comp.externalPath, 'r') as f:
             ref_data = f[ref_path_comp.internalPath][:]
    
@@ -100,40 +211,29 @@ class TestTiledVolume(object):
         #numpy.save('/tmp/expected.npy', expected)
         #numpy.save('/tmp/result_out.npy', result_out)
    
-        # We can't expect the pixels to match exactly because compression was used to create the tiles...
         assert (expected == result_out).all()
 
 class TestCustomAxes(object):
-    
-    def setup(self):
-        description_path = os.path.join(TILE_DIRECTORY, 'transposed_volume_description.json')
-        if not os.path.exists( description_path ):
-            raise nose.SkipTest
-    
-        if not os.path.exists( PathComponents(REFERENCE_DATA).externalPath ):
-            raise nose.SkipTest
         
-        self.tiled_volume = TiledVolume( description_path )
-    
     def testCustomAxes(self):
+        tiled_volume = TiledVolume( TRANSPOSED_VOLUME_DESCRIPTION_FILE )
         roi = numpy.array( [(10, 150, 100), (30, 550, 550)] )
-        result_out = numpy.zeros( roi[1] - roi[0], dtype=self.tiled_volume.description.dtype )
+        result_out = numpy.zeros( roi[1] - roi[0], dtype=tiled_volume.description.dtype )
 
         roi_t = (tuple(reversed(roi[0])), tuple(reversed(roi[1])))
         result_out_t = result_out.transpose()
         
-        self.tiled_volume.read( roi_t, result_out_t )
+        tiled_volume.read( roi_t, result_out_t )
          
-        ref_path_comp = PathComponents(REFERENCE_DATA)
+        ref_path_comp = PathComponents(REFERENCE_VOL_PATH)
         with h5py.File(ref_path_comp.externalPath, 'r') as f:
             ref_data = f[ref_path_comp.internalPath][:]
  
         expected = ref_data[roiToSlice(*roi)]
          
-        numpy.save('/tmp/expected.npy', expected)
-        numpy.save('/tmp/result_out.npy', result_out)
+        #numpy.save('/tmp/expected.npy', expected)
+        #numpy.save('/tmp/result_out.npy', result_out)
  
-        # We can't expect the pixels to match exactly because compression was used to create the tiles...
         assert (expected == result_out).all()
 
 if __name__ == "__main__":
