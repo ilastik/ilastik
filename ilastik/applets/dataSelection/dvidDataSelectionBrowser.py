@@ -45,7 +45,7 @@ class DvidDataSelectionBrowser(ContentsBrowser):
         enable_contents = self._datasets_info is not None and dataname != "" and node_uuid != ""
         self._roi_groupbox.setEnabled(enable_contents)
 
-        if dataname == "" or node_uuid == "":
+        if not dataname or not node_uuid:
             self._roi_widget.initWithExtents( "", (), (), () )
             return
         
