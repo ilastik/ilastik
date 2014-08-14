@@ -1,11 +1,16 @@
 import httplib
 import socket
+import logging
 
 import pydvid
 from pydvid.gui.contents_browser import ContentsBrowser
 
 from volumina.widgets.subregionRoiWidget import SubregionRoiWidget
-from PyQt4.QtGui import QVBoxLayout, QGroupBox, QSizePolicy, QMessageBox
+from PyQt4.QtGui import QVBoxLayout, QGroupBox, QSizePolicy, QMessageBox, QDialogButtonBox
+
+from ilastik.utility import log_exception
+
+logger = logging.getLogger(__name__)
 
 class DvidDataSelectionBrowser(ContentsBrowser):
     """
@@ -59,6 +64,15 @@ class DvidDataSelectionBrowser(ContentsBrowser):
             error_msg = "Socket Error: {} (Error {})".format( ex.args[1], ex.args[0] )
         except httplib.HTTPException as ex:
             error_msg = "HTTP Error: {}".format( ex.args[0] )
+        except pydvid.errors.DvidHttpError as ex:
+            # DVID will return an error if the selected dataset 
+            #  isn't a 'voxels' dataset and thus has no voxels metadata
+            # In that case, show the error on the console, and don't let the user hit 'okay'.
+            log_exception( logger, level=logging.WARN )
+            self._buttonbox.button(QDialogButtonBox.Ok).setEnabled(False)
+            return
+        else:
+            self._buttonbox.button(QDialogButtonBox.Ok).setEnabled(True)
 
         if error_msg:
             QMessageBox.critical(self, "DVID Error", error_msg)
