@@ -35,3 +35,4 @@ from format_known_keys import format_known_keys
 from timer import Timer, timeLogged
 import testing
 from ramMeasurementContext import RamMeasurementContext
+from export_to_tiles import export_to_tiles
