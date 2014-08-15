@@ -580,7 +580,6 @@ class OpSubRegion2(Operator):
         assert len(start) == len(stop) == len(self.Input.meta.shape), \
             "Roi dimensionality must match shape dimensionality"
         if (start >= stop).any():
-            print "oops", start, stop
             self.Output.meta.NOTREADY = True
         else:
             self.Output.meta.assignFrom( self.Input.meta )
