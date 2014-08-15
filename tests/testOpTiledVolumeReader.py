@@ -8,41 +8,24 @@ from lazyflow.operators.ioOperators import OpTiledVolumeReader, OpCachedTiledVol
 from lazyflow.utility import PathComponents
 from lazyflow.roi import roiToSlice
 
-# Data for this test can be generated with the helper script in lazyflow/bin/make_tiles.py
-TILE_DIRECTORY = '/magnetic/png_tiles'
-REFERENCE_DATA = '/magnetic/megaslices.h5/data'
-
-# Example schema:
-# """
-# {
-#     "_schema_name" : "tiled-volume-description",
-#     "_schema_version" : 1.0,
-# 
-#     "name" : "My Tiled Data",
-#     "format" : "jpg",
-#     "dtype" : "uint8",
-#     "bounds" : [50, 1020, 1020],
-# 
-#     "tile_shape_2d" : [200,200],
-# 
-#     "tile_url_format" : "http://localhost:8000/tile_z{z_start:05}_y{y_start:05}_x{x_start:05}.jpg"
-# }
-# """
+# We use the SAME data setup as in the test for TiledVolume
+import testTiledVolume
 
 class TestOpTiledVolumeReader(object):
- 
-    def setup(self):
-        self.description_path = os.path.join(TILE_DIRECTORY, 'volume_description.json')
-        if not os.path.exists( self.description_path ):
-            raise nose.SkipTest
-     
-        if not os.path.exists( PathComponents(REFERENCE_DATA).externalPath ):
-            raise nose.SkipTest
+
+    @classmethod
+    def setupClass(cls):
+        cls.data_setup = testTiledVolume.DataSetup()
+        cls.data_setup.setup()
+
+    @classmethod
+    def teardownClass(cls):
+        cls.data_setup.teardown()
  
     def testBasic(self):
         graph = Graph()
         op = OpTiledVolumeReader(graph=graph)
-        op.DescriptionFilePath.setValue( self.description_path )
+        op.DescriptionFilePath.setValue( self.data_setup.VOLUME_DESCRIPTION_FILE )
          
         roi = numpy.array( [(10, 150, 100), (30, 550, 550)] )
         result_out = op.Output(*roi).wait()
@@ -50,7 +33,7 @@ class TestOpTiledVolumeReader(object):
         # We expect a channel dimension to be added automatically...
         assert (result_out.shape == roi[1] - roi[0]).all()
      
-        ref_path_comp = PathComponents(REFERENCE_DATA)
+        ref_path_comp = PathComponents(self.data_setup.REFERENCE_VOL_PATH)
         with h5py.File(ref_path_comp.externalPath, 'r') as f:
             ref_data = f[ref_path_comp.internalPath][:]
  
@@ -64,18 +47,19 @@ class TestOpTiledVolumeReader(object):
  
 class TestOpTiledVolumeReader_Transposed(object):
      
-    def setup(self):
-        self.description_path = os.path.join(TILE_DIRECTORY, 'transposed_volume_description.json')
-        if not os.path.exists( self.description_path ):
-            raise nose.SkipTest
-     
-        if not os.path.exists( PathComponents(REFERENCE_DATA).externalPath ):
-            raise nose.SkipTest
+    @classmethod
+    def setupClass(cls):
+        cls.data_setup = testTiledVolume.DataSetup()
+        cls.data_setup.setup()
+
+    @classmethod
+    def teardownClass(cls):
+        cls.data_setup.teardown()
  
     def test(self):
         graph = Graph()
         op = OpTiledVolumeReader(graph=graph)
-        op.DescriptionFilePath.setValue( self.description_path )
+        op.DescriptionFilePath.setValue( self.data_setup.TRANSPOSED_VOLUME_DESCRIPTION_FILE )
          
         roi = numpy.array( [(10, 150, 100), (30, 550, 550)] )
         roi_t = numpy.array([tuple(reversed(roi[0])), tuple(reversed(roi[1]))])
@@ -86,7 +70,7 @@ class TestOpTiledVolumeReader_Transposed(object):
         # We expect a channel dimension to be added automatically...
         assert (result_out_t.shape == roi_t[1] - roi_t[0]).all()
      
-        ref_path_comp = PathComponents(REFERENCE_DATA)
+        ref_path_comp = PathComponents(self.data_setup.REFERENCE_VOL_PATH)
         with h5py.File(ref_path_comp.externalPath, 'r') as f:
             ref_data = f[ref_path_comp.internalPath][:]
  
@@ -101,18 +85,19 @@ class TestOpTiledVolumeReader_Transposed(object):
 
 class TestOpCachedTiledVolumeReader(object):
 
-    def setup(self):
-        self.description_path = os.path.join(TILE_DIRECTORY, 'volume_description.json')
-        if not os.path.exists( self.description_path ):
-            raise nose.SkipTest
-    
-        if not os.path.exists( PathComponents(REFERENCE_DATA).externalPath ):
-            raise nose.SkipTest
+    @classmethod
+    def setupClass(cls):
+        cls.data_setup = testTiledVolume.DataSetup()
+        cls.data_setup.setup()
 
+    @classmethod
+    def teardownClass(cls):
+        cls.data_setup.teardown()
+ 
     def testBasic(self):
         graph = Graph()
         op = OpCachedTiledVolumeReader(graph=graph)
-        op.DescriptionFilePath.setValue( self.description_path )
+        op.DescriptionFilePath.setValue( self.data_setup.VOLUME_DESCRIPTION_FILE )
         
         roi = numpy.array( [(10, 150, 100), (30, 550, 550)] )
         cached_result_out = op.CachedOutput(*roi).wait()
@@ -122,7 +107,7 @@ class TestOpCachedTiledVolumeReader(object):
         # We expect a channel dimension to be added automatically...
         assert (cached_result_out.shape == roi[1] - roi[0]).all()
     
-        ref_path_comp = PathComponents(REFERENCE_DATA)
+        ref_path_comp = PathComponents(self.data_setup.REFERENCE_VOL_PATH)
         with h5py.File(ref_path_comp.externalPath, 'r') as f:
             ref_data = f[ref_path_comp.internalPath][:]
 

@@ -33,136 +33,139 @@ volume_description_text = \
                         [40, [41]] ]
 }
 """
-TILE_DIRECTORY = None
-REFERENCE_DATA = None
-REFERENCE_VOL_FILE = None
-REFERENCE_VOL_PATH = None
-VOLUME_DESCRIPTION_FILE = None
-TRANSPOSED_VOLUME_DESCRIPTION_FILE = None
 
-teardown_module = lambda: None
+class DataSetup(object):
+    def __init__(self):
+        self.TILE_DIRECTORY = None
+        self.REFERENCE_VOL_FILE = None
+        self.REFERENCE_VOL_PATH = None
+        self.VOLUME_DESCRIPTION_FILE = None
+        self.TRANSPOSED_VOLUME_DESCRIPTION_FILE = None
+        
+        self.teardown = lambda: None
 
-def setup_module():
-    """
-    Generate a directory with all the files needed for this test.
-    We use the same temporary directory every time, so hopefully we don't 
-    waste time regenerating the data if the test has already been run recently.
+    def setup(self):
+        """
+        Generate a directory with all the files needed for this test.
+        We use the same temporary directory every time, so hopefully we don't 
+        waste time regenerating the data if the test has already been run recently.
+        
+        The directory consists of the following files:
+        - reference_volume.h5
+        - volume_description.json
+        - transposed_volume_description.json
+        - [lots of png tiles..]
+        """        
+        tmp = tempfile.gettempdir()
+        self.TILE_DIRECTORY = os.path.join( tmp, 'testTiledVolume_data' )
+        self.REFERENCE_VOL_PATH = os.path.join( self.TILE_DIRECTORY, 'reference_volume.h5/data' )
+        ref_vol_path_comp = PathComponents(self.REFERENCE_VOL_PATH)
+        self.REFERENCE_VOL_FILE = ref_vol_path_comp.externalPath
+        self.VOLUME_DESCRIPTION_FILE = os.path.join( self.TILE_DIRECTORY, 'volume_description.json' )
+        self.TRANSPOSED_VOLUME_DESCRIPTION_FILE = os.path.join( self.TILE_DIRECTORY, 'transposed_volume_description.json' )
     
-    The directory consists of the following files:
-    - reference_volume.h5
-    - volume_description.json
-    - transposed_volume_description.json
-    - [lots of png tiles..]
-    """
-    global TILE_DIRECTORY
-    global REFERENCE_DATA
-    global REFERENCE_VOL_FILE
-    global REFERENCE_VOL_PATH
-    global VOLUME_DESCRIPTION_FILE
-    global TRANSPOSED_VOLUME_DESCRIPTION_FILE
+        if not os.path.exists(self.TILE_DIRECTORY):
+            print "Creating new tile directory: {}".format( self.TILE_DIRECTORY )
+            os.mkdir(self.TILE_DIRECTORY)
     
-    tmp = tempfile.gettempdir()
-    TILE_DIRECTORY = os.path.join( tmp, 'testTiledVolume_data' )
-    REFERENCE_VOL_PATH = os.path.join( TILE_DIRECTORY, 'reference_volume.h5/data' )
-    ref_vol_path_comp = PathComponents(REFERENCE_VOL_PATH)
-    REFERENCE_VOL_FILE = ref_vol_path_comp.externalPath
-    VOLUME_DESCRIPTION_FILE = os.path.join( TILE_DIRECTORY, 'volume_description.json' )
-    TRANSPOSED_VOLUME_DESCRIPTION_FILE = os.path.join( TILE_DIRECTORY, 'transposed_volume_description.json' )
-
-    if not os.path.exists(TILE_DIRECTORY):
-        print "Creating new tile directory: {}".format( TILE_DIRECTORY )
-        os.mkdir(TILE_DIRECTORY)
-
-    if not os.path.exists(REFERENCE_VOL_FILE):
-        ref_vol = numpy.random.randint(0,255, (100,600,600) ).astype(numpy.uint8)
-        with h5py.File(REFERENCE_VOL_FILE, 'w') as ref_file:
-            ref_file[ref_vol_path_comp.internalPath] = ref_vol
-    else:
-        with h5py.File(REFERENCE_VOL_FILE, 'r') as ref_file:
-            ref_vol = ref_file[ref_vol_path_comp.internalPath][:] 
-
-    need_rewrite = False
-    if not os.path.exists( VOLUME_DESCRIPTION_FILE ):
-        need_rewrite = True
-    else:
-        with open(VOLUME_DESCRIPTION_FILE, 'r') as f:
-            if f.read() != volume_description_text:
-                need_rewrite = True
+        if not os.path.exists(self.REFERENCE_VOL_FILE):
+            ref_vol = numpy.random.randint(0,255, (100,600,600) ).astype(numpy.uint8)
+            with h5py.File(self.REFERENCE_VOL_FILE, 'w') as ref_file:
+                ref_file[ref_vol_path_comp.internalPath] = ref_vol
+        else:
+            with h5py.File(self.REFERENCE_VOL_FILE, 'r') as ref_file:
+                ref_vol = ref_file[ref_vol_path_comp.internalPath][:] 
     
-    if need_rewrite:
-        with open(VOLUME_DESCRIPTION_FILE, 'w') as f:
-            f.write(volume_description_text)
-
-        # Read the volume description as a JsonConfig Namespace
-        volume_description = TiledVolume.readDescription(VOLUME_DESCRIPTION_FILE)
-
-        # Write out a copy of the description, but with custom output axes
-        config_helper = JsonConfigParser( TiledVolume.DescriptionFields )
-        transposed_description = copy.copy(volume_description)
-        transposed_description.output_axes = "xyz"
-        config_helper.writeConfigFile(TRANSPOSED_VOLUME_DESCRIPTION_FILE, transposed_description)
-
-        # Remove all old image tiles in the tile directory
-        files = os.listdir(TILE_DIRECTORY)
-        for name in files:
-            if os.path.splitext(name)[1] == '.' + volume_description.format:
-                os.remove( os.path.join(TILE_DIRECTORY, name) )
-
-        # Write the new tiles
-        export_to_tiles( ref_vol, volume_description.tile_shape_2d[0], TILE_DIRECTORY, print_progress=False )    
-
-        # To support testMissingTiles (below), remove slice 2
-        files = os.listdir(TILE_DIRECTORY)
-        for name in files:
-            if name.startswith("tile_z00002"):
-                p = os.path.join(TILE_DIRECTORY, name)
-                print "removing:", p
-                os.remove( p )
-            
-
-    # lastly, start the server
-    _start_server()
-
-def _start_server():
-    original_cwd = os.getcwd()
-    os.chdir(TILE_DIRECTORY)
-    class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
-        def log_request(self, *args, **kwargs):
-            if logger.level == logging.DEBUG:
-                SimpleHTTPServer.SimpleHTTPRequestHandler.log_request( self, *args, **kwargs )
-
-        def log_error(self, *args, **kwargs):
-            if logger.level == logging.DEBUG:
-                SimpleHTTPServer.SimpleHTTPRequestHandler.log_error( self, *args, **kwargs )
+        need_rewrite = False
+        if not os.path.exists( self.VOLUME_DESCRIPTION_FILE ):
+            need_rewrite = True
+        else:
+            with open(self.VOLUME_DESCRIPTION_FILE, 'r') as f:
+                if f.read() != volume_description_text:
+                    need_rewrite = True
+        
+        if need_rewrite:
+            with open(self.VOLUME_DESCRIPTION_FILE, 'w') as f:
+                f.write(volume_description_text)
     
-    class Server(SocketServer.TCPServer):
-        # http://stackoverflow.com/questions/10613977/a-simple-python-server-using-simplehttpserver-and-socketserver-how-do-i-close-t
-        allow_reuse_address = True
-    server = Server(("", 8000), Handler)
-    import threading
-    server_thread = threading.Thread(target=server.serve_forever)
-    server_thread.start()
+            # Read the volume description as a JsonConfig Namespace
+            volume_description = TiledVolume.readDescription(self.VOLUME_DESCRIPTION_FILE)
     
-    def shutdown_server():
-        logger.debug("Shutting down server...")
-        server.shutdown()
-        server.server_close()
-        os.chdir(original_cwd)
-        server_thread.join()
-
-    # Set the module teardown function so nosetests shuts the server down before exit.
-    global teardown_module
-    teardown_module = shutdown_server
+            # Write out a copy of the description, but with custom output axes
+            config_helper = JsonConfigParser( TiledVolume.DescriptionFields )
+            transposed_description = copy.copy(volume_description)
+            transposed_description.output_axes = "xyz"
+            config_helper.writeConfigFile(self.TRANSPOSED_VOLUME_DESCRIPTION_FILE, transposed_description)
+    
+            # Remove all old image tiles in the tile directory
+            files = os.listdir(self.TILE_DIRECTORY)
+            for name in files:
+                if os.path.splitext(name)[1] == '.' + volume_description.format:
+                    os.remove( os.path.join(self.TILE_DIRECTORY, name) )
+    
+            # Write the new tiles
+            export_to_tiles( ref_vol, volume_description.tile_shape_2d[0], self.TILE_DIRECTORY, print_progress=False )    
+    
+            # To support testMissingTiles (below), remove slice 2
+            files = os.listdir(self.TILE_DIRECTORY)
+            for name in files:
+                if name.startswith("tile_z00002"):
+                    p = os.path.join(self.TILE_DIRECTORY, name)
+                    print "removing:", p
+                    os.remove( p )
+                
+    
+        # lastly, start the server
+        self._start_server()
+    
+    def _start_server(self):
+        original_cwd = os.getcwd()
+        os.chdir(self.TILE_DIRECTORY)
+        class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+            def log_request(self, *args, **kwargs):
+                if logger.level == logging.DEBUG:
+                    SimpleHTTPServer.SimpleHTTPRequestHandler.log_request( self, *args, **kwargs )
+    
+            def log_error(self, *args, **kwargs):
+                if logger.level == logging.DEBUG:
+                    SimpleHTTPServer.SimpleHTTPRequestHandler.log_error( self, *args, **kwargs )
+        
+        class Server(SocketServer.TCPServer):
+            # http://stackoverflow.com/questions/10613977/a-simple-python-server-using-simplehttpserver-and-socketserver-how-do-i-close-t
+            allow_reuse_address = True
+        server = Server(("", 8000), Handler)
+        import threading
+        server_thread = threading.Thread(target=server.serve_forever)
+        server_thread.start()
+        
+        def shutdown_server():
+            logger.debug("Shutting down server...")
+            server.shutdown()
+            server.server_close()
+            os.chdir(original_cwd)
+            server_thread.join()
+    
+        # Set the module teardown function so nosetests shuts the server down before exit.
+        self.teardown = shutdown_server
 
 class TestTiledVolume(object):
 
+    @classmethod
+    def setupClass(cls):
+        cls.data_setup = DataSetup()
+        cls.data_setup.setup()
+
+    @classmethod
+    def teardownClass(cls):
+        cls.data_setup.teardown()
+
     def testBasic(self):
-        tiled_volume = TiledVolume( VOLUME_DESCRIPTION_FILE )
+        tiled_volume = TiledVolume( self.data_setup.VOLUME_DESCRIPTION_FILE )
         roi = numpy.array( [(10, 150, 100), (30, 550, 550)] )
         result_out = numpy.zeros( roi[1] - roi[0], dtype=tiled_volume.description.dtype )
         tiled_volume.read( roi, result_out )
          
-        ref_path_comp = PathComponents(REFERENCE_VOL_PATH)
+        ref_path_comp = PathComponents(self.data_setup.REFERENCE_VOL_PATH)
         with h5py.File(ref_path_comp.externalPath, 'r') as f:
             ref_data = f[ref_path_comp.internalPath][:]
  
@@ -174,13 +177,13 @@ class TestTiledVolume(object):
         assert (expected == result_out).all()
  
     def testMissingTiles(self):
-        tiled_volume = TiledVolume( VOLUME_DESCRIPTION_FILE )
+        tiled_volume = TiledVolume( self.data_setup.VOLUME_DESCRIPTION_FILE )
         # The test data should be missing slice 2
         roi = numpy.array( [(0, 150, 100), (10, 550, 550)] )
         result_out = numpy.zeros( roi[1] - roi[0], dtype=tiled_volume.description.dtype )
         tiled_volume.read( roi, result_out )
             
-        ref_path_comp = PathComponents(REFERENCE_VOL_PATH)
+        ref_path_comp = PathComponents(self.data_setup.REFERENCE_VOL_PATH)
         with h5py.File(ref_path_comp.externalPath, 'r') as f:
             ref_data = f[ref_path_comp.internalPath][:]
     
@@ -194,12 +197,12 @@ class TestTiledVolume(object):
         assert (expected == result_out).all()
    
     def testRemappedTiles(self):
-        tiled_volume = TiledVolume( VOLUME_DESCRIPTION_FILE )
+        tiled_volume = TiledVolume( self.data_setup.VOLUME_DESCRIPTION_FILE )
         roi = numpy.array( [(40, 150, 100), (50, 550, 550)] )
         result_out = numpy.zeros( roi[1] - roi[0], dtype=tiled_volume.description.dtype )
         tiled_volume.read( roi, result_out )
            
-        ref_path_comp = PathComponents(REFERENCE_VOL_PATH)
+        ref_path_comp = PathComponents(self.data_setup.REFERENCE_VOL_PATH)
         with h5py.File(ref_path_comp.externalPath, 'r') as f:
             ref_data = f[ref_path_comp.internalPath][:]
    
@@ -214,9 +217,18 @@ class TestTiledVolume(object):
         assert (expected == result_out).all()
 
 class TestCustomAxes(object):
+
+    @classmethod
+    def setupClass(cls):
+        cls.data_setup = DataSetup()
+        cls.data_setup.setup()
+
+    @classmethod
+    def teardownClass(cls):
+        cls.data_setup.teardown()
         
     def testCustomAxes(self):
-        tiled_volume = TiledVolume( TRANSPOSED_VOLUME_DESCRIPTION_FILE )
+        tiled_volume = TiledVolume( self.data_setup.TRANSPOSED_VOLUME_DESCRIPTION_FILE )
         roi = numpy.array( [(10, 150, 100), (30, 550, 550)] )
         result_out = numpy.zeros( roi[1] - roi[0], dtype=tiled_volume.description.dtype )
 
@@ -225,7 +237,7 @@ class TestCustomAxes(object):
         
         tiled_volume.read( roi_t, result_out_t )
          
-        ref_path_comp = PathComponents(REFERENCE_VOL_PATH)
+        ref_path_comp = PathComponents(self.data_setup.REFERENCE_VOL_PATH)
         with h5py.File(ref_path_comp.externalPath, 'r') as f:
             ref_data = f[ref_path_comp.internalPath][:]
  
