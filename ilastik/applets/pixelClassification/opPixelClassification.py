@@ -233,6 +233,9 @@ class OpPixelClassification( Operator ):
         """
         Ensure that all input images have the same number of channels.
         """
+        if not self.InputImages[laneIndex].ready():
+            return
+
         thisLaneTaggedShape = self.InputImages[laneIndex].meta.getTaggedShape()
 
         # Find a different lane and use it for comparison
