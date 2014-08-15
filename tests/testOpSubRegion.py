@@ -19,11 +19,8 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
-import threading
 import numpy
-import vigra
 from lazyflow.graph import Graph
-from lazyflow.roi import sliceToRoi, roiToSlice
 from lazyflow.operators import OpArrayPiper, OpSubRegion, OpSubRegion2
 
 
