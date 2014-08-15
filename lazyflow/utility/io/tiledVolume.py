@@ -26,7 +26,6 @@ class TiledVolume(object):
     """
     Given a directory of image tiles that make up a volume, produces numpy array volumes for arbitrary roi requests.
     """
-    
     #: These fields describe the schema of the description file.
     #: See the source code comments for a description of each field.    
     DescriptionFields = \
@@ -195,6 +194,8 @@ class TiledVolume(object):
     requests = None
     PIL = None
     
+    TEST_MODE = False # For testing purposes only. See below.    
+
     def _retrieve_tile(self, tmpdir, rest_args, tile_relative_intersection, data_out):
         # Late import
         if not TiledVolume.requests:
@@ -208,8 +209,20 @@ class TiledVolume(object):
         tmp_filename += '.' + self.description.format
         tmp_filepath = os.path.join(tmpdir, tmp_filename) 
 
-        logger.debug("Retrieving {}, saving to {}".format( tile_url, tmp_filepath ))
-        r = requests.get(tile_url)
+        logger.debug("Retrieving {}".format( tile_url ))
+        try:
+            r = requests.get(tile_url)
+        except:
+            # During testing, the server we're pulling from might be in our own process.
+            # Apparently that means that it is not very responsive, leading to exceptions.
+            # As a cheap workaround, just try one more time.
+            if self.TEST_MODE:
+                import time
+                time.sleep(0.01)
+                r = requests.get(tile_url)
+            else:
+                raise
+                
         if r.status_code == requests.codes.not_found:
             logger.warn("NOTFOUND: {}".format( tile_url, tmp_filepath ))
             data_out[:] = 0
@@ -229,6 +242,7 @@ class TiledVolume(object):
                 img = img[None]
                 #img = img.transpose()[None]
             else: 
+                logger.debug("saving to {}".format( tmp_filepath ))
                 with open(tmp_filepath, 'wb') as f:
                     CHUNK_SIZE = 10*1024
                     for chunk in r.iter_content(CHUNK_SIZE):

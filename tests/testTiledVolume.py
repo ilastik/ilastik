@@ -29,8 +29,8 @@ volume_description_text = \
     "tile_shape_2d" : [200,200],
  
     "tile_url_format" : "http://localhost:8000/tile_z{z_start:05}_y{y_start:05}_x{x_start:05}.png",
-    "extend_slices" : [ [44, [45, 46, 47]],
-                        [40, [41]] ]
+    "extend_slices" : [ [40, [41]],
+                        [44, [45, 46, 47]] ]
 }
 """
 
@@ -58,6 +58,7 @@ class DataSetup(object):
         """        
         tmp = tempfile.gettempdir()
         self.TILE_DIRECTORY = os.path.join( tmp, 'testTiledVolume_data' )
+        logger.debug("Using test directory: {}".format( self.TILE_DIRECTORY ))
         self.REFERENCE_VOL_PATH = os.path.join( self.TILE_DIRECTORY, 'reference_volume.h5/data' )
         ref_vol_path_comp = PathComponents(self.REFERENCE_VOL_PATH)
         self.REFERENCE_VOL_FILE = ref_vol_path_comp.externalPath
@@ -161,6 +162,7 @@ class TestTiledVolume(object):
 
     def testBasic(self):
         tiled_volume = TiledVolume( self.data_setup.VOLUME_DESCRIPTION_FILE )
+        tiled_volume.TEST_MODE = True
         roi = numpy.array( [(10, 150, 100), (30, 550, 550)] )
         result_out = numpy.zeros( roi[1] - roi[0], dtype=tiled_volume.description.dtype )
         tiled_volume.read( roi, result_out )
@@ -178,7 +180,8 @@ class TestTiledVolume(object):
  
     def testMissingTiles(self):
         tiled_volume = TiledVolume( self.data_setup.VOLUME_DESCRIPTION_FILE )
-        # The test data should be missing slice 2
+        tiled_volume.TEST_MODE = True
+        # The test data should be missing slice 2, and the config doesn't remap the data.
         roi = numpy.array( [(0, 150, 100), (10, 550, 550)] )
         result_out = numpy.zeros( roi[1] - roi[0], dtype=tiled_volume.description.dtype )
         tiled_volume.read( roi, result_out )
@@ -197,7 +200,10 @@ class TestTiledVolume(object):
         assert (expected == result_out).all()
    
     def testRemappedTiles(self):
+        # The config above specifies that slices 45:47 get their data from slice 44, 
+        #  and slice 41 is the same as 40
         tiled_volume = TiledVolume( self.data_setup.VOLUME_DESCRIPTION_FILE )
+        tiled_volume.TEST_MODE = True
         roi = numpy.array( [(40, 150, 100), (50, 550, 550)] )
         result_out = numpy.zeros( roi[1] - roi[0], dtype=tiled_volume.description.dtype )
         tiled_volume.read( roi, result_out )
@@ -229,6 +235,7 @@ class TestCustomAxes(object):
         
     def testCustomAxes(self):
         tiled_volume = TiledVolume( self.data_setup.TRANSPOSED_VOLUME_DESCRIPTION_FILE )
+        tiled_volume.TEST_MODE = True
         roi = numpy.array( [(10, 150, 100), (30, 550, 550)] )
         result_out = numpy.zeros( roi[1] - roi[0], dtype=tiled_volume.description.dtype )
 
@@ -259,7 +266,7 @@ if __name__ == "__main__":
 
     tiledVolumeLogger = logging.getLogger("lazyflow.utility.io.tiledVolume")
     tiledVolumeLogger.addHandler( handler )
-    tiledVolumeLogger.setLevel(logging.ERROR)
+    tiledVolumeLogger.setLevel(logging.DEBUG)
 
     import sys
     import nose
