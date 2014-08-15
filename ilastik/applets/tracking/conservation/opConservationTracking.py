@@ -35,7 +35,7 @@ class OpConservationTracking(OpTrackingBase):
         self.MergerOutputHdf5.connect(self._mergerOpCache.OutputHdf5)
         self.MergerCachedOutput.connect(self._mergerOpCache.Output)
         
-        self.Tracker = None
+        self.tracker = None
 
 
     def setupOutputs(self):
@@ -181,35 +181,35 @@ class OpConservationTracking(OpTrackingBase):
         if ndim == 2:
             assert z_range[0] * z_scale == 0 and (z_range[1]-1) * z_scale == 0, "fov of z must be (0,0) if ndim==2"
 
-        if(self.Tracker == None or graph_building_parameter_changed):
-            self.Tracker = pgmlink.ConsTracking(maxObj,
+        if(self.tracker == None or graph_building_parameter_changed):
+            print '\033[94m' +"make new graph"+  '\033[0m'
+            self.tracker = pgmlink.ConsTracking(maxObj,
+                                         sizeDependent,   # size_dependent_detection_prob
+                                         float(median_obj_size[0]), # median_object_size
                                          float(maxDist),
+                                         withDivisions,
                                          float(divThreshold),
                                          "none",  # detection_rf_filename
-                                         sizeDependent,   # size_dependent_detection_prob
-                                         0,       # forbidden_cost
-                                         float(ep_gap), # ep_gap
-                                         float(median_obj_size[0]), # median_object_size
-                                         withTracklets,
-                                         divWeight,
-                                         transWeight,
-                                         withDivisions,
-                                         disappearance_cost, # disappearance cost
-                                         appearance_cost, # appearance cost
-                                         withMergerResolution,
-                                         ndim,
-                                         transition_parameter,
-                                         borderAwareWidth,
                                          fov,
-                                         True, #with_constraints
-                                         cplex_timeout,
                                          "none" # dump traxelstore
                                          )
-            self.Tracker.buildGraph(ts)
-            
+            self.tracker.buildGraph(ts)
         
         try:
-            eventsVector = self.Tracker.track(coordinate_map.get())
+            eventsVector = self.tracker.track(0,       # forbidden_cost
+                                            float(ep_gap), # ep_gap
+                                            withTracklets,
+                                            divWeight,
+                                            transWeight,
+                                            disappearance_cost, # disappearance cost
+                                            appearance_cost, # appearance cost
+                                            withMergerResolution,
+                                            ndim,
+                                            transition_parameter,
+                                            borderAwareWidth,
+                                            True, #with_constraints
+                                            cplex_timeout,
+                                            coordinate_map.get())
         except Exception as e:
             raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
         
