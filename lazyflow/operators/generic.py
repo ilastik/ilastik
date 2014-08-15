@@ -488,88 +488,20 @@ class OpSingleChannelSelector(Operator):
         else:
             self.Output.setDirty(slice(None))
 
-
 class OpSubRegion(Operator):
-    name = "OpSubRegion"
-    description = "Select a region of interest from an numpy array"
-
-    inputSlots = [InputSlot("Input"), InputSlot("Start"), InputSlot("Stop"), InputSlot("propagate_dirty", value = True)]
-    outputSlots = [OutputSlot("Output")]
-    
-    def __init__(self, *args, **kwargs):
-        Operator.__init__(self, *args, **kwargs)
-        self._propagate_dirty = False
-
-    def setupOutputs(self):
-        self._propagate_dirty = self.propagate_dirty.value
-        start = self.inputs["Start"].value
-        stop = self.inputs["Stop"].value
-        assert isinstance(start, tuple)
-        assert isinstance(stop, tuple)
-        assert len(start) == len(self.inputs["Input"].meta.shape), \
-            "dimension mismatch: {} vs {}".format( start, self.Input.meta.shape )
-        assert len(start) == len(stop)
-        assert (numpy.array(stop)>= numpy.array(start)).all()
-    
-        out_shape = TinyVector(stop) - TinyVector(start)
-        if (out_shape <= 0).any():
-            self.Output.meta.NOTREADY = True
-        else:
-            self.Output.meta.assignFrom(self.Input.meta)
-            self.Output.meta.shape = tuple(out_shape)
-            if self.Input.meta.drange is not None:
-                self.Output.meta.drange = self.Input.meta.drange
-            
-    def execute(self, slot, subindex, roi, result):
-        key = roiToSlice(roi.start,roi.stop)
-
-        start = self.inputs["Start"].value
-        stop = self.inputs["Stop"].value
-
-        temp = tuple()
-        for i in xrange(len(start)):
-            if stop[i] - start[i] > 0:
-                temp += (stop[i]-start[i],)
-
-        readStart, readStop = sliceToRoi(key, temp)
-        newKey = ()
-        i = 0
-        i2 = 0
-        for kkk in xrange(len(start)):
-            e = stop[kkk] - start[kkk]
-            if e > 0:
-                newKey += (slice(start[i2] + readStart[i], start[i2] + readStop[i],None),)
-                i +=1
-            else:
-                newKey += (slice(start[i2], start[i2], None),)
-            i2 += 1
-        self.inputs["Input"][newKey].writeInto(result).wait()
-        return result
-        
-    def propagateDirty(self, dirtySlot, subindex, roi):
-        if self._propagate_dirty and dirtySlot == self.Input:
-            # Translate the input key to a small subregion key
-            smallstart = roi.start - self.Start.value
-            smallstop = roi.stop - self.Start.value
-            
-            # Clip to our output shape
-            smallstart = numpy.maximum(smallstart, 0)
-            smallstop = numpy.minimum(smallstop, self.Output.meta.shape)
-
-            # If there's an intersection with our output,
-            #  propagate dirty region to output
-            if ((smallstop - smallstart ) > 0).all():
-                self.Output.setDirty( smallstart, smallstop )
-
-class OpSubRegion2(Operator):
     """
-    A simplified version of OpSubRegion:
+    Select a subregion from a larger input.
+    For example, could be used to select a (10,10) region from an input of (100,100), 
+        in which case the Input has shape (100,100) and the Output has shape (10,10)
+    
+    This operator has been rewritten and has the following differences compared old implementation of OpSubRegion:
     - Takes a single Roi input instead of separate Start/Stop inputs.
+    - Since start/stop are provided in one slot, they are applied at the same time and can never be out-of-sync. 
     - Always propagates dirty state.
     - Simpler implementation...
     """
     Input = InputSlot()
-    Roi = InputSlot() # tuple: (start, stop)
+    Roi = InputSlot() # value slot. value is a tuple: (start, stop)
     Output = OutputSlot()
 
     def setupOutputs(self):

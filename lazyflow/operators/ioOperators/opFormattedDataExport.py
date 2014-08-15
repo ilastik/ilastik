@@ -26,7 +26,7 @@ import numpy
 from lazyflow.utility import format_known_keys
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiFromShape
-from lazyflow.operators.generic import OpSubRegion2, OpPixelOperator
+from lazyflow.operators.generic import OpSubRegion, OpPixelOperator
 from lazyflow.operators.valueProviders import OpMetadataInjector
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
@@ -81,7 +81,7 @@ class OpFormattedDataExport(Operator):
         super( OpFormattedDataExport, self ).__init__(*args, **kwargs)
         self._dirty = True
 
-        opSubRegion = OpSubRegion2( parent=self )
+        opSubRegion = OpSubRegion( parent=self )
         opSubRegion.Input.connect( self.Input )
         self._opSubRegion = opSubRegion
         

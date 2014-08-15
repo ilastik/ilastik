@@ -241,7 +241,7 @@ class OpBlockedArrayCache(OpCache):
                 if not self._fixed:
                     if not self._cache_list.has_key(b_ind):
 
-                        self._opSub_list[b_ind] = generic.OpSubRegion2(parent=self)
+                        self._opSub_list[b_ind] = generic.OpSubRegion(parent=self)
                         self._opSub_list[b_ind].inputs["Input"].connect(self.inputs["Input"])
                         tstart = self._blockShape*block_multi_index
                         tstop = numpy.minimum((block_multi_index+numpy.ones(block_multi_index.shape, numpy.uint8))*self._blockShape, self.shape)

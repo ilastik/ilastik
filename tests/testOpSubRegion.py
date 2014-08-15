@@ -21,13 +21,8 @@
 ###############################################################################
 import numpy
 from lazyflow.graph import Graph
-from lazyflow.operators import OpArrayPiper, OpSubRegion, OpSubRegion2
-
-
-class KeyMaker():
-    def __getitem__(self, *args):
-        return list(*args)
-make_key = KeyMaker()
+from lazyflow.operators.opArrayPiper import OpArrayPiper
+from lazyflow.operators.generic import OpSubRegion
 
 class TestOpSubRegion(object):
     
@@ -40,8 +35,7 @@ class TestOpSubRegion(object):
         opSubRegion = OpSubRegion( graph=graph )
         opSubRegion.Input.connect( opProvider.Output )
         
-        opSubRegion.Start.setValue( (0,20,30,5,0) )
-        opSubRegion.Stop.setValue( (1,30,50,8,1) )
+        opSubRegion.Roi.setValue( ((0,20,30,5,0), (1,30,50,8,1)) )
         
         subData = opSubRegion.Output( start=( 0,5,10,1,0 ), stop=( 1,10,20,3,1 ) ).wait()
         assert (subData == data[0:1, 25:30, 40:50, 6:8, 0:1]).all()
@@ -55,54 +49,6 @@ class TestOpSubRegion(object):
         opSubRegion = OpSubRegion( graph=graph )
         opSubRegion.Input.connect( opProvider.Output )
         
-        opSubRegion.Start.setValue( (0,20,30,5,0) )
-        opSubRegion.Stop.setValue( (1,30,50,8,1) )
-        
-        gotDirtyRois = []
-        def handleDirty(slot, roi):
-            gotDirtyRois.append(roi)
-        opSubRegion.Output.notifyDirty(handleDirty)
-
-        # Set an input dirty region that overlaps with the subregion
-        key = make_key[0:1, 15:35, 32:33, 0:10, 0:1 ]
-        opProvider.Input.setDirty( key )
-
-        assert len(gotDirtyRois) == 1
-        assert gotDirtyRois[0].start == [0,0,2,0,0]
-        assert gotDirtyRois[0].stop == [1,10,3,3,1]
-
-        # Now mark a region that DOESN'T overlap with the subregion
-        key = make_key[0:1, 70:80, 32:33, 0:10, 0:1 ]
-        opProvider.Input.setDirty( key )
-
-        # Should have gotten no extra dirty notifications
-        assert len(gotDirtyRois) == 1
-
-class TestOpSubRegion2(object):
-    
-    def testOutput(self):
-        graph = Graph()
-        data = numpy.random.random( (1,100,100,10,1) )
-        opProvider = OpArrayPiper(graph=graph)
-        opProvider.Input.setValue(data)
-        
-        opSubRegion = OpSubRegion2( graph=graph )
-        opSubRegion.Input.connect( opProvider.Output )
-        
-        opSubRegion.Roi.setValue( ((0,20,30,5,0), (1,30,50,8,1)) )
-        
-        subData = opSubRegion.Output( start=( 0,5,10,1,0 ), stop=( 1,10,20,3,1 ) ).wait()
-        assert (subData == data[0:1, 25:30, 40:50, 6:8, 0:1]).all()
-
-    def testDirtyPropagation(self):
-        graph = Graph()
-        data = numpy.random.random( (1,100,100,10,1) )
-        opProvider = OpArrayPiper(graph=graph)
-        opProvider.Input.setValue(data)
-        
-        opSubRegion = OpSubRegion2( graph=graph )
-        opSubRegion.Input.connect( opProvider.Output )
-        
         opSubRegion.Roi.setValue( ((0,20,30,5,0), (1,30,50,8,1)) )
         
         gotDirtyRois = []
@@ -111,7 +57,7 @@ class TestOpSubRegion2(object):
         opSubRegion.Output.notifyDirty(handleDirty)
 
         # Set an input dirty region that overlaps with the subregion
-        key = make_key[0:1, 15:35, 32:33, 0:10, 0:1 ]
+        key = numpy.s_[0:1, 15:35, 32:33, 0:10, 0:1 ]
         opProvider.Input.setDirty( key )
 
         assert len(gotDirtyRois) == 1
@@ -119,7 +65,7 @@ class TestOpSubRegion2(object):
         assert gotDirtyRois[0].stop == [1,10,3,3,1]
 
         # Now mark a region that DOESN'T overlap with the subregion
-        key = make_key[0:1, 70:80, 32:33, 0:10, 0:1 ]
+        key = numpy.s_[0:1, 70:80, 32:33, 0:10, 0:1 ]
         opProvider.Input.setDirty( key )
 
         # Should have gotten no extra dirty notifications
@@ -132,15 +78,4 @@ if __name__ == "__main__":
     sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
     sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
     ret = nose.run(defaultTest=__file__)
-
-
-
-
-
-
-
-
-
-
-
     if not ret: sys.exit(1)

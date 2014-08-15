@@ -27,7 +27,7 @@ import numpy
 from lazyflow.graph import Operator, InputSlot
 from lazyflow.utility import OrderedSignal
 from lazyflow.roi import roiFromShape
-from lazyflow.operators.generic import OpSubRegion2
+from lazyflow.operators.generic import OpSubRegion
 
 from .opExportMultipageTiff import OpExportMultipageTiff
 
@@ -83,7 +83,7 @@ class OpExportMultipageTiffSequence(Operator):
             roi = map(tuple, roi)
 
             try:
-                opSubregion = OpSubRegion2( parent=self )
+                opSubregion = OpSubRegion( parent=self )
                 opSubregion.Roi.setValue( roi )
                 opSubregion.Input.connect( self.Input )
 

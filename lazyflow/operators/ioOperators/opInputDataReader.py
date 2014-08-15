@@ -20,7 +20,7 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpImageReader, OpBlockedArrayCache, OpMetadataInjector, OpSubRegion2
+from lazyflow.operators import OpImageReader, OpBlockedArrayCache, OpMetadataInjector, OpSubRegion
 from opStreamingHdf5Reader import OpStreamingHdf5Reader
 from opNpyFileReader import OpNpyFileReader
 from lazyflow.operators.ioOperators import OpStackLoader, OpBlockwiseFilesetReader, OpRESTfulBlockwiseFilesetReader, OpCachedTiledVolumeReader
@@ -142,7 +142,7 @@ class OpInputDataReader(Operator):
 
         # If we've got a ROI, append a subregion operator.
         if self.SubVolumeRoi.ready():
-            self._opSubRegion = OpSubRegion2( parent=self )
+            self._opSubRegion = OpSubRegion( parent=self )
             self._opSubRegion.Roi.setValue( self.SubVolumeRoi.value )
             self._opSubRegion.Input.connect( self.internalOutput )
             self.internalOutput = self._opSubRegion.Output
