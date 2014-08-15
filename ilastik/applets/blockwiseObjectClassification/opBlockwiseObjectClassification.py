@@ -28,7 +28,7 @@ import numpy
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.request import RequestLock
 from lazyflow.roi import getIntersectingBlocks, getBlockBounds, getIntersection, roiToSlice
-from lazyflow.operators import OpSubRegion2, OpMultiArrayStacker
+from lazyflow.operators import OpSubRegion, OpMultiArrayStacker
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List
 
@@ -103,10 +103,10 @@ class OpSingleBlockObjectPrediction( Operator ):
         self.block_roi = block_roi # In global coordinates
         self._halo_padding = halo_padding
         
-        self._opBinarySubRegion = OpSubRegion2( parent=self )
+        self._opBinarySubRegion = OpSubRegion( parent=self )
         self._opBinarySubRegion.Input.connect( self.BinaryImage )
         
-        self._opRawSubRegion = OpSubRegion2( parent=self )
+        self._opRawSubRegion = OpSubRegion( parent=self )
         self._opRawSubRegion.Input.connect( self.RawImage )
         
         self._opExtract = OpObjectExtraction( parent=self )
