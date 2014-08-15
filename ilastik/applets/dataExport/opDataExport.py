@@ -25,7 +25,7 @@ import numpy
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility import PathComponents, getPathVariants, format_known_keys
 from lazyflow.operators.ioOperators import OpInputDataReader, OpFormattedDataExport
-from lazyflow.operators.generic import OpSubRegion
+from lazyflow.operators.generic import OpSubRegion2
 from lazyflow.operators.valueProviders import OpMetadataInjector
 
 class OpDataExport(Operator):
@@ -441,9 +441,8 @@ def get_model_op(wrappedOp):
 
     # Must provide a 'ready' slot for the gui
     # Use a subregion operator to provide a slot with the meta data we chose.
-    opSubRegion = OpSubRegion( parent=wrappedOp.parent )
-    opSubRegion.Start.setValue( (0,)*len(shape) )
-    opSubRegion.Stop.setValue( tuple(shape) )
+    opSubRegion = OpSubRegion2( parent=wrappedOp.parent )
+    opSubRegion.Roi.setValue( [(0,)*len(shape), tuple(shape)] )
     opSubRegion.Input.connect( slot )
     
     # (The actual contents of this slot are not important to the settings gui.

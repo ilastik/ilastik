@@ -43,7 +43,7 @@ import vigra
 
 from lazyflow.operator import InputSlot
 from lazyflow.graph import Operator, OutputSlot, Graph
-from lazyflow.operators.generic import OpSubRegion
+from lazyflow.operators.generic import OpSubRegion2
 ##add tot hte pos model
 from ilastik.widgets.boxListModel import BoxLabel, BoxListModel
 
@@ -550,7 +550,7 @@ class CoupledRectangleElement(object):
 
 
         self._rectItem=QGraphicsResizableRect(x,y,h,w,scene,parent,editor)
-        self._opsub = OpSubRegion(graph=inputSlot.operator.graph, parent = inputSlot.operator.parent) #sub region correspondig to the rectangle region
+        self._opsub = OpSubRegion2(graph=inputSlot.operator.graph, parent = inputSlot.operator.parent) #sub region correspondig to the rectangle region
         #self.opsum = OpSumAll(graph=inputSlot.operator.graph)
         self._graph=inputSlot.operator.graph
         self._inputSlot=inputSlot #input slot which connect to the sub array
@@ -566,9 +566,7 @@ class CoupledRectangleElement(object):
 
         #Operator changes
         self._opsub.Input.connect(self._inputSlot)
-        self._opsub.Start.setValue(self.getStart())
-        self._opsub.Stop.setValue(self.getStop())
-#         self.opsum.Input.connect(self._opsub.Output)
+        self._opsub.Roi.setValue( [self.getStart(), self.getStop()] )
         self._inputSlot.notifyDirty(self._updateTextWhenChanges)
 
 
@@ -659,10 +657,8 @@ class CoupledRectangleElement(object):
             start.append(int(np.minimum(s1,s2)))
             stop.append(int(np.maximum(s1,s2)))
 
-        self._opsub.Stop.disconnect()
-        self._opsub.Start.disconnect()
-        self._opsub.Start.setValue(tuple(start))
-        self._opsub.Stop.setValue(tuple(stop))
+        self._opsub.Roi.disconnect()
+        self._opsub.Roi.setValue([ tuple(start), tuple(stop)] )
 
 
         return self._opsub.outputs["Output"][:].wait()
