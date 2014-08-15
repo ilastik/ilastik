@@ -29,7 +29,9 @@ logger = logging.getLogger(__name__)
 
 #PyQt
 from PyQt4 import uic
-from PyQt4.QtGui import QWidget, QStackedWidget, QMessageBox, QFileDialog, QDialog
+from PyQt4.QtCore import Qt
+from PyQt4.QtGui import QWidget, QStackedWidget, QMessageBox, QFileDialog, \
+                        QDialog, QVBoxLayout, QLabel, QComboBox, QDialogButtonBox
 
 #lazyflow
 from lazyflow.request import Request
@@ -71,6 +73,31 @@ class GuiMode():
     Normal = 0
     Batch = 1
 
+
+class H5VolumeSelectionDlg(QDialog):
+    """
+    A window to ask the user to choose between multiple HDF5 datasets in a single file.
+    """
+    def __init__(self, datasetNames, parent):
+        super(H5VolumeSelectionDlg, self).__init__(parent)                        
+        label = QLabel( "Your HDF5 File contains multiple image volumes.\n"
+                        "Please select the one you would like to open." )
+        
+        self.combo = QComboBox()
+        for name in datasetNames:
+            self.combo.addItem(name)
+        
+        buttonbox = QDialogButtonBox( Qt.Horizontal, parent=self )
+        buttonbox.setStandardButtons( QDialogButtonBox.Ok | QDialogButtonBox.Cancel )
+        buttonbox.accepted.connect( self.accept )
+        buttonbox.rejected.connect( self.reject )
+        
+        layout = QVBoxLayout()
+        layout.addWidget( label )
+        layout.addWidget( self.combo )
+        layout.addWidget( buttonbox )
+        
+        self.setLayout(layout)
 
 class DataSelectionGui(QWidget):
     """
@@ -124,6 +151,12 @@ class DataSelectionGui(QWidget):
 
     ###########################################
     ###########################################
+
+    class UserCancelledError(Exception):
+        # This exception type is raised when the user cancels the 
+        #  addition of dataset files in the middle of the process somewhere.
+        # It isn't an error -- it's used for control flow.
+        pass
 
     def __init__(self, parentApplet, dataSelectionOperator, serializer, instructionText, guiMode=GuiMode.Normal, max_lanes=None):
         """
@@ -440,7 +473,10 @@ class DataSelectionGui(QWidget):
             return
 
         # Create a list of DatasetInfos
-        infos = self._createDatasetInfos(fileNames, rois)
+        try:
+            infos = self._createDatasetInfos(fileNames, rois)
+        except DataSelectionGui.UserCancelledError:
+            return
         
         # If no exception was thrown so far, set up the operator now
         loaded_all = self._configureOpWithInfos(roleIndex, startingLane, endingLane, infos)
@@ -532,10 +568,18 @@ class DataSelectionGui(QWidget):
         h5Exts = ['.ilp', '.h5', '.hdf5']
         if os.path.splitext(datasetInfo.filePath)[1] in h5Exts:
             datasetNames = self.getPossibleInternalPaths( absPath )
-            if len(datasetNames) > 0:
+            if len(datasetNames) == 0:
+                raise RuntimeError("HDF5 file %s has no image datasets" % datasetInfo.filePath)
+            elif len(datasetNames) == 1:
                 datasetInfo.filePath += str(datasetNames[0])
             else:
-                raise RuntimeError("HDF5 file %s has no image datasets" % datasetInfo.filePath)
+                # Ask the user which dataset to choose
+                dlg = H5VolumeSelectionDlg(datasetNames, self)
+                if dlg.exec_() == QDialog.Accepted:
+                    selected_index = dlg.combo.currentIndex()
+                    datasetInfo.filePath += str(datasetNames[selected_index])
+                else:
+                    raise DataSelectionGui.UserCancelledError()
 
         # Allow labels by default if this gui isn't being used for batch data.
         datasetInfo.allowLabels = ( self.guiMode == GuiMode.Normal )
