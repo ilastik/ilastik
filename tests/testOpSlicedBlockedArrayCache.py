@@ -23,8 +23,9 @@ import threading
 import numpy
 import vigra
 from lazyflow.graph import Graph
-from lazyflow.roi import sliceToRoi, roiToSlice
-from lazyflow.operators import OpArrayPiper, OpSlicedBlockedArrayCache
+from lazyflow.roi import roiToSlice
+from lazyflow.operators.opArrayPiper import OpArrayPiper
+from lazyflow.operators.opSlicedBlockedArrayCache import OpSlicedBlockedArrayCache
 
 class KeyMaker():
     def __getitem__(self, *args):
@@ -43,10 +44,10 @@ class OpArrayPiperWithAccessCount(OpArrayPiper):
     
     def execute(self, slot, subindex, roi, result):
         with self._lock:
-            self.accessCount += 1        
+            self.accessCount += 1
         if self.printRoi:
-            print "Access: ",roi
-        super(OpArrayPiperWithAccessCount, self).execute(slot, subindex, roi, result)        
+            print "Access: {}".format(roi)
+        super(OpArrayPiperWithAccessCount, self).execute(slot, subindex, roi, result)
 
 class TestOpSlicedBlockedArrayCache(object):
 
@@ -152,8 +153,8 @@ class TestOpSlicedBlockedArrayCache(object):
         # The dirty data intersected 2 outerBlocks and a total of 3 innerBlock.
         minAccess = oldAccessCount + 2
         maxAccess = oldAccessCount + 3
-        assert opProvider.accessCount >= minAccess
-        assert opProvider.accessCount <= maxAccess
+        assert opProvider.accessCount >= minAccess, "Extra accesses: {}, expected >= {}".format( opProvider.accessCount - oldAccessCount, 2 )
+        assert opProvider.accessCount <= maxAccess, "Extra accesses: {}, expected <= {}".format( opProvider.accessCount - oldAccessCount, 3 )
         oldAccessCount = opProvider.accessCount
 
     def testFixAtCurrent(self):
