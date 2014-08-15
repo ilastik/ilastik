@@ -26,7 +26,7 @@ import numpy
 from lazyflow.utility import format_known_keys
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiFromShape
-from lazyflow.operators.generic import OpSubRegion, OpPixelOperator
+from lazyflow.operators.generic import OpSubRegion2, OpPixelOperator
 from lazyflow.operators.valueProviders import OpMetadataInjector
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
@@ -81,7 +81,7 @@ class OpFormattedDataExport(Operator):
         super( OpFormattedDataExport, self ).__init__(*args, **kwargs)
         self._dirty = True
 
-        opSubRegion = OpSubRegion( parent=self )
+        opSubRegion = OpSubRegion2( parent=self )
         opSubRegion.Input.connect( self.Input )
         self._opSubRegion = opSubRegion
         
@@ -130,15 +130,11 @@ class OpFormattedDataExport(Operator):
             # RegionStop is permitted to contain 'None' values, 
             #  which we replace with the full extent of the corresponding axis
             new_stop = map( lambda (x, extent): x or extent, zip(self.RegionStop.value, total_roi[1]) )
-        else:
-            self._opSubRegion.Stop.setValue( tuple(total_roi[1]) )
 
-        if not self._opSubRegion.Start.ready() or \
-           not self._opSubRegion.Stop.ready() or \
-           self._opSubRegion.Start.value != new_start or \
-           self._opSubRegion.Stop.value != new_stop:
-            # Disconnect first to ensure that the start/stop slots are applied together (atomically)
-            self._opSubRegion.Stop.disconnect()
+        new_start, new_stop = tuple(new_start), tuple(new_stop)
+
+        if not self._opSubRegion.Roi.ready() or \
+           self._opSubRegion.Roi.value != (new_start, new_stop):
 
             # Provide the coordinate offset, but only for the axes that are present in the output image
             tagged_input_offset = collections.defaultdict( lambda: -1, zip(self.Input.meta.getAxisKeys(), new_start ) )
@@ -147,8 +143,7 @@ class OpFormattedDataExport(Operator):
             output_offset = tuple( filter( lambda x: x != -1, output_offset ) )
             self._opExportSlot.CoordinateOffset.setValue( output_offset )
 
-            self._opSubRegion.Start.setValue( tuple(new_start) )
-            self._opSubRegion.Stop.setValue( tuple(new_stop) )
+            self._opSubRegion.Roi.setValue( (new_start, new_stop) )
 
         # Set up normalization and dtype conversion
         export_dtype = self.Input.meta.dtype
@@ -201,8 +196,7 @@ class OpFormattedDataExport(Operator):
             self._opReorderAxes.AxisOrder.setValue( "".join( tag.key for tag in axistags ) )
 
         # Obtain values for possible name fields
-        roi = [ tuple(self._opSubRegion.Start.value), tuple(self._opSubRegion.Stop.value) ]
-        known_keys = { 'roi' : roi }
+        known_keys = { 'roi' : list(self._opSubRegion.Roi.value) }
 
         # Blank the internal path while we update the external path
         #  to avoid invalid intermediate states of ExportPath

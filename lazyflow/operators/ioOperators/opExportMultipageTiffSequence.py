@@ -27,7 +27,7 @@ import numpy
 from lazyflow.graph import Operator, InputSlot
 from lazyflow.utility import OrderedSignal
 from lazyflow.roi import roiFromShape
-from lazyflow.operators.generic import OpSubRegion
+from lazyflow.operators.generic import OpSubRegion2
 
 from .opExportMultipageTiff import OpExportMultipageTiff
 
@@ -80,11 +80,11 @@ class OpExportMultipageTiffSequence(Operator):
         for block_index in xrange( tagged_shape[step_axis] ):
             roi = numpy.array(roiFromShape(block_shape))
             roi += block_index*block_step
+            roi = map(tuple, roi)
 
             try:
-                opSubregion = OpSubRegion( parent=self )
-                opSubregion.Start.setValue( tuple(roi[0]) )
-                opSubregion.Stop.setValue( tuple(roi[1]) )
+                opSubregion = OpSubRegion2( parent=self )
+                opSubregion.Roi.setValue( roi )
                 opSubregion.Input.connect( self.Input )
 
                 formatted_path = filepattern.format( slice_index=(block_index + self.SliceIndexOffset.value) )
