@@ -24,7 +24,7 @@ logger = logging.getLogger('tests.testOpSparseLabelArray')
 
 import numpy
 from lazyflow.graph import Graph
-from lazyflow.operators import OpSparseLabelArray
+from lazyflow.operators.opSparseLabelArray import OpSparseLabelArray
 
 from lazyflow.utility.slicingtools import sl, slicing2shape
 from lazyflow.utility import timeLogged
