@@ -172,6 +172,7 @@ class DataSelectionGui(QWidget):
         
         self.parentApplet = parentApplet
         self._max_lanes = max_lanes
+        self._default_h5_volumes = {}
 
         self._viewerControls = QWidget()
         self.topLevelOperator = dataSelectionOperator
@@ -474,7 +475,7 @@ class DataSelectionGui(QWidget):
 
         # Create a list of DatasetInfos
         try:
-            infos = self._createDatasetInfos(fileNames, rois)
+            infos = self._createDatasetInfos(roleIndex, fileNames, rois)
         except DataSelectionGui.UserCancelledError:
             return
         
@@ -528,7 +529,7 @@ class DataSelectionGui(QWidget):
 
         return (startingLane, endingLane)
 
-    def _createDatasetInfos(self, filePaths, rois):
+    def _createDatasetInfos(self, roleIndex, filePaths, rois):
         """
         Create a list of DatasetInfos for the given filePaths and rois
         rois may be None, in which case it is ignored.
@@ -539,11 +540,11 @@ class DataSelectionGui(QWidget):
 
         infos = []
         for filePath, roi in zip(filePaths, rois):
-            info = self._createDatasetInfo(filePath, roi)
+            info = self._createDatasetInfo(roleIndex, filePath, roi)
             infos.append(info)
         return infos
 
-    def _createDatasetInfo(self, filePath, roi):
+    def _createDatasetInfo(self, roleIndex, filePath, roi):
         """
         Create a DatasetInfo object for the given filePath and roi.
         roi may be None, in which case it is ignored.
@@ -573,13 +574,23 @@ class DataSelectionGui(QWidget):
             elif len(datasetNames) == 1:
                 datasetInfo.filePath += str(datasetNames[0])
             else:
-                # Ask the user which dataset to choose
-                dlg = H5VolumeSelectionDlg(datasetNames, self)
-                if dlg.exec_() == QDialog.Accepted:
-                    selected_index = dlg.combo.currentIndex()
-                    datasetInfo.filePath += str(datasetNames[selected_index])
+                # If exactly one of the file's datasets matches a user's previous choice, use it.
+                if roleIndex not in self._default_h5_volumes:
+                    self._default_h5_volumes[roleIndex] = set()
+                previous_selections = self._default_h5_volumes[roleIndex]
+                possible_auto_selections = previous_selections.intersection(datasetNames)
+                if len(possible_auto_selections) == 1:
+                    datasetInfo.filePath += str(list(possible_auto_selections)[0])
                 else:
-                    raise DataSelectionGui.UserCancelledError()
+                    # Ask the user which dataset to choose
+                    dlg = H5VolumeSelectionDlg(datasetNames, self)
+                    if dlg.exec_() == QDialog.Accepted:
+                        selected_index = dlg.combo.currentIndex()
+                        selected_dataset = str(datasetNames[selected_index])
+                        datasetInfo.filePath += selected_dataset
+                        self._default_h5_volumes[roleIndex].add( selected_dataset )
+                    else:
+                        raise DataSelectionGui.UserCancelledError()
 
         # Allow labels by default if this gui isn't being used for batch data.
         datasetInfo.allowLabels = ( self.guiMode == GuiMode.Normal )
