@@ -32,6 +32,11 @@ class TestThreadPool(object):
     @classmethod
     def setupClass(cls):
         cls.thread_pool = ThreadPool(num_workers = 4)
+
+#     def testtest(self):
+#         for i in range(100):
+#             print i
+#             self.testBasic()
     
     def testBasic(self):        
         e1 = threading.Event()
@@ -51,13 +56,14 @@ class TestThreadPool(object):
         e2.wait()
         
         # This is just to make sure the test is doing what its supposed to.
-        assert f1.assigned_worker != f2.assigned_worker
+        assert f1.assigned_worker != f2.assigned_worker, \
+            "{} == {}".format( f1.assigned_worker, f2.assigned_worker )
 
     def test(self):
-        for i in range(100):
-            self.testAssignmentConsistency()
-
-    def testAssignmentConsistency(self):
+        for _ in range(10):
+            self._testAssignmentConsistency()
+ 
+    def _testAssignmentConsistency(self):
         """
         If a callable is woken up (executed) more than once from the ThreadPool, it will execute on the same thread every time.
         (This is a useful guarantee for e.g. greenlet-based callables.)
@@ -67,38 +73,38 @@ class TestThreadPool(object):
         def f():
             f_thread_ids.append( threading.current_thread() )
             e.set()
-        
+         
         # First time
         e.clear()
         self.thread_pool.wake_up( f )
         e.wait()
-        
+         
         # Second time, same callable
         e.clear()
         self.thread_pool.wake_up( f )
         e.wait()
         assert f_thread_ids[0] == f_thread_ids[1], "Callable should always execute on the same worker thread!"
-
+ 
         # Another example: Now do the same thing, but with a (wrapped) generator as the callable
         gen_thread_ids = []
         def gen():
             while True:
                 gen_thread_ids.append( threading.current_thread() )
                 yield e.set()
-
+ 
         class WrappedGenerator(object):
             def __init__(self, generator):
                 self.generator = generator
-            
+             
             def __call__(self):
                 return self.generator.next()
-
+ 
         # First time
         g = WrappedGenerator( gen() )
         e.clear()
         self.thread_pool.wake_up( g )
         e.wait()
-
+ 
         # Overload the threadpool with work, 
         #  which should encourage random assignment of threads if something is broken
         def delay1(): time.sleep(0.2)
@@ -106,18 +112,22 @@ class TestThreadPool(object):
         def delay3(): time.sleep(0.2)
         def delay4(): time.sleep(0.2)
         def delay5(): time.sleep(0.2)
-        
+         
         self.thread_pool.wake_up( delay1 )
         self.thread_pool.wake_up( delay2 )
         self.thread_pool.wake_up( delay3 )
         self.thread_pool.wake_up( delay4 )
         self.thread_pool.wake_up( delay5 )
-        
+         
         # Second time, same callable
         e.clear()
         self.thread_pool.wake_up( g )
         e.wait()
         assert gen_thread_ids[0] == gen_thread_ids[1], "Callable should always execute on the same worker thread!"
+        
+        # Ensure that all tasks have been processed
+        # (avoid interfering with other tests in this suite).
+        self.thread_pool._wait_for_idle()
 
 
 if __name__ == "__main__":
