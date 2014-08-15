@@ -1,5 +1,5 @@
 import numpy
-from lazyflow.roi import determineBlockShape
+from lazyflow.roi import determineBlockShape, getIntersection
 
 class Test_determineBlockShape(object):
     
@@ -32,6 +32,29 @@ class Test_determineBlockShape(object):
         else:
             assert False, "Expected assertion in determineBlockShape() due to invalid inputs"
 
+class Test_getIntersection(object):
+    
+    def testBasic(self):
+        roiA = [(10,10,10), (20,20,20)]
+        roiB = [(15,16,17), (25,25,25)]
+        intersection = getIntersection( roiA, roiB ) 
+        assert (numpy.array(intersection) == ( [15,16,17], [20,20,20] )).all()
+
+    def testAssertNonIntersect(self):
+        roiA = [(10,10,10), (20,20,20)]
+        roiB = [(15,26,27), (16,30,30)]
+        try:
+            intersection = getIntersection( roiA, roiB )
+        except AssertionError:
+            pass
+        else: 
+            assert False, "getIntersection() was supposed to assert because the parameters don't intersect!"
+
+    def testNoAssertNonIntersect(self):
+        roiA = [(10,10,10), (20,20,20)]
+        roiB = [(15,26,27), (16,30,30)]
+        intersection = getIntersection( roiA, roiB , assertIntersect=False)
+        assert intersection is None, "Expected None because {} doesn't intersect with {}".format(  )
 
 if __name__ == "__main__":
     # Run nose

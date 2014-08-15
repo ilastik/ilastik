@@ -293,7 +293,7 @@ def getIntersection( roiA, roiB, assertIntersect=True ):
     start = numpy.maximum( roiA[0], roiB[0] )    
     stop = numpy.minimum( roiA[1], roiB[1] )
 
-    if numpy.prod(stop - start) <= 0:
+    if ((stop - start) <= 0).any():
         if assertIntersect:
             assert ((stop - start) > 0).all(), "Rois do not intersect: {} and {}".format( roiA, roiB )
         else:
