@@ -129,7 +129,6 @@ class OpDataSelection(Operator):
     def __init__(self, force5d=False, *args, **kwargs):
         super(OpDataSelection, self).__init__(*args, **kwargs)
         self.force5d = force5d
-        self._previous_output_axiskeys = None
         self._opReaders = []
 
         # If the gui calls disconnect() on an input slot without replacing it with something else,
@@ -237,21 +236,6 @@ class OpDataSelection(Operator):
                 op5.Input.connect( providerSlot )
                 providerSlot = op5.Output
                 self._opReaders.append( op5 )
-            
-            # Most workflows can't handle replacement of a dataset of a different dimensionality.
-            # We guard against that by checking for errors NOW, before connecting our Image output,
-            #  which is connected to the rest of the workflow.
-            new_axiskeys = "".join( providerSlot.meta.getAxisKeys() )
-            if self._previous_output_axiskeys is not None and len(new_axiskeys) != len(self._previous_output_axiskeys):
-                msg =  "You can't replace an existing dataset with one of a different dimensionality.\n"\
-                       "Your existing dataset was {}D ({}), but the new dataset is {}D ({}).\n"\
-                       "Your original dataset entry has been reset.  "\
-                       "Please remove it and then add your new dataset."\
-                       "".format( len(self._previous_output_axiskeys), self._previous_output_axiskeys,
-                                  len(new_axiskeys), new_axiskeys )
-                raise OpDataSelection.InvalidDimensionalityError( msg )
-
-            self._previous_output_axiskeys = new_axiskeys
             
             # Connect our external outputs to the internal operators we chose
             self.Image.connect(providerSlot)
