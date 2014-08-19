@@ -7,7 +7,7 @@ Edit the feature matrix in the code below.
 Also, this script's cmdline API supports only a single grayscale and label volume as input, 
 but it can work with multiple input volumes if you simply edit RAW_DATA_FILEPATHS and LABEL_DATA_FILEPATHS in the code below.
 
-Lastly, this script assumes you have only to label classes.  Edit NUM_LABEL_CLASSES to change.
+Lastly, this script assumes you have only two label classes.  Edit NUM_LABEL_CLASSES to change.
 
 Example usage (Mac):
     ./ilastik.app/Contents/MacOS/mac_execfile train_headless.py MyNewProject.ilp "/tmp/grayscale_stack/*.png" /tmp/labels.h5/data
