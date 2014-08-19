@@ -84,6 +84,11 @@ class OpSlicedBlockedArrayCache(OpCache):
         self._outerShapes = self.inputs["outerBlockShape"].value
         self._innerShapes = self.inputs["innerBlockShape"].value
 
+        for blockshape in self._innerShapes + self._outerShapes:
+            if len(blockshape) != len(self.Input.meta.shape):
+                self.Output.meta.NOTREADY = True
+                return
+
         # FIXME: This is wrong: Shouldn't it actually compare the new inner block shape with the old one?
         if len(self._innerShapes) != len(self._innerOps):
             # Clean up previous inner operators

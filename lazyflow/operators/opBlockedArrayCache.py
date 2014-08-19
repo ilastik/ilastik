@@ -77,6 +77,11 @@ class OpBlockedArrayCache(OpCache):
         self.setup_ram_context = RamMeasurementContext()
 
     def setupOutputs(self):
+        if len(self.innerBlockShape.value) != len(self.Input.meta.shape) or\
+           len(self.outerBlockShape.value) != len(self.Input.meta.shape):
+            self.Output.meta.NOTREADY = True
+            return
+
         with self.setup_ram_context:
             self._fixed = self.inputs["fixAtCurrent"].value
             self._forward_dirty = self.forward_dirty.value
