@@ -51,15 +51,18 @@ class OpFeatureMatrixCache(Operator):
         self._init_blocks(None)
         
     def _init_blocks(self, blockshape):
-        if self._blockshape is not None:
-            logger.debug("Discarding feature matrix cache.")
-        
+        old_blockshape = self._blockshape
         self._blockshape = blockshape
+
         # In these set/dict members, the block id (dict key) 
         #  is simply the block's start coordinate (as a tuple)
         self._blockwise_feature_matrices = {}
         self._dirty_blocks = set()
         self._block_locks = {} # One lock per stored block
+
+        if old_blockshape is not None:
+            logger.debug("Discarded feature matrix cache.")
+            self.LabelAndFeatureMatrix.setDirty()
     
     def setupOutputs(self):
         # We assume that channel the last axis
@@ -140,7 +143,7 @@ class OpFeatureMatrixCache(Operator):
         # If the features were dirty (not labels), we only really care about
         #  the blocks that are actually stored already
         # For big dirty rois (e.g. the entire image), 
-        #  we avoid a lot of unecessary entries in self._dirty_blocks
+        #  we avoid a lot of unnecessary entries in self._dirty_blocks
         if slot == self.FeatureImage:
             block_starts = set( block_starts ).intersection( self._blockwise_feature_matrices.keys() )
 
