@@ -115,14 +115,6 @@ class TestOpMultiArraySlicer2(object):
     def testReshape(self):
         opSlicer = self.opSlicer
 
-        dirtyRois = {}
-        def handleDirty(i, slot, roi):
-            assert opSlicer.Slices[i] == slot
-            dirtyRois[i] = roi
-        
-        for i, slot in enumerate(opSlicer.Slices):
-            slot.notifyDirty( partial(handleDirty, i) )
-
         # Initial data has 3 channels with values 0,1,2
         # Simulate removing the middle one: Now data has two channels with values 0,2
         data = numpy.indices((10,10,10,2))[3]
@@ -140,12 +132,6 @@ class TestOpMultiArraySlicer2(object):
             assert slot.meta.shape == (10,10,10,1)
             assert (slot[...].wait() == i*2).all()
         
-        assert len(dirtyRois) == 2
-        assert dirtyRois[0].start == [0,0,0,0]
-        assert dirtyRois[0].stop == [10,10,10,1]
-        assert dirtyRois[1].start == [0,0,0,0]
-        assert dirtyRois[1].stop == [10,10,10,1]
-
     def testSelectedSlices(self):
         """
         Test the ability to select a specific set of slices from the input image (instead of selecting all of them).

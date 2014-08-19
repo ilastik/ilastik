@@ -33,26 +33,36 @@ class OpFeatureMatrixCache(Operator):
     # (As a consequence of this, labels are converted to float)
     LabelAndFeatureMatrix = OutputSlot()
     
-    ProgressSignal = OutputSlot() # For convenience of passing several progress signals 
-                                  # to a downstream operator (such as OpConcatenateFeatureMatrices),  
-                                  # we provide the progressSignal member as an output slot.
+    ProgressSignal = OutputSlot()   # For convenience of passing several progress signals 
+                                    # to a downstream operator (such as OpConcatenateFeatureMatrices),  
+                                    # we provide the progressSignal member as an output slot.
 
     # Aim for label request blocks of approximately 1 MB
     MAX_BLOCK_PIXELS = 1e6
 
     def __init__(self, *args, **kwargs):
         super(OpFeatureMatrixCache, self).__init__(*args, **kwargs)
-        self._blockshape = None
         self._lock = RequestLock()
         
         self.progressSignal = OrderedSignal()
         self._progress_lock = RequestLock()
         
+        self._blockshape = None
+        self._init_blocks(None)
+        
+    def _init_blocks(self, blockshape):
+        old_blockshape = self._blockshape
+        self._blockshape = blockshape
+
         # In these set/dict members, the block id (dict key) 
         #  is simply the block's start coordinate (as a tuple)
         self._blockwise_feature_matrices = {}
         self._dirty_blocks = set()
         self._block_locks = {} # One lock per stored block
+
+        if old_blockshape is not None:
+            logger.debug("Discarded feature matrix cache.")
+            self.LabelAndFeatureMatrix.setDirty()
     
     def setupOutputs(self):
         # We assume that channel the last axis
@@ -74,8 +84,9 @@ class OpFeatureMatrixCache(Operator):
         self.ProgressSignal.setValue( self.progressSignal )
 
         # Auto-choose a blockshape
-        self._blockshape = determineBlockShape( self.LabelImage.meta.shape,
-                                                OpFeatureMatrixCache.MAX_BLOCK_PIXELS )
+        blockshape = determineBlockShape( self.LabelImage.meta.shape,
+                                          OpFeatureMatrixCache.MAX_BLOCK_PIXELS )
+        self._init_blocks(blockshape)
         
     def execute(self, slot, subindex, roi, result):
         assert slot == self.LabelAndFeatureMatrix
@@ -132,7 +143,7 @@ class OpFeatureMatrixCache(Operator):
         # If the features were dirty (not labels), we only really care about
         #  the blocks that are actually stored already
         # For big dirty rois (e.g. the entire image), 
-        #  we avoid a lot of unecessary entries in self._dirty_blocks
+        #  we avoid a lot of unnecessary entries in self._dirty_blocks
         if slot == self.FeatureImage:
             block_starts = set( block_starts ).intersection( self._blockwise_feature_matrices.keys() )
 

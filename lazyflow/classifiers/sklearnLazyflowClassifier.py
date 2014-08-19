@@ -41,6 +41,14 @@ class SklearnLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
     def description(self):
         return self._classifier_type.__name__
 
+    def __eq__(self, other):
+        return (    isinstance(other, type(self))
+                and self._classifier_type == other._classifier_type
+                and self._args == other._args
+                and self._kwargs == other._kwargs )
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
 assert issubclass( SklearnLazyflowClassifierFactory, LazyflowVectorwiseClassifierFactoryABC )
 
 class SklearnLazyflowClassifier(LazyflowVectorwiseClassifierABC):

@@ -101,6 +101,15 @@ class LazyflowPixelwiseClassifierFactoryABC(object):
         if cls is LazyflowPixelwiseClassifierFactoryABC:
             return _has_attributes(C, ['create_and_train_pixelwise', 'description', 'get_halo_shape'])
         return NotImplemented
+    
+    def __eq__(self, other):
+        """
+        Classifier factories must be both copyable and (in)equality comparable.
+        """
+        raise NotImplementedError
+
+    def __ne__(self, other):
+        raise NotImplementedError    
 
 class LazyflowPixelwiseClassifierABC(object):
     """

@@ -27,6 +27,11 @@ class OpConcatenateFeatureMatrices(Operator):
     def setupOutputs(self):
         self.ConcatenatedOutput.meta.shape = (1,)
         self.ConcatenatedOutput.meta.dtype = object
+
+        # If we're being reconfigured, we want to notify downstream 
+        #  caches that the old feature matrices are dirty.
+        # (For some reason the normal dirty notification mechanism doesn't work in this case.)
+        self.ConcatenatedOutput.setDirty()
     
     def execute(self, slot, subindex, roi, result):
         assert slot == self.ConcatenatedOutput

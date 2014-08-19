@@ -41,6 +41,8 @@ logger = logging.getLogger(__name__)
 class OpCompressedCache(OpCache):
     """
     A blockwise cache that stores each block as a separate in-memory hdf5 file with a compressed dataset.
+    
+    Note: It is not safe to call execute() change the blockshape simultaneously.
     """
     Input = InputSlot() # Also used to asynchronously force data into the cache via __setitem__ (see setInSlot(), below()
     BlockShape = InputSlot(optional=True) # If not provided, the entire input is treated as one block
@@ -53,14 +55,16 @@ class OpCompressedCache(OpCache):
     
     def __init__(self, *args, **kwargs):
         super( OpCompressedCache, self ).__init__( *args, **kwargs )
-        self._blockshape = None
-        self._cacheFiles = {}
-        self._dirtyBlocks = set()
         self._lock = RequestLock()
-        self._blockLocks = {}
-        self._cacheInUse = False
-        self._validBlockShape = True
+        self._init_cache(None)
 
+    def _init_cache(self, new_blockshape):
+        with self._lock:
+            self._blockshape = new_blockshape
+            self._cacheFiles = {}
+            self._dirtyBlocks = set()
+            self._blockLocks = {}
+            self._chunkshape = self._chooseChunkshape(self._blockshape)
 
     def cleanUp(self):
         logger.debug( "Cleaning up" )
@@ -74,40 +78,26 @@ class OpCompressedCache(OpCache):
         self.CleanBlocks.meta.shape = (1,)
         self.CleanBlocks.meta.dtype = object
 
+        # no block shape given -> use the whole volume as one block
+        new_blockshape = self.Input.meta.shape
         if self.BlockShape.ready():
-            if self._cacheInUse:
-                # self._blockshape is definitely configured
-                if tuple(self.BlockShape.value) != self._blockshape:
-                    # The block shape changed, but the cache was already in use.
-                    # This is not supported, but it might be that this operator is
-                    # not being used anymore, or that the block shape is reset to
-                    # its original value. Therefore, we throw the error in execute
-                    # rather than in setupOutputs.
-                    self._validBlockShape = False
-                else:
-                    # was reset to a valid shape
-                    self._validBlockShape = True
-            else:
-                # we did not start filling the cache yet, changing the block
-                # shape is safe
-                self._validBlockShape = True
+            new_blockshape = self.BlockShape.value
 
-            if self._validBlockShape:
-                # Clip blockshape to image bounds
-                self._blockshape = tuple(numpy.minimum( self.BlockShape.value, self.Input.meta.shape ))
-        else:
-            # no block shape given -> use the whole volume as one block
-            self._blockshape = self.Input.meta.shape
+        if len(new_blockshape) != len(self.Input.meta.shape):
+            self.Output.meta.NOTREADY = True
+            self.CleanBlocks.meta.NOTREADY = True
+            self.OutputHdf5.meta.NOTREADY = True
+            self._init_cache(None)
+            return
 
-        # Choose optimal chunkshape
-        self._chunkshape = self._chooseChunkshape(self._blockshape)
+        # Clip blockshape to image bounds
+        new_blockshape = tuple(numpy.minimum( new_blockshape, self.Input.meta.shape ))
 
+        if new_blockshape != self._blockshape:
+            # If the blockshape changes, we have to reset the entire cache.
+            self._init_cache(new_blockshape)
 
     def execute(self, slot, subindex, roi, destination):
-        self._cacheInUse = True
-        assert self._validBlockShape,\
-            "It is an error to reconfigure the cache block shape "\
-            "after you have started using it!"
         if slot == self.Output:
             return self._executeOutput(roi, destination)
         elif slot == self.CleanBlocks:
@@ -197,12 +187,13 @@ class OpCompressedCache(OpCache):
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.Input:
             # Keep track of dirty blocks
-            with self._lock:
-                block_starts = getIntersectingBlocks( self._blockshape, (roi.start, roi.stop) )
-                block_starts = map( tuple, block_starts )
-                
-                for block_start in block_starts:
-                    self._dirtyBlocks.add( block_start )
+            if self._blockshape is not None:
+                with self._lock:
+                    block_starts = getIntersectingBlocks( self._blockshape, (roi.start, roi.stop) )
+                    block_starts = map( tuple, block_starts )
+                    
+                    for block_start in block_starts:
+                        self._dirtyBlocks.add( block_start )
             # Forward to downstream connections
             self.Output.setDirty( roi )
         elif slot == self.BlockShape:
@@ -216,6 +207,8 @@ class OpCompressedCache(OpCache):
         """
         Choose an optimal chunkshape for our blockshape and Input shape.
         """
+        if blockshape is None:
+            return None
         # Choose a chunkshape:
         # - same time dimension as blockshape
         # - same channel dimension as blockshape
@@ -277,7 +270,7 @@ class OpCompressedCache(OpCache):
         #FIXME
         tot = 0.0
         for b in self._cacheFiles:
-	    if "data" in b:
+            if "data" in b:
                 tot += b["data"].size * self._getDtypeBytes(b["data"].dtype)
         return tot
     

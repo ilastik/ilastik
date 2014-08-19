@@ -216,6 +216,30 @@ class TestOpCompressedUserLabelArray(object):
         assert expectedData.max() == 2
         #assert op.maxLabel.value == 2
 
+    def testDimensionalityChange(self):
+        """
+        What happens if we configure the operator, use it a bit, then reconfigure it with a different input shape and dimensionality?
+        """
+        op = self.op
+        slicing = self.slicing
+        inData = self.inData
+        data = self.data
+
+        # Output
+        outputData = op.Output[...].wait()
+        assert numpy.all(outputData[...] == data[...])
+
+        # Reconfigure
+        op.Input.setValue( data[0] )
+
+        blockshape = (10,10,10,1)
+        op.blockShape.setValue( blockshape )
+
+        # After reconfigure, everything is set back to 0.
+        # That's okay.
+        outputData = op.Output[...].wait()
+        assert numpy.all(outputData[...] == 0)
+        
 
 if __name__ == "__main__":
     import sys

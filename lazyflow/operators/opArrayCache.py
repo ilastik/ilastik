@@ -197,7 +197,6 @@ class OpArrayCache(OpCache):
     def setupOutputs(self):
         self.CleanBlocks.meta.shape = (1,)
         self.CleanBlocks.meta.dtype = object
-
         reconfigure = False
         if  self.inputs["fixAtCurrent"].ready():
             self._fixed =  self.inputs["fixAtCurrent"].value
@@ -212,6 +211,12 @@ class OpArrayCache(OpCache):
             
             inputSlot = self.inputs["Input"]
             self.Output.meta.assignFrom(inputSlot.meta)
+
+            if isinstance(self._blockShape, collections.Iterable) and \
+               len(self._blockShape) != len(self.Input.meta.shape):
+                self.Output.meta.NOTREADY = True
+                self.CleanBlocks.meta.NOTREADY = True
+                return
 
             # Estimate ram usage            
             ram_per_pixel = 0

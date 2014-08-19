@@ -73,6 +73,24 @@ class MetaDict(defaultdict):
 
     def copy(self):
         return MetaDict(dict.copy(self))
+    
+    def __eq__(self, other):
+        for k in set(self.keys() + other.keys()):
+            if k.startswith('__') or k == 'NOTREADY':
+                continue
+            if k not in other or k not in self:
+                return False
+            if other[k] != self[k]:
+                return False
+
+        # Special case for NOTREADY.
+        # If it is True in one and either False or missing in the other, then return False.
+        if bool(self.NOTREADY) != bool(other.NOTREADY):
+            return False
+        return True
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     def assignFrom(self, other):
         """
