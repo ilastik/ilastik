@@ -509,9 +509,11 @@ class OpSubRegion(Operator):
         assert isinstance(self._roi[0], tuple)
         assert isinstance(self._roi[1], tuple)
         start, stop = map( TinyVector, self._roi )
-        assert len(start) == len(stop) == len(self.Input.meta.shape), \
-            "Roi dimensionality must match shape dimensionality"
-        if (start >= stop).any():
+        if not ( len(start) == len(stop) == len(self.Input.meta.shape) ):
+            # Roi dimensionality must match shape dimensionality
+            self.Output.meta.NOTREADY = True
+        elif (start >= stop).any():
+            # start/stop not compatible (output shape would be negative...)
             self.Output.meta.NOTREADY = True
         else:
             self.Output.meta.assignFrom( self.Input.meta )
