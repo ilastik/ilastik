@@ -1278,6 +1278,7 @@ class Slot(object):
 
     def _changed(self):
         oldMeta = self.meta
+        old_ready = self.ready()
         if self.partner is not None and self.meta != self.partner.meta:
             self.meta = self.partner.meta.copy()
 
@@ -1286,8 +1287,8 @@ class Slot(object):
                 o._changed()
 
         # Notify readiness after subslots are updated
-        if self.meta._ready != oldMeta._ready:
-            if self.meta._ready:
+        if self.ready() != old_ready:
+            if self.ready():
                 self._sig_ready(self)
             else:
                 self._sig_unready(self)
