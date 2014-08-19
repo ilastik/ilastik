@@ -217,6 +217,10 @@ class OpValueCache(OpCache):
         self._lock = threading.Lock()
         self._request = None
         
+        def handle_unready(slot):
+            self._dirty = True
+        self.Input.notifyUnready(handle_unready)
+        
     def usedMemory(self):
         if isinstance(self._value, numpy.ndarray):
             return self._value.nbytes
