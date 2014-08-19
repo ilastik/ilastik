@@ -239,7 +239,6 @@ class PixelClassificationWorkflow(Workflow):
         
         # Classifier and NumClasses are provided by the interactive workflow
         opBatchPredictionPipeline.Classifier.connect( opClassify.Classifier )
-        opBatchPredictionPipeline.FreezePredictions.setValue( False )
         opBatchPredictionPipeline.NumClasses.connect( opClassify.NumClasses )
         
         # Provide these for the gui

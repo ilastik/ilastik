@@ -337,7 +337,6 @@ class OpPredictionPipelineNoCache(Operator):
     FeatureImages = InputSlot()
     PredictionMask = InputSlot(optional=True)
     Classifier = InputSlot()
-    FreezePredictions = InputSlot()
     PredictionsFromDisk = InputSlot( optional=True )
     NumClasses = InputSlot()
     
@@ -422,6 +421,7 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
     This operator extends the cacheless prediction pipeline above with additional outputs for the GUI.
     (It uses caches for these outputs, and has an extra input for cached features.)
     """        
+    FreezePredictions = InputSlot()
     CachedFeatureImages = InputSlot()
 
     PredictionProbabilities = OutputSlot()
