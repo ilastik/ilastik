@@ -190,7 +190,7 @@ class OpMultiArraySlicer2(Operator):
     Same as the slicer operator above, but does not reduce the dimensionality of the data.
     The output image shape will have a dimension of 1 for the axis that was sliced.
     """
-    #FIXME: This operator return a sigleton in the sliced direction
+    #FIXME: This operator return a singleton in the sliced direction
     #Should be integrated with the above one to have a more consistent notation
     inputSlots = [InputSlot("Input"),InputSlot('AxisFlag'), InputSlot("SliceIndexes", optional=True)]
     outputSlots = [OutputSlot("Slices",level=1)]
@@ -201,6 +201,13 @@ class OpMultiArraySlicer2(Operator):
     def __init__(self, *args, **kwargs):
         super(OpMultiArraySlicer2, self).__init__(*args, **kwargs)
         self.inputShape = None
+
+        # As soon as the input becomes unready, resize the output to 0
+        # This avoids certain errors due to the fact that downstream operators
+        #  don't instantly recognize that the output has become unusable.
+        def handle_unready( slot ):
+            self.Slices.resize(0)
+        self.Input.notifyUnready( handle_unready )        
 
     def setupOutputs(self):
         flag=self.inputs["AxisFlag"].value
