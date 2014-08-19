@@ -442,13 +442,9 @@ class Operator(object):
                 self._condition.wait()
             self._settingUp = True
 
-            # Outputslots may become "ready" during setupOutputs().
-            # Save a copy of the ready flag for each output slot
-            # so we can decide whether or not to fire the ready
-            # signal.
-            readyFlags = {}
-            for k, oslot in self.outputs.items():
-                readyFlags[k] = oslot.meta._ready
+            # Keep a copy of the old metadata for comparison. 
+            #  We only trigger downstream changes if something really changed.
+            old_metadata = { s: s.meta.copy() for s in self.outputs.values() }
 
             # Call the subclass
             self.setupOutputs()
@@ -475,8 +471,10 @@ class Operator(object):
                         "slots that have no explicit upstream connection."
 
             #notify outputs of probably changed meta information
-            for k, v in self.outputs.items():
-                v._changed()
+            for oslot in self.outputs.values():
+                if ( old_metadata[oslot] != oslot.meta and  # No need to call _changed() if nothing changed...
+                    not (not old_metadata[oslot]._ready and oslot.meta._ready)): # No need to call _changed() if it was already called in _setReady() above.
+                    oslot._changed()
         except:
             # Something went wrong
             # Make the operator-supplied outputs unready again
