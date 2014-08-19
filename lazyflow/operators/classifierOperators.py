@@ -39,6 +39,10 @@ from opConcatenateFeatureMatrices import OpConcatenateFeatureMatrices
 logger = logging.getLogger(__name__)
 
 class OpTrainClassifierBlocked(Operator):
+    """
+    Owns two child training operators, for 'vectorwise' and 'pixelwise' classifier types.
+    Chooses which one to use based on the type of ClassifierFactory provided as input.
+    """
     Images = InputSlot(level=1)
     Labels = InputSlot(level=1)
     ClassifierFactory = InputSlot()
