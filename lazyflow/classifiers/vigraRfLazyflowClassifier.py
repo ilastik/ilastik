@@ -39,6 +39,13 @@ class VigraRfLazyflowClassifierFactory(object):
         temp_rf = vigra.learning.RandomForest( *self._args, **self._kwargs )
         return "Vigra Random Forest ({} trees)".format( temp_rf.treeCount() )
 
+    def __eq__(self, other):
+        return (    isinstance(other, type(self))
+                and self._args == other._args
+                and self._kwargs == other._kwargs )
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
 assert issubclass( VigraRfLazyflowClassifierFactory, LazyflowVectorwiseClassifierFactoryABC )
 
 class VigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):

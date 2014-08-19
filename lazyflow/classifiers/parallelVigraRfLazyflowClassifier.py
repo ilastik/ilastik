@@ -55,6 +55,14 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
         return "Vigra Random Forest ({} forests, {} trees each)"\
                .format( self._num_forests, self._trees_per_forest )
 
+    def __eq__(self, other):
+        return (    isinstance(other, type(self))
+                and self._num_forests == other._num_forests
+                and self._trees_per_forest == other._trees_per_forest
+                and self._kwargs == other._kwargs )
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
 assert issubclass( ParallelVigraRfLazyflowClassifierFactory, LazyflowVectorwiseClassifierFactoryABC )
 
 class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
