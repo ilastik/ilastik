@@ -252,14 +252,52 @@ class TestOpCompressedCache( object ):
 
         op.BlockShape.setValue((50, 100, 10))
 
-        # this must throw an exception
-        try:
-            out = op.Output[...].wait()
-        except Exception:
-            pass
-        else:
-            raise Exception("Cache was not set invalid after reconfiguration")
+        # Older versions of OpCompressedCache threw an exception here because 
+        #  we tried to access the cache after changing the blockshape.
+        # But in the current version, we claim that's okay.
+        out = op.Output[...].wait()
 
+    def testChangeBlockshape(self):
+        logger.info("Generating sample data...")
+        sampleData = numpy.indices((100, 200, 150), dtype=numpy.float32).sum(0)
+        sampleData = sampleData.view( vigra.VigraArray )
+        sampleData.axistags = vigra.defaultAxistags('xyz')
+        
+        graph = Graph()
+        opData = OpArrayPiper( graph=graph )
+        opData.Input.setValue( sampleData )
+        
+        op = OpCompressedCache( parent=None, graph=graph )
+        #logger.debug("Setting block shape...")
+        op.BlockShape.setValue( [100, 75, 50] )
+        op.Input.connect( opData.Output )
+        
+        assert op.Output.ready()
+        
+        slicing = numpy.s_[ 0:100, 50:150, 75:150 ]
+        expectedData = sampleData[slicing].view(numpy.ndarray)
+        
+        #logger.debug("Requesting data...")
+        readData = op.Output[slicing].wait()
+        
+        #logger.debug("Checking data...")    
+        assert (readData == expectedData).all(), "Incorrect output!"
+
+        # Now change the blockshape and the input and try again...
+        sampleDataWithChannel = sampleData.withAxes(*'xyzc')
+        opData.Input.setValue( sampleDataWithChannel )
+        op.BlockShape.setValue( [45, 33, 40, 1] )
+
+        assert op.Output.ready()
+
+        slicing = numpy.s_[ 60:70, 50:110, 60:120, 0:1 ]
+        expectedData = sampleDataWithChannel[slicing].view(numpy.ndarray)
+        
+        #logger.debug("Requesting data...")
+        readData = op.Output[slicing].wait()
+        
+        #logger.debug("Checking data...")    
+        assert (readData == expectedData).all(), "Incorrect output!"
         
 
 if __name__ == "__main__":

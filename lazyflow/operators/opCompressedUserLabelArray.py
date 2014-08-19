@@ -35,11 +35,17 @@ from lazyflow.rtype import SubRegion
 logger = logging.getLogger(__name__)
 
 class OpCompressedUserLabelArray(OpCompressedCache):
+    """
+    A subclass of OpCompressedCache that is suitable for storing user-drawn label pixels.
+    Note that setInSlot has special functionality (only non-zero pixels are written, and there is also an "eraser" pixel value).
+
+    See note below about blockshape changes.
+    """
     #Input = InputSlot()
     shape = InputSlot(optional=True) # Should not be used.
     eraser = InputSlot()
     deleteLabel = InputSlot(optional = True)
-    blockShape = InputSlot()
+    blockShape = InputSlot() # If the blockshape is changed after labels have been stored, all cache data is lost.
 
     #Output = OutputSlot()
     #nonzeroValues = OutputSlot()
@@ -58,6 +64,9 @@ class OpCompressedUserLabelArray(OpCompressedCache):
         self.BlockShape.setValue( self.blockShape.value )
         
         super( OpCompressedUserLabelArray, self ).setupOutputs()
+        if self.Output.meta.NOTREADY:
+            self.nonzeroBlocks.meta.NOTREADY = True
+            return
         self.nonzeroBlocks.meta.dtype = object
         self.nonzeroBlocks.meta.shape = (1,)
         
