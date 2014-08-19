@@ -133,7 +133,13 @@ class OpFormattedDataExport(Operator):
 
         new_start, new_stop = tuple(new_start), tuple(new_stop)
 
-        if not self._opSubRegion.Roi.ready() or \
+        # If we're in the process of switching input data, 
+        #  then the roi dimensionality might not match up.
+        #  Just leave the roi disconnected for now.
+        if len(self.Input.meta.shape) != len(new_start) or \
+           len(self.Input.meta.shape) != len(new_stop):
+            self._opSubRegion.Roi.disconnect()
+        elif not self._opSubRegion.Roi.ready() or \
            self._opSubRegion.Roi.value != (new_start, new_stop):
 
             # Provide the coordinate offset, but only for the axes that are present in the output image
