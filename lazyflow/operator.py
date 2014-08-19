@@ -489,23 +489,21 @@ class Operator(object):
         if slot._optional:
             return
 
-        newly_unready_slots = []
-        def setunready(s):
-            for ss in s._subSlots:
-                setunready(ss)
-            was_ready = s.meta._ready
-            s.meta._ready &= (s.partner is not None)
-            if was_ready and s.meta._ready:
-                newly_unready_slots.append(s)
+        # Keep track of the old ready statuses so we know if
+        # something changed
+        readyFlags = {}
+        for k, oslot in self.outputs.items():
+            readyFlags[k] = oslot.meta._ready
 
         # All unconnected outputs are no longer ready
         for oslot in self.outputs.values():
-            setunready(oslot)
+            oslot.meta._ready &= (oslot.partner is not None)
 
         # If the ready status changed, signal it.
-        for s in newly_unready_slots:
-            s._sig_unready(s)
-            s._changed()
+        for k, oslot in self.outputs.items():
+            if readyFlags[k] != oslot.meta._ready:
+                oslot._sig_unready(self)
+                oslot._changed()
 
     def setupOutputs(self):
         """This method is called when all input slots of an operator
