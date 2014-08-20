@@ -46,6 +46,7 @@ class OpTiledVolumeReader(Operator):
         self.Output.meta.dtype = self.tiled_volume.description.dtype
         self.Output.meta.axistags = vigra.defaultAxistags(self.tiled_volume.description.output_axes)
         self.Output.meta.prefer_2d = True
+        self.Output.meta.nickname = self.tiled_volume.description.name
 
     def execute(self, slot, subindex, roi, result):
         self.tiled_volume.read( (roi.start, roi.stop), result )
