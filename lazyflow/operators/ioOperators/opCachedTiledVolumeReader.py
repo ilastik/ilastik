@@ -30,7 +30,7 @@ class OpCachedTiledVolumeReader(Operator):
     
     def setupOutputs(self):
         # Set the cache blockshape to match the source tiles.
-        tile_shape = list(self._opReader.tiled_volume.description.tile_shape_2d)
+        tile_shape = list(self._opReader.tiled_volume.description.tile_shape_2d_yx)
         assert tile_shape[0] == tile_shape[1], "FIXME: This code assumes square tiles."
         
         z_index = self._opReader.Output.meta.getAxisKeys().index('z')

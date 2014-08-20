@@ -24,9 +24,9 @@ volume_description_text = \
     "name" : "My Tiled Data",
     "format" : "png",
     "dtype" : "uint8",
-    "bounds" : [100, 600, 600],
+    "bounds_zyx" : [100, 600, 600], 
  
-    "tile_shape_2d" : [200,200],
+    "tile_shape_2d_yx" : [200,200],
  
     "tile_url_format" : "http://localhost:8000/tile_z{z_start:05}_y{y_start:05}_x{x_start:05}.png",
     "extend_slices" : [ [40, [41]],
@@ -105,7 +105,7 @@ class DataSetup(object):
                     os.remove( os.path.join(self.TILE_DIRECTORY, name) )
     
             # Write the new tiles
-            export_to_tiles( ref_vol, volume_description.tile_shape_2d[0], self.TILE_DIRECTORY, print_progress=False )    
+            export_to_tiles( ref_vol, volume_description.tile_shape_2d_yx[0], self.TILE_DIRECTORY, print_progress=False )    
     
             # To support testMissingTiles (below), remove slice 2
             files = os.listdir(self.TILE_DIRECTORY)

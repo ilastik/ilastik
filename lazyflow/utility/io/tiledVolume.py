@@ -36,10 +36,11 @@ class TiledVolume(object):
         "name" : str,
         "format" : str,
         "dtype" : AutoEval(),
-        "bounds" : AutoEval(numpy.array),
-        "shape" : AutoEval(numpy.array), # synonym for bounds (until we support offset_origin)
+        "bounds_zyx" : AutoEval(numpy.array),
+        "shape_zyx" : AutoEval(numpy.array), # synonym for bounds_zyx (until we support offset_origin)
+        "resolution_zyx" : AutoEval(numpy.array), 
 
-        "tile_shape_2d" : AutoEval(numpy.array),
+        "tile_shape_2d_yx" : AutoEval(numpy.array),
 
         # This doesn't change how the data is read from the server,
         #  but instead specifies the indexing order of the numpy volumes produced.
@@ -81,11 +82,17 @@ class TiledVolume(object):
         
         # offset not supported yet...
         #if description.origin_offset is None:
-        #    description.origin_offset = numpy.array( [0]*len(description.bounds) )
-        #description.shape = description.bounds - description.origin_offset
-        
-        description.bounds = description.bounds
-        description.shape = tuple(description.bounds)
+        #    description.origin_offset = numpy.array( [0]*len(description.bounds_zyx) )
+        #description.shape = description.bounds_zyx - description.origin_offset
+
+        # for now, there's no difference between shape and bounds        
+        if description.shape_zyx is not None and description.bounds_zyx is not None:
+            assert all(description.shape_zyx == description.bounds_zyx)
+        if description.shape_zyx is None:
+            description.shape_zyx = tuple(description.bounds_zyx)
+        if description.bounds_zyx is None:
+            description.bounds_zyx = tuple(description.shape_zyx)
+
         if not description.output_axes:
             description.output_axes = "zyx"
         assert description.output_axes is None or set(description.output_axes) == set("zyx"), \
@@ -103,10 +110,10 @@ class TiledVolume(object):
         assert self.description.format in vigra.impex.listExtensions().split(), \
             "Unknown tile format: {}".format( self.description.format )
         
-        assert self.description.tile_shape_2d.shape == (2,)
-        assert self.description.bounds.shape == (3,)
+        assert self.description.tile_shape_2d_yx.shape == (2,)
+        assert self.description.bounds_zyx.shape == (3,)
 
-        shape_dict = dict( zip('zyx', self.description.bounds) )
+        shape_dict = dict( zip('zyx', self.description.bounds_zyx) )
         self.output_shape = tuple( shape_dict[k] for k in self.description.output_axes )
 
         self._slice_remapping = {}
@@ -131,7 +138,7 @@ class TiledVolume(object):
         roi = numpy.array(roi)
         assert (result_out.shape == (roi[1] - roi[0])).all()
         
-        tile_blockshape = (1,) + tuple(self.description.tile_shape_2d)
+        tile_blockshape = (1,) + tuple(self.description.tile_shape_2d_yx)
         tile_starts = getIntersectingBlocks( tile_blockshape, roi )
 
         # We use a fresh tmp dir for each read to avoid conflicts between parallel reads
@@ -139,7 +146,7 @@ class TiledVolume(object):
         
         pool = RequestPool()
         for tile_start in tile_starts:
-            tile_roi_in = getBlockBounds( self.description.shape, tile_blockshape, tile_start )
+            tile_roi_in = getBlockBounds( self.description.shape_zyx, tile_blockshape, tile_start )
             tile_roi_in = numpy.array(tile_roi_in)
 
             # This tile's portion of the roi
