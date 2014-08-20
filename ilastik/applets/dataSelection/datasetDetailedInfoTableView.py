@@ -372,8 +372,6 @@ class DatasetDetailedInfoTableView(QTableView):
         col = self.columnAt( event.pos().x() )
         row = self.rowAt( event.pos().y() )
 
-        print "ROW = {}".format(row)
-
         # If the user double-clicked an empty table,
         #  we behave as if she clicked the "add file" button.
         if row == self.model().rowCount()-1 or row == -1:
