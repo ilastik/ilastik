@@ -48,21 +48,26 @@ class OpFeatureMatrixCache(Operator):
         self._progress_lock = RequestLock()
         
         self._blockshape = None
-        self._init_blocks(None)
+        self._dirty_blocks = set()
+        self._blockwise_feature_matrices = {}
+        self._block_locks = {} # One lock per stored block
+
+        self._init_blocks(None, None)
         
-    def _init_blocks(self, blockshape):
+    def _init_blocks(self, input_shape, new_blockshape):
         old_blockshape = self._blockshape
-        self._blockshape = blockshape
+        if new_blockshape == old_blockshape:
+            # Nothing to do
+            return
+        
+        if ( len(self._dirty_blocks) != 0
+             or len(self._blockwise_feature_matrices) != 0):
+            raise RuntimeError("It's too late to change the dimensionality of your data after you've already started training.\n"
+                               "Delete all your labels and try again.")
 
         # In these set/dict members, the block id (dict key) 
         #  is simply the block's start coordinate (as a tuple)
-        self._blockwise_feature_matrices = {}
-        self._dirty_blocks = set()
-        self._block_locks = {} # One lock per stored block
-
-        if old_blockshape is not None:
-            logger.debug("Discarded feature matrix cache.")
-            self.LabelAndFeatureMatrix.setDirty()
+        self._blockshape = new_blockshape
     
     def setupOutputs(self):
         # We assume that channel the last axis
@@ -78,7 +83,11 @@ class OpFeatureMatrixCache(Operator):
     
         self.LabelAndFeatureMatrix.meta.shape = (1,)
         self.LabelAndFeatureMatrix.meta.dtype = object
-        self.LabelAndFeatureMatrix.meta.num_feature_channels = self.FeatureImage.meta.shape[-1]
+        
+        num_feature_channels = self.FeatureImage.meta.shape[-1]
+        if num_feature_channels != self.LabelAndFeatureMatrix.meta.num_feature_channels:
+            self.LabelAndFeatureMatrix.meta.num_feature_channels = num_feature_channels
+            self.LabelAndFeatureMatrix.setDirty()
 
         self.ProgressSignal.meta.shape = (1,)
         self.ProgressSignal.meta.dtype = object
@@ -87,7 +96,7 @@ class OpFeatureMatrixCache(Operator):
         # Auto-choose a blockshape
         blockshape = determineBlockShape( self.LabelImage.meta.shape,
                                           OpFeatureMatrixCache.MAX_BLOCK_PIXELS )
-        self._init_blocks(blockshape)
+        self._init_blocks(self.LabelImage.meta.shape, blockshape)
         
     def execute(self, slot, subindex, roi, result):
         assert slot == self.LabelAndFeatureMatrix
