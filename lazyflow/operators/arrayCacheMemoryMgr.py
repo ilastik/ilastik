@@ -40,9 +40,9 @@ this_process = psutil.Process(os.getpid())
 
 def memoryUsagePercentage():
     current_usage = this_process.memory_info().rss
-    return 100.0* float(current_usage) / getAvailableRamMb()
+    return 100.0* float(current_usage) / getAvailableRamBytes()
 
-def getAvailableRamMb():
+def getAvailableRamBytes():
     if lazyflow.AVAILABLE_RAM_MB == 0:
         return psutil.virtual_memory().total
     else:
