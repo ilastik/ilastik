@@ -243,6 +243,10 @@ class OpDataSelection(Operator):
             # Set the image name and usage flag
             self.AllowLabels.setValue( datasetInfo.allowLabels )
             
+            # If the reading operator provides a nickname, use it.
+            if self.Image.meta.nickname is not None:
+                datasetInfo.nickname = self.Image.meta.nickname
+            
             imageName = datasetInfo.nickname
             if imageName == "":
                 imageName = datasetInfo.filePath
