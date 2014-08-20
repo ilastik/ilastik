@@ -23,15 +23,27 @@ class OpConcatenateFeatureMatrices(Operator):
         super(OpConcatenateFeatureMatrices, self).__init__(*args, **kwargs)
         self._dirty_slots = set()
         self.progressSignal = OrderedSignal()
+        self._num_feature_channels = 0 # Not including the labels...
 
     def setupOutputs(self):
         self.ConcatenatedOutput.meta.shape = (1,)
         self.ConcatenatedOutput.meta.dtype = object
+        if len(self.FeatureMatrices) == 0:
+            return
+        
+        num_feature_channels = self.FeatureMatrices[0].meta.num_feature_channels
+        for slot in self.FeatureMatrices:
+            assert slot.meta.num_feature_channels == num_feature_channels, \
+                "Input matrices have the wrong number of channels" 
+        
+        self.ConcatenatedOutput.meta.num_feature_channels = num_feature_channels
+        if num_feature_channels != self._num_feature_channels:
+            self._num_feature_channels = num_feature_channels
 
-        # If we're being reconfigured, we want to notify downstream 
-        #  caches that the old feature matrices are dirty.
-        # (For some reason the normal dirty notification mechanism doesn't work in this case.)
-        self.ConcatenatedOutput.setDirty()
+            # If the number of features changed, we want to notify downstream 
+            #  caches that the old feature matrices are dirty.
+            # (For some reason the normal dirty notification mechanism doesn't work in this case.)
+            self.ConcatenatedOutput.setDirty()
     
     def execute(self, slot, subindex, roi, result):
         assert slot == self.ConcatenatedOutput

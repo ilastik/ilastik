@@ -78,6 +78,7 @@ class OpFeatureMatrixCache(Operator):
     
         self.LabelAndFeatureMatrix.meta.shape = (1,)
         self.LabelAndFeatureMatrix.meta.dtype = object
+        self.LabelAndFeatureMatrix.meta.num_feature_channels = self.FeatureImage.meta.shape[-1]
 
         self.ProgressSignal.meta.shape = (1,)
         self.ProgressSignal.meta.dtype = object
