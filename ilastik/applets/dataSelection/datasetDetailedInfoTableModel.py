@@ -61,7 +61,12 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
                 laneSlot = slot.operator
                 if laneSlot is None or laneSlot.operator is None: # This can happen during disconnect
                     return
-                laneIndex = laneSlot.operator.index( laneSlot )
+                try:
+                    laneIndex = laneSlot.operator.index( laneSlot )
+                except ValueError:
+                    # If the slot doesn't exist in the lane, 
+                    #  then this dataset is in the process of being removed.
+                    return
                 firstIndex = self.createIndex(laneIndex, 0)
                 lastIndex = self.createIndex(laneIndex, self.columnCount()-1)
                 self.dataChanged.emit(firstIndex, lastIndex)

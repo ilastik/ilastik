@@ -18,41 +18,25 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-import ConfigParser
-import io, os
+from ilastik.applets.base.standardApplet import StandardApplet
 
-"""
-ilastik will read settings from ~/.ilastikrc
+from lazyflow.operators import OpLabelVolume
 
-Example:
 
-[ilastik]
-debug: false
-plugin_directories: ~/.ilastik/plugins,
-logging_config: ~/custom_ilastik_logging_config.json
-"""
+class ConnectedComponentsApplet(StandardApplet):
 
-default_config = """
-[ilastik]
-debug: false
-plugin_directories: ~/.ilastik/plugins,
+    def __init__(self, workflow, guiName):
+        super(self.__class__, self).__init__(guiName, workflow)
 
-[lazyflow]
-threads: 0
-total_ram_mb: 0
-"""
+    @property
+    def singleLaneOperatorClass(self):
+        return OpLabelVolume
 
-cfg = ConfigParser.SafeConfigParser()
-def init_ilastik_config( userConfig=None ):
-    global cfg
-    cfg.readfp(io.BytesIO(default_config))
+    @property
+    def broadcastingSlots(self):
+        return ['Method', 'Background']
 
-    if userConfig is not None and not os.path.exists(userConfig):
-        raise Exception("ilastik config file does not exist: {}".format( userConfig ))
-
-    if userConfig is None:    
-        userConfig = os.path.expanduser("~/.ilastikrc")
-    if os.path.exists(userConfig):
-        cfg.read(userConfig)
-
-init_ilastik_config()
+    @property
+    def singleLaneGuiClass(self):
+        from connectedComponentsGui import ConnectedComponentsGui
+        return ConnectedComponentsGui

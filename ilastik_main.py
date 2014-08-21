@@ -1,6 +1,7 @@
 import sys
 import os
 
+import ilastik.config
 from ilastik.config import cfg as ilastik_config
 
 import logging
@@ -19,6 +20,7 @@ parser.add_argument('--workflow', help='When used with --new_project, specifies 
 parser.add_argument('--clean_paths', help='Remove ilastik-unrelated directories from PATH and PYTHONPATH.', action='store_true', default=False)
 
 parser.add_argument('--debug', help='Start ilastik in debug mode.', action='store_true', default=False)
+parser.add_argument('--configfile', help='A custom path to a user config file for expert ilastik settings.', required=False)
 parser.add_argument('--fullscreen', help='Show Window in fullscreen mode.', action='store_true', default=False)
 
 parser.add_argument('--start_recording', help='Open the recorder controls and immediately start recording', action='store_true', default=False)
@@ -31,6 +33,8 @@ def main( parsed_args, workflow_cmdline_args=[] ):
     this_path = os.path.dirname(__file__)
     ilastik_dir = os.path.abspath(os.path.join(this_path, "..%s.." % os.path.sep))
     
+    _init_configfile( parsed_args )
+    
     _clean_paths( parsed_args, ilastik_dir )
     _update_debug_mode( parsed_args )
     _init_logging( parsed_args ) # Initialize logging before anything else
@@ -40,6 +44,10 @@ def main( parsed_args, workflow_cmdline_args=[] ):
     # Extra initialization functions.
     # Called during app startup.
     init_funcs = []
+    lazyflow_config_fn = _prepare_lazyflow_config( parsed_args )
+    if lazyflow_config_fn:
+        init_funcs.append( lazyflow_config_fn )    
+
     load_fn = _prepare_auto_open_project( parsed_args )
     if load_fn:
         init_funcs.append( load_fn )    
@@ -73,6 +81,12 @@ def main( parsed_args, workflow_cmdline_args=[] ):
         from ilastik.shell.gui.startShellGui import startShellGui
         sys.exit(startShellGui(workflow_cmdline_args, eventcapture_mode, playback_args, *init_funcs))
 
+def _init_configfile( parsed_args ):
+    # If the user provided a custom config path to use instead of the default .ilastikrc,
+    # Re-initialize the config module for it.
+    if parsed_args.configfile:
+        ilastik.config.init_ilastik_config( parsed_args.configfile )
+    
 def _clean_paths( parsed_args, ilastik_dir ):
     if parsed_args.clean_paths:
         # remove undesired paths from PYTHONPATH and add ilastik's submodules
@@ -148,6 +162,24 @@ def _validate_arg_compatibility( parsed_args ):
          parsed_args.exit_on_success ):
         sys.stderr.write("Some of the command-line options you provided are not supported in headless mode.  Exiting.")
         sys.exit(1)
+
+def _prepare_lazyflow_config( parsed_args ):
+    n_threads = ilastik_config.getint('lazyflow', 'threads')
+    total_ram_mb = ilastik_config.getint('lazyflow', 'total_ram_mb')
+    if n_threads or total_ram_mb:
+        def _configure_lazyflow_settings(shell):
+            import lazyflow
+            import lazyflow.request
+            if n_threads > 0:
+                lazyflow.request.Request.reset_thread_pool(n_threads)
+            if total_ram_mb < 500:
+                raise Exception("Your config says available RAM is only {} MB.  "
+                                "Remember to specify RAM in MB, not GB."
+                                .format( total_ram_mb ))
+            lazyflow.AVAILABLE_RAM_MB = total_ram_mb
+        return _configure_lazyflow_settings
+    return None
+
 
 def _prepare_auto_open_project( parsed_args ):
     if parsed_args.project is None:

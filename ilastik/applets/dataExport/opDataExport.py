@@ -442,8 +442,7 @@ def get_model_op(wrappedOp):
     # Must provide a 'ready' slot for the gui
     # Use a subregion operator to provide a slot with the meta data we chose.
     opSubRegion = OpSubRegion( parent=wrappedOp.parent )
-    opSubRegion.Start.setValue( (0,)*len(shape) )
-    opSubRegion.Stop.setValue( tuple(shape) )
+    opSubRegion.Roi.setValue( [(0,)*len(shape), tuple(shape)] )
     opSubRegion.Input.connect( slot )
     
     # (The actual contents of this slot are not important to the settings gui.

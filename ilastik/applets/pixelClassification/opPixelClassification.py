@@ -233,6 +233,9 @@ class OpPixelClassification( Operator ):
         """
         Ensure that all input images have the same number of channels.
         """
+        if not self.InputImages[laneIndex].ready():
+            return
+
         thisLaneTaggedShape = self.InputImages[laneIndex].meta.getTaggedShape()
 
         # Find a different lane and use it for comparison
@@ -334,7 +337,6 @@ class OpPredictionPipelineNoCache(Operator):
     FeatureImages = InputSlot()
     PredictionMask = InputSlot(optional=True)
     Classifier = InputSlot()
-    FreezePredictions = InputSlot()
     PredictionsFromDisk = InputSlot( optional=True )
     NumClasses = InputSlot()
     
@@ -419,6 +421,7 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
     This operator extends the cacheless prediction pipeline above with additional outputs for the GUI.
     (It uses caches for these outputs, and has an extra input for cached features.)
     """        
+    FreezePredictions = InputSlot()
     CachedFeatureImages = InputSlot()
 
     PredictionProbabilities = OutputSlot()

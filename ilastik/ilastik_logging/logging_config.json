@@ -5,7 +5,7 @@
     "loggers": {
         "py.warnings": {  "level":"WARN" },
 
-        "__main__":                                                 { "level":"INFO" },
+        "__main__":                                                 { "level":"DEBUG" },
         "thread_start":                                             { "level":"INFO" },
         "lazyflow":                                                 { "level":"INFO" },
         "lazyflow.graph":                                           { "level":"INFO" },
@@ -15,7 +15,7 @@
         "lazyflow.operators.ioOperators":                           { "level":"INFO" },
         "lazyflow.operators.ioOperators.opRESTfulVolumeReader":     { "level":"INFO" },
         "lazyflow.operators.opVigraWatershed":                      { "level":"INFO" },
-        "lazyflow.operators.opFeatureMatrixCache":                  { "level":"INFO" },
+        "lazyflow.operators.opFeatureMatrixCache":                  { "level":"DEBUG" },
         "lazyflow.operators.opConcatenateFeatureMatrices":          { "level":"INFO" },
         
         "lazyflow.operators.opArrayCache.OpArrayCache":                           { "level":"INFO" },

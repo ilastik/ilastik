@@ -29,7 +29,9 @@ logger = logging.getLogger(__name__)
 
 #PyQt
 from PyQt4 import uic
-from PyQt4.QtGui import QWidget, QStackedWidget, QMessageBox, QFileDialog, QDialog
+from PyQt4.QtCore import Qt
+from PyQt4.QtGui import QWidget, QStackedWidget, QMessageBox, QFileDialog, \
+                        QDialog, QVBoxLayout, QLabel, QComboBox, QDialogButtonBox
 
 #lazyflow
 from lazyflow.request import Request
@@ -71,6 +73,31 @@ class GuiMode():
     Normal = 0
     Batch = 1
 
+
+class H5VolumeSelectionDlg(QDialog):
+    """
+    A window to ask the user to choose between multiple HDF5 datasets in a single file.
+    """
+    def __init__(self, datasetNames, parent):
+        super(H5VolumeSelectionDlg, self).__init__(parent)                        
+        label = QLabel( "Your HDF5 File contains multiple image volumes.\n"
+                        "Please select the one you would like to open." )
+        
+        self.combo = QComboBox()
+        for name in datasetNames:
+            self.combo.addItem(name)
+        
+        buttonbox = QDialogButtonBox( Qt.Horizontal, parent=self )
+        buttonbox.setStandardButtons( QDialogButtonBox.Ok | QDialogButtonBox.Cancel )
+        buttonbox.accepted.connect( self.accept )
+        buttonbox.rejected.connect( self.reject )
+        
+        layout = QVBoxLayout()
+        layout.addWidget( label )
+        layout.addWidget( self.combo )
+        layout.addWidget( buttonbox )
+        
+        self.setLayout(layout)
 
 class DataSelectionGui(QWidget):
     """
@@ -125,6 +152,12 @@ class DataSelectionGui(QWidget):
     ###########################################
     ###########################################
 
+    class UserCancelledError(Exception):
+        # This exception type is raised when the user cancels the 
+        #  addition of dataset files in the middle of the process somewhere.
+        # It isn't an error -- it's used for control flow.
+        pass
+
     def __init__(self, parentApplet, dataSelectionOperator, serializer, instructionText, guiMode=GuiMode.Normal, max_lanes=None):
         """
         Constructor.
@@ -139,6 +172,7 @@ class DataSelectionGui(QWidget):
         
         self.parentApplet = parentApplet
         self._max_lanes = max_lanes
+        self._default_h5_volumes = {}
 
         self._viewerControls = QWidget()
         self.topLevelOperator = dataSelectionOperator
@@ -440,7 +474,10 @@ class DataSelectionGui(QWidget):
             return
 
         # Create a list of DatasetInfos
-        infos = self._createDatasetInfos(fileNames, rois)
+        try:
+            infos = self._createDatasetInfos(roleIndex, fileNames, rois)
+        except DataSelectionGui.UserCancelledError:
+            return
         
         # If no exception was thrown so far, set up the operator now
         loaded_all = self._configureOpWithInfos(roleIndex, startingLane, endingLane, infos)
@@ -492,7 +529,7 @@ class DataSelectionGui(QWidget):
 
         return (startingLane, endingLane)
 
-    def _createDatasetInfos(self, filePaths, rois):
+    def _createDatasetInfos(self, roleIndex, filePaths, rois):
         """
         Create a list of DatasetInfos for the given filePaths and rois
         rois may be None, in which case it is ignored.
@@ -503,11 +540,11 @@ class DataSelectionGui(QWidget):
 
         infos = []
         for filePath, roi in zip(filePaths, rois):
-            info = self._createDatasetInfo(filePath, roi)
+            info = self._createDatasetInfo(roleIndex, filePath, roi)
             infos.append(info)
         return infos
 
-    def _createDatasetInfo(self, filePath, roi):
+    def _createDatasetInfo(self, roleIndex, filePath, roi):
         """
         Create a DatasetInfo object for the given filePath and roi.
         roi may be None, in which case it is ignored.
@@ -532,10 +569,28 @@ class DataSelectionGui(QWidget):
         h5Exts = ['.ilp', '.h5', '.hdf5']
         if os.path.splitext(datasetInfo.filePath)[1] in h5Exts:
             datasetNames = self.getPossibleInternalPaths( absPath )
-            if len(datasetNames) > 0:
+            if len(datasetNames) == 0:
+                raise RuntimeError("HDF5 file %s has no image datasets" % datasetInfo.filePath)
+            elif len(datasetNames) == 1:
                 datasetInfo.filePath += str(datasetNames[0])
             else:
-                raise RuntimeError("HDF5 file %s has no image datasets" % datasetInfo.filePath)
+                # If exactly one of the file's datasets matches a user's previous choice, use it.
+                if roleIndex not in self._default_h5_volumes:
+                    self._default_h5_volumes[roleIndex] = set()
+                previous_selections = self._default_h5_volumes[roleIndex]
+                possible_auto_selections = previous_selections.intersection(datasetNames)
+                if len(possible_auto_selections) == 1:
+                    datasetInfo.filePath += str(list(possible_auto_selections)[0])
+                else:
+                    # Ask the user which dataset to choose
+                    dlg = H5VolumeSelectionDlg(datasetNames, self)
+                    if dlg.exec_() == QDialog.Accepted:
+                        selected_index = dlg.combo.currentIndex()
+                        selected_dataset = str(datasetNames[selected_index])
+                        datasetInfo.filePath += selected_dataset
+                        self._default_h5_volumes[roleIndex].add( selected_dataset )
+                    else:
+                        raise DataSelectionGui.UserCancelledError()
 
         # Allow labels by default if this gui isn't being used for batch data.
         datasetInfo.allowLabels = ( self.guiMode == GuiMode.Normal )
@@ -751,16 +806,38 @@ class DataSelectionGui(QWidget):
     
     def addDvidVolume(self, roleIndex, laneIndex):
         # TODO: Provide list of recently used dvid hosts, loaded from user preferences
-        #from pydvid.gui.contents_browser import ContentsBrowser
+        recent_hosts_pref = PreferencesManager.Setting("DataSelection", "Recent DVID Hosts")
+        recent_hosts = recent_hosts_pref.get()
+        recent_hosts = filter(lambda h: h, recent_hosts)
+        if not recent_hosts:
+            recent_hosts = ["localhost:8000"]
+            
         from dvidDataSelectionBrowser import DvidDataSelectionBrowser
-        browser = DvidDataSelectionBrowser(["localhost:8000"], parent=self)
+        browser = DvidDataSelectionBrowser(recent_hosts, parent=self)
         if browser.exec_() == DvidDataSelectionBrowser.Rejected:
+            return
+
+        if None in browser.get_selection():
+            QMessageBox.critical("Couldn't use your selection.")
             return
 
         rois = None
         hostname, dset_index, volume_name, uuid = browser.get_selection()
         dvid_url = 'http://{hostname}/api/node/{uuid}/{volume_name}'.format( **locals() )
         subvolume_roi = browser.get_subvolume_roi()
+
+        # Relocate host to top of 'recent' list, and limit list to 10 items.
+        try:
+            i = recent_hosts.index(recent_hosts)
+            del recent_hosts[i]
+        except ValueError:
+            pass
+        finally:
+            recent_hosts.insert(0, hostname)        
+            recent_hosts = recent_hosts[:10]
+
+        # Save pref
+        recent_hosts_pref.set(recent_hosts)
 
         if subvolume_roi is None:
             self.addFileNames([dvid_url], roleIndex, laneIndex)

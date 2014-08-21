@@ -146,8 +146,7 @@ class OpSingleBlockObjectPrediction( Operator ):
         
         halo_start, halo_stop = map(tuple, self._halo_roi)
         
-        self._opRawSubRegion.Start.setValue( halo_start )
-        self._opRawSubRegion.Stop.setValue( halo_stop )
+        self._opRawSubRegion.Roi.setValue( (halo_start, halo_stop) )
 
         # Binary image has only 1 channel.  Adjust halo subregion.
         assert self.BinaryImage.meta.getTaggedShape()['c'] == 1
@@ -156,8 +155,7 @@ class OpSingleBlockObjectPrediction( Operator ):
         binary_halo_roi[:, c_index] = (0,1) # Binary has only 1 channel.
         binary_halo_start, binary_halo_stop = map(tuple, binary_halo_roi)
         
-        self._opBinarySubRegion.Start.setValue( binary_halo_start )
-        self._opBinarySubRegion.Stop.setValue( binary_halo_stop )
+        self._opBinarySubRegion.Roi.setValue( (binary_halo_start, binary_halo_stop) )
 
         self.PredictionImage.meta.assignFrom( self._opPredictionImage.Output.meta )
         self.PredictionImage.meta.shape = tuple( numpy.subtract( self.block_roi[1], self.block_roi[0] ) )

@@ -242,8 +242,8 @@ class FeatureSelectionGui(LayerViewerGui):
             start[channelAxis] = inputChannel * featureChannelsPerInputChannel
             stop = list(featureSlot.meta.shape)
             stop[channelAxis] = (inputChannel+1) * featureChannelsPerInputChannel
-            opSubRegion.Start.setValue( tuple(start) )
-            opSubRegion.Stop.setValue( tuple(stop) )
+            
+            opSubRegion.Roi.setValue( (tuple(start), tuple(stop)) )
             
             featureLayer = self.createStandardLayerFromSlot( opSubRegion.Output )
             featureLayer.visible = False
@@ -281,7 +281,7 @@ class FeatureSelectionGui(LayerViewerGui):
                 featureName = self.FeatureNames[featureId]
                 featureEntries.append( FeatureEntry(featureName) )
             groupedNames.append( (group, featureEntries) )
-        self.featureDlg.createFeatureTable( groupedNames, self.ScalesList )
+        self.featureDlg.createFeatureTable( groupedNames, self.ScalesList, self.topLevelOperatorView.WINDOW_SIZE )
         self.featureDlg.setImageToPreView(None)
 
         # Init with no features

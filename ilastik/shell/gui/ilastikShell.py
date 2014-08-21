@@ -701,6 +701,7 @@ class IlastikShell( QMainWindow ):
             svgPath = encode_from_qstring( svgPath )
             PreferencesManager().set( 'shell', 'recent debug diagram', svgPath )
             lazyflow.tools.schematic.generateSvgFileForOperator(svgPath, op, detail)
+            QDesktopServices.openUrl( QUrl.fromLocalFile(svgPath) )
 
     def show(self):
         """

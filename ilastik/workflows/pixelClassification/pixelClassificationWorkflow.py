@@ -51,7 +51,7 @@ class PixelClassificationWorkflow(Workflow):
     DATA_ROLE_RAW = 0
     DATA_ROLE_PREDICTION_MASK = 1
     
-    EXPORT_NAMES = ['Probabilities', 'Simple Segmentation', 'Uncertainty']
+    EXPORT_NAMES = ['Probabilities', 'Simple Segmentation', 'Uncertainty', 'Features']
     
     @property
     def applets(self):
@@ -78,7 +78,7 @@ class PixelClassificationWorkflow(Workflow):
         parser.add_argument('--generate-random-labels', help="Add random labels to the project file.", action="store_true")
         parser.add_argument('--random-label-value', help="The label value to use injecting random labels", default=1, type=int)
         parser.add_argument('--random-label-count', help="The number of random labels to inject via --generate-random-labels", default=2000, type=int)
-        parser.add_argument('--retrain', help="Re-train the classifier based on labels stored in project file", action="store_true")
+        parser.add_argument('--retrain', help="Re-train the classifier based on labels stored in project file, and re-save.", action="store_true")
 
         # Parse the creation args: These were saved to the project file when this project was first created.
         parsed_creation_args, unused_args = parser.parse_known_args(project_creation_args)
@@ -188,6 +188,7 @@ class PixelClassificationWorkflow(Workflow):
         opDataExport.Inputs[0].connect( opClassify.HeadlessPredictionProbabilities )
         opDataExport.Inputs[1].connect( opClassify.SimpleSegmentation )
         opDataExport.Inputs[2].connect( opClassify.HeadlessUncertaintyEstimate )
+        opDataExport.Inputs[3].connect( opClassify.FeatureImages )
         for slot in opDataExport.Inputs:
             assert slot.partner is not None
 
@@ -238,7 +239,6 @@ class PixelClassificationWorkflow(Workflow):
         
         # Classifier and NumClasses are provided by the interactive workflow
         opBatchPredictionPipeline.Classifier.connect( opClassify.Classifier )
-        opBatchPredictionPipeline.FreezePredictions.setValue( False )
         opBatchPredictionPipeline.NumClasses.connect( opClassify.NumClasses )
         
         # Provide these for the gui
@@ -262,6 +262,7 @@ class PixelClassificationWorkflow(Workflow):
         opTransposeBatchInputs.Inputs[0].connect( opBatchPredictionPipeline.HeadlessPredictionProbabilities ) # selection 0
         opTransposeBatchInputs.Inputs[1].connect( opBatchPredictionPipeline.SimpleSegmentation ) # selection 1
         opTransposeBatchInputs.Inputs[2].connect( opBatchPredictionPipeline.HeadlessUncertaintyEstimate ) # selection 2
+        opTransposeBatchInputs.Inputs[3].connect( opBatchPredictionPipeline.FeatureImages ) # selection 3
         for slot in opTransposeBatchInputs.Inputs:
             assert slot.partner is not None
         
@@ -363,13 +364,25 @@ class PixelClassificationWorkflow(Workflow):
         if self._batch_export_args:
             self.batchResultsApplet.configure_operator_with_parsed_args( self._batch_export_args )
 
+        if self._batch_input_args and self.pcApplet.topLevelOperator.classifier_cache._dirty:
+            logger.warn("Your project file has no classifier.  A new classifier will be trained for this run.")
+
+        # Let's see the messages from the training operator.
+        logging.getLogger("lazyflow.operators.classifierOperators").setLevel(logging.DEBUG)
+        
         if self.retrain:
             # Cause the classifier to be dirty so it is forced to retrain.
             # (useful if the stored labels were changed outside ilastik)
             self.pcApplet.topLevelOperator.opTrain.ClassifierFactory.setDirty()
+            
+            # Request the classifier, which forces training
+            self.pcApplet.topLevelOperator.FreezePredictions.setValue(False)
+            _ = self.pcApplet.topLevelOperator.Classifier.value
+
+            # store new classifier to project file
+            projectManager.saveProject(force_all_save=False)
 
         if self._headless and self._batch_input_args and self._batch_export_args:
-
             # Make sure we're using the up-to-date classifier.
             self.pcApplet.topLevelOperator.FreezePredictions.setValue(False)
         
@@ -392,9 +405,6 @@ class PixelClassificationWorkflow(Workflow):
                 # Finished.
                 sys.stdout.write("\n")
 
-            if self.retrain:
-                # store re-trained classifier to file
-                projectManager.saveProject(force_all_save=False)
 
     def _print_labels_by_slice(self, search_value):
         """

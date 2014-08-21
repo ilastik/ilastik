@@ -37,7 +37,6 @@ from functools import partial
 from ilastik.config import cfg as ilastik_config
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
-from lazyflow.operators import OpSubRegion
 from lazyflow.operators.ioOperators import OpExportToKnime 
 
 import logging
