@@ -16,9 +16,10 @@ class MriVolConnectedComponentsApplet( StandardApplet ):
 
     @property
     def broadcastingSlots(self):
-        return ['Threshold']
+        return [ ]
 
     @property
     def singleLaneGuiClass(self):
         from mriVolConnectedComponentsGui import MriVolConnectedComponentsGui
         return MriVolConnectedComponentsGui
+

@@ -2,6 +2,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpReorderAxes, OpCompressedCache, \
     OperatorWrapper
 from lazyflow.rtype import SubRegion
+from lazyflow.stype import Opaque
 
 import vigra
 import numpy as np
@@ -23,6 +24,8 @@ class OpMriVolPreproc(Operator):
 
     Sigma = InputSlot(stype='float', value=1.0)
     Threshold = InputSlot(stype='float', value=0.0)
+    
+    LabelNames = OutputSlot(stype=Opaque)
 
     def __init__(self, *args, **kwargs):
         super(OpMriVolPreproc, self).__init__(*args, **kwargs)
@@ -64,7 +67,11 @@ class OpMriVolPreproc(Operator):
     def setupOutputs(self):
         ts = self.Input.meta.getTaggedShape()
         self.opFanOut.NumChannels.setValue(ts['c'])
-
+        self.LabelNames.meta.shape = (ts['c'],)
+        self.LabelNames.meta.dtype = np.object
+        self.LabelNames.setValue(np.asarray( \
+    ['Prediction {}'.format(l+1) for l in range(ts['c'])],dtype=np.object))
+        
 
 class OpCostVolumeFilter(Operator):
     name = "Cost Volume Filter"

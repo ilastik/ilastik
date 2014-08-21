@@ -1,12 +1,16 @@
 import os
+import itertools
+from functools import partial
 
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QEvent
 from PyQt4.QtGui import QColor
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+from ilastik.utility.gui import threadRouted
 from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer
 from lazyflow.operators import OpMultiArraySlicer
+
 
 class MriVolConnectedComponentsGui ( LayerViewerGui ):
 
@@ -20,10 +24,58 @@ class MriVolConnectedComponentsGui ( LayerViewerGui ):
 
         self._drawer.applyButton.clicked.connect( self._onApplyButtonClicked )
 
-        ## syncronize slider and spinbox
+        # syncronize slider and spinbox
         self._drawer.slider.valueChanged.connect( self._slider_value_changed )
         self._drawer.thresSpinBox.valueChanged.connect( \
                                                 self._spinbox_value_changed )
+
+        # connect channel spin box
+        self._drawer.channelComboBox.currentIndexChanged.connect( \
+                                                        self._channelChanged )
+        
+        # link checkbox to disable channel spin box
+        self._drawer.channelCheckBox.stateChanged.connect( \
+                                                    self._onCheckBoxChecked )
+
+        #  If the user pressed enter inside a spinbox, auto-click "Apply"
+        self._allWatchedWidgets = [ self._drawer.thresSpinBox]
+ 
+        for widget in self._allWatchedWidgets:
+            widget.installEventFilter( self )
+
+        self._updateGuiFromOperator()
+
+    def eventFilter(self, watched, event):
+        """
+        If the user pressed 'enter' within a spinbox, 
+        auto-click the "apply" button.
+        """
+        if watched in self._allWatchedWidgets:
+            if  event.type() == QEvent.KeyPress and\
+              ( event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return):
+                self._drawer.applyButton.click()
+                return True
+        return False
+
+    @threadRouted
+    def _updateGuiFromOperator(self):
+        # Set maximum nummber of channels
+        op = self.topLevelOperatorView
+        for i in range(len(op.Input)):
+            self._drawer.channelComboBox.addItem(op.LabelNames.value[i])
+
+    def _channelChanged(self):
+        idx = self._drawer.channelComboBox.currentIndex()-1
+        op = self.topLevelOperatorView
+        self._drawer.thresSpinBox.setValue( op.Threshold[idx].value )
+
+
+    def _onCheckBoxChecked(self):
+        if self._drawer.channelCheckBox.isChecked():
+            self._drawer.channelComboBox.setDisabled(True)
+        else:
+            self._drawer.channelComboBox.setEnabled(True)
+            
 
     def _onApplyButtonClicked(self):
         self._updateOperatorFromGui()
@@ -31,8 +83,18 @@ class MriVolConnectedComponentsGui ( LayerViewerGui ):
     def _updateOperatorFromGui(self):
         op = self.topLevelOperatorView
         thres = self._drawer.thresSpinBox.value()
-        op.Threshold.setValue(thres)
-        print 'Threshold changed: {}'.format(thres)
+        if self._drawer.channelCheckBox.isChecked():
+            # same threshold for all channels
+            for i in range(len(op.Threshold)):
+                op.Threshold[i].setValue(thres)
+        else:
+            idx = self._drawer.channelComboBox.currentIndex()-1
+            # print 'Threshold {} changed: {}'.format(idx, thres)
+            op.Threshold[idx].setValue(thres)
+        
+        # for i in range(len(op.Threshold)):
+            # print 'Threshold channel {}: {}'.format(i, op.Threshold[i].value)
+                                                    
 
     def _slider_value_changed(self, value):
         self._drawer.thresSpinBox.setValue(value)
@@ -43,7 +105,7 @@ class MriVolConnectedComponentsGui ( LayerViewerGui ):
     def setupLayers(self):
         layers = []
         op = self.topLevelOperatorView
-        
+
         if op.Output.ready():
             numChannels = len(op.Output)
             # print 'Number of channels: {}'.format(numChannels)
@@ -58,12 +120,20 @@ class MriVolConnectedComponentsGui ( LayerViewerGui ):
                     normalize=(0.0, 1.0) )
                 inputChannelLayer.opacity = 0.5
                 inputChannelLayer.visible = True
-                inputChannelLayer.name = "Output Channel " + str(i)
-                # TODO change to label name
+                inputChannelLayer.name = op.LabelNames.value[i]
+                # inputChannelLayer.name = 'Prediction {}'.format(i+1)
+                '''
                 inputChannelLayer.setToolTip(
                     "Select input channel " + str(i) + \
-                    " if this prediction image contains the objects of interest.")                    
+                    " if this prediction image contains the objects of interest.")               
+                '''
                 layers.append(inputChannelLayer)
+                def layerNameChangedHandler(layer, k, *args, **kwargs):
+                    layer.name = op.LabelNames.value[k]
+                    self._drawer.channelComboBox.setItemText(k,
+                    op.LabelNames.value[k])
+                op.LabelNames.notifyDirty( partial(layerNameChangedHandler,
+                                                   inputChannelLayer, i) )
 
         '''
         if op.Input.ready():
@@ -81,6 +151,7 @@ class MriVolConnectedComponentsGui ( LayerViewerGui ):
             rawLayer.visible = True
             rawLayer.opacity = 1.0
             layers.append(rawLayer)
+
         return layers
 
     def _createDefault16ColorColorTable(self):

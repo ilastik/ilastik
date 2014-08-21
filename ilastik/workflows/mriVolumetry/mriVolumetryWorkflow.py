@@ -5,6 +5,7 @@ from lazyflow.graph import Graph
 from ilastik.applets.dataSelection import DataSelectionApplet
 from mriVolPreprocApplet import MriVolPreprocApplet
 from mriVolConnectedComponentsApplet import MriVolConnectedComponentsApplet
+from mriVolReportApplet import MriVolReportApplet
 
 class MriVolumetryWorkflow(Workflow):
     def __init__(self, shell, headless, workflow_cmdline_args, *args, **kwargs):
@@ -12,13 +13,14 @@ class MriVolumetryWorkflow(Workflow):
         # Create a graph to be shared by all operators
         graph = Graph()
         super(MriVolumetryWorkflow, self).__init__(shell, headless, 
-                                                   graph=graph, *args, **kwargs)
+                                                   graph=graph, *args, 
+                                                   **kwargs)
 
         # Create applets 
         self.dataSelectionApplet = DataSelectionApplet(self, 
                                                        "Input Data", 
                                                        "Input Data", 
-                                                       supportIlastik05Import=False, 
+                                                supportIlastik05Import=False, 
                                                        batchDataGui=False,
                                                        force5d=True)
 
@@ -33,17 +35,22 @@ class MriVolumetryWorkflow(Workflow):
         self.mriVolCCApplet = MriVolConnectedComponentsApplet(self, \
                                                 'Remove Connected Components',
                                                 'ConnectedComponents')
+        self.mriVolReportApplet = MriVolReportApplet(self, \
+                                                     'Report', 'Report')
+
 
         self._applets = []
         self._applets.append( self.dataSelectionApplet )
         self._applets.append( self.mriVolPreprocApplet )
         self._applets.append( self.mriVolCCApplet )
+        self._applets.append( self.mriVolReportApplet )
 
         # self._workflow_cmdline_args = workflow_cmdline_args
 
     def connectLane(self, laneIndex):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
-        opMriVolPreproc = self.mriVolPreprocApplet.topLevelOperator.getLane(laneIndex)
+        opMriVolPreproc = self.mriVolPreprocApplet.topLevelOperator.getLane( \
+                                                                    laneIndex)
         opMriVolCC = self.mriVolCCApplet.topLevelOperator.getLane(laneIndex)
 
         # Connect top-level operators
@@ -53,6 +60,8 @@ class MriVolumetryWorkflow(Workflow):
         # opMriVolCC.Input.connect( opMriVolPreproc.FinalOutput )
         opMriVolCC.Input.connect( opMriVolPreproc.FanOutOutput )
         opMriVolCC.RawInput.connect( opData.ImageGroup[0] )
+
+        opMriVolCC.LabelNames.connect( opMriVolPreproc.LabelNames )
 
     @property
     def applets(self):
@@ -71,7 +80,7 @@ class MriVolumetryWorkflow(Workflow):
         This method will be called by the child classes with the result of
         their own applet readyness findings as keyword argument.
         """
-        nRoles = 1
+        nRoles = 2 # both, raw and prediction have to be provided
         slot = self.dataSelectionApplet.topLevelOperator.ImageGroup
         if len(slot) > 0:
             input_ready = True
@@ -82,7 +91,6 @@ class MriVolumetryWorkflow(Workflow):
             input_ready = False
         for applet in self.applets[1:]:
             self._shell.setAppletEnabled(applet, input_ready)
-        self._shell.enableProjectChanges(True)
 
 
 '''

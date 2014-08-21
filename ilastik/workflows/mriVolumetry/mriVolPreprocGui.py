@@ -1,21 +1,23 @@
 import os 
-from functools import partial
+import itertools
+# from functools import partial
 
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QEvent
-from PyQt4.QtGui import QColor, QMessageBox
+from PyQt4.QtGui import QColor, QMessageBox, QListView, QStandardItemModel, \
+    QStandardItem, QPixmap, QIcon
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
-# from ilastik.utility.gui import threadRouted
-# from ilastik.utility import bind
+from ilastik.utility.gui import threadRouted
+
 from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer
-# from lazyflow.operators.generic import OpSingleChannelSelector
+# from volumina.colortables import create_default_16bit
+
 from lazyflow.operators import OpMultiArraySlicer
 
 import numpy as np
 
 class MriVolPreprocGui( LayerViewerGui ):
-    
     def stopAndCleanUp(self):
         # Unsubscribe to all signals
         #for fn in self.__cleanup_fns:
@@ -27,6 +29,10 @@ class MriVolPreprocGui( LayerViewerGui ):
         # self.__cleanup_fns = []
         super( MriVolPreprocGui, self ).__init__(*args, **kwargs)
         self._channelColors = self._createDefault16ColorColorTable()
+
+        #  use default colors
+        # self._channelColors = create_default_16bit()
+        # self._channelColors[0] = 0 # make first channel transparent
 
     def initAppletDrawerUi(self):
         """
@@ -44,11 +50,9 @@ class MriVolPreprocGui( LayerViewerGui ):
         # If the user pressed enter inside a spinbox, auto-click "Apply"
         for widget in self._allWatchedWidgets:
             widget.installEventFilter( self )
-
-        # Set Maximum Value of Sigma
-        tagged_shape = self.topLevelOperatorView.Input.meta.getTaggedShape()
-        shape = map(lambda k: tagged_shape[k], 'xyz')
-        self._drawer.sigmaSpinBox.setMaximum(np.floor(np.min(shape)/6)-1)
+            
+        self._updateGuiFromOperator()
+        
 
         '''
         self._updateGuiFromOperator()
@@ -59,47 +63,79 @@ class MriVolPreprocGui( LayerViewerGui ):
         self.__cleanup_fns.append( partial( self.topLevelOperatorView.InputImage.unregisterMetaChanged, bind(self._updateGuiFromOperator) ) )
         '''
 
+    def _setupLabelNames(self):
+        # TODO include icons that match the color 
+        op = self.topLevelOperatorView
+        numChannels = op.Output.meta.getTaggedShape()['c']
+        layer_names = []
+        # setup labels
+        self.model = QStandardItemModel(self._drawer.labelListView)
+        for i in range(numChannels):
+            item = QStandardItem()
+            item_name = 'Prediction {}'.format(i+1)
+            item.setText(item_name)
+
+            pixmap = QPixmap(16, 16)
+            pixmap.fill(QColor(self._channelColors[i]))
+            item.setIcon(QIcon(pixmap))
+
+            layer_names.append(item_name)
+            self.model.appendRow(item)
+        self._drawer.labelListView.setModel(self.model)
+        self.model.itemChanged.connect(self._labelNameChanged)
+        op.LabelNames.setValue(np.array(layer_names, dtype=np.object))
+
+    def _labelNameChanged(self):
+        # print 'Label name changed'
+        op = self.topLevelOperatorView
+        i = 0        
+        while self.model.item(i):
+            if not self.model.item(i):
+                return
+            layer = self.getLayer(self.model.item(i).text())
+            if layer == None:
+                new_layer = self.getLayer(op.LabelNames.value[i])
+                new_layer.name = self.model.item(i).text()
+                tmp_list = op.LabelNames.value
+                tmp_list[i] = self.model.item(i).text()
+                op.LabelNames.setValue(tmp_list)
+                op.LabelNames.setDirty()
+                return
+            i+=1
+
     def _updateOperatorFromGui(self):
         op = self.topLevelOperatorView
+
         # Read Sigma
         sigma = self._drawer.sigmaSpinBox.value()
-
-
-        '''
-        # avoid 'kernel longer than line' errors
-        # FIXME Set maximum value in spinbox during setupOutputs
-        shape = op.Input.meta.getTaggedShape()
-        ref_sigma = sigma
-        for ax in [item for item in 'xyz' if item in shape and shape[item] > 1]:
-            tmp_sigma = np.floor(shape[ax]/3.5)-1
-            if tmp_sigma < ref_sigma:
-                ref_sigma = tmp_sigma
-        if sigma > ref_sigma:
-            mexBox = QMessageBox()
-            mexBox.setText("The sigma value {} "
-                           "is too high, should be at most {:.1f}.".format( \
-                                                            sigma, ref_sigma))
-            mexBox.exec_()
-            return
-        '''
         op.Sigma.setValue(sigma)
-        # Read Threshold
+
+        # # Read Threshold
         # thres = self._drawer.thresSpinBox.value()
         # op.Threshold.setValue(thres)
 
-
-    '''    
     @threadRouted
     def _updateGuiFromOperator(self):
-        op = self.topLevelOperatorView
-    '''
+        # Set Maximum Value of Sigma
+        tagged_shape = self.topLevelOperatorView.Input.meta.getTaggedShape()
+        shape = np.min([tagged_shape[c] for c in 'xyz' if c in tagged_shape])
+        max_sigma = np.floor(shape/6.)-1 # Experimentally 3. (see Anna)
+        self._drawer.sigmaSpinBox.setMaximum(max_sigma)
+        
+        sigma = self._drawer.sigmaSpinBox.value()
+        if sigma <= max_sigma:
+            self._drawer.sigmaSpinBox.setValue(sigma)
+        else:
+            self._drawer.sigmaSpinBox.setValue(max_sigma)
+
     def _onApplyButtonClicked(self):
         self._updateOperatorFromGui()
         # print 'Sigma value: {}'.format(self.topLevelOperatorView.Sigma)
 
     def eventFilter(self, watched, event):
         """
-        If the user pressed 'enter' within a spinbox, auto-click the "apply" button.
+        If the user pressed 'enter' within a spinbox, 
+        auto-click the "apply" button.
         """
         if watched in self._allWatchedWidgets:
             if  event.type() == QEvent.KeyPress and\
@@ -109,9 +145,9 @@ class MriVolPreprocGui( LayerViewerGui ):
         return False
         
     def setupLayers(self):
+        self._setupLabelNames()
         layers = []
         op = self.topLevelOperatorView
-
 
         if op.FinalOutput.ready():
             outLayer = ColortableLayer( LazyflowSource(op.FinalOutput),
@@ -141,11 +177,13 @@ class MriVolPreprocGui( LayerViewerGui ):
                     normalize=(0.0, 1.0) )
                 inputChannelLayer.opacity = 0.5
                 inputChannelLayer.visible = True
-                inputChannelLayer.name = "Input Channel " + str(i)
-                # TODO change to label name
+                inputChannelLayer.name = op.LabelNames.value[i]
+                # inputChannelLayer.name = "Prediction " + str(i)
+                '''
                 inputChannelLayer.setToolTip(
                     "Select input channel " + str(i) + \
-                    " if this prediction image contains the objects of interest.")                    
+                    " if this prediction image contains the objects of interest.")               
+                '''
                 layers.append(inputChannelLayer)
 
         # raw layer
@@ -158,6 +196,17 @@ class MriVolPreprocGui( LayerViewerGui ):
         return layers
 
 
+    def getLayer(self, name):
+        """ 
+        find a layer by its name
+        """
+        try:
+            layer = itertools.ifilter(lambda l: l.name == name, self.layerstack).next()
+        except StopIteration:
+            return None
+        else:
+            return layer
+        
     def _createDefault16ColorColorTable(self):
         colors = []
 

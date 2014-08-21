@@ -5,6 +5,7 @@ import numpy as np
 
 from lazyflow.operators import OpLabelVolume, OpFilterLabels, \
     OperatorWrapper,  OpCompressedCache
+from lazyflow.stype import Opaque
 
 class OpMriVolCC( Operator):
     name = "MRI Connected Components"
@@ -14,7 +15,9 @@ class OpMriVolCC( Operator):
     Output = OutputSlot(level=1)
     CachedOutput = OutputSlot(level=1)    
 
-    Threshold = InputSlot(stype='int', value=0)
+    Threshold = InputSlot(level=1, stype='int', value=0)
+
+    LabelNames = InputSlot(stype=Opaque)
 
     def __init__(self, *args, **kwargs):
         super(OpMriVolCC, self).__init__(*args, **kwargs)
@@ -41,8 +44,6 @@ class OpMriVolCC( Operator):
         self.CachedOutput.connect(self._cache.Output)
         self.Output.connect( self.CachedOutput )
 
-
-
     def setupOutputs(self):
         # set cache chunk shape to the whole spatial volume
         tagged_shape = self.Input[0].meta.getTaggedShape()
@@ -51,6 +52,7 @@ class OpMriVolCC( Operator):
         blockshape = map(lambda k: tagged_shape[k],
                          ''.join(tagged_shape.keys()))
         self._cache.BlockShape.setValue(tuple(blockshape))
+        self.Threshold.resize(len(self.Input))
 
     def execute(self, slot, subindex, roi, destination):
         assert False, "Shouldn't get here."
