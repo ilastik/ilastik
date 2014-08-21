@@ -44,7 +44,7 @@ def memoryUsagePercentage():
 
 def getAvailableRamBytes():
     if lazyflow.AVAILABLE_RAM_MB == 0:
-        return psutil.virtual_memory().total
+        return psutil.virtual_memory().available
     else:
         # AVAILABLE_RAM_MB is the total RAM the user wants us to limit ourselves to.
         return lazyflow.AVAILABLE_RAM_MB * 1024**2
