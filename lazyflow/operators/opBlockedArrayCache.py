@@ -215,8 +215,14 @@ class OpBlockedArrayCache(OpCache):
         return tot
 
     def execute(self, slot, subindex, roi, result):
+        assert (roi.start >= 0).all(), \
+            "Requested roi is out-of-bounds: [{}, {}]".format( roi.start, roi.stop )
+        assert (roi.stop <= self.Input.meta.shape).all(), \
+            "Requested roi is out-of-bounds: [{}, {}] (exceeds shape {})"\
+            .format( roi.start, roi.stop, self.Input.meta.shape )
+            
         if not self._configured:
-            # this happends when the operator is not yet fully configured due to fixAtCurrent == True
+            # this happens when the operator is not yet fully configured due to fixAtCurrent == True
             result[:] = 0
             return
         
