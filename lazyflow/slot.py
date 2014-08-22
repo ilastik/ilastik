@@ -913,9 +913,9 @@ class Slot(object):
                 # Something is wrong.  Are we cancelled?
                 Request.raise_if_cancelled()
                 if not self.ready():
-                    msg = "This slot ({}.{}) isn't ready yet, which means " \
-                          "you can't ask for its data.  Is it connected?".format(self.getRealOperator() and self.getRealOperator().name, self.name)
-                    self.logger.error(msg)
+                    #msg = "This slot ({}.{}) isn't ready yet, which means " \
+                    #      "you can't ask for its data.  Is it connected?".format(self.getRealOperator() and self.getRealOperator().name, self.name)
+                    #self.logger.error(msg)
                     problem_slot = Slot._findUpstreamProblemSlot(self)
                     problem_str = str( problem_slot )
                     if isinstance( problem_slot, Slot ):
@@ -928,8 +928,8 @@ class Slot(object):
                                   " It isn't ready."\
                                   "First upstream problem slot is: {}"\
                                   "".format( self.getRealOperator() and self.getRealOperator().__class__, self.name, problem_str )
-                    self.logger.error(slotInfoMsg)
-                    raise Slot.SlotNotReadyError("Slot isn't ready.  See error log.")
+                    #self.logger.error(slotInfoMsg)
+                    raise Slot.SlotNotReadyError(slotInfoMsg)
                 assert self.meta.shape is not None, \
                     ("Can't ask for slices of this slot yet:"
                      " self.meta.shape is None!"
@@ -1396,7 +1396,7 @@ class Slot(object):
                     mslot_info += " level={}".format( self.level )
             mslot_info += " ] "
                 
-        return '"{}" {}: \t{}\n'.format( self.name, mslot_info, self.meta )
+        return '{}.{} {}: \t{}\n'.format( self.getRealOperator().name, self.name, mslot_info, self.meta )
 
     def __repr__(self):
         return self.__str__()
