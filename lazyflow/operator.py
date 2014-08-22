@@ -495,7 +495,7 @@ class Operator(object):
                 setunready(ss)
             was_ready = s.meta._ready
             s.meta._ready &= (s.partner is not None)
-            if was_ready and s.meta._ready:
+            if was_ready and not s.meta._ready:
                 newly_unready_slots.append(s)
 
         # All unconnected outputs are no longer ready

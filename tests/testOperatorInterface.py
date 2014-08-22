@@ -560,6 +560,11 @@ class TestSlotStates(object):
         op3 = operators.OpArrayPiper(graph=self.g)
         op3.Input.connect( op.Output )
         op3.name = 'op3'
+        
+        #
+        # op.Input  --> op2.Input
+        #   .Output --> op3.Input
+        #
 
         # This should trigger setupOutputs and everything to become ready
         data = numpy.zeros((10,10,10,10,10))
