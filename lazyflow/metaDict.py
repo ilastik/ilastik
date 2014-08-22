@@ -51,6 +51,10 @@ class MetaDict(defaultdict):
         """
         if self[name] != value:
             self["_dirty"] = True
+            
+        if name == 'NOTREADY' and value is None:
+            if 'NOTREADY' in self:
+                del self['NOTREADY']
         
         # Special check: shape must be a tuple.
         # This avoids some common mistakes.
@@ -151,3 +155,23 @@ class MetaDict(defaultdict):
             #  not a numpy.dtype
             dtype = dtype.type        
         return dtype().nbytes
+
+    def __str__(self):
+        """
+        Used for debugging purposes.
+        """
+        pairs = []
+        # For easy comparison, start with these in the same order every time.
+        standard_keys = ['_ready', 'NOTREADY', 'shape', 'axistags', 'dtype', 'drange', '_dirty' ]
+        for key in standard_keys:
+            if key in self:
+                pairs.append( key + ' : ' + repr(self[key]) )
+        
+        for key, value in self.items():
+            if key not in standard_keys:
+                pairs.append( key + ' : ' + repr(value) )
+        
+        return "{" + ", ".join(pairs) + "}"
+                
+    def __repr__(self):
+        return self.__str__(self)
