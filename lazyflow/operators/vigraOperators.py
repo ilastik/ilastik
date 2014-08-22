@@ -1537,14 +1537,11 @@ class OpImageReader(Operator):
     Read an image using vigra.impex.readImage().
     Supports 2D images (output as xyc) and also multi-page tiffs (output as zyxc).
     """
-    Filename = InputSlot(stype = "filestring")
+    Filename = InputSlot(stype="filestring")
     Image = OutputSlot()
     
-    loggingName = __name__ + ".OpImageReader"
-    logger = logging.getLogger(loggingName)
-
     def setupOutputs(self):
-        filename = self.inputs["Filename"].value
+        filename = self.Filename.value
 
         info = vigra.impex.ImageInfo(filename)
         assert [tag.key for tag in info.getAxisTags()] == ['x', 'y', 'c']
@@ -1575,10 +1572,13 @@ class OpImageReader(Operator):
         filename = self.Filename.value
 
         if 'z' in self.Image.meta.getAxisKeys():
+            # Copy from each image slice into the corresponding slice of the result.
             roi_zyxc = numpy.array( [rroi.start, rroi.stop] )
             for z_global, z_result in zip( range(*roi_zyxc[:,0]), 
                                            range(result.shape[0]) ):
-                full_slice = vigra.impex.readImage(filename, index=z_global).transpose(1,0,2) # convert from xyc to yxc
+                full_slice = vigra.impex.readImage(filename, index=z_global)
+                full_slice = full_slice.transpose(1,0,2) # xyc -> yxc
+                assert full_slice.shape == self.Image.meta.shape[1:]
                 result[z_result] = full_slice[roiToSlice( *roi_zyxc[:,1:] )]
         else:
             full_slice = vigra.impex.readImage(filename)
@@ -1589,7 +1589,7 @@ class OpImageReader(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.Filename:
-            self.Image.setDirty(slice(None))
+            self.Image.setDirty()
         else:
             assert False, "Unknown dirty input slot."
 
