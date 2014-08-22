@@ -1533,11 +1533,12 @@ class OpLaplacianOfGaussian(OpBaseVigraFilter):
         return 1
 
 class OpImageReader(Operator):
-    name = "Image Reader"
-    category = "Input"
-
-    inputSlots = [InputSlot("Filename", stype = "filestring")]
-    outputSlots = [OutputSlot("Image")]
+    """
+    Read an image using vigra.impex.readImage().
+    Supports 2D images (output as xyc) and also multi-page tiffs (output as zyxc).
+    """
+    Filename = InputSlot(stype = "filestring")
+    Image = OutputSlot()
     
     loggingName = __name__ + ".OpImageReader"
     logger = logging.getLogger(loggingName)
@@ -1545,63 +1546,46 @@ class OpImageReader(Operator):
     def setupOutputs(self):
         filename = self.inputs["Filename"].value
 
-        if filename is not None:
-            info = vigra.impex.ImageInfo(filename)
+        info = vigra.impex.ImageInfo(filename)
+        assert [tag.key for tag in info.getAxisTags()] == ['x', 'y', 'c']
 
-            oslot = self.outputs["Image"]
-            oslot.meta.shape = info.getShape()
-            oslot.meta.dtype = info.getDtype()
-            oslot.meta.axistags = vigra.defaultAxistags("".join([tag.key for tag in info.getAxisTags()]))
-            
-            numImages = vigra.impex.numberImages(filename)
-            if numImages > 1:
-                taggedShape = oslot.meta.getTaggedShape()
-                assert 'z' not in taggedShape.keys(), "Didn't expect to find a z-axis in this image."
-                # Convert from OrderedDict to list
-                taggedShape = [(key, dim) for key, dim in taggedShape.items()]
+        shape_xyc = info.getShape()
 
-                # Insert z-shape
-                taggedShape.insert(-1, ('z', numImages))
+        self.Image.meta.dtype = info.getDtype()
+        self.Image.meta.prefer_2d = True
 
-                # Insert z-tag
-                tags = oslot.meta.axistags
-                tags.insert(-1, vigra.defaultAxistags('z')[0])
-
-                oslot.meta.shape = tuple(dim for (key, dim) in taggedShape)
-                oslot.meta.axistags = tags
-                oslot.meta.prefer_2d = True
+        numImages = vigra.impex.numberImages(filename)
+        if numImages == 1:
+            # For 2D, we use order xyc.
+            self.Image.meta.shape = shape_xyc
+            self.Image.meta.axistags = info.getAxisTags()
         else:
-            oslot = self.outputs["Image"]
-            oslot.meta.shape    = None
-            oslot.meta.dtype    = None
-            oslot.meta.axistags = None
+            # For 3D, we use reverse order: zyxc
+            # Insert z-axis shape
+            shape_zyxc = (numImages,) + tuple(reversed(shape_xyc[:-1])) + shape_xyc[-1:]
+            self.Image.meta.shape = shape_zyxc
+
+            # Insert z tag
+            z_tag = vigra.defaultAxistags('z')[0]
+            tags_xyc = [tag for tag in info.getAxisTags()]
+            tags_zyxc = [z_tag] +  list(reversed(tags_xyc[:-1])) + tags_xyc[-1:]
+            self.Image.meta.axistags = vigra.AxisTags( tags_zyxc )
 
     def execute(self, slot, subindex, rroi, result):
-        t = time.time()
-        key = roiToSlice(rroi.start, rroi.stop)
-        filename = self.inputs["Filename"].value
-        taggedShape = self.Image.meta.getTaggedShape()
-       
-        if 'z' in taggedShape.keys():
-            zIndex = taggedShape.keys().index('z')
-            tempShape = list(self.Image.meta.shape)
-            tempShape[zIndex] = rroi.stop[zIndex] - rroi.start[zIndex]
-            temp = numpy.ndarray( tempShape, dtype=self.Image.meta.dtype )
-            
-            for i,z in enumerate(range(rroi.start[zIndex], rroi.stop[zIndex])):
-                tempKey = list(key)
-                tempKey[zIndex] = i
-                temp[tempKey] = vigra.impex.readImage(filename, index=z)
+        filename = self.Filename.value
 
-            key = list(key)
-            key[zIndex] = slice(0, rroi.stop[zIndex] - rroi.start[zIndex] )
-            key = tuple(key)
+        if 'z' in self.Image.meta.getAxisKeys():
+            roi_zyxc = numpy.array( [rroi.start, rroi.stop] )
+            for z_global, z_result in zip( range(*roi_zyxc[:,0]), 
+                                           range(result.shape[0]) ):
+                full_slice = vigra.impex.readImage(filename, index=z_global).transpose(1,0,2) # convert from xyc to yxc
+                result[z_result] = full_slice[roiToSlice( *roi_zyxc[:,1:] )]
         else:
-            temp = vigra.impex.readImage(filename)
-        if self.logger.getEffectiveLevel() >= logging.DEBUG:
-            t = (1000.0*(time.time()-t))
-            self.logger.debug("reading file with vigra took %f msec." % t)
-        return temp[key]
+            full_slice = vigra.impex.readImage(filename)
+            assert full_slice.shape == self.Image.meta.shape
+            roi_xyc = numpy.array( [rroi.start, rroi.stop] )
+            result[:] = full_slice[roiToSlice( *roi_xyc )]
+        return result
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.Filename:
