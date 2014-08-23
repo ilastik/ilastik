@@ -29,11 +29,11 @@ class MriVolumetryWorkflow(Workflow):
                                                 'Prediction Maps'] )
 
         self.mriVolPreprocApplet = MriVolPreprocApplet(self, 
-                                                       'Filter Predictions',
+                                                       'Clean-up Predictions',
                                                        'PredictionFilter')
 
         self.mriVolCCApplet = MriVolConnectedComponentsApplet(self, \
-                                                'Remove Connected Components',
+                                                'Size Filter',
                                                 'ConnectedComponents')
         self.mriVolReportApplet = MriVolReportApplet(self, \
                                                      'Report', 'Report')

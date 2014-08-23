@@ -211,7 +211,7 @@ class MriVolPreprocGui( LayerViewerGui ):
         colors = []
 
         # SKIP: Transparent for the zero label
-        #colors.append(QColor(0,0,0,0))
+        # colors.append(QColor(0,0,0,0))
 
         # ilastik v0.5 colors
         colors.append( QColor( Qt.red ) )

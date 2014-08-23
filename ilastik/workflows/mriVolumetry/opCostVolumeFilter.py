@@ -285,7 +285,7 @@ class OpFanOut(Operator):
     Output = OutputSlot(level=1) # level=1 higher order slot
     _Output = OutputSlot(level=1) # second (private) output
 
-    NumChannels = InputSlot(value=20)
+    NumChannels = InputSlot(value=20) # default value
 
     def __init__(self, *args, **kwargs):
         super(OpFanOut, self).__init__(*args, **kwargs)
@@ -320,4 +320,53 @@ class OpFanOut(Operator):
                 slot.setDirty(roi)
 
 
+class OpFanIn(Operator):
+    """
+    takes level=1 (binary) input images and generates a label image
+    """
+    name = "Fan In Operation"
+    
+    Input = InputSlot(level=1)
+    Output = OutputSlot()
+    _Output = OutputSlot() # second (private) output
 
+    Binaries = InputSlot(optional=True, value = False, stype='bool')
+
+    def __init__(self, *args, **kwargs):
+        super(OpFanIn, self).__init__(*args, **kwargs)
+        
+        self.opIn = OperatorWrapper( OpReorderAxes, parent=self,
+                                     broadcastingSlotNames=['AxisOrder'])
+        self.opIn.Input.connect(self.Input)
+        self.opIn.AxisOrder.setValue('txyzc') 
+
+        self.opOut = OpReorderAxes(parent=self)
+        self.opOut.Input.connect(self._Output)
+        self.Output.connect(self.opOut.Output)
+
+    def setupOutputs(self):
+        expected_shape = self.opIn.Output[0].meta.shape
+        for slot in self.opIn.Output:
+            assert expected_shape == slot.meta.shape
+            
+        self._Output.meta.assignFrom(self.opIn.Output[0].meta)
+        tagged_shape = self.opIn.Output[0].meta.getTaggedShape()
+        tagged_shape['c'] = 1 #len(self.Input)
+        self._Output.meta.shape = tuple(tagged_shape.values())
+        self._Output.meta.dtype=np.uint32
+
+        self.opOut.AxisOrder.setValue(self.Input[0].meta.getAxisKeys())
+
+    def execute(self, slot, subindex, roi, result):
+        bin_out = self.Binaries.value
+        result[...] = np.zeros(result.shape, dtype=np.uint32)
+        for idx, slot in enumerate(self.opIn.Output):
+            tmp_data = slot.get(roi).wait()
+            if bin_out:
+                np.place(tmp_data,tmp_data,1)
+            result[tmp_data==1] = idx+1
+
+    def propagateDirty(self, inputSlot, subindex, roi):
+        if inputSlot is self.Input:
+            self.Output.setDirty(roi)
+                

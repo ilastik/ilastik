@@ -75,7 +75,6 @@ class MriVolConnectedComponentsGui ( LayerViewerGui ):
             self._drawer.channelComboBox.setDisabled(True)
         else:
             self._drawer.channelComboBox.setEnabled(True)
-            
 
     def _onApplyButtonClicked(self):
         self._updateOperatorFromGui()
@@ -84,10 +83,12 @@ class MriVolConnectedComponentsGui ( LayerViewerGui ):
         op = self.topLevelOperatorView
         thres = self._drawer.thresSpinBox.value()
         if self._drawer.channelCheckBox.isChecked():
+            op.CurOperator.setValue(1)
             # same threshold for all channels
             for i in range(len(op.Threshold)):
                 op.Threshold[i].setValue(thres)
         else:
+            op.CurOperator.setValue(0)
             idx = self._drawer.channelComboBox.currentIndex()-1
             # print 'Threshold {} changed: {}'.format(idx, thres)
             op.Threshold[idx].setValue(thres)
@@ -106,6 +107,14 @@ class MriVolConnectedComponentsGui ( LayerViewerGui ):
         layers = []
         op = self.topLevelOperatorView
 
+        if op.FanInOutput.ready():
+            outLayer = ColortableLayer( LazyflowSource(op.FanInOutput),
+                                        colorTable=self._channelColors)
+            outLayer.name = "Output"
+            outLayer.visible = True
+            outLayer.opacity = 1.0
+            layers.append( outLayer )
+
         if op.Output.ready():
             numChannels = len(op.Output)
             # print 'Number of channels: {}'.format(numChannels)
@@ -115,7 +124,7 @@ class MriVolConnectedComponentsGui ( LayerViewerGui ):
                 channelSrc = LazyflowSource( op.Output[i] )
                 inputChannelLayer = AlphaModulatedLayer(
                     channelSrc,
-                    tintColor=QColor(self._channelColors[i]),
+                    tintColor=QColor(self._channelColors[i+1]),
                     range=(0.0, 1.0),
                     normalize=(0.0, 1.0) )
                 inputChannelLayer.opacity = 0.5
@@ -158,7 +167,7 @@ class MriVolConnectedComponentsGui ( LayerViewerGui ):
         colors = []
 
         # SKIP: Transparent for the zero label
-        #colors.append(QColor(0,0,0,0))
+        colors.append(QColor(0,0,0,0))
 
         # ilastik v0.5 colors
         colors.append( QColor( Qt.red ) )
@@ -184,5 +193,5 @@ class MriVolConnectedComponentsGui ( LayerViewerGui ):
 #        colors.append( QColor(69, 69, 69) )    # dark grey
 #        colors.append( QColor( Qt.cyan ) )
 
-        assert len(colors) == 16
+        assert len(colors) == 17
         return [c.rgba() for c in colors]
