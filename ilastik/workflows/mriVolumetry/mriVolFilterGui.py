@@ -60,32 +60,6 @@ class MriVolFilterGui( LayerViewerGui ):
             widget.installEventFilter( self )
             
         self._updateGuiFromOperator()
-
-        # connect channel spin box
-        # Do it last so self.model is ready
-        self._drawer.channelComboBox.currentIndexChanged.connect( \
-                                            self._backgroundChannelChanged )
-
-    def _backgroundChannelChanged(self):
-        idx = self._drawer.channelComboBox.currentIndex()
-        print 'Background channel changed to {}'.format(idx)
-        op = self.topLevelOperatorView
-        op.BackgroundChannel.setValue(idx)
-        op.BackgroundChannel.setDirty()
-        numChannels = op.Input.meta.getTaggedShape()['c']
-        for i in range(numChannels):
-            if i == idx:
-                self.model.item(i).setEnabled(False)
-                # if BG channel is active, deactivate it
-                self.model.item(i).setCheckState(0)
-                states = op.ActiveChannels.value
-                states[i] = 0
-                self._ActiveChannels = states
-                op.ActiveChannels.setValue(states)
-                
-            else:
-                self.model.item(i).setEnabled(True)
-
             
 
     def _slider_value_changed(self, value):
@@ -109,11 +83,9 @@ class MriVolFilterGui( LayerViewerGui ):
             # Per default set the last channel active
             if i == numChannels-1:
                 item.setCheckState(2)
-            # Per default set the first channel as BG
-            if i == 0:
-                item.setEnabled(False)
+
             pixmap = QPixmap(16, 16)
-            pixmap.fill(QColor(self._channelColors[i]))
+            pixmap.fill(QColor(self._channelColors[i+1]))
             item.setIcon(QIcon(pixmap))
 
             layer_names.append(item_name)
@@ -200,9 +172,6 @@ class MriVolFilterGui( LayerViewerGui ):
         thres = self._drawer.thresSpinBox.value()
         self._spinbox_value_changed(thres)
 
-        for i in range(tagged_shape['c']):
-            self._drawer.channelComboBox.addItem('Prediction {}'.format(i+1))
-
         '''
         states = op.ActiveChannels.value
         i = 0
@@ -265,7 +234,7 @@ class MriVolFilterGui( LayerViewerGui ):
                 channelSrc = LazyflowSource( slicer.Slices[i] )
                 inputChannelLayer = AlphaModulatedLayer(
                     channelSrc,
-                    tintColor=QColor(self._channelColors[i]),
+                    tintColor=QColor(self._channelColors[i+1]),
                     range=(0.0, 1.0),
                     normalize=(0.0, 1.0) )
                 inputChannelLayer.opacity = 0.5
@@ -278,11 +247,6 @@ class MriVolFilterGui( LayerViewerGui ):
                     " if this prediction image contains the objects of interest.")               
                 '''
                 layers.append(inputChannelLayer)
-                def layerNameChangedHandler(layer, k, *args, **kwargs):
-                    self._drawer.channelComboBox.setItemText(k,
-                    op.LabelNames.value[k])
-                op.LabelNames.notifyDirty( partial(layerNameChangedHandler,
-                                                   inputChannelLayer, i) )
 
         # raw layer
         if op.RawInput.ready():
@@ -309,7 +273,7 @@ class MriVolFilterGui( LayerViewerGui ):
         colors = []
 
         # SKIP: Transparent for the zero label
-        # colors.append(QColor(0,0,0,0))
+        colors.append(QColor(0,0,0,0))
 
         # ilastik v0.5 colors
         colors.append( QColor( Qt.red ) )
@@ -335,5 +299,5 @@ class MriVolFilterGui( LayerViewerGui ):
 #        colors.append( QColor(69, 69, 69) )    # dark grey
 #        colors.append( QColor( Qt.cyan ) )
 
-        assert len(colors) == 16
+        assert len(colors) == 17
         return [c.rgba() for c in colors]

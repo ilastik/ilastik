@@ -39,7 +39,6 @@ class TestOpMriBinarizeImage(unittest.TestCase):
         op = OpMriBinarizeImage(graph=g)
         op.Input.setValue(self.vol)
         op.ActiveChannels.setValue(self.ActiveChannels)
-        op.BackgroundChannel.setValue(self.BackgroundChannel)
 
         out = op.Output[...].wait()
         assert out.shape == self.vol.shape, \

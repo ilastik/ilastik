@@ -15,7 +15,6 @@ class OpMriVolFilter(Operator):
     Sigma = InputSlot(stype='float', value=1.2)
     Threshold = InputSlot(stype='int', value=3000)
     ActiveChannels = InputSlot(stype=Opaque)   
-    BackgroundChannel = InputSlot(stype='int', value=0)
 
     # internal output after filtering
     Smoothed = OutputSlot()
@@ -26,6 +25,7 @@ class OpMriVolFilter(Operator):
     Output = OutputSlot()
     CachedOutput = OutputSlot() 
     
+    # TODO introduce InputSlot for LabelNames 
     LabelNames = OutputSlot(stype=Opaque)
 
 
@@ -50,7 +50,6 @@ class OpMriVolFilter(Operator):
         self.opBinarize = OpMriBinarizeImage(parent=self)
         self.opBinarize.Input.connect(self.opGlobThres.Output)
         self.opBinarize.ActiveChannels.connect(self.ActiveChannels)
-        self.opBinarize.BackgroundChannel.connect(self.BackgroundChannel)
 
         self.opCC = OpLabelVolume(parent=self)
         self.opCC.Input.connect(self.opBinarize.Output)
@@ -64,12 +63,9 @@ class OpMriVolFilter(Operator):
         self._cache.Input.connect(self.opFilter.Output) 
         self.CachedOutput.connect(self._cache.Output)
 
-
         self.opRevertBinarize = OpMriRevertBinarize( parent=self)
         self.opRevertBinarize.ArgmaxInput.connect(self.opGlobThres.Output)
         self.opRevertBinarize.CCInput.connect(self.CachedOutput)
-        self.opRevertBinarize.BackgroundChannel.connect( \
-                                                    self.BackgroundChannel )
 
         self.Output.connect( self.opRevertBinarize.Output )
 
@@ -271,7 +267,7 @@ class OpMriArgmax(Operator):
         """
         computes an argmax of the prediction maps (hard segmentation)
         """
-        return np.argmax(vol, axis=-1)
+        return np.argmax(vol, axis=-1)+1
 
     def execute(self, slot, subindex, roi, result):
         tmp_roi = roi.copy()
@@ -400,7 +396,6 @@ class OpMriBinarizeImage(Operator):
     
     Input = InputSlot()
     ActiveChannels = InputSlot(stype=Opaque) # ActiveChannels
-    BackgroundChannel = InputSlot(stype='int', value=5)
 
     Output = OutputSlot()
     _Output = OutputSlot() # second (private) output
@@ -426,11 +421,11 @@ class OpMriBinarizeImage(Operator):
         # TODO faster computation?
         tmp_data = self.opIn.Output.get(roi).wait()
         result[...] = np.ones(result.shape, dtype=np.uint32)
-        result[tmp_data==self.BackgroundChannel.value] = 0
+        # result[tmp_data==self.BackgroundChannel.value] = 0
         # print 'AC', self.ActiveChannels.value
         for idx, active in enumerate(self.ActiveChannels.value):
-            if active == 0 and idx != self.BackgroundChannel.value:
-                result[tmp_data==idx] = 0
+            if active == 0: # and idx != self.BackgroundChannel.value:
+                result[tmp_data==idx+1] = 0
  
         
     def propagateDirty(self, inputSlot, subindex, roi):
@@ -438,8 +433,6 @@ class OpMriBinarizeImage(Operator):
             self.Output.setDirty(roi)
         if inputSlot is self.ActiveChannels:
             self.Output.setDirty(slice(None))
-        if inputSlot is self.BackgroundChannel:
-            self.Output.setDirty( slice(None) )
 
 class OpMriRevertBinarize(Operator):
     """
@@ -448,8 +441,6 @@ class OpMriRevertBinarize(Operator):
     # Argmax Input
     ArgmaxInput = InputSlot()
     CCInput = InputSlot()
-
-    BackgroundChannel = InputSlot(optional=True, stype='int', value=5)
 
     Output = OutputSlot()
     # second (private) output 
@@ -478,13 +469,13 @@ class OpMriRevertBinarize(Operator):
     def execute(self, slot, subindex, roi, result):
         tmp_input = self.opIn.Output.get(roi).wait()
         tmp_cc = self.opInCC.Output.get(roi).wait()
-        bg = self.BackgroundChannel.value
-        result[...] = np.ones(tmp_input.shape, dtype=np.uint32)*bg
-
-        # all elements that are nonzero and have active channels
+        result[...] = np.zeros(tmp_input.shape, dtype=np.uint32)
+        # all elements that are nonzero and are within a cc 
         # are transfered
-        for cc in np.unique(tmp_cc[np.nonzero(tmp_cc)]):
-            # print np.unique(tmp_input[tmp_cc==cc])
+        # TODO faster computation?
+        for cc in np.unique(tmp_cc): 
+            if cc == 0:
+                continue
             result[tmp_cc==cc] = tmp_input[tmp_cc==cc]
 
     def propagateDirty(self, inputSlot, subindex, roi):
@@ -492,6 +483,4 @@ class OpMriRevertBinarize(Operator):
             self.Output.setDirty( roi )
         if inputSlot is self.CCInput:
             self.Output.setDirty( roi )
-        if inputSlot is self.BackgroundChannel:
-            self.Output.setDirty( slice(None) )
 
