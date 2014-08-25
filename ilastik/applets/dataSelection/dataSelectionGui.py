@@ -808,9 +808,9 @@ class DataSelectionGui(QWidget):
         # TODO: Provide list of recently used dvid hosts, loaded from user preferences
         recent_hosts_pref = PreferencesManager.Setting("DataSelection", "Recent DVID Hosts")
         recent_hosts = recent_hosts_pref.get()
-        recent_hosts = filter(lambda h: h, recent_hosts)
         if not recent_hosts:
             recent_hosts = ["localhost:8000"]
+        recent_hosts = filter(lambda h: h, recent_hosts)
             
         from dvidDataSelectionBrowser import DvidDataSelectionBrowser
         browser = DvidDataSelectionBrowser(recent_hosts, parent=self)
