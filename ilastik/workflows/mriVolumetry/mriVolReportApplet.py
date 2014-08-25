@@ -1,7 +1,7 @@
 from ilastik.applets.base.standardApplet import StandardApplet
 
 # FIXME Hook up real operator
-from opCostVolumeFilter import OpMriVolPreproc
+from opMriVolFilter import OpMriVolFilter
 
 class MriVolReportApplet( StandardApplet ):
     """
@@ -14,7 +14,7 @@ class MriVolReportApplet( StandardApplet ):
     @property
     def singleLaneOperatorClass(self):
         # FIXME Hook up real operator
-        return OpMriVolPreproc
+        return OpMriVolFilter
 
     @property
     def broadcastingSlots(self):

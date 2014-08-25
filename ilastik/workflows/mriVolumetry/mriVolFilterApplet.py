@@ -1,8 +1,8 @@
 from ilastik.applets.base.standardApplet import StandardApplet
 
-from opCostVolumeFilter import OpMriVolPreproc
+from opMriVolFilter import OpMriVolFilter
 
-class MriVolPreprocApplet( StandardApplet ):
+class MriVolFilterApplet( StandardApplet ):
     """
     Applet that applies different metods 
     to 'polish' the prediction maps
@@ -10,17 +10,16 @@ class MriVolPreprocApplet( StandardApplet ):
 
     def __init__( self, workflow, guiName, projectFileGroupName ):
         super(self.__class__, self).__init__( guiName, workflow )
-        # self._serializableItems = [ ThresholdTwoLevelsSerializer(self.topLevelOperator, projectFileGroupName) ]
         
     @property
     def singleLaneOperatorClass(self):
-        return OpMriVolPreproc
+        return OpMriVolFilter
 
     @property
     def broadcastingSlots(self):
-        return [ 'Sigma', 'Threshold']
+        return [ 'Sigma', 'Threshold', 'ActiveChannels', 'BackgroundChannel']
 
     @property
     def singleLaneGuiClass(self):
-        from mriVolPreprocGui import MriVolPreprocGui
-        return MriVolPreprocGui
+        from mriVolFilterGui import MriVolFilterGui
+        return MriVolFilterGui

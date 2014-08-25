@@ -3,8 +3,7 @@ from ilastik.workflow import Workflow
 from lazyflow.graph import Graph
 
 from ilastik.applets.dataSelection import DataSelectionApplet
-from mriVolPreprocApplet import MriVolPreprocApplet
-from mriVolConnectedComponentsApplet import MriVolConnectedComponentsApplet
+from mriVolFilterApplet import MriVolFilterApplet
 from mriVolReportApplet import MriVolReportApplet
 
 class MriVolumetryWorkflow(Workflow):
@@ -28,40 +27,31 @@ class MriVolumetryWorkflow(Workflow):
         opDataSelection.DatasetRoles.setValue( ['Raw Data',
                                                 'Prediction Maps'] )
 
-        self.mriVolPreprocApplet = MriVolPreprocApplet(self, 
-                                                       'Clean-up Predictions',
+        self.mMriVolFilterApplet = MriVolFilterApplet(self, 
+                                                       'Filter Predictions',
                                                        'PredictionFilter')
 
-        self.mriVolCCApplet = MriVolConnectedComponentsApplet(self, \
-                                                'Size Filter',
-                                                'ConnectedComponents')
         self.mriVolReportApplet = MriVolReportApplet(self, \
                                                      'Report', 'Report')
 
 
         self._applets = []
         self._applets.append( self.dataSelectionApplet )
-        self._applets.append( self.mriVolPreprocApplet )
-        self._applets.append( self.mriVolCCApplet )
+        self._applets.append( self.mMriVolFilterApplet )
         self._applets.append( self.mriVolReportApplet )
 
         # self._workflow_cmdline_args = workflow_cmdline_args
 
     def connectLane(self, laneIndex):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
-        opMriVolPreproc = self.mriVolPreprocApplet.topLevelOperator.getLane( \
+        opMriVolFilter = self.mMriVolFilterApplet.topLevelOperator.getLane( \
                                                                     laneIndex)
-        opMriVolCC = self.mriVolCCApplet.topLevelOperator.getLane(laneIndex)
-
         # Connect top-level operators
-        opMriVolPreproc.RawInput.connect( opData.ImageGroup[0] )
-        opMriVolPreproc.Input.connect( opData.ImageGroup[1] )
+        opMriVolFilter.RawInput.connect( opData.ImageGroup[0] )
+        opMriVolFilter.Input.connect( opData.ImageGroup[1] )
 
-        # opMriVolCC.Input.connect( opMriVolPreproc.FinalOutput )
-        opMriVolCC.Input.connect( opMriVolPreproc.FanOutOutput )
-        opMriVolCC.RawInput.connect( opData.ImageGroup[0] )
-
-        opMriVolCC.LabelNames.connect( opMriVolPreproc.LabelNames )
+        # TODO connect report applet
+        # opMriVolCC.LabelNames.connect( opMriVolFilter.LabelNames )
 
     @property
     def applets(self):

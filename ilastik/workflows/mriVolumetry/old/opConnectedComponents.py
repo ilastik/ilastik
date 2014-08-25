@@ -7,7 +7,7 @@ from lazyflow.operators import OpLabelVolume, OpFilterLabels, \
     OperatorWrapper,  OpCompressedCache
 from lazyflow.stype import Opaque
 
-from opCostVolumeFilter import OpFanIn
+from opMriVolFilter import OpFanIn
 
 class OpMriVolCC( Operator):
     name = "MRI Connected Components"

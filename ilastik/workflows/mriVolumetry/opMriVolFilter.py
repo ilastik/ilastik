@@ -1,55 +1,82 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpReorderAxes, OpCompressedCache, \
-    OperatorWrapper
+    OperatorWrapper, OpLabelVolume, OpFilterLabels
 from lazyflow.rtype import SubRegion
 from lazyflow.stype import Opaque
 
 import vigra
 import numpy as np
 
-class OpMriVolPreproc(Operator):
+class OpMriVolFilter(Operator):
     name = "MRI Preprocessing"
 
     RawInput = InputSlot(optional=True)  # Display only
-
     Input = InputSlot()
+    Sigma = InputSlot(stype='float', value=1.2)
+    Threshold = InputSlot(stype='int', value=3000)
+    ActiveChannels = InputSlot(stype=Opaque)   
+    BackgroundChannel = InputSlot(stype='int', value=0)
+
     # internal output after filtering
-    Output = OutputSlot()
+    Smoothed = OutputSlot()
     
     # the argmax output (single channel)
-    FinalOutput = OutputSlot()
+    ArgmaxOutput = OutputSlot()
 
-    # argmax output split in separate channels
-    FanOutOutput = OutputSlot(level=1)
-
-    Sigma = InputSlot(stype='float', value=1.0)
-    Threshold = InputSlot(stype='float', value=0.0)
+    Output = OutputSlot()
+    CachedOutput = OutputSlot() 
     
     LabelNames = OutputSlot(stype=Opaque)
 
+
     def __init__(self, *args, **kwargs):
-        super(OpMriVolPreproc, self).__init__(*args, **kwargs)
+        super(OpMriVolFilter, self).__init__(*args, **kwargs)
+
+        self._cache = OpCompressedCache( parent=self )
+        self._cache.name = "OpMriVol.OutputCache"
 
         self.opCostVol = OpCostVolumeFilter(parent=self)
         self.opCostVol.Sigma.connect(self.Sigma)
 
         self.opCostVol.Input.connect(self.Input)
-        self.Output.connect(self.opCostVol.Output)
+        self.Smoothed.connect(self.opCostVol.Output)
 
-        self.opGlobThres = OpGlobalThreshold(parent=self)
+        self.opGlobThres = OpMriArgmax(parent=self)
         self.opGlobThres.Threshold.connect(self.Threshold)
         self.opGlobThres.Input.connect(self.opCostVol.Output)
 
-        self.FinalOutput.connect(self.opGlobThres.Output)
+        self.ArgmaxOutput.connect(self.opGlobThres.Output)
 
-        self.opFanOut = OpFanOut(parent=self)
-        self.opFanOut.Input.connect(self.opGlobThres.Output)
-        self.FanOutOutput.connect(self.opFanOut.Output)
+        self.opBinarize = OpMriBinarizeImage(parent=self)
+        self.opBinarize.Input.connect(self.opGlobThres.Output)
+        self.opBinarize.ActiveChannels.connect(self.ActiveChannels)
+        self.opBinarize.BackgroundChannel.connect(self.BackgroundChannel)
+
+        self.opCC = OpLabelVolume(parent=self)
+        self.opCC.Input.connect(self.opBinarize.Output)
+
+        # Filters CCs
+        self.opFilter = OpFilterLabels(parent=self )
+        self.opFilter.Input.connect(self.opCC.CachedOutput )
+        self.opFilter.MinLabelSize.connect( self.Threshold )
+        self.opFilter.BinaryOut.setValue(False)
+
+        self._cache.Input.connect(self.opFilter.Output) 
+        self.CachedOutput.connect(self._cache.Output)
+
+
+        self.opRevertBinarize = OpMriRevertBinarize( parent=self)
+        self.opRevertBinarize.ArgmaxInput.connect(self.opGlobThres.Output)
+        self.opRevertBinarize.CCInput.connect(self.CachedOutput)
+        self.opRevertBinarize.BackgroundChannel.connect( \
+                                                    self.BackgroundChannel )
+
+        self.Output.connect( self.opRevertBinarize.Output )
 
         '''
         def _debugDirty(*args, **kwargs):
             print 'Notify Dirty: ', args, kwargs
-        self.FanOutOutput.notifyDirty(_debugDirty)
+        self.ActiveChannels.notifyDirty(_debugDirty)
         '''
 
     def execute(self, slot, subindex, roi, destination):
@@ -60,18 +87,23 @@ class OpMriVolPreproc(Operator):
             self.Output.setDirty(roi)
         if inputSlot is self.Sigma:
             self.Output.setDirty(slice(None))
-            self.FanOutOutput.setDirty(slice(None))
         if inputSlot is self.Threshold:
+            self.Output.setDirty(slice(None))
+        if inputSlot is self.ActiveChannels:
             self.Output.setDirty(slice(None))
             
     def setupOutputs(self):
         ts = self.Input.meta.getTaggedShape()
-        self.opFanOut.NumChannels.setValue(ts['c'])
         self.LabelNames.meta.shape = (ts['c'],)
         self.LabelNames.meta.dtype = np.object
         self.LabelNames.setValue(np.asarray( \
     ['Prediction {}'.format(l+1) for l in range(ts['c'])],dtype=np.object))
         
+        # set cache chunk shape to the whole spatial volume
+        ts['t'] = 1
+        ts['c'] = 1
+        blockshape = map(lambda k: ts[k],''.join(ts.keys()))
+        self._cache.BlockShape.setValue(tuple(blockshape))
 
 class OpCostVolumeFilter(Operator):
     name = "Cost Volume Filter"
@@ -85,15 +117,6 @@ class OpCostVolumeFilter(Operator):
 
     def __init__(self, *args, **kwargs):
         super(OpCostVolumeFilter, self).__init__(*args, **kwargs)
-        # version without cache START
-        # self.opIn = OpReorderAxes(parent=self)
-        # self.opIn.Input.connect(self.Input)
-        # self.opIn.AxisOrder.setValue('txyzc') 
-        
-        # self.opOut = OpReorderAxes(parent=self)
-        # self.Output.connect(self.opOut.Output)
-        # self.opOut.Input.connect(self._Output)
-        # version without cache END
 
         self.opIn = OpReorderAxes(parent=self)
         self.opIn.Input.connect(self.Input)
@@ -105,9 +128,6 @@ class OpCostVolumeFilter(Operator):
         self.opOut = OpReorderAxes(parent=self)
         self.Output.connect(self.opOut.Output)
         self.opOut.Input.connect(self._opCache.Output)
-
-        # from threading import Lock
-        # self.lock= Lock()
 
     # not necessary for op wrapper that just propagate the output to the 
     # internally connected operator 
@@ -208,7 +228,7 @@ class OpCostVolumeFilter(Operator):
             self.Output.setDirty(slice(None))
 
 
-class OpGlobalThreshold(Operator):
+class OpMriArgmax(Operator):
     """
     Operator that compute argmax across the channels
 
@@ -216,7 +236,7 @@ class OpGlobalThreshold(Operator):
     to argmax)
     """
 
-    name = "Global Threshold"
+    name = "Argmax Operator"
 
     Input = InputSlot()
     Output = OutputSlot()
@@ -226,7 +246,7 @@ class OpGlobalThreshold(Operator):
     Threshold = InputSlot(optional=True, stype='float', value=0.0)
 
     def __init__(self, *args, **kwargs):
-        super(OpGlobalThreshold, self).__init__(*args, **kwargs)
+        super(OpMriArgmax, self).__init__(*args, **kwargs)
         
         self.opIn = OpReorderAxes(parent=self)
         self.opIn.Input.connect(self.Input)
@@ -247,7 +267,7 @@ class OpGlobalThreshold(Operator):
         self.opOut.AxisOrder.setValue(self.Input.meta.getAxisKeys())
 
     @staticmethod
-    def _globalThreshold(vol):
+    def _globalArgmax(vol):
         """
         computes an argmax of the prediction maps (hard segmentation)
         """
@@ -261,7 +281,7 @@ class OpGlobalThreshold(Operator):
         assert tmp_data.shape[-1] == \
             self.Input.meta.getTaggedShape()['c'],\
             'Not all channels are used for argmax'
-        result[...,0]  = self._globalThreshold(tmp_data)
+        result[...,0]  = self._globalArgmax(tmp_data)
         
     def propagateDirty(self, inputSlot, subindex, roi):
          if inputSlot is self.Input:
@@ -370,3 +390,108 @@ class OpFanIn(Operator):
         if inputSlot is self.Input:
             self.Output.setDirty(roi)
                 
+class OpMriBinarizeImage(Operator):
+    """
+    Takes an input label image and computes a binary image given one or
+    more background classes
+    """
+
+    name = "MRI Binarize Image"
+    
+    Input = InputSlot()
+    ActiveChannels = InputSlot(stype=Opaque) # ActiveChannels
+    BackgroundChannel = InputSlot(stype='int', value=5)
+
+    Output = OutputSlot()
+    _Output = OutputSlot() # second (private) output
+
+    
+    def __init__(self, *args, **kwargs):
+        super(OpMriBinarizeImage, self).__init__(*args, **kwargs)
+        
+        self.opIn = OpReorderAxes(parent=self)
+        self.opIn.Input.connect(self.Input)
+        self.opIn.AxisOrder.setValue('txyzc') 
+
+        self.opOut = OpReorderAxes(parent=self)
+        self.Output.connect(self.opOut.Output)
+        self.opOut.Input.connect(self._Output)
+
+    def setupOutputs(self):
+        self._Output.meta.assignFrom(self.opIn.Output.meta)
+        self._Output.meta.dtype=np.uint32
+        self.opOut.AxisOrder.setValue(self.Input.meta.getAxisKeys())
+
+    def execute(self, slot, subindex, roi, result):
+        # TODO faster computation?
+        tmp_data = self.opIn.Output.get(roi).wait()
+        result[...] = np.ones(result.shape, dtype=np.uint32)
+        result[tmp_data==self.BackgroundChannel.value] = 0
+        # print 'AC', self.ActiveChannels.value
+        for idx, active in enumerate(self.ActiveChannels.value):
+            if active == 0 and idx != self.BackgroundChannel.value:
+                result[tmp_data==idx] = 0
+ 
+        
+    def propagateDirty(self, inputSlot, subindex, roi):
+        if inputSlot is self.Input:
+            self.Output.setDirty(roi)
+        if inputSlot is self.ActiveChannels:
+            self.Output.setDirty(slice(None))
+        if inputSlot is self.BackgroundChannel:
+            self.Output.setDirty( slice(None) )
+
+class OpMriRevertBinarize(Operator):
+    """
+    Reverts the binarize option
+    """
+    # Argmax Input
+    ArgmaxInput = InputSlot()
+    CCInput = InputSlot()
+
+    BackgroundChannel = InputSlot(optional=True, stype='int', value=5)
+
+    Output = OutputSlot()
+    # second (private) output 
+    _Output = OutputSlot()
+   
+    def __init__(self, *args, **kwargs):
+        super(OpMriRevertBinarize, self).__init__(*args, **kwargs)
+        
+        self.opIn = OpReorderAxes(parent=self)
+        self.opIn.Input.connect(self.ArgmaxInput)
+        self.opIn.AxisOrder.setValue('txyzc') 
+
+        self.opInCC = OpReorderAxes(parent=self)
+        self.opInCC.Input.connect(self.CCInput)
+        self.opInCC.AxisOrder.setValue('txyzc') 
+
+        self.opOut = OpReorderAxes(parent=self)
+        self.Output.connect(self.opOut.Output)
+        self.opOut.Input.connect(self._Output)
+
+    def setupOutputs(self):
+        self._Output.meta.assignFrom(self.opIn.Output.meta)
+        self._Output.meta.dtype=np.uint32
+        self.opOut.AxisOrder.setValue(self.ArgmaxInput.meta.getAxisKeys())
+
+    def execute(self, slot, subindex, roi, result):
+        tmp_input = self.opIn.Output.get(roi).wait()
+        tmp_cc = self.opInCC.Output.get(roi).wait()
+        bg = self.BackgroundChannel.value
+        result[...] = np.ones(tmp_input.shape, dtype=np.uint32)*bg
+
+        # all elements that are nonzero and have active channels
+        # are transfered
+        for cc in np.unique(tmp_cc[np.nonzero(tmp_cc)]):
+            # print np.unique(tmp_input[tmp_cc==cc])
+            result[tmp_cc==cc] = tmp_input[tmp_cc==cc]
+
+    def propagateDirty(self, inputSlot, subindex, roi):
+        if inputSlot is self.ArgmaxInput:
+            self.Output.setDirty( roi )
+        if inputSlot is self.CCInput:
+            self.Output.setDirty( roi )
+        if inputSlot is self.BackgroundChannel:
+            self.Output.setDirty( slice(None) )
+

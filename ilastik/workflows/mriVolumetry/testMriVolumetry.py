@@ -1,7 +1,7 @@
 import unittest
 
-from ilastik.workflows.mriVolumetry.opCostVolumeFilter import OpCostVolumeFilter, OpFanOut
-# from opCostVolumeFilter import OpCostVolumeFilter
+from ilastik.workflows.mriVolumetry.opMriVolFilter import OpCostVolumeFilter, OpFanOut, OpMriBinarizeImage
+# from opMriVolFilter import OpCostVolumeFilter
 from lazyflow.graph import Graph
 
 import numpy as np
@@ -24,6 +24,28 @@ class TestOpCostVolumeFilter(unittest.TestCase):
         assert out.shape == self.vol.shape, \
             'In and output data differs in shape'  
 
+
+class TestOpMriBinarizeImage(unittest.TestCase):
+    def setUp(self):
+        self.num_channels = 4
+        self.vol = np.random.randint(1, self.num_channels, size=(120,130,110))
+        # necessary for meta information, convert to vigra array 
+        self.vol = vigra.taggedView(self.vol, axistags='xyz')
+        self.BackgroundChannel = 2
+        self.ActiveChannels = [2, 0, 0, 2]
+
+    def testUsage(self):
+        g = Graph()
+        op = OpMriBinarizeImage(graph=g)
+        op.Input.setValue(self.vol)
+        op.ActiveChannels.setValue(self.ActiveChannels)
+        op.BackgroundChannel.setValue(self.BackgroundChannel)
+
+        out = op.Output[...].wait()
+        assert out.shape == self.vol.shape, \
+            'In and output data differs in shape'
+        assert np.all(np.unique(out) == [0, 1]), \
+            'Not a binary image (0,1)'
 
 class TestOpFanOut(unittest.TestCase):
     def setUp(self):
