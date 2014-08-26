@@ -490,17 +490,18 @@ class Operator(object):
             return
 
         newly_unready_slots = []
-        def setunready(s):
+        def set_output_unready(s):
             for ss in s._subSlots:
-                setunready(ss)
-            was_ready = s.meta._ready
-            s.meta._ready &= (s.partner is not None)
-            if was_ready and not s.meta._ready:
-                newly_unready_slots.append(s)
+                set_output_unready(ss)
+            if s.partner is None:
+                was_ready = s.meta._ready
+                s.meta._ready &= (s.partner is not None)
+                if was_ready and not s.meta._ready:
+                    newly_unready_slots.append(s)
 
         # All unconnected outputs are no longer ready
         for oslot in self.outputs.values():
-            setunready(oslot)
+            set_output_unready(oslot)
 
         # If the ready status changed, signal it.
         for s in newly_unready_slots:
