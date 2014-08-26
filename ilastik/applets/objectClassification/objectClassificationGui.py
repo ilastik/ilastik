@@ -52,6 +52,7 @@ from volumina.api import \
 from volumina.utility import encode_from_qstring
 
 from volumina.interpreter import ClickInterpreter
+from volumina.utility import ShortcutManager
 
 def _listReplace(old, new):
     if len(old) > len(new):
@@ -628,6 +629,23 @@ class ObjectClassificationGui(LabelingGui):
         if rawSlot.ready():
             rawLayer = self.createStandardLayerFromSlot(rawSlot)
             rawLayer.name = "Raw data"
+
+            def toggleTopToBottom():
+                index = self.layerstack.layerIndex( rawLayer )
+                self.layerstack.selectRow( index )
+                if index == 0:
+                    self.layerstack.moveSelectedToBottom()
+                else:
+                    self.layerstack.moveSelectedToTop()
+
+            ActionInfo = ShortcutManager.ActionInfo
+            rawLayer.shortcutRegistration = ( "i", ActionInfo( "Prediction Layers",
+                                                               "Bring Input To Top/Bottom",
+                                                               "Bring Input To Top/Bottom",
+                                                                toggleTopToBottom,
+                                                                self.viewerControlWidget(),
+                                                                rawLayer ) )
+
             layers.append(rawLayer)
 
         # since we start with existing labels, it makes sense to start
