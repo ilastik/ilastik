@@ -202,13 +202,6 @@ class OpMultiArraySlicer2(Operator):
         super(OpMultiArraySlicer2, self).__init__(*args, **kwargs)
         self.inputShape = None
 
-        # As soon as the input becomes unready, resize the output to 0
-        # This avoids certain errors due to the fact that downstream operators
-        #  don't instantly recognize that the output has become unusable.
-        def handle_unready( slot ):
-            self.Slices.resize(0)
-        self.Input.notifyUnready( handle_unready )        
-
     def setupOutputs(self):
         flag=self.inputs["AxisFlag"].value
 
