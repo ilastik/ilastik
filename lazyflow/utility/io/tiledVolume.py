@@ -8,6 +8,7 @@ from StringIO import StringIO
 
 ## Instead of importing requests and PIL here, 
 ## use late imports (below) so people who don't use TiledVolume don't have to have them
+
 # New dependency: requests is way more convenient than urllib or httplib
 #import requests
 
@@ -106,6 +107,7 @@ class TiledVolume(object):
 
     def __init__( self, descriptionFilePath ):
         self.description = TiledVolume.readDescription( descriptionFilePath )
+        self._session = None
 
         assert self.description.format in vigra.impex.listExtensions().split(), \
             "Unknown tile format: {}".format( self.description.format )
@@ -120,6 +122,9 @@ class TiledVolume(object):
         for source, destinations in self.description.extend_slices:
             for dest in destinations:
                 self._slice_remapping[dest] = source
+
+    def close(self):
+        self._session.close()
 
     def read(self, roi, result_out):
         """
@@ -218,7 +223,9 @@ class TiledVolume(object):
 
         logger.debug("Retrieving {}".format( tile_url ))
         try:
-            r = requests.get(tile_url)
+            if self._session is None:
+                self._session = self._create_session()
+            r = self._session.get(tile_url)
         except:
             # During testing, the server we're pulling from might be in our own process.
             # Apparently that means that it is not very responsive, leading to exceptions.
@@ -226,7 +233,7 @@ class TiledVolume(object):
             if self.TEST_MODE:
                 import time
                 time.sleep(0.01)
-                r = requests.get(tile_url)
+                r = self._session.get(tile_url)
             else:
                 raise
                 
@@ -266,3 +273,26 @@ class TiledVolume(object):
             # Copy just the part we need into the destination array
             assert img[roiToSlice(*tile_relative_intersection)].shape == data_out.shape
             data_out[:] = img[roiToSlice(*tile_relative_intersection)]
+    
+    @classmethod
+    def _create_session(cls):
+        """
+        Generate a requests.Session object to use for this TiledVolume.
+        Using a session allows us to benefit from a connection pool 
+          instead of establishing a new connection for every request.
+        """
+        # Late import
+        if not TiledVolume.requests:
+            import requests
+            TiledVolume.requests = requests
+        requests = TiledVolume.requests
+
+        session = requests.Session()
+
+        # Replace the session http adapters with ones that use larger connection pools
+        n_threads = Request.global_thread_pool.num_workers
+        adapter = requests.adapters.HTTPAdapter(pool_connections=n_threads, pool_maxsize=n_threads)
+        adapter2 = requests.adapters.HTTPAdapter(pool_connections=n_threads, pool_maxsize=n_threads)
+        session.mount('http://', adapter)
+        session.mount('https://', adapter2)
+        return session

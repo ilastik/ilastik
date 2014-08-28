@@ -1,5 +1,3 @@
-import os
-import nose
 import numpy
 import h5py
 
@@ -10,6 +8,9 @@ from lazyflow.roi import roiToSlice
 
 # We use the SAME data setup as in the test for TiledVolume
 import testTiledVolume
+
+import logging
+logger = logging.getLogger(__name__)
 
 class TestOpTiledVolumeReader(object):
 
@@ -126,7 +127,34 @@ class TestOpCachedTiledVolumeReader(object):
         
 
 if __name__ == "__main__":
+    # Logging is OFF by default when running from command-line nose, i.e.:
+    # nosetests thisFile.py)
+    # When running this file directly, use the logging configuration below.    
+
     import sys
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter( logging.Formatter("%(levelname)s %(name)s: %(message)s") )
+
+    # Logging for this test
+    logger.addHandler( handler )
+    logger.setLevel( logging.INFO )
+
+    # logging for testTiledVolume, which provides the data setup
+    testTiledVolume_logger = logging.getLogger("testTiledVolume")
+    testTiledVolume_logger.addHandler( handler )
+    testTiledVolume_logger.setLevel( logging.ERROR )    
+    testTiledVolume.ENABLE_SERVER_LOGGING = False
+
+    # requests module logging
+    requests_logger = logging.getLogger('requests')
+    requests_logger.addHandler( handler )
+    requests_logger.setLevel( logging.WARN )
+
+    # tiledVolume logging
+    tiledVolumeLogger = logging.getLogger("lazyflow.utility.io.tiledVolume")
+    tiledVolumeLogger.addHandler( handler )
+    tiledVolumeLogger.setLevel( logging.ERROR )
+
     import nose
     sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
     sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.

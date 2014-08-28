@@ -12,8 +12,11 @@ from lazyflow.utility import PathComponents, export_to_tiles
 from lazyflow.utility.jsonConfig import JsonConfigParser
 from lazyflow.roi import roiToSlice
 
+# See 'main' section below for logging configuration.
 import logging
 logger = logging.getLogger(__file__)
+
+ENABLE_SERVER_LOGGING = False
 
 volume_description_text = \
 """
@@ -35,6 +38,10 @@ volume_description_text = \
 """
 
 class DataSetup(object):
+    """
+    Class to encapsulate the functions that create test data for tiled volume tests.
+    Can also be used by other test modules (e.g. testOpTiledVolumeReader.py)
+    """
     def __init__(self):
         self.TILE_DIRECTORY = None
         self.REFERENCE_VOL_FILE = None
@@ -47,7 +54,7 @@ class DataSetup(object):
     def setup(self):
         """
         Generate a directory with all the files needed for this test.
-        We use the same temporary directory every time, so hopefully we don't 
+        We use the same temporary directory every time, so we don't 
         waste time regenerating the data if the test has already been run recently.
         
         The directory consists of the following files:
@@ -124,11 +131,11 @@ class DataSetup(object):
         os.chdir(self.TILE_DIRECTORY)
         class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             def log_request(self, *args, **kwargs):
-                if logger.level == logging.DEBUG:
+                if ENABLE_SERVER_LOGGING:
                     SimpleHTTPServer.SimpleHTTPRequestHandler.log_request( self, *args, **kwargs )
     
             def log_error(self, *args, **kwargs):
-                if logger.level == logging.DEBUG:
+                if ENABLE_SERVER_LOGGING:
                     SimpleHTTPServer.SimpleHTTPRequestHandler.log_error( self, *args, **kwargs )
         
         class Server(SocketServer.TCPServer):
@@ -190,7 +197,7 @@ class TestTiledVolume(object):
         with h5py.File(ref_path_comp.externalPath, 'r') as f:
             ref_data = f[ref_path_comp.internalPath][:]
     
-        # Slice 2 is missing
+        # Slice 2 is missing from the server data
         expected = ref_data[roiToSlice(*roi)]
         expected[2] = 0
             
@@ -212,7 +219,8 @@ class TestTiledVolume(object):
         with h5py.File(ref_path_comp.externalPath, 'r') as f:
             ref_data = f[ref_path_comp.internalPath][:]
    
-        # Slice 2 is missing
+        # Slices 5,6,7 are missing from the server data, and 'filled in' with slice 4
+        # Similarly, slice 1 is missing and filled in with slice 0.
         expected = ref_data[roiToSlice(*roi)]
         expected[5:8] = expected[4]
         expected[1] = expected[0]
@@ -258,15 +266,25 @@ class TestCustomAxes(object):
 if __name__ == "__main__":
     # Logging is OFF by default when running from command-line nose, i.e.:
     # nosetests thisFile.py)
-    # but ON by default if running this test directly, i.e.:
-    # python thisFile.py
-    handler = logging.StreamHandler(sys.stdout)
-    logger.addHandler( handler )
-    logger.setLevel(logging.DEBUG)
+    # When running this file directly, use the logging configuration below.    
 
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setFormatter( logging.Formatter("%(levelname)s %(name)s: %(message)s") )
+
+    # Logging for this test
+    logger.addHandler( handler )
+    logger.setLevel( logging.INFO )
+    ENABLE_SERVER_LOGGING = False
+
+    # requests module logging
+    requests_logger = logging.getLogger('requests')
+    requests_logger.addHandler( handler )
+    requests_logger.setLevel( logging.WARN )
+
+    # tiledVolume logging
     tiledVolumeLogger = logging.getLogger("lazyflow.utility.io.tiledVolume")
     tiledVolumeLogger.addHandler( handler )
-    tiledVolumeLogger.setLevel(logging.DEBUG)
+    tiledVolumeLogger.setLevel( logging.ERROR )
 
     import sys
     import nose
