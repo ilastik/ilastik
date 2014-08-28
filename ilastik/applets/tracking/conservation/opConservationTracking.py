@@ -208,8 +208,15 @@ class OpConservationTracking(OpTrackingBase):
                                             transition_parameter,
                                             borderAwareWidth,
                                             True, #with_constraints
-                                            cplex_timeout,
-                                            coordinate_map.get())
+                                            cplex_timeout)
+            eventsVector = self.tracker.resolve_mergers(eventsVector,
+                                            coordinate_map.get(),
+                                            float(ep_gap),
+                                            transWeight,
+                                            withTracklets,
+                                            ndim,
+                                            transition_parameter,
+                                            True) # with_constraints
         except Exception as e:
             raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
         
