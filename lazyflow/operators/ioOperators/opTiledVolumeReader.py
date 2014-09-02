@@ -39,6 +39,9 @@ class OpTiledVolumeReader(Operator):
         self.tiled_volume = None
 
     def setupOutputs(self):
+        if self.tiled_volume:
+            self.tiled_volume.close()
+
         # Create a TiledVolume object to read the description file and do the downloads.
         self.tiled_volume = TiledVolume( self.DescriptionFilePath.value )
 
@@ -55,3 +58,8 @@ class OpTiledVolumeReader(Operator):
     def propagateDirty(self, slot, subindex, roi):
         assert slot == self.DescriptionFilePath, "Unknown input slot."
         self.Output.setDirty( slice(None) )
+
+    def cleanUp(self):
+        if self.tiled_volume:
+            self.tiled_volume.close()
+        super( OpTiledVolumeReader, self ).cleanUp()
