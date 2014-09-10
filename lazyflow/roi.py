@@ -390,6 +390,16 @@ def getIntersectingBlocks( blockshape, roi, asarray=False ):
     <BLANKLINE>
      [[20 20]
       [20 40]]]
+ 
+
+    This function works for negative rois, too.
+    
+    >>> block_starts = getIntersectingBlocks( (10, 20), [(-10, -5),(5, 5)] )
+    >>> print block_starts 
+    [[-10 -20]
+     [-10   0]
+     [  0 -20]
+     [  0   0]]
     """
     assert len(blockshape) == len(roi[0]) == len(roi[1]), "blockshape and roi are mismatched."
     roistart = TinyVector( roi[0] )
