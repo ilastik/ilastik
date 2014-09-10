@@ -39,8 +39,9 @@ Modifications in this version:
    - Added blocking parameter to ``acquire()`` method
 
 WARNINGS: 
- - The locking mechanism used here may need to be changed to support NFS filesystems:
+ - The locking mechanism used here may need to be changed to support old NFS filesystems:
    http://lwn.net/Articles/251004
+   (Newer versions of NFS should be okay, e.g. NFSv3 with Linux kernel 2.6. Check the open(2) man page for details about O_EXCL.)
  - This code has not been thoroughly tested on Windows, and there has been one report of incorrect results on Windows XP and Windows 7.
    The locking mechanism used in this class should (in theory) be cross-platform, but use at your own risk.
 """
