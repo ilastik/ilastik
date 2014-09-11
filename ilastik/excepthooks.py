@@ -50,15 +50,13 @@ def init_user_mode_excepthook():
     """
     def display_and_log(*exc_info):
         # Slot-not-ready errors in the render thread are logged, but not shown to the user.
-        thread_name = threading.current_thread().name
-        if "TileProvider" in thread_name:
-            from lazyflow.graph import Slot
-            if isinstance(exc_info[1], Slot.SlotNotReadyError):
-                logger.warn( "Caught unhandled SlotNotReadyError exception in the volumina tile rendering thread:" )
-                sio = StringIO.StringIO()
-                traceback.print_exception( exc_info[0], exc_info[1], exc_info[2], file=sio )
-                logger.error( sio.getvalue() )
-                return
+        from volumina.pixelpipeline.asyncabcs import IndeterminateRequestError
+        if isinstance(exc_info[1], IndeterminateRequestError):
+            logger.warn( "Caught unhandled IndeterminateRequestError from volumina." )
+            sio = StringIO.StringIO()
+            traceback.print_exception( exc_info[0], exc_info[1], exc_info[2], file=sio )
+            logger.warn( sio.getvalue() )
+            return
         
         # All other exceptions are treated as true errors
         _log_exception( *exc_info )
