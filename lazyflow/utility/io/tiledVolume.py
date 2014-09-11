@@ -225,7 +225,22 @@ class TiledVolume(object):
         try:
             if self._session is None:
                 self._session = self._create_session()
-            r = self._session.get(tile_url)
+
+            success = False
+            tries = 0
+            while not success:
+                try:
+                    r = self._session.get(tile_url)
+                    success = True
+                except requests.ConnectionError:
+                    # This special 'pass' is here because we keep running into exceptions like this: 
+                    #   ConnectionError: HTTPConnectionPool(host='neurocean.int.janelia.org', port=6081): 
+                    #   Max retries exceeded with url: /ssd-3-tiles/abd1.5/43/24_25_0.jpg 
+                    #   (Caused by <class 'httplib.BadStatusLine'>: '')
+                    # So now we loop a few times and only give up if something is really wrong.
+                    if tries == 5:
+                        raise # give up
+                    tries += 1
         except:
             # During testing, the server we're pulling from might be in our own process.
             # Apparently that means that it is not very responsive, leading to exceptions.
