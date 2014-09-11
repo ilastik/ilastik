@@ -429,7 +429,7 @@ class ManualTrackingGui(LayerViewerGui):
         activeTrack = self._getActiveTrack()
         
         trackids = []
-        if oid in self.mainOperator.labels[t].keys():
+        if t in self.mainOperator.labels.keys() and oid in self.mainOperator.labels[t].keys():
             for l in self.mainOperator.labels[t][oid]:
                 trackids.append(l)
         
