@@ -457,7 +457,8 @@ class IlastikShell( QMainWindow ):
         projects = PreferencesManager().get("shell","recently opened list")
 
         if projects is not None:
-            for path,workflow in projects[::-1]:
+            # (projects is already sorted from most-recent to least-recent.)
+            for path,workflow in projects:
                 if not os.path.exists(path):
                     continue
                 b = FilePathButton(path, " ({})".format( workflow ), parent=self.startscreen)
