@@ -267,6 +267,7 @@ class DataSelectionSerializer( AppletSerializer ):
         working_dir = self.topLevelOperator.WorkingDirectory.value
         self.topLevelOperator.WorkingDirectory.disconnect()
         
+        missing_role_warning_issued = False
         for laneIndex, (_, laneGroup) in enumerate( sorted(infoDir.items()) ):
             
             # BACKWARDS COMPATIBILITY:
@@ -280,13 +281,23 @@ class DataSelectionSerializer( AppletSerializer ):
                 self.topLevelOperator.DatasetGroup[laneIndex][0].setValue(datasetInfo)
             else:
                 for roleName, infoGroup in sorted(laneGroup.items()):
-                    roleIndex = workflow_role_names.index( roleName )
                     datasetInfo, dirty = self._readDatasetInfo(infoGroup, localDataGroup, projectFilePath, headless)
                     force_dirty |= dirty
     
                     # Give the new info to the operator
                     if datasetInfo is not None:
-                        self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue(datasetInfo)
+                        try:
+                            # Look up the STORED role name in the workflow operator's list of roles. 
+                            roleIndex = workflow_role_names.index( roleName )
+                        except ValueError:
+                            if not missing_role_warning_issued:
+                                msg = 'Your project file contains a dataset for "{}", but the current '\
+                                      'workflow has no use for it. The stored dataset will be ignored.'\
+                                      .format( roleName )
+                                logger.error(msg)
+                                missing_role_warning_issued = True
+                        else:
+                            self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue(datasetInfo)
 
         # Finish the 'transaction' as described above.
         self.topLevelOperator.WorkingDirectory.setValue( working_dir )
