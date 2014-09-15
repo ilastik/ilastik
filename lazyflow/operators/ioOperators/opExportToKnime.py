@@ -5,7 +5,9 @@ from lazyflow.rtype import List
 import logging
 logger = logging.getLogger(__name__)
 
+import os
 import h5py
+import vigra
 import numpy
 import math
 
@@ -143,6 +145,7 @@ class OpExportToKnime(Operator):
             times = range(self.RawImage.meta.shape[0])
         
         with h5py.File(self.OutputFileName.value, "w") as fout:
+            print "Exporting to:", os.path.join(os.getcwd(), self.OutputFileName.value)
             gr_images = fout.create_group("images")
             if not self.imagePerObject and not self.imagePerTime:
                 # One image for everything. 
@@ -162,8 +165,10 @@ class OpExportToKnime(Operator):
                 cci = gr_images.create_dataset("0/cc_name", data=cc_image.squeeze())
                 
                 ri.attrs["type"] = "image"
-                cci.attrs["type"] = "labeling"
+                ri.attrs["axistags"] = self.RawImage.meta.axistags.toJSON()
                 
+                cci.attrs["type"] = "labeling"
+                cci.attrs["axistags"] = self.CCImage.meta.axistags.toJSON()                
             
             elif self.imagePerObject and not self.imagePerTime:
                 # We export a bounding box image for every object individually
@@ -186,19 +191,20 @@ class OpExportToKnime(Operator):
                         maxzs = table["Default features, Coord<Maximum>_ch_2"].astype(numpy.int32)
                     except ValueError:
                         minzs = None
-                        maxzs = None    
-                    
+                        maxzs = None
+                        
                     for i, minx in enumerate(minxs):
                         bbox = [slice(time_values[i], time_values[i]+1, None), slice(minx, maxxs[i], None), slice(minys[i], maxys[i], None)]
                         if minzs is not None:
                             bbox.append(slice(minzs[i], maxzs[i], None))
                         else:
                             bbox.append(slice(0, 1, None))
+                        cc_bbox = list(bbox)
                         bbox.append(slice(0, nchannels, None))
-                        
+                        cc_bbox.append(slice(0, 1, None))
                         
                         raw_image = self.RawImage[bbox].wait()
-                        cc_image = self.CCImage[bbox].wait()
+                        cc_image = self.CCImage[cc_bbox].wait()
                         
                         #ensure the right order
                         ndigits = int(math.floor( math.log10( table.shape[0] ) ) + 1)
@@ -213,16 +219,22 @@ class OpExportToKnime(Operator):
                         image_paths["labels"][i] = ccname
                         
                         ri = gr_images_obj.create_dataset("raw", data=raw_image.squeeze())
-                        cci = gr_images_obj.create_dataset("labels", data=cc_image.squeeze())
+                        cci = gr_images_obj.create_dataset("labels", data=cc_image.squeeze())                       
                         
+                        valid_axistags = [self.RawImage.meta.axistags[j] for j, s in enumerate(raw_image.shape) if s > 1]
+                        valid_axistags_cc = [self.CCImage.meta.axistags[j] for j, s in enumerate(cc_image.shape) if s > 1]
+        
                         ri.attrs["type"] = "image"
+                        ri.attrs["axistags"] = vigra.AxisTags(valid_axistags).toJSON()
+                        
                         cci.attrs["type"] = "labeling"
-                    
+                        cci.attrs["axistags"] = vigra.AxisTags(valid_axistags_cc).toJSON()
+                        
                 assert image_paths.shape[0] == table.shape[0]
             
             elif self.imagePerTime and not self.imagePerObject:
                 for t in times:                                              
-                    bbox = [slice(t, t+1, None), slice(None), slice(None), slice(None), slice(None)]      
+                    bbox = [slice(t, t+1, None), slice(None), slice(None), slice(None), slice(None)]
                     
                     raw_image = self.RawImage[bbox].wait()
                     cc_image = self.CCImage[bbox].wait()
@@ -231,14 +243,20 @@ class OpExportToKnime(Operator):
                     rawname = "{}/raw".format(t)
                     ccname = "{}/labels".format(t)
                     
-                    image_paths["raw"][t] = rawname
-                    image_paths["labels"][t] = ccname
+                    image_paths["raw"][t-min(times)] = rawname
+                    image_paths["labels"][t-min(times)] = ccname
                     
                     ri = gr_images_obj.create_dataset("raw", data=raw_image.squeeze())
                     cci = gr_images_obj.create_dataset("labels", data=cc_image.squeeze())
                     
+                    valid_axistags = [self.RawImage.meta.axistags[i] for i, s in enumerate(raw_image.shape) if s > 1]
+                    valid_axistags_cc = [self.CCImage.meta.axistags[i] for i, s in enumerate(cc_image.shape) if s > 1]
+    
                     ri.attrs["type"] = "image"
+                    ri.attrs["axistags"] = vigra.AxisTags(valid_axistags).toJSON()
+                    
                     cci.attrs["type"] = "labeling"
+                    cci.attrs["axistags"] = vigra.AxisTags(valid_axistags_cc).toJSON() 
                                         
                 assert image_paths.shape[0] == table.shape[0]
 
