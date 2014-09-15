@@ -1,11 +1,10 @@
 from ilastik.applets.base.standardApplet import StandardApplet
 
-# FIXME Hook up real operator
-from opMriVolFilter import OpMriVolFilter
+from opMriVolReport import OpMriVolReport
 
 class MriVolReportApplet( StandardApplet ):
     """
-    Applet that displays report result
+    Applet that displays report results
     """
 
     def __init__( self, workflow, guiName, projectFileGroupName ):
@@ -13,8 +12,7 @@ class MriVolReportApplet( StandardApplet ):
         
     @property
     def singleLaneOperatorClass(self):
-        # FIXME Hook up real operator
-        return OpMriVolFilter
+        return OpMriVolReport
 
     @property
     def broadcastingSlots(self):

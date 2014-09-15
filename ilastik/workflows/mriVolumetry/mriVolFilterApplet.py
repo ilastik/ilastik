@@ -4,7 +4,7 @@ from opMriVolFilter import OpMriVolFilter
 
 class MriVolFilterApplet( StandardApplet ):
     """
-    Applet that applies different metods 
+    Applet that applies different methods 
     to 'polish' the prediction maps
     """
 

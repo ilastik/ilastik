@@ -27,7 +27,7 @@ class MriVolumetryWorkflow(Workflow):
         opDataSelection.DatasetRoles.setValue( ['Raw Data',
                                                 'Prediction Maps'] )
 
-        self.mMriVolFilterApplet = MriVolFilterApplet(self, 
+        self.mriVolFilterApplet = MriVolFilterApplet(self, 
                                                        'Filter Predictions',
                                                        'PredictionFilter')
 
@@ -37,21 +37,26 @@ class MriVolumetryWorkflow(Workflow):
 
         self._applets = []
         self._applets.append( self.dataSelectionApplet )
-        self._applets.append( self.mMriVolFilterApplet )
+        self._applets.append( self.mriVolFilterApplet )
         self._applets.append( self.mriVolReportApplet )
 
         # self._workflow_cmdline_args = workflow_cmdline_args
 
     def connectLane(self, laneIndex):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
-        opMriVolFilter = self.mMriVolFilterApplet.topLevelOperator.getLane( \
+        opMriVolFilter = self.mriVolFilterApplet.topLevelOperator.getLane( \
+                                                                    laneIndex)
+        opMriVolReport = self.mriVolReportApplet.topLevelOperator.getLane( \
                                                                     laneIndex)
         # Connect top-level operators
         opMriVolFilter.RawInput.connect( opData.ImageGroup[0] )
         opMriVolFilter.Input.connect( opData.ImageGroup[1] )
 
-        # TODO connect report applet
-        # opMriVolCC.LabelNames.connect( opMriVolFilter.LabelNames )
+        opMriVolReport.RawInput.connect( opData.ImageGroup[0] )
+        opMriVolReport.Input.connect( opMriVolFilter.Output )
+        opMriVolReport.LabelNames.connect( opMriVolFilter.LabelNames )
+        opMriVolReport.ActiveChannels.connect( \
+                                            opMriVolFilter.ActiveChannelsOut )
 
     @property
     def applets(self):
@@ -82,12 +87,3 @@ class MriVolumetryWorkflow(Workflow):
         for applet in self.applets[1:]:
             self._shell.setAppletEnabled(applet, input_ready)
 
-
-'''
-Questions:
-Where does this error come from?
-014-02-09 09:35:35.716 ilastik[35869:507] modalSession has been exited prematurely - check for a reentrant call to endModalSession:
-QWidget::repaint: Recursive repaint detected
-QPainter::begin: A paint device can only be painted by one painter at a time.
-Segmentation fault: 11
-'''

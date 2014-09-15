@@ -1,6 +1,6 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpReorderAxes, OpCompressedCache, \
-    OperatorWrapper, OpLabelVolume, OpFilterLabels
+    OpLabelVolume, OpFilterLabels
 from lazyflow.rtype import SubRegion
 from lazyflow.stype import Opaque
 
@@ -8,7 +8,7 @@ import vigra
 import numpy as np
 
 class OpMriVolFilter(Operator):
-    name = "MRI Preprocessing"
+    name = "MRI Processing"
 
     RawInput = InputSlot(optional=True)  # Display only
     Input = InputSlot()
@@ -27,6 +27,7 @@ class OpMriVolFilter(Operator):
     
     # TODO introduce InputSlot for LabelNames 
     LabelNames = OutputSlot(stype=Opaque)
+    ActiveChannelsOut = OutputSlot(stype=Opaque)
 
 
     def __init__(self, *args, **kwargs):
@@ -68,6 +69,7 @@ class OpMriVolFilter(Operator):
         self.opRevertBinarize.CCInput.connect(self.CachedOutput)
 
         self.Output.connect( self.opRevertBinarize.Output )
+        self.ActiveChannelsOut.connect( self.ActiveChannels )
 
         '''
         def _debugDirty(*args, **kwargs):
@@ -79,7 +81,7 @@ class OpMriVolFilter(Operator):
         assert False, "Shouldn't get here."
         
     def propagateDirty(self, inputSlot, subindex, roi):
-        if inputSlot is self.Input:
+        if inputSlot in [self.Input, self.RawInput]:
             self.Output.setDirty(roi)
         if inputSlot is self.Sigma:
             self.Output.setDirty(slice(None))
@@ -95,11 +97,23 @@ class OpMriVolFilter(Operator):
         self.LabelNames.setValue(np.asarray( \
     ['Prediction {}'.format(l+1) for l in range(ts['c'])],dtype=np.object))
         
+        ts['c'] = 1
+        self.Output.meta.assignFrom(self.Input.meta)
+        self.Output.meta.shape = tuple(ts.values())
+        self.Output.meta.dtype=np.uint32
+
+        self.ArgmaxOutput.meta.assignFrom(self.Input.meta)
+        self.ArgmaxOutput.meta.shape = tuple(ts.values())
+        self.ArgmaxOutput.meta.dtype=np.uint32
+
         # set cache chunk shape to the whole spatial volume
         ts['t'] = 1
-        ts['c'] = 1
         blockshape = map(lambda k: ts[k],''.join(ts.keys()))
         self._cache.BlockShape.setValue(tuple(blockshape))
+        self._cache.Input.setDirty(slice(None))
+
+        self.ActiveChannelsOut.meta.assignFrom(self.ActiveChannels.meta)
+        
 
 class OpCostVolumeFilter(Operator):
     name = "Cost Volume Filter"
@@ -179,6 +193,8 @@ class OpCostVolumeFilter(Operator):
         # http://ukoethe.github.io/vigra/doc/vigra/classvigra_1_1Gaussian   
         # required filter radius for a discrete approximation 
         # of the Gaussian
+        # TODO the equation might actually be not what the code is doing
+        # check and update accordingly
         assert slot == self._Output, 'should work on cache'
         tmp_roi = self.get_tmp_roi(roi)
         tmp_data = self.opIn.Output.get(tmp_roi).wait().astype(np.float32)
@@ -194,16 +210,6 @@ class OpCostVolumeFilter(Operator):
             self.opIn.Output.meta.getTaggedShape()['c'],\
             'Not all channels are used for normalizing'
         self._costVolumeFilter(tmp_data, self.Sigma.value, normalize=True)
-        '''
-        with self.lock:
-            print '##############################'
-            print 'tmp', tmp_roi
-            print 'roi', roi
-            print 'L', lower_bound
-            print 'U', upper_bound
-            print 'Result', result.shape
-            print '##############################'
-        '''
         
         slicing = tuple([slice(x,y) for x,y in zip(lower_bound,upper_bound)])
         result[...] = tmp_data[slicing]
