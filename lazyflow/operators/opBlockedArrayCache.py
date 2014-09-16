@@ -165,7 +165,8 @@ class OpBlockedArrayCache(OpCache):
         (This version can't be used because all_block_numbers uses lots of RAM if self._dirtyShape is large.)
         
         def _get_block_numbers(start, stop):
-            all_block_numbers = numpy.arange( self._dirtyShape )
+            num_blocks = numpy.prod(self._dirtyShape)
+            all_block_numbers = numpy.arange( num_blocks )
             all_block_numbers = numpy.reshape(all_block_numbers, self._dirtyShape)
             block_numbers = all_block_numbers[roiToSlice(start, stop)]
             return block_numbers
