@@ -35,7 +35,7 @@ class OpDvidVolume(Operator):
     class DatasetReadError(Exception):
         pass
     
-    def __init__(self, hostname, uuid, dataname, transpose_axes, *args, **kwargs):
+    def __init__(self, hostname, uuid, dataname, query_args, transpose_axes, *args, **kwargs):
         super( OpDvidVolume, self ).__init__(*args, **kwargs)
         self._transpose_axes = transpose_axes
         self._default_accessor = None
@@ -43,6 +43,7 @@ class OpDvidVolume(Operator):
         self._hostname = hostname
         self._uuid = uuid
         self._dataname = dataname
+        self._query_args = query_args
 
     def _after_init(self):
         self.init_client()
@@ -57,8 +58,8 @@ class OpDvidVolume(Operator):
         """
         try:
             self._connection = pydvid.dvid_connection.DvidConnection( self._hostname, timeout=60.0 )
-            self._default_accessor = pydvid.voxels.VoxelsAccessor( self._connection, self._uuid, self._dataname )
-            self._throttled_accessor = pydvid.voxels.VoxelsAccessor( self._connection, self._uuid, self._dataname, 
+            self._default_accessor = pydvid.voxels.VoxelsAccessor( self._connection, self._uuid, self._dataname, self._query_args )
+            self._throttled_accessor = pydvid.voxels.VoxelsAccessor( self._connection, self._uuid, self._dataname, self._query_args,
                                                                      throttle=True, retry_timeout=30*60.0 ) # 30 minute retry period
         except pydvid.errors.DvidHttpError as ex:
             if ex.status_code == httplib.NOT_FOUND:

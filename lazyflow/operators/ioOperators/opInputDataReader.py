@@ -245,14 +245,18 @@ class OpInputDataReader(Operator):
             opDvidVolume = OpDvidVolume( hostname, uuid, dataname, transpose_axes=True, parent=self )
             return opDvidVolume, opDvidVolume.Output
         if '://' in filePath:
-            url_format = "^protocol://hostname/api/node/uuid/dataname"
-            for field in ['protocol', 'hostname', 'uuid', 'dataname']:
-                url_format = url_format.replace( field, '(?P<' + field + '>.+)' )
+            url_format = "^protocol://hostname/api/node/uuid/dataname(\\?query_string)?"
+            for field in ['protocol', 'hostname', 'uuid', 'dataname', 'query_string']:
+                url_format = url_format.replace( field, '(?P<' + field + '>[^?]+)' )
             match = re.match( url_format, filePath )
             if match:
                 fields = match.groupdict()
                 try:
-                    opDvidVolume = OpDvidVolume( fields['hostname'], fields['uuid'], fields['dataname'],
+                    query_string = fields['query_string']
+                    query_args = {}
+                    if query_string:
+                        query_args = dict( map(lambda s: s.split('='), query_string.split('&')) )
+                    opDvidVolume = OpDvidVolume( fields['hostname'], fields['uuid'], fields['dataname'], query_args,
                                                  transpose_axes=True, parent=self )
                     return opDvidVolume, opDvidVolume.Output
                 except OpDvidVolume.DatasetReadError as e:

@@ -105,7 +105,7 @@ class TestOpDvidVolume(unittest.TestCase):
         h5filename: The h5 file to compare against
         h5group: The hdf5 group, also used as the uuid of the dvid dataset
         h5dataset: The dataset name, also used as the name of the dvid dataset
-        start, stop: The bounds of the cutout volume to retrieve from the server. C ORDER FOR THIS TEST BECAUSE we use transpose_axes=True.
+        start, stop: The bounds of the cutout volume to retrieve from the server. C ORDER FOR THIS TEST BECAUSE we use transpose_axes=True
         """
         # Retrieve from server
         graph = Graph()
