@@ -285,7 +285,7 @@ class DataExportGui(QWidget):
             # (It's therefore possible for RawDatasetInfo[row] to be ready() even though it's upstream partner is NOT ready.
             return
                 
-        self.batchOutputTableWidget.setItem( row, Column.Dataset, QTableWidgetItem( decode_to_qstring(nickname) ) )
+        self.batchOutputTableWidget.setItem( row, Column.Dataset, QTableWidgetItem( decode_to_qstring(nickname, 'utf-8') ) )
         self.batchOutputTableWidget.setItem( row, Column.ExportLocation, QTableWidgetItem( decode_to_qstring(exportPath) ) )
 
         exportNowButton = QPushButton("Export")
