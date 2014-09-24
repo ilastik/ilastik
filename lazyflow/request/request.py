@@ -361,14 +361,18 @@ class Request( object ):
             
             # And now we simply return instead of letting this worker die.
 
-    def __call__(self):
-        """
-        Resume (or start) the request execution.
-        This is implemented in __call__ so that it can be used with the ThreadPool, which is designed for general callable tasks.
-        
-        .. note:: DO NOT use ``Request.__call__`` explicitly from your code.  It is called internally or from the ThreadPool.
-        """
-        self._switch_to()
+    #def __call__(self):
+    #    """
+    #    Resume (or start) the request execution.
+    #    This is implemented in __call__ so that it can be used with the ThreadPool, which is designed for general callable tasks.
+    #    
+    #    .. note:: DO NOT use ``Request.__call__`` explicitly from your code.  It is called internally or from the ThreadPool.
+    #    """
+    #    self._switch_to()
+    
+    # Implement __call__ with a direct assignment instead of the 
+    #  above implementation to avoid an unecessary function call.
+    __call__ = _switch_to
         
     def _suspend(self):
         """
