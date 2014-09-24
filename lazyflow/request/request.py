@@ -45,7 +45,7 @@ assert platform.python_implementation() == "CPython"
 
 class RequestGreenlet(greenlet.greenlet):
     def __init__(self, owning_request, fn):
-        super(RequestGreenlet, self).__init__(fn)
+        super(RequestGreenlet, self).__init__(fn, greenlet.getcurrent())
         self.owning_requests = [owning_request]
 
 class SimpleSignal(object):
