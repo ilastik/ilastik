@@ -18,6 +18,7 @@ parser.add_argument('--new_project', help='Create a new project with the specifi
 parser.add_argument('--workflow', help='When used with --new_project, specifies the workflow to use.', required=False)
 
 parser.add_argument('--clean_paths', help='Remove ilastik-unrelated directories from PATH and PYTHONPATH.', action='store_true', default=False)
+parser.add_argument('--redirect_output', help='A filepath to redirect stdout to', required=False)
 
 parser.add_argument('--debug', help='Start ilastik in debug mode.', action='store_true', default=False)
 parser.add_argument('--configfile', help='A custom path to a user config file for expert ilastik settings.', required=False)
@@ -33,11 +34,14 @@ def main( parsed_args, workflow_cmdline_args=[] ):
     this_path = os.path.dirname(__file__)
     ilastik_dir = os.path.abspath(os.path.join(this_path, "..%s.." % os.path.sep))
     
+    # If necessary, redirect stdout BEFORE logging is initialized
+    _redirect_output( parsed_args )
+    _init_logging( parsed_args ) # Initialize logging before anything else
+
     _init_configfile( parsed_args )
     
     _clean_paths( parsed_args, ilastik_dir )
     _update_debug_mode( parsed_args )
-    _init_logging( parsed_args ) # Initialize logging before anything else
     _init_threading_monkeypatch()
     _validate_arg_compatibility( parsed_args )
 
@@ -112,6 +116,24 @@ def _clean_paths( parsed_args, ilastik_dir ):
                 path.append(ilastik_dir + k.replace('/', os.path.sep))
             os.environ['LD_LIBRARY_PATH'] = os.pathsep.join(reversed(path))
 
+stdout_redirect_file = None
+old_stdout = None
+old_stderr = None
+def _redirect_output( parsed_args ):
+    if parsed_args.redirect_output:        
+        global old_stdout, old_stderr
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
+        
+        global stdout_redirect_file
+        stdout_redirect_file = open( parsed_args.redirect_output, 'a' )
+        sys.stdout = stdout_redirect_file
+        sys.stderr = stdout_redirect_file
+        
+        # Close the file when we exit...
+        import atexit
+        atexit.register( stdout_redirect_file.close )
+
 def _update_debug_mode( parsed_args ):
     # Force debug mode if any of these flags are active.
     if parsed_args.debug \
@@ -130,6 +152,10 @@ def _init_logging( parsed_args ):
     else:
         default_config.init(output_mode=default_config.OutputMode.LOGFILE_WITH_CONSOLE_ERRORS)
         startUpdateInterval(10) # 10 second periodic refresh
+    
+    if parsed_args.redirect_output:
+        logger.info( "All console output is being redirected to: {}"
+                     .format( parsed_args.redirect_output ) )
 
 def _init_threading_monkeypatch():
     # Monkey-patch thread starts if this special logger is active
