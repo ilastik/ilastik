@@ -26,7 +26,7 @@ import platform
 import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-from PyQt4.QtGui import QApplication, QSplashScreen, QPixmap 
+from PyQt4.QtGui import QApplication
 from PyQt4.QtCore import Qt, QTimer
 
 import splashScreen
