@@ -102,7 +102,11 @@ def launchShell(workflow_cmdline_args, *testFuncs):
         shell.move(10,10)
     shell.show()
     
+    # FIXME: The workflow_cmdline_args parameter is meant
+    #        for arguments to the workflow, not the shell.
+    #        This is a bit hacky.
     if workflow_cmdline_args and "--fullscreen" in workflow_cmdline_args:
+        workflow_cmdline_args.remove('--fullscreen')
         shell.showMaximized()
     
     # Run a test (if given)
