@@ -190,22 +190,34 @@ def _validate_arg_compatibility( parsed_args ):
         sys.exit(1)
 
 def _prepare_lazyflow_config( parsed_args ):
-    n_threads = ilastik_config.getint('lazyflow', 'threads')
-    total_ram_mb = ilastik_config.getint('lazyflow', 'total_ram_mb')
+    # Check environment variable settings.
+    n_threads = os.getenv("LAZYFLOW_THREADS", None)
+    total_ram_mb = os.getenv("LAZYFLOW_TOTAL_RAM_MB", None)
+
+    # Convert str -> int
+    n_threads = n_threads and int(n_threads)
+    total_ram_mb = total_ram_mb and int(total_ram_mb)
+
+    # If not in env, check config file.
+    n_threads = n_threads or ilastik_config.getint('lazyflow', 'threads')
+    total_ram_mb = total_ram_mb or ilastik_config.getint('lazyflow', 'total_ram_mb')
+    
     if n_threads or total_ram_mb:
         def _configure_lazyflow_settings(shell):
             import lazyflow
             import lazyflow.request
             if n_threads > 0:
+                logger.info("Resetting lazyflow thread pool with {} threads.".format( n_threads ))
                 lazyflow.request.Request.reset_thread_pool(n_threads)
-            if total_ram_mb < 500:
-                raise Exception("Your config says available RAM is only {} MB.  "
-                                "Remember to specify RAM in MB, not GB."
-                                .format( total_ram_mb ))
-            lazyflow.AVAILABLE_RAM_MB = total_ram_mb
+            if total_ram_mb > 0:
+                if total_ram_mb < 500:
+                    raise Exception("In your current configuration, RAM is limited to {} MB."
+                                    "  Remember to specify RAM in MB, not GB."
+                                    .format( total_ram_mb ))
+                logger.info("Configuring lazyflow RAM limit to {} MB".format( total_ram_mb ))
+                lazyflow.AVAILABLE_RAM_MB = total_ram_mb
         return _configure_lazyflow_settings
     return None
-
 
 def _prepare_auto_open_project( parsed_args ):
     if parsed_args.project is None:
