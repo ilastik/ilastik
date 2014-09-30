@@ -822,7 +822,7 @@ class DataSelectionGui(QWidget):
             return
 
         rois = None
-        hostname, dset_index, volume_name, uuid = browser.get_selection()
+        hostname, dset_uuid, volume_name, uuid = browser.get_selection()
         dvid_url = 'http://{hostname}/api/node/{uuid}/{volume_name}'.format( **locals() )
         subvolume_roi = browser.get_subvolume_roi()
 
