@@ -73,6 +73,8 @@ class OpFilterLabels(Operator):
         if not in_place:
             a = a.copy()
         if min_size == 0 and (max_size is None or max_size > numpy.prod(a.shape)): # shortcut for efficiency
+            if (bin_out):
+                numpy.place(a,a,1)
             return a
         
         try:
