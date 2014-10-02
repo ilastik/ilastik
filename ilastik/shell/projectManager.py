@@ -122,7 +122,7 @@ class ProjectManager(object):
         logger.info("Opening Project: " + projectFilePath)
 
         if not os.path.exists(projectFilePath):
-            raise ProjectManager.FileMissingError()
+            raise ProjectManager.FileMissingError(projectFilePath)
 
         # Open the file as an HDF5 file
         try:

@@ -285,10 +285,10 @@ class DatasetInfoEditorWidget(QDialog):
         if nickname is None:
             self.nicknameEdit.setText("<multiple>")
         else:
-            self.nicknameEdit.setText( decode_to_qstring(nickname) )
+            self.nicknameEdit.setText( decode_to_qstring(nickname, 'utf-8') )
 
     def _applyNicknameToTempOps(self):
-        newNickname = encode_from_qstring(self.nicknameEdit.text())
+        newNickname = encode_from_qstring(self.nicknameEdit.text(), 'utf-8')
         if "<multiple>" in newNickname:
             return
 

@@ -175,7 +175,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
 
         # Name
         if index.column() == DatasetDetailedInfoColumn.Nickname:
-            return decode_to_qstring( datasetInfo.nickname )
+            return decode_to_qstring( datasetInfo.nickname, 'utf-8' )
 
         # Location
         if index.column() == DatasetDetailedInfoColumn.Location:

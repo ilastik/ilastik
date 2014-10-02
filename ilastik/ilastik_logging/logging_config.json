@@ -6,6 +6,7 @@
         "py.warnings": {  "level":"WARN" },
 
         "__main__":                                                 { "level":"DEBUG" },
+        "ilastik_main":                                             { "level":"INFO" },
         "thread_start":                                             { "level":"INFO" },
         "lazyflow":                                                 { "level":"INFO" },
         "lazyflow.graph":                                           { "level":"INFO" },

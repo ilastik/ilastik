@@ -333,9 +333,8 @@ class _OpThresholdOneLevel(Operator):
 
         self._opThresholder.Function.setValue(
             partial(thresholdToUint8, self.Threshold.value))
-        # Copy the input metadata to the output
-        self.Output.meta.assignFrom(self.InputImage.meta)
-        self.Output.meta.dtype=numpy.uint32
+
+        # self.Output already has metadata: it is directly connected to self._opFilter.Output
 
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here..."
@@ -481,9 +480,8 @@ class _OpThresholdTwoLevels(Operator):
         self._opHighThresholder.Function.setValue(
             partial(thresholdToUint8, self.HighThreshold.value))
 
-        # Copy the input metadata to the output
-        self.Output.meta.assignFrom(self.InputImage.meta)
-        self.Output.meta.dtype = numpy.uint8
+        # Output is already connected internally -- don't reassign new metadata
+        # self.Output.meta.assignFrom(self.InputImage.meta)
 
         # Blockshape is the entire spatial volume (hysteresis thresholding is
         # a global operation)

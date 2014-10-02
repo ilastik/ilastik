@@ -361,12 +361,24 @@ class FeatureSelectionGui(LayerViewerGui):
                     newrow += 1
                 
             self.featureDlg.selectedFeatureBoolMatrix = reorderedMatrix
+        else:
+            assert self.topLevelOperatorView.FeatureIds.ready()
+            assert self.topLevelOperatorView.Scales.ready()
+
+            num_rows = len(self.topLevelOperatorView.FeatureIds.value)
+            num_cols = len(self.topLevelOperatorView.Scales.value)
+            blank_matrix = numpy.zeros( (num_rows, num_cols), dtype=bool )
+            self.featureDlg.selectedFeatureBoolMatrix = blank_matrix
         
         # Now open the feature selection dialog
         self.featureDlg.exec_()
 
     def onNewFeaturesFromFeatureDlg(self):
         opFeatureSelection = self.topLevelOperatorView
+        old_features = None
+        if opFeatureSelection.SelectionMatrix.ready():
+            old_features = opFeatureSelection.SelectionMatrix.value
+            
         if opFeatureSelection is not None:
             # Re-initialize the scales and features
             self.initFeatureOrder()
@@ -385,7 +397,10 @@ class FeatureSelectionGui(LayerViewerGui):
                 except DatasetConstraintError as ex:
                     # The user selected some scales that were too big.
                     QMessageBox.critical(self, "Invalid selections", ex.message)
-                    opFeatureSelection.SelectionMatrix.disconnect()
+                    if old_features is not None:
+                        opFeatureSelection.SelectionMatrix.setValue( old_features )
+                    else:
+                        opFeatureSelection.SelectionMatrix.disconnect()
                 
                 # Re-enable gui
                 QApplication.instance().restoreOverrideCursor()
