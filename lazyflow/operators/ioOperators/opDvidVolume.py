@@ -97,12 +97,15 @@ class OpDvidVolume(Operator):
     def execute(self, slot, subindex, roi, result):
         # TODO: Modify accessor implementation to accept a pre-allocated array.
 
-        # For "heavy" requests, we'll use the throttled accessor
-        HEAVY_REQ_SIZE = 256*256*10
-        if numpy.prod(result.shape) > HEAVY_REQ_SIZE:
-            accessor = self._throttled_accessor
-        else:
-            accessor = self._default_accessor
+# FIXME: Disabled throttling for now.  Need a better heuristic or explicit setting.
+#         # For "heavy" requests, we'll use the throttled accessor
+#         HEAVY_REQ_SIZE = 256*256*10
+#         if numpy.prod(result.shape) > HEAVY_REQ_SIZE:
+#             accessor = self._throttled_accessor
+#         else:
+#             accessor = self._default_accessor
+
+        accessor = self._default_accessor # FIXME (see above)
         
         if self._transpose_axes:
             roi_start = tuple(reversed(roi.start))
