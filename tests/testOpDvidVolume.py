@@ -109,7 +109,7 @@ class TestOpDvidVolume(unittest.TestCase):
         """
         # Retrieve from server
         graph = Graph()
-        opDvidVolume = OpDvidVolume( hostname, uuid, dataname, transpose_axes=True, graph=graph )
+        opDvidVolume = OpDvidVolume( hostname, uuid, dataname, {}, transpose_axes=True, graph=graph )
         subvol = opDvidVolume.Output( start, stop ).wait()
 
         # Retrieve from file (which uses fortran order)
