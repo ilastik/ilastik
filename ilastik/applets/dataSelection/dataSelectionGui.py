@@ -128,6 +128,7 @@ class DataSelectionGui(QWidget):
                 detailWidget.selectRow(imageIndex)
 
     def stopAndCleanUp(self):
+        self._cleaning_up = True
         for editor in self.volumeEditors.values():
             self.viewerStack.removeWidget( editor )
             self._viewerControlWidgetStack.removeWidget( editor.viewerControlWidget() )
@@ -169,7 +170,7 @@ class DataSelectionGui(QWidget):
         :param max_lanes: The maximum number of lanes that the user is permitted to add to this workflow.  If ``None``, there is no maximum.
         """
         super(DataSelectionGui, self).__init__()
-        
+        self._cleaning_up = False
         self.parentApplet = parentApplet
         self._max_lanes = max_lanes
         self._default_h5_volumes = {}
@@ -326,6 +327,8 @@ class DataSelectionGui(QWidget):
 
     @threadRouted
     def showDataset(self, laneIndex, roleIndex=None):
+        if self._cleaning_up:
+            return
         if laneIndex == -1:
             self.viewerStack.setCurrentIndex(0)
             return
