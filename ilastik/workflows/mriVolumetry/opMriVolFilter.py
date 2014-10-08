@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpReorderAxes, OpCompressedCache, \
     OpLabelVolume, OpFilterLabels
@@ -7,28 +9,31 @@ from lazyflow.stype import Opaque
 import vigra
 import numpy as np
 
+
 class OpMriVolFilter(Operator):
     name = "MRI Processing"
 
     RawInput = InputSlot(optional=True)  # Display only
     Input = InputSlot()
-    Sigma = InputSlot(stype='float', value=1.2)
+
+    SmoothingMethod = InputSlot(value='gaussian')
+    Configuration = InputSlot(value={'sigma': 1.2})
+
     Threshold = InputSlot(stype='int', value=3000)
-    ActiveChannels = InputSlot(stype=Opaque)   
+    ActiveChannels = InputSlot(stype=Opaque)
 
     # internal output after filtering
     Smoothed = OutputSlot()
-    
+
     # the argmax output (single channel)
     ArgmaxOutput = OutputSlot()
 
     Output = OutputSlot()
     CachedOutput = OutputSlot() 
-    
+
     # TODO introduce InputSlot for LabelNames 
     LabelNames = OutputSlot(stype=Opaque)
     ActiveChannelsOut = OutputSlot(stype=Opaque)
-
 
     def __init__(self, *args, **kwargs):
         super(OpMriVolFilter, self).__init__(*args, **kwargs)
@@ -36,15 +41,16 @@ class OpMriVolFilter(Operator):
         self._cache = OpCompressedCache( parent=self )
         self._cache.name = "OpMriVol.OutputCache"
 
-        self.opCostVol = OpCostVolumeFilter(parent=self)
-        self.opCostVol.Sigma.connect(self.Sigma)
+        self.opSmoothing = OpSmoothingImplementationChooser(parent=self)
+        self.opSmoothing.Configuration.connect(self.Configuration)
+        self.opSmoothing.Method.connect(self.SmoothingMethod)
+        self.opSmoothing.Input.connect(self.Input)
 
-        self.opCostVol.Input.connect(self.Input)
-        self.Smoothed.connect(self.opCostVol.Output)
+        self.Smoothed.connect(self.opSmoothing.Output)
 
         self.opGlobThres = OpMriArgmax(parent=self)
         self.opGlobThres.Threshold.connect(self.Threshold)
-        self.opGlobThres.Input.connect(self.opCostVol.Output)
+        self.opGlobThres.Input.connect(self.opSmoothing.Output)
 
         self.ArgmaxOutput.connect(self.opGlobThres.Output)
 
@@ -83,7 +89,7 @@ class OpMriVolFilter(Operator):
     def propagateDirty(self, inputSlot, subindex, roi):
         if inputSlot in [self.Input, self.RawInput]:
             self.Output.setDirty(roi)
-        if inputSlot is self.Sigma:
+        if inputSlot in [self.SmoothingMethod, self.Configuration]:
             self.Output.setDirty(slice(None))
         if inputSlot is self.Threshold:
             self.Output.setDirty(slice(None))
@@ -432,8 +438,7 @@ class OpMriBinarizeImage(Operator):
         for idx, active in enumerate(self.ActiveChannels.value):
             if active == 0: # and idx != self.BackgroundChannel.value:
                 result[tmp_data==idx+1] = 0
- 
-        
+
     def propagateDirty(self, inputSlot, subindex, roi):
         if inputSlot is self.Input:
             self.Output.setDirty(roi)
@@ -489,4 +494,69 @@ class OpMriRevertBinarize(Operator):
             self.Output.setDirty( roi )
         if inputSlot is self.CCInput:
             self.Output.setDirty( roi )
+
+
+smoothing_methods = OrderedDict([('gaussian', True),
+                                 ('guided', False),
+                                 ('opengm', False)])
+
+
+class OpSmoothingImplementationChooser(Operator):
+    Input = InputSlot()
+    Configuration = InputSlot()
+    Method = InputSlot()
+
+    Output = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super(OpSmoothingImplementationChooser, self).__init__(*args,
+                                                               **kwargs)
+        self._implMapper = OrderedDict(smoothing_methods)
+        self._implMapper['gaussian'] = self._connectGaussian
+
+        self._connectBasic()
+
+    def setupOutputs(self):
+        self._disconnectSmoother()
+        method = self.Method.value
+        assert smoothing_methods[method], "{} is not supported".format(method)
+        self._implMapper[method]()
+
+    def execute(self, slot, subindex, roi, result):
+        raise NotImplementedError(
+            "All executes must be handled by internal operators")
+
+    def propagateDirty(self, slot, subindex, roi):
+        # all dirty handling is done by internal operators
+        pass
+
+    def _disconnectSmoother(self):
+        self.Output.disconnect()
+        if self._op is not None:
+            self._op.Input.disconnect()
+        self._op = None
+
+    def _connectBasic(self):
+        self._op = OpCostVolumeFilter(parent=self)
+        self._op.Sigma.setValue(0)
+        self._op.Input.connect(self.Input)
+        self.Output.connect(self._op.Output)
+
+    def _connectGaussian(self):
+        self._op = OpCostVolumeFilter(parent=self)
+        conf = self.Configuration.value
+        assert 'sigma' in conf, "Wrong config for method 'gaussian'"
+        self._op.Sigma.setValue(conf['sigma'])
+        self._op.Input.connect(self.Input)
+        self.Output.connect(self._op.Output)
+
+
+
+
+
+
+
+
+
+
 

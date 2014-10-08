@@ -17,6 +17,9 @@ from lazyflow.operators import OpMultiArraySlicer
 
 import numpy as np
 
+from opMriVolFilter import smoothing_methods
+smoothing_methods_map = smoothing_methods.keys()
+
 class MriVolFilterGui( LayerViewerGui ):
     _ActiveChannels = np.asarray([None], dtype=object)
 
@@ -131,9 +134,11 @@ class MriVolFilterGui( LayerViewerGui ):
     def _updateOperatorFromGui(self):
         op = self.topLevelOperatorView
 
-        # Read Sigma
-        sigma = self._drawer.sigmaSpinBox.value()
-        op.Sigma.setValue(sigma)
+        tab_index = self._drawer.tabWidget.currentIndex()
+        conf = self._getTabConfig()
+
+        op.SmoothingMethod.setValue(smoothing_methods_map[tab_index])
+        op.Configuration.setValue(conf)
 
         # Read Size Threshold
         thres = self._drawer.thresSpinBox.value()
@@ -141,6 +146,22 @@ class MriVolFilterGui( LayerViewerGui ):
 
         # Read Active Channels
         self._setActiveChannels()
+
+    def _getTabConfig(self):
+        # TODO
+        tab_index = self._drawer.tabWidget.currentIndex()
+        if tab_index == 0:
+            sigma = self._drawer.sigmaSpinBox.value()
+            conf = {'sigma': sigma}
+        elif tab_index == 1:
+            raise NotImplementedError("Tab {} is not implemented".format(
+                smoothing_methods_map[tab_index]))
+        elif tab_index == 2:
+            raise NotImplementedError("Tab {} is not implemented".format(
+                smoothing_methods_map[tab_index]))
+        else:
+            raise ValueError('Unknown tab {} selected'.format(tab_index))
+        return conf
 
     def _setActiveChannels(self):
         op = self.topLevelOperatorView
@@ -160,9 +181,13 @@ class MriVolFilterGui( LayerViewerGui ):
         op = self.topLevelOperatorView
         tagged_shape = op.Input.meta.getTaggedShape()
         shape = np.min([tagged_shape[c] for c in 'xyz' if c in tagged_shape])
-        max_sigma = np.floor(shape/6.)-1 # Experimentally 3. (see Anna)
+        max_sigma = np.floor(shape/6.)-.1 # Experimentally 3. (see Anna)
+        # https://github.com/ilastik/ilastik/issues/996
         self._drawer.sigmaSpinBox.setMaximum(max_sigma)
         
+        #TODO adjust to different smoothing implementations
+        
+        #FIXME this is wrong here
         sigma = self._drawer.sigmaSpinBox.value()
         if sigma <= max_sigma:
             self._drawer.sigmaSpinBox.setValue(sigma)

@@ -322,20 +322,20 @@ class IlastikShell( QMainWindow ):
         self.errorMessageFilter = ErrorMessageFilter(self)
 
         frame_geometry = PreferencesManager().get("shell","startscreenGeometry")
-        if frame_geometry is not None:
-            x,y,w,h = frame_geometry
-            self.move( x, y )
+        #if frame_geometry is not None:
+            #x,y,w,h = frame_geometry
+            #self.move( x, y )
 
-            # The frameGeometry() function doesn't actually include the
-            #  window frame padding until the window has been shown at least once.
-            # Hence, show it now before doing our calculations.
-            self.show()
+            ## The frameGeometry() function doesn't actually include the
+            ##  window frame padding until the window has been shown at least once.
+            ## Hence, show it now before doing our calculations.
+            #self.show()
             
-            # Qt offers no function for setting the size of the entire frame, 
-            # so instead we have to calculate the target size of the internal geometry.            
-            frame_padding_width = self.frameGeometry().width() - self.geometry().size().width()
-            frame_padding_height = self.frameGeometry().height() - self.geometry().size().height()
-            self.resize( w - frame_padding_width, h - frame_padding_height )
+            ## Qt offers no function for setting the size of the entire frame, 
+            ## so instead we have to calculate the target size of the internal geometry.            
+            #frame_padding_width = self.frameGeometry().width() - self.geometry().size().width()
+            #frame_padding_height = self.frameGeometry().height() - self.geometry().size().height()
+            #self.resize( w - frame_padding_width, h - frame_padding_height )
 
         self._initShortcuts()
 

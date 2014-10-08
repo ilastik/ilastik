@@ -17,7 +17,7 @@ class MriVolFilterApplet( StandardApplet ):
 
     @property
     def broadcastingSlots(self):
-        return [ 'Sigma', 'Threshold', 'ActiveChannels']
+        return ['SmoothingMethod', 'Configuration', 'Threshold', 'ActiveChannels']
 
     @property
     def singleLaneGuiClass(self):
