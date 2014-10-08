@@ -43,6 +43,9 @@ class TiledVolume(object):
 
         "tile_shape_2d_yx" : AutoEval(numpy.array),
 
+        "username" : str,
+        "password" : str,
+
         # This doesn't change how the data is read from the server,
         #  but instead specifies the indexing order of the numpy volumes produced.
         "output_axes" : str,
@@ -124,7 +127,8 @@ class TiledVolume(object):
                 self._slice_remapping[dest] = source
 
     def close(self):
-        self._session.close()
+        if self._session:
+            self._session.close()
 
     def read(self, roi, result_out):
         """
@@ -225,6 +229,10 @@ class TiledVolume(object):
         try:
             if self._session is None:
                 self._session = self._create_session()
+
+                # Provide authentication if we have the details.
+                if self.description.username and self.description.password:
+                    self._session.auth = (self.description.username, self.description.password)
 
             success = False
             tries = 0
