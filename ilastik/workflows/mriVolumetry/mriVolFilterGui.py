@@ -155,7 +155,6 @@ class MriVolFilterGui( LayerViewerGui ):
     def _getTabConfig(self):
         # TODO
         tab_index = self._drawer.tabWidget.currentIndex()
-        print smoothing_methods_map[tab_index] , 'xyxyx'
         if tab_index == 0:
             sigma = self._drawer.sigmaSpinBox.value()
             conf = {'sigma': sigma}

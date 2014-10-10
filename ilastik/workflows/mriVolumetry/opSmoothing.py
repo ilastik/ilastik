@@ -53,7 +53,7 @@ class OpSmoothing(Operator):
         # remove cache so that it does not object on e.g. changed axis
         self._destroyCache()
 
-        # TODO reuse operators (reusing is known to cause at the moment)
+        # FIXME reuse operators (reusing is known to cause at the moment)
         self._disconnectSmoother()
         self._connectSmoother(temp_op)
 
@@ -224,7 +224,8 @@ class OpCostVolumeFilter(OpSmoothingImplementation):
 smoothers_available['gaussian'] = OpCostVolumeFilter
 
 
-class OpGuidedFilter(Operator):
+# Implements gaussian smoothing
+class OpGuidedFilter(OpSmoothingImplementation):
     """
     Operator that performs guided filtering on the probability map 
     as proposed by
@@ -232,95 +233,50 @@ class OpGuidedFilter(Operator):
     IEEE Trans Pattern Anal Mach Intell 35(6), 1397-409 (Jun 2013)
     """
     name = "Guided Filter"
-    
-    Input = InputSlot()
-    Output = OutputSlot()
-    _Output = OutputSlot() # second (private) output
 
-    Sigma = InputSlot(stype='float', value=2.0)
-    Epsilon = InputSlot(stype='float', value=0.2)
+    # inherited slots
+    # Input = InputSlot()
+    # Output = OutputSlot()
+
+    # configuration for this slot should be like {'sigma': 2.0, 'eps': 0.2}
+    # Configuration = InputSlot()
+
+    # implementation of abstract method
+    def isAvailable(self):
+        # we are implementing it right here, so it is indeed available
+        try:
+            self._guidedFilter(None)
+        except:
+            # HACK
+            return True
+        else:
+            return False
 
     def __init__(self, *args, **kwargs):
         super(OpGuidedFilter, self).__init__(*args, **kwargs)
 
-        self.opIn = OpReorderAxes(parent=self)
-        self.opIn.Input.connect(self.Input)
-        self.opIn.AxisOrder.setValue('txyzc') 
-
-        self._opCache = OpCompressedCache(parent=self)
-        self._opCache.Input.connect(self._Output)
-
-        self.opOut = OpReorderAxes(parent=self)
-        self.Output.connect(self.opOut.Output)
-        self.opOut.Input.connect(self._opCache.Output)
-
-
     def setupOutputs(self):
-        self._Output.meta.assignFrom(self.opIn.Output.meta)
-        self._Output.meta.dtype=np.float32
-        self.opOut.AxisOrder.setValue(self.Input.meta.getAxisKeys())
+        super(OpGuidedFilter, self).setupOutputs()
+        self.Output.meta.dtype = np.float32
 
-        self._setBlockShape()
-        self._opCache.Input.setDirty(slice(None))
+    def execute(self, slot, subindex, roi, result):
+        logger.debug("Smoothing roi {}".format(roi))
 
+        conf = self.Configuration.value
+        if 'sigma' not in conf:
+            raise self.ConfigurationError(
+                "expected key 'sigma' in configuration")
+        sigma = conf['sigma']
 
-    def _setBlockShape(self):
-        # Blockshape is the entire spatial block
-        tagged_shape = self.opIn.Output.meta.getTaggedShape()
-        bsize = 50
-        tagged_shape['x'] = bsize
-        tagged_shape['y'] = bsize
-        tagged_shape['z'] = bsize
-
-        # Blockshape must correspond to cachsetInSlot input order
-        blockshape = map(lambda k: tagged_shape[k], 'txyzc')
-        self._opCache.BlockShape.setValue(tuple(blockshape)) 
+        result[...] = self.Input.get(roi).wait().astype(self.Output.meta.dtype)
+        self._guidedFilter(result, sigma, normalize=True)
 
     @staticmethod
     def _guidedFilter(vol, filterSize=2.0, eps=0.2, normalize=True):
         # TODO
-        print 'Nothing implemented yet'
-        pass
-        
-    def get_tmp_roi(self, roi):
-        radius = np.ceil(self.Sigma.value*3)
-        tmp_roi = SubRegion(self.opIn.Output, 
-                            start = roi.start, 
-                            stop = roi.stop) 
-        offset = np.array([0, radius, radius, radius, 0], dtype=np.int)
-        tmp_roi.setInputShape(self.opIn.Output.meta.shape)
-        tmp_roi.expandByShape(offset, 4, 0)
-        return tmp_roi
+        logger.warn('Nothing implemented yet')
 
-    def execute(self, slot, subindex, roi, result):
-        assert slot == self._Output, 'should work on cache'
-        tmp_roi = self.get_tmp_roi(roi)
-        tmp_data = self.opIn.Output.get(tmp_roi).wait().astype(np.float32)
-        lower_bound = map(lambda x,y: x-y, roi.start, tmp_roi.start)
-        upper_bound = map(lambda x,y,z: x+y-z, lower_bound,
-                          roi.stop,
-                          roi.start)
-        assert tmp_data.shape[-1] == \
-            self.opIn.Output.meta.getTaggedShape()['c'],\
-            'Not all channels are used for normalizing'
-        self._guidedFilter(tmp_data, self.Sigma.value, self.Epsilon.value,
-                           normalize=True)
-        
-        slicing = tuple([slice(x,y) for x,y in zip(lower_bound,upper_bound)])
-        result[...] = tmp_data[slicing]
+# add this smoother to the global smoothers table
+smoothers_available['guided'] = OpGuidedFilter
 
-    def propagateDirty(self, inputSlot, subindex, roi):
-        if inputSlot is self.Input:
-            start = np.array([0]*5)
-            stop = np.array([1]*5)
-            for i,a in enumerate('txyzc'):
-                if a in self.Input.meta.getTaggedShape():
-                    j = self.Input.meta.axistags.index(a)
-                    start[i] = roi.start[j]
-                    stop[i] = roi.stop[j]
-            new_roi = SubRegion(self._Output, start, stop)
-            tmp_roi = self.get_tmp_roi(new_roi)
-            self.Output.setDirty(tmp_roi)
-        if inputSlot is self.Sigma:
-            self.Output.setDirty(slice(None))
 
