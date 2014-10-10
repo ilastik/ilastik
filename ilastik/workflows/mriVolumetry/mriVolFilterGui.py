@@ -72,7 +72,6 @@ class MriVolFilterGui( LayerViewerGui ):
         self._drawer.slider.setValue(value)
 
     def _setupLabelNames(self):
-        # TODO include icons that match the color 
         op = self.topLevelOperatorView
         numChannels = op.Smoothed.meta.getTaggedShape()['c']
         layer_names = []
@@ -150,12 +149,15 @@ class MriVolFilterGui( LayerViewerGui ):
     def _getTabConfig(self):
         # TODO
         tab_index = self._drawer.tabWidget.currentIndex()
+        print smoothing_methods_map[tab_index] , 'xyxyx'
         if tab_index == 0:
             sigma = self._drawer.sigmaSpinBox.value()
             conf = {'sigma': sigma}
         elif tab_index == 1:
-            raise NotImplementedError("Tab {} is not implemented".format(
-                smoothing_methods_map[tab_index]))
+            eps = self._drawer.epsGuidedSpinBox.value()
+            sigma = self._drawer.sigmaGuidedSpinBox.value()
+            conf = { 'sigma': sigma,
+                     'eps': eps }
         elif tab_index == 2:
             raise NotImplementedError("Tab {} is not implemented".format(
                 smoothing_methods_map[tab_index]))
@@ -186,7 +188,8 @@ class MriVolFilterGui( LayerViewerGui ):
         self._drawer.sigmaSpinBox.setMaximum(max_sigma)
         
         #TODO adjust to different smoothing implementations
-        
+        self._drawer.sigmaGuidedSpinBox.setMaximum(max_sigma)
+
         #FIXME this is wrong here
         sigma = self._drawer.sigmaSpinBox.value()
         if sigma <= max_sigma:
