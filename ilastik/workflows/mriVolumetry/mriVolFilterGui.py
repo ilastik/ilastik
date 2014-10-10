@@ -17,8 +17,9 @@ from lazyflow.operators import OpMultiArraySlicer
 
 import numpy as np
 
-from opMriVolFilter import smoothing_methods
-smoothing_methods_map = smoothing_methods.keys()
+from opSmoothing import smoothers_available
+smoothing_methods_map = ['gaussian', 'guided', 'opengm']
+
 
 class MriVolFilterGui( LayerViewerGui ):
     _ActiveChannels = np.asarray([None], dtype=object)
@@ -50,9 +51,14 @@ class MriVolFilterGui( LayerViewerGui ):
         self._drawer.applyButton.clicked.connect( self._onApplyButtonClicked )
         
         # syncronize slider and spinbox
+        # TODO add other tabs' widgets
         self._drawer.slider.valueChanged.connect( self._slider_value_changed )
         self._drawer.thresSpinBox.valueChanged.connect( \
                                                 self._spinbox_value_changed )
+
+        for i, name in enumerate(smoothing_methods_map):
+            if name not in smoothers_available:
+                self._drawer.tabWidget.setTabEnabled(i, False)
 
 
         self._allWatchedWidgets = [ self._drawer.sigmaSpinBox, 
@@ -73,7 +79,7 @@ class MriVolFilterGui( LayerViewerGui ):
 
     def _setupLabelNames(self):
         op = self.topLevelOperatorView
-        numChannels = op.Smoothed.meta.getTaggedShape()['c']
+        numChannels = op.Input.meta.getTaggedShape()['c']
         layer_names = []
         # setup labels
         self.model = QStandardItemModel(self._drawer.labelListView)

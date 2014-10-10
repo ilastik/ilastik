@@ -6,6 +6,8 @@ from lazyflow.operators import OpReorderAxes, OpCompressedCache, \
 from lazyflow.rtype import SubRegion
 from lazyflow.stype import Opaque
 
+from opSmoothing import OpSmoothing
+
 import vigra
 import numpy as np
 
@@ -17,7 +19,7 @@ class OpMriVolFilter(Operator):
     Input = InputSlot()
 
     SmoothingMethod = InputSlot(value='gaussian')
-    Configuration = InputSlot(value={'sigma': 1.2})
+    Configuration = InputSlot(value={'sigma': 0.0})
 
     Threshold = InputSlot(stype='int', value=3000)
     ActiveChannels = InputSlot(stype=Opaque)
@@ -41,16 +43,16 @@ class OpMriVolFilter(Operator):
         self._cache = OpCompressedCache( parent=self )
         self._cache.name = "OpMriVol.OutputCache"
 
-        self.opSmoothing = OpSmoothingImplementationChooser(parent=self)
+        self.opSmoothing = OpSmoothing(parent=self)
         self.opSmoothing.Configuration.connect(self.Configuration)
         self.opSmoothing.Method.connect(self.SmoothingMethod)
         self.opSmoothing.Input.connect(self.Input)
 
-        self.Smoothed.connect(self.opSmoothing.Output)
+        self.Smoothed.connect(self.opSmoothing.CachedOutput)
 
         self.opGlobThres = OpMriArgmax(parent=self)
         self.opGlobThres.Threshold.connect(self.Threshold)
-        self.opGlobThres.Input.connect(self.opSmoothing.Output)
+        self.opGlobThres.Input.connect(self.Smoothed)
 
         self.ArgmaxOutput.connect(self.opGlobThres.Output)
 
@@ -119,121 +121,6 @@ class OpMriVolFilter(Operator):
         self._cache.Input.setDirty(slice(None))
 
         self.ActiveChannelsOut.meta.assignFrom(self.ActiveChannels.meta)
-        
-
-class OpCostVolumeFilter(Operator):
-    name = "Cost Volume Filter"
-
-    Input = InputSlot()
-    Output = OutputSlot()
-    _Output = OutputSlot() # second (private) output
-
-    Sigma = InputSlot(stype='float', value=1.0)
-    # rtype = lazyflow.rtype.Opaque e.g. for non array type output
-
-    def __init__(self, *args, **kwargs):
-        super(OpCostVolumeFilter, self).__init__(*args, **kwargs)
-
-        self.opIn = OpReorderAxes(parent=self)
-        self.opIn.Input.connect(self.Input)
-        self.opIn.AxisOrder.setValue('txyzc') 
-
-        self._opCache = OpCompressedCache(parent=self)
-        self._opCache.Input.connect(self._Output)
-
-        self.opOut = OpReorderAxes(parent=self)
-        self.Output.connect(self.opOut.Output)
-        self.opOut.Input.connect(self._opCache.Output)
-
-    # not necessary for op wrapper that just propagate the output to the 
-    # internally connected operator 
-    def setupOutputs(self):
-        self._Output.meta.assignFrom(self.opIn.Output.meta)
-        self._Output.meta.dtype=np.float32
-        self.opOut.AxisOrder.setValue(self.Input.meta.getAxisKeys())
-
-        self._setBlockShape()
-        self._opCache.Input.setDirty(slice(None))
-
-
-    def _setBlockShape(self):
-        # Blockshape is the entire spatial block
-        tagged_shape = self.opIn.Output.meta.getTaggedShape()
-        bsize = 50
-        tagged_shape['x'] = bsize
-        tagged_shape['y'] = bsize
-        tagged_shape['z'] = bsize
-
-        # Blockshape must correspond to cachsetInSlot input order
-        blockshape = map(lambda k: tagged_shape[k], 'txyzc')
-        self._opCache.BlockShape.setValue(tuple(blockshape)) 
-
-    @staticmethod
-    def _costVolumeFilter(vol, filterSize=2.0, normalize=True):
-        """
-        Cost Volume Filtering: Smoothes the probabilities with a 
-        Gaussian of sigma 'size', each label layer separately.
-        """
-        if filterSize > 0:
-            for t in range(vol.shape[0]):
-                for c in range(vol.shape[-1]):
-                    vol[t,...,c] = vigra.gaussianSmoothing(
-                        vol[t,...,c], 
-                        float(filterSize))
-
-        if normalize:
-            z = np.sum(vol, axis=-1, keepdims=True)
-            vol /= z
-
-    def get_tmp_roi(self, roi):
-        radius = np.ceil(self.Sigma.value*3)
-        tmp_roi = SubRegion(self.opIn.Output, 
-                            start = roi.start, 
-                            stop = roi.stop) #roi.copy()
-        offset = np.array([0, radius, radius, radius, 0], dtype=np.int)
-        tmp_roi.setInputShape(self.opIn.Output.meta.shape)
-        tmp_roi.expandByShape(offset, 4, 0)
-        return tmp_roi
-
-    def execute(self, slot, subindex, roi, result):
-        # http://ukoethe.github.io/vigra/doc/vigra/classvigra_1_1Gaussian   
-        # required filter radius for a discrete approximation 
-        # of the Gaussian
-        # TODO the equation might actually be not what the code is doing
-        # check and update accordingly
-        assert slot == self._Output, 'should work on cache'
-        tmp_roi = self.get_tmp_roi(roi)
-        tmp_data = self.opIn.Output.get(tmp_roi).wait().astype(np.float32)
-        lower_bound = map(lambda x,y: x-y, roi.start, tmp_roi.start)
-        upper_bound = map(lambda x,y,z: x+y-z, lower_bound,
-                          roi.stop,
-                          roi.start)
-        # self.OpIn.Output[tmp_roi.toSlice()]
-        # self.OpIn.Output(start=tmp_roi.start, stop=tmp_roi.stop)
-        # always returns request object -> .wait()
-
-        assert tmp_data.shape[-1] == \
-            self.opIn.Output.meta.getTaggedShape()['c'],\
-            'Not all channels are used for normalizing'
-        self._costVolumeFilter(tmp_data, self.Sigma.value, normalize=True)
-        
-        slicing = tuple([slice(x,y) for x,y in zip(lower_bound,upper_bound)])
-        result[...] = tmp_data[slicing]
-    
-    def propagateDirty(self, inputSlot, subindex, roi):
-        if inputSlot is self.Input:
-            start = np.array([0]*5)
-            stop = np.array([1]*5)
-            for i,a in enumerate('txyzc'):
-                if a in self.Input.meta.getTaggedShape():
-                    j = self.Input.meta.axistags.index(a)
-                    start[i] = roi.start[j]
-                    stop[i] = roi.stop[j]
-            new_roi = SubRegion(self._Output, start, stop)
-            tmp_roi = self.get_tmp_roi(new_roi)
-            self.Output.setDirty(tmp_roi)
-        if inputSlot is self.Sigma:
-            self.Output.setDirty(slice(None))
 
 
 class OpMriArgmax(Operator):
@@ -248,14 +135,14 @@ class OpMriArgmax(Operator):
 
     Input = InputSlot()
     Output = OutputSlot()
-    
+
     _Output = OutputSlot() # second (private) output
 
     Threshold = InputSlot(optional=True, stype='float', value=0.0)
 
     def __init__(self, *args, **kwargs):
         super(OpMriArgmax, self).__init__(*args, **kwargs)
-        
+
         self.opIn = OpReorderAxes(parent=self)
         self.opIn.Input.connect(self.Input)
         self.opIn.AxisOrder.setValue('txyzc') 
@@ -264,14 +151,12 @@ class OpMriArgmax(Operator):
         self.Output.connect(self.opOut.Output)
         self.opOut.Input.connect(self._Output)
 
-    # not necessary for op wrapper that just propagate the output to the 
-    # internally connected operator 
     def setupOutputs(self):
         self._Output.meta.assignFrom(self.opIn.Output.meta)
         tagged_shape = self.opIn.Output.meta.getTaggedShape()
         tagged_shape['c'] = 1
         self._Output.meta.shape = tuple(tagged_shape.values())
-        
+
         self.opOut.AxisOrder.setValue(self.Input.meta.getAxisKeys())
 
     @staticmethod
@@ -495,168 +380,3 @@ class OpMriRevertBinarize(Operator):
         if inputSlot is self.CCInput:
             self.Output.setDirty( roi )
 
-smoothing_methods = OrderedDict([('gaussian', True),
-                                 ('guided', True),
-                                 ('opengm', False)])
-
-
-class OpSmoothingImplementationChooser(Operator):
-    Input = InputSlot()
-    Configuration = InputSlot()
-    Method = InputSlot()
-
-    Output = OutputSlot()
-
-    def __init__(self, *args, **kwargs):
-        super(OpSmoothingImplementationChooser, self).__init__(*args,
-                                                               **kwargs)
-        self._implMapper = OrderedDict(smoothing_methods)
-        self._implMapper['gaussian'] = self._connectGaussian
-        self._implMapper['guided'] = self._connectGuided
-
-        self._connectBasic()
-
-    def setupOutputs(self):
-        self._disconnectSmoother()
-        method = self.Method.value
-        assert smoothing_methods[method], "{} is not supported".format(method)
-        self._implMapper[method]()
-
-    def execute(self, slot, subindex, roi, result):
-        raise NotImplementedError(
-            "All executes must be handled by internal operators")
-
-    def propagateDirty(self, slot, subindex, roi):
-        # all dirty handling is done by internal operators
-        pass
-
-    def _disconnectSmoother(self):
-        self.Output.disconnect()
-        if self._op is not None:
-            self._op.Input.disconnect()
-        self._op = None
-
-    def _connectBasic(self):
-        self._op = OpCostVolumeFilter(parent=self)
-        self._op.Sigma.setValue(0)
-        self._op.Input.connect(self.Input)
-        self.Output.connect(self._op.Output)
-
-    def _connectGaussian(self):
-        self._op = OpCostVolumeFilter(parent=self)
-        conf = self.Configuration.value
-        assert 'sigma' in conf, "Wrong config for method 'gaussian'"
-        self._op.Sigma.setValue(conf['sigma'])
-        self._op.Input.connect(self.Input)
-        self.Output.connect(self._op.Output)
-
-    def _connectGuided(self):
-        self._op = OpGuidedFilter(parent=self)
-        conf = self.Configuration.value
-        assert 'sigma' and 'eps ' in conf, \
-            "Wrong config for method 'gaussian'"
-        self._op.Sigma.setValue(conf['sigma'])
-        self._op.Epsilon.setValue(conf['eps'])
-        self._op.Input.connect(self.Input)
-        self.Output.connect(self._op.Output)
-
-
-class OpGuidedFilter(Operator):
-    """
-    Operator that performs guided filtering on the probability map 
-    as proposed by
-    He, K., Sun, J., Tang, X.: Guided image filtering. 
-    IEEE Trans Pattern Anal Mach Intell 35(6), 1397-409 (Jun 2013)
-    """
-    name = "Guided Filter"
-    
-    Input = InputSlot()
-    Output = OutputSlot()
-    _Output = OutputSlot() # second (private) output
-
-    Sigma = InputSlot(stype='float', value=2.0)
-    Epsilon = InputSlot(stype='float', value=0.2)
-
-    def __init__(self, *args, **kwargs):
-        super(OpGuidedFilter, self).__init__(*args, **kwargs)
-
-        self.opIn = OpReorderAxes(parent=self)
-        self.opIn.Input.connect(self.Input)
-        self.opIn.AxisOrder.setValue('txyzc') 
-
-        self._opCache = OpCompressedCache(parent=self)
-        self._opCache.Input.connect(self._Output)
-
-        self.opOut = OpReorderAxes(parent=self)
-        self.Output.connect(self.opOut.Output)
-        self.opOut.Input.connect(self._opCache.Output)
-
-
-    def setupOutputs(self):
-        self._Output.meta.assignFrom(self.opIn.Output.meta)
-        self._Output.meta.dtype=np.float32
-        self.opOut.AxisOrder.setValue(self.Input.meta.getAxisKeys())
-
-        self._setBlockShape()
-        self._opCache.Input.setDirty(slice(None))
-
-
-    def _setBlockShape(self):
-        # Blockshape is the entire spatial block
-        tagged_shape = self.opIn.Output.meta.getTaggedShape()
-        bsize = 50
-        tagged_shape['x'] = bsize
-        tagged_shape['y'] = bsize
-        tagged_shape['z'] = bsize
-
-        # Blockshape must correspond to cachsetInSlot input order
-        blockshape = map(lambda k: tagged_shape[k], 'txyzc')
-        self._opCache.BlockShape.setValue(tuple(blockshape)) 
-
-    @staticmethod
-    def _guidedFilter(vol, filterSize=2.0, eps=0.2, normalize=True):
-        # TODO
-        print 'Nothing implemented yet'
-        pass
-        
-    def get_tmp_roi(self, roi):
-        radius = np.ceil(self.Sigma.value*3)
-        tmp_roi = SubRegion(self.opIn.Output, 
-                            start = roi.start, 
-                            stop = roi.stop) 
-        offset = np.array([0, radius, radius, radius, 0], dtype=np.int)
-        tmp_roi.setInputShape(self.opIn.Output.meta.shape)
-        tmp_roi.expandByShape(offset, 4, 0)
-        return tmp_roi
-
-    def execute(self, slot, subindex, roi, result):
-        assert slot == self._Output, 'should work on cache'
-        tmp_roi = self.get_tmp_roi(roi)
-        tmp_data = self.opIn.Output.get(tmp_roi).wait().astype(np.float32)
-        lower_bound = map(lambda x,y: x-y, roi.start, tmp_roi.start)
-        upper_bound = map(lambda x,y,z: x+y-z, lower_bound,
-                          roi.stop,
-                          roi.start)
-        assert tmp_data.shape[-1] == \
-            self.opIn.Output.meta.getTaggedShape()['c'],\
-            'Not all channels are used for normalizing'
-        self._guidedFilter(tmp_data, self.Sigma.value, self.Epsilon.value,
-                           normalize=True)
-        
-        slicing = tuple([slice(x,y) for x,y in zip(lower_bound,upper_bound)])
-        result[...] = tmp_data[slicing]
-
-    def propagateDirty(self, inputSlot, subindex, roi):
-        if inputSlot is self.Input:
-            start = np.array([0]*5)
-            stop = np.array([1]*5)
-            for i,a in enumerate('txyzc'):
-                if a in self.Input.meta.getTaggedShape():
-                    j = self.Input.meta.axistags.index(a)
-                    start[i] = roi.start[j]
-                    stop[i] = roi.stop[j]
-            new_roi = SubRegion(self._Output, start, stop)
-            tmp_roi = self.get_tmp_roi(new_roi)
-            self.Output.setDirty(tmp_roi)
-        if inputSlot is self.Sigma:
-            self.Output.setDirty(slice(None))
