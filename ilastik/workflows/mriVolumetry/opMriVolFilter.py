@@ -2,7 +2,7 @@ from collections import OrderedDict
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpReorderAxes, OpCompressedCache, \
-    OpLabelVolume, OpFilterLabels
+    OpLabelVolume, OpFilterLabels, OperatorWrapper
 from lazyflow.rtype import SubRegion
 from lazyflow.stype import Opaque
 
