@@ -39,6 +39,7 @@
         "lazyflow.operators.opCompressedCache":                     { "level":"INFO" },
         "lazyflow.utility.bigRequestStreamer":                      { "level":"INFO" },
         "lazyflow.utility.io.RESTfulVolume":                        { "level":"INFO" },
+        "lazyflow.utility.io.tiledVolume":                          { "level":"DEBUG" },
         "ilastik":                                                  { "level":"INFO" },
         "ilastik.clusterOps":                                       { "level":"INFO" },
         "ilastik.applets":                                          { "level":"INFO" },
