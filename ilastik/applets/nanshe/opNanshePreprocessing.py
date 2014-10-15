@@ -85,6 +85,20 @@ class OpNanshePreprocessing(Operator):
         self.opNansheNormalizeData.Ord.connect(self.Ord)
 
         self.Output.connect( self.opNansheNormalizeData.Output )
+
+
+        self.ErosionShape.setValue([21, 1])
+        self.DilationShape.setValue([1, 3])
+
+        self.HalfWindowSize.setValue(400)
+        self.WhichQuantile.setValue(0.15)
+        self.TemporalSmoothingGaussianFilterStdev.setValue(5.0)
+        self.SpatialSmoothingGaussianFilterStdev.setValue(5.0)
+        self.Bias.setValue(None)
+
+        self.Scale.setValue(4)
+
+        self.Ord.setValue(2)
     
     def setupOutputs(self):
         # Copy the input metadata to both outputs
