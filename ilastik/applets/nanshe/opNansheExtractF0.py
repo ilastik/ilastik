@@ -44,7 +44,9 @@ class OpNansheExtractF0(Operator):
 
     Output = OutputSlot()
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        super( OpNansheExtractF0, self ).__init__( *args, **kwargs )
+
         self.HalfWindowSize.setValue(400)
         self.WhichQuantile.setValue(0.15)
         self.TemporalSmoothingGaussianFilterStdev.setValue(5.0)
