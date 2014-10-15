@@ -41,7 +41,9 @@ class OpNansheRemoveZeroedLines(Operator):
     
     Output = OutputSlot()
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        super( OpNansheRemoveZeroedLines, self ).__init__( *args, **kwargs )
+
         self.ErosionShape.setValue([21, 1])
         self.DilationShape.setValue([1, 3])
     
