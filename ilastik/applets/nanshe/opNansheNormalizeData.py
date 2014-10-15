@@ -40,6 +40,9 @@ class OpNansheNormalizeData(Operator):
     
     Output = OutputSlot()
     
+    def __init__(self, *args, **kwargs):
+        super( OpNansheNormalizeData, self ).__init__( *args, **kwargs )
+
     def setupOutputs(self):
         # Copy the input metadata to both outputs
         self.Output.meta.assignFrom( self.InputImage.meta )
