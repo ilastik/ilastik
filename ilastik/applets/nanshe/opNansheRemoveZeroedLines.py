@@ -40,6 +40,10 @@ class OpNansheRemoveZeroedLines(Operator):
     DilationShape = InputSlot()
     
     Output = OutputSlot()
+
+    def __init__(self):
+        self.ErosionShape.setValue([21, 1])
+        self.DilationShape.setValue([1, 3])
     
     def setupOutputs(self):
         # Copy the input metadata to both outputs
