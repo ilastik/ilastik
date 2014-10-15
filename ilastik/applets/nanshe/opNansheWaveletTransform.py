@@ -44,6 +44,9 @@ class OpNansheWaveletTransform(Operator):
 
     def __init__(self, *args, **kwargs):
         super( OpNansheWaveletTransform, self ).__init__( *args, **kwargs )
+
+        self.Scale.setValue(4)
+        self.IncludeLowerScales.setValue(False)
     
     def setupOutputs(self):
         # Copy the input metadata to both outputs
