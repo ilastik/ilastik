@@ -20,7 +20,6 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 import numpy
-import vigra
 from lazyflow.graph import Graph
 
 
@@ -29,7 +28,6 @@ import ilastik.applets
 import ilastik.applets.nanshe
 import ilastik.applets.nanshe.opNansheExtractF0
 from ilastik.applets.nanshe.opNansheExtractF0 import OpNansheExtractF0
-from lazyflow.utility.slicingtools import sl, slicing2shape
 
 class TestOpNansheExtractF0(object):
     def testBasic(self):
