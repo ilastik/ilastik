@@ -39,11 +39,11 @@ class TestOpNansheExtractF0(object):
         op = OpNansheExtractF0(graph=graph)
         op.InputImage.setValue(a)
 
-        op.HalfWindowSize = 20
-        op.WhichQuantile = 0.5
-        op.TemporalSmoothingGaussianFilterStdev = 5.0
-        op.SpatialSmoothingGaussianFilterStdev = 5.0
-        op.Bias = 100
+        op.HalfWindowSize.setValue(20)
+        op.WhichQuantile.setValue(0.5)
+        op.TemporalSmoothingGaussianFilterStdev.setValue(5.0)
+        op.SpatialSmoothingGaussianFilterStdev.setValue(5.0)
+        op.Bias.setValue(100)
 
         b = op.Output[...].wait()
 
