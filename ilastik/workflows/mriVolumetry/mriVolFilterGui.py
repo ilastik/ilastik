@@ -17,24 +17,24 @@ from lazyflow.operators import OpMultiArraySlicer
 
 import numpy as np
 
+import logging
+logger = logging.getLogger(__name__)
+
 from opSmoothing import smoothers_available
 smoothing_methods_map = ['gaussian', 'guided', 'opengm']
 
 
-class MriVolFilterGui( LayerViewerGui ):
-    _ActiveChannels = np.asarray([None], dtype=object)
+class MriVolFilterGui(LayerViewerGui):
 
     def stopAndCleanUp(self):
-        # Unsubscribe to all signals
-        #for fn in self.__cleanup_fns:
-        #    fn()
-        # import pdb; pdb.set_trace()
         super(MriVolFilterGui, self).stopAndCleanUp()
+        op = self.topLevelOperatorView
+        op.Input.unregisterMetaChanged(self._setupLabelNames)
 
     def __init__(self, *args, **kwargs):
         # self.__cleanup_fns = []
-        super( MriVolFilterGui, self ).__init__(*args, **kwargs)
         self._channelColors = self._createDefault16ColorColorTable()
+        super(MriVolFilterGui, self).__init__(*args, **kwargs)
         #  use default colors
         # self._channelColors = create_default_16bit()
         # self._channelColors[0] = 0 # make first channel transparent
@@ -45,31 +45,36 @@ class MriVolFilterGui( LayerViewerGui ):
         """
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
-        
+
         self._drawer = uic.loadUi(localDir+"/filter_drawer.ui")
 
-        self._drawer.applyButton.clicked.connect( self._onApplyButtonClicked )
-        
-        # syncronize slider and spinbox
-        # TODO add other tabs' widgets
-        self._drawer.slider.valueChanged.connect( self._slider_value_changed )
-        self._drawer.thresSpinBox.valueChanged.connect( \
-                                                self._spinbox_value_changed )
+        self._drawer.applyButton.clicked.connect(self._onApplyButtonClicked)
 
         for i, name in enumerate(smoothing_methods_map):
             if name not in smoothers_available:
                 self._drawer.tabWidget.setTabEnabled(i, False)
 
-
-        self._allWatchedWidgets = [ self._drawer.sigmaSpinBox, 
-                                    self._drawer.thresSpinBox]
+        # TODO extend the watched widgets list
+        self._allWatchedWidgets = [self._drawer.sigmaSpinBox,
+                                   self._drawer.thresSpinBox]
 
         # If the user pressed enter inside a spinbox, auto-click "Apply"
         for widget in self._allWatchedWidgets:
-            widget.installEventFilter( self )
-            
+            widget.installEventFilter(self)
+
+        self.model = QStandardItemModel(self._drawer.labelListView)
+        self._setupLabelNames()
+        self._connectCallbacks()
         self._updateGuiFromOperator()
-            
+
+    def _connectCallbacks(self):
+        op = self.topLevelOperatorView
+        op.Input.notifyMetaChanged(self._setupLabelNames)
+
+        # syncronize slider and spinbox
+        self._drawer.slider.valueChanged.connect(self._slider_value_changed)
+        self._drawer.thresSpinBox.valueChanged.connect(
+            self._spinbox_value_changed)
 
     def _slider_value_changed(self, value):
         self._drawer.thresSpinBox.setValue(value)
@@ -77,12 +82,18 @@ class MriVolFilterGui( LayerViewerGui ):
     def _spinbox_value_changed(self, value):
         self._drawer.slider.setValue(value)
 
-    def _setupLabelNames(self):
+    def _setupLabelNames(self, *args, **kwargs):
         op = self.topLevelOperatorView
-        numChannels = op.Input.meta.getTaggedShape()['c']
+
+        if not op.Input.ready():
+            # do nothing if we have no data
+            numChannels = 0
+        else:
+            numChannels = op.Input.meta.getTaggedShape()['c']
         layer_names = []
+
         # setup labels
-        self.model = QStandardItemModel(self._drawer.labelListView)
+        self.model.clear()
         for i in range(numChannels):
             item = QStandardItem()
             item_name = 'Prediction {}'.format(i+1)
@@ -99,42 +110,6 @@ class MriVolFilterGui( LayerViewerGui ):
             layer_names.append(item_name)
             self.model.appendRow(item)
         self._drawer.labelListView.setModel(self.model)
-        self.model.itemChanged.connect(self._labelNameChanged)
-        self.model.itemChanged.connect(self._labelCheckChanged)
-        op.LabelNames.setValue(np.array(layer_names, dtype=np.object))
-        self._setActiveChannels()
-
-    def _labelCheckChanged(self, item):
-        # print 'Label check changed'
-        op = self.topLevelOperatorView
-        i = 0
-        states = op.ActiveChannels.value
-        while self.model.item(i):
-            if not self.model.item(i):
-                return
-            states[i] = self.model.item(i).checkState()
-            i+=1
-        op.ActiveChannels.setValue(states)
-        # Not setting the ActiveChannels dirty here, because it results in
-        # an immediate computation
-
-    def _labelNameChanged(self, item):
-        # print 'Label name changed'
-        op = self.topLevelOperatorView
-        i = 0        
-        while self.model.item(i):
-            if not self.model.item(i):
-                return
-            layer = self.getLayer(self.model.item(i).text())
-            if layer == None:
-                new_layer = self.getLayer(op.LabelNames.value[i])
-                new_layer.name = self.model.item(i).text()
-                tmp_list = op.LabelNames.value
-                tmp_list[i] = self.model.item(i).text()
-                op.LabelNames.setValue(tmp_list)
-                op.LabelNames.setDirty()
-                return
-            i+=1
 
     def _updateOperatorFromGui(self):
         op = self.topLevelOperatorView
@@ -172,15 +147,10 @@ class MriVolFilterGui( LayerViewerGui ):
 
     def _setActiveChannels(self):
         op = self.topLevelOperatorView
-        ts = op.Input.meta.getTaggedShape()
-        new_states = []
-        for i in range(ts['c']):
-            new_states.append(self.model.item(i).checkState())
-        if not all(new_states == self._ActiveChannels):
-            self._ActiveChannels = np.array(new_states, dtype=np.object)
-            op.ActiveChannels.setValue(np.array(new_states, dtype=np.object))
-            op.ActiveChannels.setDirty()
-        
+        new_states = [self.model.item(i).checkState()
+                      for i in range(self.model.rowCount())]
+        new_states = np.array(new_states, dtype=np.int)
+        op.ActiveChannels.setValue(new_states)
 
     @threadRouted
     def _updateGuiFromOperator(self):
@@ -188,24 +158,18 @@ class MriVolFilterGui( LayerViewerGui ):
         op = self.topLevelOperatorView
         tagged_shape = op.Input.meta.getTaggedShape()
         shape = np.min([tagged_shape[c] for c in 'xyz' if c in tagged_shape])
-        max_sigma = np.floor(shape/6.)-.1 # Experimentally 3. (see Anna)
+        max_sigma = np.floor(shape/6.) - .1  # Experimentally 3. (see Anna)
         # https://github.com/ilastik/ilastik/issues/996
         # FIXME does not support 2d with explicit z, for example
         self._drawer.sigmaSpinBox.setMaximum(max_sigma)
-        
-        #TODO adjust to different smoothing implementations
+        # FIXME is this the correct maximum for guided, too?
         self._drawer.sigmaGuidedSpinBox.setMaximum(max_sigma)
 
-        #FIXME this is wrong here
-        sigma = self._drawer.sigmaSpinBox.value()
-        if sigma <= max_sigma:
-            self._drawer.sigmaSpinBox.setValue(sigma)
-        else:
-            self._drawer.sigmaSpinBox.setValue(max_sigma)
-
         thres = self._drawer.thresSpinBox.value()
+        thres = op.Threshold.value
+        self._drawer.thresSpinBox.setValue(thres)
         self._spinbox_value_changed(thres)
-        
+
         method = op.SmoothingMethod.value
         try:
             i = smoothing_methods_map.index(method)
@@ -216,22 +180,22 @@ class MriVolFilterGui( LayerViewerGui ):
         self._drawer.tabWidget.setCurrentIndex(i)
         self._setTabConfig(op.Configuration.value)
 
-        '''
+        # update the channel list
         states = op.ActiveChannels.value
-        i = 0
-        while self.model.item(i):
-            if not self.model.item(i):
-                return
-            self.model.item(i).setChecked(states[i])
-            i+=1
-        '''
+        for i in range(min(self.model.rowCount(), len(states))):
+            self.model.item(i).setCheckState(states[i])
 
     def _setTabConfig(self, conf):
         try:
             tab_index = self._drawer.tabWidget.currentIndex()
             if tab_index == 0:
-                self._drawer.sigmaSpinBox.setValue(conf['sigma'])
+                sigma = conf['sigma']
+                sigma = min(sigma, self._drawer.sigmaSpinBox.maximum())
+                sigma = max(sigma, self._drawer.sigmaSpinBox.minimum())
+                self._drawer.sigmaSpinBox.setValue(sigma)
+
             elif tab_index == 1:
+                # TODO check range
                 self._drawer.epsGuidedSpinBox.setValue(conf['eps'])
                 self._drawer.sigmaGuidedSpinBox.setValue(conf['sigma'])
             elif tab_index == 2:
@@ -246,7 +210,6 @@ class MriVolFilterGui( LayerViewerGui ):
 
     def _onApplyButtonClicked(self):
         self._updateOperatorFromGui()
-        # print 'Sigma value: {}'.format(self.topLevelOperatorView.Sigma)
 
     def eventFilter(self, watched, event):
         """
@@ -259,9 +222,8 @@ class MriVolFilterGui( LayerViewerGui ):
                 self._drawer.applyButton.click()
                 return True
         return False
-        
+
     def setupLayers(self):
-        self._setupLabelNames()
         layers = []
         op = self.topLevelOperatorView
 
@@ -284,7 +246,6 @@ class MriVolFilterGui( LayerViewerGui ):
 
         if op.Smoothed.ready():
             numChannels = op.Smoothed.meta.getTaggedShape()['c']
-            # print 'Number of channels: {}'.format(numChannels)
             slicer = OpMultiArraySlicer(parent=\
                                         op.Smoothed.getRealOperator().parent)
             slicer.Input.connect(op.Smoothed)
@@ -318,7 +279,6 @@ class MriVolFilterGui( LayerViewerGui ):
             rawLayer.opacity = 1.0
             layers.append(rawLayer)
         return layers
-
 
     def getLayer(self, name):
         """ 

@@ -25,7 +25,8 @@ from ilastik.applets.base.appletSerializer import SerialDictSlot
 from ilastik.applets.base.appletSerializer import SerialSlot
 
 import logging
-logger = logging.getLogger(__name__) 
+logger = logging.getLogger(__name__)
+
 
 class MriVolFilterSerializer(AppletSerializer):
     """
@@ -35,14 +36,14 @@ class MriVolFilterSerializer(AppletSerializer):
         slots = [SerialDictSlot(op.Configuration),
                  SerialSlot(op.SmoothingMethod),
                  SerialSlot(op.Threshold),
-                 #SerialSlot(op.ActiveChannels),
+                 SerialSlot(op.ActiveChannels),
                  SerialHdf5BlockSlot(op.OutputHdf5,
                                      op.InputHdf5,
                                      op.CleanBlocks,
                                      name='caches',
                                      subname='cache{:03d}',),
                  ]
-        # TODO serialize ??
+        # TODO serialize ActiveChannels
 
         super(MriVolFilterSerializer, self).__init__(
             projectFileGroupName, slots, op)

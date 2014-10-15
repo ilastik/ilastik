@@ -33,7 +33,7 @@ class OpMriVolFilter(Operator):
     Output = OutputSlot()
     CachedOutput = OutputSlot() 
 
-    # TODO introduce InputSlot for LabelNames 
+    # TODO introduce InputSlot for LabelNames
     LabelNames = OutputSlot(stype=Opaque)
     ActiveChannelsOut = OutputSlot(stype=Opaque)
 
@@ -45,7 +45,7 @@ class OpMriVolFilter(Operator):
     def __init__(self, *args, **kwargs):
         super(OpMriVolFilter, self).__init__(*args, **kwargs)
 
-        self._cache = OpCompressedCache( parent=self )
+        self._cache = OpCompressedCache(parent=self)
         self._cache.name = "OpMriVol.OutputCache"
 
         self.opSmoothing = OpSmoothing(parent=self)
@@ -75,6 +75,7 @@ class OpMriVolFilter(Operator):
         self.opFilter.BinaryOut.setValue(False)
 
         self._cache.Input.connect(self.opFilter.Output) 
+        # FIXME shouldn't this be connected to a cached version of self.Output?
         self.CachedOutput.connect(self._cache.Output)
         self._cache.InputHdf5.connect(self.InputHdf5)
         self.CleanBlocks.connect(self._cache.CleanBlocks)
@@ -87,15 +88,9 @@ class OpMriVolFilter(Operator):
         self.Output.connect( self.opRevertBinarize.Output )
         self.ActiveChannelsOut.connect( self.ActiveChannels )
 
-        '''
-        def _debugDirty(*args, **kwargs):
-            print 'Notify Dirty: ', args, kwargs
-        self.ActiveChannels.notifyDirty(_debugDirty)
-        '''
-
     def execute(self, slot, subindex, roi, destination):
         assert False, "Shouldn't get here."
-        
+
     def propagateDirty(self, inputSlot, subindex, roi):
         if inputSlot in [self.Input, self.RawInput]:
             self.Output.setDirty(roi)
@@ -105,26 +100,28 @@ class OpMriVolFilter(Operator):
             self.Output.setDirty(slice(None))
         if inputSlot is self.ActiveChannels:
             self.Output.setDirty(slice(None))
-            
+
     def setupOutputs(self):
         ts = self.Input.meta.getTaggedShape()
         self.LabelNames.meta.shape = (ts['c'],)
         self.LabelNames.meta.dtype = np.object
-        self.LabelNames.setValue(np.asarray( \
-    ['Prediction {}'.format(l+1) for l in range(ts['c'])],dtype=np.object))
-        
+        self.LabelNames.setValue(
+            np.asarray(
+                ['Prediction {}'.format(l+1) for l in range(ts['c'])],
+                dtype=np.object))
+
         ts['c'] = 1
         self.Output.meta.assignFrom(self.Input.meta)
         self.Output.meta.shape = tuple(ts.values())
-        self.Output.meta.dtype=np.uint32
+        self.Output.meta.dtype = np.uint32
 
         self.ArgmaxOutput.meta.assignFrom(self.Input.meta)
         self.ArgmaxOutput.meta.shape = tuple(ts.values())
-        self.ArgmaxOutput.meta.dtype=np.uint32
+        self.ArgmaxOutput.meta.dtype = np.uint32
 
         # set cache chunk shape to the whole spatial volume
         ts['t'] = 1
-        blockshape = map(lambda k: ts[k],''.join(ts.keys()))
+        blockshape = map(lambda k: ts[k], ''.join(ts.keys()))
         self._cache.BlockShape.setValue(tuple(blockshape))
         self._cache.Input.setDirty(slice(None))
 
@@ -332,7 +329,6 @@ class OpMriBinarizeImage(Operator):
         tmp_data = self.opIn.Output.get(roi).wait()
         result[...] = np.ones(result.shape, dtype=np.uint32)
         # result[tmp_data==self.BackgroundChannel.value] = 0
-        # print 'AC', self.ActiveChannels.value
         for idx, active in enumerate(self.ActiveChannels.value):
             if active == 0: # and idx != self.BackgroundChannel.value:
                 result[tmp_data==idx+1] = 0
