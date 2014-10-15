@@ -43,6 +43,13 @@ class OpNansheExtractF0(Operator):
     Bias = InputSlot(stype='float')
 
     Output = OutputSlot()
+
+    def __init__(self):
+        self.HalfWindowSize.setValue(400)
+        self.WhichQuantile.setValue(0.15)
+        self.TemporalSmoothingGaussianFilterStdev.setValue(5.0)
+        self.SpatialSmoothingGaussianFilterStdev.setValue(5.0)
+        self.Bias.setValue(None)
     
     def setupOutputs(self):
         # Copy the input metadata to both outputs
