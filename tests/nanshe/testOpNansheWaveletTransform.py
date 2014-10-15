@@ -29,7 +29,7 @@ import ilastik.applets.nanshe
 import ilastik.applets.nanshe.opNansheWaveletTransform
 from ilastik.applets.nanshe.opNansheWaveletTransform import OpNansheWaveletTransform
 
-class TestOpNansheExtractF0(object):
+class TestOpNansheWaveletTransform(object):
     def testBasic(self):
         a = numpy.eye(3, dtype = numpy.float32)
         expected_b = numpy.array([[[ 0.59375, -0.375  , -0.34375],
