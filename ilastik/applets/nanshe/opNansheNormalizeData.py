@@ -43,6 +43,8 @@ class OpNansheNormalizeData(Operator):
     def __init__(self, *args, **kwargs):
         super( OpNansheNormalizeData, self ).__init__( *args, **kwargs )
 
+        self.Ord.setValue(2)
+
     def setupOutputs(self):
         # Copy the input metadata to both outputs
         self.Output.meta.assignFrom( self.InputImage.meta )
