@@ -37,7 +37,7 @@ class OpNansheWaveletTransform(Operator):
 
     InputImage = InputSlot()
 
-    Scale = InputSlot()
+    Scale = InputSlot(stype="int")
     
     Output = OutputSlot()
     
