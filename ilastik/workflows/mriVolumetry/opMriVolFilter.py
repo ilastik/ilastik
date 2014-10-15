@@ -37,6 +37,11 @@ class OpMriVolFilter(Operator):
     LabelNames = OutputSlot(stype=Opaque)
     ActiveChannelsOut = OutputSlot(stype=Opaque)
 
+    # slots for serialization
+    InputHdf5 = InputSlot(optional=True)
+    CleanBlocks = OutputSlot()
+    OutputHdf5 = OutputSlot()
+
     def __init__(self, *args, **kwargs):
         super(OpMriVolFilter, self).__init__(*args, **kwargs)
 
@@ -71,6 +76,9 @@ class OpMriVolFilter(Operator):
 
         self._cache.Input.connect(self.opFilter.Output) 
         self.CachedOutput.connect(self._cache.Output)
+        self._cache.InputHdf5.connect(self.InputHdf5)
+        self.CleanBlocks.connect(self._cache.CleanBlocks)
+        self.OutputHdf5.connect(self._cache.OutputHdf5)
 
         self.opRevertBinarize = OpMriRevertBinarize( parent=self)
         self.opRevertBinarize.ArgmaxInput.connect(self.opGlobThres.Output)
@@ -121,6 +129,11 @@ class OpMriVolFilter(Operator):
         self._cache.Input.setDirty(slice(None))
 
         self.ActiveChannelsOut.meta.assignFrom(self.ActiveChannels.meta)
+
+    def setInSlot(self, slot, subindex, roi, value):
+        if slot is not self.InputHdf5:
+            raise NotImplementedError("setInSlot not implemented for"
+                                      "slot {}".format(slot))
 
 
 class OpMriArgmax(Operator):

@@ -190,6 +190,7 @@ class MriVolFilterGui( LayerViewerGui ):
         shape = np.min([tagged_shape[c] for c in 'xyz' if c in tagged_shape])
         max_sigma = np.floor(shape/6.)-.1 # Experimentally 3. (see Anna)
         # https://github.com/ilastik/ilastik/issues/996
+        # FIXME does not support 2d with explicit z, for example
         self._drawer.sigmaSpinBox.setMaximum(max_sigma)
         
         #TODO adjust to different smoothing implementations
@@ -204,6 +205,16 @@ class MriVolFilterGui( LayerViewerGui ):
 
         thres = self._drawer.thresSpinBox.value()
         self._spinbox_value_changed(thres)
+        
+        method = op.SmoothingMethod.value
+        try:
+            i = smoothing_methods_map.index(method)
+        except ValueError:
+            logger.warn("Smoothing method '{}' unknown to GUI, "
+                        "using default...".format(method))
+            i = 0
+        self._drawer.tabWidget.setCurrentIndex(i)
+        self._setTabConfig(op.Configuration.value)
 
         '''
         states = op.ActiveChannels.value
@@ -214,6 +225,24 @@ class MriVolFilterGui( LayerViewerGui ):
             self.model.item(i).setChecked(states[i])
             i+=1
         '''
+
+    def _setTabConfig(self, conf):
+        try:
+            tab_index = self._drawer.tabWidget.currentIndex()
+            if tab_index == 0:
+                self._drawer.sigmaSpinBox.setValue(conf['sigma'])
+            elif tab_index == 1:
+                self._drawer.epsGuidedSpinBox.setValue(conf['eps'])
+                self._drawer.sigmaGuidedSpinBox.setValue(conf['sigma'])
+            elif tab_index == 2:
+                raise NotImplementedError(
+                    "Tab {} is not implemented".format(
+                        smoothing_methods_map[tab_index]))
+            else:
+                raise ValueError(
+                    'Unknown tab {} selected'.format(tab_index))
+        except KeyError:
+            logger.warn("Bad smoothing configuration encountered")
 
     def _onApplyButtonClicked(self):
         self._updateOperatorFromGui()
