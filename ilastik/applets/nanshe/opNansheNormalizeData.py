@@ -61,7 +61,7 @@ class OpNansheNormalizeData(Operator):
     def propagateDirty(self, slot, subindex, roi):
         if slot.name == "InputImage":
             self.Output.setDirty(roi)
-        elif slot.name == "MinValue" or slot.name == "MaxValue":
+        elif slot.name == "Ord":
             self.Output.setDirty( slice(None) )
         else:
             assert False, "Unknown dirty input slot"
