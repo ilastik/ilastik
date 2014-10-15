@@ -63,7 +63,7 @@ class OpNansheWaveletTransform(Operator):
     def propagateDirty(self, slot, subindex, roi):
         if slot.name == "InputImage":
             self.Output.setDirty(roi)
-        elif slot.name == "MinValue" or slot.name == "MaxValue":
+        elif slot.name == "Scale" or slot.name == "IncludeLowerScales":
             self.Output.setDirty( slice(None) )
         else:
             assert False, "Unknown dirty input slot"
