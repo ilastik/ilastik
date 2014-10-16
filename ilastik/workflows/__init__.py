@@ -49,6 +49,12 @@ except ImportError as e:
     logger.warn( "Failed to import automatic tracking workflow (conservation tracking). For this workflow, see the installation"\
              "instructions on our website ilastik.org; check dependencies: " + str(e) )
 
+try:
+    import nanshe.nansheWorkflow
+except ImportError as e:
+    logger.warn( "Failed to import nanshe workflow. For this workflow, see the installation"\
+             "instructions on our website ilastik.org; check dependencies: " + str(e) )
+
 
 # Examples
 import ilastik.config
