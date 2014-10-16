@@ -43,15 +43,18 @@ class OpNanshePreprocessing(Operator):
     InputImage = InputSlot()
 
 
+    ToRemoveZeroedLines = InputSlot()
     ErosionShape = InputSlot()
     DilationShape = InputSlot()
 
+    ToExtractF0 = InputSlot()
     HalfWindowSize = InputSlot(stype='int')
     WhichQuantile = InputSlot(stype='float')
     TemporalSmoothingGaussianFilterStdev = InputSlot(stype='float')
     SpatialSmoothingGaussianFilterStdev = InputSlot(stype='float')
     Bias = InputSlot(stype='float')
 
+    ToWaveletTransform = InputSlot()
     Scale = InputSlot()
 
     Ord = InputSlot()
@@ -63,12 +66,10 @@ class OpNanshePreprocessing(Operator):
         super( OpNanshePreprocessing, self ).__init__( *args, **kwargs )
 
         self.opNansheRemoveZeroedLines = OpNansheRemoveZeroedLines(parent=self)
-        self.opNansheRemoveZeroedLines.InputImage.connect(self.InputImage)
         self.opNansheRemoveZeroedLines.ErosionShape.connect(self.ErosionShape)
         self.opNansheRemoveZeroedLines.DilationShape.connect(self.DilationShape)
 
         self.opNansheExtractF0 = OpNansheExtractF0(parent=self)
-        self.opNansheExtractF0.InputImage.connect(self.opNansheRemoveZeroedLines.Output)
         self.opNansheExtractF0.HalfWindowSize.connect(self.HalfWindowSize)
         self.opNansheExtractF0.WhichQuantile.connect(self.WhichQuantile)
         self.opNansheExtractF0.TemporalSmoothingGaussianFilterStdev.connect(self.TemporalSmoothingGaussianFilterStdev)
@@ -76,26 +77,27 @@ class OpNanshePreprocessing(Operator):
         self.opNansheExtractF0.Bias.connect(self.Bias)
 
         self.opNansheWaveletTransform = OpNansheWaveletTransform(parent=self)
-        self.opNansheWaveletTransform.InputImage.connect(self.opNansheExtractF0.Output)
         self.opNansheWaveletTransform.Scale.connect(self.Scale)
         self.opNansheWaveletTransform.IncludeLowerScales.setValue(False)
 
         self.opNansheNormalizeData = OpNansheNormalizeData(parent=self)
-        self.opNansheNormalizeData.InputImage.connect(self.opNansheWaveletTransform.Output)
         self.opNansheNormalizeData.Ord.connect(self.Ord)
 
         self.Output.connect( self.opNansheNormalizeData.Output )
 
 
+        self.ToRemoveZeroedLines.setValue(True)
         self.ErosionShape.setValue([21, 1])
         self.DilationShape.setValue([1, 3])
 
+        self.ToExtractF0.setValue(True)
         self.HalfWindowSize.setValue(400)
         self.WhichQuantile.setValue(0.15)
         self.TemporalSmoothingGaussianFilterStdev.setValue(5.0)
         self.SpatialSmoothingGaussianFilterStdev.setValue(5.0)
         self.Bias.setValue(None)
 
+        self.ToWaveletTransform.setValue(True)
         self.Scale.setValue(4)
 
         self.Ord.setValue(2)
@@ -103,6 +105,27 @@ class OpNanshePreprocessing(Operator):
     def setupOutputs(self):
         # Copy the input metadata to both outputs
         self.Output.meta.assignFrom( self.InputImage.meta )
+
+        self.opNansheRemoveZeroedLines.InputImage.disconnect()
+        self.opNansheExtractF0.InputImage.disconnect()
+        self.opNansheWaveletTransform.InputImage.disconnect()
+        self.opNansheNormalizeData.InputImage.disconnect()
+
+        next_output = self.InputImage
+
+        if self.ToRemoveZeroedLines.value:
+            self.opNansheRemoveZeroedLines.InputImage.connect(next_output)
+            next_output = self.opNansheRemoveZeroedLines.Output
+
+        if self.ToExtractF0.value:
+            self.opNansheExtractF0.InputImage.connect(next_output)
+            next_output = self.opNansheExtractF0.Output
+
+        if self.ToWaveletTransform.value:
+            self.opNansheWaveletTransform.InputImage.connect(next_output)
+            next_output = self.opNansheWaveletTransform.Output
+
+        self.opNansheNormalizeData.InputImage.connect(next_output)
 
     # Don't need execute as the output will be drawn through the Output slot.
 
