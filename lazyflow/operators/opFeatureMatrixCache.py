@@ -37,7 +37,6 @@ class OpFeatureMatrixCache(Operator):
                                     # to a downstream operator (such as OpConcatenateFeatureMatrices),  
                                     # we provide the progressSignal member as an output slot.
 
-    # Aim for label request blocks of approximately 1 MB
     MAX_BLOCK_PIXELS = 1e6
 
     def __init__(self, *args, **kwargs):
@@ -68,6 +67,7 @@ class OpFeatureMatrixCache(Operator):
         # In these set/dict members, the block id (dict key) 
         #  is simply the block's start coordinate (as a tuple)
         self._blockshape = new_blockshape
+        logger.debug("Initialized with blockshape: {}".format(new_blockshape))
     
     def setupOutputs(self):
         # We assume that channel the last axis
@@ -94,8 +94,15 @@ class OpFeatureMatrixCache(Operator):
         self.ProgressSignal.setValue( self.progressSignal )
 
         # Auto-choose a blockshape
-        blockshape = determineBlockShape( self.LabelImage.meta.shape,
-                                          OpFeatureMatrixCache.MAX_BLOCK_PIXELS )
+        tagged_shape = self.LabelImage.meta.getTaggedShape()
+        if 't' in tagged_shape:
+            # A block should never span multiple time slices.
+            # For txy volumes, that could lead to lots of extra features being computed.
+            tagged_shape['t'] = 1
+        blockshape = determineBlockShape( tagged_shape.values(), OpFeatureMatrixCache.MAX_BLOCK_PIXELS )
+
+        # Don't span more than 256 px along any axis
+        blockshape = tuple(min(x, 256) for x in blockshape)
         self._init_blocks(self.LabelImage.meta.shape, blockshape)
         
     def execute(self, slot, subindex, roi, result):
