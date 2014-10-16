@@ -28,7 +28,7 @@ class TestOpConcatenateFeatureMatrices(object):
         assert (result[:,0] == 2).sum() == 4
 
     def _getMatrixOp(self, graph):
-        features = numpy.indices( (100,100) ).astype(numpy.float) + 0.5
+        features = numpy.indices( (100,100) ).astype(numpy.float32) + 0.5
         features = numpy.rollaxis(features, 0, 3)
         features = vigra.taggedView(features, 'xyc')
         labels = numpy.zeros( (100,100,1), dtype=numpy.uint8 )

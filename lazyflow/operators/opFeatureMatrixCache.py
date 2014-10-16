@@ -129,7 +129,7 @@ class OpFeatureMatrixCache(Operator):
             # No label points at all.
             # Return an empty label&feature matrix (of the correct shape)
             num_feature_channels = self.FeatureImage.meta.shape[-1]
-            total_feature_matrix = numpy.ndarray( shape=(0, 1 + num_feature_channels), dtype=numpy.float )
+            total_feature_matrix = numpy.ndarray( shape=(0, 1 + num_feature_channels), dtype=numpy.float32 )
 
         self.progressSignal(100.0)
         logger.debug( "After update, there are {} clean blocks".format( len(self._blockwise_feature_matrices) ) )
@@ -191,12 +191,12 @@ class OpFeatureMatrixCache(Operator):
         num_feature_channels = self.FeatureImage.meta.shape[-1]
         labels = self.LabelImage(label_block_roi[0], label_block_roi[1]).wait()
         label_block_positions = numpy.nonzero(labels[...,0].view(numpy.ndarray))
-        labels_matrix = labels[label_block_positions].astype(numpy.float).view(numpy.ndarray)
+        labels_matrix = labels[label_block_positions].astype(numpy.float32).view(numpy.ndarray)
         
         if len(label_block_positions) == 0 or len(label_block_positions[0]) == 0:
             # No label points in this roi.
             # Return an empty label&feature matrix (of the correct shape)
-            return numpy.ndarray( shape=(0, 1 + num_feature_channels), dtype=numpy.float )
+            return numpy.ndarray( shape=(0, 1 + num_feature_channels), dtype=numpy.float32 )
 
         # Shrink the roi to the bounding box of nonzero labels
         block_bounding_box_start = numpy.array( map( numpy.min, label_block_positions ) )

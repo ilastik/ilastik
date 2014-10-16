@@ -9,7 +9,7 @@ from lazyflow.classifiers import VigraRfLazyflowClassifierFactory, VigraRfLazyfl
 class TestOpTrainClassifierFromFeatureVectors(object):
     
     def testBasic(self):
-        features = numpy.indices( (100,100) ).astype(numpy.float) + 0.5
+        features = numpy.indices( (100,100) ).astype(numpy.float32) + 0.5
         features = numpy.rollaxis(features, 0, 3)
         features = vigra.taggedView(features, 'xyc')
         labels = numpy.zeros( (100,100,1), dtype=numpy.uint8 )
