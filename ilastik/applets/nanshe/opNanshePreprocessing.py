@@ -131,4 +131,5 @@ class OpNanshePreprocessing(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         # Dirtiness is already effectively propagated internally.
+        # TODO: Revisit whether dirtiness is handled in the case reconnecting components.
         pass
