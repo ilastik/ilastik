@@ -927,78 +927,6 @@ class RequestPool(object):
     Not threadsafe (don't add requests from more than one thread).
     """
 
-    logger = logging.getLogger(__name__ + ".RequestPool")
-
-    class RequestPoolError(Exception):
-        """
-        Raised if you attempt to use the Pool in a manner that it isn't designed for.
-        """
-        pass
-
-    def __init__(self):
-        self._requests = set()
-        self._started = False
-
-    def __len__(self):
-        return len(self._requests)
-
-    def add(self, req):
-        """
-        Add a request to the pool.  The pool must not be submitted yet.  Otherwise, an exception is raised.
-        """
-        if self._started:
-            # For now, we forbid this because it would allow some corner cases that we aren't unit-testing yet.
-            # If this exception blocks a desirable use case, then change this behavior and provide a unit test.
-            raise RequestPool.RequestPoolError("Attempted to add a request to a pool that was already started!")
-        self._requests.add(req)
-
-    def submit(self):
-        """
-        Submit all the requests in the pool.  The pool must not be submitted yet.  Otherwise, an exception is raised.
-        """
-        if self._started:
-            raise RequestPool.RequestPoolError("Can't re-start a RequestPool that was already started.")
-
-        for req in self._requests:
-            req.submit()
-
-    def wait(self):
-        """
-        If the pool hasn't been submitted yet, submit it. 
-        Then wait for all requests in the pool to complete in the simplest way possible.
-        """
-        if not self._started:
-            self.submit()
-
-        for req in self._requests:
-            req.block()
-
-    def cancel(self):
-        """
-        Cancel all requests in the pool.
-        """
-        for req in self._requests:
-            req.cancel()
-    
-    def request(self, func):
-        """
-        **Deprecated method**.  Convenience function to construct a request for the given callable and add it to the pool.
-        """
-        self.add( Request(func) )
-    
-    def clean(self):
-        """
-        Release our handles to all requests in the pool, for cleanup purposes.
-        """
-        self._requests = set()
-
-class RequestPool_BROKEN(object):
-    """
-    Convenience class for submitting a batch of requests and waiting until they are all complete.
-    Requests can not be added to the pool after it has already started.
-    Not threadsafe (don't add requests from more than one thread).
-    """
-
     class RequestPoolError(Exception):
         """
         Raised if you attempt to use the Pool in a manner that it isn't designed for.
@@ -1115,3 +1043,73 @@ class RequestPool_BROKEN(object):
         Release our handles to all requests in the pool, for cleanup purposes.
         """
         self._requests = set()
+
+
+class RequestPool_SIMPLE(object):
+    # This simplified version doesn't attempt to be efficient with RAM like the standard version (above).
+    # It is provided here as a simple reference implementation for comparison and testing purposes.
+    """
+    Convenience class for submitting a batch of requests and waiting until they are all complete.
+    Requests can not be added to the pool after it has already started.
+    Not threadsafe (don't add requests from more than one thread).
+    """
+
+    logger = logging.getLogger(__name__ + ".RequestPool")
+
+    def __init__(self):
+        self._requests = set()
+        self._started = False
+
+    def __len__(self):
+        return len(self._requests)
+
+    def add(self, req):
+        """
+        Add a request to the pool.  The pool must not be submitted yet.  Otherwise, an exception is raised.
+        """
+        if self._started:
+            # For now, we forbid this because it would allow some corner cases that we aren't unit-testing yet.
+            # If this exception blocks a desirable use case, then change this behavior and provide a unit test.
+            raise RequestPool.RequestPoolError("Attempted to add a request to a pool that was already started!")
+        self._requests.add(req)
+
+    def submit(self):
+        """
+        Submit all the requests in the pool.  The pool must not be submitted yet.  Otherwise, an exception is raised.
+        """
+        if self._started:
+            raise RequestPool.RequestPoolError("Can't re-start a RequestPool that was already started.")
+
+        for req in self._requests:
+            req.submit()
+
+    def wait(self):
+        """
+        If the pool hasn't been submitted yet, submit it. 
+        Then wait for all requests in the pool to complete in the simplest way possible.
+        """
+        if not self._started:
+            self.submit()
+
+        for req in self._requests:
+            req.block()
+
+    def cancel(self):
+        """
+        Cancel all requests in the pool.
+        """
+        for req in self._requests:
+            req.cancel()
+    
+    def request(self, func):
+        """
+        **Deprecated method**.  Convenience function to construct a request for the given callable and add it to the pool.
+        """
+        self.add( Request(func) )
+    
+    def clean(self):
+        """
+        Release our handles to all requests in the pool, for cleanup purposes.
+        """
+        self._requests = set()
+
