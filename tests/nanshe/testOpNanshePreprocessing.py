@@ -50,15 +50,18 @@ class TestOpNanshePreprocessing(object):
         op.InputImage.setValue(image_stack)
 
 
+        op.ToRemoveZeroedLines.setValue(True)
         op.ErosionShape.setValue([21, 1])
         op.DilationShape.setValue([1, 3])
 
+        op.ToExtractF0.setValue(True)
         op.HalfWindowSize.setValue(20)
         op.WhichQuantile.setValue(0.5)
         op.TemporalSmoothingGaussianFilterStdev.setValue(5.0)
         op.SpatialSmoothingGaussianFilterStdev.setValue(5.0)
         op.Bias.setValue(100)
 
+        op.ToWaveletTransform.setValue(True)
         op.Scale.setValue([3, 4, 4])
 
         op.Ord.setValue(2)
