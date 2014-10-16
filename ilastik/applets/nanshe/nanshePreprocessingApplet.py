@@ -20,8 +20,8 @@
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
-from opThresholdMasking import OpThresholdMasking
-from thresholdMaskingSerializer import ThresholdMaskingSerializer
+from opNanshePreprocessing import OpNanshePreprocessing
+from nanshePreprocessingSerializer import NanshePreprocessingSerializer
 
 class NanshePreprocessingApplet( StandardApplet ):
     """
@@ -29,15 +29,18 @@ class NanshePreprocessingApplet( StandardApplet ):
     """
     def __init__( self, workflow, guiName, projectFileGroupName ):
         super(NanshePreprocessingApplet, self).__init__(guiName, workflow)
-        self._serializableItems = [ ThresholdMaskingSerializer(self.topLevelOperator, projectFileGroupName) ]
+        self._serializableItems = [ NanshePreprocessingSerializer(self.topLevelOperator, projectFileGroupName) ]
         
     @property
     def singleLaneOperatorClass(self):
-        return OpThresholdMasking
+        return OpNanshePreprocessing
 
     @property
     def broadcastingSlots(self):
-        return ['MinValue', 'MaxValue']
+        return ["ToRemoveZeroedLines", "ErosionShape", "DilationShape", \
+        "ToExtractF0", "HalfWindowSize", "WhichQuantile", "TemporalSmoothingGaussianFilterStdev", "SpatialSmoothingGaussianFilterStdev", "Bias", \
+        "ToWaveletTransform", "Scale", \
+        "Ord"]
     
     @property
     def singleLaneGuiClass(self):
