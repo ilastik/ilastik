@@ -50,6 +50,7 @@ class OpNansheNormalizeData(Operator):
     def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
         raw = self.InputImage[key].wait()
+
         ord = self.Ord.value
 
         processed = nanshe.advanced_image_processing.normalize_data(raw,
