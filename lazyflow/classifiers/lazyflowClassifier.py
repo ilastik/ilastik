@@ -14,6 +14,12 @@ class LazyflowVectorwiseClassifierFactoryABC(object):
     """
     __metaclass__ = abc.ABCMeta
 
+    def __new__(cls, *args, **kwargs):
+        # Force the VERSION class member to be copied to an instance member.
+        obj = object.__new__(cls)
+        obj.VERSION = cls.VERSION
+        return obj
+
     @abc.abstractmethod
     def create_and_train(self, X, y):
         raise NotImplementedError
@@ -24,8 +30,17 @@ class LazyflowVectorwiseClassifierFactoryABC(object):
 
     @classmethod
     def __subclasshook__(cls, C):
+        """
+        To qualify as a subclass, your class must 
+        1) be an actual subclass (so our __new__ method can add the VERSION member to all instances)
+        2) override the proper instance methods
+        3) have a VERSION class member
+        """
         if cls is LazyflowVectorwiseClassifierFactoryABC:
-            return _has_attributes(C, ['create_and_train', 'description'])
+            is_subclass = LazyflowVectorwiseClassifierFactoryABC in C.__mro__
+            is_subclass &= _has_attributes(C, ['create_and_train', 'description'])
+            is_subclass &= 'VERSION' in C.__dict__
+            return is_subclass
         return NotImplemented
 
 class LazyflowVectorwiseClassifierABC(object):
@@ -98,8 +113,17 @@ class LazyflowPixelwiseClassifierFactoryABC(object):
 
     @classmethod
     def __subclasshook__(cls, C):
+        """
+        To qualify as a subclass, your class must 
+        1) be an actual subclass (so our __new__ method can add the VERSION member to all instances)
+        2) override the proper instance methods
+        3) have a VERSION class member
+        """
         if cls is LazyflowPixelwiseClassifierFactoryABC:
-            return _has_attributes(C, ['create_and_train_pixelwise', 'description', 'get_halo_shape'])
+            is_subclass = LazyflowPixelwiseClassifierFactoryABC in C.__mro__
+            is_subclass &= _has_attributes(C, ['create_and_train_pixelwise', 'description', 'get_halo_shape'])
+            is_subclass &= 'VERSION' in C.__dict__
+            return is_subclass
         return NotImplemented
     
     def __eq__(self, other):

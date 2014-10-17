@@ -6,7 +6,7 @@ import numpy
 import vigra
 import h5py
 
-from .lazyflowClassifier import LazyflowPixelwiseClassifierABC, LazyflowPixelwiseClassifierFactoryABC
+from lazyflowClassifier import LazyflowPixelwiseClassifierABC, LazyflowPixelwiseClassifierFactoryABC
 
 import logging
 logger = logging.getLogger(__name__)
@@ -18,6 +18,9 @@ class VigraRfPixelwiseClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     classifier so lazyflow can cache the feature matrices).
     This implementation is simple and un-optimized.
     """
+    VERSION = 1 # This is used to determine compatibility of pickled classifier factories.
+                # You must bump this if any instance members are added/removed/renamed.
+    
     def __init__(self, *args, **kwargs):
         self._args = args
         self._kwargs = kwargs

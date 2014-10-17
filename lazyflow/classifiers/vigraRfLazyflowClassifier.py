@@ -6,12 +6,15 @@ import numpy
 import vigra
 import h5py
 
-from .lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
+from lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
 
 import logging
 logger = logging.getLogger(__name__)
 
-class VigraRfLazyflowClassifierFactory(object):
+class VigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
+    VERSION = 1 # This is used to determine compatibility of pickled classifier factories.
+                # You must bump this if any instance members are added/removed/renamed.
+    
     def __init__(self, *args, **kwargs):
         self._args = args
         self._kwargs = kwargs

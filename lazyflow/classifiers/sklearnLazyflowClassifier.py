@@ -1,6 +1,6 @@
 import cPickle as pickle
 import numpy
-from .lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
+from lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
 
 import logging
 logger = logging.getLogger(__name__)
@@ -9,6 +9,9 @@ class SklearnLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
     """
     A factory for creating and training sklearn classifiers.
     """
+    VERSION = 1 # This is used to determine compatibility of pickled classifier factories.
+                # You must bump this if any instance members are added/removed/renamed.
+    
     def __init__(self, classifier_type, *args, **kwargs):
         """
         classifier_type: The sklearn class to instantiate, e.g. sklearn.ensemble.RandomForestClassifier

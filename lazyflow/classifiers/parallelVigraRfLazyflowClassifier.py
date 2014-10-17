@@ -14,7 +14,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
-
+    VERSION = 1 # This is used to determine compatibility of pickled classifier factories.
+                # You must bump this if any instance members are added/removed/renamed.
+    
     def __init__(self, num_trees_total=100, num_forests=None, **kwargs):
         """
         num_trees_total: The number of trees to train
