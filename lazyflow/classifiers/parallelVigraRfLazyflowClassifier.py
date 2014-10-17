@@ -8,18 +8,34 @@ import vigra
 import h5py
 
 from lazyflow.request import Request, RequestPool
-from .lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
+from lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
 
 import logging
 logger = logging.getLogger(__name__)
 
 class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
-    def __init__(self, num_forests, trees_per_forest, **kwargs):
-        self._num_forests = num_forests
-        self._trees_per_forest = trees_per_forest
+
+    def __init__(self, num_trees_total=100, num_forests=None, **kwargs):
+        """
+        num_trees_total: The number of trees to train
+        num_forests: How many forests in which to distribute the trees (forests can train and predict in parallel)
+                     If not provided, the number of forests is automatically determined 
+                     to match the number of available lazyflow worker threads.
+        kwargs: Additional keyword args, passed directly to the vigra.RandomForest constructor.
+        """
+        self._num_trees = num_trees_total
         self._kwargs = kwargs
+
+        # By default, num_forests matches the number of lazyflow worker threads
+        self._num_forests = num_forests or Request.global_thread_pool.num_workers
     
     def create_and_train(self, X, y):
+        # Distribute trees as evenly as possible
+        tree_counts = numpy.array( [self._num_trees // self._num_forests] * self._num_forests )
+        tree_counts[:self._num_trees % self._num_forests] += 1
+        assert tree_counts.sum() == self._num_trees
+        tree_counts = map(int, tree_counts)
+        
         logger.debug( "Training parallel vigra RF" )
         # Save for future reference
         known_labels = numpy.unique(y)
@@ -34,9 +50,8 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
 
         # Create N forests
         forests = []
-        for _ in range(self._num_forests):
-            forest = vigra.learning.RandomForest(self._trees_per_forest, **self._kwargs)
-            forests.append( forest )
+        for tree_count in tree_counts:
+            forests.append( vigra.learning.RandomForest(tree_count, **self._kwargs) )
 
         # Train them all in parallel
         oobs = [None] * len(forests)
@@ -52,13 +67,12 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
 
     @property
     def description(self):
-        return "Vigra Random Forest ({} forests, {} trees each)"\
-               .format( self._num_forests, self._trees_per_forest )
+        return "Parallel Vigra Random Forest Factory ({} trees total)"\
+               .format( self._num_trees )
 
     def __eq__(self, other):
         return (    isinstance(other, type(self))
-                and self._num_forests == other._num_forests
-                and self._trees_per_forest == other._trees_per_forest
+                and self._num_trees == other._num_trees
                 and self._kwargs == other._kwargs )
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -75,6 +89,8 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
         
         # Note that oobs may not be in the same order as the forests.
         self._oobs = oobs
+        
+        self._num_trees = sum( forest.treeCount() for forest in self._forests )
     
     def predict_probabilities(self, X):
         logger.debug( "Predicting with parallel vigra RF" )
@@ -93,11 +109,11 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
         pool.wait()
 
         # Aggregate the results
-        predictions = reqs[0].result
-        for req in reqs[1:]:
-            predictions += req.result
+        predictions = self._forests[0].treeCount() * reqs[0].result
+        for forest, req in zip(self._forests[1:], reqs[1:]):
+            predictions += forest.treeCount() * req.result
 
-        predictions /= len(reqs)
+        predictions /= self._num_trees
         return predictions
     
     @property

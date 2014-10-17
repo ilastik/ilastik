@@ -4,7 +4,7 @@ import vigra
 from lazyflow.graph import Graph
 from lazyflow.operators.opFeatureMatrixCache import OpFeatureMatrixCache
 from lazyflow.operators.classifierOperators import OpTrainClassifierFromFeatureVectors
-from lazyflow.classifiers import VigraRfLazyflowClassifierFactory, VigraRfLazyflowClassifier
+from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory, ParallelVigraRfLazyflowClassifier
 
 class TestOpTrainClassifierFromFeatureVectors(object):
     
@@ -31,14 +31,14 @@ class TestOpTrainClassifierFromFeatureVectors(object):
         opFeatureMatrixCache.LabelImage.setDirty( numpy.s_[30:31, 30:32] )
 
         opTrain = OpTrainClassifierFromFeatureVectors( graph=graph )
-        opTrain.ClassifierFactory.setValue( VigraRfLazyflowClassifierFactory(10) )
+        opTrain.ClassifierFactory.setValue( ParallelVigraRfLazyflowClassifierFactory(100) )
         opTrain.MaxLabel.setValue(2)
         opTrain.LabelAndFeatureMatrix.connect( opFeatureMatrixCache.LabelAndFeatureMatrix )
         
         trained_classifer = opTrain.Classifier.value
         
         # This isn't much of a test at the moment...
-        assert isinstance( trained_classifer, VigraRfLazyflowClassifier )
+        assert isinstance( trained_classifer, ParallelVigraRfLazyflowClassifier )
 
 
 
