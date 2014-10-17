@@ -36,16 +36,13 @@ class OpNansheRemoveZeroedLines(Operator):
 
     InputImage = InputSlot()
 
-    ErosionShape = InputSlot()
-    DilationShape = InputSlot()
+    ErosionShape = InputSlot(value=[21, 1])
+    DilationShape = InputSlot(value=[1, 3])
     
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super( OpNansheRemoveZeroedLines, self ).__init__( *args, **kwargs )
-
-        self.ErosionShape.setValue([21, 1])
-        self.DilationShape.setValue([1, 3])
     
     def setupOutputs(self):
         # Copy the input metadata to both outputs
