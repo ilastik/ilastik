@@ -48,8 +48,7 @@ class MriVolFilterGui(LayerViewerGui):
 
         self._drawer = uic.loadUi(localDir+"/filter_drawer.ui")
 
-        self._drawer.applyButton.clicked.connect(self._onApplyButtonClicked)
-
+        # set tabs enabled only for available smoothers
         for i, name in enumerate(smoothing_methods_map):
             if name not in smoothers_available:
                 self._drawer.tabWidget.setTabEnabled(i, False)
@@ -62,70 +61,23 @@ class MriVolFilterGui(LayerViewerGui):
         for widget in self._allWatchedWidgets:
             widget.installEventFilter(self)
 
+        # load default parameters for spin-boxes
+        self._getParamsFromOp()
+
+        # prepare the label table
         self.model = QStandardItemModel(self._drawer.labelListView)
-        self._setupLabelNames()
-        self._connectCallbacks()
-        self._updateGuiFromOperator()
-
-    def _connectCallbacks(self):
-        op = self.topLevelOperatorView
-        op.Input.notifyMetaChanged(self._setupLabelNames)
-
-        # syncronize slider and spinbox
-        self._drawer.slider.valueChanged.connect(self._slider_value_changed)
-        self._drawer.thresSpinBox.valueChanged.connect(
-            self._spinbox_value_changed)
-
-    def _slider_value_changed(self, value):
-        self._drawer.thresSpinBox.setValue(value)
-
-    def _spinbox_value_changed(self, value):
-        self._drawer.slider.setValue(value)
-
-    def _setupLabelNames(self, *args, **kwargs):
-        op = self.topLevelOperatorView
-
-        if not op.Input.ready():
-            # do nothing if we have no data
-            numChannels = 0
+        # see if we need to update our labels from the operator (i.e.,
+        # we are restored from a project file)
+        if self.topLevelOperatorView.ActiveChannelsOut.ready():
+            print("Restoring GUI from project file")
+            self._getLabelsFromOp()
         else:
-            numChannels = op.Input.meta.getTaggedShape()['c']
-        layer_names = []
+            print("Initializing GUI")
+            self._setStandardLabelList()
+            self._setLabelsToOp()
 
-        # setup labels
-        self.model.clear()
-        for i in range(numChannels):
-            item = QStandardItem()
-            item_name = 'Prediction {}'.format(i+1)
-            item.setText(item_name)
-            item.setCheckable(True)
-            # Per default set the last channel active
-            if i == numChannels-1:
-                item.setCheckState(2)
-
-            pixmap = QPixmap(16, 16)
-            pixmap.fill(QColor(self._channelColors[i+1]))
-            item.setIcon(QIcon(pixmap))
-
-            layer_names.append(item_name)
-            self.model.appendRow(item)
-        self._drawer.labelListView.setModel(self.model)
-
-    def _updateOperatorFromGui(self):
-        op = self.topLevelOperatorView
-
-        tab_index = self._drawer.tabWidget.currentIndex()
-        conf = self._getTabConfig()
-
-        op.SmoothingMethod.setValue(smoothing_methods_map[tab_index])
-        op.Configuration.setValue(conf)
-
-        # Read Size Threshold
-        thres = self._drawer.thresSpinBox.value()
-        op.Threshold.setValue(thres)
-
-        # Read Active Channels
-        self._setActiveChannels()
+        # connect callbacks last to avoid collision
+        self._connectCallbacks()
 
     def _getTabConfig(self):
         # TODO
@@ -144,46 +96,6 @@ class MriVolFilterGui(LayerViewerGui):
         else:
             raise ValueError('Unknown tab {} selected'.format(tab_index))
         return conf
-
-    def _setActiveChannels(self):
-        op = self.topLevelOperatorView
-        new_states = [self.model.item(i).checkState()
-                      for i in range(self.model.rowCount())]
-        new_states = np.array(new_states, dtype=np.int)
-        op.ActiveChannels.setValue(new_states)
-
-    @threadRouted
-    def _updateGuiFromOperator(self):
-        # Set Maximum Value of Sigma
-        op = self.topLevelOperatorView
-        tagged_shape = op.Input.meta.getTaggedShape()
-        shape = np.min([tagged_shape[c] for c in 'xyz' if c in tagged_shape])
-        max_sigma = np.floor(shape/6.) - .1  # Experimentally 3. (see Anna)
-        # https://github.com/ilastik/ilastik/issues/996
-        # FIXME does not support 2d with explicit z, for example
-        self._drawer.sigmaSpinBox.setMaximum(max_sigma)
-        # FIXME is this the correct maximum for guided, too?
-        self._drawer.sigmaGuidedSpinBox.setMaximum(max_sigma)
-
-        thres = self._drawer.thresSpinBox.value()
-        thres = op.Threshold.value
-        self._drawer.thresSpinBox.setValue(thres)
-        self._spinbox_value_changed(thres)
-
-        method = op.SmoothingMethod.value
-        try:
-            i = smoothing_methods_map.index(method)
-        except ValueError:
-            logger.warn("Smoothing method '{}' unknown to GUI, "
-                        "using default...".format(method))
-            i = 0
-        self._drawer.tabWidget.setCurrentIndex(i)
-        self._setTabConfig(op.Configuration.value)
-
-        # update the channel list
-        states = op.ActiveChannels.value
-        for i in range(min(self.model.rowCount(), len(states))):
-            self.model.item(i).setCheckState(states[i])
 
     def _setTabConfig(self, conf):
         try:
@@ -207,9 +119,6 @@ class MriVolFilterGui(LayerViewerGui):
                     'Unknown tab {} selected'.format(tab_index))
         except KeyError:
             logger.warn("Bad smoothing configuration encountered")
-
-    def _onApplyButtonClicked(self):
-        self._updateOperatorFromGui()
 
     def eventFilter(self, watched, event):
         """
@@ -290,8 +199,149 @@ class MriVolFilterGui(LayerViewerGui):
             return None
         else:
             return layer
-        
-    def _createDefault16ColorColorTable(self):
+
+    # =================================================================
+    #                    DATA TRANSFER FUNCTIONS
+    # =================================================================
+
+    @threadrouted
+    def _setStandardLabelList(self):
+        op = self.topLevelOperatorView
+
+        if not op.Input.ready():
+            # do nothing if we have no data
+            numChannels = 0
+        else:
+            numChannels = op.Input.meta.getTaggedShape()['c']
+
+        # setup labels
+        self.model.clear()
+        for i in range(numChannels):
+            item = QStandardItem()
+            item_name = 'Prediction {}'.format(i+1)
+            item.setText(item_name)
+            item.setCheckable(True)
+            # Per default set the last channel active
+            if i == numChannels-1:
+                item.setCheckState(2)
+
+            pixmap = QPixmap(16, 16)
+            pixmap.fill(QColor(self._channelColors[i+1]))
+            item.setIcon(QIcon(pixmap))
+
+            self.model.appendRow(item)
+
+        self._drawer.labelListView.setModel(self.model)
+
+    def _setLabelsToOp(self):
+        op = self.topLevelOperatorView
+        new_states = [self.model.item(i).checkState()
+                      for i in range(self.model.rowCount())]
+        new_states = np.array(new_states, dtype=np.int)
+        op.ActiveChannels.setValue(new_states)
+        # TODO channel names!
+
+    def _setParamsToOp(self):
+        op = self.topLevelOperatorView
+
+        tab_index = self._drawer.tabWidget.currentIndex()
+        conf = self._getTabConfig()
+
+        op.SmoothingMethod.setValue(smoothing_methods_map[tab_index])
+        op.Configuration.setValue(conf)
+
+        thres = self._drawer.thresSpinBox.value()
+        op.Threshold.setValue(thres)
+
+    @threadrouted
+    def _getLabelsFromOp(self):
+        op = self.topLevelOperatorView
+        # TODO need to reset self.model here!
+        # update the channel list
+        states = op.ActiveChannels.value
+        for i in range(min(self.model.rowCount(), len(states))):
+            self.model.item(i).setCheckState(states[i])
+        # TODO channel names!
+
+    @threadrouted
+    def _getParamsFromOp(self):
+        # Set Maximum Value of Sigma
+        # FIXME does not support 2d with explicit z, for example
+        op = self.topLevelOperatorView
+        ts = op.Input.meta.getTaggedShape()
+        shape = [ts[k] for k in ts if k in 'xyz']
+        max_sigma = self._maxGaussianSigma(shape)
+        self._drawer.sigmaSpinBox.setMaximum(max_sigma)
+        # FIXME is this the correct maximum for guided, too?
+        self._drawer.sigmaGuidedSpinBox.setMaximum(max_sigma)
+
+        thres = self._drawer.thresSpinBox.value()
+        thres = op.Threshold.value
+        self._drawer.thresSpinBox.setValue(thres)
+        self._spinbox_value_changed(thres)
+
+        method = op.SmoothingMethod.value
+        try:
+            i = smoothing_methods_map.index(method)
+        except ValueError:
+            logger.warn("Smoothing method '{}' unknown to GUI, "
+                        "using default...".format(method))
+            i = 0
+        self._drawer.tabWidget.setCurrentIndex(i)
+        self._setTabConfig(op.Configuration.value)
+
+
+    # =================================================================
+    #                          CALLBACKS
+    # =================================================================
+
+    def _connectCallbacks(self):
+        op = self.topLevelOperatorView
+
+        op.Input.notifyMetaChanged(self._onInputChanged)
+        self._drawer.applyButton.clicked.connect(self._onApplyButtonClicked)
+
+        # syncronize slider and spinbox
+        self._drawer.slider.valueChanged.connect(self._slider_value_changed)
+        self._drawer.thresSpinBox.valueChanged.connect(
+            self._spinbox_value_changed)
+
+    def _onInputChanged(self, *args, **kwargs):
+        '''
+        call this method whenever the top level operators input changes
+        '''
+        self._setStandardLabelList()
+        self._setLabelsToOp()
+
+    def _onApplyButtonClicked(self, *args, **kwargs):
+        '''
+        updates the top level operator with GUI provided values
+        '''
+        self._setLabelsToOp()
+        self._setParamsToOp()
+
+    def _slider_value_changed(self, value):
+        self._drawer.thresSpinBox.setValue(value)
+
+    def _spinbox_value_changed(self, value):
+        self._drawer.slider.setValue(value)
+    
+
+    # =================================================================
+    #                         STATIC METHODS
+    # =================================================================
+
+    @staticmethod
+    def _maxGaussianSigma(spatialShape):
+        minDim = np.min(spatialShape)
+        maxSigma = np.floor(shape/6.) - .1
+        # -.1 for safety reasons
+        # Experimentally 3. (see Anna' comment on issue below)
+        # https://github.com/ilastik/ilastik/issues/996
+        return maxSigma
+
+    @staticmethod
+    def _createDefault16ColorColorTable():
         colors = []
 
         # SKIP: Transparent for the zero label

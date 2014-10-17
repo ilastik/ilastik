@@ -37,6 +37,7 @@ class MriVolFilterSerializer(AppletSerializer):
                  SerialSlot(op.SmoothingMethod),
                  SerialSlot(op.Threshold),
                  SerialSlot(op.ActiveChannels),
+                 # SerialPickledSlot(op.LabelNames),
                  SerialHdf5BlockSlot(op.OutputHdf5,
                                      op.InputHdf5,
                                      op.CleanBlocks,
