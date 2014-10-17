@@ -18,6 +18,12 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+
+__author__ = "John Kirkham <kirkhamj@janelia.hhmi.org>"
+__date__ = "$Oct 14, 2014 16:31:56 EDT$"
+
+
+
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
 import numpy
