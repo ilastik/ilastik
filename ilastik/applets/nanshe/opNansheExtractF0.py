@@ -54,6 +54,7 @@ class OpNansheExtractF0(Operator):
     def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
         raw = self.InputImage[key].wait()
+        raw = raw[..., 0]
 
         half_window_size = self.HalfWindowSize.value
         which_quantile = self.WhichQuantile.value
@@ -71,6 +72,7 @@ class OpNansheExtractF0(Operator):
                                                                 temporal_smoothing_gaussian_filter_stdev=temporal_smoothing_gaussian_filter_stdev,
                                                                 spatial_smoothing_gaussian_filter_stdev=spatial_smoothing_gaussian_filter_stdev,
                                                                 bias=bias)
+        processed = processed[..., None]
         
         if slot.name == 'Output':
             result[...] = processed
