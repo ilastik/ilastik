@@ -613,18 +613,40 @@ class SerialDictSlot(SerialSlot):
         except AssertionError as e:
             warnings.warn('setValue() failed. message: {}'.format(e.message))
 
-class SerialPickledSlot(SerialSlot):
+class SerialClassifierFactorySlot(SerialSlot):
     def __init__(self, slot, name=None):
-        super( SerialPickledSlot, self ).__init__( slot, name=name )
+        super( SerialClassifierFactorySlot, self ).__init__( slot, name=name )
+        self._failed_to_deserialize = False
+        assert slot.ready(), \
+            "ClassifierFactory slots must be given a default value "\
+            "(in case the classifier can't be deserialized in a future version of ilastik)."
     
     def _saveValue(self, group, name, value):
         pickled = pickle.dumps( value )
         group.create_dataset(name, data=pickled)
+        self._failed_to_deserialize = False
+
+    def shouldSerialize(self, group):
+        if self._failed_to_deserialize:
+            return True
+        else:
+            return super(SerialClassifierSlot, self).shouldSerialize()
 
     def _getValue(self, dset, slot):
         pickled = dset[()]
-        value = pickle.loads(pickled)
-        slot.setValue( value )         
+        try:
+            # Attempt to unpickle
+            value = pickle.loads(pickled)
+            
+            # Verify that the VERSION of the classifier factory in the currently executing code
+            #  has not changed since this classifier was stored.
+            assert 'VERSION' in value.__dict__ and value.VERSION == type(value).VERSION
+        except:
+            self._failed_to_deserialize = True
+            warnings.warn("This project file uses an old or unsupported classifier storage format. "
+                          "The classifier will be stored in the new format when you save your project.")
+        else:
+            slot.setValue( value )
 
 ####################################
 # the base applet serializer class #
