@@ -18,6 +18,12 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+
+__author__ = "John Kirkham <kirkhamj@janelia.hhmi.org>"
+__date__ = "$Oct 16, 2014 15:28:24 EDT$"
+
+
+
 import os
 
 from PyQt4 import uic, QtCore
