@@ -51,6 +51,7 @@ class OpNansheRemoveZeroedLines(Operator):
     def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
         raw = self.InputImage[key].wait()
+
         erosion_shape = self.ErosionShape.value
         dilation_shape = self.DilationShape.value
 
