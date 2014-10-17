@@ -57,7 +57,7 @@ class OpNanshePreprocessing(Operator):
     ToWaveletTransform = InputSlot(value=True)
     Scale = InputSlot(value=4)
 
-    Ord = InputSlot(value=2)
+    Ord = InputSlot(value=2.0)
 
 
     Output = OutputSlot()
