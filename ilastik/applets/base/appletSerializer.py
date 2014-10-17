@@ -630,7 +630,7 @@ class SerialClassifierFactorySlot(SerialSlot):
         if self._failed_to_deserialize:
             return True
         else:
-            return super(SerialClassifierSlot, self).shouldSerialize()
+            return super(SerialClassifierFactorySlot, self).shouldSerialize(group)
 
     def _getValue(self, dset, slot):
         pickled = dset[()]
