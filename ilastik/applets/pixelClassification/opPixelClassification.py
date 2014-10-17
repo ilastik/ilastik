@@ -59,7 +59,7 @@ class OpPixelClassification( Operator ):
     CachedFeatureImages = InputSlot(level=1) # Cached feature data.
 
     FreezePredictions = InputSlot(stype='bool')
-    ClassifierFactory = InputSlot(value=ParallelVigraRfLazyflowClassifierFactory(10, 10))
+    ClassifierFactory = InputSlot(value=ParallelVigraRfLazyflowClassifierFactory(100))
 
     PredictionsFromDisk = InputSlot(optional=True, level=1)
 

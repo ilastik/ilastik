@@ -92,7 +92,7 @@ class ClassifierSelectionDlg(QDialog):
                                          ParallelVigraRfLazyflowClassifierFactory, VigraRfPixelwiseClassifierFactory,\
                                          LazyflowVectorwiseClassifierFactoryABC, LazyflowPixelwiseClassifierFactoryABC
         classifiers = collections.OrderedDict()
-        classifiers["Parallel Random Forest (VIGRA)"] = ParallelVigraRfLazyflowClassifierFactory(10, 10)
+        classifiers["Parallel Random Forest (VIGRA)"] = ParallelVigraRfLazyflowClassifierFactory(100)
         
         try:
             from iiboostLazyflowClassifier import IIBoostLazyflowClassifierFactory
