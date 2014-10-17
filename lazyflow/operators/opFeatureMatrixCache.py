@@ -115,19 +115,55 @@ class OpFeatureMatrixCache(Operator):
         # (1) We don't expect that to by typical, and
         # (2) progress reporting is merely informational.
         num_dirty_blocks = len( self._dirty_blocks )
+        remaining_dirty = [num_dirty_blocks]
         def update_progress( result ):
-            remaining_dirty = len( self._dirty_blocks )
-            percent_complete = 95.0*(num_dirty_blocks - remaining_dirty)/num_dirty_blocks
+            remaining_dirty[0] -= 1
+            percent_complete = 95.0*(num_dirty_blocks - remaining_dirty[0])/num_dirty_blocks
             self.progressSignal( percent_complete )
 
         # Update all dirty blocks in the cache
         logger.debug( "Updating {} dirty blocks".format(num_dirty_blocks) )
+
+        # Before updating the blocks, ensure that the necessary block locks exist
+        # It's better to do this now instead of inside each request
+        #  to avoid contention over self._lock
+        with self._lock:
+            for block_start in self._dirty_blocks:
+                if block_start not in self._block_locks:
+                    self._block_locks[block_start] = RequestLock()
+
+        # Update each block in its own request.
         pool = RequestPool()
+        reqs = {}
         for block_start in self._dirty_blocks:
-            req = Request( partial(self._update_block, block_start ) )
+            req = Request( partial(self._get_features_for_block, block_start ) )
             req.notify_finished( update_progress )
+            reqs[block_start] = req
             pool.add( req )
         pool.wait()
+
+        # Now store the results we got.
+        # It's better to store the blocks here -- rather than within each request -- to 
+        #  avoid contention over self._lock from within every block's request.
+        with self._lock:
+            for block_start, req in reqs.items():
+                if req.result is None:
+                    # 'None' means the block wasn't dirty. No need to update.
+                    continue
+                labels_and_features_matrix = req.result
+                self._dirty_blocks.remove(block_start)
+                
+                if labels_and_features_matrix.shape[0] > 0:
+                    # Update the block entry with the new matrix.
+                    self._blockwise_feature_matrices[block_start] = labels_and_features_matrix
+                else:
+                    # All labels were removed from the block,
+                    # So the new feature matrix is empty.  
+                    # Just delete its entry from our list.
+                    try:
+                        del self._blockwise_feature_matrices[block_start]
+                    except KeyError:
+                        pass
 
         # Concatenate the all blockwise results
         if self._blockwise_feature_matrices:
@@ -170,29 +206,22 @@ class OpFeatureMatrixCache(Operator):
         # Output has no notion of roi. It's all dirty.
         self.LabelAndFeatureMatrix.setDirty()
 
-    def _update_block(self, block_start):
-        if block_start not in self._block_locks:
-            with self._lock:
-                if block_start not in self._block_locks:
-                    self._block_locks[block_start] = RequestLock()
+    def _get_features_for_block(self, block_start):
+        """
+        Computes the feature matrix for the given block IFF the block is dirty.
+        Otherwise, returns None.
+        """
+        # Caller must ensure that the lock for this block already exists!
         with self._block_locks[block_start]:
             if block_start not in self._dirty_blocks:
                 # Nothing to do if this block isn't actually dirty
                 # (For parallel requests, its theoretically possible.)
-                return
+                return None
             block_roi = getBlockBounds( self.LabelImage.meta.shape, self._blockshape, block_start )
             # TODO: Shrink the requested roi using the nonzero blocks slot...
             #       ...or just get rid of the nonzero blocks slot...
             labels_and_features_matrix = self._extract_feature_matrix(block_roi)
-            with self._lock:
-                self._dirty_blocks.remove(block_start)
-                if labels_and_features_matrix.shape[0] > 0:
-                    self._blockwise_feature_matrices[block_start] = labels_and_features_matrix
-                else:
-                    try:
-                        del self._blockwise_feature_matrices[block_start]
-                    except KeyError:
-                        pass
+            return labels_and_features_matrix
 
     def _extract_feature_matrix(self, label_block_roi):
         num_feature_channels = self.FeatureImage.meta.shape[-1]
