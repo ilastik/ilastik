@@ -24,6 +24,9 @@ __date__ = "$Oct 14, 2014 16:33:55 EDT$"
 
 
 
+import itertools
+import math
+
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
 import numpy
@@ -68,8 +71,37 @@ class OpNansheExtractF0(Operator):
         temporal_smoothing_gaussian_filter_stdev = self.TemporalSmoothingGaussianFilterStdev.value
         spatial_smoothing_gaussian_filter_stdev = self.SpatialSmoothingGaussianFilterStdev.value
 
+
+        image_shape = self.InputImage.meta.shape
+
         key = roi.toSlice()
-        raw = self.InputImage[key].wait()
+        key = nanshe.additional_generators.reformat_slices(key, image_shape)
+
+        halo = list(itertools.repeat(0, len(key) - 1))
+        halo[0] = max(int(math.ceil(5*temporal_smoothing_gaussian_filter_stdev)), half_window_size)
+        for i in xrange(1, len(halo)):
+            halo[i] = int(math.ceil(5*spatial_smoothing_gaussian_filter_stdev))
+
+        halo_key = list(key)
+        within_halo_key = list(key)
+
+        for i in xrange(len(halo)):
+            halo_key_i_start = (halo_key[i].start - halo[i])
+            within_halo_key_i_start = halo[i]
+            if (halo_key_i_start < 0):
+                within_halo_key_i_start += halo_key_i_start
+                halo_key_i_start = 0
+
+
+            halo_key_i_stop = (halo_key[i].stop + halo[i])
+            within_halo_key_i_stop = (key[i].stop - key[i].start) + within_halo_key_i_start
+            if (halo_key_i_stop > image_shape[i]):
+                halo_key_i_stop = image_shape[i]
+
+            halo_key[i] = slice(halo_key_i_start, halo_key_i_stop, halo_key[i].step)
+            within_halo_key[i] = slice(within_halo_key_i_start, within_halo_key_i_stop, within_halo_key[i].step)
+
+        raw = self.InputImage[halo_key].wait()
         raw = raw[..., 0]
 
         processed = nanshe.advanced_image_processing.extract_f0(raw,
@@ -81,7 +113,7 @@ class OpNansheExtractF0(Operator):
         processed = processed[..., None]
         
         if slot.name == 'Output':
-            result[...] = processed
+            result[...] = processed[within_halo_key]
 
     def propagateDirty(self, slot, subindex, roi):
         if slot.name == "InputImage":
