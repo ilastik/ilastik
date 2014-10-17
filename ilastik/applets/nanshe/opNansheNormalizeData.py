@@ -36,7 +36,7 @@ class OpNansheNormalizeData(Operator):
     
     InputImage = InputSlot()
 
-    Ord = InputSlot(value=2, stype="int")
+    Ord = InputSlot(value=2.0, stype="int")
     
     Output = OutputSlot()
     
