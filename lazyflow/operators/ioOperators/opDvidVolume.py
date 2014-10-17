@@ -58,7 +58,9 @@ class OpDvidVolume(Operator):
         """
         try:
             self._connection = pydvid.dvid_connection.DvidConnection( self._hostname, timeout=60.0 )
-            self._default_accessor = pydvid.voxels.VoxelsAccessor( self._connection, self._uuid, self._dataname, self._query_args )
+            #self._default_accessor = pydvid.voxels.VoxelsAccessor( self._connection, self._uuid, self._dataname, self._query_args )
+            self._default_accessor = pydvid.voxels.VoxelsAccessor( self._connection, self._uuid, self._dataname, self._query_args,
+                                                                     throttle=False, retry_timeout=30*60.0 ) # 30 minute retry period
             self._throttled_accessor = pydvid.voxels.VoxelsAccessor( self._connection, self._uuid, self._dataname, self._query_args,
                                                                      throttle=True, retry_timeout=30*60.0 ) # 30 minute retry period
         except pydvid.errors.DvidHttpError as ex:
