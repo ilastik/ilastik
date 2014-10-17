@@ -43,21 +43,21 @@ class OpNanshePreprocessing(Operator):
     InputImage = InputSlot()
 
 
-    ToRemoveZeroedLines = InputSlot()
-    ErosionShape = InputSlot()
-    DilationShape = InputSlot()
+    ToRemoveZeroedLines = InputSlot(value=True)
+    ErosionShape = InputSlot(value=[21, 1])
+    DilationShape = InputSlot(value=[1, 3])
 
-    ToExtractF0 = InputSlot()
-    HalfWindowSize = InputSlot(stype='int')
-    WhichQuantile = InputSlot(stype='float')
-    TemporalSmoothingGaussianFilterStdev = InputSlot(stype='float')
-    SpatialSmoothingGaussianFilterStdev = InputSlot(stype='float')
-    Bias = InputSlot(stype='float')
+    ToExtractF0 = InputSlot(value=True)
+    HalfWindowSize = InputSlot(value=400, stype='int')
+    WhichQuantile = InputSlot(value=0.15, stype='float')
+    TemporalSmoothingGaussianFilterStdev = InputSlot(value=5.0, stype='float')
+    SpatialSmoothingGaussianFilterStdev = InputSlot(value=5.0, stype='float')
+    Bias = InputSlot(optional=True, stype='float')
 
-    ToWaveletTransform = InputSlot()
-    Scale = InputSlot()
+    ToWaveletTransform = InputSlot(value=True)
+    Scale = InputSlot(value=4)
 
-    Ord = InputSlot()
+    Ord = InputSlot(value=2)
 
 
     Output = OutputSlot()
@@ -84,23 +84,6 @@ class OpNanshePreprocessing(Operator):
         self.opNansheNormalizeData.Ord.connect(self.Ord)
 
         self.Output.connect( self.opNansheNormalizeData.Output )
-
-
-        self.ToRemoveZeroedLines.setValue(True)
-        self.ErosionShape.setValue([21, 1])
-        self.DilationShape.setValue([1, 3])
-
-        self.ToExtractF0.setValue(True)
-        self.HalfWindowSize.setValue(400)
-        self.WhichQuantile.setValue(0.15)
-        self.TemporalSmoothingGaussianFilterStdev.setValue(5.0)
-        self.SpatialSmoothingGaussianFilterStdev.setValue(5.0)
-        self.Bias.setValue(None)
-
-        self.ToWaveletTransform.setValue(True)
-        self.Scale.setValue(4)
-
-        self.Ord.setValue(2)
     
     def setupOutputs(self):
         # Copy the input metadata to both outputs
