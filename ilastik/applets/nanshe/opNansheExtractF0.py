@@ -36,22 +36,16 @@ class OpNansheExtractF0(Operator):
     
     InputImage = InputSlot()
 
-    HalfWindowSize = InputSlot(stype='int')
-    WhichQuantile = InputSlot(stype='float')
-    TemporalSmoothingGaussianFilterStdev = InputSlot(stype='float')
-    SpatialSmoothingGaussianFilterStdev = InputSlot(stype='float')
+    HalfWindowSize = InputSlot(value=400, stype='int')
+    WhichQuantile = InputSlot(value=0.15, stype='float')
+    TemporalSmoothingGaussianFilterStdev = InputSlot(value=5.0, stype='float')
+    SpatialSmoothingGaussianFilterStdev = InputSlot(value=5.0, stype='float')
     Bias = InputSlot(optional=True, stype='float')
 
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super( OpNansheExtractF0, self ).__init__( *args, **kwargs )
-
-        self.HalfWindowSize.setValue(400)
-        self.WhichQuantile.setValue(0.15)
-        self.TemporalSmoothingGaussianFilterStdev.setValue(5.0)
-        self.SpatialSmoothingGaussianFilterStdev.setValue(5.0)
-        self.Bias.setValue(None)
     
     def setupOutputs(self):
         # Copy the input metadata to both outputs
