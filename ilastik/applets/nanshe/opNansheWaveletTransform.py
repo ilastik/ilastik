@@ -24,12 +24,15 @@ __date__ = "$Oct 14, 2014 16:35:36 EDT$"
 
 
 
+import itertools
+
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
 import numpy
 
 import nanshe
 import nanshe.wavelet_transform
+import nanshe.additional_generators
 
 
 class OpNansheWaveletTransform(Operator):
@@ -59,8 +62,45 @@ class OpNansheWaveletTransform(Operator):
         scale = self.Scale.value
         include_lower_scales = self.IncludeLowerScales.value
 
+        image_shape = self.InputImage.meta.shape
+
         key = roi.toSlice()
-        raw = self.InputImage[key].wait()
+        key = nanshe.additional_generators.reformat_slices(key, image_shape)
+
+        half_halo = list(itertools.repeat(0, len(key)))
+        halo_key = list(key)
+        within_halo_key = list(key)
+        try:
+            scale_iter = enumerate(scale)
+        except TypeError:
+            scale_iter = enumerate(itertools.repeat(scale, len(halo_key)))
+
+        for i, each_scale in scale_iter:
+            half_halo_i = 0
+            for j in xrange(1, 1+each_scale):
+                half_halo_i += 2**j
+
+            halo_key_i_start = (halo_key[i].start - half_halo_i)
+            within_halo_key_i_start = half_halo_i
+            if (halo_key_i_start < 0):
+                within_halo_key_i_start += halo_key_i_start
+                halo_key_i_start = 0
+
+
+            halo_key_i_stop = (halo_key[i].stop + half_halo_i)
+            within_halo_key_i_stop = (key[i].stop - key[i].start) + within_halo_key_i_start
+            if (halo_key_i_stop > image_shape[i]):
+                halo_key_i_stop = image_shape[i]
+
+            half_halo[i] = half_halo_i
+            halo_key[i] = slice(halo_key_i_start, halo_key_i_stop, halo_key[i].step)
+            within_halo_key[i] = slice(within_halo_key_i_start, within_halo_key_i_stop, within_halo_key[i].step)
+
+        half_halo = tuple(half_halo)
+        halo_key = tuple(halo_key)
+        within_halo_key = tuple(within_halo_key)
+
+        raw = self.InputImage[halo_key].wait()
         raw = raw[..., 0]
 
         processed = nanshe.wavelet_transform.wavelet_transform(raw,
@@ -70,7 +110,7 @@ class OpNansheWaveletTransform(Operator):
         processed = processed[..., None]
         
         if slot.name == 'Output':
-            result[...] = processed
+            result[...] = processed[within_halo_key]
 
     def propagateDirty(self, slot, subindex, roi):
         if slot.name == "InputImage":
