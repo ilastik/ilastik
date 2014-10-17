@@ -40,7 +40,7 @@ class OpNansheExtractF0(Operator):
     WhichQuantile = InputSlot(stype='float')
     TemporalSmoothingGaussianFilterStdev = InputSlot(stype='float')
     SpatialSmoothingGaussianFilterStdev = InputSlot(stype='float')
-    Bias = InputSlot(stype='float')
+    Bias = InputSlot(optional=True, stype='float')
 
     Output = OutputSlot()
 
@@ -63,7 +63,11 @@ class OpNansheExtractF0(Operator):
 
         half_window_size = self.HalfWindowSize.value
         which_quantile = self.WhichQuantile.value
-        bias = self.Bias.value
+
+        bias = None
+        if self.Bias.ready():
+            bias = self.Bias.value
+
         temporal_smoothing_gaussian_filter_stdev = self.TemporalSmoothingGaussianFilterStdev.value
         spatial_smoothing_gaussian_filter_stdev = self.SpatialSmoothingGaussianFilterStdev.value
 
