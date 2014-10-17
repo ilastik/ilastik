@@ -65,6 +65,7 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
             pool.add( req )
         pool.wait()
 
+        logger.info( "Training complete. Average OOB: {}".format( numpy.average(oobs) ) )
         return ParallelVigraRfLazyflowClassifier( forests, oobs, known_labels )
 
     @property
