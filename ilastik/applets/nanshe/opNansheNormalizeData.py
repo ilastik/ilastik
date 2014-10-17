@@ -50,6 +50,7 @@ class OpNansheNormalizeData(Operator):
     def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
         raw = self.InputImage[key].wait()
+        raw = raw[..., 0]
 
         ord = self.Ord.value
 
@@ -58,6 +59,7 @@ class OpNansheNormalizeData(Operator):
                                                                         "ord" : ord
                                                                        }
                                                                     })
+        processed = processed[..., None]
         
         if slot.name == 'Output':
             result[...] = processed
