@@ -58,10 +58,6 @@ class OpNansheExtractF0(Operator):
         self.Output.meta.assignFrom( self.InputImage.meta )
     
     def execute(self, slot, subindex, roi, result):
-        key = roi.toSlice()
-        raw = self.InputImage[key].wait()
-        raw = raw[..., 0]
-
         half_window_size = self.HalfWindowSize.value
         which_quantile = self.WhichQuantile.value
 
@@ -71,6 +67,10 @@ class OpNansheExtractF0(Operator):
 
         temporal_smoothing_gaussian_filter_stdev = self.TemporalSmoothingGaussianFilterStdev.value
         spatial_smoothing_gaussian_filter_stdev = self.SpatialSmoothingGaussianFilterStdev.value
+
+        key = roi.toSlice()
+        raw = self.InputImage[key].wait()
+        raw = raw[..., 0]
 
         processed = nanshe.advanced_image_processing.extract_f0(raw,
                                                                 half_window_size=half_window_size,
