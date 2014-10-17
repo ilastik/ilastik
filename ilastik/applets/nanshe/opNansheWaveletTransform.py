@@ -37,16 +37,13 @@ class OpNansheWaveletTransform(Operator):
 
     InputImage = InputSlot()
 
-    Scale = InputSlot(stype="int")
-    IncludeLowerScales = InputSlot(stype="bool")
+    Scale = InputSlot(value=4, stype="int")
+    IncludeLowerScales = InputSlot(value=False, stype="bool")
     
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super( OpNansheWaveletTransform, self ).__init__( *args, **kwargs )
-
-        self.Scale.setValue(4)
-        self.IncludeLowerScales.setValue(False)
     
     def setupOutputs(self):
         # Copy the input metadata to both outputs
