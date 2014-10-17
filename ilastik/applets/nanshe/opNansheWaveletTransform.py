@@ -52,6 +52,7 @@ class OpNansheWaveletTransform(Operator):
     def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
         raw = self.InputImage[key].wait()
+        raw = raw[..., 0]
 
         scale = self.Scale.value
         include_lower_scales = self.IncludeLowerScales.value
@@ -60,6 +61,7 @@ class OpNansheWaveletTransform(Operator):
                                                                scale=scale,
                                                                include_intermediates = False,
                                                                include_lower_scales = include_lower_scales)
+        processed = processed[..., None]
         
         if slot.name == 'Output':
             result[...] = processed
