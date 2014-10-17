@@ -56,12 +56,12 @@ class OpNansheWaveletTransform(Operator):
         self.Output.meta.assignFrom( self.InputImage.meta )
     
     def execute(self, slot, subindex, roi, result):
+        scale = self.Scale.value
+        include_lower_scales = self.IncludeLowerScales.value
+
         key = roi.toSlice()
         raw = self.InputImage[key].wait()
         raw = raw[..., 0]
-
-        scale = self.Scale.value
-        include_lower_scales = self.IncludeLowerScales.value
 
         processed = nanshe.wavelet_transform.wavelet_transform(raw,
                                                                scale=scale,
