@@ -29,11 +29,11 @@ class MriVolFilterGui(LayerViewerGui):
 
     def stopAndCleanUp(self):
         super(MriVolFilterGui, self).stopAndCleanUp()
-        op = self.topLevelOperatorView
-        op.Input.unregisterMetaChanged(self._onInputChanged)
+        for fn in self.__cleanup_fns:
+            fn()
 
     def __init__(self, *args, **kwargs):
-        # self.__cleanup_fns = []
+        self.__cleanup_fns = []
         self._channelColors = self._createDefault16ColorColorTable()
         super(MriVolFilterGui, self).__init__(*args, **kwargs)
         #  use default colors
@@ -71,10 +71,10 @@ class MriVolFilterGui(LayerViewerGui):
         # we are restored from a project file)
         self._setStandardLabelList()
         if self.topLevelOperatorView.ActiveChannels.ready():
-            print("Restoring GUI from project file")
+            logger.debug("Restoring GUI from project file")
             self._getLabelsFromOp()
         else:
-            print("Initializing GUI")
+            logger.debug("Initializing GUI")
             self._setLabelsToOp()
 
         # connect callbacks last to avoid collision
@@ -134,7 +134,8 @@ class MriVolFilterGui(LayerViewerGui):
                     normalize=(0.0, 1.0) )
                 inputChannelLayer.opacity = 0.5
                 inputChannelLayer.visible = False
-                inputChannelLayer.name = op.LabelNames.value[i]
+                inputChannelLayer.name = decode_to_qstring(
+                    op.LabelNames.value[i])
                 # inputChannelLayer.name = "Prediction " + str(i)
                 '''
                 inputChannelLayer.setToolTip(
@@ -204,6 +205,19 @@ class MriVolFilterGui(LayerViewerGui):
                      for i in range(self.model.rowCount())]
         new_states = np.array(new_states, dtype=np.int)
         op.ActiveChannels.setValue(new_states)
+        new_names = np.array(new_names, dtype=np.object)
+
+        # update the layers
+        # HACK the layers are not updated by setting op.LabelNames
+        # I really don't understand why
+        if op.LabelNames.ready():
+            old_names = op.LabelNames.value
+            for old, new in zip(map(decode_to_qstring, old_names),
+                                map(decode_to_qstring, new_names)):
+                layer = self.getLayer(old)
+                if layer is not None:
+                    layer.name = new
+
         op.LabelNames.setValue(new_names)
 
     def _setParamsToOp(self):
@@ -312,6 +326,8 @@ class MriVolFilterGui(LayerViewerGui):
         op = self.topLevelOperatorView
 
         op.Input.notifyMetaChanged(self._onInputChanged)
+        self.__cleanup_fns.append(
+            lambda: op.Input.unregisterMetaChanged(self._onInputChanged))
         self._drawer.applyButton.clicked.connect(self._onApplyButtonClicked)
 
         # syncronize slider and spinbox

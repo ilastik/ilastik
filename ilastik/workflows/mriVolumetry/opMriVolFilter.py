@@ -23,9 +23,9 @@ class OpMriVolFilter(Operator):
 
     Threshold = InputSlot(stype='int', value=3000)
 
-    # 
-    ActiveChannels = InputSlot(stype=Opaque)
-    LabelNames = InputSlot(stype=Opaque)
+    # label detail slots
+    ActiveChannels = InputSlot()
+    LabelNames = InputSlot()
 
     # internal output after filtering
     Smoothed = OutputSlot()
@@ -35,8 +35,6 @@ class OpMriVolFilter(Operator):
 
     Output = OutputSlot()
     CachedOutput = OutputSlot() 
-
-    LabelNames = InputSlot(stype=Opaque)
 
     # slots for serialization
     InputHdf5 = InputSlot(optional=True)
@@ -294,7 +292,7 @@ class OpMriBinarizeImage(Operator):
     name = "MRI Binarize Image"
     
     Input = InputSlot()
-    ActiveChannels = InputSlot(stype=Opaque) # ActiveChannels
+    ActiveChannels = InputSlot()
 
     Output = OutputSlot()
     _Output = OutputSlot() # second (private) output

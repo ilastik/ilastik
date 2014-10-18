@@ -11,8 +11,8 @@ class OpMriVolReport(Operator):
     RawInput = InputSlot(optional=True)
     # Filtered Argmax Input
     Input = InputSlot()
-    LabelNames = InputSlot(stype=Opaque)
-    ActiveChannels = InputSlot(stype=Opaque)
+    LabelNames = InputSlot()
+    ActiveChannels = InputSlot()
     
     # Pseudo slot for dirty signal propagation to gui
     ReportStatus = OutputSlot(stype=Opaque)
@@ -23,7 +23,7 @@ class OpMriVolReport(Operator):
         super(OpMriVolReport, self).__init__(*args, **kwargs)
         # print 'init'
         # self.ReportStatus.setDirty(slice(None))
-        self.LabelNames.notifyReady( self._debugPrint )
+        self.LabelNames.notifyValueChanged( self._debugPrint )
 
     def execute(self, slot, subindex, roi, destination):
         print 'execute'
