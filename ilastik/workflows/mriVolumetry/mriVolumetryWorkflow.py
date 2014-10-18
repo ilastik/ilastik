@@ -56,7 +56,7 @@ class MriVolumetryWorkflow(Workflow):
         opMriVolReport.Input.connect( opMriVolFilter.Output )
         opMriVolReport.LabelNames.connect( opMriVolFilter.LabelNames )
         opMriVolReport.ActiveChannels.connect( \
-                                            opMriVolFilter.ActiveChannelsOut )
+                                            opMriVolFilter.ActiveChannels )
 
     @property
     def applets(self):

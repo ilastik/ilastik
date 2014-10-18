@@ -22,7 +22,10 @@ class OpMriVolFilter(Operator):
     Configuration = InputSlot(value={'sigma': 0.0})
 
     Threshold = InputSlot(stype='int', value=3000)
+
+    # 
     ActiveChannels = InputSlot(stype=Opaque)
+    LabelNames = InputSlot(stype=Opaque)
 
     # internal output after filtering
     Smoothed = OutputSlot()
@@ -33,9 +36,7 @@ class OpMriVolFilter(Operator):
     Output = OutputSlot()
     CachedOutput = OutputSlot() 
 
-    # TODO introduce InputSlot for LabelNames
-    LabelNames = OutputSlot(stype=Opaque)
-    ActiveChannelsOut = OutputSlot(stype=Opaque)
+    LabelNames = InputSlot(stype=Opaque)
 
     # slots for serialization
     InputHdf5 = InputSlot(optional=True)
@@ -86,7 +87,6 @@ class OpMriVolFilter(Operator):
         self.opRevertBinarize.CCInput.connect(self.CachedOutput)
 
         self.Output.connect( self.opRevertBinarize.Output )
-        self.ActiveChannelsOut.connect( self.ActiveChannels )
 
     def execute(self, slot, subindex, roi, destination):
         assert False, "Shouldn't get here."
@@ -103,12 +103,6 @@ class OpMriVolFilter(Operator):
 
     def setupOutputs(self):
         ts = self.Input.meta.getTaggedShape()
-        self.LabelNames.meta.shape = (ts['c'],)
-        self.LabelNames.meta.dtype = np.object
-        self.LabelNames.setValue(
-            np.asarray(
-                ['Prediction {}'.format(l+1) for l in range(ts['c'])],
-                dtype=np.object))
 
         ts['c'] = 1
         self.Output.meta.assignFrom(self.Input.meta)
@@ -124,8 +118,6 @@ class OpMriVolFilter(Operator):
         blockshape = map(lambda k: ts[k], ''.join(ts.keys()))
         self._cache.BlockShape.setValue(tuple(blockshape))
         self._cache.Input.setDirty(slice(None))
-
-        self.ActiveChannelsOut.meta.assignFrom(self.ActiveChannels.meta)
 
     def setInSlot(self, slot, subindex, roi, value):
         if slot is not self.InputHdf5:

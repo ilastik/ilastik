@@ -22,6 +22,7 @@ import numpy as np
 from ilastik.applets.base.appletSerializer import AppletSerializer
 from ilastik.applets.base.appletSerializer import SerialHdf5BlockSlot
 from ilastik.applets.base.appletSerializer import SerialDictSlot
+from ilastik.applets.base.appletSerializer import SerialPickledSlot
 from ilastik.applets.base.appletSerializer import SerialSlot
 
 import logging
@@ -37,14 +38,12 @@ class MriVolFilterSerializer(AppletSerializer):
                  SerialSlot(op.SmoothingMethod),
                  SerialSlot(op.Threshold),
                  SerialSlot(op.ActiveChannels),
-                 # SerialPickledSlot(op.LabelNames),
+                 SerialPickledSlot(op.LabelNames),
                  SerialHdf5BlockSlot(op.OutputHdf5,
                                      op.InputHdf5,
                                      op.CleanBlocks,
                                      name='caches',
                                      subname='cache{:03d}',),
                  ]
-        # TODO serialize ActiveChannels
-
         super(MriVolFilterSerializer, self).__init__(
             projectFileGroupName, slots, op)

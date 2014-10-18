@@ -12,6 +12,7 @@ from ilastik.utility.gui import threadRouted
 
 from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer
 # from volumina.colortables import create_default_16bit
+from volumina.utility import encode_from_qstring, decode_to_qstring
 
 from lazyflow.operators import OpMultiArraySlicer
 
@@ -29,7 +30,7 @@ class MriVolFilterGui(LayerViewerGui):
     def stopAndCleanUp(self):
         super(MriVolFilterGui, self).stopAndCleanUp()
         op = self.topLevelOperatorView
-        op.Input.unregisterMetaChanged(self._setupLabelNames)
+        op.Input.unregisterMetaChanged(self._onInputChanged)
 
     def __init__(self, *args, **kwargs):
         # self.__cleanup_fns = []
@@ -68,57 +69,16 @@ class MriVolFilterGui(LayerViewerGui):
         self.model = QStandardItemModel(self._drawer.labelListView)
         # see if we need to update our labels from the operator (i.e.,
         # we are restored from a project file)
-        if self.topLevelOperatorView.ActiveChannelsOut.ready():
+        self._setStandardLabelList()
+        if self.topLevelOperatorView.ActiveChannels.ready():
             print("Restoring GUI from project file")
             self._getLabelsFromOp()
         else:
             print("Initializing GUI")
-            self._setStandardLabelList()
             self._setLabelsToOp()
 
         # connect callbacks last to avoid collision
         self._connectCallbacks()
-
-    def _getTabConfig(self):
-        # TODO
-        tab_index = self._drawer.tabWidget.currentIndex()
-        if tab_index == 0:
-            sigma = self._drawer.sigmaSpinBox.value()
-            conf = {'sigma': sigma}
-        elif tab_index == 1:
-            eps = self._drawer.epsGuidedSpinBox.value()
-            sigma = self._drawer.sigmaGuidedSpinBox.value()
-            conf = { 'sigma': sigma,
-                     'eps': eps }
-        elif tab_index == 2:
-            raise NotImplementedError("Tab {} is not implemented".format(
-                smoothing_methods_map[tab_index]))
-        else:
-            raise ValueError('Unknown tab {} selected'.format(tab_index))
-        return conf
-
-    def _setTabConfig(self, conf):
-        try:
-            tab_index = self._drawer.tabWidget.currentIndex()
-            if tab_index == 0:
-                sigma = conf['sigma']
-                sigma = min(sigma, self._drawer.sigmaSpinBox.maximum())
-                sigma = max(sigma, self._drawer.sigmaSpinBox.minimum())
-                self._drawer.sigmaSpinBox.setValue(sigma)
-
-            elif tab_index == 1:
-                # TODO check range
-                self._drawer.epsGuidedSpinBox.setValue(conf['eps'])
-                self._drawer.sigmaGuidedSpinBox.setValue(conf['sigma'])
-            elif tab_index == 2:
-                raise NotImplementedError(
-                    "Tab {} is not implemented".format(
-                        smoothing_methods_map[tab_index]))
-            else:
-                raise ValueError(
-                    'Unknown tab {} selected'.format(tab_index))
-        except KeyError:
-            logger.warn("Bad smoothing configuration encountered")
 
     def eventFilter(self, watched, event):
         """
@@ -132,10 +92,13 @@ class MriVolFilterGui(LayerViewerGui):
                 return True
         return False
 
+    # =================================================================
+    #                      LAYER MANIPULATION
+    # =================================================================
+
     def setupLayers(self):
         layers = []
         op = self.topLevelOperatorView
-
 
         if op.Output.ready():
             outputLayer = ColortableLayer( LazyflowSource(op.Output),
@@ -204,7 +167,7 @@ class MriVolFilterGui(LayerViewerGui):
     #                    DATA TRANSFER FUNCTIONS
     # =================================================================
 
-    @threadrouted
+    @threadRouted
     def _setStandardLabelList(self):
         op = self.topLevelOperatorView
 
@@ -219,7 +182,7 @@ class MriVolFilterGui(LayerViewerGui):
         for i in range(numChannels):
             item = QStandardItem()
             item_name = 'Prediction {}'.format(i+1)
-            item.setText(item_name)
+            item.setText(decode_to_qstring(item_name))
             item.setCheckable(True)
             # Per default set the last channel active
             if i == numChannels-1:
@@ -237,9 +200,11 @@ class MriVolFilterGui(LayerViewerGui):
         op = self.topLevelOperatorView
         new_states = [self.model.item(i).checkState()
                       for i in range(self.model.rowCount())]
+        new_names = [encode_from_qstring(self.model.item(i).text())
+                     for i in range(self.model.rowCount())]
         new_states = np.array(new_states, dtype=np.int)
         op.ActiveChannels.setValue(new_states)
-        # TODO channel names!
+        op.LabelNames.setValue(new_names)
 
     def _setParamsToOp(self):
         op = self.topLevelOperatorView
@@ -253,17 +218,17 @@ class MriVolFilterGui(LayerViewerGui):
         thres = self._drawer.thresSpinBox.value()
         op.Threshold.setValue(thres)
 
-    @threadrouted
+    @threadRouted
     def _getLabelsFromOp(self):
         op = self.topLevelOperatorView
-        # TODO need to reset self.model here!
         # update the channel list
         states = op.ActiveChannels.value
+        names = op.LabelNames.value
         for i in range(min(self.model.rowCount(), len(states))):
             self.model.item(i).setCheckState(states[i])
-        # TODO channel names!
+            self.model.item(i).setText(decode_to_qstring(names[i]))
 
-    @threadrouted
+    @threadRouted
     def _getParamsFromOp(self):
         # Set Maximum Value of Sigma
         # FIXME does not support 2d with explicit z, for example
@@ -290,6 +255,54 @@ class MriVolFilterGui(LayerViewerGui):
         self._drawer.tabWidget.setCurrentIndex(i)
         self._setTabConfig(op.Configuration.value)
 
+    # =================================================================
+    #                       HELPER FUNCTIONS
+    # =================================================================
+
+    def _getTabConfig(self):
+        tab_index = self._drawer.tabWidget.currentIndex()
+
+        if tab_index == 0:
+            sigma = self._drawer.sigmaSpinBox.value()
+            conf = {'sigma': sigma}
+        elif tab_index == 1:
+            eps = self._drawer.epsGuidedSpinBox.value()
+            sigma = self._drawer.sigmaGuidedSpinBox.value()
+            conf = { 'sigma': sigma,
+                     'eps': eps }
+        elif tab_index == 2:
+            # TODO
+            raise NotImplementedError("Tab {} is not implemented".format(
+                smoothing_methods_map[tab_index]))
+        else:
+            raise ValueError('Unknown tab {} selected'.format(tab_index))
+        return conf
+
+    def _setTabConfig(self, conf):
+        try:
+            tab_index = self._drawer.tabWidget.currentIndex()
+            if tab_index == 0:
+                sigma = conf['sigma']
+                sigma = min(sigma, self._drawer.sigmaSpinBox.maximum())
+                sigma = max(sigma, self._drawer.sigmaSpinBox.minimum())
+                self._drawer.sigmaSpinBox.setValue(sigma)
+                if sigma != conf['sigma']:
+                    logger.warn("Could not apply sigma {} because of "
+                                "operator restrictions".format(conf['sigma']))
+
+            elif tab_index == 1:
+                # TODO check range
+                self._drawer.epsGuidedSpinBox.setValue(conf['eps'])
+                self._drawer.sigmaGuidedSpinBox.setValue(conf['sigma'])
+            elif tab_index == 2:
+                raise NotImplementedError(
+                    "Tab {} is not implemented".format(
+                        smoothing_methods_map[tab_index]))
+            else:
+                raise ValueError(
+                    'Unknown tab {} selected'.format(tab_index))
+        except KeyError:
+            logger.warn("Bad smoothing configuration encountered")
 
     # =================================================================
     #                          CALLBACKS
@@ -334,7 +347,7 @@ class MriVolFilterGui(LayerViewerGui):
     @staticmethod
     def _maxGaussianSigma(spatialShape):
         minDim = np.min(spatialShape)
-        maxSigma = np.floor(shape/6.) - .1
+        maxSigma = np.floor(minDim/6.) - .1
         # -.1 for safety reasons
         # Experimentally 3. (see Anna' comment on issue below)
         # https://github.com/ilastik/ilastik/issues/996
