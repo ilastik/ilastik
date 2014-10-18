@@ -119,6 +119,27 @@ class OpNanshePreprocessing(Operator):
     # Don't need execute as the output will be drawn through the Output slot.
 
     def propagateDirty(self, slot, subindex, roi):
-        # Dirtiness is already effectively propagated internally.
-        # TODO: Revisit whether dirtiness is handled in the case reconnecting components.
-        pass
+        if slot.value:
+            # Added new component.
+            if slot.name == "ToRemoveZeroedLines":
+                self.opNansheRemoveZeroedLines.Output.setDirty( slice(None) )
+            elif slot.name == "ToExtractF0":
+                self.opNansheExtractF0.Output.setDirty( slice(None) )
+            elif slot.name == "ToWaveletTransform":
+                self.opNansheWaveletTransform.Output.setDirty( slice(None) )
+        else:
+            # Removed component.
+            if slot.name == "ToRemoveZeroedLines":
+                if self.ToExtractF0.value:
+                    self.opNansheExtractF0.InputImage.setDirty( slice(None) )
+                elif self.ToWaveletTransform.value:
+                    self.opNansheWaveletTransform.InputImage.setDirty( slice(None) )
+                else:
+                    self.opNansheNormalizeData.InputImage.setDirty( slice(None) )
+            elif slot.name == "ToExtractF0":
+                if self.ToWaveletTransform.value:
+                    self.opNansheWaveletTransform.InputImage.setDirty( slice(None) )
+                else:
+                    self.opNansheNormalizeData.InputImage.setDirty( slice(None) )
+            elif slot.name == "ToWaveletTransform":
+                self.opNansheNormalizeData.InputImage.setDirty( slice(None) )
