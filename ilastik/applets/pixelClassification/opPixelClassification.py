@@ -289,6 +289,35 @@ class OpPixelClassification( Operator ):
     def getLane(self, laneIndex):
         return OperatorSubView(self, laneIndex)
 
+    def importLabels(self, laneIndex, slot):
+        # Load the data into the cache
+        new_max = self.getLane( laneIndex ).opLabelPipeline.opLabelArray.ingestData( slot )
+
+        # Add to the list of label names if there's a new max label
+        old_names = self.LabelNames.value
+        old_max = len(old_names)
+        if new_max > old_max:
+            new_names = old_names + map( lambda x: "Label {}".format(x), 
+                                         range(old_max+1, new_max+1) )
+            self.LabelNames.setValue(new_names)
+
+            # Make some default colors, too
+            default_colors = [(255,0,0),
+                              (0,255,0),
+                              (0,0,255),
+                              (255,255,0),
+                              (255,0,255),
+                              (0,255,255),
+                              (128,128,128),
+                              (255, 105, 180),
+                              (255, 165, 0),
+                              (240, 230, 140) ]
+            label_colors = self.LabelColors.value
+            pmap_colors = self.PmapColors.value
+            
+            self.LabelColors.setValue( label_colors + default_colors[old_max:new_max] )
+            self.PmapColors.setValue( pmap_colors + default_colors[old_max:new_max] )
+
 class OpLabelPipeline( Operator ):
     RawImage = InputSlot()
     LabelInput = InputSlot()

@@ -32,7 +32,11 @@ from PyQt4.QtGui import QMessageBox, QColor, QIcon, QMenu, QDialog, QVBoxLayout,
 
 # HCI
 from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
-from volumina.utility import ShortcutManager
+from volumina.utility import ShortcutManager, PreferencesManager
+
+from lazyflow.utility import PathComponents
+from lazyflow.operators.opReorderAxes import OpReorderAxes
+from lazyflow.operators.ioOperators import OpInputDataReader
 
 # ilastik
 from ilastik.config import cfg as ilastik_config
@@ -40,6 +44,7 @@ from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.labeling.labelingGui import LabelingGui
+from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui, H5VolumeSelectionDlg
 
 try:
     from volumina.view3d.volumeRendering import RenderingManager
@@ -161,13 +166,72 @@ class PixelClassificationGui(LabelingGui):
 
         # For now classifier selection is only available in debug mode
         if ilastik_config.getboolean('ilastik', 'debug'):
+            advanced_menu = QMenu("Advanced", parent=self)
+            
             def handleClassifierAction():
                 dlg = ClassifierSelectionDlg(self.topLevelOperatorView, parent=self)
                 dlg.exec_()
             
-            advanced_menu = QMenu("Advanced", parent=self)
             classifier_action = advanced_menu.addAction("Classifier...")
             classifier_action.triggered.connect( handleClassifierAction )
+
+            def handleImportLabelsAction():
+                # Find the directory of the most recently opened image file
+                mostRecentImageFile = PreferencesManager().get( 'DataSelection', 'recent image' )
+                if mostRecentImageFile is not None:
+                    defaultDirectory = os.path.split(mostRecentImageFile)[0]
+                else:
+                    defaultDirectory = os.path.expanduser('~')
+                fileNames = DataSelectionGui.getImageFileNamesToOpen(self, defaultDirectory)
+                fileNames = map(str, fileNames)
+                
+                # For now, we require a single hdf5 file
+                if len(fileNames) > 1:
+                    QMessageBox.critical(self, "Too many files", 
+                                         "Labels must be contained in a single hdf5 volume.")
+                    return
+                if len(fileNames) == 0:
+                    # user cancelled
+                    return
+                
+                file_path = fileNames[0]
+                internal_paths = DataSelectionGui.getPossibleInternalPaths(file_path)
+                if len(internal_paths) == 0:
+                    QMessageBox.critical(self, "No volumes in file", 
+                                         "Couldn't find a suitable dataset in your hdf5 file.")
+                    return
+                if len(internal_paths) == 1:
+                    internal_path = internal_paths[0]
+                else:
+                    dlg = H5VolumeSelectionDlg(internal_paths, self)
+                    if dlg.exec_() == QDialog.Rejected:
+                        return
+                    selected_index = dlg.combo.currentIndex()
+                    internal_path = str(internal_paths[selected_index])
+
+                path_components = PathComponents(file_path)
+                path_components.internalPath = str(internal_path)
+                
+                try:
+                    top_op = self.topLevelOperatorView
+                    opReader = OpInputDataReader(parent=top_op.parent)
+                    opReader.FilePath.setValue( path_components.totalPath() )
+                    
+                    # Reorder the axes
+                    op5 = OpReorderAxes(parent=top_op.parent)
+                    op5.AxisOrder.setValue( top_op.LabelInputs.meta.getAxisKeys() )
+                    op5.Input.connect( opReader.Output )
+                
+                    # Finally, import the labels
+                    top_op.importLabels( top_op.current_view_index(), op5.Output )
+                        
+                finally:
+                    op5.cleanUp()
+                    opReader.cleanUp()
+
+            import_labels_action = advanced_menu.addAction("Import Labels...")
+            import_labels_action.triggered.connect( handleImportLabelsAction )
+            
             menus += [advanced_menu]
 
         return menus
