@@ -253,7 +253,8 @@ class IlastikShell( QMainWindow ):
         
         # Server/client for inter process communication for receiving remote commands (e.g. from KNIME)
         # For now, this is a developer-only feature, activated by a debug menu item.
-        self.socketServer = None
+        #TODO: Change Server class
+        self.socketServer = MessageServer(self, "localhost", 9997, True)
         
         self.openFileButtons = []
         self.cleanupFunctions = []
