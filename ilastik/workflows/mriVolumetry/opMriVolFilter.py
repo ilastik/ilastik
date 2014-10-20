@@ -6,7 +6,7 @@ from lazyflow.operators import OpReorderAxes, OpCompressedCache, \
 from lazyflow.rtype import SubRegion
 from lazyflow.stype import Opaque
 
-from opSmoothing import OpSmoothing
+from opSmoothing import OpSmoothing, OpMriArgmax
 
 try:
     import opengm
@@ -56,15 +56,12 @@ class OpMriVolFilter(Operator):
         self.opSmoothing.Configuration.connect(self.Configuration)
         self.opSmoothing.Method.connect(self.SmoothingMethod)
         self.opSmoothing.Input.connect(self.Input)
+        self.opSmoothing.RawInput.connect(self.RawInput)
 
         self.Smoothed.connect(self.opSmoothing.CachedOutput)
 
-        self.opGlobThres = OpMriArgmax(parent=self)
-        self.opGlobThres.Input.connect(self.Smoothed)
-        self.ArgmaxOutput.connect(self.opGlobThres.Output)
-
         self.opBinarize = OpMriBinarizeImage(parent=self)
-        self.opBinarize.Input.connect(self.opGlobThres.Output)
+        self.opBinarize.Input.connect(self.opSmoothing.ArgmaxOutput)
         self.opBinarize.ActiveChannels.connect(self.ActiveChannels)
 
         self.opCC = OpLabelVolume(parent=self)
@@ -84,7 +81,8 @@ class OpMriVolFilter(Operator):
         self.OutputHdf5.connect(self._cache.OutputHdf5)
 
         self.opRevertBinarize = OpMriRevertBinarize( parent=self)
-        self.opRevertBinarize.ArgmaxInput.connect(self.opGlobThres.Output)
+        self.opRevertBinarize.ArgmaxInput.connect( \
+                                                self.opSmoothing.ArgmaxOutput)
         self.opRevertBinarize.CCInput.connect(self.CachedOutput)
 
         self.Output.connect( self.opRevertBinarize.Output )
@@ -124,66 +122,6 @@ class OpMriVolFilter(Operator):
         if slot is not self.InputHdf5:
             raise NotImplementedError("setInSlot not implemented for"
                                       "slot {}".format(slot))
-
-
-class OpMriArgmax(Operator):
-    """
-    Operator that compute argmax across the channels
-
-    TODO Integrate Threshold? (for filtering predition probabilities prior
-    to argmax)
-    """
-
-    name = "Argmax Operator"
-
-    Input = InputSlot()
-    Output = OutputSlot()
-
-    _Output = OutputSlot() # second (private) output
-
-    Threshold = InputSlot(optional=True, stype='float', value=0.0)
-
-    def __init__(self, *args, **kwargs):
-        super(OpMriArgmax, self).__init__(*args, **kwargs)
-
-        self.opIn = OpReorderAxes(parent=self)
-        self.opIn.Input.connect(self.Input)
-        self.opIn.AxisOrder.setValue('txyzc') 
-
-        self.opOut = OpReorderAxes(parent=self)
-        self.Output.connect(self.opOut.Output)
-        self.opOut.Input.connect(self._Output)
-
-    def setupOutputs(self):
-        self._Output.meta.assignFrom(self.opIn.Output.meta)
-        tagged_shape = self.opIn.Output.meta.getTaggedShape()
-        tagged_shape['c'] = 1
-        self._Output.meta.shape = tuple(tagged_shape.values())
-
-        self.opOut.AxisOrder.setValue(self.Input.meta.getAxisKeys())
-
-    @staticmethod
-    def _globalArgmax(vol):
-        """
-        computes an argmax of the prediction maps (hard segmentation)
-        """
-        return np.argmax(vol, axis=-1)+1
-
-    def execute(self, slot, subindex, roi, result):
-        tmp_roi = roi.copy()
-        tmp_roi.setDim(-1,0,self.opIn.Output.meta.shape[-1])
-        tmp_data = self.opIn.Output.get(tmp_roi).wait().astype(np.float32)
-
-        assert tmp_data.shape[-1] == \
-            self.Input.meta.getTaggedShape()['c'],\
-            'Not all channels are used for argmax'
-        result[...,0]  = self._globalArgmax(tmp_data)
-        
-    def propagateDirty(self, inputSlot, subindex, roi):
-         if inputSlot is self.Input:
-             self.Output.setDirty(roi)
-         if inputSlot is self.Threshold:
-             self.Output.setDirty(slice(None))
 
 
 class OpFanOut(Operator):
