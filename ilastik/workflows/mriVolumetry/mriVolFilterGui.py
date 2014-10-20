@@ -70,12 +70,14 @@ class MriVolFilterGui(LayerViewerGui):
         # see if we need to update our labels from the operator (i.e.,
         # we are restored from a project file)
         self._setStandardLabelList()
-        if self.topLevelOperatorView.ActiveChannels.ready():
-            logger.debug("Restoring GUI from project file")
-            self._getLabelsFromOp()
+        if self.topLevelOperatorView.LabelNames.ready():
+            self._getLabelNamesFromOp()
         else:
-            logger.debug("Initializing GUI")
-            self._setLabelsToOp()
+            self._setLabelNamesToOp()
+        if self.topLevelOperatorView.ActiveChannels.ready():
+            self._getActiveChannelsFromOp()
+        else:
+            self._setActiveChannelsToOp()
 
         # connect callbacks last to avoid collision
         self._connectCallbacks()
@@ -197,14 +199,10 @@ class MriVolFilterGui(LayerViewerGui):
 
         self._drawer.labelListView.setModel(self.model)
 
-    def _setLabelsToOp(self):
+    def _setLabelNamesToOp(self):
         op = self.topLevelOperatorView
-        new_states = [self.model.item(i).checkState()
-                      for i in range(self.model.rowCount())]
         new_names = [encode_from_qstring(self.model.item(i).text())
                      for i in range(self.model.rowCount())]
-        new_states = np.array(new_states, dtype=np.int)
-        op.ActiveChannels.setValue(new_states)
         new_names = np.array(new_names, dtype=np.object)
 
         # update the layers
@@ -218,7 +216,15 @@ class MriVolFilterGui(LayerViewerGui):
                 if layer is not None:
                     layer.name = new
 
+        assert op.LabelNames.partner is None, "tried to set label names, but slot is connected"
         op.LabelNames.setValue(new_names)
+
+    def _setActiveChannelsToOp(self):
+        op = self.topLevelOperatorView
+        new_states = [self.model.item(i).checkState()
+                      for i in range(self.model.rowCount())]
+        new_states = np.array(new_states, dtype=int)
+        op.ActiveChannels.setValue(new_states)
 
     def _setParamsToOp(self):
         op = self.topLevelOperatorView
@@ -233,14 +239,20 @@ class MriVolFilterGui(LayerViewerGui):
         op.Threshold.setValue(thres)
 
     @threadRouted
-    def _getLabelsFromOp(self):
+    def _getLabelNamesFromOp(self):
+        op = self.topLevelOperatorView
+        # update the channel list
+        names = op.LabelNames.value
+        for i in range(min(self.model.rowCount(), len(names))):
+            self.model.item(i).setText(decode_to_qstring(names[i]))
+
+    @threadRouted
+    def _getActiveChannelsFromOp(self):
         op = self.topLevelOperatorView
         # update the channel list
         states = op.ActiveChannels.value
-        names = op.LabelNames.value
         for i in range(min(self.model.rowCount(), len(states))):
             self.model.item(i).setCheckState(int(states[i]))
-            self.model.item(i).setText(decode_to_qstring(names[i]))
 
     @threadRouted
     def _getParamsFromOp(self):
@@ -249,12 +261,10 @@ class MriVolFilterGui(LayerViewerGui):
         op = self.topLevelOperatorView
         ts = op.Input.meta.getTaggedShape()
         shape = [ts[k] for k in ts if k in 'xyz']
-        max_sigma = self._maxSigma(shape)
+        max_sigma = self._maxGaussianSigma(shape)
         self._drawer.sigmaSpinBox.setMaximum(max_sigma)
         self._drawer.sigmaGuidedSpinBox.setMaximum(max_sigma)
-        self._drawer.sigmaGMSpinBox.setMaximum(max_sigma)
 
-        thres = self._drawer.thresSpinBox.value()
         thres = op.Threshold.value
         self._drawer.thresSpinBox.setValue(thres)
         self._spinbox_value_changed(thres)
@@ -282,15 +292,12 @@ class MriVolFilterGui(LayerViewerGui):
         elif tab_index == 1:
             eps = self._drawer.epsGuidedSpinBox.value()
             sigma = self._drawer.sigmaGuidedSpinBox.value()
-            guided = self._drawer.guidedCheckBox.isChecked()
             conf = { 'sigma': sigma,
-                     'eps': eps ,
-                     'guided' : guided}
+                     'eps': eps }
         elif tab_index == 2:
-            sigma = self._drawer.sigmaGMSpinBox.value()
-            unaries = self._drawer.unariesGMSpinBox.value()
-            conf = { 'sigma': sigma,
-                     'unaries': unaries }
+            # TODO
+            raise NotImplementedError("Tab {} is not implemented".format(
+                smoothing_methods_map[tab_index]))
         else:
             raise ValueError('Unknown tab {} selected'.format(tab_index))
         return conf
@@ -298,26 +305,23 @@ class MriVolFilterGui(LayerViewerGui):
     def _setTabConfig(self, conf):
         try:
             tab_index = self._drawer.tabWidget.currentIndex()
-            ## all methods contain sigma, the same max value applies
-            sigma = conf['sigma']
-            sigma = min(sigma, self._drawer.sigmaSpinBox.maximum())
-            sigma = max(sigma, self._drawer.sigmaSpinBox.minimum())
-            if sigma != conf['sigma']:
-                logger.warn("Could not apply sigma {} because of "
-                            "operator restrictions".format(conf['sigma']))
             if tab_index == 0:
+                sigma = conf['sigma']
+                sigma = min(sigma, self._drawer.sigmaSpinBox.maximum())
+                sigma = max(sigma, self._drawer.sigmaSpinBox.minimum())
                 self._drawer.sigmaSpinBox.setValue(sigma)
+                if sigma != conf['sigma']:
+                    logger.warn("Could not apply sigma {} because of "
+                                "operator restrictions".format(conf['sigma']))
+
             elif tab_index == 1:
-                # TODO check range of allowed values
+                # TODO check range
                 self._drawer.epsGuidedSpinBox.setValue(conf['eps'])
                 self._drawer.sigmaGuidedSpinBox.setValue(conf['sigma'])
-                if conf['guide']:
-                    self._drawer.guidedCheckBox.setChecked(2)
-                else:
-                    self._drawer.guidedCheckBox.setChecked(0)
             elif tab_index == 2:
-                self._drawer.sigmaGMSpinBox.setValue(conf['sigma'])
-                self._drawer.unariesGMSpinBox.setValue(conf['unaries'])
+                raise NotImplementedError(
+                    "Tab {} is not implemented".format(
+                        smoothing_methods_map[tab_index]))
             else:
                 raise ValueError(
                     'Unknown tab {} selected'.format(tab_index))
@@ -341,18 +345,21 @@ class MriVolFilterGui(LayerViewerGui):
         self._drawer.thresSpinBox.valueChanged.connect(
             self._spinbox_value_changed)
 
+        op.LabelNames.notifyValueChanged(self._getLabelNamesFromOp)
+        self.__cleanup_fns.append(
+            lambda: op.Input.unregisterValueChanged(self._getLabelNamesFromOp))
+
     def _onInputChanged(self, *args, **kwargs):
         '''
         call this method whenever the top level operators input changes
         '''
         self._setStandardLabelList()
-        self._setLabelsToOp()
 
     def _onApplyButtonClicked(self, *args, **kwargs):
         '''
         updates the top level operator with GUI provided values
         '''
-        self._setLabelsToOp()
+        self._setActiveChannelsToOp()
         self._setParamsToOp()
 
     def _slider_value_changed(self, value):
@@ -367,7 +374,7 @@ class MriVolFilterGui(LayerViewerGui):
     # =================================================================
 
     @staticmethod
-    def _maxSigma(spatialShape):
+    def _maxGaussianSigma(spatialShape):
         minDim = np.min(spatialShape)
         maxSigma = np.floor(minDim/6.) - .1
         # -.1 for safety reasons

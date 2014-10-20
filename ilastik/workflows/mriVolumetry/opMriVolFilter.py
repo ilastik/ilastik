@@ -8,6 +8,12 @@ from lazyflow.stype import Opaque
 
 from opSmoothing import OpSmoothing
 
+try:
+    import opengm
+    print opengm.__file__
+except Exception,e:
+    print e
+    
 import vigra
 import numpy as np
 

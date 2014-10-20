@@ -1,1 +1,2 @@
-from mriVolumetryWorkflow import MriVolumetryWorkflow
+from mriVolumetryWorkflow import MriVolumetryWorkflowPrediction
+from mriVolumetryWorkflow import MriVolumetryWorkflowPixel
