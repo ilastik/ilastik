@@ -63,7 +63,48 @@ class NanshePreprocessingGui(LayerViewerGui):
 
         # Initialize the gui with the operator's current values
         self.apply_operator_settings_to_gui()
+
+        # Add handlers for different selection events
+
         self._drawer.Apply.clicked.connect(self.apply_gui_settings_to_operator)
+
+        self._drawer.RemoveZeroedLinesEnabled.clicked.connect(self.applyRemoveZeroedLinesEnabled)
+
+        self._drawer.ExtractF0Enabled.clicked.connect(self.applyExtractF0Enabled)
+        self._drawer.BiasEnabled.clicked.connect(self.applyBiasEnabled)
+
+        self._drawer.WaveletTransformEnabled.clicked.connect(self.applyWaveletTransformEnabled)
+
+        self._drawer.NormValueSelection.currentIndexChanged.connect(self.applyNormValueSelection)
+
+    def applyRemoveZeroedLinesEnabled(self, checked):
+        self._drawer.ErosionShapeValue_Z.setEnabled(checked)
+        self._drawer.ErosionShapeValue_Y.setEnabled(checked)
+        self._drawer.ErosionShapeValue_X.setEnabled(checked)
+
+        self._drawer.DilationShapeValue_Z.setEnabled(checked)
+        self._drawer.DilationShapeValue_Y.setEnabled(checked)
+        self._drawer.DilationShapeValue_X.setEnabled(checked)
+
+    def applyExtractF0Enabled(self, checked):
+        self._drawer.HalfWindowSizeValue.setEnabled(checked)
+        self._drawer.QuantileValue.setEnabled(checked)
+        self._drawer.TemporalSmoothingValue.setEnabled(checked)
+        self._drawer.SpatialSmoothingValue.setEnabled(checked)
+        self._drawer.BiasEnabled.setEnabled(checked)
+        self._drawer.BiasValue.setEnabled(checked and self._drawer.BiasEnabled.isChecked())
+
+    def applyBiasEnabled(self, checked):
+        self._drawer.BiasValue.setEnabled(checked)
+
+    def applyWaveletTransformEnabled(self, checked):
+        self._drawer.ScaleValue_T.setEnabled(checked)
+        self._drawer.ScaleValue_Z.setEnabled(checked)
+        self._drawer.ScaleValue_Y.setEnabled(checked)
+        self._drawer.ScaleValue_X.setEnabled(checked)
+
+    def applyNormValueSelection(self, index):
+        self._drawer.NormValue.setEnabled(index == 0)
 
     def apply_operator_settings_to_gui(self):
         self.ndim = len(self.topLevelOperatorView.InputImage.meta.shape)
