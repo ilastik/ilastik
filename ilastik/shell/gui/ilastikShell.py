@@ -1288,7 +1288,7 @@ class IlastikShell( QMainWindow ):
         if self.projectManager is not None:
 
             projectFile = self.projectManager.currentProjectFile
-            if not self.projectManager.closed and projectFile is not None:
+            if not self.projectManager.closed and projectFile is not None and not self.projectManager.currentProjectIsReadOnly:
                 if "currentApplet" in projectFile.keys():
                     del projectFile["currentApplet"]
                 self.projectManager.currentProjectFile.create_dataset("currentApplet",data = self.currentAppletIndex)
