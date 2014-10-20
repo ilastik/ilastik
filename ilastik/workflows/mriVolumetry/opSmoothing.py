@@ -149,7 +149,7 @@ class OpSmoothingImplementation(Operator):
             self.Output.setDirty(slice(None))
         elif slot is self.Input:
             # set dirty per time and channel slice
-            shape = np.asarray(self.input.meta.shape, dtype=np.int)
+            shape = np.asarray(self.Input.meta.shape, dtype=np.int)
             start = np.asarray(roi.start, dtype=np.int)
             stop = np.asarray(roi.stop, dtype=np.int)
             start[1:5] = (0,)*4

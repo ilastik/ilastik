@@ -70,12 +70,14 @@ class MriVolFilterGui(LayerViewerGui):
         # see if we need to update our labels from the operator (i.e.,
         # we are restored from a project file)
         self._setStandardLabelList()
-        if self.topLevelOperatorView.ActiveChannels.ready():
-            logger.debug("Restoring GUI from project file")
-            self._getLabelsFromOp()
+        if self.topLevelOperatorView.LabelNames.ready():
+            self._getLabelNamesFromOp()
         else:
-            logger.debug("Initializing GUI")
-            self._setLabelsToOp()
+            self._setLabelNamesToOp()
+        if self.topLevelOperatorView.ActiveChannels.ready():
+            self._getActiveChannelsFromOp()
+        else:
+            self._setActiveChannelsToOp()
 
         # connect callbacks last to avoid collision
         self._connectCallbacks()
@@ -197,14 +199,10 @@ class MriVolFilterGui(LayerViewerGui):
 
         self._drawer.labelListView.setModel(self.model)
 
-    def _setLabelsToOp(self):
+    def _setLabelNamesToOp(self):
         op = self.topLevelOperatorView
-        new_states = [self.model.item(i).checkState()
-                      for i in range(self.model.rowCount())]
         new_names = [encode_from_qstring(self.model.item(i).text())
                      for i in range(self.model.rowCount())]
-        new_states = np.array(new_states, dtype=np.int)
-        op.ActiveChannels.setValue(new_states)
         new_names = np.array(new_names, dtype=np.object)
 
         # update the layers
@@ -218,7 +216,15 @@ class MriVolFilterGui(LayerViewerGui):
                 if layer is not None:
                     layer.name = new
 
+        assert op.LabelNames.partner is None, "tried to set label names, but slot is connected"
         op.LabelNames.setValue(new_names)
+
+    def _setActiveChannelsToOp(self):
+        op = self.topLevelOperatorView
+        new_states = [self.model.item(i).checkState()
+                      for i in range(self.model.rowCount())]
+        new_states = np.array(new_states, dtype=int)
+        op.ActiveChannels.setValue(new_states)
 
     def _setParamsToOp(self):
         op = self.topLevelOperatorView
@@ -233,14 +239,20 @@ class MriVolFilterGui(LayerViewerGui):
         op.Threshold.setValue(thres)
 
     @threadRouted
-    def _getLabelsFromOp(self):
+    def _getLabelNamesFromOp(self):
+        op = self.topLevelOperatorView
+        # update the channel list
+        names = op.LabelNames.value
+        for i in range(min(self.model.rowCount(), len(names))):
+            self.model.item(i).setText(decode_to_qstring(names[i]))
+
+    @threadRouted
+    def _getActiveChannelsFromOp(self):
         op = self.topLevelOperatorView
         # update the channel list
         states = op.ActiveChannels.value
-        names = op.LabelNames.value
         for i in range(min(self.model.rowCount(), len(states))):
-            self.model.item(i).setCheckState(states[i])
-            self.model.item(i).setText(decode_to_qstring(names[i]))
+            self.model.item(i).setCheckState(int(states[i]))
 
     @threadRouted
     def _getParamsFromOp(self):
@@ -251,10 +263,8 @@ class MriVolFilterGui(LayerViewerGui):
         shape = [ts[k] for k in ts if k in 'xyz']
         max_sigma = self._maxGaussianSigma(shape)
         self._drawer.sigmaSpinBox.setMaximum(max_sigma)
-        # FIXME is this the correct maximum for guided, too?
         self._drawer.sigmaGuidedSpinBox.setMaximum(max_sigma)
 
-        thres = self._drawer.thresSpinBox.value()
         thres = op.Threshold.value
         self._drawer.thresSpinBox.setValue(thres)
         self._spinbox_value_changed(thres)
@@ -335,18 +345,21 @@ class MriVolFilterGui(LayerViewerGui):
         self._drawer.thresSpinBox.valueChanged.connect(
             self._spinbox_value_changed)
 
+        op.LabelNames.notifyValueChanged(self._getLabelNamesFromOp)
+        self.__cleanup_fns.append(
+            lambda: op.Input.unregisterValueChanged(self._getLabelNamesFromOp))
+
     def _onInputChanged(self, *args, **kwargs):
         '''
         call this method whenever the top level operators input changes
         '''
         self._setStandardLabelList()
-        self._setLabelsToOp()
 
     def _onApplyButtonClicked(self, *args, **kwargs):
         '''
         updates the top level operator with GUI provided values
         '''
-        self._setLabelsToOp()
+        self._setActiveChannelsToOp()
         self._setParamsToOp()
 
     def _slider_value_changed(self, value):
