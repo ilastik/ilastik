@@ -50,7 +50,6 @@ import threading
 import logging
 logger = logging.getLogger(__name__)
 
-
 class FeatureSelectionDialog(QDialog):
     # for now all features get the same margin parameter. In the
     # future this should be selectable per feature, and only for
@@ -178,7 +177,7 @@ class FeatureSelectionDialog(QDialog):
 
 
 class ObjectExtractionGui(LayerViewerGui):
-
+    
     def stopAndCleanUp(self):
         # Unsubscribe to all signals
         for fn in self.__cleanup_fns:
@@ -241,8 +240,8 @@ class ObjectExtractionGui(LayerViewerGui):
         mainOperator.RawImage.notifyMetaChanged(self._onMetaChanged)
         self.__cleanup_fns.append( partial( mainOperator.RawImage.unregisterMetaChanged, self._onMetaChanged ) )
 
-        if mainOperator.BinaryImage.meta.shape:
-            self.editor.dataShape = mainOperator.BinaryImage.meta.shape
+        #if mainOperator.BinaryImage.meta.shape:
+        #self.editor.dataShape = mainOperator.BinaryImage.meta.shape
 
         mainOperator.BinaryImage.notifyMetaChanged(self._onMetaChanged)
         self.__cleanup_fns.append( partial( mainOperator.BinaryImage.unregisterMetaChanged, self._onMetaChanged ) )
