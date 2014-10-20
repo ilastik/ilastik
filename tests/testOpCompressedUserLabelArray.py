@@ -22,6 +22,7 @@
 import numpy
 import vigra
 from lazyflow.graph import Graph
+from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.operators import OpCompressedUserLabelArray
 
 from lazyflow.utility.slicingtools import sl, slicing2shape
@@ -239,6 +240,21 @@ class TestOpCompressedUserLabelArray(object):
         # That's okay.
         outputData = op.Output[...].wait()
         assert numpy.all(outputData[...] == 0)
+        
+
+    def testIngestData(self):
+        """
+        The ingestData() function can be used to import an entire slot's 
+        data into the label array, but copied one block at a time.
+        """
+        op = self.op
+        data = self.data + 5
+        opProvider = OpArrayPiper(graph=op.graph)
+        opProvider.Input.setValue( data )
+
+        max_label = op.ingestData(opProvider.Output)
+        assert (op.Output[:].wait() == data).all()
+        assert max_label == data.max()
         
 
 if __name__ == "__main__":

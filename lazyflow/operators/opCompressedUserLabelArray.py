@@ -27,7 +27,7 @@ import numpy
 
 # Lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.roi import TinyVector, getIntersectingBlocks, getBlockBounds, roiToSlice, getIntersection
+from lazyflow.roi import TinyVector, getIntersectingBlocks, getBlockBounds, roiToSlice, getIntersection, roiFromShape
 from lazyflow.operators.opCache import OpCache
 from lazyflow.operators.opCompressedCache import OpCompressedCache
 from lazyflow.rtype import SubRegion
@@ -230,3 +230,39 @@ class OpCompressedUserLabelArray(OpCompressedCache):
         
         # FIXME: Shouldn't this notification be triggered from within OpCompressedCache?
         self.Output.setDirty( roi.start, roi.stop )
+        
+        return cleaned_data # Internal use: Return the cleaned_data        
+
+    def ingestData(self, slot):
+        """
+        Read the data from the given slot and copy it into this cache.
+        The rules about special pixel meanings apply here, just like setInSlot
+        
+        Returns: the max label found in the slot.
+        """
+        assert self._blockshape is not None
+        assert self.Input.meta.shape == slot.meta.shape
+        max_label = 0
+
+        # Get logical blocking.
+        block_starts = getIntersectingBlocks( self._blockshape, roiFromShape(self.Input.meta.shape) )
+        block_starts = map( tuple, block_starts )
+
+        # Write each block
+        for block_start in block_starts:
+            block_roi = getBlockBounds( self.Input.meta.shape, self._blockshape, block_start )
+            
+            # Request the block data
+            block_data = slot(*block_roi).wait()
+            
+            # Write into the array
+            subregion_roi = SubRegion(self.Input, *block_roi)
+            cleaned_block_data = self._setInSlotInput( self.Input, (), subregion_roi, block_data )
+            
+            max_label = max( max_label, cleaned_block_data.max() )
+        
+        return max_label
+            
+            
+
+
