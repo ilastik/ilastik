@@ -26,6 +26,8 @@ __date__ = "$Oct 16, 2014 15:28:24 EDT$"
 
 import os
 
+import numpy
+
 from PyQt4 import uic, QtCore
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
@@ -113,7 +115,13 @@ class NanshePreprocessingGui(LayerViewerGui):
             self._drawer.ScaleValue_X.setValue(self.topLevelOperatorView.Scale.value[2])
 
 
-            self._drawer.NormValue.setValue(self.topLevelOperatorView.Ord.value)
+            if self.topLevelOperatorView.Ord.value == -numpy.inf:
+                self._drawer.NormValueSelection.setCurrentIndex(1)
+            elif self.topLevelOperatorView.Ord.value == numpy.inf:
+                self._drawer.NormValueSelection.setCurrentIndex(2)
+            else:
+                self._drawer.NormValueSelection.setCurrentIndex(0)
+                self._drawer.NormValue.setValue(self.topLevelOperatorView.Ord.value)
 
         elif self.ndim == 5:
             self._drawer.ErosionShapeValue_Z.show()
@@ -161,8 +169,13 @@ class NanshePreprocessingGui(LayerViewerGui):
             self._drawer.ScaleValue_Y.setValue(self.topLevelOperatorView.Scale.value[2])
             self._drawer.ScaleValue_X.setValue(self.topLevelOperatorView.Scale.value[3])
 
-
-            self._drawer.NormValue.setValue(self.topLevelOperatorView.Ord.value)
+            if self.topLevelOperatorView.Ord.value == -numpy.inf:
+                self._drawer.NormValueSelection.setCurrentIndex(1)
+            elif self.topLevelOperatorView.Ord.value == numpy.inf:
+                self._drawer.NormValueSelection.setCurrentIndex(2)
+            else:
+                self._drawer.NormValueSelection.setCurrentIndex(0)
+                self._drawer.NormValue.setValue(self.topLevelOperatorView.Ord.value)
 
     def apply_gui_settings_to_operator(self):
         if self.ndim == 4:
@@ -200,7 +213,12 @@ class NanshePreprocessingGui(LayerViewerGui):
             self.topLevelOperatorView.Scale.setValue([self._drawer.ScaleValue_T.value(), self._drawer.ScaleValue_Y.value(), self._drawer.ScaleValue_X.value()])
 
 
-            self.topLevelOperatorView.Ord.setValue(self._drawer.NormValue.value())
+            if self._drawer.NormValueSelection.currentIndex() == 1:
+                self.topLevelOperatorView.Ord.setValue(-numpy.inf)
+            elif self._drawer.NormValueSelection.currentIndex() == 2:
+                self.topLevelOperatorView.Ord.setValue(numpy.inf)
+            else:
+                self.topLevelOperatorView.Ord.setValue(self._drawer.NormValue.value())
 
         elif self.ndim == 5:
             self._drawer.ErosionShapeValue_Z.show()
@@ -240,7 +258,12 @@ class NanshePreprocessingGui(LayerViewerGui):
             self.topLevelOperatorView.Scale.setValue([self._drawer.ScaleValue_T.value(), self._drawer.ScaleValue_Z.value(), self._drawer.ScaleValue_Y.value(), self._drawer.ScaleValue_X.value()])
 
 
-            self.topLevelOperatorView.Ord.setValue(self._drawer.NormValue.value())
+            if self._drawer.NormValueSelection.currentIndex() == 1:
+                self.topLevelOperatorView.Ord.setValue(-numpy.inf)
+            elif self._drawer.NormValueSelection.currentIndex() == 2:
+                self.topLevelOperatorView.Ord.setValue(numpy.inf)
+            else:
+                self.topLevelOperatorView.Ord.setValue(self._drawer.NormValue.value())
     
     def setupLayers(self):
         """
