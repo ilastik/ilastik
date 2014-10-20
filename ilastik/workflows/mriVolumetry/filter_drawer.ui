@@ -17,7 +17,7 @@
    <item>
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>0</number>
+      <number>2</number>
      </property>
      <widget class="QWidget" name="tab1">
       <attribute name="title">
@@ -98,8 +98,6 @@
         </spacer>
        </item>
       </layout>
-      <zorder>layoutWidget</zorder>
-      <zorder>slider</zorder>
       <zorder>verticalSpacer_2</zorder>
      </widget>
      <widget class="QWidget" name="tab2">
@@ -107,19 +105,32 @@
        <string>Guided</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_2">
-       <item row="0" column="0">
-        <layout class="QGridLayout" name="gridLayout">
-         <item row="0" column="0">
-          <widget class="QLabel" name="sigmaGuidedLabel">
+       <item row="3" column="0">
+        <layout class="QVBoxLayout" name="verticalLayout_4">
+         <item>
+          <widget class="QCheckBox" name="guidedCheckBox">
+           <property name="layoutDirection">
+            <enum>Qt::RightToLeft</enum>
+           </property>
            <property name="text">
-            <string>Sigma:</string>
+            <string>Uncertainties as Guidance Image</string>
            </property>
           </widget>
          </item>
-         <item row="1" column="0">
-          <widget class="QLabel" name="epsGuidedLabel">
-           <property name="text">
-            <string>Epsillon:</string>
+        </layout>
+       </item>
+       <item row="0" column="0">
+        <layout class="QGridLayout" name="gridLayout">
+         <item row="1" column="1">
+          <widget class="QDoubleSpinBox" name="epsGuidedSpinBox">
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           </property>
+           <property name="singleStep">
+            <double>0.010000000000000</double>
+           </property>
+           <property name="value">
+            <double>0.150000000000000</double>
            </property>
           </widget>
          </item>
@@ -136,22 +147,23 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="1">
-          <widget class="QDoubleSpinBox" name="epsGuidedSpinBox">
-           <property name="alignment">
-            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         <item row="1" column="0">
+          <widget class="QLabel" name="epsGuidedLabel">
+           <property name="text">
+            <string>Epsillon:</string>
            </property>
-           <property name="singleStep">
-            <double>0.010000000000000</double>
-           </property>
-           <property name="value">
-            <double>0.150000000000000</double>
+          </widget>
+         </item>
+         <item row="0" column="0">
+          <widget class="QLabel" name="sigmaGuidedLabel">
+           <property name="text">
+            <string>Sigma:</string>
            </property>
           </widget>
          </item>
         </layout>
        </item>
-       <item row="1" column="0">
+       <item row="7" column="0">
         <spacer name="verticalSpacer_3">
          <property name="orientation">
           <enum>Qt::Vertical</enum>
@@ -188,7 +200,7 @@
           </widget>
          </item>
          <item row="1" column="1">
-          <widget class="QDoubleSpinBox" name="doubleSpinBox">
+          <widget class="QDoubleSpinBox" name="unariesGMSpinBox">
            <property name="alignment">
             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
            </property>
@@ -201,7 +213,7 @@
           </widget>
          </item>
          <item row="0" column="1">
-          <widget class="QDoubleSpinBox" name="doubleSpinBox_2">
+          <widget class="QDoubleSpinBox" name="sigmaGMSpinBox">
            <property name="alignment">
             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
            </property>

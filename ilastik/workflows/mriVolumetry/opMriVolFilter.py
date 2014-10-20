@@ -11,7 +11,6 @@ from opSmoothing import OpSmoothing
 import vigra
 import numpy as np
 
-
 class OpMriVolFilter(Operator):
     name = "MRI Processing"
 
@@ -19,7 +18,7 @@ class OpMriVolFilter(Operator):
     Input = InputSlot()
 
     SmoothingMethod = InputSlot(value='gaussian')
-    Configuration = InputSlot(value={'sigma': 0.0})
+    Configuration = InputSlot(value={'sigma': 1.2})
 
     Threshold = InputSlot(stype='int', value=3000)
 
@@ -55,9 +54,7 @@ class OpMriVolFilter(Operator):
         self.Smoothed.connect(self.opSmoothing.CachedOutput)
 
         self.opGlobThres = OpMriArgmax(parent=self)
-        self.opGlobThres.Threshold.connect(self.Threshold)
         self.opGlobThres.Input.connect(self.Smoothed)
-
         self.ArgmaxOutput.connect(self.opGlobThres.Output)
 
         self.opBinarize = OpMriBinarizeImage(parent=self)

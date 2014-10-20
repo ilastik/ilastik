@@ -20,6 +20,13 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+try:
+    # HACK opengm needs to be imported before vigra, if not the following 
+    # error is thrown: cannot import name IndexVector
+    # Problem might only be present on mac
+    import opengm
+except Exception, e:
+    print e
 
 import ilastik_main
 

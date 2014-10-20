@@ -9,9 +9,17 @@ from lazyflow.rtype import SubRegion
 from lazyflow.request import RequestLock
 from lazyflow.operators import OpReorderAxes, OpCompressedCache
 
+
+##### FIX ME Why does the import not work
+try:
+    from opMriVolFilter import OpMriArgmax
+except Exception, e:
+    print e
+
 import logging
 logger = logging.getLogger(__name__)
 
+import opengm
 
 # this operator wraps multiple implementations of smoothing algorithms while
 # also taking care of caching and reordering
@@ -224,7 +232,7 @@ class OpCostVolumeFilter(OpSmoothingImplementation):
 smoothers_available['gaussian'] = OpCostVolumeFilter
 
 
-# Implements gaussian smoothing
+# Implements guided filter smoothing
 class OpGuidedFilter(OpSmoothingImplementation):
     """
     Operator that performs guided filtering on the probability map 
@@ -244,13 +252,7 @@ class OpGuidedFilter(OpSmoothingImplementation):
     # implementation of abstract method
     def isAvailable(self):
         # we are implementing it right here, so it is indeed available
-        try:
-            self._guidedFilter(None)
-        except:
-            # HACK
-            return True
-        else:
-            return False
+        return True
 
     def __init__(self, *args, **kwargs):
         super(OpGuidedFilter, self).__init__(*args, **kwargs)
@@ -268,15 +270,166 @@ class OpGuidedFilter(OpSmoothingImplementation):
                 "expected key 'sigma' in configuration")
         sigma = conf['sigma']
 
+        if 'eps' not in conf:
+            raise self.ConfigurationError(
+                "expected key 'eps' in configuration")
+        epsilon = conf['eps']
+        if 'guided' not in conf:
+            raise self.ConfigurationError(
+                "expected key 'guided' in configuration")
+        guided = conf['guided']
+
         result[...] = self.Input.get(roi).wait().astype(self.Output.meta.dtype)
-        self._guidedFilter(result, sigma, normalize=True)
+        self._guidedFilterWrapper(result, sigma, epsilon, normalize=True,
+                                  uncertaintyGuideImage=guided)
+
+    def _guidedFilterWrapper(self, vol, filter_size, epsilon, 
+                             normalize=True, uncertaintyGuideImage=True):
+        if filter_size > 0:
+            if uncertaintyGuideImage:
+                pfiltered = np.zeros_like(vol[0])
+                for c in xrange(vol.shape[-1]):
+                    pfiltered[...,c] = vigra.gaussianSmoothing( vol[0,...,c], 
+                                                                float(1.2))
+                pmap = np.sort(pfiltered, axis=-1)
+                uncertainties  = pmap[...,-1]-pmap[...,-2] 
+
+            for c in xrange(vol.shape[-1]):
+                if uncertaintyGuideImage:
+                    guide_img = uncertainties
+                else:
+                    guide_img = vol[0, ..., c]
+                vol[0, ..., c] = self._guidedFilter3D(vol[0, ..., c],
+                                                      guide_img,
+                                                      float(filter_size),
+                                                      float(epsilon))
+        if normalize:
+            z = np.sum(vol, axis=-1, keepdims=True)
+            vol /= z
 
     @staticmethod
-    def _guidedFilter(vol, filterSize=2.0, eps=0.2, normalize=True):
-        # TODO
-        logger.warn('Nothing implemented yet')
+    def _guidedFilter3D(img_p, img_I, filter_size, epsilon):
+        """
+        algorithm as proposed in:
+        Kaiming He et al., "Guided Image Filtering", ECCV 2010
+
+        img_p   -   filtering input image
+        img_I   -   guidance image (can be the same as img_p)
+        filter_size  -   filter size
+        epsilon -   regularization parameter
+
+        good parameters for structural (eg t1c) r=1.2, epsilon=0.03
+
+        """
+        assert img_p.shape == img_I.shape
+        if not img_p.dtype == np.float32:
+            img_p = img_p.astype(np.float32)
+        if not img_I.dtype == np.float32:
+            img_I = img_I.astype(np.float32)
+
+        mean_I = vigra.gaussianSmoothing( img_I, np.float(filter_size))
+        corr_I = vigra.gaussianSmoothing( img_I*img_I, 
+                                          np.float(filter_size))
+        mean_p = vigra.gaussianSmoothing( img_p, np.float(filter_size))
+        corr_Ip = vigra.gaussianSmoothing( img_I*img_p, 
+                                           np.float(filter_size))
+
+        var_I = corr_I - mean_I*mean_I
+        cov_Ip = corr_Ip - mean_I*mean_p
+
+        a = cov_Ip / (var_I + epsilon)
+        b = mean_p - a * mean_I
+
+        mean_a = vigra.gaussianSmoothing( a, np.float(filter_size))
+        mean_b = vigra.gaussianSmoothing( b, np.float(filter_size))
+
+        q = mean_a * img_I + mean_b
+    
+        return q
 
 # add this smoother to the global smoothers table
 smoothers_available['guided'] = OpGuidedFilter
 
 
+# Implements opengm filtering
+class OpOpenGMFilter(OpSmoothingImplementation):
+    """
+    Operator that uses opengm to cleanup labels
+    """
+    name = "OpenGM Filter"
+
+    RawInput = InputSlot()
+
+    # implementation of abstract method
+    def isAvailable(self):
+        # we are implementing it right here, so it is indeed available
+        return False
+
+    def __init__(self, *args, **kwargs):
+        # internal threshold for computing mask and energy offset 
+        # to avoid log problems
+        self._epsilion = 0.000001 
+        # compute mask from raw input channel
+        raw_data = self.op.RawInput.get(slice(None)).wait()
+        bool_mask = np.ma.masked_less_equal( raw_data[0,...,0],
+                                             self._epsilion).mask
+        self._mask = np.zeros(raw_data.shape, dtype=np.uint32)
+        self._mask[~bool_mask] = 1.0
+
+        super(OpOpenGMFilter, self).__init__(*args, **kwargs)
+
+    def setupOutputs(self):
+        super(OpOpenGMFilter, self).setupOutputs()
+        self.Output.meta.dtype = np.float32
+
+    def execute(self, slot, subindex, roi, result):
+        logger.debug("Smoothing roi {}".format(roi))
+
+        conf = self.Configuration.value
+        if 'sigma' not in conf:
+            raise self.ConfigurationError(
+                "expected key 'sigma' in configuration")
+        sigma = conf['sigma']
+
+        if 'unaries' not in conf:
+            raise self.ConfigurationError(
+                "expected key 'unaries' in configuration")
+        unaries = conf['unaries']
+
+        result[...] = self.Input.get(roi).wait().astype( \
+                                                    self.Output.meta.dtype)
+        self._opengmFilter(result, sigma, unaries)
+
+    @staticmethod
+    def _opengmFilter(vol, filter_size, unaries_scale):
+        print "TODO implement me"
+        print unaries, filter_size
+        return vol
+        
+        # make uncertainty edge image
+        pfiltered = np.zeros_like(vol[0])
+        for c in xrange(vol.shape[-1]):
+            pfiltered[...,c] = vigra.gaussianSmoothing( vol[0,...,c], 
+                                                        float(1.2))
+        pmap = np.sort(pfiltered, axis=-1)
+        uncertainties  = pmap[...,-1]-pmap[...,-2] 
+        # set starting point
+        init_data = np.argmax(vol[0],axis=-1).astype( np.uint32 )
+        init_data = opengm.getStartingPointMasked(init_data, self._mask)      
+        unaries = -unaries_scale*np.log(vol[0] + self._epsilon)
+        gm = opengm.pottsModel3dMasked(unaries=unaries, 
+                                       regularizer=uncertainties, 
+                                       mask=self._mask)
+        try:
+            inf = opengm.inference.FastPd(gm)
+            inf.setStartingPoint(init_data)
+            inf.infer(inf.verboseVisitor())
+        except:
+            inf = opengm.inference.AlphaExpansion(gm)
+            inf.setStartingPoint(init_data)
+            inf.infer(inf.verboseVisitor())
+        pred = opengm.makeMaskedState(self._mask, inf.arg(), labelIdx=0)
+
+
+# add this smoother to the global smoothers table
+smoothers_available['opengm'] = OpOpenGMFilter

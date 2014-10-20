@@ -239,7 +239,7 @@ class MriVolFilterGui(LayerViewerGui):
         states = op.ActiveChannels.value
         names = op.LabelNames.value
         for i in range(min(self.model.rowCount(), len(states))):
-            self.model.item(i).setCheckState(states[i])
+            self.model.item(i).setCheckState(int(states[i]))
             self.model.item(i).setText(decode_to_qstring(names[i]))
 
     @threadRouted
@@ -249,10 +249,10 @@ class MriVolFilterGui(LayerViewerGui):
         op = self.topLevelOperatorView
         ts = op.Input.meta.getTaggedShape()
         shape = [ts[k] for k in ts if k in 'xyz']
-        max_sigma = self._maxGaussianSigma(shape)
+        max_sigma = self._maxSigma(shape)
         self._drawer.sigmaSpinBox.setMaximum(max_sigma)
-        # FIXME is this the correct maximum for guided, too?
         self._drawer.sigmaGuidedSpinBox.setMaximum(max_sigma)
+        self._drawer.sigmaGMSpinBox.setMaximum(max_sigma)
 
         thres = self._drawer.thresSpinBox.value()
         thres = op.Threshold.value
@@ -282,12 +282,15 @@ class MriVolFilterGui(LayerViewerGui):
         elif tab_index == 1:
             eps = self._drawer.epsGuidedSpinBox.value()
             sigma = self._drawer.sigmaGuidedSpinBox.value()
+            guided = self._drawer.guidedCheckBox.isChecked()
             conf = { 'sigma': sigma,
-                     'eps': eps }
+                     'eps': eps ,
+                     'guided' : guided}
         elif tab_index == 2:
-            # TODO
-            raise NotImplementedError("Tab {} is not implemented".format(
-                smoothing_methods_map[tab_index]))
+            sigma = self._drawer.sigmaGMSpinBox.value()
+            unaries = self._drawer.unariesGMSpinBox.value()
+            conf = { 'sigma': sigma,
+                     'unaries': unaries }
         else:
             raise ValueError('Unknown tab {} selected'.format(tab_index))
         return conf
@@ -295,23 +298,26 @@ class MriVolFilterGui(LayerViewerGui):
     def _setTabConfig(self, conf):
         try:
             tab_index = self._drawer.tabWidget.currentIndex()
+            ## all methods contain sigma, the same max value applies
+            sigma = conf['sigma']
+            sigma = min(sigma, self._drawer.sigmaSpinBox.maximum())
+            sigma = max(sigma, self._drawer.sigmaSpinBox.minimum())
+            if sigma != conf['sigma']:
+                logger.warn("Could not apply sigma {} because of "
+                            "operator restrictions".format(conf['sigma']))
             if tab_index == 0:
-                sigma = conf['sigma']
-                sigma = min(sigma, self._drawer.sigmaSpinBox.maximum())
-                sigma = max(sigma, self._drawer.sigmaSpinBox.minimum())
                 self._drawer.sigmaSpinBox.setValue(sigma)
-                if sigma != conf['sigma']:
-                    logger.warn("Could not apply sigma {} because of "
-                                "operator restrictions".format(conf['sigma']))
-
             elif tab_index == 1:
-                # TODO check range
+                # TODO check range of allowed values
                 self._drawer.epsGuidedSpinBox.setValue(conf['eps'])
                 self._drawer.sigmaGuidedSpinBox.setValue(conf['sigma'])
+                if conf['guide']:
+                    self._drawer.guidedCheckBox.setChecked(2)
+                else:
+                    self._drawer.guidedCheckBox.setChecked(0)
             elif tab_index == 2:
-                raise NotImplementedError(
-                    "Tab {} is not implemented".format(
-                        smoothing_methods_map[tab_index]))
+                self._drawer.sigmaGMSpinBox.setValue(conf['sigma'])
+                self._drawer.unariesGMSpinBox.setValue(conf['unaries'])
             else:
                 raise ValueError(
                     'Unknown tab {} selected'.format(tab_index))
@@ -361,7 +367,7 @@ class MriVolFilterGui(LayerViewerGui):
     # =================================================================
 
     @staticmethod
-    def _maxGaussianSigma(spatialShape):
+    def _maxSigma(spatialShape):
         minDim = np.min(spatialShape)
         maxSigma = np.floor(minDim/6.) - .1
         # -.1 for safety reasons
