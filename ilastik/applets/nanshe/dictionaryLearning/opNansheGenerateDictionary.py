@@ -82,8 +82,8 @@ class OpNansheGenerateDictionary(Operator):
 
         input_key = list(output_key)
 
-        input_key[0], input_key[-1] = input_key[-1], input_key[0]
         input_key[0] = slice(0, self.InputImage.meta.shape[0], 1)
+        input_key[-1] = slice(0, 1, 1)
 
         input_key = tuple(input_key)
 
