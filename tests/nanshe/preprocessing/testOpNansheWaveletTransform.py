@@ -26,29 +26,24 @@ from lazyflow.graph import Graph
 import ilastik
 import ilastik.applets
 import ilastik.applets.nanshe
-import ilastik.applets.nanshe.opNansheNormalizeData
-from ilastik.applets.nanshe.opNansheNormalizeData import OpNansheNormalizeData
+import ilastik.applets.nanshe.preprocessing
+import ilastik.applets.nanshe.preprocessing.opNansheWaveletTransform
+from ilastik.applets.nanshe.preprocessing.opNansheWaveletTransform import OpNansheWaveletTransform
 
-class TestOpNansheNormalizeData(object):
+class TestOpNansheWaveletTransform(object):
     def testBasic(self):
-        a = numpy.zeros((2,2,2,))
-        a[1,1,1] = 1
-        a[0,0,0] = 1
-
-        expected_b = numpy.array([[[ 0.86602540378443870761060452423407696187496185302734375 ,
-                                    -0.288675134594812921040585251830634661018848419189453125],
-                                   [-0.288675134594812921040585251830634661018848419189453125,
-                                    -0.288675134594812921040585251830634661018848419189453125]],
-                                  [[-0.288675134594812921040585251830634661018848419189453125,
-                                    -0.288675134594812921040585251830634661018848419189453125],
-                                   [-0.288675134594812921040585251830634661018848419189453125,
-                                    0.86602540378443870761060452423407696187496185302734375 ]]])
+        a = numpy.eye(3, dtype = numpy.float32)
+        expected_b = numpy.array([[[ 0.59375, -0.375  , -0.34375],
+                                   [-0.375  ,  0.625  , -0.375  ],
+                                   [-0.34375, -0.375  ,  0.59375]]], dtype=numpy.float32)
 
         graph = Graph()
-        op = OpNansheNormalizeData(graph=graph)
+        op = OpNansheWaveletTransform(graph=graph)
+
         op.InputImage.setValue(a)
 
-        op.Ord.setValue(2)
+        op.Scale.setValue(1)
+        op.IncludeLowerScales.setValue(True)
 
         b = op.Output[...].wait()
 

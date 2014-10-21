@@ -22,19 +22,12 @@
 __author__ = "John Kirkham <kirkhamj@janelia.hhmi.org>"
 __date__ = "$Oct 14, 2014 16:37:05 EDT$"
 
-
-
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
-from opNansheRemoveZeroedLines import OpNansheRemoveZeroedLines
-from opNansheExtractF0 import OpNansheExtractF0
-from opNansheWaveletTransform import OpNansheWaveletTransform
-from opNansheNormalizeData import OpNansheNormalizeData
-
-import numpy
-
-import nanshe
-import nanshe.advanced_image_processing
+from ilastik.applets.nanshe.preprocessing.opNansheRemoveZeroedLines import OpNansheRemoveZeroedLines
+from ilastik.applets.nanshe.preprocessing.opNansheExtractF0 import OpNansheExtractF0
+from ilastik.applets.nanshe.preprocessing.opNansheWaveletTransform import OpNansheWaveletTransform
+from ilastik.applets.nanshe.preprocessing.opNansheNormalizeData import OpNansheNormalizeData
 
 
 class OpNanshePreprocessing(Operator):

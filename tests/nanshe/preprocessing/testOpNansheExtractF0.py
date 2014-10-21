@@ -22,51 +22,31 @@
 import numpy
 from lazyflow.graph import Graph
 
-import synthetic_data.synthetic_data
-
 
 import ilastik
 import ilastik.applets
 import ilastik.applets.nanshe
-import ilastik.applets.nanshe.opNanshePreprocessing
-from ilastik.applets.nanshe.opNanshePreprocessing import OpNanshePreprocessing
+import ilastik.applets.nanshe.preprocessing
+import ilastik.applets.nanshe.preprocessing.opNansheExtractF0
+from ilastik.applets.nanshe.preprocessing.opNansheExtractF0 import OpNansheExtractF0
 
-class TestOpNanshePreprocessing(object):
+class TestOpNansheExtractF0(object):
     def testBasic(self):
-        # Does NOT test accuracy.
-
-        space = numpy.array([100, 100, 100])
-        radii = numpy.array([5, 6])
-        magnitudes = numpy.array([15, 16])
-        points = numpy.array([[20, 30, 24],
-                              [70, 59, 65]])
-
-        masks = synthetic_data.synthetic_data.generate_hypersphere_masks(space, points, radii)
-        images = synthetic_data.synthetic_data.generate_gaussian_images(space, points, radii/3.0, magnitudes) * masks
-        image_stack = images.max(axis = 0)
+        a = numpy.ones((100, 101, 102))
 
         graph = Graph()
-        op = OpNanshePreprocessing(graph=graph)
-        op.InputImage.setValue(image_stack)
+        op = OpNansheExtractF0(graph=graph)
+        op.InputImage.setValue(a)
 
-
-        op.ToRemoveZeroedLines.setValue(True)
-        op.ErosionShape.setValue([21, 1])
-        op.DilationShape.setValue([1, 3])
-
-        op.ToExtractF0.setValue(True)
         op.HalfWindowSize.setValue(20)
         op.WhichQuantile.setValue(0.5)
         op.TemporalSmoothingGaussianFilterStdev.setValue(5.0)
         op.SpatialSmoothingGaussianFilterStdev.setValue(5.0)
         op.Bias.setValue(100)
 
-        op.ToWaveletTransform.setValue(True)
-        op.Scale.setValue([3, 4, 4])
-
-        op.Ord.setValue(2)
-
         b = op.Output[...].wait()
+
+        assert((b == 0).all())
 
 
 if __name__ == "__main__":

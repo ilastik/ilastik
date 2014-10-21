@@ -27,8 +27,9 @@ import nanshe.expanded_numpy
 import ilastik
 import ilastik.applets
 import ilastik.applets.nanshe
-import ilastik.applets.nanshe.opNansheRemoveZeroedLines
-from ilastik.applets.nanshe.opNansheRemoveZeroedLines import OpNansheRemoveZeroedLines
+import ilastik.applets.nanshe.preprocessing
+import ilastik.applets.nanshe.preprocessing.opNansheRemoveZeroedLines
+from ilastik.applets.nanshe.preprocessing.opNansheRemoveZeroedLines import OpNansheRemoveZeroedLines
 
 class TestOpNansheRemoveZeroedLines(object):
     def testBasic(self):

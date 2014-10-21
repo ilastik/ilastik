@@ -23,7 +23,7 @@ from ilastik.workflow import Workflow
 from lazyflow.graph import Graph
 
 from ilastik.applets.dataSelection import DataSelectionApplet
-from ilastik.applets.nanshe.nanshePreprocessingApplet import NanshePreprocessingApplet
+from ilastik.applets.nanshe.preprocessing.nanshePreprocessingApplet import NanshePreprocessingApplet
 
 class NansheWorkflow(Workflow):
     def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args):

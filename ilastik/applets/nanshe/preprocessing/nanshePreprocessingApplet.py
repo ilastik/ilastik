@@ -27,7 +27,7 @@ __date__ = "$Oct 15, 2014 15:27:45 EDT$"
 from ilastik.applets.base.standardApplet import StandardApplet
 
 from opNanshePreprocessing import OpNanshePreprocessing
-from nanshePreprocessingSerializer import NanshePreprocessingSerializer
+from ilastik.applets.nanshe.preprocessing.nanshePreprocessingSerializer import NanshePreprocessingSerializer
 
 class NanshePreprocessingApplet( StandardApplet ):
     """
@@ -50,7 +50,7 @@ class NanshePreprocessingApplet( StandardApplet ):
     
     @property
     def singleLaneGuiClass(self):
-        from nanshePreprocessingGui import NanshePreprocessingGui
+        from ilastik.applets.nanshe.preprocessing.nanshePreprocessingGui import NanshePreprocessingGui
         return NanshePreprocessingGui
 
     @property

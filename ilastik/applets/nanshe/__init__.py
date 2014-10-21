@@ -18,4 +18,4 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from nanshePreprocessingApplet import NanshePreprocessingApplet
+from ilastik.applets.nanshe.preprocessing.nanshePreprocessingApplet import NanshePreprocessingApplet
