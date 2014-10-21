@@ -26,6 +26,8 @@ __date__ = "$Oct 17, 2014 13:07:51 EDT$"
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
+from lazyflow.operators import OpBlockedArrayCache
+
 import numpy
 
 import vigra
@@ -145,3 +147,67 @@ class OpNansheGenerateDictionary(Operator):
             self.Output.setDirty( slice(None) )
         else:
             assert False, "Unknown dirty input slot"
+
+
+class OpNansheGenerateDictionaryCached(Operator):
+    """
+    Given an input image and max/min bounds,
+    masks out (i.e. sets to zero) all pixels that fall outside the bounds.
+    """
+    name = "OpNansheGenerateDictionaryCached"
+    category = "Pointwise"
+
+
+    InputImage = InputSlot()
+
+    K = InputSlot(value=100, stype="int")
+    Gamma1 = InputSlot(value=0)
+    Gamma2 = InputSlot(value=0)
+    NumThreads = InputSlot(value=1)
+    Batchsize = InputSlot(value=256)
+    NumIter = InputSlot(value=100, stype="int")
+    Lambda1 = InputSlot(value=0.2)
+    Lambda2 = InputSlot(value=0.0)
+    PosAlpha = InputSlot(value=True)
+    PosD = InputSlot(value=True)
+    Clean = InputSlot(value=True)
+    Mode = InputSlot(value=2, stype="int")
+    ModeD = InputSlot(value=0, stype="int")
+
+    Output = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super( OpNansheGenerateDictionaryCached, self ).__init__( *args, **kwargs )
+
+        self.opDictionary = OpNansheGenerateDictionary(parent=self)
+
+        self.opDictionary.K.connect(self.K)
+        self.opDictionary.Gamma1.connect(self.Gamma1)
+        self.opDictionary.Gamma2.connect(self.Gamma2)
+        self.opDictionary.NumThreads.connect(self.NumThreads)
+        self.opDictionary.Batchsize.connect(self.Batchsize)
+        self.opDictionary.NumIter.connect(self.NumIter)
+        self.opDictionary.Lambda1.connect(self.Lambda1)
+        self.opDictionary.Lambda2.connect(self.Lambda2)
+        self.opDictionary.PosAlpha.connect(self.PosAlpha)
+        self.opDictionary.PosD.connect(self.PosD)
+        self.opDictionary.Clean.connect(self.Clean)
+        self.opDictionary.Mode.connect(self.Mode)
+        self.opDictionary.ModeD.connect(self.ModeD)
+
+
+        self.opCache = OpBlockedArrayCache(parent=self)
+        self.opCache.fixAtCurrent.setValue(False)
+
+        self.opDictionary.InputImage.connect( self.InputImage )
+        self.opCache.Input.connect( self.opDictionary.Output )
+        self.Output.connect( self.opCache.Output )
+
+    def setupOutputs(self):
+        self.opCache.innerBlockShape.setValue( self.opDictionary.Output.meta.shape )
+        self.opCache.outerBlockShape.setValue( self.opDictionary.Output.meta.shape )
+
+        self.Output.meta.assignFrom( self.opCache.Output.meta )
+
+    def propagateDirty(self, slot, subindex, roi):
+        pass
