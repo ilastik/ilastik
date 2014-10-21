@@ -68,7 +68,7 @@ class OpNansheGenerateDictionary(Operator):
     def setupOutputs(self):
         # Copy the input metadata to both outputs
         self.Output.meta.assignFrom( self.InputImage.meta )
-        self.Output.meta.shape = (self.K,) + self.InputImage.meta.shape[1:]
+        self.Output.meta.shape = (self.K.value,) + self.InputImage.meta.shape[1:]
 
         spatial_dims = [_ for _ in self.Output.meta.axistags if _.isSpatial()]
 
