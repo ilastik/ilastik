@@ -23,3 +23,100 @@ __author__ = "John Kirkham <kirkhamj@janelia.hhmi.org>"
 __date__ = "$Oct 17, 2014 13:07:51 EDT$"
 
 
+
+from lazyflow.graph import Operator, InputSlot, OutputSlot
+
+import numpy
+
+import nanshe
+import nanshe.advanced_image_processing
+import nanshe.additional_generators
+
+
+class OpNansheGenerateDictionary(Operator):
+    """
+    Given an input image and max/min bounds,
+    masks out (i.e. sets to zero) all pixels that fall outside the bounds.
+    """
+    name = "OpNansheGenerateDictionary"
+    category = "Pointwise"
+
+
+    InputImage = InputSlot()
+
+    K = InputSlot(value=100, stype="int")
+    Gamma1 = InputSlot(value=0)
+    Gamma2 = InputSlot(value=0)
+    NumThreads = InputSlot(value=1)
+    Batchsize = InputSlot(value=256)
+    NumIter = InputSlot(value=100, stype="int")
+    Lambda1 = InputSlot(value=0.2)
+    Lambda2 = InputSlot(value=0.0)
+    PosAlpha = InputSlot(value=True)
+    PosD = InputSlot(value=True)
+    Clean = InputSlot(value=True)
+    Mode = InputSlot(value=2, stype="int")
+    ModeD = InputSlot(value=0, stype="int")
+
+    Output = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super( OpNansheGenerateDictionary, self ).__init__( *args, **kwargs )
+
+    def setupOutputs(self):
+        # Copy the input metadata to both outputs
+        self.Output.meta.assignFrom( self.InputImage.meta )
+        self.Output.meta.shape = (self.K,) + self.InputImage.meta.shape[1:]
+
+    def execute(self, slot, subindex, roi, result):
+        key = roi.toSlice()
+        raw = self.InputImage[key].wait()
+        raw = raw[..., 0]
+
+        K = self.K.value
+        gamma1 = self.Gamma1.value
+        gamma2 = self.Gamma2.value
+        numThreads = self.NumThreads.value
+        batchsize = self.Batchsize.value
+        numIter = self.NumIter.value
+        lambda1 = self.Lambda1.value
+        lambda2 = self.Lambda2.value
+        posAlpha = self.PosAlpha.value
+        posD = self.PosD.value
+        clean = self.Clean.value
+        mode = self.Mode.value
+        modeD = self.ModeD.value
+
+        processed = nanshe.advanced_image_processing.generate_dictionary(raw, **{ "spams.trainDL" :
+                                                                                      {
+                                                                                          "gamma2" : gamma2,
+                                                                                          "gamma1" : gamma1,
+                                                                                          "numThreads" : numThreads,
+                                                                                          "K" : K,
+                                                                                          "iter" : numIter,
+                                                                                          "lambda1" : lambda1,
+                                                                                          "modeD" : modeD,
+                                                                                          "posAlpha" : posAlpha,
+                                                                                          "clean" : clean,
+                                                                                          "posD" : posD,
+                                                                                          "batchsize" : batchsize,
+                                                                                          "lambda2" : lambda2,
+                                                                                          "mode" : mode
+                                                                                      }
+                                                                                }
+        )
+        processed = processed[..., None]
+
+        if slot.name == 'Output':
+            result[...] = processed
+
+    def propagateDirty(self, slot, subindex, roi):
+        if slot.name == "InputImage":
+            self.Output.setDirty(roi)
+        elif (slot.name == "K") or (slot.name == "Gamma1") or (slot.name == "Gamma2") or (slot.name == "NumThreads") or\
+                (slot.name == "Batchsize") or (slot.name == "NumIter") or (slot.name == "Lambda1") or\
+                (slot.name == "Lambda2") or (slot.name == "PosAlpha") or (slot.name == "PosD") or\
+                (slot.name == "Clean") or (slot.name == "Mode") or (slot.name == "ModeD"):
+            self.Output.setDirty( slice(None) )
+        else:
+            assert False, "Unknown dirty input slot"
