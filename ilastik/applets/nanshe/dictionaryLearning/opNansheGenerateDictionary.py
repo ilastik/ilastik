@@ -72,11 +72,11 @@ class OpNansheGenerateDictionary(Operator):
         spatial_dims = [_ for _ in self.Output.meta.axistags if _.isSpatial()]
 
         if len(spatial_dims) == 1:
-            self.Output.meta.axistags = vigra.AxisTags(vigra.AxisInfo.c, *spatial_dims)
+            self.Output.meta.axistags = vigra.AxisTags(vigra.AxisInfo.c, *(spatial_dims + [vigra.AxisInfo.t]))
         elif len(spatial_dims) == 2:
-            self.Output.meta.axistags = vigra.AxisTags(vigra.AxisInfo.c, *spatial_dims)
+            self.Output.meta.axistags = vigra.AxisTags(vigra.AxisInfo.c, *(spatial_dims + [vigra.AxisInfo.t]))
         elif len(spatial_dims) == 3:
-            self.Output.meta.axistags = vigra.AxisTags(vigra.AxisInfo.c, *spatial_dims)
+            self.Output.meta.axistags = vigra.AxisTags(vigra.AxisInfo.c, *(spatial_dims + [vigra.AxisInfo.t]))
 
         self.Output.meta.shape = (self.K.value,) + self.InputImage.meta.shape[1:]
 
