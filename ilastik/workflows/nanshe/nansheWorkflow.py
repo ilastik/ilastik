@@ -46,11 +46,12 @@ class NansheWorkflow(Workflow):
 
     def connectLane(self, laneIndex):
         opDataSelection = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)        
-        opThresholdMasking = self.nanshePreprocessingApplet.topLevelOperator.getLane(laneIndex)
-        opThresholdMasking = self.nansheDictionaryLearningApplet.topLevelOperator.getLane(laneIndex)
+        opPreprocessing = self.nanshePreprocessingApplet.topLevelOperator.getLane(laneIndex)
+        opDictionaryLearning = self.nansheDictionaryLearningApplet.topLevelOperator.getLane(laneIndex)
 
         # Connect top-level operators
-        opThresholdMasking.InputImage.connect( opDataSelection.Image )
+        opPreprocessing.InputImage.connect( opDataSelection.Image )
+        opDictionaryLearning.InputImage.connect( opPreprocessing.Output )
 
     @property
     def applets(self):
