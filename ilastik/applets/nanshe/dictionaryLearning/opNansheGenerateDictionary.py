@@ -28,6 +28,8 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 
 import numpy
 
+import vigra
+
 import nanshe
 import nanshe.advanced_image_processing
 import nanshe.additional_generators
@@ -67,6 +69,18 @@ class OpNansheGenerateDictionary(Operator):
         # Copy the input metadata to both outputs
         self.Output.meta.assignFrom( self.InputImage.meta )
         self.Output.meta.shape = (self.K,) + self.InputImage.meta.shape[1:]
+
+        spatial_dims = sum([_.isSpatial() for _ in self.Output.meta.axistags])
+
+        if spatial_dims == 1:
+            self.Output.meta.axistags = vigra.AxisTags(vigra.AxisInfo.c, vigra.AxisInfo.x)
+        elif spatial_dims == 2:
+            self.Output.meta.axistags = vigra.AxisTags(vigra.AxisInfo.c, vigra.AxisInfo.y,
+                                                                         vigra.AxisInfo.x)
+        elif spatial_dims == 3:
+            self.Output.meta.axistags = vigra.AxisTags(vigra.AxisInfo.c, vigra.AxisInfo.z,
+                                                                         vigra.AxisInfo.y,
+                                                                         vigra.AxisInfo.x)
 
     def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
