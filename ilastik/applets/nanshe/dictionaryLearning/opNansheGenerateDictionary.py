@@ -76,8 +76,26 @@ class OpNansheGenerateDictionary(Operator):
         self.Output.meta.shape = (self.K.value,) + self.InputImage.meta.shape[1:]
 
     def execute(self, slot, subindex, roi, result):
-        key = roi.toSlice()
-        raw = self.InputImage[key].wait()
+        output_key = roi.toSlice()
+
+        output_key = nanshe.additional_generators.reformat_slices(output_key)
+
+        input_key = list(output_key)
+
+        input_key[0], input_key[-1] = input_key[-1], input_key[0]
+        input_key[0] = slice(0, self.InputImage.meta.shape[0], 1)
+
+        input_key = tuple(input_key)
+
+
+        output_key = list(output_key)
+
+        for i in xrange(1, len(output_key) - 1):
+            output_key[i] = slice(None)
+
+        output_key = tuple(output_key)
+
+        raw = self.InputImage[input_key].wait()
         raw = raw[..., 0]
 
         K = self.K.value
@@ -115,7 +133,7 @@ class OpNansheGenerateDictionary(Operator):
         processed = processed[..., None]
 
         if slot.name == 'Output':
-            result[...] = processed
+            result[...] = processed[output_key]
 
     def propagateDirty(self, slot, subindex, roi):
         if slot.name == "InputImage":
