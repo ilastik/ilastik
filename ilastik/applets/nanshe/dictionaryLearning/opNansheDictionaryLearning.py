@@ -26,6 +26,8 @@ __date__ = "$Oct 17, 2014 13:07:51 EDT$"
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
+from ilastik.applets.nanshe.dictionaryLearning.opNansheGenerateDictionary import OpNansheGenerateDictionaryCached
+
 import numpy
 
 import vigra
@@ -46,6 +48,7 @@ class OpNansheDictionaryLearning(Operator):
 
     InputImage = InputSlot()
 
+
     K = InputSlot(value=100, stype="int")
     Gamma1 = InputSlot(value=0)
     Gamma2 = InputSlot(value=0)
@@ -60,93 +63,32 @@ class OpNansheDictionaryLearning(Operator):
     Mode = InputSlot(value=2, stype="int")
     ModeD = InputSlot(value=0, stype="int")
 
+
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super( OpNansheDictionaryLearning, self ).__init__( *args, **kwargs )
 
+        self.opDictionary = OpNansheGenerateDictionaryCached(parent=self)
+
+        self.opDictionary.K.connect(self.K)
+        self.opDictionary.Gamma1.connect(self.Gamma1)
+        self.opDictionary.Gamma2.connect(self.Gamma2)
+        self.opDictionary.NumThreads.connect(self.NumThreads)
+        self.opDictionary.Batchsize.connect(self.Batchsize)
+        self.opDictionary.NumIter.connect(self.NumIter)
+        self.opDictionary.Lambda1.connect(self.Lambda1)
+        self.opDictionary.Lambda2.connect(self.Lambda2)
+        self.opDictionary.PosAlpha.connect(self.PosAlpha)
+        self.opDictionary.PosD.connect(self.PosD)
+        self.opDictionary.Clean.connect(self.Clean)
+        self.opDictionary.Mode.connect(self.Mode)
+        self.opDictionary.ModeD.connect(self.ModeD)
+
+        self.Output.connect( self.opDictionary.Output )
+
     def setupOutputs(self):
-        # Copy the input metadata to both outputs
-        self.Output.meta.assignFrom( self.InputImage.meta )
-        self.Output.meta.shape = (self.K,) + self.InputImage.meta.shape[1:]
-
-        spatial_dims = sum([_.isSpatial() for _ in self.Output.meta.axistags])
-
-        if spatial_dims == 1:
-            self.Output.meta.axistags = vigra.AxisTags(vigra.AxisInfo.c, vigra.AxisInfo.x)
-        elif spatial_dims == 2:
-            self.Output.meta.axistags = vigra.AxisTags(vigra.AxisInfo.c, vigra.AxisInfo.y,
-                                                                         vigra.AxisInfo.x)
-        elif spatial_dims == 3:
-            self.Output.meta.axistags = vigra.AxisTags(vigra.AxisInfo.c, vigra.AxisInfo.z,
-                                                                         vigra.AxisInfo.y,
-                                                                         vigra.AxisInfo.x)
-
-    def execute(self, slot, subindex, roi, result):
-        key = roi.toSlice()
-
-        key = nanshe.additional_generators.reformat_slices(key)
-        new_key = list(key)
-        time_slice = new_key[0]
-
-        nanshe.additional_generators.len_slice(time_slice)
-
-        time_slice_dist = 10000 if self.InputImage.meta.shape[0] > 10000 else self.InputImage.meta.shape[0]
-        time_slice_stop = time_slice.step * time_slice_dist + time_slice.start
-
-        time_slice = slice(0, time_slice_stop, 1)
-        new_key[0] = time_slice
-        tuple(new_key)
-
-        print("new_key = " + repr(new_key))
-
-        raw = self.InputImage[new_key].wait()
-        raw = raw[..., 0]
-
-        K = self.K.value
-        gamma1 = self.Gamma1.value
-        gamma2 = self.Gamma2.value
-        numThreads = self.NumThreads.value
-        batchsize = self.Batchsize.value
-        numIter = self.NumIter.value
-        lambda1 = self.Lambda1.value
-        lambda2 = self.Lambda2.value
-        posAlpha = self.PosAlpha.value
-        posD = self.PosD.value
-        clean = self.Clean.value
-        mode = self.Mode.value
-        modeD = self.ModeD.value
-
-        processed = nanshe.advanced_image_processing.generate_dictionary(raw, **{ "spams.trainDL" :
-                                                                                      {
-                                                                                          "K" : K,
-                                                                                          "gamma1" : gamma1,
-                                                                                          "gamma2" : gamma2,
-                                                                                          "numThreads" : numThreads,
-                                                                                          "batchsize" : batchsize,
-                                                                                          "iter" : numIter,
-                                                                                          "lambda1" : lambda1,
-                                                                                          "lambda2" : lambda2,
-                                                                                          "posAlpha" : posAlpha,
-                                                                                          "posD" : posD,
-                                                                                          "clean" : clean,
-                                                                                          "mode" : mode,
-                                                                                          "modeD" : modeD
-                                                                                          }
-                                                                                      }
-        )
-        processed = processed[..., None]
-
-        if slot.name == 'Output':
-            result[...] = processed
+        self.Output.meta.assignFrom( self.opDictionary.Output.meta )
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot.name == "InputImage":
-            self.Output.setDirty(roi)
-        elif (slot.name == "K") or (slot.name == "Gamma1") or (slot.name == "Gamma2") or (slot.name == "NumThreads") or\
-                (slot.name == "Batchsize") or (slot.name == "NumIter") or (slot.name == "Lambda1") or\
-                (slot.name == "Lambda2") or (slot.name == "PosAlpha") or (slot.name == "PosD") or\
-                (slot.name == "Clean") or (slot.name == "Mode") or (slot.name == "ModeD"):
-            self.Output.setDirty( slice(None) )
-        else:
-            assert False, "Unknown dirty input slot"
+        pass
