@@ -116,19 +116,19 @@ class OpNansheGenerateDictionary(Operator):
 
         processed = nanshe.advanced_image_processing.generate_dictionary(raw, **{ "spams.trainDL" :
                                                                                       {
-                                                                                          "gamma2" : gamma2,
-                                                                                          "gamma1" : gamma1,
-                                                                                          "numThreads" : numThreads,
                                                                                           "K" : K,
+                                                                                          "gamma1" : gamma1,
+                                                                                          "gamma2" : gamma2,
+                                                                                          "numThreads" : numThreads,
+                                                                                          "batchsize" : batchsize,
                                                                                           "iter" : numIter,
                                                                                           "lambda1" : lambda1,
-                                                                                          "modeD" : modeD,
-                                                                                          "posAlpha" : posAlpha,
-                                                                                          "clean" : clean,
-                                                                                          "posD" : posD,
-                                                                                          "batchsize" : batchsize,
                                                                                           "lambda2" : lambda2,
-                                                                                          "mode" : mode
+                                                                                          "posAlpha" : posAlpha,
+                                                                                          "posD" : posD,
+                                                                                          "clean" : clean,
+                                                                                          "mode" : mode,
+                                                                                          "modeD" : modeD
                                                                                       }
                                                                                 }
         )
