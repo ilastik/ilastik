@@ -76,8 +76,6 @@ class NanshePreprocessingGui(LayerViewerGui):
 
         self._drawer.WaveletTransformEnabled.clicked.connect(self.applyWaveletTransformEnabled)
 
-        self._drawer.NormValueSelection.currentIndexChanged.connect(self.applyNormValueSelection)
-
     def applyRemoveZeroedLinesEnabled(self, checked):
         print("checked = " + repr(checked))
 
@@ -111,12 +109,6 @@ class NanshePreprocessingGui(LayerViewerGui):
         self._drawer.ScaleValue_Z.setEnabled(checked)
         self._drawer.ScaleValue_Y.setEnabled(checked)
         self._drawer.ScaleValue_X.setEnabled(checked)
-
-    def applyNormValueSelection(self, index):
-        print("index = " + repr(index))
-        print("(index == 0) = " + repr((index == 0)))
-
-        self._drawer.NormValue.setEnabled(index == 0)
 
     def apply_operator_settings_to_gui(self):
         self.ndim = len(self.topLevelOperatorView.InputImage.meta.shape)
@@ -167,18 +159,6 @@ class NanshePreprocessingGui(LayerViewerGui):
             self._drawer.ScaleValue_Y.setValue(self.topLevelOperatorView.Scale.value[1])
             self._drawer.ScaleValue_X.setValue(self.topLevelOperatorView.Scale.value[2])
 
-
-            if self.topLevelOperatorView.Ord.value == -numpy.inf:
-                self._drawer.NormValueSelection.setCurrentIndex(1)
-                # self._drawer.NormValue.setEnabled(False)
-            elif self.topLevelOperatorView.Ord.value == numpy.inf:
-                self._drawer.NormValueSelection.setCurrentIndex(2)
-                # self._drawer.NormValue.setEnabled(False)
-            else:
-                self._drawer.NormValueSelection.setCurrentIndex(0)
-                # self._drawer.NormValue.setEnabled(True)
-                self._drawer.NormValue.setValue(self.topLevelOperatorView.Ord.value)
-
         elif self.ndim == 5:
             self._drawer.ErosionShapeValue_Z.show()
             self._drawer.DilationShapeValue_Z.show()
@@ -225,17 +205,6 @@ class NanshePreprocessingGui(LayerViewerGui):
             self._drawer.ScaleValue_Y.setValue(self.topLevelOperatorView.Scale.value[2])
             self._drawer.ScaleValue_X.setValue(self.topLevelOperatorView.Scale.value[3])
 
-            if self.topLevelOperatorView.Ord.value == -numpy.inf:
-                self._drawer.NormValueSelection.setCurrentIndex(1)
-                # self._drawer.NormValue.setEnabled(False)
-            elif self.topLevelOperatorView.Ord.value == numpy.inf:
-                self._drawer.NormValueSelection.setCurrentIndex(2)
-                # self._drawer.NormValue.setEnabled(False)
-            else:
-                self._drawer.NormValueSelection.setCurrentIndex(0)
-                # self._drawer.NormValue.setEnabled(True)
-                self._drawer.NormValue.setValue(self.topLevelOperatorView.Ord.value)
-
     def apply_gui_settings_to_operator(self):
         if self.ndim == 4:
             self._drawer.ErosionShapeValue_Z.hide()
@@ -270,17 +239,6 @@ class NanshePreprocessingGui(LayerViewerGui):
 
             self.topLevelOperatorView.ToWaveletTransform.setValue(self._drawer.WaveletTransformEnabled.isChecked())
             self.topLevelOperatorView.Scale.setValue([self._drawer.ScaleValue_T.value(), self._drawer.ScaleValue_Y.value(), self._drawer.ScaleValue_X.value()])
-
-
-            if self._drawer.NormValueSelection.currentIndex() == 1:
-                # self._drawer.NormValue.setEnabled(False)
-                self.topLevelOperatorView.Ord.setValue(-numpy.inf)
-            elif self._drawer.NormValueSelection.currentIndex() == 2:
-                # self._drawer.NormValue.setEnabled(False)
-                self.topLevelOperatorView.Ord.setValue(numpy.inf)
-            else:
-                # self._drawer.NormValue.setEnabled(True)
-                self.topLevelOperatorView.Ord.setValue(self._drawer.NormValue.value())
 
         elif self.ndim == 5:
             self._drawer.ErosionShapeValue_Z.show()
@@ -318,17 +276,6 @@ class NanshePreprocessingGui(LayerViewerGui):
 
             self.topLevelOperatorView.ToWaveletTransform.setValue(self._drawer.WaveletTransformEnabled.isChecked())
             self.topLevelOperatorView.Scale.setValue([self._drawer.ScaleValue_T.value(), self._drawer.ScaleValue_Z.value(), self._drawer.ScaleValue_Y.value(), self._drawer.ScaleValue_X.value()])
-
-
-            if self._drawer.NormValueSelection.currentIndex() == 1:
-                # self._drawer.NormValue.setEnabled(False)
-                self.topLevelOperatorView.Ord.setValue(-numpy.inf)
-            elif self._drawer.NormValueSelection.currentIndex() == 2:
-                # self._drawer.NormValue.setEnabled(False)
-                self.topLevelOperatorView.Ord.setValue(numpy.inf)
-            else:
-                # self._drawer.NormValue.setEnabled(True)
-                self.topLevelOperatorView.Ord.setValue(self._drawer.NormValue.value())
     
     def setupLayers(self):
         """
