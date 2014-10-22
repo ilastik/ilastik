@@ -27,6 +27,7 @@ __date__ = "$Oct 17, 2014 13:07:51 EDT$"
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
 from ilastik.applets.nanshe.dictionaryLearning.opNansheGenerateDictionary import OpNansheGenerateDictionaryCached
+from ilastik.applets.nanshe.dictionaryLearning.opNansheNormalizeData import OpNansheNormalizeData
 
 import numpy
 
@@ -49,6 +50,8 @@ class OpNansheDictionaryLearning(Operator):
     InputImage = InputSlot()
 
 
+    Ord = InputSlot(value=2.0)
+
     K = InputSlot(value=100, stype="int")
     Gamma1 = InputSlot(value=0)
     Gamma2 = InputSlot(value=0)
@@ -69,6 +72,10 @@ class OpNansheDictionaryLearning(Operator):
     def __init__(self, *args, **kwargs):
         super( OpNansheDictionaryLearning, self ).__init__( *args, **kwargs )
 
+        self.opNansheNormalizeData = OpNansheNormalizeData(parent=self)
+        self.opNansheNormalizeData.Ord.connect(self.Ord)
+
+
         self.opDictionary = OpNansheGenerateDictionaryCached(parent=self)
 
         self.opDictionary.K.connect(self.K)
@@ -85,6 +92,9 @@ class OpNansheDictionaryLearning(Operator):
         self.opDictionary.Mode.connect(self.Mode)
         self.opDictionary.ModeD.connect(self.ModeD)
 
+
+        self.opNansheNormalizeData.InputImage.connect( self.InputImage )
+        self.opDictionary.InputImage.connect( self.opNansheNormalizeData.Output )
         self.Output.connect( self.opDictionary.Output )
 
     def setupOutputs(self):
