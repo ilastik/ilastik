@@ -26,7 +26,7 @@ __date__ = "$Oct 15, 2014 15:27:45 EDT$"
 
 from ilastik.applets.base.standardApplet import StandardApplet
 
-from ilastik.applets.nanshe.dictionaryLearning.opNansheGenerateDictionary import OpNansheGenerateDictionaryCached
+from ilastik.applets.nanshe.dictionaryLearning.opNansheDictionaryLearning import OpNansheDictionaryLearning
 from ilastik.applets.nanshe.dictionaryLearning.nansheDictionaryLearningSerializer import NansheDictionaryLearningSerializer
 
 class NansheDictionaryLearningApplet( StandardApplet ):
@@ -39,12 +39,12 @@ class NansheDictionaryLearningApplet( StandardApplet ):
         
     @property
     def singleLaneOperatorClass(self):
-        return OpNansheGenerateDictionaryCached
+        return OpNansheDictionaryLearning
 
     @property
     def broadcastingSlots(self):
-        return ["K", "Gamma1", "Gamma2", "NumThreads", "Batchsize", "NumIter", "Lambda1", "Lambda2", "PosAlpha", "PosD", \
-                "Clean", "Mode", "ModeD"]
+        return ["Ord", "K", "Gamma1", "Gamma2", "NumThreads", "Batchsize", "NumIter", "Lambda1", "Lambda2", "PosAlpha",\
+                "PosD", "Clean", "Mode", "ModeD"]
     
     @property
     def singleLaneGuiClass(self):
