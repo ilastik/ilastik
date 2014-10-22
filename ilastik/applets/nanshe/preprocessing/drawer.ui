@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1440</width>
-    <height>1285</height>
+    <width>1920</width>
+    <height>1152</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -494,88 +494,6 @@
             </item>
             <item>
              <widget class="QSpinBox" name="ScaleValue_X"/>
-            </item>
-           </layout>
-          </widget>
-         </item>
-        </layout>
-       </widget>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <item>
-    <widget class="QFrame" name="Normalize">
-     <property name="frameShape">
-      <enum>QFrame::StyledPanel</enum>
-     </property>
-     <property name="frameShadow">
-      <enum>QFrame::Raised</enum>
-     </property>
-     <layout class="QVBoxLayout" name="verticalLayout_7">
-      <item>
-       <widget class="QLabel" name="NormalizeTitle">
-        <property name="text">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Normalize&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QFrame" name="Norm">
-        <property name="frameShape">
-         <enum>QFrame::StyledPanel</enum>
-        </property>
-        <property name="frameShadow">
-         <enum>QFrame::Raised</enum>
-        </property>
-        <layout class="QVBoxLayout" name="verticalLayout_14">
-         <item>
-          <widget class="QLabel" name="NormLabel">
-           <property name="text">
-            <string>Norm</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QFrame" name="NormValues">
-           <property name="frameShape">
-            <enum>QFrame::StyledPanel</enum>
-           </property>
-           <property name="frameShadow">
-            <enum>QFrame::Raised</enum>
-           </property>
-           <layout class="QHBoxLayout" name="horizontalLayout_3">
-            <item>
-             <widget class="QComboBox" name="NormValueSelection">
-              <item>
-               <property name="text">
-                <string>other</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>-inf</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>inf</string>
-               </property>
-              </item>
-             </widget>
-            </item>
-            <item>
-             <widget class="QDoubleSpinBox" name="NormValue">
-              <property name="minimum">
-               <double>-10.000000000000000</double>
-              </property>
-              <property name="maximum">
-               <double>10.000000000000000</double>
-              </property>
-             </widget>
             </item>
            </layout>
           </widget>
