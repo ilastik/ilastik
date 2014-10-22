@@ -73,9 +73,9 @@ class OpNansheGenerateDictionary(Operator):
 
         spatial_dims = [_ for _ in self.Output.meta.axistags if _.isSpatial()]
 
-        self.Output.meta.axistags = vigra.AxisTags(vigra.AxisInfo.c, *(spatial_dims + [vigra.AxisInfo.t]))
+        self.Output.meta.axistags = vigra.AxisTags(vigra.AxisInfo.c, *spatial_dims)
 
-        self.Output.meta.shape = (self.K.value,) + self.InputImage.meta.shape[1:]
+        self.Output.meta.shape = (self.K.value,) + self.InputImage.meta.shape[1:-1]
 
     def execute(self, slot, subindex, roi, result):
         output_key = roi.toSlice()
@@ -85,7 +85,7 @@ class OpNansheGenerateDictionary(Operator):
         input_key = list(output_key)
 
         input_key[0] = slice(0, self.InputImage.meta.shape[0], 1)
-        input_key[-1] = slice(0, 1, 1)
+        input_key.append(slice(0, 1, 1))
 
         input_key = tuple(input_key)
 
@@ -132,7 +132,6 @@ class OpNansheGenerateDictionary(Operator):
                                                                                       }
                                                                                 }
         )
-        processed = processed[..., None]
 
         if slot.name == 'Output':
             result[...] = processed[output_key]
