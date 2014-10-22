@@ -26,9 +26,9 @@ from lazyflow.graph import Graph
 import ilastik
 import ilastik.applets
 import ilastik.applets.nanshe
-import ilastik.applets.nanshe.preprocessing
-import ilastik.applets.nanshe.preprocessing.opNansheNormalizeData
-from ilastik.applets.nanshe.preprocessing.opNansheNormalizeData import OpNansheNormalizeData
+import ilastik.applets.nanshe.dictionaryLearning
+import ilastik.applets.nanshe.dictionaryLearning.opNansheNormalizeData
+from ilastik.applets.nanshe.dictionaryLearning.opNansheNormalizeData import OpNansheNormalizeData
 
 class TestOpNansheNormalizeData(object):
     def testBasic(self):

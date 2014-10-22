@@ -27,7 +27,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from ilastik.applets.nanshe.preprocessing.opNansheRemoveZeroedLines import OpNansheRemoveZeroedLines
 from ilastik.applets.nanshe.preprocessing.opNansheExtractF0 import OpNansheExtractF0
 from ilastik.applets.nanshe.preprocessing.opNansheWaveletTransform import OpNansheWaveletTransform
-from ilastik.applets.nanshe.preprocessing.opNansheNormalizeData import OpNansheNormalizeData
+from ilastik.applets.nanshe.dictionaryLearning.opNansheNormalizeData import OpNansheNormalizeData
 
 
 class OpNanshePreprocessing(Operator):
