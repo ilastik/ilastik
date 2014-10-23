@@ -43,7 +43,7 @@ class TestOpNansheWaveletTransform(object):
         op.InputImage.setValue(a)
 
         op.Scale.setValue(1)
-        op.IncludeLowerScales.setValue(True)
+        op.IncludeLowerScales.setValue(False)
 
         b = op.Output[...].wait()
 
