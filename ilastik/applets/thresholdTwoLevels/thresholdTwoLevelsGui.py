@@ -105,7 +105,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
 
     def _connectCallbacks(self):
         self.topLevelOperatorView.InputImage.notifyMetaChanged(bind(self._onInputMetaChanged))
-        self._drawer.applyButton.clicked.connect(bind(self._onApplyButtonClicked))
+        self._drawer.applyButton.clicked.connect(self._onApplyButtonClicked)
         self._drawer.tabWidget.currentChanged.connect(bind(self._onTabCurrentChanged))
 
 
