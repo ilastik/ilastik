@@ -81,6 +81,9 @@ class TestOpStreamingHdf5Reader(object):
         assert self.op.OutputImage[0,1,2,1,0].wait() == 4
 
 if __name__ == "__main__":
+    import sys
     import nose
-    ret = nose.run()
+    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+    ret = nose.run(defaultTest=__file__)
     if not ret: sys.exit(1)
