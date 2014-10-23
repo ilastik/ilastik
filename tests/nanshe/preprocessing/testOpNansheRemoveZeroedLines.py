@@ -34,12 +34,13 @@ from ilastik.applets.nanshe.preprocessing.opNansheRemoveZeroedLines import OpNan
 class TestOpNansheRemoveZeroedLines(object):
     def testBasic(self):
         a = numpy.ones((1, 100, 101))
+        a = a[..., None]
 
         r = numpy.array([[0, 0, 0], [1, 3, 4]]).T.copy()
 
         ar = a.copy()
         for each_r in r:
-            nanshe.expanded_numpy.index_axis_at_pos(nanshe.expanded_numpy.index_axis_at_pos(ar, 0, each_r[0]), -1, each_r[-1])[:] = 0
+            nanshe.expanded_numpy.index_axis_at_pos(nanshe.expanded_numpy.index_axis_at_pos(ar, 0, each_r[0]), -2, each_r[-1])[:] = 0
 
 
         graph = Graph()
