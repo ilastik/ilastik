@@ -56,8 +56,6 @@ class OpNanshePreprocessing(Operator):
     ToWaveletTransform = InputSlot(value=True)
     Scale = InputSlot(value=4)
 
-    Ord = InputSlot(value=2.0)
-
 
     Output = OutputSlot()
 
@@ -79,7 +77,6 @@ class OpNanshePreprocessing(Operator):
         self.opNansheWaveletTransform.Scale.connect(self.Scale)
 
         self.opNansheNormalizeData = OpNansheNormalizeData(parent=self)
-        self.opNansheNormalizeData.Ord.connect(self.Ord)
 
         self.Output.connect( self.opNansheNormalizeData.Output )
     
