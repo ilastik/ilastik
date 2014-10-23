@@ -45,6 +45,7 @@ class TestOpNanshePreprocessing(object):
         masks = synthetic_data.synthetic_data.generate_hypersphere_masks(space, points, radii)
         images = synthetic_data.synthetic_data.generate_gaussian_images(space, points, radii/3.0, magnitudes) * masks
         image_stack = images.max(axis = 0)
+        image_stack = image_stack[..., None]
 
         graph = Graph()
         op = OpNanshePreprocessing(graph=graph)
