@@ -156,8 +156,13 @@ class ProgressDisplayManager(QObject):
             self.memoryWidget.setMemoryBytes(msg)
         mgr.totalCacheMemory.subscribe(printIt)
 
-        # Route all signals we get through a queued connection, to ensure that they are handled in the GUI thread
-        self.dispatchSignal.connect(self.handleAppletProgressImpl)
+        # Route all signals we get through a queued connection, 
+        #  to ensure that they are handled in the GUI thread
+        # Important: AutoConnection (the default type) is not okay here: that would cause 
+        #            progress signals coming from the main thread to "cut in line"  
+        #            in front of progress notifications that were previously sent, 
+        #            but from other threads.
+        self.dispatchSignal.connect(self.handleAppletProgressImpl, Qt.QueuedConnection)
 
     def initializeForWorkflow(self, workflow):
         """When a workflow is available, call this method to connect the workflows' progress signals
