@@ -27,7 +27,6 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from ilastik.applets.nanshe.preprocessing.opNansheRemoveZeroedLines import OpNansheRemoveZeroedLines
 from ilastik.applets.nanshe.preprocessing.opNansheExtractF0 import OpNansheExtractF0
 from ilastik.applets.nanshe.preprocessing.opNansheWaveletTransform import OpNansheWaveletTransform
-from ilastik.applets.nanshe.dictionaryLearning.opNansheNormalizeData import OpNansheNormalizeData
 
 
 class OpNanshePreprocessing(Operator):
@@ -76,9 +75,7 @@ class OpNanshePreprocessing(Operator):
         self.opNansheWaveletTransform = OpNansheWaveletTransform(parent=self)
         self.opNansheWaveletTransform.Scale.connect(self.Scale)
 
-        self.opNansheNormalizeData = OpNansheNormalizeData(parent=self)
 
-        self.Output.connect( self.opNansheNormalizeData.Output )
     
     def setupOutputs(self):
         # Copy the input metadata to both outputs
@@ -87,7 +84,6 @@ class OpNanshePreprocessing(Operator):
         self.opNansheRemoveZeroedLines.InputImage.disconnect()
         self.opNansheExtractF0.InputImage.disconnect()
         self.opNansheWaveletTransform.InputImage.disconnect()
-        self.opNansheNormalizeData.InputImage.disconnect()
 
         next_output = self.InputImage
 
@@ -103,7 +99,7 @@ class OpNanshePreprocessing(Operator):
             self.opNansheWaveletTransform.InputImage.connect(next_output)
             next_output = self.opNansheWaveletTransform.Output
 
-        self.opNansheNormalizeData.InputImage.connect(next_output)
+        self.Output.connect(next_output)
 
     # Don't need execute as the output will be drawn through the Output slot.
 
@@ -131,7 +127,7 @@ class OpNanshePreprocessing(Operator):
                 elif self.ToWaveletTransform.value is not None:
                     self.opNansheWaveletTransform.InputImage.setDirty( slice(None) )
                 else:
-                    self.opNansheNormalizeData.InputImage.setDirty( slice(None) )
+                    self.Output.setDirty( slice(None) )
         elif slot.name == "ToExtractF0":
             if slot.value:
                 self.opNansheExtractF0.Output.setDirty( slice(None) )
@@ -139,9 +135,9 @@ class OpNanshePreprocessing(Operator):
                 if self.ToWaveletTransform.value is not None:
                     self.opNansheWaveletTransform.InputImage.setDirty( slice(None) )
                 else:
-                    self.opNansheNormalizeData.InputImage.setDirty( slice(None) )
+                    self.Output.setDirty( slice(None) )
         elif slot.name == "ToWaveletTransform":
             if slot.value:
                 self.opNansheWaveletTransform.Output.setDirty( slice(None) )
             else:
-                self.opNansheNormalizeData.InputImage.setDirty( slice(None) )
+                self.Output.setDirty( slice(None) )
