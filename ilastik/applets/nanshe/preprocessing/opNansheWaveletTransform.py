@@ -61,46 +61,55 @@ class OpNansheWaveletTransform(Operator):
 
         self.Output.meta.generation = self._generation
     
-    def execute(self, slot, subindex, roi, result):
-        scale = self.Scale.value
+    @staticmethod
+    def compute_halo(slicing, image_shape, scale):
+        slicing = nanshe.additional_generators.reformat_slices(slicing, image_shape)
 
-        image_shape = self.InputImage.meta.shape
-
-        key = roi.toSlice()
-        key = nanshe.additional_generators.reformat_slices(key, image_shape)
-
-        half_halo = list(itertools.repeat(0, len(key)))
-        halo_key = list(key)
-        within_halo_key = list(key)
+        half_halo = list(itertools.repeat(0, len(slicing)))
+        halo_slicing = list(slicing)
+        within_halo_slicing = list(slicing)
         try:
             scale_iter = enumerate(scale)
         except TypeError:
-            scale_iter = enumerate(itertools.repeat(scale, len(halo_key)))
+            scale_iter = enumerate(itertools.repeat(scale, len(halo_slicing)))
 
         for i, each_scale in scale_iter:
             half_halo_i = 0
             for j in xrange(1, 1+each_scale):
                 half_halo_i += 2**j
 
-            halo_key_i_start = (halo_key[i].start - half_halo_i)
-            within_halo_key_i_start = half_halo_i
-            if (halo_key_i_start < 0):
-                within_halo_key_i_start += halo_key_i_start
-                halo_key_i_start = 0
+            halo_slicing_i_start = (halo_slicing[i].start - half_halo_i)
+            within_halo_slicing_i_start = half_halo_i
+            if (halo_slicing_i_start < 0):
+                within_halo_slicing_i_start += halo_slicing_i_start
+                halo_slicing_i_start = 0
 
 
-            halo_key_i_stop = (halo_key[i].stop + half_halo_i)
-            within_halo_key_i_stop = (key[i].stop - key[i].start) + within_halo_key_i_start
-            if (halo_key_i_stop > image_shape[i]):
-                halo_key_i_stop = image_shape[i]
+            halo_slicing_i_stop = (halo_slicing[i].stop + half_halo_i)
+            within_halo_slicing_i_stop = (slicing[i].stop - slicing[i].start) + within_halo_slicing_i_start
+            if (halo_slicing_i_stop > image_shape[i]):
+                halo_slicing_i_stop = image_shape[i]
 
             half_halo[i] = half_halo_i
-            halo_key[i] = slice(halo_key_i_start, halo_key_i_stop, halo_key[i].step)
-            within_halo_key[i] = slice(within_halo_key_i_start, within_halo_key_i_stop, within_halo_key[i].step)
+            halo_slicing[i] = slice(halo_slicing_i_start, halo_slicing_i_stop, halo_slicing[i].step)
+            within_halo_slicing[i] = slice(within_halo_slicing_i_start,
+                                           within_halo_slicing_i_stop,
+                                           within_halo_slicing[i].step)
 
         half_halo = tuple(half_halo)
-        halo_key = tuple(halo_key)
-        within_halo_key = tuple(within_halo_key)
+        halo_slicing = tuple(halo_slicing)
+        within_halo_slicing = tuple(within_halo_slicing)
+
+        return(halo_slicing, within_halo_slicing)
+    
+    def execute(self, slot, subindex, roi, result):
+        scale = self.Scale.value
+        # include_lower_scales = self.IncludeLowerScales.value
+
+        image_shape = self.InputImage.meta.shape
+
+        key = roi.toSlice()
+        halo_key, within_halo_key = OpNansheWaveletTransform.compute_halo(key, image_shape, scale)
 
         raw = self.InputImage[halo_key].wait()
         raw = raw[..., 0]
@@ -117,7 +126,9 @@ class OpNansheWaveletTransform(Operator):
     def propagateDirty(self, slot, subindex, roi):
         if slot.name == "InputImage":
             self._generation[self.name] += 1
-            self.Output.setDirty(roi)
+            self.Output.setDirty(OpNansheWaveletTransform.compute_halo(roi.toSlice(),
+                                                                       self.InputImage.meta.shape,
+                                                                       self.Scale.value)[0])
         elif slot.name == "Scale":
             self._generation[self.name] += 1
             self.Output.setDirty( slice(None) )
