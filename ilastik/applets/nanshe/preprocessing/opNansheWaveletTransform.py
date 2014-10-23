@@ -47,7 +47,6 @@ class OpNansheWaveletTransform(Operator):
     InputImage = InputSlot()
 
     Scale = InputSlot(value=4, stype="int")
-    IncludeLowerScales = InputSlot(value=False, stype="bool")
     
     Output = OutputSlot()
 
@@ -60,7 +59,6 @@ class OpNansheWaveletTransform(Operator):
     
     def execute(self, slot, subindex, roi, result):
         scale = self.Scale.value
-        include_lower_scales = self.IncludeLowerScales.value
 
         image_shape = self.InputImage.meta.shape
 
@@ -106,7 +104,7 @@ class OpNansheWaveletTransform(Operator):
         processed = nanshe.wavelet_transform.wavelet_transform(raw,
                                                                scale=scale,
                                                                include_intermediates = False,
-                                                               include_lower_scales = include_lower_scales)
+                                                               include_lower_scales = False)
         processed = processed[..., None]
         
         if slot.name == 'Output':
@@ -115,7 +113,7 @@ class OpNansheWaveletTransform(Operator):
     def propagateDirty(self, slot, subindex, roi):
         if slot.name == "InputImage":
             self.Output.setDirty(roi)
-        elif slot.name == "Scale" or slot.name == "IncludeLowerScales":
+        elif slot.name == "Scale":
             self.Output.setDirty( slice(None) )
         else:
             assert False, "Unknown dirty input slot"
