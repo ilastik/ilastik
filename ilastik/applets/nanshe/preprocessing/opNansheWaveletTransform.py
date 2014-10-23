@@ -52,10 +52,14 @@ class OpNansheWaveletTransform(Operator):
 
     def __init__(self, *args, **kwargs):
         super( OpNansheWaveletTransform, self ).__init__( *args, **kwargs )
+
+        self._generation = {self.name : 0}
     
     def setupOutputs(self):
         # Copy the input metadata to both outputs
         self.Output.meta.assignFrom( self.InputImage.meta )
+
+        self.Output.meta.generation = self._generation
     
     def execute(self, slot, subindex, roi, result):
         scale = self.Scale.value
@@ -112,8 +116,10 @@ class OpNansheWaveletTransform(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         if slot.name == "InputImage":
+            self._generation[self.name] += 1
             self.Output.setDirty(roi)
         elif slot.name == "Scale":
+            self._generation[self.name] += 1
             self.Output.setDirty( slice(None) )
         else:
             assert False, "Unknown dirty input slot"
