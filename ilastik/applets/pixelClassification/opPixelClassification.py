@@ -188,6 +188,32 @@ class OpPixelClassification( Operator ):
                 
         self.InputImages.notifyInserted( handleNewInputImage )
 
+        # If any feature image changes shape, we need to verify that the number of 
+        #  channels is consistent with the currently cached classifier
+        # Otherwise, delete the currently cached classifier.
+        # FIXME: Technically, this doesn't go far enough.
+        #        This prevents the user from trying to use an old classifier with new features, 
+        #        but only if the number of features actually changed.  If the user changes the 
+        #        features, but the total number of feature channels stays the same, this method 
+        #        does not detect the change.  The old classifier can be used without raising 
+        #        exceptions, but of course the results will be garbage.  
+        #        Perhaps we should include the feature names in the metadata, and use that as 
+        #        the basis for whether or not the classifier must be discarded.
+        def handleNewFeatureImage( multislot, index, *args ):
+            def handleFeatureImageReady(slot):
+                def handleFeatureMetaChanged(slot):
+                    if ( self.classifier_cache.fixAtCurrent.value and
+                         self.classifier_cache.Output.ready() and 
+                         slot.meta.shape is not None ):
+                        classifier = self.classifier_cache.Output.value
+                        num_channels = slot.meta.shape[-1]
+                        if classifier and classifier.feature_count != num_channels:
+                            self.classifier_cache.resetValue()
+                slot.notifyMetaChanged(handleFeatureMetaChanged)
+            multislot[index].notifyReady(handleFeatureImageReady)
+                
+        self.FeatureImages.notifyInserted( handleNewFeatureImage )
+
         def handleNewMaskImage( multislot, index, *args ):
             def handleInputReady(slot):
                 self._checkConstraints( index )
