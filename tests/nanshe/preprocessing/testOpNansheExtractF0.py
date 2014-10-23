@@ -33,6 +33,7 @@ from ilastik.applets.nanshe.preprocessing.opNansheExtractF0 import OpNansheExtra
 class TestOpNansheExtractF0(object):
     def testBasic(self):
         a = numpy.ones((100, 101, 102))
+        a = a[..., None]
 
         graph = Graph()
         op = OpNansheExtractF0(graph=graph)
