@@ -36,7 +36,8 @@ import ilastik.applets
 import ilastik.applets.nanshe
 import ilastik.applets.nanshe.dictionaryLearning
 import ilastik.applets.nanshe.dictionaryLearning.opNansheGenerateDictionary
-from ilastik.applets.nanshe.dictionaryLearning.opNansheGenerateDictionary import OpNansheGenerateDictionary
+from ilastik.applets.nanshe.dictionaryLearning.opNansheGenerateDictionary import OpNansheGenerateDictionary, \
+                                                                                 OpNansheGenerateDictionaryCached
 
 class TestOpNansheGenerateDictionary(object):
     def test_OpNansheGenerateDictionary(self):
@@ -55,6 +56,62 @@ class TestOpNansheGenerateDictionary(object):
 
         graph = Graph()
         op = OpNansheGenerateDictionary(graph=graph)
+
+        op.InputImage.setValue(gv)
+
+        op.K.setValue(len(g))
+        op.Gamma1.setValue(0)
+        op.Gamma2.setValue(0)
+        op.NumThreads.setValue(1)
+        op.Batchsize.setValue(256)
+        op.NumIter.setValue(10)
+        op.Lambda1.setValue(0.2)
+        op.Lambda2.setValue(0)
+        op.PosAlpha.setValue(True)
+        op.PosD.setValue(True)
+        op.Clean.setValue(True)
+        op.Mode.setValue(2)
+        op.ModeD.setValue(0)
+
+        d = op.Output[...].wait()
+
+        d = (d != 0)
+
+        assert(g.shape == d.shape)
+
+        assert((g.astype(bool).max(axis = 0) == d.astype(bool).max(axis = 0)).all())
+
+        unmatched_g = range(len(g))
+        matched = dict()
+
+        for i in xrange(len(d)):
+            new_unmatched_g = []
+            for j in unmatched_g:
+                if not (d[i] == g[j]).all():
+                    new_unmatched_g.append(j)
+                else:
+                    matched[i] = j
+
+            unmatched_g = new_unmatched_g
+
+        assert(len(unmatched_g) == 0)
+
+    def test_OpNansheGenerateDictionaryCached(self):
+        p = numpy.array([[27, 51],
+                         [66, 85],
+                         [77, 45]])
+
+        space = numpy.array((100, 100))
+        radii = numpy.array((5, 6, 7))
+
+        g = synthetic_data.synthetic_data.generate_hypersphere_masks(space, p, radii)
+        gv = vigra.VigraArray(g[..., None].astype(float), axistags=vigra.AxisTags(vigra.AxisInfo.t,
+                                                                                  vigra.AxisInfo.y,
+                                                                                  vigra.AxisInfo.x,
+                                                                                  vigra.AxisInfo.c))
+
+        graph = Graph()
+        op = OpNansheGenerateDictionaryCached(graph=graph)
 
         op.InputImage.setValue(gv)
 
