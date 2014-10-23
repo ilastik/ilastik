@@ -47,6 +47,8 @@ class TestOpNansheExtractF0(object):
 
         b = op.Output[...].wait()
 
+        assert(a.shape == b.shape)
+
         assert((b == 0).all())
 
 
