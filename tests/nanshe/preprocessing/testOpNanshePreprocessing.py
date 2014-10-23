@@ -66,8 +66,6 @@ class TestOpNanshePreprocessing(object):
         op.ToWaveletTransform.setValue(True)
         op.Scale.setValue([3, 4, 4])
 
-        op.Ord.setValue(2)
-
         b = op.Output[...].wait()
 
 
