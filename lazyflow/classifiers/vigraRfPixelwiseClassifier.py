@@ -101,6 +101,10 @@ class VigraRfPixelwiseClassifier(LazyflowPixelwiseClassifierABC):
     def known_classes(self):
         return self._known_labels
 
+    @property
+    def feature_count(self):
+        return self._vigra_rf.featureCount()
+
     def get_halo_shape(self, data_axes):
         # No halo necessary, but since this classifier is for testing purposes, let's add one anyway.
         halo = tuple(range( len(data_axes)-1 ))

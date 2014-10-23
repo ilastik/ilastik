@@ -38,7 +38,7 @@ class SklearnLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
             # Some sklearn classifiers don't have a 'classes_' attribute.
             known_classes = numpy.unique(y)
         
-        return SklearnLazyflowClassifier( sklearn_classifier, known_classes )
+        return SklearnLazyflowClassifier( sklearn_classifier, known_classes, X.shape[1] )
 
     @property
     def description(self):
@@ -55,9 +55,18 @@ class SklearnLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
 assert issubclass( SklearnLazyflowClassifierFactory, LazyflowVectorwiseClassifierFactoryABC )
 
 class SklearnLazyflowClassifier(LazyflowVectorwiseClassifierABC):
-    def __init__(self, sklearn_classifier, known_classes):
+
+    VERSION = 1 # Used for pickling compatibility
+
+    class VersionIncompatibilityError(Exception):
+        pass
+
+    def __init__(self, sklearn_classifier, known_classes, feature_count):
         self._sklearn_classifier = sklearn_classifier
         self._known_classes = known_classes
+        self._feature_count = feature_count
+
+        self.VERSION = SklearnLazyflowClassifier.VERSION
     
     def predict_probabilities(self, X):
         logger.debug( 'Predicting with sklearn classifier: {}'.format( type(self._sklearn_classifier).__name__ ) )
@@ -67,8 +76,12 @@ class SklearnLazyflowClassifier(LazyflowVectorwiseClassifierABC):
     def known_classes(self):
         return self._known_classes
 
+    @property
+    def feature_count(self):
+        return self._feature_count
+
     def serialize_hdf5(self, h5py_group):
-        h5py_group['pickled_classifier'] = pickle.dumps( self )        
+        h5py_group['pickled_classifier'] = pickle.dumps( self )
 
         # This is a required field for all classifiers
         h5py_group['pickled_type'] = pickle.dumps( type(self) )
@@ -76,6 +89,9 @@ class SklearnLazyflowClassifier(LazyflowVectorwiseClassifierABC):
     @classmethod
     def deserialize_hdf5(cls, h5py_group):
         pickled = h5py_group['pickled_classifier'][()]
-        return pickle.loads( pickled )
+        classifier = pickle.loads( pickled )
+        if not hasattr(classifier, "VERSION") or classifier.VERSION != cls.VERSION:
+            raise cls.VersionIncompatibilityError("Version mismatch. Deserialized classifier version does not match this code base.")
+        return classifier
 
 assert issubclass( SklearnLazyflowClassifier, LazyflowVectorwiseClassifierABC )

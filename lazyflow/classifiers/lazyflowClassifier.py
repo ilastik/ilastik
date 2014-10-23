@@ -60,6 +60,10 @@ class LazyflowVectorwiseClassifierABC(object):
     def known_classes(self):
         raise NotImplementedError
 
+    @abc.abstractproperty
+    def feature_count(self):
+        raise NotImplementedError
+
     @classmethod
     def __subclasshook__(cls, C):
         if cls is LazyflowVectorwiseClassifierABC:
@@ -154,6 +158,10 @@ class LazyflowPixelwiseClassifierABC(object):
 
     @abc.abstractproperty
     def known_classes(self):
+        raise NotImplementedError
+
+    @abc.abstractproperty
+    def feature_count(self):
         raise NotImplementedError
 
     @abc.abstractmethod
