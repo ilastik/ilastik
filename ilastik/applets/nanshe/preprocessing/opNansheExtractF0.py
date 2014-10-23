@@ -63,6 +63,43 @@ class OpNansheExtractF0(Operator):
         self.Output.meta.assignFrom( self.InputImage.meta )
 
         self.Output.meta.generation = self._generation
+
+    @staticmethod
+    def compute_halo(slicing, image_shape, half_window_size,
+                                           temporal_smoothing_gaussian_filter_stdev,
+                                           spatial_smoothing_gaussian_filter_stdev):
+        slicing = nanshe.additional_generators.reformat_slices(slicing, image_shape)
+
+        halo = list(itertools.repeat(0, len(slicing) - 1))
+        halo[0] = max(int(math.ceil(5*temporal_smoothing_gaussian_filter_stdev)), half_window_size)
+        for i in xrange(1, len(halo)):
+            halo[i] = int(math.ceil(5*spatial_smoothing_gaussian_filter_stdev))
+
+        halo_slicing = list(slicing)
+        within_halo_slicing = list(slicing)
+
+        for i in xrange(len(halo)):
+            halo_slicing_i_start = (halo_slicing[i].start - halo[i])
+            within_halo_slicing_i_start = halo[i]
+            if (halo_slicing_i_start < 0):
+                within_halo_slicing_i_start += halo_slicing_i_start
+                halo_slicing_i_start = 0
+
+
+            halo_slicing_i_stop = (halo_slicing[i].stop + halo[i])
+            within_halo_slicing_i_stop = (slicing[i].stop - slicing[i].start) + within_halo_slicing_i_start
+            if (halo_slicing_i_stop > image_shape[i]):
+                halo_slicing_i_stop = image_shape[i]
+
+            halo_slicing[i] = slice(halo_slicing_i_start, halo_slicing_i_stop, halo_slicing[i].step)
+            within_halo_slicing[i] = slice(within_halo_slicing_i_start,
+                                           within_halo_slicing_i_stop,
+                                           within_halo_slicing[i].step)
+
+        halo_slicing = tuple(halo_slicing)
+        within_halo_slicing = tuple(within_halo_slicing)
+
+        return(halo_slicing, within_halo_slicing)
     
     def execute(self, slot, subindex, roi, result):
         half_window_size = self.HalfWindowSize.value
@@ -79,31 +116,9 @@ class OpNansheExtractF0(Operator):
         image_shape = self.InputImage.meta.shape
 
         key = roi.toSlice()
-        key = nanshe.additional_generators.reformat_slices(key, image_shape)
-
-        halo = list(itertools.repeat(0, len(key) - 1))
-        halo[0] = max(int(math.ceil(5*temporal_smoothing_gaussian_filter_stdev)), half_window_size)
-        for i in xrange(1, len(halo)):
-            halo[i] = int(math.ceil(5*spatial_smoothing_gaussian_filter_stdev))
-
-        halo_key = list(key)
-        within_halo_key = list(key)
-
-        for i in xrange(len(halo)):
-            halo_key_i_start = (halo_key[i].start - halo[i])
-            within_halo_key_i_start = halo[i]
-            if (halo_key_i_start < 0):
-                within_halo_key_i_start += halo_key_i_start
-                halo_key_i_start = 0
-
-
-            halo_key_i_stop = (halo_key[i].stop + halo[i])
-            within_halo_key_i_stop = (key[i].stop - key[i].start) + within_halo_key_i_start
-            if (halo_key_i_stop > image_shape[i]):
-                halo_key_i_stop = image_shape[i]
-
-            halo_key[i] = slice(halo_key_i_start, halo_key_i_stop, halo_key[i].step)
-            within_halo_key[i] = slice(within_halo_key_i_start, within_halo_key_i_stop, within_halo_key[i].step)
+        halo_key, within_halo_key = OpNansheExtractF0.compute_halo(key, image_shape, half_window_size,
+                                                                   temporal_smoothing_gaussian_filter_stdev,
+                                                                   spatial_smoothing_gaussian_filter_stdev)
 
         raw = self.InputImage[halo_key].wait()
         raw = raw[..., 0]
@@ -122,7 +137,10 @@ class OpNansheExtractF0(Operator):
     def propagateDirty(self, slot, subindex, roi):
         if slot.name == "InputImage":
             self._generation[self.name] += 1
-            self.Output.setDirty(roi)
+            self.Output.setDirty(OpNansheExtractF0.compute_halo(roi.toSlice(), self.InputImage.meta.shape,
+                                                                self.HalfWindowSize.value,
+                                                                self.TemporalSmoothingGaussianFilterStdev.value,
+                                                                self.SpatialSmoothingGaussianFilterStdev.value)[0])
         elif slot.name == "Bias" or slot.name == "TemporalSmoothingGaussianFilterStdev" or \
              slot.name == "HalfWindowSize" or slot.name == "WhichQuantile" or \
              slot.name == "SpatialSmoothingGaussianFilterStdev":
