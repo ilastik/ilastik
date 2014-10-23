@@ -55,10 +55,14 @@ class OpNansheExtractF0(Operator):
 
     def __init__(self, *args, **kwargs):
         super( OpNansheExtractF0, self ).__init__( *args, **kwargs )
+
+        self._generation = {self.name : 0}
     
     def setupOutputs(self):
         # Copy the input metadata to both outputs
         self.Output.meta.assignFrom( self.InputImage.meta )
+
+        self.Output.meta.generation = self._generation
     
     def execute(self, slot, subindex, roi, result):
         half_window_size = self.HalfWindowSize.value
@@ -117,10 +121,12 @@ class OpNansheExtractF0(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         if slot.name == "InputImage":
+            self._generation[self.name] += 1
             self.Output.setDirty(roi)
         elif slot.name == "Bias" or slot.name == "TemporalSmoothingGaussianFilterStdev" or \
              slot.name == "HalfWindowSize" or slot.name == "WhichQuantile" or \
              slot.name == "SpatialSmoothingGaussianFilterStdev":
+            self._generation[self.name] += 1
             self.Output.setDirty( slice(None) )
         else:
             assert False, "Unknown dirty input slot"
