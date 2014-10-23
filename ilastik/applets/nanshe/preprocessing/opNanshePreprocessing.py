@@ -111,27 +111,26 @@ class OpNanshePreprocessing(Operator):
     # Don't need execute as the output will be drawn through the Output slot.
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot.value:
-            # Added new component.
-            if slot.name == "ToRemoveZeroedLines":
+        if slot.name == "ToRemoveZeroedLines":
+            if slot.value:
                 self.opNansheRemoveZeroedLines.Output.setDirty( slice(None) )
-            elif slot.name == "ToExtractF0":
-                self.opNansheExtractF0.Output.setDirty( slice(None) )
-            elif slot.name == "ToWaveletTransform":
-                self.opNansheWaveletTransform.Output.setDirty( slice(None) )
-        else:
-            # Removed component.
-            if slot.name == "ToRemoveZeroedLines":
-                if self.ToExtractF0.value:
+            else:
+                if self.ToExtractF0.value is not None:
                     self.opNansheExtractF0.InputImage.setDirty( slice(None) )
-                elif self.ToWaveletTransform.value:
+                elif self.ToWaveletTransform.value is not None:
                     self.opNansheWaveletTransform.InputImage.setDirty( slice(None) )
                 else:
                     self.opNansheNormalizeData.InputImage.setDirty( slice(None) )
-            elif slot.name == "ToExtractF0":
-                if self.ToWaveletTransform.value:
+        elif slot.name == "ToExtractF0":
+            if slot.value:
+                self.opNansheExtractF0.Output.setDirty( slice(None) )
+            else:
+                if self.ToWaveletTransform.value is not None:
                     self.opNansheWaveletTransform.InputImage.setDirty( slice(None) )
                 else:
                     self.opNansheNormalizeData.InputImage.setDirty( slice(None) )
-            elif slot.name == "ToWaveletTransform":
+        elif slot.name == "ToWaveletTransform":
+            if slot.value:
+                self.opNansheWaveletTransform.Output.setDirty( slice(None) )
+            else:
                 self.opNansheNormalizeData.InputImage.setDirty( slice(None) )
