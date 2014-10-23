@@ -108,7 +108,21 @@ class OpNanshePreprocessing(Operator):
     # Don't need execute as the output will be drawn through the Output slot.
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot.name == "ToRemoveZeroedLines":
+        if slot.name == "InputImage":
+            self.Output.setDirty(roi)
+        elif (slot.name == "ErosionShape") or (slot.name == "DilationShape"):
+            if self.ToRemoveZeroedLines.value:
+                self.opNansheRemoveZeroedLines.Output.setDirty( slice(None) )
+        elif (slot.name == "HalfWindowSize") or (slot.name == "WhichQuantile") or\
+                (slot.name == "TemporalSmoothingGaussianFilterStdev") or\
+                (slot.name == "SpatialSmoothingGaussianFilterStdev") or\
+                (slot.name == "Bias"):
+            if self.ToExtractF0.value:
+                self.opNansheExtractF0.Output.setDirty( slice(None) )
+        elif (slot.name == "Scale"):
+            if self.ToWaveletTransform.value:
+                self.opNansheWaveletTransform.Output.setDirty( slice(None) )
+        elif slot.name == "ToRemoveZeroedLines":
             if slot.value:
                 self.opNansheRemoveZeroedLines.Output.setDirty( slice(None) )
             else:
