@@ -77,7 +77,6 @@ class OpNanshePreprocessing(Operator):
 
         self.opNansheWaveletTransform = OpNansheWaveletTransform(parent=self)
         self.opNansheWaveletTransform.Scale.connect(self.Scale)
-        self.opNansheWaveletTransform.IncludeLowerScales.setValue(False)
 
         self.opNansheNormalizeData = OpNansheNormalizeData(parent=self)
         self.opNansheNormalizeData.Ord.connect(self.Ord)
