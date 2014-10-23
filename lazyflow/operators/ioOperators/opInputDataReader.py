@@ -41,6 +41,8 @@ import os
 import re
 import logging
 
+from lazyflow.utility.io.multiprocessHdf5File import MultiProcessHdf5File
+
 class OpInputDataReader(Operator):
     """
     This operator can read input data of any supported type.
@@ -191,7 +193,7 @@ class OpInputDataReader(Operator):
 
         # Open the h5 file in read-only mode
         try:
-            h5File = h5py.File(externalPath, 'r')
+            h5File = MultiProcessHdf5File(externalPath, 'r')
         except Exception as e:
             msg = "Unable to open HDF5 File: {}".format( externalPath )
             msg += str(e)
