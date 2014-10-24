@@ -408,7 +408,7 @@ class DataSelectionGui(QWidget):
             defaultDirectory = os.path.expanduser('~')
 
         # Launch the "Open File" dialog
-        fileNames = self.getImageFileNamesToOpen(defaultDirectory)
+        fileNames = self.getImageFileNamesToOpen(self, defaultDirectory)
 
         # If the user didn't cancel
         if len(fileNames) > 0:
@@ -419,7 +419,8 @@ class DataSelectionGui(QWidget):
                 log_exception( logger )
                 QMessageBox.critical(self, "Error loading file", str(ex))
 
-    def getImageFileNamesToOpen(self, defaultDirectory):
+    @classmethod
+    def getImageFileNamesToOpen(cls, parent_window, defaultDirectory):
         """
         Launch an "Open File" dialog to ask the user for one or more image files.
         """
@@ -432,7 +433,7 @@ class DataSelectionGui(QWidget):
         
         if ilastik_config.getboolean("ilastik", "debug"):
             # use Qt dialog in debug mode (more portable?)
-            file_dialog = QFileDialog(self, "Select Images")
+            file_dialog = QFileDialog(parent_window, "Select Images")
             file_dialog.setOption(QFileDialog.DontUseNativeDialog, True)
             # do not display file types associated with a filter
             # the line for "Image files" is too long otherwise
@@ -446,7 +447,7 @@ class DataSelectionGui(QWidget):
                 fileNames = file_dialog.selectedFiles()
         else:
             # otherwise, use native dialog of the present platform
-            fileNames = QFileDialog.getOpenFileNames(self, "Select Images", defaultDirectory, filt_all_str)
+            fileNames = QFileDialog.getOpenFileNames(parent_window, "Select Images", defaultDirectory, filt_all_str)
         # Convert from QtString to python str
         fileNames = map(encode_from_qstring, fileNames)
         return fileNames
@@ -703,13 +704,14 @@ class DataSelectionGui(QWidget):
         dlg_state = editorDlg.exec_()
         return ( dlg_state == QDialog.Accepted )
 
-    def getPossibleInternalPaths(self, absPath):
+    @classmethod
+    def getPossibleInternalPaths(cls, absPath, min_ndim=3, max_ndim=5):
         datasetNames = []
         # Open the file as a read-only so we can get a list of the internal paths
         with h5py.File(absPath, 'r') as f:
             # Define a closure to collect all of the dataset names in the file.
             def accumulateDatasetPaths(name, val):
-                if type(val) == h5py._hl.dataset.Dataset and 3 <= len(val.shape) <= 5:
+                if type(val) == h5py._hl.dataset.Dataset and min_ndim <= len(val.shape) <= max_ndim:
                     datasetNames.append( '/' + name )
             # Visit every group/dataset in the file
             f.visititems(accumulateDatasetPaths)
