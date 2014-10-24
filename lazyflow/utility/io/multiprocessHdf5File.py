@@ -3,6 +3,22 @@ import copy
 import h5py
 import threading
 import multiprocessing
+import numpy
+
+# This code uses multiprocessing to read hdf5 datasets faster
+# NOTES:
+# - So far, this code is:
+#  -- *much slower* for unchunked datasets,
+#  -- somewhat slower for chunked uncompressed datasets,
+#  -- faster for compressed datasets
+#
+# THINGS TO TRY:
+#  -- Right now we launch the process only once, which means it must serve requests of varying sizes
+#     Instead, we might try launching a new throwaway process for every request.  
+#     Overhead would be increased, but it would allow us to pass a shared-memory Array to the process, 
+#         since we know the request size in advance.
+#  -- Could memory-sharing be achieved instead via memory-mapped files and/or mem-mapped arrays?
+#  -- Create a pool of requests instead of creating a request for every thread and volume combo.
 
 class ReaderProcess(multiprocessing.Process):
     
@@ -10,34 +26,44 @@ class ReaderProcess(multiprocessing.Process):
         name = 'ilastik_helper-' + os.path.split(filepath)[1]
         super( ReaderProcess, self ).__init__(name=name)
         self._filepath = filepath
-        self._request_queue = multiprocessing.Queue()
-        self._result_queue = multiprocessing.Queue()
-        self._lock = threading.Lock()
+        self._request_queue_recv, self._request_queue_send = multiprocessing.Pipe(duplex=False)
+        self._result_queue_recv, self._result_queue_send = multiprocessing.Pipe(duplex=False)
         self.daemon = True
 
     def run(self):
         with h5py.File(self._filepath, 'r') as h5_file:
-            (internal_path, slicing) = self._request_queue.get()
+            (internal_path, slicing) = self._request_queue_recv.recv()
             # 'None' means stop the process.
             while internal_path is not None:
-                data = h5_file[internal_path][slicing]
-                self._result_queue.put(data)
+                try:
+                    data = h5_file[internal_path][slicing]
+                except Exception as ex:
+                    self._result_queue_send.send( ex )
+                else:
+                    self._result_queue_send.send( (data.shape, data.dtype) )
+                    #self._result_queue_send.send( data )
+                    self._result_queue_send.send_bytes( numpy.getbuffer(data) )
                 
                 # Wait for the next request
-                (internal_path, slicing) = self._request_queue.get()
+                (internal_path, slicing) = self._request_queue_recv.recv()
 
     def read_subvolume(self, internal_path, slicing):
         # The reader process is not supposed to be shared by multiple threads.
         # Each thread should create its own reader process.
-        with self._lock:
-            self._request_queue.put( (internal_path, slicing) )
-            result = self._result_queue.get()
+        self._request_queue_send.send( (internal_path, slicing) )
+        response_info = self._result_queue_recv.recv()
+        if isinstance(response_info, Exception):
+            raise response_info
+        shape, dtype = response_info
+        #result = self._result_queue_recv.recv()
+        raw_buffer = self._result_queue_recv.recv_bytes()
+        result = numpy.frombuffer(raw_buffer, dtype=dtype).reshape(shape)
+        result.setflags(write=True)
         return result
 
     def join(self):
-        self._request_queue.put( (None, None) )
+        self._request_queue_send.send( (None, None) )
         super( ReaderProcess, self ).join()
-
 
 class _Dataset(object):
     def __init__(self, mp_file, reader_process, internal_path):
@@ -187,7 +213,7 @@ if __name__ == "__main__":
     filepath = '/tmp/testfile.h5'
     datapath = 'mygroup/bigdata'
     
-    testvol = numpy.indices((100,100,100)).astype(numpy.uint32)
+    testvol = numpy.indices((100,100,100)).astype(numpy.uint32).sum(0)
     with h5py.File(filepath, 'w') as f:
         f.create_dataset( datapath, data=testvol, chunks=True )
         f.create_dataset('mygroup/mybla/bla/somedata', data=1)
@@ -212,7 +238,6 @@ if __name__ == "__main__":
         
         mphf[datapath].read_direct(whole_vol[0], numpy.s_[0])
 
-    
         def test_subvol( slicing ):
             expected_vol = testvol[slicing]
             read_vol = mphf[datapath][slicing]
@@ -220,7 +245,7 @@ if __name__ == "__main__":
         
         threads = []
         for i in range( 40 ):
-            threads.append( threading.Thread(target=partial(test_subvol, numpy.s_[0])))
+            threads.append( threading.Thread( target=partial(test_subvol, (numpy.s_[i:i+1],))) )
         
         for thread in threads:
             thread.start()
@@ -228,4 +253,48 @@ if __name__ == "__main__":
         for thread in threads:
             thread.join()
 
+    bigfile_path = '/tmp/big_testfile7.h5'
+    if not os.path.exists(bigfile_path):
+        print "generating test file:", bigfile_path
+        with h5py.File(bigfile_path, 'w') as f:
+            f.create_dataset( 'data', 
+                              data=numpy.random.randint(0,255, (100,10000,1000)).astype(numpy.uint8), 
+                              chunks=True,
+                              compression='gzip', 
+                              compression_opts=4 )
     
+    
+    with h5py.File(bigfile_path, 'r') as f:
+        bigvol = f['data'][:]
+    
+    from lazyflow.utility import Timer
+    
+    # Switch File type
+    with MultiProcessHdf5File(bigfile_path, 'r') as bf:
+    #with h5py.File(bigfile_path, 'r') as bf:
+
+        def test_subvol( slicings ):
+            for slicing in slicings:
+                # Just read, don't check: 
+                # We want the time for this test to be dominated by reading the data, not checking it.
+                read_vol = bf['data'][slicing]
+                #expected_vol = bigvol[slicing]
+                #assert (read_vol == expected_vol).all()
+
+        threads = []
+        for i in range( 8 ):
+            slicings = [ numpy.s_[i:i+5], 
+                         numpy.s_[i+1:i+6],
+                         numpy.s_[i+2:i+7],
+                         numpy.s_[i+3:i+8],
+                         numpy.s_[i+4:i+9] ]
+            threads.append( threading.Thread(target=partial(test_subvol, slicings)))
+
+        with Timer() as timer:
+            for thread in threads:
+                thread.start()
+            
+            for thread in threads:
+                thread.join()
+
+        print "Time: {} seconds".format( timer.seconds() )
