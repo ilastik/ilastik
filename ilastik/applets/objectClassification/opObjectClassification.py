@@ -230,6 +230,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
             """
             numClasses = len(self.LabelNames.value)
             self.opPredict.LabelsCount.setValue( numClasses )
+            self.opTrain.LabelsCount.setValue( numClasses )
             self.NumLabels.setValue( numClasses )
         self.LabelNames.notifyDirty( _updateNumClasses )
 
@@ -675,6 +676,7 @@ class OpObjectTrain(Operator):
     category = "Learning"
 
     Labels = InputSlot(level=1, stype=Opaque, rtype=List)
+    LabelsCount = InputSlot(stype='int')
     Features = InputSlot(level=1, rtype=List, stype=Opaque)
     SelectedFeatures = InputSlot(rtype=List, stype=Opaque)
     FixClassifier = InputSlot(stype="bool")
@@ -702,6 +704,11 @@ class OpObjectTrain(Operator):
         featList = []
         all_col_names = []
         labelsList = []
+        # get the number of ALL labels
+        numLabels=0
+        if self.LabelsCount.ready():
+            numLabels = self.LabelsCount[:].wait()
+            numLabels = int(numLabels[0])
 
         # will be available at slot self.Warnings
         all_bad_objects = defaultdict(lambda: defaultdict(list))
@@ -773,8 +780,8 @@ class OpObjectTrain(Operator):
         if featMatrix.size == 0 or labelsMatrix.size == 0:
             result[:] = None
             return
-        classifier_factory = ParallelVigraRfLazyflowClassifierFactory( self._tree_count, self.ForestCount.value )
-        classifier = classifier_factory.create_and_train( featMatrix.astype(numpy.float32), numpy.asarray(labelsMatrix, dtype=numpy.uint32) )
+        classifier_factory = ParallelVigraRfLazyflowClassifierFactory( self._tree_count, self.ForestCount.value, numLabels )
+        classifier = classifier_factory.create_and_train( featMatrix.astype(numpy.float32), numpy.asarray(labelsMatrix, dtype=numpy.uint32), numLabels )
         avg_oob = numpy.mean(classifier.oobs)
         logger.info("training finished, average out-of-bag error: {}".format(avg_oob))
         result[0] = classifier
