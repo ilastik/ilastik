@@ -51,17 +51,23 @@ class OpNanshePostprocessData(Operator):
     SignificanceThreshold = InputSlot(value=3.0, stype="float")
     WaveletTransformScale = InputSlot(value=4, stype="int")
     NoiseThreshold = InputSlot(value=4.0, stype="float")
-    AcceptedRegionShapeConstraints_MajorAxisLength_Min = InputSlot(value=0.0, stype="float", optional=True)
-    AcceptedRegionShapeConstraints_MajorAxisLength_Max = InputSlot(value=25.0, stype="float", optional=True)
+    AcceptedRegionShapeConstraints_MajorAxisLength_Min = InputSlot(value=0.0, stype="float")
+    AcceptedRegionShapeConstraints_MajorAxisLength_Min_Enabled = InputSlot(value=True, stype="bool")
+    AcceptedRegionShapeConstraints_MajorAxisLength_Max = InputSlot(value=25.0, stype="float")
+    AcceptedRegionShapeConstraints_MajorAxisLength_Max_Enabled = InputSlot(value=True, stype="bool")
 
     PercentagePixelsBelowMax = InputSlot(value=0.8, stype="float")
     MinLocalMaxDistance = InputSlot(value=20.0, stype="float")
 
-    AcceptedNeuronShapeConstraints_Area_Min = InputSlot(value=45, stype="int", optional=True)
-    AcceptedNeuronShapeConstraints_Area_Max = InputSlot(value=60, stype="int", optional=True)
+    AcceptedNeuronShapeConstraints_Area_Min = InputSlot(value=45, stype="int")
+    AcceptedNeuronShapeConstraints_Area_Min_Enabled = InputSlot(value=True, stype="bool")
+    AcceptedNeuronShapeConstraints_Area_Max = InputSlot(value=60, stype="int")
+    AcceptedNeuronShapeConstraints_Area_Max_Enabled = InputSlot(value=True, stype="bool")
 
-    AcceptedNeuronShapeConstraints_Eccentricity_Min = InputSlot(value=0.0, stype="float", optional=True)
-    AcceptedNeuronShapeConstraints_Eccentricity_Max = InputSlot(value=0.9, stype="float", optional=True)
+    AcceptedNeuronShapeConstraints_Eccentricity_Min = InputSlot(value=0.0, stype="float")
+    AcceptedNeuronShapeConstraints_Eccentricity_Min_Enabled = InputSlot(value=True, stype="bool")
+    AcceptedNeuronShapeConstraints_Eccentricity_Max = InputSlot(value=0.9, stype="float")
+    AcceptedNeuronShapeConstraints_Eccentricity_Max_Enabled = InputSlot(value=True, stype="bool")
 
     AlignmentMinThreshold = InputSlot(value=0.6, stype="float")
     OverlapMinThreshold = InputSlot(value=0.6, stype="float")
@@ -96,38 +102,38 @@ class OpNanshePostprocessData(Operator):
 
         accepted_region_shape_constraints = {}
 
-        if self.AcceptedRegionShapeConstraints_MajorAxisLength_Min.ready() or\
-                self.AcceptedRegionShapeConstraints_MajorAxisLength_Max.ready():
+        if self.AcceptedRegionShapeConstraints_MajorAxisLength_Min_Enabled.value or\
+                self.AcceptedRegionShapeConstraints_MajorAxisLength_Max_Enabled.value:
             accepted_region_shape_constraints["major_axis_length"] = {}
 
-            if self.AcceptedRegionShapeConstraints_MajorAxisLength_Min.ready():
+            if self.AcceptedRegionShapeConstraints_MajorAxisLength_Min_Enabled.value:
                 accepted_region_shape_constraints["major_axis_length"]["min"] =\
                     self.AcceptedRegionShapeConstraints_MajorAxisLength_Min.value
-            if self.AcceptedRegionShapeConstraints_MajorAxisLength_Max.ready():
+            if self.AcceptedRegionShapeConstraints_MajorAxisLength_Max_Enabled.value:
                 accepted_region_shape_constraints["major_axis_length"]["max"] =\
                     self.AcceptedRegionShapeConstraints_MajorAxisLength_Max.value
 
         accepted_neuron_shape_constraints = {}
 
-        if self.AcceptedNeuronShapeConstraints_Area_Min.ready() or\
-                self.AcceptedNeuronShapeConstraints_Area_Max.ready():
+        if self.AcceptedNeuronShapeConstraints_Area_Min_Enabled.value or\
+                self.AcceptedNeuronShapeConstraints_Area_Max_Enabled.value:
             accepted_neuron_shape_constraints["area"] = {}
 
-            if self.AcceptedNeuronShapeConstraints_Area_Min.ready():
+            if self.AcceptedNeuronShapeConstraints_Area_Min_Enabled.value:
                 accepted_neuron_shape_constraints["area"]["min"] =\
                     self.AcceptedNeuronShapeConstraints_Area_Min.value
-            if self.AcceptedNeuronShapeConstraints_Area_Max.ready():
+            if self.AcceptedNeuronShapeConstraints_Area_Max_Enabled.value:
                 accepted_neuron_shape_constraints["area"]["max"] =\
                     self.AcceptedNeuronShapeConstraints_Area_Max.value
 
-        if self.AcceptedNeuronShapeConstraints_Eccentricity_Min.ready() or\
-                self.AcceptedNeuronShapeConstraints_Eccentricity_Max.ready():
+        if self.AcceptedNeuronShapeConstraints_Eccentricity_Min_Enabled.value or\
+                self.AcceptedNeuronShapeConstraints_Eccentricity_Max_Enabled.value:
             accepted_neuron_shape_constraints["eccentricity"] = {}
 
-            if self.AcceptedNeuronShapeConstraints_Eccentricity_Min.ready():
+            if self.AcceptedNeuronShapeConstraints_Eccentricity_Min_Enabled.value:
                 accepted_neuron_shape_constraints["eccentricity"]["min"] =\
                     self.AcceptedNeuronShapeConstraints_Eccentricity_Min.value
-            if self.AcceptedNeuronShapeConstraints_Eccentricity_Max.ready():
+            if self.AcceptedNeuronShapeConstraints_Eccentricity_Max_Enabled.value:
                 accepted_neuron_shape_constraints["eccentricity"]["max"] =\
                     self.AcceptedNeuronShapeConstraints_Eccentricity_Max.value
 
@@ -185,12 +191,18 @@ class OpNanshePostprocessData(Operator):
         if (slot.name == "InputImage") or (slot.name == "SignificanceThreshold") or\
             (slot.name == "WaveletTransformScale") or (slot.name == "NoiseThreshold") or\
             (slot.name == "AcceptedRegionShapeConstraints_MajorAxisLength_Min") or\
+            (slot.name == "AcceptedRegionShapeConstraints_MajorAxisLength_Min_Enabled") or\
             (slot.name == "AcceptedRegionShapeConstraints_MajorAxisLength_Max") or\
+            (slot.name == "AcceptedRegionShapeConstraints_MajorAxisLength_Max_Enabled") or\
             (slot.name == "PercentagePixelsBelowMax") or (slot.name == "MinLocalMaxDistance") or\
             (slot.name == "AcceptedNeuronShapeConstraints_Area_Min") or\
+            (slot.name == "AcceptedNeuronShapeConstraints_Area_Min_Enabled") or\
             (slot.name == "AcceptedNeuronShapeConstraints_Area_Max") or\
+            (slot.name == "AcceptedNeuronShapeConstraints_Area_Max_Enabled") or\
             (slot.name == "AcceptedNeuronShapeConstraints_Eccentricity_Min") or\
+            (slot.name == "AcceptedNeuronShapeConstraints_Eccentricity_Min_Enabled") or\
             (slot.name == "AcceptedNeuronShapeConstraints_Eccentricity_Max") or\
+            (slot.name == "AcceptedNeuronShapeConstraints_Eccentricity_Max_Enabled") or\
             (slot.name == "AlignmentMinThreshold") or (slot.name == "OverlapMinThreshold") or\
             (slot.name == "Fuse_FractionMeanNeuronMaxThreshold"):
             self.Output.setDirty( slice(None) )
@@ -212,17 +224,23 @@ class OpNanshePostprocessDataCached(Operator):
     SignificanceThreshold = InputSlot(value=3.0, stype="float")
     WaveletTransformScale = InputSlot(value=4, stype="int")
     NoiseThreshold = InputSlot(value=4.0, stype="float")
-    AcceptedRegionShapeConstraints_MajorAxisLength_Min = InputSlot(value=0.0, stype="float", optional=True)
-    AcceptedRegionShapeConstraints_MajorAxisLength_Max = InputSlot(value=25.0, stype="float", optional=True)
+    AcceptedRegionShapeConstraints_MajorAxisLength_Min = InputSlot(value=0.0, stype="float")
+    AcceptedRegionShapeConstraints_MajorAxisLength_Min_Enabled = InputSlot(value=True, stype="bool")
+    AcceptedRegionShapeConstraints_MajorAxisLength_Max = InputSlot(value=25.0, stype="float")
+    AcceptedRegionShapeConstraints_MajorAxisLength_Max_Enabled = InputSlot(value=True, stype="bool")
 
     PercentagePixelsBelowMax = InputSlot(value=0.8, stype="float")
     MinLocalMaxDistance = InputSlot(value=20.0, stype="float")
 
-    AcceptedNeuronShapeConstraints_Area_Min = InputSlot(value=45, stype="int", optional=True)
-    AcceptedNeuronShapeConstraints_Area_Max = InputSlot(value=60, stype="int", optional=True)
+    AcceptedNeuronShapeConstraints_Area_Min = InputSlot(value=45, stype="int")
+    AcceptedNeuronShapeConstraints_Area_Min_Enabled = InputSlot(value=True, stype="bool")
+    AcceptedNeuronShapeConstraints_Area_Max = InputSlot(value=60, stype="int")
+    AcceptedNeuronShapeConstraints_Area_Max_Enabled = InputSlot(value=True, stype="bool")
 
-    AcceptedNeuronShapeConstraints_Eccentricity_Min = InputSlot(value=0.0, stype="float", optional=True)
-    AcceptedNeuronShapeConstraints_Eccentricity_Max = InputSlot(value=0.9, stype="float", optional=True)
+    AcceptedNeuronShapeConstraints_Eccentricity_Min = InputSlot(value=0.0, stype="float")
+    AcceptedNeuronShapeConstraints_Eccentricity_Min_Enabled = InputSlot(value=True, stype="bool")
+    AcceptedNeuronShapeConstraints_Eccentricity_Max = InputSlot(value=0.9, stype="float")
+    AcceptedNeuronShapeConstraints_Eccentricity_Max_Enabled = InputSlot(value=True, stype="bool")
 
     AlignmentMinThreshold = InputSlot(value=0.6, stype="float")
     OverlapMinThreshold = InputSlot(value=0.6, stype="float")
@@ -240,13 +258,19 @@ class OpNanshePostprocessDataCached(Operator):
         self.opPostprocessing.WaveletTransformScale.connect(self.WaveletTransformScale)
         self.opPostprocessing.NoiseThreshold.connect(self.NoiseThreshold)
         self.opPostprocessing.AcceptedRegionShapeConstraints_MajorAxisLength_Min.connect(self.AcceptedRegionShapeConstraints_MajorAxisLength_Min)
+        self.opPostprocessing.AcceptedRegionShapeConstraints_MajorAxisLength_Min_Enabled.connect(self.AcceptedRegionShapeConstraints_MajorAxisLength_Min_Enabled)
         self.opPostprocessing.AcceptedRegionShapeConstraints_MajorAxisLength_Max.connect(self.AcceptedRegionShapeConstraints_MajorAxisLength_Max)
+        self.opPostprocessing.AcceptedRegionShapeConstraints_MajorAxisLength_Max_Enabled.connect(self.AcceptedRegionShapeConstraints_MajorAxisLength_Max_Enabled)
         self.opPostprocessing.PercentagePixelsBelowMax.connect(self.PercentagePixelsBelowMax)
         self.opPostprocessing.MinLocalMaxDistance.connect(self.MinLocalMaxDistance)
         self.opPostprocessing.AcceptedNeuronShapeConstraints_Area_Min.connect(self.AcceptedNeuronShapeConstraints_Area_Min)
+        self.opPostprocessing.AcceptedNeuronShapeConstraints_Area_Min_Enabled.connect(self.AcceptedNeuronShapeConstraints_Area_Min_Enabled)
         self.opPostprocessing.AcceptedNeuronShapeConstraints_Area_Max.connect(self.AcceptedNeuronShapeConstraints_Area_Max)
+        self.opPostprocessing.AcceptedNeuronShapeConstraints_Area_Max_Enabled.connect(self.AcceptedNeuronShapeConstraints_Area_Max_Enabled)
         self.opPostprocessing.AcceptedNeuronShapeConstraints_Eccentricity_Min.connect(self.AcceptedNeuronShapeConstraints_Eccentricity_Min)
+        self.opPostprocessing.AcceptedNeuronShapeConstraints_Eccentricity_Min_Enabled.connect(self.AcceptedNeuronShapeConstraints_Eccentricity_Min_Enabled)
         self.opPostprocessing.AcceptedNeuronShapeConstraints_Eccentricity_Max.connect(self.AcceptedNeuronShapeConstraints_Eccentricity_Max)
+        self.opPostprocessing.AcceptedNeuronShapeConstraints_Eccentricity_Max_Enabled.connect(self.AcceptedNeuronShapeConstraints_Eccentricity_Max_Enabled)
         self.opPostprocessing.AlignmentMinThreshold.connect(self.AlignmentMinThreshold)
         self.opPostprocessing.OverlapMinThreshold.connect(self.OverlapMinThreshold)
         self.opPostprocessing.Fuse_FractionMeanNeuronMaxThreshold.connect(self.Fuse_FractionMeanNeuronMaxThreshold)
