@@ -45,11 +45,20 @@ class NanshePostprocessingApplet( StandardApplet ):
     def broadcastingSlots(self):
         return ["SignificanceThreshold", "WaveletTransformScale", "NoiseThreshold",\
                 "AcceptedRegionShapeConstraints_MajorAxisLength_Min",\
-                "AcceptedRegionShapeConstraints_MajorAxisLength_Max", \
-                "PercentagePixelsBelowMax", "MinLocalMaxDistance", "AcceptedNeuronShapeConstraints_Area_Min",\
-                "AcceptedNeuronShapeConstraints_Area_Max", "AcceptedNeuronShapeConstraints_Eccentricity_Min",\
-                "AcceptedNeuronShapeConstraints_Eccentricity_Max", "AlignmentMinThreshold", "OverlapMinThreshold",\
-                "Fuse_FractionMeanNeuronMaxThreshold"]
+                "AcceptedRegionShapeConstraints_MajorAxisLength_Min_Enabled",\
+                "AcceptedRegionShapeConstraints_MajorAxisLength_Max",\
+                "AcceptedRegionShapeConstraints_MajorAxisLength_Max_Enabled",\
+                "PercentagePixelsBelowMax", "MinLocalMaxDistance",\
+                "AcceptedNeuronShapeConstraints_Area_Min",\
+                "AcceptedNeuronShapeConstraints_Area_Min_Enabled",\
+                "AcceptedNeuronShapeConstraints_Area_Max",\
+                "AcceptedNeuronShapeConstraints_Area_Max_Enabled",\
+                "AcceptedNeuronShapeConstraints_Eccentricity_Min",\
+                "AcceptedNeuronShapeConstraints_Eccentricity_Min_Enabled",\
+                "AcceptedNeuronShapeConstraints_Eccentricity_Max",\
+                "AcceptedNeuronShapeConstraints_Eccentricity_Max_Enabled",\
+                "AlignmentMinThreshold", "OverlapMinThreshold", "Fuse_FractionMeanNeuronMaxThreshold"]
+
 
     @property
     def singleLaneGuiClass(self):
