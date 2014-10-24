@@ -29,6 +29,8 @@ import math
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
+from lazyflow.operators import OpArrayCache
+
 import numpy
 
 import nanshe
@@ -150,3 +152,52 @@ class OpNansheExtractF0(Operator):
             self.Output.setDirty( slice(None) )
         else:
             assert False, "Unknown dirty input slot"
+
+
+class OpNansheExtractF0Cached(Operator):
+    """
+    Given an input image and max/min bounds,
+    masks out (i.e. sets to zero) all pixels that fall outside the bounds.
+    """
+    name = "OpNansheExtractF0Cached"
+    category = "Pointwise"
+
+
+    InputImage = InputSlot()
+
+    HalfWindowSize = InputSlot(value=400, stype='int')
+    WhichQuantile = InputSlot(value=0.15, stype='float')
+    TemporalSmoothingGaussianFilterStdev = InputSlot(value=5.0, stype='float')
+    SpatialSmoothingGaussianFilterStdev = InputSlot(value=5.0, stype='float')
+    BiasEnabled = InputSlot(value=False, stype='bool')
+    Bias = InputSlot(value=0.0, stype='float')
+
+    Output = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super( OpNansheExtractF0Cached, self ).__init__( *args, **kwargs )
+
+        self.opExtractF0 = OpNansheExtractF0(parent=self)
+
+        self.opExtractF0.HalfWindowSize.connect(self.HalfWindowSize)
+        self.opExtractF0.WhichQuantile.connect(self.WhichQuantile)
+        self.opExtractF0.TemporalSmoothingGaussianFilterStdev.connect(self.TemporalSmoothingGaussianFilterStdev)
+        self.opExtractF0.SpatialSmoothingGaussianFilterStdev.connect(self.SpatialSmoothingGaussianFilterStdev)
+        self.opExtractF0.BiasEnabled.connect(self.BiasEnabled)
+        self.opExtractF0.Bias.connect(self.Bias)
+
+
+        self.opCache = OpArrayCache(parent=self)
+        self.opCache.fixAtCurrent.setValue(False)
+
+        self.opExtractF0.InputImage.connect( self.InputImage )
+        self.opCache.Input.connect( self.opExtractF0.Output )
+        self.Output.connect( self.opCache.Output )
+
+    def setupOutputs(self):
+        self.opCache.blockShape.setValue( self.opExtractF0.Output.meta.shape )
+
+        self.Output.meta.assignFrom( self.opCache.Output.meta )
+
+    def propagateDirty(self, slot, subindex, roi):
+        pass
