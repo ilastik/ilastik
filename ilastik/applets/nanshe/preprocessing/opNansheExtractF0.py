@@ -49,7 +49,8 @@ class OpNansheExtractF0(Operator):
     WhichQuantile = InputSlot(value=0.15, stype='float')
     TemporalSmoothingGaussianFilterStdev = InputSlot(value=5.0, stype='float')
     SpatialSmoothingGaussianFilterStdev = InputSlot(value=5.0, stype='float')
-    Bias = InputSlot(optional=True, stype='float')
+    BiasEnabled = InputSlot(value=False, stype='bool')
+    Bias = InputSlot(value=0.0, stype='float')
 
     Output = OutputSlot()
 
@@ -106,7 +107,7 @@ class OpNansheExtractF0(Operator):
         which_quantile = self.WhichQuantile.value
 
         bias = None
-        if self.Bias.ready():
+        if self.BiasEnabled.value:
             bias = self.Bias.value
 
         temporal_smoothing_gaussian_filter_stdev = self.TemporalSmoothingGaussianFilterStdev.value
@@ -141,7 +142,8 @@ class OpNansheExtractF0(Operator):
                                                                 self.HalfWindowSize.value,
                                                                 self.TemporalSmoothingGaussianFilterStdev.value,
                                                                 self.SpatialSmoothingGaussianFilterStdev.value)[0])
-        elif slot.name == "Bias" or slot.name == "TemporalSmoothingGaussianFilterStdev" or \
+        elif slot.name == "Bias" or slot.name == "BiasEnabled" or \
+             slot.name == "TemporalSmoothingGaussianFilterStdev" or \
              slot.name == "HalfWindowSize" or slot.name == "WhichQuantile" or \
              slot.name == "SpatialSmoothingGaussianFilterStdev":
             self._generation[self.name] += 1
