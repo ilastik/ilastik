@@ -28,6 +28,8 @@ import itertools
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
+from lazyflow.operators import OpArrayCache
+
 import numpy
 
 import nanshe
@@ -134,3 +136,42 @@ class OpNansheWaveletTransform(Operator):
             self.Output.setDirty( slice(None) )
         else:
             assert False, "Unknown dirty input slot"
+
+
+class OpNansheWaveletTransformCached(Operator):
+    """
+    Given an input image and max/min bounds,
+    masks out (i.e. sets to zero) all pixels that fall outside the bounds.
+    """
+    name = "OpNansheWaveletTransformCached"
+    category = "Pointwise"
+
+
+    InputImage = InputSlot()
+
+    Scale = InputSlot(value=4, stype="int")
+
+    Output = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super( OpNansheWaveletTransformCached, self ).__init__( *args, **kwargs )
+
+        self.opWaveletTransform = OpNansheWaveletTransform(parent=self)
+
+        self.opWaveletTransform.Scale.connect(self.Scale)
+
+
+        self.opCache = OpArrayCache(parent=self)
+        self.opCache.fixAtCurrent.setValue(False)
+
+        self.opWaveletTransform.InputImage.connect( self.InputImage )
+        self.opCache.Input.connect( self.opWaveletTransform.Output )
+        self.Output.connect( self.opCache.Output )
+
+    def setupOutputs(self):
+        self.opCache.blockShape.setValue( self.opWaveletTransform.Output.meta.shape )
+
+        self.Output.meta.assignFrom( self.opCache.Output.meta )
+
+    def propagateDirty(self, slot, subindex, roi):
+        pass
