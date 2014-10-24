@@ -136,7 +136,7 @@ class NanshePostprocessingGui(LayerViewerGui):
             self._drawer.NoiseThresholdValue.setValue(self.topLevelOperatorView.NoiseThreshold.value)
 
 
-            if self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Min.ready():
+            if self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Min_Enabled.value:
                 self._drawer.AcceptedRegionShapeConstraints_MajorAxisLength_MinEnabled.setChecked(True)
                 self._drawer.AcceptedRegionShapeConstraints_MajorAxisLength_MinValue.setEnabled(True)
                 self._drawer.AcceptedRegionShapeConstraints_MajorAxisLength_MinValue.setValue(self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Min.value)
@@ -144,7 +144,7 @@ class NanshePostprocessingGui(LayerViewerGui):
                 self._drawer.AcceptedRegionShapeConstraints_MajorAxisLength_MinEnabled.setChecked(False)
                 self._drawer.AcceptedRegionShapeConstraints_MajorAxisLength_MinValue.setEnabled(False)
 
-            if self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Max.ready():
+            if self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Max_Enabled.value:
                 self._drawer.AcceptedRegionShapeConstraints_MajorAxisLength_MaxEnabled.setChecked(True)
                 self._drawer.AcceptedRegionShapeConstraints_MajorAxisLength_MaxValue.setEnabled(True)
                 self._drawer.AcceptedRegionShapeConstraints_MajorAxisLength_MaxValue.setValue(self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Max.value)
@@ -157,7 +157,7 @@ class NanshePostprocessingGui(LayerViewerGui):
             self._drawer.MinLocalMaxDistanceValue.setValue(self.topLevelOperatorView.MinLocalMaxDistance.value)
 
 
-            if self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Min.ready():
+            if self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Min_Enabled.value:
                 self._drawer.AcceptedNeuronShapeConstraints_Area_MinEnabled.setChecked(True)
                 self._drawer.AcceptedNeuronShapeConstraints_Area_MinValue.setEnabled(True)
                 self._drawer.AcceptedNeuronShapeConstraints_Area_MinValue.setValue(self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Min.value)
@@ -165,7 +165,7 @@ class NanshePostprocessingGui(LayerViewerGui):
                 self._drawer.AcceptedNeuronShapeConstraints_Area_MinEnabled.setChecked(False)
                 self._drawer.AcceptedNeuronShapeConstraints_Area_MinValue.setEnabled(False)
 
-            if self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Max.ready():
+            if self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Max_Enabled.value:
                 self._drawer.AcceptedNeuronShapeConstraints_Area_MaxEnabled.setChecked(True)
                 self._drawer.AcceptedNeuronShapeConstraints_Area_MaxValue.setEnabled(True)
                 self._drawer.AcceptedNeuronShapeConstraints_Area_MaxValue.setValue(self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Max.value)
@@ -173,7 +173,7 @@ class NanshePostprocessingGui(LayerViewerGui):
                 self._drawer.AcceptedNeuronShapeConstraints_Area_MaxEnabled.setChecked(False)
                 self._drawer.AcceptedNeuronShapeConstraints_Area_MaxValue.setEnabled(False)
 
-            if self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Min.ready():
+            if self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Min_Enabled.value:
                 self._drawer.AcceptedNeuronShapeConstraints_Eccentricity_MinEnabled.setChecked(True)
                 self._drawer.AcceptedNeuronShapeConstraints_Eccentricity_MinValue.setEnabled(True)
                 self._drawer.AcceptedNeuronShapeConstraints_Eccentricity_MinValue.setValue(self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Min.value)
@@ -181,7 +181,7 @@ class NanshePostprocessingGui(LayerViewerGui):
                 self._drawer.AcceptedNeuronShapeConstraints_Eccentricity_MinEnabled.setChecked(False)
                 self._drawer.AcceptedNeuronShapeConstraints_Eccentricity_MinValue.setEnabled(False)
 
-            if self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Max.ready():
+            if self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Max_Enabled.value:
                 self._drawer.AcceptedNeuronShapeConstraints_Eccentricity_MaxEnabled.setChecked(True)
                 self._drawer.AcceptedNeuronShapeConstraints_Eccentricity_MaxValue.setEnabled(True)
                 self._drawer.AcceptedNeuronShapeConstraints_Eccentricity_MaxValue.setValue(self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Max.value)
@@ -209,7 +209,7 @@ class NanshePostprocessingGui(LayerViewerGui):
             self._drawer.NoiseThresholdValue.setValue(self.topLevelOperatorView.NoiseThreshold.value)
 
 
-            if self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Min.ready():
+            if self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Min_Enabled.value:
                 self._drawer.AcceptedRegionShapeConstraints_MajorAxisLength_MinEnabled.setChecked(True)
                 self._drawer.AcceptedRegionShapeConstraints_MajorAxisLength_MinValue.setEnabled(True)
                 self._drawer.AcceptedRegionShapeConstraints_MajorAxisLength_MinValue.setValue(self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Min.value)
@@ -217,7 +217,7 @@ class NanshePostprocessingGui(LayerViewerGui):
                 self._drawer.AcceptedRegionShapeConstraints_MajorAxisLength_MinEnabled.setChecked(False)
                 self._drawer.AcceptedRegionShapeConstraints_MajorAxisLength_MinValue.setEnabled(False)
 
-            if self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Max.ready():
+            if self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Max_Enabled.value:
                 self._drawer.AcceptedRegionShapeConstraints_MajorAxisLength_MaxEnabled.setChecked(True)
                 self._drawer.AcceptedRegionShapeConstraints_MajorAxisLength_MaxValue.setEnabled(True)
                 self._drawer.AcceptedRegionShapeConstraints_MajorAxisLength_MaxValue.setValue(self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Max.value)
@@ -230,7 +230,7 @@ class NanshePostprocessingGui(LayerViewerGui):
             self._drawer.MinLocalMaxDistanceValue.setValue(self.topLevelOperatorView.MinLocalMaxDistance.value)
 
 
-            if self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Min.ready():
+            if self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Min_Enabled.value:
                 self._drawer.AcceptedNeuronShapeConstraints_Area_MinEnabled.setChecked(True)
                 self._drawer.AcceptedNeuronShapeConstraints_Area_MinValue.setEnabled(True)
                 self._drawer.AcceptedNeuronShapeConstraints_Area_MinValue.setValue(self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Min.value)
@@ -238,7 +238,7 @@ class NanshePostprocessingGui(LayerViewerGui):
                 self._drawer.AcceptedNeuronShapeConstraints_Area_MinEnabled.setChecked(False)
                 self._drawer.AcceptedNeuronShapeConstraints_Area_MinValue.setEnabled(False)
 
-            if self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Max.ready():
+            if self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Max_Enabled.value:
                 self._drawer.AcceptedNeuronShapeConstraints_Area_MaxEnabled.setChecked(True)
                 self._drawer.AcceptedNeuronShapeConstraints_Area_MaxValue.setEnabled(True)
                 self._drawer.AcceptedNeuronShapeConstraints_Area_MaxValue.setValue(self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Max.value)
@@ -246,7 +246,7 @@ class NanshePostprocessingGui(LayerViewerGui):
                 self._drawer.AcceptedNeuronShapeConstraints_Area_MaxEnabled.setChecked(False)
                 self._drawer.AcceptedNeuronShapeConstraints_Area_MaxValue.setEnabled(False)
 
-            if self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Min.ready():
+            if self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Min_Enabled.value:
                 self._drawer.AcceptedNeuronShapeConstraints_Eccentricity_MinEnabled.setChecked(True)
                 self._drawer.AcceptedNeuronShapeConstraints_Eccentricity_MinValue.setEnabled(True)
                 self._drawer.AcceptedNeuronShapeConstraints_Eccentricity_MinValue.setValue(self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Min.value)
@@ -254,7 +254,7 @@ class NanshePostprocessingGui(LayerViewerGui):
                 self._drawer.AcceptedNeuronShapeConstraints_Eccentricity_MinEnabled.setChecked(False)
                 self._drawer.AcceptedNeuronShapeConstraints_Eccentricity_MinValue.setEnabled(False)
 
-            if self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Max.ready():
+            if self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Max_Enabled.value:
                 self._drawer.AcceptedNeuronShapeConstraints_Eccentricity_MaxEnabled.setChecked(True)
                 self._drawer.AcceptedNeuronShapeConstraints_Eccentricity_MaxValue.setEnabled(True)
                 self._drawer.AcceptedNeuronShapeConstraints_Eccentricity_MaxValue.setValue(self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Max.value)
@@ -283,13 +283,15 @@ class NanshePostprocessingGui(LayerViewerGui):
 
             if self._drawer.AcceptedRegionShapeConstraints_MajorAxisLength_MinEnabled.isChecked():
                 self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Min.setValue(self._drawer.AcceptedRegionShapeConstraints_MajorAxisLength_MinValue.value())
+                self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Min_Enabled.setValue(True)
             else:
-                self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Min.setValue(None)
+                self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Min_Enabled.setValue(False)
 
             if self._drawer.AcceptedRegionShapeConstraints_MajorAxisLength_MaxEnabled.isChecked():
                 self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Max.setValue(self._drawer.AcceptedRegionShapeConstraints_MajorAxisLength_MaxValue.value())
+                self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Max_Enabled.setValue(True)
             else:
-                self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Max.setValue(None)
+                self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Max_Enabled.setValue(False)
 
 
             self.topLevelOperatorView.PercentagePixelsBelowMax.setValue(self._drawer.PercentagePixelsBelowMaxValue.value())
@@ -298,23 +300,27 @@ class NanshePostprocessingGui(LayerViewerGui):
 
             if self._drawer.AcceptedNeuronShapeConstraints_Area_MinEnabled.isChecked():
                 self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Min.setValue(self._drawer.AcceptedNeuronShapeConstraints_Area_MinValue.value())
+                self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Min_Enabled.setValue(True)
             else:
-                self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Min.setValue(None)
+                self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Min_Enabled.setValue(False)
 
             if self._drawer.AcceptedNeuronShapeConstraints_Area_MaxEnabled.isChecked():
                 self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Max.setValue(self._drawer.AcceptedNeuronShapeConstraints_Area_MaxValue.value())
+                self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Max_Enabled.setValue(True)
             else:
-                self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Max.setValue(None)
+                self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Max_Enabled.setValue(False)
 
             if self._drawer.AcceptedNeuronShapeConstraints_Eccentricity_MinEnabled.isChecked():
                 self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Min.setValue(self._drawer.AcceptedNeuronShapeConstraints_Eccentricity_MinValue.value())
+                self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Min_Enabled.setValue(True)
             else:
-                self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Min.setValue(None)
+                self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Min_Enabled.setValue(False)
 
             if self._drawer.AcceptedNeuronShapeConstraints_Eccentricity_MaxEnabled.isChecked():
                 self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Max.setValue(self._drawer.AcceptedNeuronShapeConstraints_Eccentricity_MaxValue.value())
+                self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Max_Enabled.setValue(True)
             else:
-                self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Max.setValue(None)
+                self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Max_Enabled.setValue(False)
 
 
             self.topLevelOperatorView.AlignmentMinThreshold.setValue(self._drawer.AlignmentMinThresholdValue.value())
@@ -328,9 +334,6 @@ class NanshePostprocessingGui(LayerViewerGui):
                 self._drawer.ScaleLabel.setText(self._drawer.ScaleLabel.text().replace("Y, ", "Z, Y, "))
 
 
-
-
-
             self.topLevelOperatorView.SignificanceThreshold.setValue(self._drawer.SignificanceThresholdValue.value())
 
             self.topLevelOperatorView.WaveletTransformScale.setValue([self._drawer.ScaleValue_Z.value(), self._drawer.ScaleValue_Y.value(), self._drawer.ScaleValue_X.value()])
@@ -340,13 +343,15 @@ class NanshePostprocessingGui(LayerViewerGui):
 
             if self._drawer.AcceptedRegionShapeConstraints_MajorAxisLength_MinEnabled.isChecked():
                 self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Min.setValue(self._drawer.AcceptedRegionShapeConstraints_MajorAxisLength_MinValue.value())
+                self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Min_Enabled.setValue(True)
             else:
-                self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Min.setValue(None)
+                self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Min_Enabled.setValue(False)
 
             if self._drawer.AcceptedRegionShapeConstraints_MajorAxisLength_MaxEnabled.isChecked():
                 self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Max.setValue(self._drawer.AcceptedRegionShapeConstraints_MajorAxisLength_MaxValue.value())
+                self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Max_Enabled.setValue(True)
             else:
-                self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Max.setValue(None)
+                self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Max_Enabled.setValue(False)
 
 
             self.topLevelOperatorView.PercentagePixelsBelowMax.setValue(self._drawer.PercentagePixelsBelowMaxValue.value())
@@ -355,23 +360,27 @@ class NanshePostprocessingGui(LayerViewerGui):
 
             if self._drawer.AcceptedNeuronShapeConstraints_Area_MinEnabled.isChecked():
                 self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Min.setValue(self._drawer.AcceptedNeuronShapeConstraints_Area_MinValue.value())
+                self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Min_Enabled.setValue(True)
             else:
-                self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Min.setValue(None)
+                self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Min_Enabled.setValue(False)
 
             if self._drawer.AcceptedNeuronShapeConstraints_Area_MaxEnabled.isChecked():
                 self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Max.setValue(self._drawer.AcceptedNeuronShapeConstraints_Area_MaxValue.value())
+                self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Max_Enabled.setValue(True)
             else:
-                self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Max.setValue(None)
+                self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Max_Enabled.setValue(False)
 
             if self._drawer.AcceptedNeuronShapeConstraints_Eccentricity_MinEnabled.isChecked():
                 self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Min.setValue(self._drawer.AcceptedNeuronShapeConstraints_Eccentricity_MinValue.value())
+                self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Min_Enabled.setValue(True)
             else:
-                self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Min.setValue(None)
+                self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Min_Enabled.setValue(False)
 
             if self._drawer.AcceptedNeuronShapeConstraints_Eccentricity_MaxEnabled.isChecked():
                 self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Max.setValue(self._drawer.AcceptedNeuronShapeConstraints_Eccentricity_MaxValue.value())
+                self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Max_Enabled.setValue(True)
             else:
-                self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Max.setValue(None)
+                self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Max_Enabled.setValue(False)
 
 
             self.topLevelOperatorView.AlignmentMinThreshold.setValue(self._drawer.AlignmentMinThresholdValue.value())
