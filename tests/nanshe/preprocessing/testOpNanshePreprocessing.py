@@ -62,6 +62,7 @@ class TestOpNanshePreprocessing(object):
         op.TemporalSmoothingGaussianFilterStdev.setValue(5.0)
         op.SpatialSmoothingGaussianFilterStdev.setValue(5.0)
         op.Bias.setValue(100)
+        op.BiasEnabled.setValue(True)
 
         op.ToWaveletTransform.setValue(True)
         op.Scale.setValue([3, 4, 4])
