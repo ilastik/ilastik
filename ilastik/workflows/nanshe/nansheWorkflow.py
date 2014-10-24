@@ -25,6 +25,7 @@ from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.nanshe.preprocessing.nanshePreprocessingApplet import NanshePreprocessingApplet
 from ilastik.applets.nanshe.dictionaryLearning.nansheDictionaryLearningApplet import NansheDictionaryLearningApplet
+from ilastik.applets.nanshe.postprocessing.nanshePostprocessingApplet import NanshePostprocessingApplet
 
 class NansheWorkflow(Workflow):
     def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args):
@@ -37,21 +38,26 @@ class NansheWorkflow(Workflow):
         self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
         self.nanshePreprocessingApplet = NanshePreprocessingApplet(self, "Preprocessing", "NanshePreprocessing")
         self.nansheDictionaryLearningApplet = NansheDictionaryLearningApplet(self, "DictionaryLearning", "NansheDictionaryLearning")
+        self.nanshePostprocessingApplet = NanshePostprocessingApplet(self, "Postprocessing", "NanshePostprocessing")
+
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
 
         self._applets.append( self.dataSelectionApplet )
         self._applets.append( self.nanshePreprocessingApplet )
         self._applets.append( self.nansheDictionaryLearningApplet )
+        self._applets.append( self.nanshePostprocessingApplet )
 
     def connectLane(self, laneIndex):
         opDataSelection = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)        
         opPreprocessing = self.nanshePreprocessingApplet.topLevelOperator.getLane(laneIndex)
         opDictionaryLearning = self.nansheDictionaryLearningApplet.topLevelOperator.getLane(laneIndex)
+        opPostprocessing = self.nanshePostprocessingApplet.topLevelOperator.getLane(laneIndex)
 
         # Connect top-level operators
         opPreprocessing.InputImage.connect( opDataSelection.Image )
         opDictionaryLearning.InputImage.connect( opPreprocessing.Output )
+        opPostprocessing.InputImage.connect( opDictionaryLearning.Output )
 
     @property
     def applets(self):
