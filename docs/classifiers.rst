@@ -49,6 +49,8 @@ Finally, most classifiers used in ``sklearn`` can be used in lazyflow via the cl
 Reference: Classifier ABCs
 ==========================
 
+.. currentmodule:: lazyflow.classifiers.lazyflowClassifier
+
 .. autoclass:: LazyflowVectorwiseClassifierFactoryABC
    :members:
 
