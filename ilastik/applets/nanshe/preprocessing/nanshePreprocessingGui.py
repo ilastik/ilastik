@@ -144,14 +144,13 @@ class NanshePreprocessingGui(LayerViewerGui):
             self._drawer.TemporalSmoothingValue.setValue(self.topLevelOperatorView.TemporalSmoothingGaussianFilterStdev.value)
             self._drawer.SpatialSmoothingValue.setValue(self.topLevelOperatorView.SpatialSmoothingGaussianFilterStdev.value)
 
-            if self.topLevelOperatorView.Bias.ready():
+            if self.topLevelOperatorView.BiasEnabled.value:
                 self._drawer.BiasEnabled.setChecked(True)
                 self._drawer.BiasValue.setEnabled(True)
                 self._drawer.BiasValue.setValue(self.topLevelOperatorView.Bias.value)
             else:
                 self._drawer.BiasEnabled.setChecked(False)
                 self._drawer.BiasValue.setEnabled(False)
-                self._drawer.BiasValue.setValue(0)
 
 
             self._drawer.WaveletTransformEnabled.setChecked(self.topLevelOperatorView.ToWaveletTransform.value)
@@ -190,7 +189,7 @@ class NanshePreprocessingGui(LayerViewerGui):
             self._drawer.TemporalSmoothingValue.setValue(self.topLevelOperatorView.TemporalSmoothingGaussianFilterStdev.value)
             self._drawer.SpatialSmoothingValue.setValue(self.topLevelOperatorView.SpatialSmoothingGaussianFilterStdev.value)
 
-            if self.topLevelOperatorView.Bias.ready():
+            if self.topLevelOperatorView.BiasEnabled.value:
                 self._drawer.BiasEnabled.setChecked(True)
                 self._drawer.BiasValue.setEnabled(True)
                 self._drawer.BiasValue.setValue(self.topLevelOperatorView.Bias.value)
@@ -232,9 +231,10 @@ class NanshePreprocessingGui(LayerViewerGui):
             if self._drawer.BiasEnabled.isChecked():
                 self._drawer.BiasValue.setEnabled(True)
                 self.topLevelOperatorView.Bias.setValue(self._drawer.BiasValue.value())
+                self.topLevelOperatorView.BiasEnabled.setValue(True)
             else:
                 self._drawer.BiasValue.setEnabled(False)
-                self.topLevelOperatorView.Bias.setValue(None)
+                self.topLevelOperatorView.BiasEnabled.setValue(False)
 
 
             self.topLevelOperatorView.ToWaveletTransform.setValue(self._drawer.WaveletTransformEnabled.isChecked())
@@ -269,9 +269,10 @@ class NanshePreprocessingGui(LayerViewerGui):
             if self._drawer.BiasEnabled.isChecked():
                 self._drawer.BiasValue.setEnabled(True)
                 self.topLevelOperatorView.Bias.setValue(self._drawer.BiasValue.value())
+                self.topLevelOperatorView.BiasEnabled.setValue(True)
             else:
                 self._drawer.BiasValue.setEnabled(False)
-                self.topLevelOperatorView.Bias.setValue(None)
+                self.topLevelOperatorView.BiasEnabled.setValue(False)
 
 
             self.topLevelOperatorView.ToWaveletTransform.setValue(self._drawer.WaveletTransformEnabled.isChecked())
