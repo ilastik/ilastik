@@ -44,8 +44,9 @@ class NanshePreprocessingApplet( StandardApplet ):
     @property
     def broadcastingSlots(self):
         return ["ToRemoveZeroedLines", "ErosionShape", "DilationShape", \
-        "ToExtractF0", "HalfWindowSize", "WhichQuantile", "TemporalSmoothingGaussianFilterStdev", "SpatialSmoothingGaussianFilterStdev", "Bias", \
-        "ToWaveletTransform", "Scale"]
+        "ToExtractF0", "HalfWindowSize", "WhichQuantile", \
+        "TemporalSmoothingGaussianFilterStdev", "SpatialSmoothingGaussianFilterStdev", \
+        "BiasEnabled", "Bias", "ToWaveletTransform", "Scale"]
     
     @property
     def singleLaneGuiClass(self):
