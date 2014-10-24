@@ -305,10 +305,15 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             layers.append(outputLayer)
 
         for channel, channelProvider in enumerate(self._channelProviders):
+            slot_drange = channelProvider.Output.meta.drange
+            if slot_drange is not None:
+                drange = slot_drange
+            else:
+                drange = (0.0, 1.0)
             channelSrc = LazyflowSource(channelProvider.Output)
             inputChannelLayer = AlphaModulatedLayer(
                 channelSrc, tintColor=QColor(self._channelColors[channel]),
-                range=(0.0, 1.0), normalize=(0.0, 1.0))
+                range=drange, normalize=drange)
             inputChannelLayer.opacity = 0.5
             inputChannelLayer.visible = True
             inputChannelLayer.name = "Input Channel " + str(channel)
