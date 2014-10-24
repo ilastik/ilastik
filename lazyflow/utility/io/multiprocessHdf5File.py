@@ -2,6 +2,7 @@ import os
 import copy
 import h5py
 import threading
+import warnings
 import multiprocessing
 import numpy
 
@@ -70,6 +71,10 @@ class _Dataset(object):
         self._internal_path = internal_path
         self._reader_process = reader_process
         self.mp_file = mp_file
+        
+        if self.compression is None:
+            warnings.warn( "MultiProcessHdf5File does not improve performance for non-compressed datasets! "
+                           "Your dataset '{}' is not compressed.".format( self.mp_file._filepath + internal_path ) )
     
     def __getitem__(self, slicing):
         return self._reader_process.read_subvolume(self._internal_path, slicing)
