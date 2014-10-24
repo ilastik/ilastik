@@ -23,6 +23,7 @@ Contents:
    advanced
    request
    utilities
+   classifiers
    documentation_maintenance
 
 Indices and tables
