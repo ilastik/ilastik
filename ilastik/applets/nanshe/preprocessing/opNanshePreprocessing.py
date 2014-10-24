@@ -50,7 +50,8 @@ class OpNanshePreprocessing(Operator):
     WhichQuantile = InputSlot(value=0.15, stype='float')
     TemporalSmoothingGaussianFilterStdev = InputSlot(value=5.0, stype='float')
     SpatialSmoothingGaussianFilterStdev = InputSlot(value=5.0, stype='float')
-    Bias = InputSlot(optional=True, stype='float')
+    BiasEnabled = InputSlot(value=False, stype='bool')
+    Bias = InputSlot(value=0.0, stype='float')
 
     ToWaveletTransform = InputSlot(value=True)
     Scale = InputSlot(value=4)
@@ -70,6 +71,7 @@ class OpNanshePreprocessing(Operator):
         self.opNansheExtractF0.WhichQuantile.connect(self.WhichQuantile)
         self.opNansheExtractF0.TemporalSmoothingGaussianFilterStdev.connect(self.TemporalSmoothingGaussianFilterStdev)
         self.opNansheExtractF0.SpatialSmoothingGaussianFilterStdev.connect(self.SpatialSmoothingGaussianFilterStdev)
+        self.opNansheExtractF0.BiasEnabled.connect(self.BiasEnabled)
         self.opNansheExtractF0.Bias.connect(self.Bias)
 
         self.opNansheWaveletTransform = OpNansheWaveletTransform(parent=self)
