@@ -26,6 +26,8 @@ __date__ = "$Oct 14, 2014 16:31:56 EDT$"
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
+from lazyflow.operators import OpArrayCache
+
 import numpy
 
 import nanshe
@@ -77,3 +79,44 @@ class OpNansheRemoveZeroedLines(Operator):
             self.Output.setDirty( slice(None) )
         else:
             assert False, "Unknown dirty input slot"
+
+
+class OpNansheRemoveZeroedLinesCached(Operator):
+    """
+    Given an input image and max/min bounds,
+    masks out (i.e. sets to zero) all pixels that fall outside the bounds.
+    """
+    name = "OpNansheRemoveZeroedLinesCached"
+    category = "Pointwise"
+
+
+    InputImage = InputSlot()
+
+    ErosionShape = InputSlot(value=[21, 1])
+    DilationShape = InputSlot(value=[1, 3])
+
+    Output = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super( OpNansheRemoveZeroedLinesCached, self ).__init__( *args, **kwargs )
+
+        self.opRemoveZeroedLines = OpNansheRemoveZeroedLines(parent=self)
+
+        self.opRemoveZeroedLines.ErosionShape.connect(self.ErosionShape)
+        self.opRemoveZeroedLines.DilationShape.connect(self.DilationShape)
+
+
+        self.opCache = OpArrayCache(parent=self)
+        self.opCache.fixAtCurrent.setValue(False)
+
+        self.opRemoveZeroedLines.InputImage.connect( self.InputImage )
+        self.opCache.Input.connect( self.opRemoveZeroedLines.Output )
+        self.Output.connect( self.opCache.Output )
+
+    def setupOutputs(self):
+        self.opCache.blockShape.setValue( self.opRemoveZeroedLines.Output.meta.shape )
+
+        self.Output.meta.assignFrom( self.opCache.Output.meta )
+
+    def propagateDirty(self, slot, subindex, roi):
+        pass
