@@ -80,10 +80,13 @@ class NansheDictionaryLearningGui(LayerViewerGui):
 
         if self.topLevelOperatorView.Ord.value == -numpy.inf:
             self._drawer.NormValueSelection.setCurrentIndex(1)
+            self._drawer.NormValue.setEnabled(False)
         elif self.topLevelOperatorView.Ord.value == numpy.inf:
             self._drawer.NormValueSelection.setCurrentIndex(2)
+            self._drawer.NormValue.setEnabled(False)
         else:
             self._drawer.NormValueSelection.setCurrentIndex(0)
+            self._drawer.NormValue.setEnabled(True)
             self._drawer.NormValue.setValue(self.topLevelOperatorView.Ord.value)
 
         self._drawer.KValue.setValue(self.topLevelOperatorView.K.value)
@@ -102,10 +105,13 @@ class NansheDictionaryLearningGui(LayerViewerGui):
 
     def apply_gui_settings_to_operator(self):
         if self._drawer.NormValueSelection.currentIndex() == 1:
+            self._drawer.NormValue.setEnabled(False)
             self.topLevelOperatorView.Ord.setValue(-numpy.inf)
         elif self._drawer.NormValueSelection.currentIndex() == 2:
+            self._drawer.NormValue.setEnabled(False)
             self.topLevelOperatorView.Ord.setValue(numpy.inf)
         else:
+            self._drawer.NormValue.setEnabled(True)
             self.topLevelOperatorView.Ord.setValue(self._drawer.NormValue.value())
 
         self.topLevelOperatorView.K.setValue(self._drawer.KValue.value())
