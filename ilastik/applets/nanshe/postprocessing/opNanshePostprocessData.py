@@ -196,3 +196,75 @@ class OpNanshePostprocessData(Operator):
             self.Output.setDirty( slice(None) )
         else:
             assert False, "Unknown dirty input slot"
+
+
+class OpNanshePostprocessDataCached(Operator):
+    """
+    Given an input image and max/min bounds,
+    masks out (i.e. sets to zero) all pixels that fall outside the bounds.
+    """
+    name = "OpNanshePostprocessDataCached"
+    category = "Pointwise"
+
+
+    InputImage = InputSlot()
+
+    SignificanceThreshold = InputSlot(value=3.0, stype="float")
+    WaveletTransformScale = InputSlot(value=4, stype="int")
+    NoiseThreshold = InputSlot(value=4.0, stype="float")
+    AcceptedRegionShapeConstraints_MajorAxisLength_Min = InputSlot(value=0.0, stype="float", optional=True)
+    AcceptedRegionShapeConstraints_MajorAxisLength_Max = InputSlot(value=25.0, stype="float", optional=True)
+
+    PercentagePixelsBelowMax = InputSlot(value=0.8, stype="float")
+    MinLocalMaxDistance = InputSlot(value=20.0, stype="float")
+
+    AcceptedNeuronShapeConstraints_Area_Min = InputSlot(value=45, stype="int", optional=True)
+    AcceptedNeuronShapeConstraints_Area_Max = InputSlot(value=60, stype="int", optional=True)
+
+    AcceptedNeuronShapeConstraints_Eccentricity_Min = InputSlot(value=0.0, stype="float", optional=True)
+    AcceptedNeuronShapeConstraints_Eccentricity_Max = InputSlot(value=0.9, stype="float", optional=True)
+
+    AlignmentMinThreshold = InputSlot(value=0.6, stype="float")
+    OverlapMinThreshold = InputSlot(value=0.6, stype="float")
+
+    Fuse_FractionMeanNeuronMaxThreshold = InputSlot(value=0.01, stype="float")
+
+    Output = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super( OpNanshePostprocessDataCached, self ).__init__( *args, **kwargs )
+
+        self.opPostprocessing = OpNanshePostprocessData(parent=self)
+
+        self.opPostprocessing.SignificanceThreshold.connect(self.SignificanceThreshold)
+        self.opPostprocessing.WaveletTransformScale.connect(self.WaveletTransformScale)
+        self.opPostprocessing.NoiseThreshold.connect(self.NoiseThreshold)
+        self.opPostprocessing.AcceptedRegionShapeConstraints_MajorAxisLength_Min.connect(self.AcceptedRegionShapeConstraints_MajorAxisLength_Min)
+        self.opPostprocessing.AcceptedRegionShapeConstraints_MajorAxisLength_Max.connect(self.AcceptedRegionShapeConstraints_MajorAxisLength_Max)
+        self.opPostprocessing.PercentagePixelsBelowMax.connect(self.PercentagePixelsBelowMax)
+        self.opPostprocessing.MinLocalMaxDistance.connect(self.MinLocalMaxDistance)
+        self.opPostprocessing.AcceptedNeuronShapeConstraints_Area_Min.connect(self.AcceptedNeuronShapeConstraints_Area_Min)
+        self.opPostprocessing.AcceptedNeuronShapeConstraints_Area_Max.connect(self.AcceptedNeuronShapeConstraints_Area_Max)
+        self.opPostprocessing.AcceptedNeuronShapeConstraints_Eccentricity_Min.connect(self.AcceptedNeuronShapeConstraints_Eccentricity_Min)
+        self.opPostprocessing.AcceptedNeuronShapeConstraints_Eccentricity_Max.connect(self.AcceptedNeuronShapeConstraints_Eccentricity_Max)
+        self.opPostprocessing.AlignmentMinThreshold.connect(self.AlignmentMinThreshold)
+        self.opPostprocessing.OverlapMinThreshold.connect(self.OverlapMinThreshold)
+        self.opPostprocessing.Fuse_FractionMeanNeuronMaxThreshold.connect(self.Fuse_FractionMeanNeuronMaxThreshold)
+
+
+        self.opCache = OpBlockedArrayCache(parent=self)
+        self.opCache.fixAtCurrent.setValue(False)
+
+        self.opPostprocessing.InputImage.connect( self.InputImage )
+        self.opCache.Input.connect( self.opPostprocessing.Output )
+        self.Output.connect( self.opCache.Output )
+
+    def setupOutputs(self):
+        self.opCache.innerBlockShape.setValue( self.opPostprocessing.Output.meta.shape )
+
+        self.opCache.outerBlockShape.setValue( self.opPostprocessing.Output.meta.shape )
+
+        self.Output.meta.assignFrom( self.opCache.Output.meta )
+
+    def propagateDirty(self, slot, subindex, roi):
+        pass
