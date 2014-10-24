@@ -191,29 +191,42 @@ class OpInputDataReader(Operator):
         if not os.path.exists(externalPath):
             raise OpInputDataReader.DatasetReadError("Input file does not exist: " + externalPath)
 
-        # Open the h5 file in read-only mode
-        try:
-            h5File = MultiProcessHdf5File(externalPath, 'r')
-        except Exception as e:
-            msg = "Unable to open HDF5 File: {}".format( externalPath )
-            msg += str(e)
-            raise OpInputDataReader.DatasetReadError( msg )
-        self._file = h5File
-
-        h5Reader = OpStreamingHdf5Reader(parent=self)
-        h5Reader.Hdf5File.setValue(h5File)
-
         # Can't set the internal path yet if we don't have one
         assert internalPath != '', \
             "When using hdf5, you must append the hdf5 internal path to the "\
             "data set to your filename, e.g. myfile.h5/volume/data  "\
             "No internal path provided for dataset in file: {}".format( externalPath )
 
+        # Open the h5 file in read-only mode
+        try:
+            h5File = h5py.File(externalPath, 'r')
+            try:
+                compression_setting = h5File[internalPath].compression
+            except Exception as e:
+                h5File.close()
+                msg = "Error reading HDF5 File: {}\n{}".format(externalPath, e.msg)
+                raise OpInputDataReader.DatasetReadError( msg )
+ 
+            # If the h5 dataset is compressed, we'll have better performance 
+            #  with a multi-process hdf5 access object.
+            # (Otherwise, single-process is faster.)
+            if compression_setting is not None:
+                h5File.close()                
+                h5File = MultiProcessHdf5File(externalPath, 'r')
+        except OpInputDataReader.DatasetReadError:
+            raise
+        except Exception as e:
+            msg = "Unable to open HDF5 File: {}\n{}".format( externalPath, str(e) )
+            raise OpInputDataReader.DatasetReadError( msg )
+        self._file = h5File
+
+        h5Reader = OpStreamingHdf5Reader(parent=self)
+        h5Reader.Hdf5File.setValue(h5File)
+
         try:
             h5Reader.InternalPath.setValue(internalPath)
         except OpStreamingHdf5Reader.DatasetReadError as e:
-            msg = "Error reading HDF5 File: {}".format(externalPath)
-            msg += e.msg
+            msg = "Error reading HDF5 File: {}\n{}".format(externalPath, e.msg)
             raise OpInputDataReader.DatasetReadError( msg )
 
         return (h5Reader, h5Reader.OutputImage)
