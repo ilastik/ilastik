@@ -44,6 +44,7 @@ class TestOpNansheExtractF0(object):
         op.TemporalSmoothingGaussianFilterStdev.setValue(5.0)
         op.SpatialSmoothingGaussianFilterStdev.setValue(5.0)
         op.Bias.setValue(100)
+        op.BiasEnabled.setValue(True)
 
         b = op.Output[...].wait()
 
