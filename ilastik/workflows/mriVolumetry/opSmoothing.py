@@ -9,71 +9,53 @@ from lazyflow.rtype import SubRegion
 from lazyflow.request import RequestLock
 from lazyflow.operators import OpReorderAxes, OpCompressedCache
 
+from opImplementationChoice import OpImplementationChoice
+
 
 import logging
 logger = logging.getLogger(__name__)
 
-import opengm
 
 # this operator wraps multiple implementations of smoothing algorithms while
 # also taking care of caching and reordering
-class OpSmoothing(Operator):
+class OpSmoothedArgMax(Operator):
     Input = InputSlot()
     Configuration = InputSlot()
     Method = InputSlot()
 
-    RawInput = InputSlot(optional=True)
-
-    CachedOutput = OutputSlot()
-    ArgmaxOutput = OutputSlot()
-
-    # for internal use only
-    _Output = OutputSlot()
+    Smoothed = OutputSlot()
+    Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
-        super(OpSmoothing, self).__init__(*args, **kwargs)
-
-        self._op = None
+        super(OpSmoothedArgMax, self).__init__(*args, **kwargs)
 
         self._opIn = OpReorderAxes(parent=self)
         self._opIn.Input.connect(self.Input)
         self._opIn.AxisOrder.setValue('txyzc')
 
-        self._opOut = OpReorderAxes(parent=self)
-        self._opOut.Input.connect(self._Output)
+        self._op = OpImplementationChoice(OpSmoothingImplementation,
+                                          parent=self)
+        self._op.implementations = smoothers_available
+        self._op.Input.connect(self._opIn.Output)
+        self._op.Configuration.connect(self.Configuration)
+        self._op.Implementation.connect(self.Method)
 
-        self.opGlobThres = OpMriArgmax(parent=self)
-        self.opGlobThres.Input.connect(self.CachedOutput)
-        self.ArgmaxOutput.connect(self.opGlobThres.Output)
+        self._opOut = OpReorderAxes(parent=self)
+        self._opOut.Input.connect(self._op.Output)
+
+        self._opGlobThres = OpMriArgmax(parent=self)
+        self._opGlobThres.Input.connect(self.Smoothed)
+        self.Output.connect(self._opGlobThres.Output)
 
         self._cache = None
 
     def setupOutputs(self):
-        method = self.Method.value
-        if method not in smoothers_available:
-            raise NotImplementedError(
-                "unknown smoothing method '{}'".format(method))
-
-        temp_op = smoothers_available[method](parent=self)
-        if not temp_op.isAvailable():
-            raise RuntimeError(
-                "smoothing method '{}' not available".format(method))
-
-        # remove cache so that it does not object on e.g. changed axis
         self._destroyCache()
-
-        # FIXME reuse operators (reusing is known to cause at the moment)
-        self._disconnectSmoother()
-        self._connectSmoother(temp_op)
-
         self._createCache()
 
         self._opOut.AxisOrder.setValue(self.Input.meta.getAxisKeys())
 
         ts = self.Input.meta.getTaggedShape()
-        self.ArgmaxOutput.meta.assignFrom(self.Input.meta)
-        self.ArgmaxOutput.meta.shape = tuple(ts.values())
-        self.ArgmaxOutput.meta.dtype = np.uint32
 
     def execute(self, slot, subindex, roi, result):
         raise NotImplementedError(
@@ -81,38 +63,24 @@ class OpSmoothing(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         # all dirty handling is done by internal operators
-        if self._op is None:
-            # strange constellation, but we try to do our best
-            self.CachedOutput.setDirty(slice(None))
+        pass
 
     def _destroyCache(self):
         if self._cache is None:
             return
-        self.CachedOutput.disconnect()
+        self.Smoothed.disconnect()
         self._cache.Input.disconnect()
         self._cache = None
 
     def _createCache(self):
         self._cache = OpCompressedCache(parent=self)
         ts = self.Input.meta.getTaggedShape()
-        if 't' in ts:
-            ts['t'] = 1
+        for k in 'tc':
+            if k in ts:
+                ts[k] = 1
         self._cache.Input.connect(self._opOut.Output)
         self._cache.BlockShape.setValue([ts[k] for k in ts])
-        self.CachedOutput.connect(self._cache.Output)
-
-    def _disconnectSmoother(self):
-        self._Output.disconnect()
-        if self._op is not None:
-            self._op.Input.disconnect()
-            self._op.Configuration.disconnect()
-        self._op = None
-
-    def _connectSmoother(self, temp_op):
-        self._op = temp_op
-        self._op.Input.connect(self._opIn.Output)
-        self._op.Configuration.connect(self.Configuration)
-        self._Output.connect(self._op.Output)
+        self.Smoothed.connect(self._cache.Output)
 
 
 # this dict stores the available smoothing methods in the format
@@ -280,6 +248,7 @@ class OpGuidedFilter(OpSmoothingImplementation):
             raise self.ConfigurationError(
                 "expected key 'eps' in configuration")
         epsilon = conf['eps']
+
         if 'guided' not in conf:
             raise self.ConfigurationError(
                 "expected key 'guided' in configuration")
@@ -357,88 +326,6 @@ class OpGuidedFilter(OpSmoothingImplementation):
 smoothers_available['guided'] = OpGuidedFilter
 
 
-# Implements opengm filtering
-class OpOpenGMFilter(OpSmoothingImplementation):
-    """
-    Operator that uses opengm to cleanup labels
-    """
-    name = "OpenGM Filter"
-
-    # implementation of abstract method
-    def isAvailable(self):
-        # we are implementing it right here, so it is indeed available
-        return False
-
-    def __init__(self, *args, **kwargs):
-        # internal threshold for computing mask and energy offset 
-        # to avoid log problems
-        self._epsilion = 0.000001 
-        # compute mask from raw input channel
-        raw_data = self.op.RawInput.get(slice(None)).wait()
-        bool_mask = np.ma.masked_less_equal( raw_data[0,...,0],
-                                             self._epsilion).mask
-        self._mask = np.zeros(raw_data.shape, dtype=np.uint32)
-        self._mask[~bool_mask] = 1.0
-
-        super(OpOpenGMFilter, self).__init__(*args, **kwargs)
-
-    def setupOutputs(self):
-        super(OpOpenGMFilter, self).setupOutputs()
-        self.Output.meta.dtype = np.float32
-
-    def execute(self, slot, subindex, roi, result):
-        logger.debug("Smoothing roi {}".format(roi))
-
-        conf = self.Configuration.value
-        if 'sigma' not in conf:
-            raise self.ConfigurationError(
-                "expected key 'sigma' in configuration")
-        sigma = conf['sigma']
-
-        if 'unaries' not in conf:
-            raise self.ConfigurationError(
-                "expected key 'unaries' in configuration")
-        unaries = conf['unaries']
-
-        result[...] = self.Input.get(roi).wait().astype( \
-                                                    self.Output.meta.dtype)
-        self._opengmFilter(result, sigma, unaries)
-
-    @staticmethod
-    def _opengmFilter(vol, filter_size, unaries_scale):
-        print "TODO implement me"
-        print unaries, filter_size
-        return vol
-        
-        # make uncertainty edge image
-        pfiltered = np.zeros_like(vol[0])
-        for c in xrange(vol.shape[-1]):
-            pfiltered[...,c] = vigra.gaussianSmoothing( vol[0,...,c], 
-                                                        float(1.2))
-        pmap = np.sort(pfiltered, axis=-1)
-        uncertainties  = pmap[...,-1]-pmap[...,-2] 
-        # set starting point
-        init_data = np.argmax(vol[0],axis=-1).astype( np.uint32 )
-        init_data = opengm.getStartingPointMasked(init_data, self._mask)      
-        unaries = -unaries_scale*np.log(vol[0] + self._epsilon)
-        gm = opengm.pottsModel3dMasked(unaries=unaries, 
-                                       regularizer=uncertainties, 
-                                       mask=self._mask)
-        try:
-            inf = opengm.inference.FastPd(gm)
-            inf.setStartingPoint(init_data)
-            inf.infer(inf.verboseVisitor())
-        except:
-            inf = opengm.inference.AlphaExpansion(gm)
-            inf.setStartingPoint(init_data)
-            inf.infer(inf.verboseVisitor())
-        pred = opengm.makeMaskedState(self._mask, inf.arg(), labelIdx=0)
-
-
-# add this smoother to the global smoothers table
-smoothers_available['opengm'] = OpOpenGMFilter
-
-
 class OpMriArgmax(Operator):
     """
     Operator that compute argmax across the channels
@@ -459,6 +346,7 @@ class OpMriArgmax(Operator):
     def __init__(self, *args, **kwargs):
         super(OpMriArgmax, self).__init__(*args, **kwargs)
 
+        # TODO reordering not needed for new OpSmoothedArgMax
         self.opIn = OpReorderAxes(parent=self)
         self.opIn.Input.connect(self.Input)
         self.opIn.AxisOrder.setValue('txyzc') 

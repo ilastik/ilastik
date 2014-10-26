@@ -232,7 +232,7 @@ class MriVolFilterGui(LayerViewerGui):
         tab_index = self._drawer.tabWidget.currentIndex()
         conf = self._getTabConfig()
 
-        op.SmoothingMethod.setValue(smoothing_methods_map[tab_index])
+        op.Method.setValue(smoothing_methods_map[tab_index])
         op.Configuration.setValue(conf)
 
         thres = self._drawer.thresSpinBox.value()
@@ -271,7 +271,7 @@ class MriVolFilterGui(LayerViewerGui):
         self._drawer.thresSpinBox.setValue(thres)
         self._spinbox_value_changed(thres)
 
-        method = op.SmoothingMethod.value
+        method = op.Method.value
         try:
             i = smoothing_methods_map.index(method)
         except ValueError:

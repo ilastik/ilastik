@@ -6,24 +6,34 @@ from lazyflow.operators import OpReorderAxes, OpCompressedCache, \
 from lazyflow.rtype import SubRegion
 from lazyflow.stype import Opaque
 
-from opSmoothing import OpSmoothing, OpMriArgmax
-
-try:
-    import opengm
-    print opengm.__file__
-except Exception,e:
-    print e
+from opSmoothing import OpSmoothedArgMax, smoothers_available
+from opOpenGMFilter import OpOpenGMFilter
+from opImplementationChoice import OpImplementationChoice
     
 import vigra
 import numpy as np
 
+## top level operator of MRIVolFilter applet
+# There are in total 3 possible starting points for this operator:
+#
+# (a) Gaussian Smoothing 
+#                        \
+#                         |--> ArgMax 
+#                        /           \
+# (b) Guided Filter -----             \
+#                                      |--> (PostProcessing) TODO
+#                                     /
+# (c) OpenGM -------------------------
+#
+# We try to keep the code clean by using OpImplementationChoice for
+# switching between [(a), (b)] and [(c)]. 
 class OpMriVolFilter(Operator):
     name = "MRI Processing"
 
     RawInput = InputSlot(optional=True)  # Display only
     Input = InputSlot()
 
-    SmoothingMethod = InputSlot(value='gaussian')
+    Method = InputSlot(value='gaussian')
     Configuration = InputSlot(value={'sigma': 1.2})
 
     Threshold = InputSlot(stype='int', value=3000)
@@ -46,22 +56,43 @@ class OpMriVolFilter(Operator):
     CleanBlocks = OutputSlot()
     OutputHdf5 = OutputSlot()
 
+    # common interface for OpSmoothedArgMax and OpOpenGMFilter
+    class _ABC(Operator):
+        # shared slots
+        Input = InputSlot()
+        Configuration = InputSlot()
+        Output = OutputSlot()
+
+        # OpSmoothedArgMax
+        Method = InputSlot(optional=True)
+        Smoothed = OutputSlot()
+
+        # OpOpenGMFilter
+        RawInput = InputSlot(optional=True)
+
     def __init__(self, *args, **kwargs):
         super(OpMriVolFilter, self).__init__(*args, **kwargs)
 
         self._cache = OpCompressedCache(parent=self)
         self._cache.name = "OpMriVol.OutputCache"
 
-        self.opSmoothing = OpSmoothing(parent=self)
-        self.opSmoothing.Configuration.connect(self.Configuration)
-        self.opSmoothing.Method.connect(self.SmoothingMethod)
-        self.opSmoothing.Input.connect(self.Input)
-        self.opSmoothing.RawInput.connect(self.RawInput)
+        self.op = OpImplementationChoice(self._ABC, parent=self)
+        d = dict()
+        for k in smoothers_available:
+            d[k] = OpSmoothedArgMax
+        d['opengm'] = OpOpenGMFilter
+        self.op.implementations = d
+        self.op.Implementation.connect(self.Method)
+        self.op.Method.connect(self.Method)
+        self.op.Input.connect(self.Input)
+        self.op.RawInput.connect(self.RawInput)
+        self.op.Configuration.connect(self.Configuration)
 
-        self.Smoothed.connect(self.opSmoothing.CachedOutput)
+        self.Smoothed.connect(self.op.Smoothed)
+        self.ArgmaxOutput.connect(self.op.Output)
 
         self.opBinarize = OpMriBinarizeImage(parent=self)
-        self.opBinarize.Input.connect(self.opSmoothing.ArgmaxOutput)
+        self.opBinarize.Input.connect(self.op.Output)
         self.opBinarize.ActiveChannels.connect(self.ActiveChannels)
 
         self.opCC = OpLabelVolume(parent=self)
@@ -73,19 +104,24 @@ class OpMriVolFilter(Operator):
         self.opFilter.MinLabelSize.connect( self.Threshold )
         self.opFilter.BinaryOut.setValue(False)
 
-        self._cache.Input.connect(self.opFilter.Output) 
-        # FIXME shouldn't this be connected to a cached version of self.Output?
-        self.CachedOutput.connect(self._cache.Output)
+        self._cache.Input.connect(self.opFilter.Output)
         self._cache.InputHdf5.connect(self.InputHdf5)
         self.CleanBlocks.connect(self._cache.CleanBlocks)
         self.OutputHdf5.connect(self._cache.OutputHdf5)
 
-        self.opRevertBinarize = OpMriRevertBinarize( parent=self)
-        self.opRevertBinarize.ArgmaxInput.connect( \
-                                                self.opSmoothing.ArgmaxOutput)
+        self.opRevertBinarize = OpMriRevertBinarize(parent=self)
+        self.opRevertBinarize.ArgmaxInput.connect(self.op.Output)
         self.opRevertBinarize.CCInput.connect(self.CachedOutput)
 
-        self.Output.connect( self.opRevertBinarize.Output )
+        self.Output.connect(self.opRevertBinarize.Output)
+        # FIXME no cache here
+        self.CachedOutput.connect(self.op.Output)
+
+    def _connectForSmoothedArgMax(self):
+        pass
+
+    def _connectForOpenGM(self):
+        pass
 
     def execute(self, slot, subindex, roi, destination):
         assert False, "Shouldn't get here."
@@ -93,7 +129,7 @@ class OpMriVolFilter(Operator):
     def propagateDirty(self, inputSlot, subindex, roi):
         if inputSlot in [self.Input, self.RawInput]:
             self.Output.setDirty(roi)
-        if inputSlot in [self.SmoothingMethod, self.Configuration]:
+        if inputSlot in [self.Method, self.Configuration]:
             self.Output.setDirty(slice(None))
         if inputSlot is self.Threshold:
             self.Output.setDirty(slice(None))
@@ -108,15 +144,12 @@ class OpMriVolFilter(Operator):
         self.Output.meta.shape = tuple(ts.values())
         self.Output.meta.dtype = np.uint32
 
-        self.ArgmaxOutput.meta.assignFrom(self.Input.meta)
-        self.ArgmaxOutput.meta.shape = tuple(ts.values())
-        self.ArgmaxOutput.meta.dtype = np.uint32
-
         # set cache chunk shape to the whole spatial volume
         ts['t'] = 1
         blockshape = map(lambda k: ts[k], ''.join(ts.keys()))
         self._cache.BlockShape.setValue(tuple(blockshape))
-        self._cache.Input.setDirty(slice(None))
+        # this is not a good idea!
+        #self._cache.Input.setDirty(slice(None))
 
     def setInSlot(self, slot, subindex, roi, value):
         if slot is not self.InputHdf5:
