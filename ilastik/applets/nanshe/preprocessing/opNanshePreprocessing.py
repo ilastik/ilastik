@@ -83,8 +83,5 @@ class OpNanshePreprocessing(Operator):
         self.opPreprocessData.InputImage.connect( self.InputImage )
         self.Output.connect( self.opPreprocessData.Output )
 
-    def setupOutputs(self):
-        self.Output.meta.assignFrom( self.opPreprocessData.Output.meta )
-
     def propagateDirty(self, slot, subindex, roi):
         pass
