@@ -92,8 +92,8 @@ class OpNansheGenerateDictionary(Operator):
 
         output_key = list(output_key)
 
-        for i in xrange(1, len(output_key) - 1):
-            output_key[i] = slice(None)
+        for i in xrange(1, len(output_key)):
+            output_key[i] = slice(0, output_key[i].stop - output_key[i].start, output_key[i].step)
 
         output_key = tuple(output_key)
 
