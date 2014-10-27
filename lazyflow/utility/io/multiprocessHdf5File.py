@@ -6,6 +6,8 @@ import warnings
 import multiprocessing
 import numpy
 
+from lazyflow.roi import sliceToRoi 
+
 # This code uses multiprocessing to read hdf5 datasets faster
 # NOTES:
 # - So far, this code is:
@@ -21,7 +23,17 @@ import numpy
 #  -- Could memory-sharing be achieved instead via memory-mapped files and/or mem-mapped arrays?
 #  -- Create a pool of requests instead of creating a request for every thread and volume combo.
 
+# DEBUG: In this file (including the __main__ section), we are experimenting with various implementations.
+#        The METHOD setting switches between each.
+#METHOD = 'plain-h5py' # 4.6 seconds
+#METHOD = 'pipe-array' # 3.8 - 4.5 (inconsistent...)
+METHOD = 'pipe-bytes' # 2.5 seconds
+#METHOD = 'shared-array' # 4.3 (2.0 without copy...)
+
 class ReaderProcess(multiprocessing.Process):
+    # This class is not threadsafe.
+    # The reader process is not supposed to be shared by multiple threads.
+    # Each thread should create its own reader process.
     
     def __init__(self, filepath):
         name = 'ilastik_helper-' + os.path.split(filepath)[1]
@@ -31,35 +43,63 @@ class ReaderProcess(multiprocessing.Process):
         self._result_queue_recv, self._result_queue_send = multiprocessing.Pipe(duplex=False)
         self.daemon = True
 
+        if METHOD == 'shared-array':
+            self.available_bytes = 100*1024**2
+            self.transfer_buffer = multiprocessing.RawArray('b', self.available_bytes)
+
     def run(self):
         with h5py.File(self._filepath, 'r') as h5_file:
             (internal_path, slicing) = self._request_queue_recv.recv()
             # 'None' means stop the process.
             while internal_path is not None:
                 try:
-                    data = h5_file[internal_path][slicing]
+                    if METHOD == 'shared-array':
+                        read_roi = sliceToRoi( slicing, h5_file[internal_path].shape )
+                        read_shape = read_roi[1] - read_roi[0]
+                        num_bytes = h5_file[internal_path].dtype.itemsize * numpy.prod( read_shape )
+                        if num_bytes > self.available_bytes:
+                            assert False
+                        read_array = numpy.frombuffer( self.transfer_buffer, dtype=numpy.uint8, count=num_bytes )
+                        read_array.setflags(write=True)
+                        read_array = read_array.view(h5_file[internal_path].dtype).reshape( read_shape )
+                         
+                        h5_file[internal_path].read_direct(read_array, slicing)
+
+                    if METHOD == 'pipe-bytes' or METHOD == 'pipe-array':
+                        read_array = h5_file[internal_path][slicing]
                 except Exception as ex:
                     self._result_queue_send.send( ex )
+                    raise
                 else:
-                    self._result_queue_send.send( (data.shape, data.dtype) )
-                    #self._result_queue_send.send( data )
-                    self._result_queue_send.send_bytes( numpy.getbuffer(data) )
+                    self._result_queue_send.send( (read_array.shape, read_array.dtype) )
+
+                    if METHOD == 'pipe-array':
+                        self._result_queue_send.send( read_array )
+                    
+                    if METHOD == 'pipe-bytes':
+                        self._result_queue_send.send_bytes( numpy.getbuffer(read_array) )
                 
                 # Wait for the next request
                 (internal_path, slicing) = self._request_queue_recv.recv()
 
     def read_subvolume(self, internal_path, slicing):
-        # The reader process is not supposed to be shared by multiple threads.
-        # Each thread should create its own reader process.
         self._request_queue_send.send( (internal_path, slicing) )
         response_info = self._result_queue_recv.recv()
         if isinstance(response_info, Exception):
             raise response_info
         shape, dtype = response_info
-        #result = self._result_queue_recv.recv()
-        raw_buffer = self._result_queue_recv.recv_bytes()
-        result = numpy.frombuffer(raw_buffer, dtype=dtype).reshape(shape)
-        result.setflags(write=True)
+
+        if METHOD == 'pipe-array':
+            result = self._result_queue_recv.recv()
+
+        if METHOD == 'pipe-bytes':
+            raw_buffer = self._result_queue_recv.recv_bytes()
+            result = numpy.frombuffer(raw_buffer, dtype=dtype).reshape(shape)
+            result.setflags(write=True)
+
+        if METHOD == 'shared-array':
+            result = numpy.frombuffer( self.transfer_buffer, dtype=dtype, count=numpy.prod(shape) ).copy()
+            result = result.reshape(shape)
         return result
 
     def join(self):
@@ -218,6 +258,12 @@ if __name__ == "__main__":
     filepath = '/tmp/testfile.h5'
     datapath = 'mygroup/bigdata'
     
+        # Switch File type
+    if METHOD == 'plain-h5py':
+        fileclass = h5py.File
+    else:
+        fileclass = MultiProcessHdf5File
+    
     testvol = numpy.indices((100,100,100)).astype(numpy.uint32).sum(0)
     with h5py.File(filepath, 'w') as f:
         f.create_dataset( datapath, data=testvol, chunks=True )
@@ -225,7 +271,7 @@ if __name__ == "__main__":
         f.create_dataset('othergroup/otherbla/bla/somedata', data=1)
         f.create_dataset('othergroup/otherbla2/bla/somedata', data=1)
     
-    with MultiProcessHdf5File(filepath) as mphf:
+    with fileclass(filepath) as mphf:
         whole_vol = mphf[datapath][:]
         assert (whole_vol == testvol).all()
 
@@ -274,10 +320,7 @@ if __name__ == "__main__":
     
     from lazyflow.utility import Timer
     
-    # Switch File type
-    with MultiProcessHdf5File(bigfile_path, 'r') as bf:
-    #with h5py.File(bigfile_path, 'r') as bf:
-
+    with fileclass(bigfile_path, 'r') as bf:
         def test_subvol( slicings ):
             for slicing in slicings:
                 # Just read, don't check: 
