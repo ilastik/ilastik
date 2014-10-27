@@ -213,18 +213,57 @@ class OpCompressedUserLabelArray(OpCompressedCache):
         input_roi = roi.copy()
         input_roi.start[projection_axis_index] = 0
         input_roi.stop[projection_axis_index] = projection_length
-        projection_data = self.Output(input_roi.start, input_roi.stop).wait()
-        
-        # make binary and convert to float
-        projection_data_float = numpy.where( projection_data, numpy.float32(1.0), numpy.float32(0.0) )
-        
-        # multiply by slice-index
-        project_data_view = numpy.rollaxis(projection_data_float, projection_axis_index, 0)
-        project_data_view *= numpy.linspace( 1.0/projection_length, 1.0, num=projection_length )\
-                             [ (slice(None),) + (None,)*(project_data_view.ndim-1) ]
 
-        # Take the max projection
-        numpy.amax(projection_data_float, axis=projection_axis_index, out=destination, keepdims=True)
+        destination[:] = 0.0
+
+        # Get logical blocking.
+        block_starts = getIntersectingBlocks( self._blockshape, (input_roi.start, input_roi.stop) )
+
+        # (Parallelism not needed here: h5py will serialize these requests anyway)
+        block_starts = map( tuple, block_starts )
+        for block_start in block_starts:
+            if block_start not in self._cacheFiles:
+                # No label data in this block.  Move on.
+                continue
+
+            entire_block_roi = getBlockBounds( self.Output.meta.shape, self._blockshape, block_start )
+
+            # This block's portion of the roi
+            intersecting_roi = getIntersection( (input_roi.start, input_roi.stop), entire_block_roi )
+            
+            # Compute slicing within the deep array and slicing within this block
+            deep_relative_intersection = numpy.subtract(intersecting_roi, input_roi.start)
+            block_relative_intersection = numpy.subtract(intersecting_roi, block_start)
+                        
+            deep_data = self._getBlockDataset( entire_block_roi )[roiToSlice(*block_relative_intersection)]
+
+            # make binary and convert to float
+            deep_data_float = numpy.where( deep_data, numpy.float32(1.0), numpy.float32(0.0) )
+            
+            # multiply by slice-index
+            deep_data_view = numpy.rollaxis(deep_data_float, projection_axis_index, 0)
+
+            min_deep_slice_index = deep_relative_intersection[0][projection_axis_index]
+            max_deep_slice_index = deep_relative_intersection[1][projection_axis_index]
+            
+            def calc_color_value(slice_index):
+                return (float(slice_index) / projection_length) * (1.0 - 1.0/255) + 1.0/255.0
+            min_color_value = calc_color_value(min_deep_slice_index)
+            max_color_value = calc_color_value(max_deep_slice_index)
+            
+            num_slices = max_deep_slice_index - min_deep_slice_index
+            deep_data_view *= numpy.linspace( min_color_value, max_color_value, num=num_slices )\
+                              [ (slice(None),) + (None,)*(deep_data_view.ndim-1) ]
+
+            # Take the max projection of this block's data.
+            block_max_projection = numpy.amax(deep_data_float, axis=projection_axis_index, keepdims=True)
+
+            # Merge this block's projection into the overall projection.
+            destination_relative_intersection = numpy.array(deep_relative_intersection)
+            destination_relative_intersection[:, projection_axis_index] = (0,1)            
+            destination_subview = destination[roiToSlice(*destination_relative_intersection)]            
+            numpy.maximum(block_max_projection, destination_subview, out=destination_subview)
+        
         return
 
     def _copyData(self, roi, destination, block_starts):

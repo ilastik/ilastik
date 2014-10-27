@@ -255,6 +255,21 @@ class TestOpCompressedUserLabelArray(object):
         max_label = op.ingestData(opProvider.Output)
         assert (op.Output[:].wait() == data).all()
         assert max_label == data.max()
+    
+    def test_Projection2D(self):
+        op = self.op
+
+        projected_data = op.Projection2D[:, 0:100, 0:100, 4:5, :].wait()
+        #print projected_data.shape
+        #print projected_data.min()
+        #print projected_data.max()
+        #print projected_data.sum()
+        full_data = op.Output[:, 0:100, 0:100, :, :].wait()
+        #print full_data.sum(axis=3).sum()
+       
+        summed_projection = numpy.sum(full_data, axis=3, keepdims=True)
+        assert ((summed_projection != 0) == (projected_data != 0)).all()
+
         
 
 if __name__ == "__main__":
