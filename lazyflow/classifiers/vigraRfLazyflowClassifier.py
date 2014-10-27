@@ -67,6 +67,10 @@ class VigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
     def known_classes(self):
         return self._known_labels
 
+    @property
+    def feature_count(self):
+        return self.vigra_rf.featureCount()
+
     def serialize_hdf5(self, h5py_group):
         # Due to non-shared hdf5 dlls, vigra can't write directly to
         # our open hdf5 group. Instead, we'll use vigra to write the

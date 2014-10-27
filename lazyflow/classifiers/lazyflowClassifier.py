@@ -22,10 +22,16 @@ class LazyflowVectorwiseClassifierFactoryABC(object):
 
     @abc.abstractmethod
     def create_and_train(self, X, y):
+        """
+        Create a new classifier and train it with the feature matrix X and label vector y.
+        """
         raise NotImplementedError
 
     @abc.abstractproperty
     def description(self):
+        """
+        Return a human-readable description of this classifier.
+        """
         raise NotImplementedError
 
     @classmethod
@@ -54,10 +60,26 @@ class LazyflowVectorwiseClassifierABC(object):
 
     @abc.abstractmethod
     def predict_probabilities(self, X):
+        """
+        For each sample in the feature matrix ``X``, predict the probabilities that the
+        sample belongs to each label class the classifier was trained with.
+        
+        Returns: A multi-channel vector (each channel corresponds to a different label class).
+        """
         raise NotImplementedError
 
     @abc.abstractproperty
     def known_classes(self):
+        """
+        Returns the list of label classes known to this classifier (i.e. the classes it was trained with).
+        """
+        raise NotImplementedError
+
+    @abc.abstractproperty
+    def feature_count(self):
+        """
+        Return the number of features used to train this classifier.
+        """
         raise NotImplementedError
 
     @classmethod
@@ -69,12 +91,15 @@ class LazyflowVectorwiseClassifierABC(object):
     @abc.abstractmethod
     def serialize_hdf5(self, h5py_group):
         """
-        Serialize the classifier as an hdf5 group
+        Serialize the classifier as an hdf5 group.
         """
         raise NotImplementedError
 
     @classmethod    
     def deserialize_hdf5(cls, h5py_group):
+        """
+        Class method.  Deserialize the classifier stored in the given ``h5py.Group`` object, and return it.
+        """
         raise NotImplementedError
     
 class LazyflowPixelwiseClassifierFactoryABC(object):
@@ -90,6 +115,12 @@ class LazyflowPixelwiseClassifierFactoryABC(object):
 
     @abc.abstractmethod
     def create_and_train_pixelwise(self, feature_images, label_images):
+        """
+        Create a new classifier and train it with the given list of feature images and the given list of label images.
+        Generally, it is assumed that the channel dimension is the LAST axis for each image.  
+        (The label image must include a singleton channel dimension.)
+        Each pair of corresponding feature and label images must have matching shapes (except for the channel dimension).
+        """
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -109,6 +140,9 @@ class LazyflowPixelwiseClassifierFactoryABC(object):
 
     @abc.abstractproperty
     def description(self):
+        """
+        Return a human-readable description of this classifier.
+        """
         raise NotImplementedError
 
     @classmethod
@@ -150,10 +184,26 @@ class LazyflowPixelwiseClassifierABC(object):
 
     @abc.abstractmethod
     def predict_probabilities_pixelwise(self, feature_image):
+        """
+        For each pixel in the given feature image, predict the probabilities that the
+        pixel belongs to each label class the classifier was trained with.
+        
+        Returns: A multi-channel image (each channel corresponds to a different label class).
+        """
         raise NotImplementedError
 
     @abc.abstractproperty
     def known_classes(self):
+        """
+        Returns the list of label classes known to this classifier (i.e. the classes it was trained with).
+        """
+        raise NotImplementedError
+
+    @abc.abstractproperty
+    def feature_count(self):
+        """
+        Return the number of features used to train this classifier.
+        """
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -178,6 +228,9 @@ class LazyflowPixelwiseClassifierABC(object):
 
     @classmethod    
     def deserialize_hdf5(cls, h5py_group):
+        """
+        Class method.  Deserialize the classifier stored in the given ``h5py.Group`` object, and return it.
+        """
         raise NotImplementedError
     
     

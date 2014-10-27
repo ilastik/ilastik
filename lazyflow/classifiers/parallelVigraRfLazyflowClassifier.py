@@ -127,6 +127,10 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
     def known_classes(self):
         return self._known_labels
 
+    @property
+    def feature_count(self):
+        return self._forests[0].featureCount()
+
     def serialize_hdf5(self, h5py_group):
         for forest in self._forests:
             if forest is None:
