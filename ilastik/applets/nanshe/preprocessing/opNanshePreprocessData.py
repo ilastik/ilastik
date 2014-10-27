@@ -24,17 +24,18 @@ __date__ = "$Oct 14, 2014 16:37:05 EDT$"
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
-from ilastik.applets.nanshe.preprocessing.opNansheRemoveZeroedLines import OpNansheRemoveZeroedLines
-from ilastik.applets.nanshe.preprocessing.opNansheExtractF0 import OpNansheExtractF0
-from ilastik.applets.nanshe.preprocessing.opNansheWaveletTransform import OpNansheWaveletTransform
+
+from ilastik.applets.nanshe.preprocessing.opNansheRemoveZeroedLines import OpNansheRemoveZeroedLines, OpNansheRemoveZeroedLinesCached
+from ilastik.applets.nanshe.preprocessing.opNansheExtractF0 import OpNansheExtractF0, OpNansheExtractF0Cached
+from ilastik.applets.nanshe.preprocessing.opNansheWaveletTransform import OpNansheWaveletTransform, OpNansheWaveletTransformCached
 
 
-class OpNanshePreprocessing(Operator):
+class OpNanshePreprocessData(Operator):
     """
     Given an input image and max/min bounds,
     masks out (i.e. sets to zero) all pixels that fall outside the bounds.
     """
-    name = "OpNanshePreprocessing"
+    name = "OpNanshePreprocessData"
     category = "Pointwise"
 
     
@@ -60,7 +61,7 @@ class OpNanshePreprocessing(Operator):
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
-        super( OpNanshePreprocessing, self ).__init__( *args, **kwargs )
+        super( OpNanshePreprocessData, self ).__init__( *args, **kwargs )
 
         self.opNansheRemoveZeroedLines = OpNansheRemoveZeroedLines(parent=self)
         self.opNansheRemoveZeroedLines.ErosionShape.connect(self.ErosionShape)
@@ -80,9 +81,117 @@ class OpNanshePreprocessing(Operator):
 
     
     def setupOutputs(self):
-        # Copy the input metadata to both outputs
-        self.Output.meta.assignFrom( self.InputImage.meta )
+        self.opNansheRemoveZeroedLines.InputImage.disconnect()
+        self.opNansheExtractF0.InputImage.disconnect()
+        self.opNansheWaveletTransform.InputImage.disconnect()
 
+        next_output = self.InputImage
+
+        if self.ToRemoveZeroedLines.value:
+            self.opNansheRemoveZeroedLines.InputImage.connect(next_output)
+            next_output = self.opNansheRemoveZeroedLines.Output
+
+        if self.ToExtractF0.value:
+            self.opNansheExtractF0.InputImage.connect(next_output)
+            next_output = self.opNansheExtractF0.Output
+
+        if self.ToWaveletTransform.value:
+            self.opNansheWaveletTransform.InputImage.connect(next_output)
+            next_output = self.opNansheWaveletTransform.Output
+
+        self.Output.connect(next_output)
+
+    # Don't need execute as the output will be drawn through the Output slot.
+
+    def propagateDirty(self, slot, subindex, roi):
+        if slot.name == "InputImage":
+            self.Output.setDirty(roi)
+        elif (slot.name == "ErosionShape") or (slot.name == "DilationShape"):
+            if self.ToRemoveZeroedLines.value:
+                self.opNansheRemoveZeroedLines.Output.setDirty( slice(None) )
+        elif (slot.name == "HalfWindowSize") or (slot.name == "WhichQuantile") or\
+                (slot.name == "TemporalSmoothingGaussianFilterStdev") or\
+                (slot.name == "SpatialSmoothingGaussianFilterStdev") or\
+                (slot.name == "Bias"):
+            if self.ToExtractF0.value:
+                self.opNansheExtractF0.Output.setDirty( slice(None) )
+        elif (slot.name == "Scale"):
+            if self.ToWaveletTransform.value:
+                self.opNansheWaveletTransform.Output.setDirty( slice(None) )
+        elif slot.name == "ToRemoveZeroedLines":
+            if slot.value:
+                self.opNansheRemoveZeroedLines.Output.setDirty( slice(None) )
+            else:
+                if self.ToExtractF0.value is not None:
+                    self.opNansheExtractF0.InputImage.setDirty( slice(None) )
+                elif self.ToWaveletTransform.value is not None:
+                    self.opNansheWaveletTransform.InputImage.setDirty( slice(None) )
+                else:
+                    self.Output.setDirty( slice(None) )
+        elif slot.name == "ToExtractF0":
+            if slot.value:
+                self.opNansheExtractF0.Output.setDirty( slice(None) )
+            else:
+                if self.ToWaveletTransform.value is not None:
+                    self.opNansheWaveletTransform.InputImage.setDirty( slice(None) )
+                else:
+                    self.Output.setDirty( slice(None) )
+        elif slot.name == "ToWaveletTransform":
+            if slot.value:
+                self.opNansheWaveletTransform.Output.setDirty( slice(None) )
+            else:
+                self.Output.setDirty( slice(None) )
+
+
+class OpNanshePreprocessDataCached(Operator):
+    """
+    Given an input image and max/min bounds,
+    masks out (i.e. sets to zero) all pixels that fall outside the bounds.
+    """
+    name = "OpNanshePreprocessDataCached"
+    category = "Pointwise"
+
+
+    InputImage = InputSlot()
+
+
+    ToRemoveZeroedLines = InputSlot(value=True)
+    ErosionShape = InputSlot(value=[21, 1])
+    DilationShape = InputSlot(value=[1, 3])
+
+    ToExtractF0 = InputSlot(value=True)
+    HalfWindowSize = InputSlot(value=400, stype='int')
+    WhichQuantile = InputSlot(value=0.15, stype='float')
+    TemporalSmoothingGaussianFilterStdev = InputSlot(value=5.0, stype='float')
+    SpatialSmoothingGaussianFilterStdev = InputSlot(value=5.0, stype='float')
+    BiasEnabled = InputSlot(value=False, stype='bool')
+    Bias = InputSlot(value=0.0, stype='float')
+
+    ToWaveletTransform = InputSlot(value=True)
+    Scale = InputSlot(value=4)
+
+
+    Output = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super( OpNanshePreprocessDataCached, self ).__init__( *args, **kwargs )
+
+        self.opNansheRemoveZeroedLines = OpNansheRemoveZeroedLinesCached(parent=self)
+        self.opNansheRemoveZeroedLines.ErosionShape.connect(self.ErosionShape)
+        self.opNansheRemoveZeroedLines.DilationShape.connect(self.DilationShape)
+
+        self.opNansheExtractF0 = OpNansheExtractF0Cached(parent=self)
+        self.opNansheExtractF0.HalfWindowSize.connect(self.HalfWindowSize)
+        self.opNansheExtractF0.WhichQuantile.connect(self.WhichQuantile)
+        self.opNansheExtractF0.TemporalSmoothingGaussianFilterStdev.connect(self.TemporalSmoothingGaussianFilterStdev)
+        self.opNansheExtractF0.SpatialSmoothingGaussianFilterStdev.connect(self.SpatialSmoothingGaussianFilterStdev)
+        self.opNansheExtractF0.BiasEnabled.connect(self.BiasEnabled)
+        self.opNansheExtractF0.Bias.connect(self.Bias)
+
+        self.opNansheWaveletTransform = OpNansheWaveletTransformCached(parent=self)
+        self.opNansheWaveletTransform.Scale.connect(self.Scale)
+
+    def setupOutputs(self):
         self.opNansheRemoveZeroedLines.InputImage.disconnect()
         self.opNansheExtractF0.InputImage.disconnect()
         self.opNansheWaveletTransform.InputImage.disconnect()
