@@ -35,6 +35,7 @@ from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
 from volumina.utility import ShortcutManager, PreferencesManager
 
 from lazyflow.utility import PathComponents
+from lazyflow.roi import slicing_to_string
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators.ioOperators import OpInputDataReader
 
@@ -174,7 +175,7 @@ class PixelClassificationGui(LabelingGui):
             
             classifier_action = advanced_menu.addAction("Classifier...")
             classifier_action.triggered.connect( handleClassifierAction )
-
+            
             def handleImportLabelsAction():
                 # Find the directory of the most recently opened image file
                 mostRecentImageFile = PreferencesManager().get( 'DataSelection', 'recent image' )
@@ -229,8 +230,36 @@ class PixelClassificationGui(LabelingGui):
                     op5.cleanUp()
                     opReader.cleanUp()
 
-            import_labels_action = advanced_menu.addAction("Import Labels...")
+            def print_label_blocks(sorted_axis):
+                sorted_column = self.topLevelOperatorView.InputImages.meta.getAxisKeys().index(sorted_axis)
+                
+                input_shape = self.topLevelOperatorView.InputImages.meta.shape
+                label_block_slicings = self.topLevelOperatorView.NonzeroLabelBlocks.value
+
+                sorted_block_slicings = sorted(label_block_slicings, key=lambda s: s[sorted_column])
+
+                for slicing in sorted_block_slicings:
+                    # Omit channel
+                    order = "".join( self.topLevelOperatorView.InputImages.meta.getAxisKeys() )
+                    line = order[:-1].upper() + ": "
+                    line += slicing_to_string( slicing[:-1], input_shape )
+                    print line
+
+            labels_submenu = QMenu("Labels")
+            self.labels_submenu = labels_submenu # Must retain this reference or else it gets auto-deleted.
+            
+            import_labels_action = labels_submenu.addAction("Import Labels...")
             import_labels_action.triggered.connect( handleImportLabelsAction )
+
+            self.print_labels_submenu = QMenu("Print Label Blocks")
+            labels_submenu.addMenu(self.print_labels_submenu)
+            
+            for axis in self.topLevelOperatorView.InputImages.meta.getAxisKeys()[:-1]:
+                self.print_labels_submenu\
+                    .addAction("Sort by {}".format( axis.upper() ))\
+                    .triggered.connect( partial(print_label_blocks, axis) )
+
+            advanced_menu.addMenu(labels_submenu)
             
             menus += [advanced_menu]
 
