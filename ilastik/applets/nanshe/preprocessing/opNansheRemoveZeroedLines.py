@@ -116,7 +116,5 @@ class OpNansheRemoveZeroedLinesCached(Operator):
     def setupOutputs(self):
         self.opCache.blockShape.setValue( self.opRemoveZeroedLines.Output.meta.shape )
 
-        self.Output.meta.assignFrom( self.opCache.Output.meta )
-
     def propagateDirty(self, slot, subindex, roi):
         pass
