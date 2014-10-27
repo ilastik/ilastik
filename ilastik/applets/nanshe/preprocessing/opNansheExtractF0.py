@@ -197,7 +197,5 @@ class OpNansheExtractF0Cached(Operator):
     def setupOutputs(self):
         self.opCache.blockShape.setValue( self.opExtractF0.Output.meta.shape )
 
-        self.Output.meta.assignFrom( self.opCache.Output.meta )
-
     def propagateDirty(self, slot, subindex, roi):
         pass
