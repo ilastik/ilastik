@@ -105,8 +105,5 @@ class OpNanshePostprocessing(Operator):
         self.opPostprocess.InputImage.connect( self.InputImage )
         self.Output.connect( self.opPostprocess.Output )
 
-    def setupOutputs(self):
-        self.Output.meta.assignFrom( self.opPostprocess.Output.meta )
-
     def propagateDirty(self, slot, subindex, roi):
         pass
