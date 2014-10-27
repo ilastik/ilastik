@@ -31,7 +31,7 @@ from PyQt4.QtCore import Qt, pyqtSlot, QVariant
 from PyQt4.QtGui import QMessageBox, QColor, QIcon, QMenu, QDialog, QVBoxLayout, QDialogButtonBox, QListWidget, QListWidgetItem
 
 # HCI
-from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer
+from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer, ColortableLayer
 from volumina.utility import ShortcutManager, PreferencesManager
 
 from lazyflow.utility import PathComponents
@@ -397,6 +397,22 @@ class PixelClassificationGui(LabelingGui):
         layers = super(PixelClassificationGui, self).setupLayers()
 
         ActionInfo = ShortcutManager.ActionInfo
+
+        if ilastik_config.getboolean('ilastik', 'debug'):
+            # This colortable requires matplotlib
+            from volumina.colortables import jet
+
+            # Add the label projection layer.
+            labelProjectionSlot = self.topLevelOperatorView.opLabelPipeline.opLabelArray.Projection2D
+            if labelProjectionSlot.ready():
+                projectionSrc = LazyflowSource(labelProjectionSlot)
+                projectionLayer = ColortableLayer( projectionSrc, 
+                                                   colorTable=[QColor(0,0,0,128).rgba()]+jet(N=255), 
+                                                   normalize=(0.0, 1.0) )
+                projectionLayer.name = "Label Projection"
+                projectionLayer.visible = False
+                projectionLayer.opacity = 1.0
+                layers.append(projectionLayer)
 
         # Add the uncertainty estimate layer
         uncertaintySlot = self.topLevelOperatorView.UncertaintyEstimate
