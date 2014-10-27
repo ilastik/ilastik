@@ -21,6 +21,7 @@
 ###############################################################################
 # Built-in
 import logging
+import collections
 
 # Third-party
 import numpy
@@ -53,6 +54,8 @@ class OpCompressedUserLabelArray(OpCompressedCache):
     nonzeroBlocks = OutputSlot()
     #maxLabel = OutputSlot()
     
+    Projection2D = OutputSlot()
+    
     def __init__(self, *args, **kwargs):
         super(OpCompressedUserLabelArray, self).__init__( *args, **kwargs )
         self._blockshape = None
@@ -76,6 +79,14 @@ class OpCompressedUserLabelArray(OpCompressedCache):
         self.Output.meta.shape = self.Input.meta.shape[:-1] + (1,)
         self.Output.meta.drange = (0,255)
         self.OutputHdf5.meta.assignFrom(self.Output.meta)
+        
+        # The Projection2D slot is a strange beast:
+        # It appears to have the same output shape as any other output slot,
+        #  but it can only be accessed in 2D slices.
+        self.Projection2D.meta.assignFrom(self.Output.meta)
+        self.Projection2D.meta.dtype = numpy.float32
+        self.Projection2D.meta.drange = (0.0, 1.0)
+        
 
         # Overwrite the blockshape
         if self._blockshape is None:
@@ -140,6 +151,8 @@ class OpCompressedUserLabelArray(OpCompressedCache):
             self._executeOutput(roi, destination)
         elif slot == self.nonzeroBlocks:
             self._execute_nonzeroBlocks(destination)
+        elif slot == self.Projection2D:
+            self._executeProjection2D(roi, destination)
         else:
             return super( OpCompressedUserLabelArray, self ).execute( slot, subindex, roi, destination )
 
@@ -161,6 +174,58 @@ class OpCompressedUserLabelArray(OpCompressedCache):
         stored_block_rois = stored_block_rois_destination[0]
         block_slicings = map( lambda block_roi: roiToSlice(*block_roi), stored_block_rois )
         destination[0] = block_slicings
+
+    def _executeProjection2D(self, roi, destination):
+        assert sum(TinyVector(destination.shape) > 1) <= 2, "Projection result must be exactly 2D"
+        
+        # First, we have to determine which axis we are projecting along.
+        # We infer this from the shape of the roi.
+        # For example, if the roi is of shape 
+        #  zyx = (1,256,256), then we know we're projecting along Z
+        # If more than one axis has a width of 1, then we choose an 
+        #  axis according to the following priority order: zyxt
+        tagged_input_shape = self.Input.meta.getTaggedShape()
+        tagged_result_shape = collections.OrderedDict( zip( tagged_input_shape.keys(),
+                                                            destination.shape ) )
+        nonprojection_axes = []
+        for key in tagged_input_shape.keys():
+            if (key == 'c' or tagged_input_shape[key] == 1 or tagged_result_shape[key] > 1):
+                nonprojection_axes.append( key )
+            
+        possible_projection_axes = set(tagged_input_shape) - set(nonprojection_axes)
+        if len(possible_projection_axes) == 0:
+            # If the image is 2D to begin with, 
+            #   then the projection is simply the same as the normal output,
+            #   EXCEPT it is made binary
+            self.Output(roi.start, roi.stop).writeInto(destination).wait()
+            
+            # make binary
+            numpy.greater(destination, 0, out=destination)
+            return
+        
+        for k in 'zyxt':
+            if k in possible_projection_axes:
+                projection_axis_key = k
+                break
+        
+        projection_axis_index = self.Input.meta.getAxisKeys().index(projection_axis_key)
+        projection_length = tagged_input_shape[projection_axis_key]
+        input_roi = roi.copy()
+        input_roi.start[projection_axis_index] = 0
+        input_roi.stop[projection_axis_index] = projection_length
+        projection_data = self.Output(input_roi.start, input_roi.stop).wait()
+        
+        # make binary and convert to float
+        projection_data_float = numpy.where( projection_data, numpy.float32(1.0), numpy.float32(0.0) )
+        
+        # multiply by slice-index
+        project_data_view = numpy.rollaxis(projection_data_float, projection_axis_index, 0)
+        project_data_view *= numpy.linspace( 1.0/projection_length, 1.0, num=projection_length )\
+                             [ (slice(None),) + (None,)*(project_data_view.ndim-1) ]
+
+        # Take the max projection
+        numpy.amax(projection_data_float, axis=projection_axis_index, out=destination, keepdims=True)
+        return
 
     def _copyData(self, roi, destination, block_starts):
         """
