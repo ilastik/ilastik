@@ -29,7 +29,9 @@ import math
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
-from lazyflow.operators import OpArrayCache
+from lazyflow.operators import OpBlockedArrayCache
+
+import itertools
 
 import numpy
 
@@ -187,7 +189,7 @@ class OpNansheExtractF0Cached(Operator):
         self.opExtractF0.Bias.connect(self.Bias)
 
 
-        self.opCache = OpArrayCache(parent=self)
+        self.opCache = OpBlockedArrayCache(parent=self)
         self.opCache.fixAtCurrent.setValue(False)
 
         self.opExtractF0.InputImage.connect( self.InputImage )
@@ -195,7 +197,13 @@ class OpNansheExtractF0Cached(Operator):
         self.Output.connect( self.opCache.Output )
 
     def setupOutputs(self):
-        self.opCache.blockShape.setValue( self.opExtractF0.Output.meta.shape )
+        axes_shape_iter = itertools.izip(self.opExtractF0.Output.meta.axistags, self.opExtractF0.Output.meta.shape)
+
+        block_shape = [_v if not _k.isSpatial() else 256 for _k, _v in axes_shape_iter]
+        block_shape = tuple(block_shape)
+
+        self.opCache.innerBlockShape.setValue(block_shape)
+        self.opCache.outerBlockShape.setValue(self.opExtractF0.Output.meta.shape)
 
     def propagateDirty(self, slot, subindex, roi):
         pass
