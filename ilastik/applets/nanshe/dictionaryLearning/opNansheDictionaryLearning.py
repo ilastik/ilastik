@@ -97,8 +97,5 @@ class OpNansheDictionaryLearning(Operator):
         self.opDictionary.InputImage.connect( self.opNansheNormalizeData.Output )
         self.Output.connect( self.opDictionary.Output )
 
-    def setupOutputs(self):
-        self.Output.meta.assignFrom( self.opDictionary.Output.meta )
-
     def propagateDirty(self, slot, subindex, roi):
         pass
