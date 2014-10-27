@@ -137,11 +137,10 @@ class OpNansheGenerateDictionary(Operator):
             result[...] = processed[output_key]
 
     def propagateDirty(self, slot, subindex, roi):
-        if (slot.name == "InputImage") or (slot.name == "InputImage") or (slot.name == "K") or\
-                (slot.name == "Gamma1") or (slot.name == "Gamma2") or (slot.name == "NumThreads") or\
-                (slot.name == "Batchsize") or (slot.name == "NumIter") or (slot.name == "Lambda1") or\
-                (slot.name == "Lambda2") or (slot.name == "PosAlpha") or (slot.name == "PosD") or\
-                (slot.name == "Clean") or (slot.name == "Mode") or (slot.name == "ModeD"):
+        if (slot.name == "InputImage") or (slot.name == "K") or (slot.name == "Gamma1") or (slot.name == "Gamma2") or\
+            (slot.name == "NumThreads") or (slot.name == "Batchsize") or (slot.name == "NumIter") or\
+            (slot.name == "Lambda1") or (slot.name == "Lambda2") or (slot.name == "PosAlpha") or\
+            (slot.name == "PosD") or (slot.name == "Clean") or (slot.name == "Mode") or (slot.name == "ModeD"):
             self.Output.setDirty( slice(None) )
         else:
             assert False, "Unknown dirty input slot"
