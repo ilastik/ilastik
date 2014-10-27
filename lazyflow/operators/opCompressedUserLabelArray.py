@@ -54,7 +54,17 @@ class OpCompressedUserLabelArray(OpCompressedCache):
     nonzeroBlocks = OutputSlot()
     #maxLabel = OutputSlot()
     
-    Projection2D = OutputSlot()
+    Projection2D = OutputSlot() # A somewhat magic output that returns a projection of all 
+                                # label data underneath a given roi, from all slices.
+                                # If, for example, a 256x1x256 tile is requested from this slot,
+                                # It will return a projection of ALL labels that fall within the 256 x ... x 256 tile.
+                                # (The projection axis is *inferred* from the shape of the requested data).
+                                # The projection data is float32 between 0.0 and 1.0, where:
+                                # - Exactly 0.0 means "no labels under this pixel"
+                                # - 1/256.0 means "labels in the first slice"
+                                # - ...
+                                # - 1.0 means "last slice"
+                                # The output is suitable for display in a colortable.
     
     def __init__(self, *args, **kwargs):
         super(OpCompressedUserLabelArray, self).__init__( *args, **kwargs )
@@ -207,6 +217,9 @@ class OpCompressedUserLabelArray(OpCompressedCache):
             if k in possible_projection_axes:
                 projection_axis_key = k
                 break
+
+        # Now we know which axis we're projecting along.
+        # Proceed with the projection, working blockwise to avoid unecessary work in unlabeled blocks
         
         projection_axis_index = self.Input.meta.getAxisKeys().index(projection_axis_key)
         projection_length = tagged_input_shape[projection_axis_key]
@@ -216,10 +229,10 @@ class OpCompressedUserLabelArray(OpCompressedCache):
 
         destination[:] = 0.0
 
-        # Get logical blocking.
+        # Get the logical blocking.
         block_starts = getIntersectingBlocks( self._blockshape, (input_roi.start, input_roi.stop) )
 
-        # (Parallelism not needed here: h5py will serialize these requests anyway)
+        # (Parallelism wouldn't help here: h5py will serialize these requests anyway)
         block_starts = map( tuple, block_starts )
         for block_start in block_starts:
             if block_start not in self._cacheFiles:
@@ -247,7 +260,16 @@ class OpCompressedUserLabelArray(OpCompressedCache):
             max_deep_slice_index = deep_relative_intersection[1][projection_axis_index]
             
             def calc_color_value(slice_index):
-                return (float(slice_index) / projection_length) * (1.0 - 1.0/255) + 1.0/255.0
+                # Note 1: We assume that the colortable has at least 256 entries in it,
+                #           so, we try to ensure that all colors are above 1/256 
+                #           (we don't want colors in low slices to be rounded to 0)
+                # Note 2: Ideally, we'd use a min projection in the code below, so that 
+                #           labels in the "back" slices would appear occluded.  But the 
+                #           min projection would favor 0.0.  Instead, we invert the 
+                #           relationship between color and slice index, do a max projection, 
+                #           and then re-invert the colors after everything is done.
+                #           Hence, this function starts with (1.0 - ...)
+                return (1.0 - (float(slice_index) / projection_length)) * (1.0 - 1.0/255) + 1.0/255.0
             min_color_value = calc_color_value(min_deep_slice_index)
             max_color_value = calc_color_value(max_deep_slice_index)
             
@@ -263,7 +285,12 @@ class OpCompressedUserLabelArray(OpCompressedCache):
             destination_relative_intersection[:, projection_axis_index] = (0,1)            
             destination_subview = destination[roiToSlice(*destination_relative_intersection)]            
             numpy.maximum(block_max_projection, destination_subview, out=destination_subview)
-        
+            
+            # Invert the nonzero pixels so increasing colors correspond to increasing slices.
+            # See comment in calc_color_value(), above.
+            destination_subview[:] = numpy.where(destination_subview, 
+                                                 numpy.float32(1.0) - destination_subview, 
+                                                 numpy.float32(0.0))
         return
 
     def _copyData(self, roi, destination, block_starts):
