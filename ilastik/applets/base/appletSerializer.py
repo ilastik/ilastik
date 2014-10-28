@@ -29,7 +29,6 @@ from ilastik.utility.maybe import maybe
 import os
 import re
 import tempfile
-import vigra
 import h5py
 import numpy
 import warnings
@@ -37,6 +36,7 @@ import cPickle as pickle
 
 from lazyflow.roi import TinyVector, roiToSlice, sliceToRoi
 from lazyflow.utility import timeLogged
+from lazyflow.slot import OutputSlot
 
 #######################
 # Convenience methods #
@@ -349,6 +349,7 @@ class SerialBlockSlot(SerialSlot):
                              its nonzero bounding box before feeding saving it.
 
         """
+        assert isinstance(slot, OutputSlot), "slot is of wrong type: '{}' is not an OutputSlot".format( slot.name )
         super(SerialBlockSlot, self).__init__(
             slot, inslot, name, subname, default, depends, selfdepends
         )
