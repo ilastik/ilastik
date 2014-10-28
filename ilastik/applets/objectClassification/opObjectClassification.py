@@ -773,7 +773,7 @@ class OpObjectTrain(Operator):
         if featMatrix.size == 0 or labelsMatrix.size == 0:
             result[:] = None
             return
-        classifier_factory = ParallelVigraRfLazyflowClassifierFactory( self.ForestCount.value, self._tree_count )
+        classifier_factory = ParallelVigraRfLazyflowClassifierFactory( self._tree_count, self.ForestCount.value )
         classifier = classifier_factory.create_and_train( featMatrix.astype(numpy.float32), numpy.asarray(labelsMatrix, dtype=numpy.uint32) )
         avg_oob = numpy.mean(classifier.oobs)
         logger.info("training finished, average out-of-bag error: {}".format(avg_oob))

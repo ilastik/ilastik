@@ -293,16 +293,22 @@ class PixelClassificationWorkflow(Workflow):
                          (TinyVector(featureOutput[0].meta.shape) > 0).all()
 
         opDataExport = self.dataExportApplet.topLevelOperator
+        opPixelClassification = self.pcApplet.topLevelOperator
+
+        invalid_classifier = opPixelClassification.classifier_cache.fixAtCurrent.value and \
+                             opPixelClassification.classifier_cache.Output.ready() and\
+                             opPixelClassification.classifier_cache.Output.value is None
+
         predictions_ready = features_ready and \
+                            not invalid_classifier and \
                             len(opDataExport.Inputs) > 0 and \
                             opDataExport.Inputs[0][0].ready() and \
                             (TinyVector(opDataExport.Inputs[0][0].meta.shape) > 0).all()
 
         # Problems can occur if the features or input data are changed during live update mode.
         # Don't let the user do that.
-        opPixelClassification = self.pcApplet.topLevelOperator
         live_update_active = not opPixelClassification.FreezePredictions.value
-
+        
         self._shell.setAppletEnabled(self.dataSelectionApplet, not live_update_active)
         self._shell.setAppletEnabled(self.featureSelectionApplet, input_ready and not live_update_active)
         self._shell.setAppletEnabled(self.pcApplet, features_ready)

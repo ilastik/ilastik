@@ -59,7 +59,7 @@ class OpPixelClassification( Operator ):
     CachedFeatureImages = InputSlot(level=1) # Cached feature data.
 
     FreezePredictions = InputSlot(stype='bool')
-    ClassifierFactory = InputSlot(value=ParallelVigraRfLazyflowClassifierFactory(10, 10))
+    ClassifierFactory = InputSlot(value=ParallelVigraRfLazyflowClassifierFactory(100))
 
     PredictionsFromDisk = InputSlot(optional=True, level=1)
 
@@ -188,6 +188,32 @@ class OpPixelClassification( Operator ):
                 
         self.InputImages.notifyInserted( handleNewInputImage )
 
+        # If any feature image changes shape, we need to verify that the number of 
+        #  channels is consistent with the currently cached classifier
+        # Otherwise, delete the currently cached classifier.
+        # FIXME: Technically, this doesn't go far enough.
+        #        This prevents the user from trying to use an old classifier with new features, 
+        #        but only if the number of features actually changed.  If the user changes the 
+        #        features, but the total number of feature channels stays the same, this method 
+        #        does not detect the change.  The old classifier can be used without raising 
+        #        exceptions, but of course the results will be garbage.  
+        #        Perhaps we should include the feature names in the metadata, and use that as 
+        #        the basis for whether or not the classifier must be discarded.
+        def handleNewFeatureImage( multislot, index, *args ):
+            def handleFeatureImageReady(slot):
+                def handleFeatureMetaChanged(slot):
+                    if ( self.classifier_cache.fixAtCurrent.value and
+                         self.classifier_cache.Output.ready() and 
+                         slot.meta.shape is not None ):
+                        classifier = self.classifier_cache.Output.value
+                        num_channels = slot.meta.shape[-1]
+                        if classifier and classifier.feature_count != num_channels:
+                            self.classifier_cache.resetValue()
+                slot.notifyMetaChanged(handleFeatureMetaChanged)
+            multislot[index].notifyReady(handleFeatureImageReady)
+                
+        self.FeatureImages.notifyInserted( handleNewFeatureImage )
+
         def handleNewMaskImage( multislot, index, *args ):
             def handleInputReady(slot):
                 self._checkConstraints( index )
@@ -288,6 +314,35 @@ class OpPixelClassification( Operator ):
 
     def getLane(self, laneIndex):
         return OperatorSubView(self, laneIndex)
+
+    def importLabels(self, laneIndex, slot):
+        # Load the data into the cache
+        new_max = self.getLane( laneIndex ).opLabelPipeline.opLabelArray.ingestData( slot )
+
+        # Add to the list of label names if there's a new max label
+        old_names = self.LabelNames.value
+        old_max = len(old_names)
+        if new_max > old_max:
+            new_names = old_names + map( lambda x: "Label {}".format(x), 
+                                         range(old_max+1, new_max+1) )
+            self.LabelNames.setValue(new_names)
+
+            # Make some default colors, too
+            default_colors = [(255,0,0),
+                              (0,255,0),
+                              (0,0,255),
+                              (255,255,0),
+                              (255,0,255),
+                              (0,255,255),
+                              (128,128,128),
+                              (255, 105, 180),
+                              (255, 165, 0),
+                              (240, 230, 140) ]
+            label_colors = self.LabelColors.value
+            pmap_colors = self.PmapColors.value
+            
+            self.LabelColors.setValue( label_colors + default_colors[old_max:new_max] )
+            self.PmapColors.setValue( pmap_colors + default_colors[old_max:new_max] )
 
 class OpLabelPipeline( Operator ):
     RawImage = InputSlot()

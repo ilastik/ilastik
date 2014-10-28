@@ -156,8 +156,13 @@ class ProgressDisplayManager(QObject):
             self.memoryWidget.setMemoryBytes(msg)
         mgr.totalCacheMemory.subscribe(printIt)
 
-        # Route all signals we get through a queued connection, to ensure that they are handled in the GUI thread
-        self.dispatchSignal.connect(self.handleAppletProgressImpl)
+        # Route all signals we get through a queued connection, 
+        #  to ensure that they are handled in the GUI thread
+        # Important: AutoConnection (the default type) is not okay here: that would cause 
+        #            progress signals coming from the main thread to "cut in line"  
+        #            in front of progress notifications that were previously sent, 
+        #            but from other threads.
+        self.dispatchSignal.connect(self.handleAppletProgressImpl, Qt.QueuedConnection)
 
     def initializeForWorkflow(self, workflow):
         """When a workflow is available, call this method to connect the workflows' progress signals
@@ -246,8 +251,9 @@ class IlastikShell( QMainWindow ):
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
         
-        # Server/client for inter process communication
-        self.socketServer = MessageServer(self, 'localhost', 9997)
+        # Server/client for inter process communication for receiving remote commands (e.g. from KNIME)
+        # For now, this is a developer-only feature, activated by a debug menu item.
+        self.socketServer = None
         
         self.openFileButtons = []
         self.cleanupFunctions = []
@@ -543,6 +549,21 @@ class IlastikShell( QMainWindow ):
 
         menu.addAction("&Memory usage").triggered.connect(self.showMemUsageDialog)
         menu.addMenu( self._createProfilingSubmenu() )
+
+        # Start message server for receiving remote commands (e.g. from KNIME)
+        # For now, this is a developer-only feature, activated by a menu item.
+        def start_message_server():
+            self.socketServer = MessageServer(self, 'localhost', 9997)
+            if self.socketServer.running:
+                server_action.setText("<Message server is running>")
+                server_action.setEnabled(False)
+            else:
+                QMessageBox.critical( self, 
+                                      "Failed to start server", 
+                                      "Couldn't start message server.  See error log for details." )
+        server_action = menu.addAction("Start message server")
+        server_action.triggered.connect(start_message_server)
+
         return menu
 
     def _createProfilingSubmenu(self):
@@ -1272,7 +1293,7 @@ class IlastikShell( QMainWindow ):
         if self.projectManager is not None:
 
             projectFile = self.projectManager.currentProjectFile
-            if not self.projectManager.closed and projectFile is not None:
+            if not self.projectManager.closed and projectFile is not None and not self.projectManager.currentProjectIsReadOnly:
                 if "currentApplet" in projectFile.keys():
                     del projectFile["currentApplet"]
                 self.projectManager.currentProjectFile.create_dataset("currentApplet",data = self.currentAppletIndex)

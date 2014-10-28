@@ -51,6 +51,7 @@ class MessageServer(object):
     
     def __init__(self, parent, host=None, port=None, startListening=True):
         self.parent = parent
+        self.running = False
         
         if not host is None and not port is None:
             self.setupServer(host, port, startListening)
@@ -62,8 +63,10 @@ class MessageServer(object):
             self._setupServer()
             if startListening:
                 self._startListening()
+            self.running = True
         except Exception, e:
             logger.error('Failed to set up MessageServer: %s' % e)    
+            self.running = False
     
     def connect(self, host, port, name):
         try:
