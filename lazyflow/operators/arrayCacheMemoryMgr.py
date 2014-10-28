@@ -24,6 +24,7 @@ import gc
 import os
 import time
 import threading
+import platform
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
@@ -44,7 +45,13 @@ def memoryUsagePercentage():
 
 def getAvailableRamBytes():
     if lazyflow.AVAILABLE_RAM_MB == 0:
-        return psutil.virtual_memory().available
+        if platform.system() == "Windows":
+            # No such thing as "wired" memory on Windows,
+            #  so we just use total and hope that's good enough
+            return psutil.virtual_memory().total
+        else:
+            return psutil.virtual_memory().total - psutil.virtual_memory().wired
+        
     else:
         # AVAILABLE_RAM_MB is the total RAM the user wants us to limit ourselves to.
         return lazyflow.AVAILABLE_RAM_MB * 1024**2
