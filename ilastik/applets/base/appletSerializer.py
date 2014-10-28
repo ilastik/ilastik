@@ -365,6 +365,9 @@ class SerialBlockSlot(SerialSlot):
             subgroup = mygroup.create_group(subname)
             nonZeroBlocks = self.blockslot[index].value
             for blockIndex, slicing in enumerate(nonZeroBlocks):
+                if not isinstance(slicing[0], slice):
+                    slicing = roiToSlice(*slicing)
+
                 block = self.slot[index][slicing].wait()
                 blockName = 'block{:04d}'.format(blockIndex)
 
