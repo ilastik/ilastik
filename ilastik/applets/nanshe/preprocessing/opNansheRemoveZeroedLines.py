@@ -59,6 +59,7 @@ class OpNansheRemoveZeroedLines(Operator):
     def setupOutputs(self):
         # Copy the input metadata to both outputs
         self.Output.meta.assignFrom( self.InputImage.meta )
+        self.Output.meta.dtype = numpy.float32
 
         self.Output.meta.generation = self._generation
     
@@ -70,7 +71,7 @@ class OpNansheRemoveZeroedLines(Operator):
         erosion_shape = self.ErosionShape.value
         dilation_shape = self.DilationShape.value
 
-        processed = nanshe.advanced_image_processing.remove_zeroed_lines(raw,
+        processed = nanshe.advanced_image_processing.remove_zeroed_lines(raw.astype(numpy.float32),
                                                                          erosion_shape=erosion_shape,
                                                                          dilation_shape=dilation_shape)
         processed = processed[..., None]
