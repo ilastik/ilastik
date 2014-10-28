@@ -31,7 +31,7 @@ if __name__ == "__main__":
 
 import numpy
 from numpy.lib.stride_tricks import as_strided as ast
-from math import ceil, floor, pow
+from math import ceil, floor, pow, log10
 import collections
 
 class TinyVector(list):
@@ -544,6 +544,30 @@ def determine_optimal_request_blockshape( max_blockshape, ideal_blockshape, ram_
             break
         
     return tuple(blockshape)
+
+def slicing_to_string( slicing, max_shape=None ):
+    """
+    Returns a string representation of the given slicing, which has been 
+    formatted with spaces so that multiple such slicings could be printed 
+    in rows with their columns lined up.
+    
+    slicing: A tuple or slice objects, e.g. as returned by numpy.s_
+    max_shape: If provided, used to determine how many columns to use 
+               for each slicing field.
+    """
+    if max_shape:
+        max_digits = map(lambda s: int(log10(s))+1, max_shape)
+    else:
+        max_digits = [0] * len(slicing)
+    slice_strings = []
+    for i, sl in enumerate(slicing):
+        s = ""
+        s += ("{:" + str(max_digits[i]) + "}").format( sl.start )
+        s += " : "
+        s += ("{:" + str(max_digits[i]) + "}").format( sl.stop )
+        assert sl.step is None
+        slice_strings.append(s)
+    return "(" + ",  ".join( slice_strings ) + ")"
 
 if __name__ == "__main__":
     import doctest

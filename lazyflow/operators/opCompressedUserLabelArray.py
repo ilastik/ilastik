@@ -21,6 +21,7 @@
 ###############################################################################
 # Built-in
 import logging
+import collections
 
 # Third-party
 import numpy
@@ -53,6 +54,18 @@ class OpCompressedUserLabelArray(OpCompressedCache):
     nonzeroBlocks = OutputSlot()
     #maxLabel = OutputSlot()
     
+    Projection2D = OutputSlot() # A somewhat magic output that returns a projection of all 
+                                # label data underneath a given roi, from all slices.
+                                # If, for example, a 256x1x256 tile is requested from this slot,
+                                # It will return a projection of ALL labels that fall within the 256 x ... x 256 tile.
+                                # (The projection axis is *inferred* from the shape of the requested data).
+                                # The projection data is float32 between 0.0 and 1.0, where:
+                                # - Exactly 0.0 means "no labels under this pixel"
+                                # - 1/256.0 means "labels in the first slice"
+                                # - ...
+                                # - 1.0 means "last slice"
+                                # The output is suitable for display in a colortable.
+    
     def __init__(self, *args, **kwargs):
         super(OpCompressedUserLabelArray, self).__init__( *args, **kwargs )
         self._blockshape = None
@@ -76,6 +89,14 @@ class OpCompressedUserLabelArray(OpCompressedCache):
         self.Output.meta.shape = self.Input.meta.shape[:-1] + (1,)
         self.Output.meta.drange = (0,255)
         self.OutputHdf5.meta.assignFrom(self.Output.meta)
+        
+        # The Projection2D slot is a strange beast:
+        # It appears to have the same output shape as any other output slot,
+        #  but it can only be accessed in 2D slices.
+        self.Projection2D.meta.assignFrom(self.Output.meta)
+        self.Projection2D.meta.dtype = numpy.float32
+        self.Projection2D.meta.drange = (0.0, 1.0)
+        
 
         # Overwrite the blockshape
         if self._blockshape is None:
@@ -140,6 +161,8 @@ class OpCompressedUserLabelArray(OpCompressedCache):
             self._executeOutput(roi, destination)
         elif slot == self.nonzeroBlocks:
             self._execute_nonzeroBlocks(destination)
+        elif slot == self.Projection2D:
+            self._executeProjection2D(roi, destination)
         else:
             return super( OpCompressedUserLabelArray, self ).execute( slot, subindex, roi, destination )
 
@@ -161,6 +184,114 @@ class OpCompressedUserLabelArray(OpCompressedCache):
         stored_block_rois = stored_block_rois_destination[0]
         block_slicings = map( lambda block_roi: roiToSlice(*block_roi), stored_block_rois )
         destination[0] = block_slicings
+
+    def _executeProjection2D(self, roi, destination):
+        assert sum(TinyVector(destination.shape) > 1) <= 2, "Projection result must be exactly 2D"
+        
+        # First, we have to determine which axis we are projecting along.
+        # We infer this from the shape of the roi.
+        # For example, if the roi is of shape 
+        #  zyx = (1,256,256), then we know we're projecting along Z
+        # If more than one axis has a width of 1, then we choose an 
+        #  axis according to the following priority order: zyxt
+        tagged_input_shape = self.Input.meta.getTaggedShape()
+        tagged_result_shape = collections.OrderedDict( zip( tagged_input_shape.keys(),
+                                                            destination.shape ) )
+        nonprojection_axes = []
+        for key in tagged_input_shape.keys():
+            if (key == 'c' or tagged_input_shape[key] == 1 or tagged_result_shape[key] > 1):
+                nonprojection_axes.append( key )
+            
+        possible_projection_axes = set(tagged_input_shape) - set(nonprojection_axes)
+        if len(possible_projection_axes) == 0:
+            # If the image is 2D to begin with, 
+            #   then the projection is simply the same as the normal output,
+            #   EXCEPT it is made binary
+            self.Output(roi.start, roi.stop).writeInto(destination).wait()
+            
+            # make binary
+            numpy.greater(destination, 0, out=destination)
+            return
+        
+        for k in 'zyxt':
+            if k in possible_projection_axes:
+                projection_axis_key = k
+                break
+
+        # Now we know which axis we're projecting along.
+        # Proceed with the projection, working blockwise to avoid unecessary work in unlabeled blocks
+        
+        projection_axis_index = self.Input.meta.getAxisKeys().index(projection_axis_key)
+        projection_length = tagged_input_shape[projection_axis_key]
+        input_roi = roi.copy()
+        input_roi.start[projection_axis_index] = 0
+        input_roi.stop[projection_axis_index] = projection_length
+
+        destination[:] = 0.0
+
+        # Get the logical blocking.
+        block_starts = getIntersectingBlocks( self._blockshape, (input_roi.start, input_roi.stop) )
+
+        # (Parallelism wouldn't help here: h5py will serialize these requests anyway)
+        block_starts = map( tuple, block_starts )
+        for block_start in block_starts:
+            if block_start not in self._cacheFiles:
+                # No label data in this block.  Move on.
+                continue
+
+            entire_block_roi = getBlockBounds( self.Output.meta.shape, self._blockshape, block_start )
+
+            # This block's portion of the roi
+            intersecting_roi = getIntersection( (input_roi.start, input_roi.stop), entire_block_roi )
+            
+            # Compute slicing within the deep array and slicing within this block
+            deep_relative_intersection = numpy.subtract(intersecting_roi, input_roi.start)
+            block_relative_intersection = numpy.subtract(intersecting_roi, block_start)
+                        
+            deep_data = self._getBlockDataset( entire_block_roi )[roiToSlice(*block_relative_intersection)]
+
+            # make binary and convert to float
+            deep_data_float = numpy.where( deep_data, numpy.float32(1.0), numpy.float32(0.0) )
+            
+            # multiply by slice-index
+            deep_data_view = numpy.rollaxis(deep_data_float, projection_axis_index, 0)
+
+            min_deep_slice_index = deep_relative_intersection[0][projection_axis_index]
+            max_deep_slice_index = deep_relative_intersection[1][projection_axis_index]
+            
+            def calc_color_value(slice_index):
+                # Note 1: We assume that the colortable has at least 256 entries in it,
+                #           so, we try to ensure that all colors are above 1/256 
+                #           (we don't want colors in low slices to be rounded to 0)
+                # Note 2: Ideally, we'd use a min projection in the code below, so that 
+                #           labels in the "back" slices would appear occluded.  But the 
+                #           min projection would favor 0.0.  Instead, we invert the 
+                #           relationship between color and slice index, do a max projection, 
+                #           and then re-invert the colors after everything is done.
+                #           Hence, this function starts with (1.0 - ...)
+                return (1.0 - (float(slice_index) / projection_length)) * (1.0 - 1.0/255) + 1.0/255.0
+            min_color_value = calc_color_value(min_deep_slice_index)
+            max_color_value = calc_color_value(max_deep_slice_index)
+            
+            num_slices = max_deep_slice_index - min_deep_slice_index
+            deep_data_view *= numpy.linspace( min_color_value, max_color_value, num=num_slices )\
+                              [ (slice(None),) + (None,)*(deep_data_view.ndim-1) ]
+
+            # Take the max projection of this block's data.
+            block_max_projection = numpy.amax(deep_data_float, axis=projection_axis_index, keepdims=True)
+
+            # Merge this block's projection into the overall projection.
+            destination_relative_intersection = numpy.array(deep_relative_intersection)
+            destination_relative_intersection[:, projection_axis_index] = (0,1)            
+            destination_subview = destination[roiToSlice(*destination_relative_intersection)]            
+            numpy.maximum(block_max_projection, destination_subview, out=destination_subview)
+            
+            # Invert the nonzero pixels so increasing colors correspond to increasing slices.
+            # See comment in calc_color_value(), above.
+            destination_subview[:] = numpy.where(destination_subview, 
+                                                 numpy.float32(1.0) - destination_subview, 
+                                                 numpy.float32(0.0))
+        return
 
     def _copyData(self, roi, destination, block_starts):
         """
