@@ -133,8 +133,6 @@ class ManualTrackingGui(LayerViewerGui):
         # get the applet reference from the workflow (needed for the progressSignal)
         self.applet = self.mainOperator.parent.parent.trackingApplet
         
-        #if self.mainOperator.LabelImage.meta.shape:
-        #    self.editor.dataShape = self.mainOperator.LabelImage.meta.shape
         self.mainOperator.LabelImage.notifyMetaChanged( self._onMetaChanged)
         self.mainOperator.LabelImage.notifyDirty( self._reset )
         
@@ -248,9 +246,6 @@ class ManualTrackingGui(LayerViewerGui):
             rawLayer.name = "Raw"        
             layers.insert( len(layers), rawLayer )   
         
-        
-        #if self.topLevelOperatorView.LabelImage.meta.shape:
-        #    self.editor.dataShape = self.topLevelOperatorView.LabelImage.meta.shape
         
         self.topLevelOperatorView.RawImage.notifyReady( self._onReady )
         self.topLevelOperatorView.RawImage.notifyMetaChanged( self._onMetaChanged )

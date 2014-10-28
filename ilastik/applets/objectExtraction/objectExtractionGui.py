@@ -240,9 +240,6 @@ class ObjectExtractionGui(LayerViewerGui):
         mainOperator.RawImage.notifyMetaChanged(self._onMetaChanged)
         self.__cleanup_fns.append( partial( mainOperator.RawImage.unregisterMetaChanged, self._onMetaChanged ) )
 
-        #if mainOperator.BinaryImage.meta.shape:
-        #self.editor.dataShape = mainOperator.BinaryImage.meta.shape
-
         mainOperator.BinaryImage.notifyMetaChanged(self._onMetaChanged)
         self.__cleanup_fns.append( partial( mainOperator.BinaryImage.unregisterMetaChanged, self._onMetaChanged ) )
 
