@@ -75,7 +75,9 @@ class OpSmoothedArgMax(Operator):
     def _createCache(self):
         self._cache = OpCompressedCache(parent=self)
         ts = self.Input.meta.getTaggedShape()
-        for k in 'tc':
+        # parallelizable axes
+        pa = 't'  # only t, because argmax operator needs all channels
+        for k in pa:
             if k in ts:
                 ts[k] = 1
         self._cache.Input.connect(self._opOut.Output)
@@ -191,7 +193,7 @@ class OpCostVolumeFilter(OpSmoothingImplementation):
         # TODO the equation might actually not be what the code is doing
         # check and update accordingly
 
-        logger.debug("Smoothing roi {}".format(roi))
+        logger.debug("Gaussian on roi {}".format(roi))
 
         conf = self.Configuration.value
         if 'sigma' not in conf:
@@ -236,7 +238,7 @@ class OpGuidedFilter(OpSmoothingImplementation):
         self.Output.meta.dtype = np.float32
 
     def execute(self, slot, subindex, roi, result):
-        logger.debug("Smoothing roi {}".format(roi))
+        logger.debug("Guided on roi {}".format(roi))
 
         conf = self.Configuration.value
         if 'sigma' not in conf:

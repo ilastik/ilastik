@@ -78,18 +78,64 @@ class TestOpFanOut(unittest.TestCase):
 
 
 class TestOpImplementationChoice(unittest.TestCase):
+
+    class Base(Operator):
+        Input = InputSlot()
+        Output = OutputSlot()
+
+        def setupOutputs(self):
+            self.Output.meta.assignFrom(self.Input.meta)
+
+        def execute(self, slot, subidnex, roi, result):
+            req = self.Input.get(roi)
+            req.writeInto(result)
+            req.block()
+
+        def propagateDirty(self, slot, subindex, roi):
+            self.Output.setDirty(roi)
+
+    class ABC(Base):
+        # needed by OpPixelOperator
+        Function = InputSlot(optional=True)
+        # needed by OpSingleChannelSelector
+        Index = InputSlot(optional=True)
+
+    class Ex1(Base):
+        AltOutput1 = OutputSlot()
+
+        def setupOutputs(self):
+            self.Output.meta.assignFrom(self.Input.meta)
+            self.AltOutput1.meta.assignFrom(self.Input.meta)
+
+        def propagateDirty(self, slot, subindex, roi):
+            self.Output.setDirty(roi)
+            self.AltOutput1.setDirty(roi)
+
+    class Ex2(Base):
+        AltOutput2 = OutputSlot()
+
+        def setupOutputs(self):
+            self.Output.meta.assignFrom(self.Input.meta)
+            self.AltOutput2.meta.assignFrom(self.Input.meta)
+
+        def propagateDirty(self, slot, subindex, roi):
+            self.Output.setDirty(roi)
+            self.AltOutput2.setDirty(roi)
+
+    class ABC2(Operator):
+        Input = InputSlot()
+        AltOutput1 = OutputSlot()
+        AltOutput2 = OutputSlot()
+        Output = OutputSlot()
+
     def setUp(self):
         pass
 
     def TestUsage(self):
-        class ABC(Operator):
-            Input = InputSlot()
-            Output = OutputSlot()
-
         choices = {'pipe': OpArrayPiper,
                    'chan': OpMaxChannelIndicatorOperator}
 
-        wrap = OpImplementationChoice(ABC, graph=Graph())
+        wrap = OpImplementationChoice(self.Base, graph=Graph())
         wrap.implementations = choices
  
         wrap.Implementation.setValue('pipe')
@@ -115,18 +161,10 @@ class TestOpImplementationChoice(unittest.TestCase):
         assert wrap.Output.meta.dtype == np.uint8, "op not switched"
 
     def TestAdvancedUsage(self):
-        class ABC(Operator):
-            Input = InputSlot()
-            Output = OutputSlot()
-            # needed by OpPixelOperator
-            Function = InputSlot(optional=True)
-            # needed by OpSingleChannelSelector
-            Index = InputSlot(optional=True)
-
         choices = {'pixop': OpPixelOperator,
                    'chan': OpSingleChannelSelector}
 
-        wrap = OpImplementationChoice(ABC, graph=Graph())
+        wrap = OpImplementationChoice(self.ABC, graph=Graph())
         wrap.implementations = choices
  
         wrap.Implementation.setValue('pixop')
@@ -148,6 +186,26 @@ class TestOpImplementationChoice(unittest.TestCase):
         ts = wrap.Output.meta.getTaggedShape()
         if 'c' in ts:
             assert ts['c'] == 1, "op not switched"
+
+    def testVaryingOutputSlots(self):
+        choices = {'1': self.Ex1, '2': self.Ex2}
+
+        wrap = OpImplementationChoice(self.ABC2, graph=Graph())
+        wrap.implementations = choices
+
+        vol = np.zeros((2, 10, 15, 20, 3), dtype=np.int)
+        vol = vigra.taggedView(vol, axistags='txyzc')
+        wrap.Input.setValue(vol)
+ 
+        wrap.Implementation.setValue('1')
+        assert wrap.Output.ready()
+        assert wrap.AltOutput1.ready()
+        assert not wrap.AltOutput2.ready(), str(wrap.AltOutput2)
+
+        wrap.Implementation.setValue('2')
+        assert wrap.Output.ready()
+        assert not wrap.AltOutput1.ready(), str(wrap.AltOutput1)
+        assert wrap.AltOutput2.ready()
 
 
 class TestOpMriVolFilter(unittest.TestCase):
@@ -190,6 +248,7 @@ class TestOpMriVolFilter(unittest.TestCase):
         op.LabelNames.setValue(np.asarray(["black", "white"]))
 
         out = op.ArgmaxOutput[...].wait()
+
 
 if __name__ == "__main__": 
     unittest.main()

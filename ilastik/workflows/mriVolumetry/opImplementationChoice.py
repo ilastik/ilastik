@@ -4,7 +4,7 @@ from lazyflow.operator import Operator, InputSlot
 
 class OpImplementationChoice(Operator):
     '''
-    choose from a predefined set of implementations, 
+    choose from a predefined set of implementations
     '''
 
     # use this slot for choosing the implementation (type: string)
@@ -31,6 +31,7 @@ class OpImplementationChoice(Operator):
         super(OpImplementationChoice, self).__init__(*args, **kwargs)
 
         # promote API from implementationABC to this operator
+        # mostly stolen from OperatorWrapper
 
         # replicate input slot definitions
         for innerSlot in sorted(implementationABC.inputSlots,
@@ -48,6 +49,10 @@ class OpImplementationChoice(Operator):
             self.outputs[outerSlot.name] = outerSlot
             setattr(self, outerSlot.name, outerSlot)
 
+        # set all slots to unready until some implementation provides them
+        for k in self.outputs:
+            self.outputs[k].meta.NOTREADY = True
+
     def setupOutputs(self):
         impl = self.Implementation.value
         if impl == self._current_impl:
@@ -64,7 +69,7 @@ class OpImplementationChoice(Operator):
             op = self._op
             self._op = None
             for k in self.outputs:
-                self.outputs[k].disconnect()
+                self.outputs[k].meta.NOTREADY = True  # also disconnects
             for k in op.inputs:
                 op.inputs[k].disconnect()
 
@@ -74,11 +79,13 @@ class OpImplementationChoice(Operator):
             op.inputs[k].connect(self.inputs[k])
         for k in op.outputs:
             self.outputs[k].connect(op.outputs[k])
+            self.outputs[k].meta.NOTREADY = None
         self._op = op
 
         self._current_impl = impl
         if not self._custom_name:
-            self._impl_name = "OpImplementationChoice[selected={}]".format(self._op.name)
+            fmt_str = "OpImplementationChoice[selected={}]"
+            self._impl_name = fmt_str.format(self._op.name)
 
     def propagateDirty(self, slot, subindex, roi):
         pass

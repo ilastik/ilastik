@@ -1,4 +1,4 @@
-import os 
+import os
 import itertools
 from functools import partial
 
@@ -21,7 +21,6 @@ import numpy as np
 import logging
 logger = logging.getLogger(__name__)
 
-from opSmoothing import smoothers_available
 smoothing_methods_map = ['gaussian', 'guided', 'opengm']
 
 
@@ -49,9 +48,10 @@ class MriVolFilterGui(LayerViewerGui):
 
         self._drawer = uic.loadUi(localDir+"/filter_drawer.ui")
 
+        op = self.topLevelOperatorView
         # set tabs enabled only for available smoothers
         for i, name in enumerate(smoothing_methods_map):
-            if name not in smoothers_available:
+            if name not in op.methods_available:
                 self._drawer.tabWidget.setTabEnabled(i, False)
 
         # TODO extend the watched widgets list
@@ -84,12 +84,12 @@ class MriVolFilterGui(LayerViewerGui):
 
     def eventFilter(self, watched, event):
         """
-        If the user pressed 'enter' within a spinbox, 
+        If the user pressed 'enter' within a spinbox,
         auto-click the "apply" button.
         """
         if watched in self._allWatchedWidgets:
-            if  event.type() == QEvent.KeyPress and\
-              ( event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return):
+            if event.type() == QEvent.KeyPress and\
+              (event.key() == Qt.Key_Enter or event.key() == Qt.Key_Return):
                 self._drawer.applyButton.click()
                 return True
         return False
@@ -103,52 +103,48 @@ class MriVolFilterGui(LayerViewerGui):
         op = self.topLevelOperatorView
 
         if op.Output.ready():
-            outputLayer = ColortableLayer( LazyflowSource(op.Output),
-                                        colorTable=self._channelColors)
+            outputLayer = ColortableLayer(LazyflowSource(op.Output),
+                                          colorTable=self._channelColors)
             outputLayer.name = "Output"
             outputLayer.visible = True
             outputLayer.opacity = 0.7
-            layers.append( outputLayer )
+            layers.append(outputLayer)
 
         if op.ArgmaxOutput.ready():
-            outLayer = ColortableLayer( LazyflowSource(op.ArgmaxOutput),
-                                        colorTable=self._channelColors)
+            outLayer = ColortableLayer(LazyflowSource(op.ArgmaxOutput),
+                                       colorTable=self._channelColors)
             outLayer.name = "Argmax"
             outLayer.visible = False
             outLayer.opacity = 1.0
-            layers.append( outLayer )
+            layers.append(outLayer)
 
         if op.Smoothed.ready():
             numChannels = op.Smoothed.meta.getTaggedShape()['c']
-            slicer = OpMultiArraySlicer(parent=\
-                                        op.Smoothed.getRealOperator().parent)
+            slicer = OpMultiArraySlicer(
+                parent=op.Smoothed.getRealOperator().parent)
             slicer.Input.connect(op.Smoothed)
             slicer.AxisFlag.setValue('c')  # slice along c
 
             for i in range(numChannels):
                 # slicer maps each channel to a subslot of slicer.Slices
                 # i.e. slicer.Slices is not really slot, but a list of slots
-                channelSrc = LazyflowSource( slicer.Slices[i] )
+                channelSrc = LazyflowSource(slicer.Slices[i])
                 inputChannelLayer = AlphaModulatedLayer(
                     channelSrc,
                     tintColor=QColor(self._channelColors[i+1]),
                     range=(0.0, 1.0),
-                    normalize=(0.0, 1.0) )
+                    normalize=(0.0, 1.0))
                 inputChannelLayer.opacity = 0.5
                 inputChannelLayer.visible = False
-                inputChannelLayer.name = decode_to_qstring(
-                    op.LabelNames.value[i])
-                # inputChannelLayer.name = "Prediction " + str(i)
-                '''
-                inputChannelLayer.setToolTip(
-                    "Select input channel " + str(i) + \
-                    " if this prediction image contains the objects of interest.")               
-                '''
+                labelName = op.LabelNames.value[i]
+                inputChannelLayer.name = decode_to_qstring(labelName)
+                inputChannelLayer.setToolTip(decode_to_qstring(
+                    "Smoothed predictions for label '{}'".format(labelName)))
                 layers.append(inputChannelLayer)
 
         # raw layer
         if op.RawInput.ready():
-            rawLayer = self.createStandardLayerFromSlot( op.RawInput )
+            rawLayer = self.createStandardLayerFromSlot(op.RawInput)
             rawLayer.name = "Raw data"
             rawLayer.visible = True
             rawLayer.opacity = 1.0
@@ -156,11 +152,12 @@ class MriVolFilterGui(LayerViewerGui):
         return layers
 
     def getLayer(self, name):
-        """ 
+        """
         find a layer by its name
         """
         try:
-            layer = itertools.ifilter(lambda l: l.name == name, self.layerstack).next()
+            layer = itertools.ifilter(
+                lambda l: l.name == name, self.layerstack).next()
         except StopIteration:
             return None
         else:
@@ -216,7 +213,8 @@ class MriVolFilterGui(LayerViewerGui):
                 if layer is not None:
                     layer.name = new
 
-        assert op.LabelNames.partner is None, "tried to set label names, but slot is connected"
+        assert op.LabelNames.partner is None,\
+            "tried to set label names, but slot is connected"
         op.LabelNames.setValue(new_names)
 
     def _setActiveChannelsToOp(self):
@@ -369,6 +367,8 @@ class MriVolFilterGui(LayerViewerGui):
         '''
         self._setActiveChannelsToOp()
         self._setParamsToOp()
+        # not needed
+        self.updateAllLayers()
 
     def _slider_value_changed(self, value):
         self._drawer.thresSpinBox.setValue(value)

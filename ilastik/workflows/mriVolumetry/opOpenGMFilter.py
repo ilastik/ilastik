@@ -35,7 +35,7 @@ class OpOpenGMFilter(Operator):
         super(OpOpenGMFilter, self).__init__(*args, **kwargs)
 
     def setupOutputs(self):
-        super(OpOpenGMFilter, self).setupOutputs()
+        self.Output.meta.assignFrom(self.Input.meta)
         self.Output.meta.dtype = np.float32
 
     def propagateDirty(self, slot, subindex, roi):
@@ -43,24 +43,23 @@ class OpOpenGMFilter(Operator):
         self.Output.setDirty(slice(None)) 
 
     def execute(self, slot, subindex, roi, result):
+        logger.debug("Opengm on roi {}".format(roi))
         # FIXME don't recompute this every time
         # compute mask from raw input channel
-        raw_data = self.op.RawInput.get(slice(None)).wait()
+        raw_data = self.RawInput[...].wait()
         bool_mask = np.ma.masked_less_equal(raw_data[0,...,0],
                                             self._epsilon).mask
         self._mask = np.zeros(raw_data.shape, dtype=np.uint32)
         self._mask[~bool_mask] = 1.0
 
-        logger.debug("Smoothing roi {}".format(roi))
-
         conf = self.Configuration.value
         if 'sigma' not in conf:
-            raise self.ConfigurationError(
+            raise ValueError(
                 "expected key 'sigma' in configuration")
         sigma = conf['sigma']
 
         if 'unaries' not in conf:
-            raise self.ConfigurationError(
+            raise ValueError(
                 "expected key 'unaries' in configuration")
         unaries = conf['unaries']
 
