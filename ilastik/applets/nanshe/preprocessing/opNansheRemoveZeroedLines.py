@@ -53,10 +53,14 @@ class OpNansheRemoveZeroedLines(Operator):
 
     def __init__(self, *args, **kwargs):
         super( OpNansheRemoveZeroedLines, self ).__init__( *args, **kwargs )
+
+        self._generation = {self.name : 0}
     
     def setupOutputs(self):
         # Copy the input metadata to both outputs
         self.Output.meta.assignFrom( self.InputImage.meta )
+
+        self.Output.meta.generation = self._generation
     
     def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
@@ -76,8 +80,10 @@ class OpNansheRemoveZeroedLines(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         if slot.name == "InputImage":
+            self._generation[self.name] += 1
             self.Output.setDirty(roi)
         elif slot.name == "ErosionShape" or slot.name == "DilationShape":
+            self._generation[self.name] += 1
             self.Output.setDirty( slice(None) )
         else:
             assert False, "Unknown dirty input slot"
