@@ -45,7 +45,7 @@ def memoryUsagePercentage():
 
 def getAvailableRamBytes():
     if lazyflow.AVAILABLE_RAM_MB == 0:
-        if platform.system() == "Windows":
+        if "Darwin" not in platform.system():
             # No such thing as "wired" memory on Windows,
             #  so we just use total and hope that's good enough
             return psutil.virtual_memory().total
