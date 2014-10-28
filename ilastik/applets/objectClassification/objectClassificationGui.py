@@ -25,6 +25,7 @@ from PyQt4.QtGui import QFileDialog
 
 from ilastik.widgets.featureTableWidget import FeatureEntry
 from ilastik.widgets.featureDlg import FeatureDlg
+from ilastik.widgets.exportToKnimeDialog_old import ExportToKnimeDialog
 from ilastik.widgets.exportToKnimeDialog import ExportToKnimeDialog
 from ilastik.applets.objectExtraction.opObjectExtraction import OpRegionFeatures3d
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
@@ -220,6 +221,18 @@ class ObjectClassificationGui(LabelingGui):
         return mlist
 
     def exportObjectInfo(self):
+
+        rawIndex = self.layerstack.findMatchingIndex(lambda x: x.name=="Raw data")
+        mainOperator = self.topLevelOperatorView
+        features = mainOperator.ComputedFeatureNames([]).wait()
+        #dlg = ExportToKnimeDialog(self.layerstack, rawIndex, features)
+        #dlg.exec_()
+        print mainOperator.__op
+        print dir(mainOperator.__op)
+
+
+
+    def exportObjectInfo_old(self):
         if not self.layerstack or len(self.layerstack)==0:
             print "Wait, nothing defined yet"
             
