@@ -1,118 +1,155 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>Dialog</class>
- <widget class="QDialog" name="Dialog">
+ <class>KnimeExportDialog</class>
+ <widget class="QDialog" name="KnimeExportDialog">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>376</width>
-    <height>291</height>
+    <width>546</width>
+    <height>427</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Dialog</string>
   </property>
-  <widget class="QDialogButtonBox" name="buttonBox">
-   <property name="geometry">
-    <rect>
-     <x>30</x>
-     <y>240</y>
-     <width>341</width>
-     <height>32</height>
-    </rect>
-   </property>
-   <property name="orientation">
-    <enum>Qt::Horizontal</enum>
-   </property>
-   <property name="standardButtons">
-    <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
-   </property>
-  </widget>
-  <widget class="QLabel" name="label">
-   <property name="geometry">
-    <rect>
-     <x>20</x>
-     <y>20</y>
-     <width>66</width>
-     <height>17</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Images:</string>
-   </property>
-  </widget>
-  <widget class="QLabel" name="label_2">
-   <property name="geometry">
-    <rect>
-     <x>20</x>
-     <y>130</y>
-     <width>101</width>
-     <height>17</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Feature Table:</string>
-   </property>
-  </widget>
-  <widget class="QWidget" name="verticalLayoutWidget">
-   <property name="geometry">
-    <rect>
-     <x>80</x>
-     <y>40</y>
-     <width>203</width>
-     <height>61</height>
-    </rect>
-   </property>
-   <layout class="QVBoxLayout" name="verticalLayout_2">
-    <item>
-     <layout class="QHBoxLayout" name="horizontalLayout">
-      <item>
-       <widget class="QLabel" name="label_3">
-        <property name="text">
-         <string>Raw</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QListWidget" name="rawList"/>
-      </item>
-     </layout>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_4">
-      <item>
-       <widget class="QLabel" name="label_5">
-        <property name="text">
-         <string>Objects</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QListWidget" name="objectList"/>
-      </item>
-     </layout>
-    </item>
-   </layout>
-  </widget>
-  <widget class="QListWidget" name="featureList">
-   <property name="geometry">
-    <rect>
-     <x>80</x>
-     <y>150</y>
-     <width>201</width>
-     <height>71</height>
-    </rect>
-   </property>
-  </widget>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QToolBox" name="toolBox">
+     <widget class="QWidget" name="generalBox">
+      <attribute name="label">
+       <string>General</string>
+      </attribute>
+      <layout class="QFormLayout" name="formLayout">
+       <item row="0" column="1">
+        <widget class="QLineEdit" name="exportPath"/>
+       </item>
+       <item row="0" column="0">
+        <widget class="QPushButton" name="choosePath">
+         <property name="text">
+          <string>Choose File</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="layerBox">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>528</width>
+        <height>283</height>
+       </rect>
+      </property>
+      <attribute name="label">
+       <string>Layers</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout_2">
+       <item>
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>Select object layers to export</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QListWidget" name="objLayerView">
+         <property name="selectionMode">
+          <enum>QAbstractItemView::NoSelection</enum>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="includeRaw">
+         <property name="text">
+          <string>Include raw image</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="featureBox">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>528</width>
+        <height>283</height>
+       </rect>
+      </property>
+      <attribute name="label">
+       <string>Features</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout">
+       <item row="3" column="1">
+        <widget class="QPushButton" name="selectAllFeatures">
+         <property name="text">
+          <string>All</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="2">
+        <widget class="QPushButton" name="selectNoFeatures">
+         <property name="text">
+          <string>None</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="3">
+        <spacer name="horizontalSpacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item row="1" column="0" colspan="4">
+        <widget class="QTreeWidget" name="featureView">
+         <property name="alternatingRowColors">
+          <bool>false</bool>
+         </property>
+         <property name="selectionMode">
+          <enum>QAbstractItemView::NoSelection</enum>
+         </property>
+         <property name="textElideMode">
+          <enum>Qt::ElideNone</enum>
+         </property>
+         <column>
+          <property name="text">
+           <string notr="true">1</string>
+          </property>
+         </column>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
  </widget>
  <resources/>
  <connections>
   <connection>
    <sender>buttonBox</sender>
    <signal>accepted()</signal>
-   <receiver>Dialog</receiver>
-   <slot>accept()</slot>
+   <receiver>KnimeExportDialog</receiver>
+   <slot>validate_before_exit()</slot>
    <hints>
     <hint type="sourcelabel">
      <x>248</x>
@@ -127,7 +164,7 @@
   <connection>
    <sender>buttonBox</sender>
    <signal>rejected()</signal>
-   <receiver>Dialog</receiver>
+   <receiver>KnimeExportDialog</receiver>
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -140,5 +177,59 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>selectAllFeatures</sender>
+   <signal>clicked()</signal>
+   <receiver>KnimeExportDialog</receiver>
+   <slot>select_all_features()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>66</x>
+     <y>362</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>272</x>
+     <y>213</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>selectNoFeatures</sender>
+   <signal>clicked()</signal>
+   <receiver>KnimeExportDialog</receiver>
+   <slot>select_no_features()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>157</x>
+     <y>362</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>272</x>
+     <y>213</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>choosePath</sender>
+   <signal>clicked()</signal>
+   <receiver>KnimeExportDialog</receiver>
+   <slot>choose_path()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>65</x>
+     <y>62</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>272</x>
+     <y>213</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
+ <slots>
+  <slot>select_all_features()</slot>
+  <slot>select_no_features()</slot>
+  <slot>validate_before_exit()</slot>
+  <slot>choose_path()</slot>
+ </slots>
 </ui>
