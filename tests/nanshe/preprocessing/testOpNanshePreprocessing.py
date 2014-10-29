@@ -20,7 +20,10 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 import numpy
+
 from lazyflow.graph import Graph
+
+import vigra
 
 import synthetic_data.synthetic_data
 
@@ -46,6 +49,7 @@ class TestOpNanshePreprocessing(object):
         images = synthetic_data.synthetic_data.generate_gaussian_images(space, points, radii/3.0, magnitudes) * masks
         image_stack = images.max(axis = 0)
         image_stack = image_stack[..., None]
+        image_stack = vigra.taggedView(image_stack, "tyxc")
 
         graph = Graph()
         op = OpNanshePreprocessing(graph=graph)
@@ -68,6 +72,7 @@ class TestOpNanshePreprocessing(object):
         op.Scale.setValue([3, 4, 4])
 
         b = op.Output[...].wait()
+        b = vigra.taggedView(b, "tyxc")
 
 
 if __name__ == "__main__":
