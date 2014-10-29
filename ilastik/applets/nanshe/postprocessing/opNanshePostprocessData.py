@@ -187,6 +187,9 @@ class OpNanshePostprocessData(Operator):
         if slot.name == 'Output':
             result[...] = processed_label_image
 
+    def setInSlot(self, slot, subindex, roi, value):
+        pass
+
     def propagateDirty(self, slot, subindex, roi):
         if (slot.name == "InputImage") or (slot.name == "SignificanceThreshold") or\
             (slot.name == "WaveletTransformScale") or (slot.name == "NoiseThreshold") or\
