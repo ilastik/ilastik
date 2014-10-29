@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.appletSerializer import \
-    AppletSerializer, SerialSlot, SerialListSlot
+    AppletSerializer, SerialSlot, SerialListSlot, SerialBlockSlot
 
 class NanshePreprocessingSerializer(AppletSerializer):
     """
@@ -38,4 +38,7 @@ class NanshePreprocessingSerializer(AppletSerializer):
                                                                    SerialSlot(operator.BiasEnabled, selfdepends=True),
                                                                    SerialSlot(operator.Bias, selfdepends=True),
                                                                    SerialSlot(operator.ToWaveletTransform, selfdepends=True),
-                                                                   SerialListSlot(operator.Scale, selfdepends=True)])
+                                                                   SerialListSlot(operator.Scale, selfdepends=True),
+                                                                   SerialBlockSlot(operator.Output,
+                                                                                   operator.CacheInput,
+                                                                                   operator.CleanBlocks, selfdepends=True)])
