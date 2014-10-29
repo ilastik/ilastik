@@ -272,7 +272,7 @@ class OpNanshePreprocessDataCached(Operator):
                 elif self.ToWaveletTransform.value:
                     self.opNansheWaveletTransform.InputImage.setDirty( slice(None) )
                 else:
-                    self.Output.setDirty( slice(None) )
+                    self.opCache.Input.setDirty( slice(None) )
         elif slot.name == "ToExtractF0":
             if slot.value:
                 self.opNansheExtractF0.Output.setDirty( slice(None) )
@@ -280,9 +280,9 @@ class OpNanshePreprocessDataCached(Operator):
                 if self.ToWaveletTransform.value:
                     self.opNansheWaveletTransform.InputImage.setDirty( slice(None) )
                 else:
-                    self.Output.setDirty( slice(None) )
+                    self.opCache.Input.setDirty( slice(None) )
         elif slot.name == "ToWaveletTransform":
             if slot.value:
                 self.opNansheWaveletTransform.Output.setDirty( slice(None) )
             else:
-                self.Output.setDirty( slice(None) )
+                self.opCache.Input.setDirty( slice(None) )
