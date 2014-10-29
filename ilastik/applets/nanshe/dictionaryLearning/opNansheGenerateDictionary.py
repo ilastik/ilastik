@@ -70,6 +70,7 @@ class OpNansheGenerateDictionary(Operator):
     def setupOutputs(self):
         # Copy the input metadata to both outputs
         self.Output.meta.assignFrom( self.InputImage.meta )
+        self.Output.meta.dtype = numpy.float64
 
         spatial_dims = [_ for _ in self.Output.meta.axistags if _.isSpatial()]
 
@@ -114,23 +115,24 @@ class OpNansheGenerateDictionary(Operator):
         mode = self.Mode.value
         modeD = self.ModeD.value
 
-        processed = nanshe.advanced_image_processing.generate_dictionary(raw, **{ "spams.trainDL" :
-                                                                                      {
-                                                                                          "K" : K,
-                                                                                          "gamma1" : gamma1,
-                                                                                          "gamma2" : gamma2,
-                                                                                          "numThreads" : numThreads,
-                                                                                          "batchsize" : batchsize,
-                                                                                          "iter" : numIter,
-                                                                                          "lambda1" : lambda1,
-                                                                                          "lambda2" : lambda2,
-                                                                                          "posAlpha" : posAlpha,
-                                                                                          "posD" : posD,
-                                                                                          "clean" : clean,
-                                                                                          "mode" : mode,
-                                                                                          "modeD" : modeD
-                                                                                      }
-                                                                                }
+        processed = nanshe.advanced_image_processing.generate_dictionary(raw.astype(numpy.float64),
+                                                                         **{ "spams.trainDL" :
+                                                                                 {
+                                                                                     "K" : K,
+                                                                                     "gamma1" : gamma1,
+                                                                                     "gamma2" : gamma2,
+                                                                                     "numThreads" : numThreads,
+                                                                                     "batchsize" : batchsize,
+                                                                                     "iter" : numIter,
+                                                                                     "lambda1" : lambda1,
+                                                                                     "lambda2" : lambda2,
+                                                                                     "posAlpha" : posAlpha,
+                                                                                     "posD" : posD,
+                                                                                     "clean" : clean,
+                                                                                     "mode" : mode,
+                                                                                     "modeD" : modeD
+                                                                                 }
+                                                                         }
         )
 
         if slot.name == 'Output':
