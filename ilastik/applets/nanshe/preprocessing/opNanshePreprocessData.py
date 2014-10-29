@@ -133,9 +133,9 @@ class OpNanshePreprocessData(Operator):
             if slot.value:
                 self.opNansheRemoveZeroedLines.Output.setDirty( slice(None) )
             else:
-                if self.ToExtractF0.value is not None:
+                if self.ToExtractF0.value:
                     self.opNansheExtractF0.InputImage.setDirty( slice(None) )
-                elif self.ToWaveletTransform.value is not None:
+                elif self.ToWaveletTransform.value:
                     self.opNansheWaveletTransform.InputImage.setDirty( slice(None) )
                 else:
                     self.Output.setDirty( slice(None) )
@@ -143,7 +143,7 @@ class OpNanshePreprocessData(Operator):
             if slot.value:
                 self.opNansheExtractF0.Output.setDirty( slice(None) )
             else:
-                if self.ToWaveletTransform.value is not None:
+                if self.ToWaveletTransform.value:
                     self.opNansheWaveletTransform.InputImage.setDirty( slice(None) )
                 else:
                     self.Output.setDirty( slice(None) )
@@ -267,9 +267,9 @@ class OpNanshePreprocessDataCached(Operator):
             if slot.value:
                 self.opNansheRemoveZeroedLines.Output.setDirty( slice(None) )
             else:
-                if self.ToExtractF0.value is not None:
+                if self.ToExtractF0.value:
                     self.opNansheExtractF0.InputImage.setDirty( slice(None) )
-                elif self.ToWaveletTransform.value is not None:
+                elif self.ToWaveletTransform.value:
                     self.opNansheWaveletTransform.InputImage.setDirty( slice(None) )
                 else:
                     self.Output.setDirty( slice(None) )
@@ -277,7 +277,7 @@ class OpNanshePreprocessDataCached(Operator):
             if slot.value:
                 self.opNansheExtractF0.Output.setDirty( slice(None) )
             else:
-                if self.ToWaveletTransform.value is not None:
+                if self.ToWaveletTransform.value:
                     self.opNansheWaveletTransform.InputImage.setDirty( slice(None) )
                 else:
                     self.Output.setDirty( slice(None) )
