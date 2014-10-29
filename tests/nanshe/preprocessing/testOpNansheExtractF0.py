@@ -20,8 +20,10 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 import numpy
+
 from lazyflow.graph import Graph
 
+import vigra
 
 import ilastik
 import ilastik.applets
@@ -34,6 +36,7 @@ class TestOpNansheExtractF0(object):
     def testBasic(self):
         a = numpy.ones((100, 101, 102))
         a = a[..., None]
+        a = vigra.taggedView(a, "tyxc")
 
         graph = Graph()
         op = OpNansheExtractF0(graph=graph)
@@ -47,6 +50,7 @@ class TestOpNansheExtractF0(object):
         op.BiasEnabled.setValue(True)
 
         b = op.Output[...].wait()
+        b = vigra.taggedView(b, "tyxc")
 
         assert(a.shape == b.shape)
 
