@@ -24,6 +24,7 @@ __date__ = "$Oct 14, 2014 16:37:05 EDT$"
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
+from lazyflow.operators import OpArrayCache
 
 from ilastik.applets.nanshe.preprocessing.opNansheRemoveZeroedLines import OpNansheRemoveZeroedLines, OpNansheRemoveZeroedLinesCached
 from ilastik.applets.nanshe.preprocessing.opNansheExtractF0 import OpNansheExtractF0, OpNansheExtractF0Cached
@@ -163,6 +164,7 @@ class OpNanshePreprocessDataCached(Operator):
 
 
     InputImage = InputSlot()
+    CacheInput = InputSlot(optional=True)
 
 
     ToRemoveZeroedLines = InputSlot(value=True)
@@ -181,6 +183,7 @@ class OpNanshePreprocessDataCached(Operator):
     Scale = InputSlot(value=4)
 
 
+    CleanBlocks = OutputSlot()
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
@@ -201,10 +204,17 @@ class OpNanshePreprocessDataCached(Operator):
         self.opNansheWaveletTransform = OpNansheWaveletTransformCached(parent=self)
         self.opNansheWaveletTransform.Scale.connect(self.Scale)
 
+        self.opCache = OpArrayCache(parent=self)
+        self.opCache.fixAtCurrent.setValue(False)
+        self.CleanBlocks.connect(self.opCache.CleanBlocks)
+
+        self.Output.connect(self.opCache.Output)
+
     def setupOutputs(self):
         self.opNansheRemoveZeroedLines.InputImage.disconnect()
         self.opNansheExtractF0.InputImage.disconnect()
         self.opNansheWaveletTransform.InputImage.disconnect()
+        self.opCache.Input.disconnect()
 
         next_output = self.InputImage
 
@@ -220,9 +230,16 @@ class OpNanshePreprocessDataCached(Operator):
             self.opNansheWaveletTransform.InputImage.connect(next_output)
             next_output = self.opNansheWaveletTransform.Output
 
-        self.Output.connect(next_output)
+        self.opCache.Input.connect(next_output)
+
+        self.opCache.blockShape.setValue( self.opCache.Output.meta.shape )
 
     # Don't need execute as the output will be drawn through the Output slot.
+
+    def setInSlot(self, slot, subindex, key, value):
+        assert slot == self.CacheInput
+
+        self.opCache.setInSlot(self.opCache.Input, subindex, key, value)
 
     def propagateDirty(self, slot, subindex, roi):
         if slot.name == "InputImage":
@@ -233,7 +250,7 @@ class OpNanshePreprocessDataCached(Operator):
             elif self.ToWaveletTransform.value:
                 self.opNansheWaveletTransform.InputImage.setDirty(roi)
             else:
-                self.Output.setDirty(roi)
+                self.opCache.Input.setDirty(roi)
         elif (slot.name == "ErosionShape") or (slot.name == "DilationShape"):
             if self.ToRemoveZeroedLines.value:
                 self.opNansheRemoveZeroedLines.Output.setDirty( slice(None) )
