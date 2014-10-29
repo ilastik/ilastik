@@ -138,6 +138,9 @@ class OpNansheGenerateDictionary(Operator):
         if slot.name == 'Output':
             result[...] = processed[output_key]
 
+    def setInSlot(self, slot, subindex, roi, value):
+        pass
+
     def propagateDirty(self, slot, subindex, roi):
         if (slot.name == "InputImage") or (slot.name == "K") or (slot.name == "Gamma1") or (slot.name == "Gamma2") or\
             (slot.name == "NumThreads") or (slot.name == "Batchsize") or (slot.name == "NumIter") or\
