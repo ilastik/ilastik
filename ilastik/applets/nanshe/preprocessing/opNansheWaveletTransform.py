@@ -60,6 +60,7 @@ class OpNansheWaveletTransform(Operator):
     def setupOutputs(self):
         # Copy the input metadata to both outputs
         self.Output.meta.assignFrom( self.InputImage.meta )
+        self.Output.meta.dtype = numpy.float32
 
         self.Output.meta.generation = self._generation
     
