@@ -117,8 +117,11 @@ class NanshePostprocessingGui(LayerViewerGui):
     def apply_operator_settings_to_gui(self):
         self.ndim = len(self.topLevelOperatorView.InputImage.meta.shape) - 1
 
+        # Convert a single value or singleton list into a list of values equal to the number of dimensions
         if not isinstance(self.topLevelOperatorView.WaveletTransformScale.value, (list, tuple)):
             self.topLevelOperatorView.WaveletTransformScale.setValue(self.ndim*[self.topLevelOperatorView.WaveletTransformScale.value])
+        elif len(self.topLevelOperatorView.WaveletTransformScale.value) == 1:
+            self.topLevelOperatorView.WaveletTransformScale.setValue(self.ndim*[self.topLevelOperatorView.WaveletTransformScale.value[0]])
 
         assert(2 <= self.ndim <= 3)
 
