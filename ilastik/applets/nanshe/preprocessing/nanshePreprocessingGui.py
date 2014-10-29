@@ -115,6 +115,8 @@ class NanshePreprocessingGui(LayerViewerGui):
 
         if not isinstance(self.topLevelOperatorView.Scale.value, (list, tuple)):
             self.topLevelOperatorView.Scale.setValue(self.ndim*[self.topLevelOperatorView.Scale.value])
+        elif len(self.topLevelOperatorView.Scale.value) == 1:
+            self.topLevelOperatorView.Scale.setValue(self.ndim*[self.topLevelOperatorView.Scale.value[0]])
 
         assert(4 <= self.ndim <= 5)
 
