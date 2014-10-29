@@ -48,6 +48,7 @@ class OpNansheDictionaryLearning(Operator):
 
 
     InputImage = InputSlot()
+    CacheInput = InputSlot(optional=True)
 
 
     Ord = InputSlot(value=2.0)
@@ -66,7 +67,7 @@ class OpNansheDictionaryLearning(Operator):
     Mode = InputSlot(value=2, stype="int")
     ModeD = InputSlot(value=0, stype="int")
 
-
+    CleanBlocks = OutputSlot()
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
@@ -92,10 +93,15 @@ class OpNansheDictionaryLearning(Operator):
         self.opDictionary.Mode.connect(self.Mode)
         self.opDictionary.ModeD.connect(self.ModeD)
 
+        self.opDictionary.CacheInput.connect(self.CacheInput)
+        self.CleanBlocks.connect(self.opDictionary.CleanBlocks)
 
         self.opNansheNormalizeData.InputImage.connect( self.InputImage )
         self.opDictionary.InputImage.connect( self.opNansheNormalizeData.Output )
         self.Output.connect( self.opDictionary.Output )
+
+    def setInSlot(self, slot, subindex, key, value):
+        pass
 
     def propagateDirty(self, slot, subindex, roi):
         pass
