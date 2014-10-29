@@ -83,10 +83,7 @@ class OpNansheRemoveZeroedLines(Operator):
         pass
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot.name == "InputImage":
-            self._generation[self.name] += 1
-            self.Output.setDirty(roi)
-        elif slot.name == "ErosionShape" or slot.name == "DilationShape":
+        if (slot.name == "InputImage") or (slot.name == "ErosionShape") or (slot.name == "DilationShape"):
             self._generation[self.name] += 1
             self.Output.setDirty( slice(None) )
         else:
