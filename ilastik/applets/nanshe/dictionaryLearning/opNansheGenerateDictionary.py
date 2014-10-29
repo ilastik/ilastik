@@ -26,7 +26,7 @@ __date__ = "$Oct 17, 2014 13:07:51 EDT$"
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
-from lazyflow.operators import OpBlockedArrayCache
+from lazyflow.operators import OpArrayCache
 
 import numpy
 
@@ -161,6 +161,7 @@ class OpNansheGenerateDictionaryCached(Operator):
 
 
     InputImage = InputSlot()
+    CacheInput = InputSlot(optional=True)
 
     K = InputSlot(value=100, stype="int")
     Gamma1 = InputSlot(value=0)
@@ -176,6 +177,7 @@ class OpNansheGenerateDictionaryCached(Operator):
     Mode = InputSlot(value=2, stype="int")
     ModeD = InputSlot(value=0, stype="int")
 
+    CleanBlocks = OutputSlot()
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
@@ -198,18 +200,21 @@ class OpNansheGenerateDictionaryCached(Operator):
         self.opDictionary.ModeD.connect(self.ModeD)
 
 
-        self.opCache = OpBlockedArrayCache(parent=self)
+        self.opCache = OpArrayCache(parent=self)
         self.opCache.fixAtCurrent.setValue(False)
 
         self.opDictionary.InputImage.connect( self.InputImage )
         self.opCache.Input.connect( self.opDictionary.Output )
+        self.CleanBlocks.connect( self.opCache.CleanBlocks )
         self.Output.connect( self.opCache.Output )
 
     def setupOutputs(self):
-        self.opCache.innerBlockShape.setValue( self.opDictionary.Output.meta.shape )
-        self.opCache.outerBlockShape.setValue( self.opDictionary.Output.meta.shape )
+        self.opCache.blockShape.setValue( self.opCache.Output.meta.shape )
 
-        self.Output.meta.assignFrom( self.opCache.Output.meta )
+    def setInSlot(self, slot, subindex, key, value):
+        assert slot == self.CacheInput
+
+        self.opCache.setInSlot(self.opCache.Input, subindex, key, value)
 
     def propagateDirty(self, slot, subindex, roi):
         pass
