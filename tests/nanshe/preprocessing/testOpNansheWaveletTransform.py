@@ -20,8 +20,10 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 import numpy
+
 from lazyflow.graph import Graph
 
+import vigra
 
 import ilastik
 import ilastik.applets
@@ -35,11 +37,14 @@ class TestOpNansheWaveletTransform(object):
         a = numpy.eye(3, dtype = numpy.float32)
         a = a[..., None]
 
+        a = vigra.taggedView(a, "yxc")
+
 
         expected_b = numpy.array([[ 0.59375, -0.375  , -0.34375],
                                   [-0.375  ,  0.625  , -0.375  ],
                                   [-0.34375, -0.375  ,  0.59375]], dtype=numpy.float32)
         expected_b = expected_b[..., None]
+        expected_b = vigra.taggedView(expected_b, "yxc")
 
         graph = Graph()
         op = OpNansheWaveletTransform(graph=graph)
@@ -49,6 +54,7 @@ class TestOpNansheWaveletTransform(object):
         op.Scale.setValue(1)
 
         b = op.Output[...].wait()
+        b = vigra.taggedView(b, "yxc")
 
         assert((b == expected_b).all())
 
