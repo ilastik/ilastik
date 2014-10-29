@@ -70,6 +70,9 @@ class OpNansheNormalizeData(Operator):
         if slot.name == 'Output':
             result[...] = processed
 
+    def setInSlot(self, slot, subindex, roi, value):
+        pass
+
     def propagateDirty(self, slot, subindex, roi):
         if slot.name == "InputImage":
             self.Output.setDirty(roi)
