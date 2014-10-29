@@ -26,7 +26,7 @@ __date__ = "$Oct 23, 2014 09:45:39 EDT$"
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
-from lazyflow.operators import OpBlockedArrayCache
+from lazyflow.operators import OpArrayCache
 
 import vigra
 
@@ -223,6 +223,7 @@ class OpNanshePostprocessDataCached(Operator):
 
 
     InputImage = InputSlot()
+    CacheInput = InputSlot(optional=True)
 
     SignificanceThreshold = InputSlot(value=3.0, stype="float")
     WaveletTransformScale = InputSlot(value=4, stype="int")
@@ -250,6 +251,7 @@ class OpNanshePostprocessDataCached(Operator):
 
     Fuse_FractionMeanNeuronMaxThreshold = InputSlot(value=0.01, stype="float")
 
+    CleanBlocks = OutputSlot()
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
@@ -279,19 +281,24 @@ class OpNanshePostprocessDataCached(Operator):
         self.opPostprocessing.Fuse_FractionMeanNeuronMaxThreshold.connect(self.Fuse_FractionMeanNeuronMaxThreshold)
 
 
-        self.opCache = OpBlockedArrayCache(parent=self)
+        self.opCache = OpArrayCache(parent=self)
         self.opCache.fixAtCurrent.setValue(False)
+        self.CleanBlocks.connect( self.opCache.CleanBlocks )
 
         self.opPostprocessing.InputImage.connect( self.InputImage )
         self.opCache.Input.connect( self.opPostprocessing.Output )
         self.Output.connect( self.opCache.Output )
 
     def setupOutputs(self):
-        self.opCache.innerBlockShape.setValue( self.opPostprocessing.Output.meta.shape )
+        self.opCache.blockShape.setValue( self.opPostprocessing.Output.meta.shape )
 
-        self.opCache.outerBlockShape.setValue( self.opPostprocessing.Output.meta.shape )
 
         self.Output.meta.assignFrom( self.opCache.Output.meta )
+
+    def setInSlot(self, slot, subindex, key, value):
+        assert slot == self.CacheInput
+
+        self.opCache.setInSlot(self.opCache.Input, subindex, key, value)
 
     def propagateDirty(self, slot, subindex, roi):
         pass
