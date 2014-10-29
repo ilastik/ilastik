@@ -140,6 +140,9 @@ class OpNansheExtractF0(Operator):
         if slot.name == 'Output':
             result[...] = processed[within_halo_key]
 
+    def setInSlot(self, slot, subindex, roi, value):
+        pass
+
     def propagateDirty(self, slot, subindex, roi):
         if slot.name == "InputImage":
             self._generation[self.name] += 1
@@ -205,6 +208,9 @@ class OpNansheExtractF0Cached(Operator):
 
         self.opCache.innerBlockShape.setValue(block_shape)
         self.opCache.outerBlockShape.setValue(self.opExtractF0.Output.meta.shape)
+
+    def setInSlot(self, slot, subindex, roi, value):
+        pass
 
     def propagateDirty(self, slot, subindex, roi):
         pass
