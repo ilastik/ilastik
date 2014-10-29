@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.appletSerializer import \
-    AppletSerializer, SerialSlot
+    AppletSerializer, SerialSlot, SerialBlockSlot
 
 class NansheDictionaryLearningSerializer(AppletSerializer):
     """
@@ -40,4 +40,7 @@ class NansheDictionaryLearningSerializer(AppletSerializer):
                                                                    SerialSlot(operator.PosD, selfdepends=True),
                                                                    SerialSlot(operator.Clean, selfdepends=True),
                                                                    SerialSlot(operator.Mode, selfdepends=True),
-                                                                   SerialSlot(operator.ModeD, selfdepends=True)])
+                                                                   SerialSlot(operator.ModeD, selfdepends=True),
+                                                                   SerialBlockSlot(operator.Output,
+                                                                                   operator.CacheInput,
+                                                                                   operator.CleanBlocks, selfdepends=True)])
