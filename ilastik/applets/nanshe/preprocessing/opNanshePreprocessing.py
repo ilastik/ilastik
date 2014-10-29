@@ -39,6 +39,7 @@ class OpNanshePreprocessing(Operator):
 
 
     InputImage = InputSlot()
+    CacheInput = InputSlot(optional=True)
 
 
     ToRemoveZeroedLines = InputSlot(value=True)
@@ -57,6 +58,7 @@ class OpNanshePreprocessing(Operator):
     Scale = InputSlot(value=4)
 
 
+    CleanBlocks = OutputSlot()
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
@@ -81,7 +83,12 @@ class OpNanshePreprocessing(Operator):
         self.opPreprocessData.Scale.connect(self.Scale)
 
         self.opPreprocessData.InputImage.connect( self.InputImage )
+        self.opPreprocessData.CacheInput.connect( self.CacheInput )
+        self.CleanBlocks.connect( self.opPreprocessData.CleanBlocks )
         self.Output.connect( self.opPreprocessData.Output )
+
+    def setInSlot(self, slot, subindex, key, value):
+        pass
 
     def propagateDirty(self, slot, subindex, roi):
         pass
