@@ -103,6 +103,9 @@ class OpNanshePreprocessData(Operator):
 
     # Don't need execute as the output will be drawn through the Output slot.
 
+    def setInSlot(self, slot, subindex, key, value):
+        pass
+
     def propagateDirty(self, slot, subindex, roi):
         if slot.name == "InputImage":
             self.Output.setDirty(roi)
