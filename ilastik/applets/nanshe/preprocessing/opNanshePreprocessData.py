@@ -226,7 +226,14 @@ class OpNanshePreprocessDataCached(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         if slot.name == "InputImage":
-            self.Output.setDirty(roi)
+            if self.ToRemoveZeroedLines.value:
+                self.opNansheRemoveZeroedLines.InputImage.setDirty(roi)
+            elif self.ToExtractF0.value:
+                self.opNansheExtractF0.InputImage.setDirty(roi)
+            elif self.ToWaveletTransform.value:
+                self.opNansheWaveletTransform.InputImage.setDirty(roi)
+            else:
+                self.Output.setDirty(roi)
         elif (slot.name == "ErosionShape") or (slot.name == "DilationShape"):
             if self.ToRemoveZeroedLines.value:
                 self.opNansheRemoveZeroedLines.Output.setDirty( slice(None) )
