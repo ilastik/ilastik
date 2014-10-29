@@ -20,7 +20,10 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 import numpy
+
 from lazyflow.graph import Graph
+
+import vigra
 
 import nanshe.expanded_numpy
 
@@ -35,6 +38,7 @@ class TestOpNansheRemoveZeroedLines(object):
     def testBasic(self):
         a = numpy.ones((1, 100, 101))
         a = a[..., None]
+        a = vigra.taggedView(a, "tyxc")
 
         r = numpy.array([[0, 0, 0], [1, 3, 4]]).T.copy()
 
@@ -52,6 +56,7 @@ class TestOpNansheRemoveZeroedLines(object):
 
 
         b = op.Output[...].wait()
+        b = vigra.taggedView(b, "tyxc")
 
         assert((a == b).all())
 
