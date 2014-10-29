@@ -23,7 +23,7 @@ __date__ = "$Oct 23, 2014 16:27:11 EDT$"
 
 
 from ilastik.applets.base.appletSerializer import \
-    AppletSerializer, SerialSlot, SerialListSlot
+    AppletSerializer, SerialSlot, SerialListSlot, SerialBlockSlot
 
 class NanshePostprocessingSerializer(AppletSerializer):
     """
@@ -49,4 +49,7 @@ class NanshePostprocessingSerializer(AppletSerializer):
                                                                    SerialSlot(operator.AcceptedNeuronShapeConstraints_Eccentricity_Max_Enabled, selfdepends=True),
                                                                    SerialSlot(operator.AlignmentMinThreshold, selfdepends=True),
                                                                    SerialSlot(operator.OverlapMinThreshold, selfdepends=True),
-                                                                   SerialSlot(operator.Fuse_FractionMeanNeuronMaxThreshold, selfdepends=True)])
+                                                                   SerialSlot(operator.Fuse_FractionMeanNeuronMaxThreshold, selfdepends=True),
+                                                                   SerialBlockSlot(operator.Output,
+                                                                                   operator.CacheInput,
+                                                                                   operator.CleanBlocks, selfdepends=True)])
