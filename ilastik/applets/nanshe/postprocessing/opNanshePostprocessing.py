@@ -47,6 +47,7 @@ class OpNanshePostprocessing(Operator):
 
 
     InputImage = InputSlot()
+    CacheInput = InputSlot(optional=True)
 
     SignificanceThreshold = InputSlot(value=3.0, stype="float")
     WaveletTransformScale = InputSlot(value=4, stype="int")
@@ -74,6 +75,7 @@ class OpNanshePostprocessing(Operator):
 
     Fuse_FractionMeanNeuronMaxThreshold = InputSlot(value=0.01, stype="float")
 
+    CleanBlocks = OutputSlot()
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
@@ -103,7 +105,12 @@ class OpNanshePostprocessing(Operator):
         self.opPostprocess.Fuse_FractionMeanNeuronMaxThreshold.connect(self.Fuse_FractionMeanNeuronMaxThreshold)
 
         self.opPostprocess.InputImage.connect( self.InputImage )
+        self.opPostprocess.CacheInput.connect( self.CacheInput )
+        self.CleanBlocks.connect( self.opPostprocess.CleanBlocks )
         self.Output.connect( self.opPostprocess.Output )
+
+    def setInSlot(self, slot, subindex, roi, value):
+        pass
 
     def propagateDirty(self, slot, subindex, roi):
         pass
