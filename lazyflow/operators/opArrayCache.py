@@ -474,6 +474,7 @@ class OpArrayCache(OpCache):
     def _executeCleanBlocks(self, slot, subindex, roi, destination):
         indexCols = numpy.where(self._blockState == OpArrayCache.CLEAN)
         clean_block_starts = numpy.array(indexCols).transpose()
+        clean_block_starts *= self._blockShape
             
         inputShape = self.Input.meta.shape
         clean_block_rois = map( partial( getBlockBounds, inputShape, self._blockShape ),
