@@ -33,10 +33,18 @@ class OpOpenGMFilter(Operator):
         # to avoid log problems
         self._epsilon = 0.000001
         super(OpOpenGMFilter, self).__init__(*args, **kwargs)
+        self._cache = OpCompressedCache( parent=self )
+        self._cache.Input.connect(self.Input)
+        self.Output.connect(self._cache.Output)
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
-        self.Output.meta.dtype = np.float32
+
+        ts = self.Input.meta.getTaggedShape()
+        ts['t'] = 1
+        ts['c'] = 1
+        blockshape = map(lambda k: ts[k],''.join(ts.keys()))
+        self._cache.BlockShape.setValue(tuple(blockshape))
 
     def propagateDirty(self, slot, subindex, roi):
         # TODO what are the actual conditions here?
@@ -46,10 +54,13 @@ class OpOpenGMFilter(Operator):
         logger.debug("Opengm on roi {}".format(roi))
         # FIXME don't recompute this every time
         # compute mask from raw input channel
+
+        # FIXME We need a chache so the computation is only carried out once
         raw_data = self.RawInput[...].wait()
+        print raw_data.shape
         bool_mask = np.ma.masked_less_equal(raw_data[0,...,0],
                                             self._epsilon).mask
-        self._mask = np.zeros(raw_data.shape, dtype=np.uint32)
+        self._mask = np.zeros(bool_mask.shape, dtype=np.uint32)
         self._mask[~bool_mask] = 1.0
 
         conf = self.Configuration.value
@@ -63,16 +74,24 @@ class OpOpenGMFilter(Operator):
                 "expected key 'unaries' in configuration")
         unaries = conf['unaries']
 
-        result[...] = self.Input.get(roi).wait().astype(
-            self.Output.meta.dtype)
-        self._opengmFilter(result, sigma, unaries)
+        print roi, 'ROI'
+        print self.Input.meta.shape, 'input metashape'
+        tmp_roi = roi.copy()
+        for i,a in enumerate(self.Input.meta.shape):
+            tmp_roi.setDim(i,0,self.Input.meta.shape[i])        
+        print tmp_roi, 'TMP_ROI'
 
-    @staticmethod
-    def _opengmFilter(vol, filter_size, unaries_scale):
-        print "TODO implement me"
-        print unaries, filter_size
-        return vol
-        
+        tmp_data = self.Input.get(tmp_roi).wait().astype( np.float32 )
+        print tmp_data.shape, 'data shape'
+        return result
+        result[0,...,0] = self._opengmFilter(tmp_data, sigma, unaries)
+        print result.shape , 'result shape'
+
+
+    def _opengmFilter(self, vol, filter_size, unaries_scale):
+        print unaries_scale, filter_size
+        print vol.shape , 'Volume'
+
         # make uncertainty edge image
         pfiltered = np.zeros_like(vol[0])
         for c in xrange(vol.shape[-1]):
@@ -97,4 +116,6 @@ class OpOpenGMFilter(Operator):
             inf.infer(inf.verboseVisitor())
         pred = opengm.makeMaskedState(self._mask, inf.arg(), labelIdx=0)
 
+        print pred.shape, 'pred shape'
+        return pred
 
