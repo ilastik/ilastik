@@ -37,6 +37,10 @@ class OpOpenGMFilter(Operator):
         self._cache.Input.connect(self.Input)
         self.Output.connect(self._cache.Output)
 
+        self.opMask = OpBrainMask(parent=self)
+        self.opMask.Input.connect(self.RawInput)
+        self.Output.connect(self.opMask.CachedOutput)
+
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
 
@@ -119,3 +123,49 @@ class OpOpenGMFilter(Operator):
         print pred.shape, 'pred shape'
         return pred
 
+class OpBrainMask(Operator):
+    """
+    This operator computes a mask image based on the assumption that in the 
+    MRI input data all values outside of the skull were set to 0 during 
+    pre-processing
+    """
+    
+    Input = InputSlot() # the raw data
+    Output = OutputSlot()
+
+    CachedOutput = OutputSlot() # second (private) output
+
+    def __init__(self, *args, **kwargs):
+        self._epsilon = 0.000001
+        super(OpBrainMask, self).__init__(*args, **kwargs)
+        self._cache = OpCompressedCache(parent=self )
+        self._cache.name = "OpBrainMaskCache"
+        self._cache.Input.connect(self.Output) 
+        self.CachedOutput.connect(self._cache.Output)
+
+    def setupOutputs(self):
+        self.Output.meta.assignFrom(self.Input.meta)
+        tagged_shape = self.Input.meta.getTaggedShape()
+        tagged_shape['t'] = 1
+        tagged_shape['c'] = 1
+        blockshape = map(lambda k: tagged_shape[k],
+                         ''.join(tagged_shape.keys()))
+        self._cache.BlockShape.setValue(tuple(blockshape))
+        self.Output.meta.shape = tuple(tagged_shape.values())
+
+    def execute(self, slot, subindex, roi, result):
+        """
+        computes brain mask for entire volume
+        """
+        print 'Brain mask'
+        print roi
+        raw_data = self.Input[...].wait()
+        print raw_data.shape
+        bool_mask = np.ma.masked_less_equal(raw_data[0,...,0],
+                                            self._epsilon).mask
+        result = np.zeros(bool_mask.shape, dtype=np.uint32)
+        result[~bool_mask] = 1.0
+
+    def propagateDirty(self, inputSlot, subindex, roi):
+        if inputSlot is self.Input:
+            self.Output.setDirty(roi)
