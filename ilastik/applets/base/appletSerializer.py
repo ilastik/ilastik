@@ -27,8 +27,8 @@ from ilastik.config import cfg as ilastik_config
 from ilastik.utility.simpleSignal import SimpleSignal
 from ilastik.utility.maybe import maybe
 import os
+import re
 import tempfile
-import vigra
 import h5py
 import numpy
 import warnings
@@ -36,6 +36,7 @@ import cPickle as pickle
 
 from lazyflow.roi import TinyVector, roiToSlice, sliceToRoi
 from lazyflow.utility import timeLogged
+from lazyflow.slot import OutputSlot
 
 #######################
 # Convenience methods #
@@ -348,6 +349,7 @@ class SerialBlockSlot(SerialSlot):
                              its nonzero bounding box before feeding saving it.
 
         """
+        assert isinstance(slot, OutputSlot), "slot is of wrong type: '{}' is not an OutputSlot".format( slot.name )
         super(SerialBlockSlot, self).__init__(
             slot, inslot, name, subname, default, depends, selfdepends
         )
@@ -365,6 +367,9 @@ class SerialBlockSlot(SerialSlot):
             subgroup = mygroup.create_group(subname)
             nonZeroBlocks = self.blockslot[index].value
             for blockIndex, slicing in enumerate(nonZeroBlocks):
+                if not isinstance(slicing[0], slice):
+                    slicing = roiToSlice(*slicing)
+
                 block = self.slot[index][slicing].wait()
                 blockName = 'block{:04d}'.format(blockIndex)
 
@@ -391,7 +396,13 @@ class SerialBlockSlot(SerialSlot):
         num = len(mygroup)
         if len(self.inslot) < num:
             self.inslot.resize(num)
-        for index, t in enumerate(sorted(mygroup.items())):
+        # Annoyingly, some applets store their groups with names like, img0,img1,img2,..,img9,img10,img11
+        # which means that sorted() needs a special key to avoid sorting img10 before img2
+        # We have to find the index and sort according to its numerical value.
+        index_capture = re.compile(r'[^0-9]*(\d*).*')
+        def extract_index(s):
+            return int(index_capture.match(s).groups()[0])
+        for index, t in enumerate(sorted(mygroup.items(), key=lambda (k,v): extract_index(k))):
             groupName, labelGroup = t
             for blockData in labelGroup.values():
                 slicing = stringToSlicing(blockData.attrs['blockSlice'])
@@ -417,7 +428,14 @@ class SerialHdf5BlockSlot(SerialBlockSlot):
         num = len(mygroup)
         if len(self.inslot) < num:
             self.inslot.resize(num)
-        for index, t in enumerate(sorted(mygroup.items())):
+        
+        # Annoyingly, some applets store their groups with names like, img0,img1,img2,..,img9,img10,img11
+        # which means that sorted() needs a special key to avoid sorting img10 before img2
+        # We have to find the index and sort according to its numerical value.
+        index_capture = re.compile(r'[^0-9]*(\d*).*')
+        def extract_index(s):
+            return int(index_capture.match(s).groups()[0])
+        for index, t in enumerate(sorted(mygroup.items(), key=lambda (k,v): extract_index(k))):
             groupName, labelGroup = t
             for blockRoiString, blockDataset in labelGroup.items():
                 blockRoi = eval(blockRoiString)
@@ -490,10 +508,10 @@ class SerialClassifierSlot(SerialSlot):
 
 class SerialCountingSlot(SerialSlot):
     """For saving a random forest classifier."""
-    def __init__(self, slot, cache, inslot=None, name=None, subname=None,
+    def __init__(self, slot, cache, inslot=None, name=None,
                  default=None, depends=None, selfdepends=True):
         super(SerialCountingSlot, self).__init__(
-            slot, inslot, name, subname, default, depends, selfdepends
+            slot, inslot, name, "wrapper{:04d}", default, depends, selfdepends
         )
         self.cache = cache
         if self.name is None:
