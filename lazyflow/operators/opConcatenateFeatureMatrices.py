@@ -33,8 +33,10 @@ class OpConcatenateFeatureMatrices(Operator):
         
         num_feature_channels = self.FeatureMatrices[0].meta.num_feature_channels
         for slot in self.FeatureMatrices:
-            assert slot.meta.num_feature_channels == num_feature_channels, \
-                "Input matrices have the wrong number of channels" 
+            if slot.meta.num_feature_channels != num_feature_channels:
+                logger.debug("Input matrices have the wrong number of channels")
+                self.ConcatenatedOutput.meta.NOTREADY = True
+                return 
         
         self.ConcatenatedOutput.meta.num_feature_channels = num_feature_channels
         if num_feature_channels != self._num_feature_channels:
