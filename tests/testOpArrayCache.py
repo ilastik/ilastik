@@ -254,6 +254,14 @@ class TestOpArrayCache(object):
         # Output should be dirty from previous change
         assert len(gotDirtyKeys) == 1, \
             "Expected 1 dirty notification, got {}".format( len(gotDirtyKeys) )
+
+    def testCleanBlocksSlot(self):
+        self.testCacheAccess()
+        opCache = self.opCache
+        clean_block_rois = opCache.CleanBlocks.value
+        assert [[0, 0, 10, 0, 0], [1, 10, 20, 10, 1]] in clean_block_rois
+        assert [[0, 10, 10, 0, 0], [1, 20, 20, 10, 1]] in clean_block_rois
+         
  
 class TestOpArrayCacheWithObjectDtype(object):
     """
