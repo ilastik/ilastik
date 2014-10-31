@@ -5,6 +5,7 @@ from ilastik.workflows.mriVolumetry.opMriVolFilter import OpFanOut
 from ilastik.workflows.mriVolumetry.opMriVolFilter import OpMriBinarizeImage
 from ilastik.workflows.mriVolumetry.opMriVolFilter import OpMriVolFilter
 from ilastik.workflows.mriVolumetry.opImplementationChoice import OpImplementationChoice
+from ilastik.workflows.mriVolumetry.opOpenGMFilter import OpOpenGMFilter
 
 from lazyflow.graph import Graph
 from lazyflow.operator import Operator, InputSlot, OutputSlot
@@ -14,6 +15,7 @@ from lazyflow.operators import OpPixelOperator
 from lazyflow.operators import OpSingleChannelSelector
 
 import numpy as np
+from numpy.testing import assert_array_equal
 
 import vigra
 
@@ -248,6 +250,31 @@ class TestOpMriVolFilter(unittest.TestCase):
         op.LabelNames.setValue(np.asarray(["black", "white"]))
 
         out = op.ArgmaxOutput[...].wait()
+
+
+class TestOpOpenGMFilter(unittest.TestCase):
+    def setUp(self):
+        pred = np.ones((2, 10, 15, 20, 2), dtype=np.float32) * .1
+        pred = vigra.taggedView(pred, axistags='txyzc')
+        pred[:, 3:6, 4:8, 5:10, 0] = .9
+        pred[..., 1] = 1 - pred[..., 0]
+        self.pred = pred
+        vol = 255*(pred[..., 0]>.5)
+        vol = vol.astype(np.uint8).withAxes(*'txyzc')
+        self.vol = vol
+        self.g = Graph()
+
+    def testSimple(self):
+        op = OpOpenGMFilter(graph=self.g)
+        op.Input.setValue(self.pred)
+        op.RawInput.setValue(self.vol)
+        op.Configuration.setValue({'sigma': 0.2, 'unaries': 0.1})
+        s = op.Output.meta.shape
+        assert_array_equal(self.pred.shape[:4], s[:4])
+        assert s[4] == 1
+
+        out = op.Output[...].wait()
+        print(out[0,...].sum())
 
 
 if __name__ == "__main__": 
