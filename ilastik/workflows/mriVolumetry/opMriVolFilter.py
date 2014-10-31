@@ -49,6 +49,9 @@ class OpMriVolFilter(Operator):
     # internal output after filtering
     Smoothed = OutputSlot()
 
+    # internal output of CCs
+    CCsOutput = OutputSlot()
+
     # the argmax output (single channel)
     ArgmaxOutput = OutputSlot()
 
@@ -102,7 +105,7 @@ class OpMriVolFilter(Operator):
 
         self.opCC = OpLabelVolume(parent=self)
         self.opCC.Input.connect(self.opBinarize.Output)
-
+        self.CCsOutput.connect(self.opCC.CachedOutput)
         # Filters CCs
         self.opFilter = OpFilterLabels(parent=self )
         self.opFilter.Input.connect(self.opCC.CachedOutput)

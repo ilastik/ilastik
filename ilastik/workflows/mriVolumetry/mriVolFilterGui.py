@@ -5,7 +5,7 @@ from functools import partial
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QEvent
 from PyQt4.QtGui import QColor, QMessageBox, QListView, QStandardItemModel, \
-    QStandardItem, QPixmap, QIcon
+    QStandardItem, QPixmap, QIcon, QMenu
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.utility.gui import threadRouted
@@ -93,6 +93,97 @@ class MriVolFilterGui(LayerViewerGui):
                 self._drawer.applyButton.click()
                 return True
         return False
+
+    # =================================================================
+    #                   USER INTERACTION WITH CCs
+    # =================================================================
+
+    def _getObjectID(self, pos5d):
+        op = self.topLevelOperatorView
+        return self._getObjectHelper(op.CCsOutput, pos5d)
+
+    @staticmethod
+    def _getObjectHelper(slot, pos5d):
+        slicing = tuple(slice(i, i+1) for i in pos5d)
+        arr = slot[slicing].wait()
+        return arr.flat[0]
+
+    def _getClassName(self, pos5d):
+        op = self.topLevelOperatorView
+        names = op.LabelNames.value
+        names = list(names)
+        names.insert(0, 'Background')
+        # get current id
+        idx = self._getObjectHelper(op.Output,pos5d)
+        return names[idx], idx
+        
+    def _getPossibleLabels(self):
+        '''
+        returns a OrderdDict containing name and id of labels
+        that can be used for assignment
+        '''
+        labels = OrderedDict()
+        labels['Background'] = 0
+        op = self.topLevelOperatorView
+        states = op.ActiveChannels.value
+        names = list(op.LabelNames.value)
+        for i,n in enumerate(names):
+            if states[i] == 2:
+                labels[n] = i+1
+        return labels
+        
+    def assignNewClassEntry(self, objID, oldValue, newValue):
+        # TODO Implement me
+        print objID, oldValue, newValue
+         
+    def _updateDefaultCCMembership(self): 
+        print 'CCs changed'
+        op = self.topLevelOperatorView
+        # get a list of all CCs
+        # TODO Once assignNewClassEntry is executed keep track of the changes
+        # eg. using a dict
+
+    def handleEditorLeftClick(self, position5d, globalWindowCoordinate):
+        print 'left click'
+        
+        obj = self._getObjectID(position5d)
+        class_name, old_class = self._getClassName(position5d)
+        print 'Class name: ', class_name 
+        print 'Found object with ID {}'.format(obj)
+
+        if obj == 0:
+            return
+
+        menu = QMenu(self)
+
+        submenu = QMenu(self)
+        submenu.setTitle('Assign membership to')
+        entries = self._getPossibleLabels()
+        for k,v  in entries.iteritems():
+            if v != old_class: 
+                submenu.addAction(k, partial(self.assignNewClassEntry, obj,
+                                             old_class, v))
+        menu.addMenu(submenu)
+
+        # menu.addSeparator()
+
+        org_member = 'Restore original membership ({})'.format('TODO')
+        # TODO keep track of original membership
+        menu.addAction(org_member)
+
+        action = menu.exec_(globalWindowCoordinate)
+
+        if action is None:
+            return
+        # if action.text() == org_member:
+         #   pass
+
+    def handleEditorRightClick(self, position5d, globalWindowCoordiante):
+        print 'right click - nothing assigned'
+        # layer = self.getLayer('Output')
+        # op = self.topLevelOperatorView
+        # obj = self._getObjectHelper(op.CCsOutput, position5d)
+        # print obj
 
     # =================================================================
     #                      LAYER MANIPULATION
@@ -238,6 +329,9 @@ class MriVolFilterGui(LayerViewerGui):
 
     @threadRouted
     def _getLabelNamesFromOp(self):
+        # BUG This function is only called once in the beginning
+        # LabelNames is an Input slot and its value never changes
+        print 'LABELNAMES IS CALLED'
         op = self.topLevelOperatorView
         # update the channel list
         names = op.LabelNames.value
@@ -352,6 +446,9 @@ class MriVolFilterGui(LayerViewerGui):
             self._spinbox_value_changed)
 
         op.LabelNames.notifyValueChanged(self._getLabelNamesFromOp)
+        # FIXME this is not correct. But notifyValueChange does not work 
+        # the function is only called once in the beginning
+        # opLabelNames is an input slot
         self.__cleanup_fns.append(
             lambda: op.Input.unregisterValueChanged(self._getLabelNamesFromOp))
 
@@ -386,7 +483,7 @@ class MriVolFilterGui(LayerViewerGui):
         minDim = np.min(spatialShape)
         maxSigma = np.floor(minDim/6.) - .1
         # -.1 for safety reasons
-        # Experimentally 3. (see Anna' comment on issue below)
+        # Experimentally 3. (see Anna's comment on issue below)
         # https://github.com/ilastik/ilastik/issues/996
         return maxSigma
 
