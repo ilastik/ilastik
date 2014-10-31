@@ -76,10 +76,12 @@ class OpImplementationChoice(Operator):
         # connect new implementation
         op = self.implementations[impl](parent=self)
         for k in op.inputs:
-            op.inputs[k].connect(self.inputs[k])
+            if not k.startswith("_"):
+                op.inputs[k].connect(self.inputs[k])
         for k in op.outputs:
-            self.outputs[k].connect(op.outputs[k])
-            self.outputs[k].meta.NOTREADY = None
+            if not k.startswith("_"):
+                self.outputs[k].connect(op.outputs[k])
+                self.outputs[k].meta.NOTREADY = None
         self._op = op
 
         self._current_impl = impl
