@@ -32,13 +32,9 @@
        <string>General</string>
       </attribute>
       <layout class="QFormLayout" name="formLayout">
-       <item row="0" column="1">
-        <widget class="QLineEdit" name="exportPath">
-         <property name="text">
-          <string/>
-         </property>
-        </widget>
-       </item>
+       <property name="fieldGrowthPolicy">
+        <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+       </property>
        <item row="0" column="0">
         <widget class="QPushButton" name="choosePath">
          <property name="text">
@@ -46,18 +42,92 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="0" colspan="2">
+       <item row="0" column="1">
+        <widget class="QLineEdit" name="exportPath">
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0" colspan="2">
         <widget class="QCheckBox" name="includeRaw">
          <property name="text">
           <string>Include whole raw image instead of rois</string>
          </property>
         </widget>
        </item>
+       <item row="3" column="0" colspan="2">
+        <widget class="QFrame" name="frame">
+         <property name="minimumSize">
+          <size>
+           <width>20</width>
+           <height>20</height>
+          </size>
+         </property>
+         <property name="sizeIncrement">
+          <size>
+           <width>5</width>
+           <height>5</height>
+          </size>
+         </property>
+         <property name="baseSize">
+          <size>
+           <width>20</width>
+           <height>20</height>
+          </size>
+         </property>
+         <property name="frameShape">
+          <enum>QFrame::StyledPanel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Raised</enum>
+         </property>
+         <property name="lineWidth">
+          <number>10</number>
+         </property>
+         <layout class="QFormLayout" name="formLayout_2">
+          <item row="0" column="0">
+           <widget class="QLabel" name="advancedLabel">
+            <property name="styleSheet">
+             <string notr="true">font-weight: bold;</string>
+            </property>
+            <property name="text">
+             <string>Advanced</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QCheckBox" name="normalizeLabeling">
+            <property name="text">
+             <string>Normalize labeling</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="marginLabel">
+            <property name="text">
+             <string>Add margin around rois</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <widget class="QSpinBox" name="addMargin">
+            <property name="accelerated">
+             <bool>true</bool>
+            </property>
+            <property name="maximum">
+             <number>200</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
       </layout>
      </widget>
      <widget class="QWidget" name="layerBox">
       <property name="enabled">
-       <bool>false</bool>
+       <bool>true</bool>
       </property>
       <property name="geometry">
        <rect>
@@ -256,6 +326,22 @@
     <hint type="destinationlabel">
      <x>272</x>
      <y>213</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>includeRaw</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>frame</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>272</x>
+     <y>98</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>272</x>
+     <y>148</y>
     </hint>
    </hints>
   </connection>
