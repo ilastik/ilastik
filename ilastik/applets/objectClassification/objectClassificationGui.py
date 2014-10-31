@@ -28,7 +28,7 @@ from ilastik.widgets.exportToKnimeDialog_old import ExportToKnimeDialog
 from ilastik.widgets.exportToKnimeDialog import ExportToKnimeDialog
 from ilastik.applets.objectExtraction.opObjectExtraction import OpRegionFeatures3d
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
-
+from lazyflow.operators.ioOperators.opExportToKnime import OpExportToKnime
 
 import os
 import numpy
@@ -218,13 +218,31 @@ class ObjectClassificationGui(LabelingGui):
 
     def exportObjectInfo(self):
 
-        rawIndex = self.layerstack.findMatchingIndex(lambda x: x.name=="Raw data")
-        mainOperator = self.topLevelOperatorView
-        features = mainOperator.ComputedFeatureNames([]).wait()
-        #dlg = ExportToKnimeDialog(self.layerstack, rawIndex, features)
-        #dlg.exec_()
-        print mainOperator.__op
-        print dir(mainOperator.__op)
+        raw_index = self.layerstack.findMatchingIndex(lambda x: x.name == "Raw data")
+        main_operator = self.topLevelOperatorView
+        features = main_operator.ComputedFeatureNames([]).wait()
+        dialog = ExportToKnimeDialog(self.layerstack, raw_index, 0, features)
+        if dialog.exec_() == 1:
+            feature_selection = list(dialog.checked_features())
+            layers = list(dialog.checked_layers())
+            type_ = dialog.file_format()
+            path = dialog.file_path()
+            inc_raw = dialog.include_raw_layer()
+            feature_table = main_operator.createExportTable(0, [])
+
+            op = OpExportToKnime(parent=main_operator.viewed_operator())
+            op.FileType.setValue(type_)
+            op.IncludeRawImage.setValue(inc_raw)
+            op.OutputFileName.setValue(path)
+            op.ObjectFeatures.setValue(feature_table)
+            op.SelectedFeatures.setValue(feature_selection)
+            raw_image = main_operator.RawImages([]).wait()
+            print(raw_image.size)
+            op.RawImage.setValue(raw_image)
+
+            result = op.WriteData([]).wait()
+            logger.info("Export to KNIME exited with status: {}".format(result))
+
 
 
 
