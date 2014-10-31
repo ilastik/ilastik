@@ -4,7 +4,6 @@ from PyQt4.QtGui import *
 import os.path
 import re
 
-
 class ExportToKnimeDialog(QDialog):
 
     REQ_MSG = " (REQUIRED)"
@@ -13,25 +12,22 @@ class ExportToKnimeDialog(QDialog):
     RE_EXT = r"\.[a-zA-Z0-9]+$"
     RE_FNAME = r"/'"
 
-    def __init__(self, layerstack, raw_index, raw_size, feature_table, req_features=None, parent=None):
+    def __init__(self, layerstack, dimensions, feature_table, req_features=None, parent=None):
         super(ExportToKnimeDialog, self).__init__(parent)
         ui_class, widget_class = uic.loadUiType(os.path.split(__file__)[0] + "/exportToKnimeDialog.ui")
         self.ui = ui_class()
         self.ui.setupUi(self)
 
-        self.raw_index = raw_index
-        self.raw_size = raw_size
+        self.raw_size = dimensions[0] * dimensions[1] * dimensions[2]
 
         self._setup_stack(layerstack)
-
-        #raw = layerstack[raw_index]
 
         if req_features is None:
             req_features = []
         req_features.extend(["Coord<Minimum>", "Coord<Maximum>"])
         self._setup_features(feature_table, req_features)
         self.ui.featureView.setHeaderLabels(("Select Features",))
-        self.ui.exportPath.setText(os.path.expanduser("~"))
+        self.ui.exportPath.setText(os.path.expanduser("~") + "/a.h5")
         self.ui.featureView.expandAll()
 
     def _setup_features(self, features, reqs, max_depth=2, parent=None):
@@ -48,15 +44,25 @@ class ExportToKnimeDialog(QDialog):
                 if entry in reqs:
                     state = Qt.Checked
                     item.setDisabled(True)
+                    item.setText(0, item.text(0) + ExportToKnimeDialog.REQ_MSG)
                 item.setCheckState(0, state)
 
     def _setup_stack(self, layerstack):
+        reqs = [
+            layerstack.findMatchingIndex(lambda x: x.name == "Raw data"),
+            layerstack.findMatchingIndex(lambda x: x.name == "Labels")
+        ]
         for i in xrange(len(layerstack)):
-            if i != self.raw_index:
-                layer = layerstack[i]
-                item = QListWidgetItem(self.ui.objLayerView)
-                item.setText(layer.name)
-                item.setCheckState(Qt.Unchecked)
+            layer = layerstack[i]
+            item = QListWidgetItem(self.ui.objLayerView)
+            item.setText(layer.name)
+            state = Qt.Unchecked
+            if i in reqs:
+                state = Qt.Checked
+                flags = item.flags() & ~Qt.ItemIsEnabled
+                item.setFlags(flags)
+                item.setText(item.text() + ExportToKnimeDialog.REQ_MSG)
+            item.setCheckState(state)
 
     # slot is called from button.click
     def select_all_features(self):
@@ -149,6 +155,12 @@ class ExportToKnimeDialog(QDialog):
     # should the raw layer be exported
     def include_raw_layer(self):
         return self.ui.includeRaw.checkState()
+
+    def advanced_settings(self):
+        return  {
+            "normalize": self.ui.normalizeLabeling.checkState() == Qt.Checked,
+            "margin": self.ui.addMargin.value()
+        }
 
     # the file format the user wants to export
     # hd5 or csv
