@@ -105,8 +105,10 @@ class OpOpenGMFilter(Operator):
                                        regularizer=uncertainties, 
                                        mask=mask)
         try:
+            print 'Using FastPD'
             inf = opengm.inference.FastPd(gm)
         except AttributeError:
+            print 'Using AlphaExpansion'
             inf = opengm.inference.AlphaExpansion(gm)
         inf.setStartingPoint(init_data)
         inf.infer(inf.verboseVisitor())

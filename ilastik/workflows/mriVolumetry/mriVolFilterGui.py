@@ -1,6 +1,7 @@
 import os
 import itertools
 from functools import partial
+from collections import OrderedDict
 
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QEvent
