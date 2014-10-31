@@ -52,7 +52,8 @@ class OpOpenGMFilter(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         # TODO what are the actual conditions here?
-        self.Output.setDirty(slice(None)) 
+        if slot in [self.Configuration, self.Input, self.RawInput]:
+            self._Output.setDirty(slice(None)) 
 
     def execute(self, slot, subindex, roi, result):
         logger.debug("Opengm on roi {}".format(roi))
@@ -112,7 +113,8 @@ class OpOpenGMFilter(Operator):
             inf = opengm.inference.AlphaExpansion(gm)
         inf.setStartingPoint(init_data)
         inf.infer(inf.verboseVisitor())
-        out[:] = opengm.makeMaskedState(mask, inf.arg(), labelIdx=0)
+        out[:] = opengm.makeMaskedState(mask, inf.arg(), labelIdx=0) + 1
+        # +1 to adjust the indices
 
 
 class OpBrainMask(Operator):

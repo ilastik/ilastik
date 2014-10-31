@@ -135,7 +135,9 @@ class MriVolFilterGui(LayerViewerGui):
         
     def assignNewClassEntry(self, objID, oldValue, newValue):
         # TODO Implement me
-        print objID, oldValue, newValue
+        print 'ObjectID {}, old class {}, new class {}'.format(objID, 
+                                                               oldValue, 
+                                                               newValue)
          
     def _updateDefaultCCMembership(self): 
         print 'CCs changed'
