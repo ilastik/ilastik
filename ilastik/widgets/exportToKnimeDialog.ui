@@ -16,13 +16,28 @@
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QToolBox" name="toolBox">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
      <widget class="QWidget" name="generalBox">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>528</width>
+        <height>283</height>
+       </rect>
+      </property>
       <attribute name="label">
        <string>General</string>
       </attribute>
       <layout class="QFormLayout" name="formLayout">
        <item row="0" column="1">
-        <widget class="QLineEdit" name="exportPath"/>
+        <widget class="QLineEdit" name="exportPath">
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
        </item>
        <item row="0" column="0">
         <widget class="QPushButton" name="choosePath">
@@ -31,9 +46,19 @@
          </property>
         </widget>
        </item>
+       <item row="1" column="0" colspan="2">
+        <widget class="QCheckBox" name="includeRaw">
+         <property name="text">
+          <string>Include whole raw image instead of rois</string>
+         </property>
+        </widget>
+       </item>
       </layout>
      </widget>
      <widget class="QWidget" name="layerBox">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
       <property name="geometry">
        <rect>
         <x>0</x>
@@ -57,13 +82,6 @@
         <widget class="QListWidget" name="objLayerView">
          <property name="selectionMode">
           <enum>QAbstractItemView::NoSelection</enum>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QCheckBox" name="includeRaw">
-         <property name="text">
-          <string>Include raw image</string>
          </property>
         </widget>
        </item>
@@ -225,11 +243,28 @@
     </hint>
    </hints>
   </connection>
+  <connection>
+   <sender>includeRaw</sender>
+   <signal>stateChanged(int)</signal>
+   <receiver>KnimeExportDialog</receiver>
+   <slot>include_raw_changed(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>272</x>
+     <y>92</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>272</x>
+     <y>213</y>
+    </hint>
+   </hints>
+  </connection>
  </connections>
  <slots>
   <slot>select_all_features()</slot>
   <slot>select_no_features()</slot>
   <slot>validate_before_exit()</slot>
   <slot>choose_path()</slot>
+  <slot>include_raw_changed(int)</slot>
  </slots>
 </ui>
