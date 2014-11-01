@@ -332,10 +332,11 @@ class MriVolFilterGui(LayerViewerGui):
 
     @threadRouted
     def _getLabelNamesFromOp(self):
-        # BUG This function is only called once in the beginning
-        # LabelNames is an Input slot and its value never changes
-        print 'LABELNAMES IS CALLED'
         op = self.topLevelOperatorView
+        # quit if LabelNames are not there
+        if not op.LabelNames.ready():
+            #FIXME perhaps we should delete the list
+            return
         # update the channel list
         names = op.LabelNames.value
         for i in range(min(self.model.rowCount(), len(names))):
@@ -448,18 +449,26 @@ class MriVolFilterGui(LayerViewerGui):
         self._drawer.thresSpinBox.valueChanged.connect(
             self._spinbox_value_changed)
 
-        op.LabelNames.notifyValueChanged(self._getLabelNamesFromOp)
-        # FIXME this is not correct. But notifyValueChange does not work 
-        # the function is only called once in the beginning
-        # opLabelNames is an input slot
+        # HACK we are connecting to sig_meta_cahnged because sig_value_changed
+        # is never called, see issue:
+        #   github.com/ilastik/lazyfow/issues/155
+        op.LabelNames.notifyMetaChanged(self._onLabelsChanged)
         self.__cleanup_fns.append(
-            lambda: op.Input.unregisterValueChanged(self._getLabelNamesFromOp))
+            lambda: op.Input.unregisterMetaChanged(self._onLabelsChanged))
 
     def _onInputChanged(self, *args, **kwargs):
         '''
         call this method whenever the top level operators input changes
         '''
+        # FIXME what if labels are provided from upstream?
         self._setStandardLabelList()
+
+    def _onLabelsChanged(self, *args, **kwargs):
+        # apply new labels to GUI
+        self._getLabelNamesFromOp()
+        # need to update layer names
+        #   - we don't know which labels were which before, so recreate all
+        self.updateAllLayers()
 
     def _onApplyButtonClicked(self, *args, **kwargs):
         '''

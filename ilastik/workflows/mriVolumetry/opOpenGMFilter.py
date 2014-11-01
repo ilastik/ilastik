@@ -53,7 +53,7 @@ class OpOpenGMFilter(Operator):
     def propagateDirty(self, slot, subindex, roi):
         # TODO what are the actual conditions here?
         if slot in [self.Configuration, self.Input, self.RawInput]:
-            self._Output.setDirty(slice(None)) 
+            self._Output.setDirty(slice(None))
 
     def execute(self, slot, subindex, roi, result):
         logger.debug("Opengm on roi {}".format(roi))
@@ -94,22 +94,22 @@ class OpOpenGMFilter(Operator):
         # make uncertainty edge image
         pfiltered = np.zeros_like(vol[0])
         for c in xrange(vol.shape[-1]):
-            pfiltered[...,c] = vigra.gaussianSmoothing(vol[0, ..., c], 
-                                                       sigma)
+            pfiltered[..., c] = vigra.gaussianSmoothing(vol[0, ..., c],
+                                                        sigma)
         pmap = np.sort(pfiltered, axis=-1)
-        uncertainties = pmap[...,-1] - pmap[...,-2] 
+        uncertainties = pmap[..., -1] - pmap[..., -2]
         # set starting point
-        init_data = np.argmax(vol[0],axis=-1).astype(np.uint32)
-        init_data = opengm.getStartingPointMasked(init_data, mask)      
+        init_data = np.argmax(vol[0], axis=-1).astype(np.uint32)
+        init_data = opengm.getStartingPointMasked(init_data, mask)
         unaries = -unaries * np.log(vol[0] + eps)
-        gm = opengm.pottsModel3dMasked(unaries=unaries, 
-                                       regularizer=uncertainties, 
+        gm = opengm.pottsModel3dMasked(unaries=unaries,
+                                       regularizer=uncertainties,
                                        mask=mask)
         try:
-            print 'Using FastPD'
+            logger.info('Using FastPD')
             inf = opengm.inference.FastPd(gm)
         except AttributeError:
-            print 'Using AlphaExpansion'
+            logger.info('Using AlphaExpansion')
             inf = opengm.inference.AlphaExpansion(gm)
         inf.setStartingPoint(init_data)
         inf.infer(inf.verboseVisitor())
@@ -123,8 +123,8 @@ class OpBrainMask(Operator):
     MRI input data all values outside of the skull were set to 0 during 
     pre-processing
     """
-    
-    Input = InputSlot() # the raw data
+
+    Input = InputSlot()  # the raw data
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
