@@ -173,7 +173,8 @@ class OpBlockedArrayCache(OpCache):
             
         Below, we achieve the same result without allocating a huge array of all possible block numbers.
         """        
-        shape = numpy.array(stop_block_multi_index) - numpy.array(start_block_multi_index)
+        shape = numpy.array(stop_block_multi_index, dtype=numpy.int) -\
+            numpy.array(start_block_multi_index, dtype=numpy.int)
         block_indices = numpy.indices( shape )
         
         # Create an array of multi_indexes
