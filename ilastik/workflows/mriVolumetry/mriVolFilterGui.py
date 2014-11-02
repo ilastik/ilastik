@@ -71,7 +71,7 @@ class MriVolFilterGui(LayerViewerGui):
         # see if we need to update our labels from the operator (i.e.,
         # we are restored from a project file)
         self._setStandardLabelList()
-        if self.topLevelOperatorView.LabelNames.ready():
+        if op.LabelNames.ready():
             self._getLabelNamesFromOp()
         else:
             self._setLabelNamesToOp()
@@ -286,12 +286,20 @@ class MriVolFilterGui(LayerViewerGui):
             pixmap.fill(QColor(self._channelColors[i+1]))
             item.setIcon(QIcon(pixmap))
 
+            # don't allow label name changes if upstream present
+            item.setEditable(op.LabelNames.partner is None)
+
             self.model.appendRow(item)
 
         self._drawer.labelListView.setModel(self.model)
 
     def _setLabelNamesToOp(self):
         op = self.topLevelOperatorView
+
+        # check if we need to do stuff
+        if op.LabelNames.partner is not None:
+            return
+
         new_names = [encode_from_qstring(self.model.item(i).text())
                      for i in range(self.model.rowCount())]
         new_names = np.array(new_names, dtype=np.object)
@@ -306,9 +314,6 @@ class MriVolFilterGui(LayerViewerGui):
                 layer = self.getLayer(old)
                 if layer is not None:
                     layer.name = new
-
-        assert op.LabelNames.partner is None,\
-            "tried to set label names, but slot is connected"
         op.LabelNames.setValue(new_names)
 
     def _setActiveChannelsToOp(self):
@@ -456,12 +461,21 @@ class MriVolFilterGui(LayerViewerGui):
         self.__cleanup_fns.append(
             lambda: op.Input.unregisterMetaChanged(self._onLabelsChanged))
 
+        self.model.itemChanged.connect(self._onGuiLabelsChanged)
+
     def _onInputChanged(self, *args, **kwargs):
         '''
         call this method whenever the top level operators input changes
         '''
         # FIXME what if labels are provided from upstream?
         self._setStandardLabelList()
+
+    def _onGuiLabelsChanged(self, *args, **kwargs):
+        # apply new labels to GUI
+        self._setLabelNamesToOp()
+        # need to update layer names
+        #   - we don't know which labels were which before, so recreate all
+        self.updateAllLayers()
 
     def _onLabelsChanged(self, *args, **kwargs):
         # apply new labels to GUI
