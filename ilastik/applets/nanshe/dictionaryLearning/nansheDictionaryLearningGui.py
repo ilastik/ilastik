@@ -134,15 +134,6 @@ class NansheDictionaryLearningGui(LayerViewerGui):
         Create a list of all layer objects that should be displayed.
         """
         layers = []
-        
-        # Show the raw input data
-        inputImageSlot = self.topLevelOperatorView.InputImage
-        if inputImageSlot.ready():
-            inputLayer = self.createStandardLayerFromSlot( inputImageSlot )
-            inputLayer.name = "Raw Input"
-            inputLayer.visible = True
-            inputLayer.opacity = 1.0
-            layers.append(inputLayer)
 
         # Show the raw input data
         outputImageSlot = self.topLevelOperatorView.Output
@@ -152,5 +143,14 @@ class NansheDictionaryLearningGui(LayerViewerGui):
             outputLayer.visible = True
             outputLayer.opacity = 1.0
             layers.append(outputLayer)
+
+        # Show the raw input data
+        inputImageSlot = self.topLevelOperatorView.InputImage
+        if inputImageSlot.ready():
+            inputLayer = self.createStandardLayerFromSlot( inputImageSlot )
+            inputLayer.name = "Raw Input"
+            inputLayer.visible = True
+            inputLayer.opacity = 1.0
+            layers.append(inputLayer)
 
         return layers
