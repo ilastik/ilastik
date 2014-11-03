@@ -97,7 +97,10 @@ class TestOpInputDataReader(object):
         with h5py.File(self.testH5FileName) as f:
             f.create_group('volume')
             shape = (1,2,3,4,5)
-            f['volume'].create_dataset('data', data=numpy.indices(shape).sum(0).astype(numpy.float32))
+            f['volume'].create_dataset('data', 
+                                       data=numpy.indices(shape).sum(0).astype(numpy.float32),
+                                       chunks=True,
+                                       compression='gzip' )
 
         # Read the entire HDF5 file and verify the contents
         h5Reader = OpInputDataReader(graph=self.graph)
