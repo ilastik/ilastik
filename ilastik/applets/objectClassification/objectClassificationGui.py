@@ -763,13 +763,12 @@ class ObjectClassificationGui(LabelingGui):
                     ft = numpy.asarray(value.squeeze())[obj]
                     print( "{}: {}".format(featname, ft) )
 
-            if len(selected)>0 and label!='none':
+            if len(selected)>0:
+                pred = 'none'
                 if self.op.Predictions.ready():
                     preds = self.op.Predictions([t]).wait()[t]
                     if len(preds) >= obj:
                         pred = int(preds[obj])
-                else:
-                    pred = 'none'
                 
                 prob = 'none'
                 if self.op.Probabilities.ready():
