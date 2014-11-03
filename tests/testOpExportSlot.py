@@ -255,6 +255,43 @@ class TestOpExportSlot(object):
         opReorderAxes.cleanUp()
         opReader.cleanUp()
 
+    def testInvalidDim2d(self):
+        data = 255 * numpy.random.random((50, 100, 2))
+        data = data.astype( numpy.uint8 )
+        data = vigra.taggedView(data, vigra.defaultAxistags('xyz'))
+
+        graph = Graph()
+        opExport = OpExportSlot(graph=graph)
+        opExport.Input.setValue(data)
+        opExport.OutputFilenameFormat.setValue(self._tmpdir + '/test_export')
+
+        for fmt in ('jpg', 'png', 'pnm', 'bmp'):
+            opExport.OutputFormat.setValue(fmt)
+            msg = opExport.FormatSelectionErrorMsg.value
+            assert msg, "{} supported although it is actually not".format(fmt)
+
+        for fmt in ('hdf5', 'multipage tiff'):
+            opExport.OutputFormat.setValue(fmt)
+            msg = opExport.FormatSelectionErrorMsg.value
+            assert not msg,\
+                "{} not supported although it should be ({})".format(fmt, msg)
+
+    def testInvalidDtype(self):
+        data = 255 * numpy.random.random((50, 100))
+        data = data.astype( numpy.uint32 )
+        data = vigra.taggedView(data, vigra.defaultAxistags('xy'))
+
+        graph = Graph()
+        opExport = OpExportSlot(graph=graph)
+        opExport.Input.setValue(data)
+        opExport.OutputFilenameFormat.setValue(self._tmpdir + '/test_export')
+
+        for fmt in ('jpg', 'png', 'pnm', 'bmp'):
+            opExport.OutputFormat.setValue(fmt)
+            msg = opExport.FormatSelectionErrorMsg.value
+            assert msg, "{} supported although it is actually not".format(fmt)
+
+
 if __name__ == "__main__":
     import sys
     import nose
