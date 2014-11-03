@@ -353,11 +353,9 @@ class OpExportSlot(Operator):
 
 
 np = numpy
-from itertools import count
-
-
 class FormatValidity(object):
 
+    # { extension : [permitted formats] }
     dtypes = {'jpg': (np.uint8,),
               'png': (np.uint8, np.uint16,),
               'gif': (np.uint8,),
@@ -377,6 +375,7 @@ class FormatValidity(object):
                        np.float32, np.float64,),
               }
 
+    # { extension : (min_ndim, max_ndim) } 
     axes = {'jpg': (2, 2),
             'png': (2, 2),
             'gif': (2, 2),
@@ -392,6 +391,7 @@ class FormatValidity(object):
             'hdf5': (0, 5),
             }
 
+    # { extension : [allowed_num_channels] }
     colors = {'jpg': (1,),
               'png': (1, 3,),
               'gif': (1, 3,),
@@ -403,13 +403,12 @@ class FormatValidity(object):
               'ppm': (1, 3,),
               'pgm': (1,),
               'pbm': (1,),  # vigra outputs p[gn]m
-              'npy': (),
-              'hdf5': (),
+              'npy': (),  # empty means "no restriction on number of channels"
+              'hdf5': (), # ditto
               }
 
     @classmethod
     def check(cls, taggedShape, dtype, fmt):
-
         # get number of channels
         c = 1
         if 'c' in taggedShape:
@@ -418,13 +417,31 @@ class FormatValidity(object):
         s = np.sum([1 for k in taggedShape if taggedShape[k] > 1 and k in 'txyz'])
 
         fmtparts = fmt.split()
-        ind = -1
+        ind = -1 # where to find the 'real' format name within the format name string.
 
+        # If exporting a sequence/multipage format, the "real" dimensionality is 
+        #  reduced because one spatial axis is consumed as the "step" axis.
         if 'sequence' in fmt:
-            s = s-1
+            s -= 1
             ind -= 1
         if 'multipage' in fmt:
-            s = s-1
+            s -= 1
+
+        if 'sequence' in fmt and 'multipage' in fmt:
+            # For sequences of multipage tiffs, any number of channels is permitted as long 
+            #   as it is one of the leading axes (i.e. the files or pages are split across channels).
+            # In that case, each page will have a single 'channel' in the exported data,
+            #  but we have to "undo" the "s -= 1" step from above.
+            if 'c' in taggedShape.keys()[0:2]:
+                c = 1
+                s += 1
+        elif 'sequence' in fmt or 'multipage' in fmt:
+            # Similarly, for any sequence or multipage tiff, any number of channels is 
+            #  permitted as long as it is the first axis (the axis we step across).
+            # (See comment above)
+            if 'c' == taggedShape.keys()[0]:
+                c = 1
+                s += 1
 
         msgs = []
         realfmt = fmtparts[ind]
@@ -441,7 +458,7 @@ class FormatValidity(object):
         if dtype not in cls.dtypes[realfmt]:
             msgs.append("data type {} not supported by format {}".format(dtype, realfmt))
 
-        if s < cls.axes[realfmt][0] or s > cls.axes[realfmt][0]:
+        if s < cls.axes[realfmt][0] or s > cls.axes[realfmt][1]:
             msgs.append("wrong number of non-channel axes for format {}".format(realfmt))
 
         if len(cls.colors[realfmt]) > 0 and c not in cls.colors[realfmt]:
