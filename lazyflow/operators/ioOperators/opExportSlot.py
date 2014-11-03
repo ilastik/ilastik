@@ -186,76 +186,9 @@ class OpExportSlot(Operator):
             else:
                 return ""
 
-        # None of the remaining formats support more than 4 channels.
-        if 'c' in tagged_shape and tagged_shape['c'] > 4 and not filter(lambda fmt: fmt.name == output_format, self._3d_sequence_formats):
-            return "Too many channels."
-
-        # HDR format supports float32 only, and must have exactly 3 channels
-        if output_format == 'hdr' or output_format == 'hdr sequence':
-            if output_dtype == numpy.float32 and\
-               'c' in tagged_shape and tagged_shape['c'] == 3:
-                return ""
-            else:
-                return "HDR volumes must be float32, with exactly 3 channels."
-
-        # Apparently, TIFF supports everything but signed byte
-        if 'tif' in output_format and output_dtype == numpy.int8:
-            return "TIF output does not support signed byte (int8).  Try unsigned (uint8)."
-
-        # Apparently, these formats support everything except uint32
-        # See http://github.com/ukoethe/vigra/issues/153
-        if output_dtype == numpy.uint32 and \
-           ( 'pbm' in output_format or \
-             'pgm' in output_format or \
-             'pnm' in output_format or \
-             'ppm' in output_format ):
-            return "PBM/PGM/PNM/PPM do not support the uint32 pixel type."
-
-        # These formats don't support 2 channels (must be either 1 or 3)
-        non_dualband_formats = ['bmp', 'gif', 'jpg', 'jpeg', 'ras']
-        for fmt in non_dualband_formats:
-            if fmt in output_format and axes[0] != 'c' and 'c' in tagged_shape:
-                if 'c' in tagged_shape and tagged_shape['c'] != 1 and tagged_shape['c'] != 3:
-                    return "Invalid number of channels (must be exactly 1 or 3)."
-
-        # 2D formats only support 2D images (singleton/channel axes excepted)
-        if filter(lambda fmt: fmt.name == output_format, self._2d_formats):
-            # Examples:
-            # OK: 'xy', 'xyc'
-            # NOT OK: 'xc', 'xyz'
-            nonchannel_axes = filter(lambda a: a != 'c', axes)
-            if len(nonchannel_axes) == 2:
-                return ""
-            else:
-                return "Input has too many dimensions for a 2D output format."
-
-        nonstep_axes = axes[1:]
-        nonchannel_axes = filter( lambda a: a != 'c', nonstep_axes )
-
-        # 3D sequences of 2D images require a 3D image
-        # (singleton/channel axes excepted, unless channel is the 'step' axis)
-        if filter(lambda fmt: fmt.name == output_format, self._3d_sequence_formats)\
-           or output_format == 'multipage tiff':
-            # Examples:
-            # OK: 'xyz', 'xyzc', 'cxy'
-            # NOT OK: 'cxyz'
-            if len(nonchannel_axes) == 2:
-                return ""
-            else:
-                return "Can't export 3D stack: Input is not 3D or axis are in the wrong order."
-
-        # 4D sequences of 3D images require a 4D image
-        # (singleton/channel axes excepted, unless channel is the 'step' axis)
-        if output_format == 'multipage tiff sequence':
-            # Examples:
-            # OK: 'txyz', 'txyzc', 'cxyz'
-            # NOT OK: 'xyzc', 'xyz', 'xyc'
-            if len(nonchannel_axes) == 3:
-                return ""
-            else:
-                return "Can't export 4D stack: Input is not 4D."
-
-        assert False, "Unknown format case: {}".format( output_format )
+        return FormatValidity.check(self.Input.meta.getTaggedShape(),
+                                    self.Input.meta.dtype,
+                                    output_format)
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.OutputFormat or slot == self.OutputFilenameFormat:
@@ -417,36 +350,102 @@ class OpExportSlot(Operator):
         finally:
             opExport.cleanUp()
             self.progressSignal(100)
-    
 
 
+np = numpy
+from itertools import count
 
 
+class FormatValidity(object):
 
+    dtypes = {'jpg': (np.uint8,),
+              'png': (np.uint8, np.uint16,),
+              'gif': (np.uint8,),
+              'hdr': (np.float32,),
+              'bmp': (np.uint8,),
+              'tiff': (np.uint8, np.uint16, np.uint32, np.uint64,),  # https://partners.adobe.com/public/developer/en/tiff/TIFF6.pdf
+              'ras': (np.uint8,),  # citation needed
+              'pnm': (np.uint8, np.uint16,),  # see http://netpbm.sourceforge.net/doc/
+              'ppm': (np.uint8, np.uint16,),
+              'pgm': (np.uint8, np.uint16,),
+              'pbm': (np.uint8, np.uint16,),  # vigra outputs p[gn]m
+              'npy': (np.uint8, np.uint16, np.uint32, np.uint64,
+                      np.int8, np.int16, np.int32, np.int64,
+                      np.float32, np.float64,),
+              'hdf5': (np.uint8, np.uint16, np.uint32, np.uint64,
+                       np.int8, np.int16, np.int32, np.int64,
+                       np.float32, np.float64,),
+              }
 
+    axes = {'jpg': (2, 2),
+            'png': (2, 2),
+            'gif': (2, 2),
+            'hdr': (2, 2),
+            'bmp': (2, 2),
+            'tiff': (2, 2),
+            'ras': (2, 2),
+            'pnm': (2, 2),
+            'ppm': (2, 2),
+            'pgm': (2, 2),
+            'pbm': (2, 2),
+            'npy': (0, 5),
+            'hdf5': (0, 5),
+            }
 
+    colors = {'jpg': (1,),
+              'png': (1, 3,),
+              'gif': (1, 3,),
+              'hdr': (3,),
+              'bmp': (1, 3,),
+              'tiff': (1, 3,),
+              'ras': (1, 3,),
+              'pnm': (1, 3,),
+              'ppm': (1, 3,),
+              'pgm': (1,),
+              'pbm': (1,),  # vigra outputs p[gn]m
+              'npy': (),
+              'hdf5': (),
+              }
 
+    @classmethod
+    def check(cls, taggedShape, dtype, fmt):
 
+        # get number of channels
+        c = 1
+        if 'c' in taggedShape:
+            c = taggedShape['c']
 
+        s = np.sum([1 for k in taggedShape if taggedShape[k] > 1 and k in 'txyz'])
 
+        fmtparts = fmt.split()
+        ind = -1
 
+        if 'sequence' in fmt:
+            s = s-1
+            ind -= 1
+        if 'multipage' in fmt:
+            s = s-1
 
+        msgs = []
+        realfmt = fmtparts[ind]
 
+        # map format to canonical version
+        if realfmt == 'jpeg':
+            realfmt = 'jpg'
+        if realfmt == 'tif':
+            realfmt = 'tiff'
 
+        if not realfmt in cls.axes:
+            return "Unknown format {}".format(realfmt)
 
+        if dtype not in cls.dtypes[realfmt]:
+            msgs.append("data type {} not supported by format {}".format(dtype, realfmt))
 
+        if s < cls.axes[realfmt][0] or s > cls.axes[realfmt][0]:
+            msgs.append("wrong number of non-channel axes for format {}".format(realfmt))
 
+        if len(cls.colors[realfmt]) > 0 and c not in cls.colors[realfmt]:
+            msgs.append("wrong number of channels for format {}".format(realfmt))
 
-
-
-
-
-
-
-
-
-
-
-
-
+        return "; ".join(msgs)
 
