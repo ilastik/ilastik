@@ -146,7 +146,6 @@ class NansheDictionaryLearningGui(LayerViewerGui):
 
         # Show the raw input data
         outputImageSlot = self.topLevelOperatorView.Output
-
         if outputImageSlot.ready():
             outputLayer = self.createStandardLayerFromSlot( outputImageSlot )
             outputLayer.name = "Output"
