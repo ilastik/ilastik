@@ -850,6 +850,7 @@ class AppletSerializer(object):
         from volumina.utility import encode_from_qstring
         
         text = "The file at {} could not be found any more. Do you want to search for it at another directory?".format(path)
+        logger.info(text)
         c = QMessageBox.critical(None, "update external data",text, QMessageBox.Ok | QMessageBox.Cancel)
         
         if c == QMessageBox.Cancel:
