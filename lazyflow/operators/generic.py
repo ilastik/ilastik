@@ -192,8 +192,16 @@ class OpMultiArraySlicer2(Operator):
     """
     #FIXME: This operator return a singleton in the sliced direction
     #Should be integrated with the above one to have a more consistent notation
-    inputSlots = [InputSlot("Input"),InputSlot('AxisFlag'), InputSlot("SliceIndexes", optional=True)]
-    outputSlots = [OutputSlot("Slices",level=1)]
+    
+    Input = InputSlot()     # The volume to slice up.
+    AxisFlag = InputSlot()  # An axis key (e.g. 't' or 'c', etc.), which indicates the axis to slice across
+    
+    SliceIndexes = InputSlot(optional=True) # A list of output slices to actually produce.
+                                            # If provided, ONLY the slices at these specific indexes will be provided on the output.
+                                            # For example, if SliceIndexes.setvalue([2,4,6]), then len(Slices) == 3, and only the 
+                                            #  data for slices 2,4,6 will be produced (on Slices[0], Slices[1], Slices[2], respectively)
+    
+    Slices = OutputSlot(level=1)
 
     name = "Multi Array Slicer"
     category = "Misc"
@@ -203,19 +211,19 @@ class OpMultiArraySlicer2(Operator):
         self.inputShape = None
 
     def setupOutputs(self):
-        flag=self.inputs["AxisFlag"].value
+        flag=self.AxisFlag.value
 
-        indexAxis=self.inputs["Input"].meta.axistags.index(flag)
-        inshape=list(self.inputs["Input"].meta.shape)
+        indexAxis=self.Input.meta.axistags.index(flag)
+        inshape=list(self.Input.meta.shape)
         outshape = list(inshape)
         outshape.pop(indexAxis)
         outshape.insert(indexAxis, 1)
         outshape=tuple(outshape)
 
-        outaxistags=copy.copy(self.inputs["Input"].meta.axistags)
+        outaxistags=copy.copy(self.Input.meta.axistags)
 
         sliceIndexes = self.getSliceIndexes()
-        self.outputs["Slices"].resize( len(sliceIndexes) )
+        self.Slices.resize( len(sliceIndexes) )
 
         for oslot in self.Slices:
             # Output metadata is a modified copy of the input's metadata
@@ -236,10 +244,10 @@ class OpMultiArraySlicer2(Operator):
             return self.SliceIndexes.value
         else:
             # Default is all indexes of the sliced axis
-            flag = self.inputs["AxisFlag"].value
-            axistags = self.inputs["Input"].meta.axistags
+            flag = self.AxisFlag.value
+            axistags = self.Input.meta.axistags
             indexAxis = axistags.index(flag)
-            inshape = self.inputs["Input"].meta.shape
+            inshape = self.Input.meta.shape
             return list( range( inshape[indexAxis] ) )
     
     def execute(self, slot, subindex, rroi, result):
@@ -248,14 +256,14 @@ class OpMultiArraySlicer2(Operator):
         # Index of the input slice this data will come from.
         sliceIndex = self.getSliceIndexes()[index]
 
-        outshape = self.outputs["Slices"][index].meta.shape
+        outshape = self.Slices[index].meta.shape
         start,stop=roi.sliceToRoi(key,outshape)
 
         start=list(start)
         stop=list(stop)
 
-        flag=self.inputs["AxisFlag"].value
-        indexAxis=self.inputs["Input"].meta.axistags.index(flag)
+        flag=self.AxisFlag.value
+        indexAxis=self.Input.meta.axistags.index(flag)
 
         start.pop(indexAxis)
         stop.pop(indexAxis)
@@ -265,7 +273,7 @@ class OpMultiArraySlicer2(Operator):
 
         newKey=roi.roiToSlice(numpy.array(start),numpy.array(stop))
 
-        self.inputs["Input"][newKey].writeInto(result).wait()
+        self.Input[newKey].writeInto(result).wait()
         return result
 
     def propagateDirty(self, inputSlot, subindex, roi):
