@@ -275,14 +275,16 @@ class OpMultiArraySlicer2(Operator):
                 slot.setDirty(slice(None))
         elif inputSlot == self.Input:
             # Mark each of the intersected slices as dirty
-            channelAxis = self.Input.meta.axistags.index('c')
-            channels = zip(roi.start, roi.stop)[channelAxis]
-            for i in range(*channels):
-                if i < len(self.Slices):
+            sliced_axis = self.Input.meta.axistags.index(self.AxisFlag.value)
+            dirty_slice_indexes = zip(roi.start, roi.stop)[sliced_axis]
+
+            all_output_slices_indexes = self.getSliceIndexes()
+            for i in range(*dirty_slice_indexes):
+                if i in all_output_slices_indexes:
                     slot = self.Slices[i]
                     sliceRoi = copy.copy(roi)
-                    sliceRoi.start[channelAxis] = 0
-                    sliceRoi.stop[channelAxis] = 1
+                    sliceRoi.start[sliced_axis] = 0
+                    sliceRoi.stop[sliced_axis] = 1
                     slot.setDirty(sliceRoi)
         else:
             assert False, "Unknown dirty input slot."
