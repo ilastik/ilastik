@@ -26,7 +26,7 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel( logging.INFO )
 
-from ilastik.ilastik_logging import LOGFILE_PATH
+from ilastik.ilastik_logging import get_logfile_path
 
 def init_early_exit_excepthook():
     """
@@ -62,9 +62,11 @@ def init_user_mode_excepthook():
         _log_exception( *exc_info )
         try:
             from ilastik.shell.gui.startShellGui import shell
-            msg = str(exc_info[1])
-            msg += "\n\n (Advanced information about this error may be found in the log file: {})\n"\
-                   "".format( LOGFILE_PATH )
+            msg = str(exc_info[1]) + "\n"
+            logfile_path = get_logfile_path()
+            if logfile_path:
+                msg += "\n (Advanced information about this error may be found in the log file: {})\n"\
+                       "".format( logfile_path )
             shell.postErrorMessage( exc_info[0].__name__, msg )
         except:
             logger.error( "UNHANDLED EXCEPTION WHILE DISPLAYING AN ERROR TO THE USER:" )

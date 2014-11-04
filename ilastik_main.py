@@ -21,6 +21,8 @@ parser.add_argument('--clean_paths', help='Remove ilastik-unrelated directories 
 parser.add_argument('--redirect_output', help='A filepath to redirect stdout to', required=False)
 
 parser.add_argument('--debug', help='Start ilastik in debug mode.', action='store_true', default=False)
+parser.add_argument('--logfile', help='A filepath to dump all log messages to.', required=False)
+parser.add_argument('--process_name', help='A process name (used for logging purposes).', required=False)
 parser.add_argument('--configfile', help='A custom path to a user config file for expert ilastik settings.', required=False)
 parser.add_argument('--fullscreen', help='Show Window in fullscreen mode.', action='store_true', default=False)
 
@@ -146,11 +148,17 @@ def _update_debug_mode( parsed_args ):
         parsed_args.debug = True
 
 def _init_logging( parsed_args ):
-    from ilastik.ilastik_logging import default_config, startUpdateInterval
+    from ilastik.ilastik_logging import default_config, startUpdateInterval, DEFAULT_LOGFILE_PATH
+
+    logfile_path = parsed_args.logfile or DEFAULT_LOGFILE_PATH
+    process_name = ""
+    if parsed_args.process_name:
+        process_name = parsed_args.process_name + " "
+
     if ilastik_config.getboolean('ilastik', 'debug') or parsed_args.headless:
-        default_config.init(output_mode=default_config.OutputMode.BOTH)
+        default_config.init(process_name, default_config.OutputMode.BOTH, logfile_path)
     else:
-        default_config.init(output_mode=default_config.OutputMode.LOGFILE_WITH_CONSOLE_ERRORS)
+        default_config.init(process_name, default_config.OutputMode.LOGFILE_WITH_CONSOLE_ERRORS, logfile_path)
         startUpdateInterval(10) # 10 second periodic refresh
     
     if parsed_args.redirect_output:
@@ -222,6 +230,11 @@ def _prepare_lazyflow_config( parsed_args ):
 def _prepare_auto_open_project( parsed_args ):
     if parsed_args.project is None:
         return None
+
+    # Make sure project file exists.
+    if not os.path.exists(parsed_args.project):
+        raise RuntimeError("Project file '" + parsed_args.project + "' does not exist.")
+
     parsed_args.project = os.path.expanduser(parsed_args.project)
     #convert path to convenient format
     from lazyflow.utility.pathHelpers import PathComponents
