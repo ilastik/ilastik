@@ -557,8 +557,10 @@ class OpPixelFeaturesPresmoothed(Operator):
                                 roiSmootherList.insert(axisindex, slice(begin, end, None))
                                 
                                 if hasTimeAxis:
-                                    roiSmootherList.insert(timeAxis, self.Input.meta.shape[timeAxis])
-                                roiSmootherRegion = SubRegion(self.Input, pslice=roiSmootherList)
+                                    # The time slice in the ROI doesn't matter:
+                                    # The sourceArrayParameter below overrides the input data to be used.
+                                    roiSmootherList.insert(timeAxis, 0)
+                                roiSmootherRegion = SubRegion(oslot, pslice=roiSmootherList)
                                 
                                 closure = partial(oslot.operator.execute, oslot, (), roiSmootherRegion, destArea, sourceArray = sourceArraysForSigmas[j])
                                 closures.append(closure)
