@@ -59,6 +59,7 @@ class OpNanshePreprocessing(Operator):
 
 
     CleanBlocks = OutputSlot()
+    CacheOutput = OutputSlot()
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
@@ -85,6 +86,7 @@ class OpNanshePreprocessing(Operator):
         self.opPreprocessData.InputImage.connect( self.InputImage )
         self.opPreprocessData.CacheInput.connect( self.CacheInput )
         self.CleanBlocks.connect( self.opPreprocessData.CleanBlocks )
+        self.CacheOutput.connect( self.opPreprocessData.CacheOutput )
         self.Output.connect( self.opPreprocessData.Output )
 
     def setInSlot(self, slot, subindex, key, value):
