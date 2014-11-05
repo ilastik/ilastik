@@ -305,8 +305,10 @@ class MriVolFilterGui(LayerViewerGui):
         new_names = np.array(new_names, dtype=np.object)
 
         # update the layers
-        # HACK the layers are not updated by setting op.LabelNames
-        # I really don't understand why
+        # the layers are not updated by setting op.LabelNames,
+        # probably because no output is set dirty, which is correct
+        # BUT we do not want to recreate the layers anyway, just rename
+        # them
         if op.LabelNames.ready():
             old_names = op.LabelNames.value
             for old, new in zip(map(decode_to_qstring, old_names),
@@ -454,8 +456,8 @@ class MriVolFilterGui(LayerViewerGui):
         self._drawer.thresSpinBox.valueChanged.connect(
             self._spinbox_value_changed)
 
-        # HACK we are connecting to sig_meta_cahnged because sig_value_changed
-        # is never called, see issue:
+        # HACK we are connecting to sig_meta_changed because
+        # sig_value_changed is never called, see issue:
         #   github.com/ilastik/lazyfow/issues/155
         op.LabelNames.notifyMetaChanged(self._onLabelsChanged)
         self.__cleanup_fns.append(
@@ -471,14 +473,17 @@ class MriVolFilterGui(LayerViewerGui):
         self._setStandardLabelList()
 
     def _onGuiLabelsChanged(self, *args, **kwargs):
-        # apply new labels to GUI
+        # apply new labels to GUI, ignore labels_changed callback until
+        # we are done
+        # FIXME race condition?
+        self._disable_label_changes = True
         self._setLabelNamesToOp()
-        # need to update layer names
-        #   - we don't know which labels were which before, so recreate all
-        self.updateAllLayers()
+        self._disable_label_changes = False
 
     def _onLabelsChanged(self, *args, **kwargs):
         # apply new labels to GUI
+        if self._disable_label_changes:
+            return
         self._getLabelNamesFromOp()
         # need to update layer names
         #   - we don't know which labels were which before, so recreate all

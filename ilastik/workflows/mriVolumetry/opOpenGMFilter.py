@@ -106,11 +106,13 @@ class OpOpenGMFilter(Operator):
                                        regularizer=uncertainties,
                                        mask=mask)
         try:
-            logger.info('Using FastPD')
             inf = opengm.inference.FastPd(gm)
         except AttributeError:
             logger.info('Using AlphaExpansion')
             inf = opengm.inference.AlphaExpansion(gm)
+        else:
+            logger.info('Using FastPD')
+            
         inf.setStartingPoint(init_data)
         inf.infer(inf.verboseVisitor())
         out[:] = opengm.makeMaskedState(mask, inf.arg(), labelIdx=0) + 1
