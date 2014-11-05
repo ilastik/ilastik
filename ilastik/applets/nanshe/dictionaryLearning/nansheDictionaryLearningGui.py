@@ -127,6 +127,10 @@ class NansheDictionaryLearningGui(LayerViewerGui):
         self.topLevelOperatorView.Clean.setValue(self._drawer.CleanValue.isChecked())
         self.topLevelOperatorView.Mode.setValue(self._drawer.ModeValue.value())
         self.topLevelOperatorView.ModeD.setValue(self._drawer.ModeDValue.value())
+
+        for i in xrange(len(self.layerstack)):
+            if self.layerstack[i].name == "Output":
+                self.layerstack[i].visible = True
     
     def setupLayers(self):
         """
@@ -140,7 +144,7 @@ class NansheDictionaryLearningGui(LayerViewerGui):
         if outputImageSlot.ready():
             outputLayer = self.createStandardLayerFromSlot( outputImageSlot )
             outputLayer.name = "Output"
-            outputLayer.visible = True
+            outputLayer.visible = False
             outputLayer.opacity = 1.0
             layers.append(outputLayer)
 
