@@ -164,6 +164,7 @@ class OpNanshePreprocessDataCached(Operator):
 
 
     CleanBlocks = OutputSlot()
+    CacheOutput = OutputSlot()
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
@@ -188,7 +189,7 @@ class OpNanshePreprocessDataCached(Operator):
         self.opCache.fixAtCurrent.setValue(False)
         self.CleanBlocks.connect(self.opCache.CleanBlocks)
 
-        self.Output.connect(self.opCache.Output)
+        self.CacheOutput.connect(self.opCache.Output)
 
     def setupOutputs(self):
         self.opNansheRemoveZeroedLines.InputImage.disconnect()
@@ -210,6 +211,7 @@ class OpNanshePreprocessDataCached(Operator):
             self.opNansheWaveletTransform.InputImage.connect(next_output)
             next_output = self.opNansheWaveletTransform.Output
 
+        self.Output.connect(next_output)
         self.opCache.Input.connect(next_output)
 
         self.opCache.blockShape.setValue( self.opCache.Output.meta.shape )
