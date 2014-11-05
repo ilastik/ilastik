@@ -130,8 +130,8 @@ class SubRegion(Roi):
 
         if self.slot.meta.shape is not None:
             assert all(self.stop <= self.slot.meta.shape), \
-                "Roi is out of bounds for shape. roi={}, shape={}"\
-                .format((self.start, self.stop), self.slot.meta.shape)
+                "Roi is out of bounds. roi={}, {}.{}.meta.shape={}"\
+                .format((self.start, self.stop), slot.getRealOperator().name, slot.name, self.slot.meta.shape)
 
     def __setstate__(self, state):
         """
