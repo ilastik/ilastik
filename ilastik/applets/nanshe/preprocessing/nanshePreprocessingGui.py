@@ -279,6 +279,10 @@ class NanshePreprocessingGui(LayerViewerGui):
 
             self.topLevelOperatorView.ToWaveletTransform.setValue(self._drawer.WaveletTransformEnabled.isChecked())
             self.topLevelOperatorView.Scale.setValue([self._drawer.ScaleValue_T.value(), self._drawer.ScaleValue_Z.value(), self._drawer.ScaleValue_Y.value(), self._drawer.ScaleValue_X.value()])
+
+        for i in xrange(len(self.layerstack)):
+            if self.layerstack[i].name == "Output":
+                self.layerstack[i].visible = True
     
     def setupLayers(self):
         """
@@ -292,7 +296,7 @@ class NanshePreprocessingGui(LayerViewerGui):
         if outputImageSlot.ready():
             outputLayer = self.createStandardLayerFromSlot( outputImageSlot )
             outputLayer.name = "Output"
-            outputLayer.visible = True
+            outputLayer.visible = False
             outputLayer.opacity = 1.0
             layers.append(outputLayer)
 
