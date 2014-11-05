@@ -390,6 +390,10 @@ class NanshePostprocessingGui(LayerViewerGui):
             self.topLevelOperatorView.OverlapMinThreshold.setValue(self._drawer.OverlapMinThresholdValue.value())
             self.topLevelOperatorView.Fuse_FractionMeanNeuronMaxThreshold.setValue(self._drawer.FuseFractionMeanNeuronMaxThresholdValue.value())
 
+        for i in xrange(len(self.layerstack)):
+            if self.layerstack[i].name == "Output":
+                self.layerstack[i].visible = True
+
     @staticmethod
     def colorTableList():
         colors = []
@@ -436,7 +440,7 @@ class NanshePostprocessingGui(LayerViewerGui):
         if outputImageSlot.ready():
             outputLayer = ColortableLayer( LazyflowSource(outputImageSlot), colorTable=NanshePostprocessingGui.colorTableList() )
             outputLayer.name = "Output"
-            outputLayer.visible = True
+            outputLayer.visible = False
             outputLayer.opacity = 1.0
             layers.append(outputLayer)
 
