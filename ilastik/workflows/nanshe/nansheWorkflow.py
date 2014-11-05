@@ -56,7 +56,7 @@ class NansheWorkflow(Workflow):
 
         # Connect top-level operators
         opPreprocessing.InputImage.connect( opDataSelection.Image )
-        opDictionaryLearning.InputImage.connect( opPreprocessing.Output )
+        opDictionaryLearning.InputImage.connect( opPreprocessing.CacheOutput )
         opPostprocessing.InputImage.connect( opDictionaryLearning.Output )
 
     @property
