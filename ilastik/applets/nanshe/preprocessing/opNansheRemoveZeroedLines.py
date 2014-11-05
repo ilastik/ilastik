@@ -126,7 +126,16 @@ class OpNansheRemoveZeroedLinesCached(Operator):
         axes_shape_iter = itertools.izip(self.opRemoveZeroedLines.Output.meta.axistags,
                                          self.opRemoveZeroedLines.Output.meta.shape)
 
-        block_shape = [_v if not _k.isSpatial() else 256 for _k, _v in axes_shape_iter]
+        block_shape = []
+
+        for each_axistag, each_len in axes_shape_iter:
+            if each_axistag.isSpatial():
+                each_len = 256
+            elif each_axistag.isTemporal():
+                each_len = 10
+
+            block_shape.append(each_len)
+
         block_shape = tuple(block_shape)
 
         self.opCache.innerBlockShape.setValue(block_shape)
