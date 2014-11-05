@@ -39,6 +39,6 @@ class NanshePreprocessingSerializer(AppletSerializer):
                                                                    SerialSlot(operator.Bias, selfdepends=True),
                                                                    SerialSlot(operator.ToWaveletTransform, selfdepends=True),
                                                                    SerialListSlot(operator.Scale, selfdepends=True),
-                                                                   SerialBlockSlot(operator.Output,
+                                                                   SerialBlockSlot(operator.CacheOutput,
                                                                                    operator.CacheInput,
                                                                                    operator.CleanBlocks, selfdepends=True)])
