@@ -203,17 +203,28 @@ class OpNansheExtractF0Cached(Operator):
     def setupOutputs(self):
         axes_shape_iter = itertools.izip(self.opExtractF0.Output.meta.axistags, self.opExtractF0.Output.meta.shape)
 
-        block_shape = []
+        halo_center_slicing = []
 
         for each_axistag, each_len in axes_shape_iter:
-            if each_axistag.isSpatial():
-                each_len = 256
-            elif each_axistag.isTemporal():
-                each_len = 10
+            each_halo_center = each_len
+            each_halo_center_slicing = slice(0, each_len, 1)
 
-            block_shape.append(each_len)
+            if each_axistag.isTemporal() or each_axistag.isSpatial():
+                each_halo_center /= 2.0
+                each_halo_center = int(round(each_halo_center))
+                each_halo_center_slicing = slice(each_halo_center, each_halo_center + 1, 1)
 
-        block_shape = tuple(block_shape)
+            halo_center_slicing.append(each_halo_center_slicing)
+
+        halo_center_slicing = tuple(halo_center_slicing)
+
+        halo_slicing = self.opExtractF0.compute_halo(halo_center_slicing,
+                                                     self.InputImage.meta.shape,
+                                                     self.HalfWindowSize.value,
+                                                     self.TemporalSmoothingGaussianFilterStdev.value,
+                                                     self.SpatialSmoothingGaussianFilterStdev.value)[0]
+
+        block_shape = nanshe.additional_generators.len_slices(halo_slicing)
 
         self.opCache.innerBlockShape.setValue(block_shape)
         self.opCache.outerBlockShape.setValue(block_shape)
