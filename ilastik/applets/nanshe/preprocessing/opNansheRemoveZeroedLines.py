@@ -130,7 +130,7 @@ class OpNansheRemoveZeroedLinesCached(Operator):
         block_shape = tuple(block_shape)
 
         self.opCache.innerBlockShape.setValue(block_shape)
-        self.opCache.outerBlockShape.setValue(self.opRemoveZeroedLines.Output.meta.shape)
+        self.opCache.outerBlockShape.setValue(block_shape)
 
     def setInSlot(self, slot, subindex, roi, value):
         pass
