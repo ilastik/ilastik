@@ -180,7 +180,7 @@ class OpNansheWaveletTransformCached(Operator):
         block_shape = tuple(block_shape)
 
         self.opCache.innerBlockShape.setValue(block_shape)
-        self.opCache.outerBlockShape.setValue(self.opWaveletTransform.Output.meta.shape)
+        self.opCache.outerBlockShape.setValue(block_shape)
 
     def setInSlot(self, slot, subindex, roi, value):
         pass
