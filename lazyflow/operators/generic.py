@@ -416,6 +416,7 @@ class OpMultiArrayStacker(Operator):
         pool.clean()
 
     def propagateDirty(self, inputSlot, subindex, roi):
+        roi = copy.copy(roi)
         if not self.Output.ready():
             # If we aren't even fully configured, there's no need to notify downstream slots about dirtiness
             return
