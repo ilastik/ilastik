@@ -207,7 +207,7 @@ class OpNansheExtractF0Cached(Operator):
         block_shape = tuple(block_shape)
 
         self.opCache.innerBlockShape.setValue(block_shape)
-        self.opCache.outerBlockShape.setValue(self.opExtractF0.Output.meta.shape)
+        self.opCache.outerBlockShape.setValue(block_shape)
 
     def setInSlot(self, slot, subindex, roi, value):
         pass
