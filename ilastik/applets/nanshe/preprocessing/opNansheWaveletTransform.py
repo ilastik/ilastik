@@ -195,6 +195,7 @@ class OpNansheWaveletTransformCached(Operator):
                                                             self.InputImage.meta.shape,
                                                             self.Scale.value)[0]
 
+
         block_shape = nanshe.additional_generators.len_slices(halo_slicing)
 
         self.opCache.innerBlockShape.setValue(block_shape)
