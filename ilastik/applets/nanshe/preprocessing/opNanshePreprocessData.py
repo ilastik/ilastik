@@ -60,6 +60,10 @@ class OpNanshePreprocessData(Operator):
     Scale = InputSlot(value=4)
 
 
+    OpNansheRemoveZeroedLinesOutput = OutputSlot()
+    OpNansheExtractF0Output = OutputSlot()
+    OpNansheWaveletTransformOutput = OutputSlot()
+
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
@@ -79,6 +83,11 @@ class OpNanshePreprocessData(Operator):
 
         self.opNansheWaveletTransform = OpNansheWaveletTransform(parent=self)
         self.opNansheWaveletTransform.Scale.connect(self.Scale)
+
+
+        self.OpNansheRemoveZeroedLinesOutput.connect(self.opNansheRemoveZeroedLines.Output)
+        self.OpNansheExtractF0Output.connect(self.opNansheExtractF0.Output)
+        self.OpNansheWaveletTransformOutput.connect(self.opNansheWaveletTransform.Output)
     
     def setupOutputs(self):
         self.opNansheRemoveZeroedLines.InputImage.disconnect()
