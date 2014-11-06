@@ -360,15 +360,14 @@ class OpPixelFeaturesPresmoothed(Operator):
         if slot == self.Features:
             key = roiToSlice(rroi.start, rroi.stop)
             index = subindex[0]
-            subslot = self.Features[index]
             key = list(key)
             channelIndex = self.Input.meta.axistags.index('c')
             
             # Translate channel slice to the correct location for the output slot.
             key[channelIndex] = slice(self.featureOutputChannels[index][0] + key[channelIndex].start,
                                       self.featureOutputChannels[index][0] + key[channelIndex].stop)
-            rroi = SubRegion(subslot, pslice=key)
-    
+            rroi = SubRegion(self.Output, pslice=key)
+
             # Get output slot region for this channel
             return self.execute(self.Output, (), rroi, result)
         elif slot == self.outputs["Output"]:
