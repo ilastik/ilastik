@@ -435,7 +435,7 @@ class NanshePostprocessingGui(LayerViewerGui):
         """
         layers = []
 
-        # Show the raw input data
+        # Show the resulting label image
         outputImageSlot = self.topLevelOperatorView.Output
         if outputImageSlot.ready():
             outputLayer = ColortableLayer( LazyflowSource(outputImageSlot), colorTable=NanshePostprocessingGui.colorTableList() )
@@ -444,11 +444,11 @@ class NanshePostprocessingGui(LayerViewerGui):
             outputLayer.opacity = 1.0
             layers.append(outputLayer)
 
-        # Show the raw input data
+        # Show the input data
         inputImageSlot = self.topLevelOperatorView.InputImage
         if inputImageSlot.ready():
             inputLayer = self.createStandardLayerFromSlot( inputImageSlot )
-            inputLayer.name = "Raw Input"
+            inputLayer.name = "Input"
             inputLayer.visible = True
             inputLayer.opacity = 1.0
             layers.append(inputLayer)
