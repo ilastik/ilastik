@@ -26,7 +26,7 @@ import numpy
 
 # lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.request import RequestLock
+from lazyflow.request import RequestLock, RequestPool
 from lazyflow.roi import getIntersectingBlocks, getBlockBounds, getIntersection, roiToSlice
 from lazyflow.operators import OpSubRegion, OpMultiArrayStacker
 from lazyflow.stype import Opaque
@@ -289,7 +289,7 @@ class OpBlockwiseObjectClassification( Operator ):
             self._ensurePipelineExists(block_start)
 
         # Retrieve result from each block, and write into the appropriate region of the destination
-        # TODO: Parallelize this loop
+        pool = RequestPool()
         for block_start in block_starts:
             opBlockPipeline = self._blockPipelines[block_start]
             block_roi = opBlockPipeline.block_roi
@@ -310,7 +310,8 @@ class OpBlockwiseObjectClassification( Operator ):
             destination_slice = roiToSlice( *destination_relative_intersection )
             req = block_slot( *block_relative_intersection )
             req.writeInto( destination[destination_slice] )
-            req.wait()
+            pool.add( req )
+        pool.wait()
 
         return destination
 
@@ -331,6 +332,7 @@ class OpBlockwiseObjectClassification( Operator ):
         block_starts = getIntersectingBlocks( block_shape, pixel_roi )
         block_starts = map( tuple, block_starts )
         
+        # TODO: Parallelize this?
         for block_start in block_starts:
             assert block_start in self._blockPipelines, "Not allowed to request region features for blocks that haven't yet been processed." # See note above
 
