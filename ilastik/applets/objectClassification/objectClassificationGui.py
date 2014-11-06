@@ -21,6 +21,7 @@
 from PyQt4.QtGui import *
 from PyQt4 import uic
 from PyQt4.QtCore import pyqtSignal, pyqtSlot, Qt, QObject
+from PyQt4.QtGui import QFileDialog
 
 from ilastik.widgets.featureTableWidget import FeatureEntry
 from ilastik.widgets.featureDlg import FeatureDlg
@@ -28,6 +29,7 @@ from ilastik.widgets.exportToKnimeDialog import ExportToKnimeDialog
 from ilastik.applets.objectExtraction.opObjectExtraction import OpRegionFeatures3d
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
+from ilastik.applets.objectClassification.opObjectClassification import OpObjectClassification
 
 import os
 import numpy
@@ -210,6 +212,8 @@ class ObjectClassificationGui(LabelingGui):
         if ilastik_config.getboolean('ilastik', 'debug'):
             m = QMenu("Special Stuff", self.volumeEditorWidget)
             m.addAction( "Export to Knime" ).triggered.connect(self.exportObjectInfo)
+            m.addAction("Export All Label Info").triggered.connect( self.exportLabelInfo )
+            m.addAction("Import New Label Info").triggered.connect( self.importLabelInfo )
             mlist = [m]
         else:
             mlist = []
@@ -248,7 +252,17 @@ class ObjectClassificationGui(LabelingGui):
                 
                 success = self._knime_exporter.WriteData([]).wait()
                 print "EXPORTED:", success
-                        
+
+    def exportLabelInfo(self):
+        file_path = QFileDialog.getSaveFileName(parent=self, caption="Export Label Info as JSON", filter="*.json")
+        topLevelOp = self.topLevelOperatorView.viewed_operator()
+        topLevelOp.exportLabelInfo(file_path)
+
+    def importLabelInfo(self):
+        file_path = QFileDialog.getOpenFileName(parent=self, caption="Export Label Info as JSON", filter="*.json")        
+        topLevelOp = self.topLevelOperatorView.viewed_operator()
+        topLevelOp.importLabelInfo(file_path)
+
     @property
     def labelMode(self):
         return self._labelMode
