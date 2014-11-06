@@ -226,6 +226,16 @@ class OpNansheExtractF0Cached(Operator):
 
         block_shape = nanshe.additional_generators.len_slices(halo_slicing)
 
+        block_shape = list(block_shape)
+
+        for i, each_axistag in enumerate(self.opExtractF0.Output.meta.axistags):
+            if each_axistag.isSpatial():
+                block_shape[i] = max(block_shape[i], 256)
+
+            block_shape[i] = min(block_shape[i], self.opExtractF0.Output.meta.shape[i])
+
+        block_shape = tuple(block_shape)
+
         self.opCache.innerBlockShape.setValue(block_shape)
         self.opCache.outerBlockShape.setValue(block_shape)
 
