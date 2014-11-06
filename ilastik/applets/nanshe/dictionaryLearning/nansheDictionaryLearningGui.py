@@ -139,7 +139,7 @@ class NansheDictionaryLearningGui(LayerViewerGui):
         """
         layers = []
 
-        # Show the raw input data
+        # Show the output data
         outputImageSlot = self.topLevelOperatorView.Output
         if outputImageSlot.ready():
             outputLayer = self.createStandardLayerFromSlot( outputImageSlot )
@@ -148,11 +148,11 @@ class NansheDictionaryLearningGui(LayerViewerGui):
             outputLayer.opacity = 1.0
             layers.append(outputLayer)
 
-        # Show the raw input data
+        # Show the input data
         inputImageSlot = self.topLevelOperatorView.InputImage
         if inputImageSlot.ready():
             inputLayer = self.createStandardLayerFromSlot( inputImageSlot )
-            inputLayer.name = "Raw Input"
+            inputLayer.name = "Input"
             inputLayer.visible = True
             inputLayer.opacity = 1.0
             layers.append(inputLayer)
