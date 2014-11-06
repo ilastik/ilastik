@@ -27,6 +27,7 @@ __date__ = "$Oct 23, 2014 09:45:39 EDT$"
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
 from ilastik.applets.nanshe.postprocessing.opNanshePostprocessData import OpNanshePostprocessDataCached
+from ilastik.applets.nanshe.opMaxProjection import OpMaxProjectionCached
 
 import vigra
 
@@ -75,14 +76,18 @@ class OpNanshePostprocessing(Operator):
 
     Fuse_FractionMeanNeuronMaxThreshold = InputSlot(value=0.01, stype="float")
 
+    InputImageMax = OutputSlot()
     CleanBlocks = OutputSlot()
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super( OpNanshePostprocessing, self ).__init__( *args, **kwargs )
 
+        self.opMaxProjection = OpMaxProjectionCached(parent=self)
         self.opPostprocess = OpNanshePostprocessDataCached(parent=self)
 
+
+        self.opMaxProjection.Axis.setValue(0)
 
         self.opPostprocess.SignificanceThreshold.connect(self.SignificanceThreshold)
         self.opPostprocess.WaveletTransformScale.connect(self.WaveletTransformScale)
@@ -106,9 +111,13 @@ class OpNanshePostprocessing(Operator):
         self.opPostprocess.Fuse_FractionMeanNeuronMaxThreshold.connect(self.Fuse_FractionMeanNeuronMaxThreshold)
 
 
+        self.opMaxProjection.InputImage.connect( self.InputImage )
+
         self.opPostprocess.InputImage.connect( self.InputImage )
         self.opPostprocess.CacheInput.connect( self.CacheInput )
 
+
+        self.InputImageMax.connect( self.opMaxProjection.Output )
 
         self.CleanBlocks.connect( self.opPostprocess.CleanBlocks )
         self.Output.connect( self.opPostprocess.Output )
