@@ -83,8 +83,10 @@ class OpNanshePreprocessing(Operator):
         self.opPreprocessData.ToWaveletTransform.connect(self.ToWaveletTransform)
         self.opPreprocessData.Scale.connect(self.Scale)
 
+
         self.opPreprocessData.InputImage.connect( self.InputImage )
         self.opPreprocessData.CacheInput.connect( self.CacheInput )
+
         self.CleanBlocks.connect( self.opPreprocessData.CleanBlocks )
         self.CacheOutput.connect( self.opPreprocessData.CacheOutput )
         self.Output.connect( self.opPreprocessData.Output )
