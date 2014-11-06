@@ -568,7 +568,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
             json_data_this_lane = collections.OrderedDict()
             labels_timewise = label_slot.value
             for t in sorted(labels_timewise.keys()):
-                labels = list( labels_timewise[t] )
+                labels = map(int, labels_timewise[t] )
                 if not any(labels):
                     continue
 
