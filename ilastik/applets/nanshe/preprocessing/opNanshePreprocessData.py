@@ -170,6 +170,10 @@ class OpNanshePreprocessDataCached(Operator):
     Scale = InputSlot(value=4)
 
 
+    OpNansheRemoveZeroedLinesOutput = OutputSlot()
+    OpNansheExtractF0Output = OutputSlot()
+    OpNansheWaveletTransformOutput = OutputSlot()
+
     CleanBlocks = OutputSlot()
     CacheOutput = OutputSlot()
     Output = OutputSlot()
@@ -191,6 +195,11 @@ class OpNanshePreprocessDataCached(Operator):
 
         self.opNansheWaveletTransform = OpNansheWaveletTransformCached(parent=self)
         self.opNansheWaveletTransform.Scale.connect(self.Scale)
+
+
+        self.OpNansheRemoveZeroedLinesOutput.connect(self.opNansheRemoveZeroedLines.Output)
+        self.OpNansheExtractF0Output.connect(self.opNansheExtractF0.Output)
+        self.OpNansheWaveletTransformOutput.connect(self.opNansheWaveletTransform.Output)
 
         self.opCache = OpArrayCache(parent=self)
         self.opCache.fixAtCurrent.setValue(False)
