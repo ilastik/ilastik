@@ -584,7 +584,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
                 json_data_this_time["bounding_boxes"] = bounding_boxes
                 json_data_this_time["labels"] = labels
                 
-                json_data_this_lane[t] = json_data_this_time
+                json_data_this_lane[int(t)] = json_data_this_time
             json_data_all_lanes[lane_index] = json_data_this_lane
 
         with open(file_path, 'w') as f:
