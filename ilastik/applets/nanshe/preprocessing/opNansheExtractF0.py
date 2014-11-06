@@ -211,7 +211,8 @@ class OpNansheExtractF0Cached(Operator):
 
             if each_axistag.isTemporal() or each_axistag.isSpatial():
                 each_halo_center /= 2.0
-                each_halo_center = int(round(each_halo_center))
+                # Must take floor consider the singleton dimension case
+                each_halo_center = int(math.floor(each_halo_center))
                 each_halo_center_slicing = slice(each_halo_center, each_halo_center + 1, 1)
 
             halo_center_slicing.append(each_halo_center_slicing)
