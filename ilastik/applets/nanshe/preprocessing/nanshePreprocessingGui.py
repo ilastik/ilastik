@@ -291,7 +291,7 @@ class NanshePreprocessingGui(LayerViewerGui):
         """
         layers = []
 
-        # Show the raw input data
+        # Show the final result
         outputImageSlot = self.topLevelOperatorView.Output
         if outputImageSlot.ready():
             outputLayer = self.createStandardLayerFromSlot( outputImageSlot )
