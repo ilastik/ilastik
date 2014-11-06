@@ -83,6 +83,7 @@ class OpNanshePostprocessing(Operator):
 
         self.opPostprocess = OpNanshePostprocessDataCached(parent=self)
 
+
         self.opPostprocess.SignificanceThreshold.connect(self.SignificanceThreshold)
         self.opPostprocess.WaveletTransformScale.connect(self.WaveletTransformScale)
         self.opPostprocess.NoiseThreshold.connect(self.NoiseThreshold)
@@ -104,8 +105,11 @@ class OpNanshePostprocessing(Operator):
         self.opPostprocess.OverlapMinThreshold.connect(self.OverlapMinThreshold)
         self.opPostprocess.Fuse_FractionMeanNeuronMaxThreshold.connect(self.Fuse_FractionMeanNeuronMaxThreshold)
 
+
         self.opPostprocess.InputImage.connect( self.InputImage )
         self.opPostprocess.CacheInput.connect( self.CacheInput )
+
+
         self.CleanBlocks.connect( self.opPostprocess.CleanBlocks )
         self.Output.connect( self.opPostprocess.Output )
 
