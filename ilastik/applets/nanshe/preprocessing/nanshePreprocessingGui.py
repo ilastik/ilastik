@@ -300,6 +300,33 @@ class NanshePreprocessingGui(LayerViewerGui):
             outputLayer.opacity = 1.0
             layers.append(outputLayer)
 
+        # Show the result after removing line registration artifact
+        outputImageSlot = self.topLevelOperatorView.OpNansheRemoveZeroedLinesOutput
+        if outputImageSlot.ready():
+            outputLayer = self.createStandardLayerFromSlot( outputImageSlot )
+            outputLayer.name = "Output Remove Zeroed Lines"
+            outputLayer.visible = False
+            outputLayer.opacity = 1.0
+            layers.append(outputLayer)
+
+        # Show the result after F_0 extraction
+        outputImageSlot = self.topLevelOperatorView.OpNansheExtractF0Output
+        if outputImageSlot.ready():
+            outputLayer = self.createStandardLayerFromSlot( outputImageSlot )
+            outputLayer.name = "Output Extract F_0"
+            outputLayer.visible = False
+            outputLayer.opacity = 1.0
+            layers.append(outputLayer)
+
+        # Show the result after wavelet transform
+        outputImageSlot = self.topLevelOperatorView.OpNansheWaveletTransformOutput
+        if outputImageSlot.ready():
+            outputLayer = self.createStandardLayerFromSlot( outputImageSlot )
+            outputLayer.name = "Output Wavelet Transform"
+            outputLayer.visible = False
+            outputLayer.opacity = 1.0
+            layers.append(outputLayer)
+
         # Show the raw input data
         inputImageSlot = self.topLevelOperatorView.InputImage
         if inputImageSlot.ready():
