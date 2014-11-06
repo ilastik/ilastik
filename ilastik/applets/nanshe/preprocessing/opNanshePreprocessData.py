@@ -79,8 +79,6 @@ class OpNanshePreprocessData(Operator):
 
         self.opNansheWaveletTransform = OpNansheWaveletTransform(parent=self)
         self.opNansheWaveletTransform.Scale.connect(self.Scale)
-
-
     
     def setupOutputs(self):
         self.opNansheRemoveZeroedLines.InputImage.disconnect()
