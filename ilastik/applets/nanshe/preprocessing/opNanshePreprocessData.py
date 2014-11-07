@@ -24,7 +24,6 @@ __date__ = "$Oct 14, 2014 16:37:05 EDT$"
 
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-
 from lazyflow.operators import OpArrayCache
 
 from ilastik.applets.nanshe.preprocessing.opNansheRemoveZeroedLines import OpNansheRemoveZeroedLines, OpNansheRemoveZeroedLinesCached
