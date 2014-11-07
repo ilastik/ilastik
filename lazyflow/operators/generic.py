@@ -624,7 +624,7 @@ class OpMaxChannelIndicatorOperator(Operator):
         res = numpy.zeros(data.shape, numpy.uint8)
 
         for c in range(data.shape[-1]):
-            res[...,c] = numpy.where(data[...,c] == dm, 1, 0)    
+            numpy.equal(data[...,c], dm, out=res[...,c])
 
         result[:] = res[...,key[-1]]
 
