@@ -80,9 +80,6 @@ class OpMriVolFilter(Operator):
     def __init__(self, *args, **kwargs):
         super(OpMriVolFilter, self).__init__(*args, **kwargs)
 
-        self._cache = OpCompressedCache(parent=self)
-        self._cache.name = "OpMriVol.OutputCache"
-
         self.op = OpImplementationChoice(self._ABC, parent=self)
         d = dict()
         for k in smoothers_available:
@@ -107,23 +104,26 @@ class OpMriVolFilter(Operator):
         self.opCC.Input.connect(self.opBinarize.Output)
         self.CCsOutput.connect(self.opCC.CachedOutput)
         # Filters CCs
-        self.opFilter = OpFilterLabels(parent=self )
+        self.opFilter = OpFilterLabels(parent=self)
         self.opFilter.Input.connect(self.opCC.CachedOutput)
         self.opFilter.MinLabelSize.connect(self.Threshold)
         self.opFilter.BinaryOut.setValue(False)
 
-        self._cache.Input.connect(self.opFilter.Output)
-        self._cache.InputHdf5.connect(self.InputHdf5)
-        self.CleanBlocks.connect(self._cache.CleanBlocks)
-        self.OutputHdf5.connect(self._cache.OutputHdf5)
-
         self.opRevertBinarize = OpMriRevertBinarize(parent=self)
         self.opRevertBinarize.ArgmaxInput.connect(self.op.Output)
-        self.opRevertBinarize.CCInput.connect(self._cache.Output)
+        self.opRevertBinarize.CCInput.connect(self.opCC.CachedOutput)
 
         self.Output.connect(self.opRevertBinarize.Output)
-        # FIXME no cache here
-        self.CachedOutput.connect(self.Output)
+
+        self._cache = OpCompressedCache(parent=self)
+        self._cache.name = "OpMriVol.OutputCache"
+
+        self._cache.Input.connect(self.Output)
+        self._cache.InputHdf5.connect(self.InputHdf5)
+
+        self.CleanBlocks.connect(self._cache.CleanBlocks)
+        self.OutputHdf5.connect(self._cache.OutputHdf5)
+        self.CachedOutput.connect(self._cache.Output)
 
     def execute(self, slot, subindex, roi, destination):
         assert False, "Shouldn't get here."
@@ -263,6 +263,7 @@ class OpMriBinarizeImage(Operator):
     """
     Takes an input label image and computes a binary image given one or
     more background classes
+    all inputs have to be in 'txyzc' order
     """
 
     name = "MRI Binarize Image"
@@ -271,28 +272,19 @@ class OpMriBinarizeImage(Operator):
     ActiveChannels = InputSlot()
 
     Output = OutputSlot()
-    _Output = OutputSlot()  # second (private) output
 
     def __init__(self, *args, **kwargs):
         super(OpMriBinarizeImage, self).__init__(*args, **kwargs)
 
-        self.opIn = OpReorderAxes(parent=self)
-        self.opIn.Input.connect(self.Input)
-        self.opIn.AxisOrder.setValue('txyzc') 
-
-        self.opOut = OpReorderAxes(parent=self)
-        self.Output.connect(self.opOut.Output)
-        self.opOut.Input.connect(self._Output)
-
     def setupOutputs(self):
-        self._Output.meta.assignFrom(self.opIn.Output.meta)
-        self._Output.meta.dtype=np.uint32
+        self.Output.meta.assignFrom(self.Input.meta)
+        self.Output.meta.dtype = np.uint8
         self.opOut.AxisOrder.setValue(self.Input.meta.getAxisKeys())
 
     def execute(self, slot, subindex, roi, result):
         # TODO faster computation?
-        tmp_data = self.opIn.Output.get(roi).wait()
-        result[...] = np.ones(result.shape, dtype=np.uint32)
+        tmp_data = self.Input.get(roi).wait()
+        result[...] = 1
 
         # if only one channel is present, the active channel list might be
         # interpreted as a single value
@@ -303,7 +295,7 @@ class OpMriBinarizeImage(Operator):
 
         for idx, active in enum:
             if active == 0:
-                result[tmp_data==idx+1] = 0
+                result[tmp_data == idx+1] = 0
 
     def propagateDirty(self, inputSlot, subindex, roi):
         if inputSlot is self.Input:
@@ -311,53 +303,43 @@ class OpMriBinarizeImage(Operator):
         if inputSlot is self.ActiveChannels:
             self.Output.setDirty(slice(None))
 
+
 class OpMriRevertBinarize(Operator):
     """
     Reverts the binarize option
+    all inputs have to be in 'txyzc' order
     """
+
     # Argmax Input
     ArgmaxInput = InputSlot()
     CCInput = InputSlot()
 
     Output = OutputSlot()
-    # second (private) output 
-    _Output = OutputSlot()
-   
+
     def __init__(self, *args, **kwargs):
         super(OpMriRevertBinarize, self).__init__(*args, **kwargs)
-        
-        self.opIn = OpReorderAxes(parent=self)
-        self.opIn.Input.connect(self.ArgmaxInput)
-        self.opIn.AxisOrder.setValue('txyzc') 
-
-        self.opInCC = OpReorderAxes(parent=self)
-        self.opInCC.Input.connect(self.CCInput)
-        self.opInCC.AxisOrder.setValue('txyzc') 
-
-        self.opOut = OpReorderAxes(parent=self)
-        self.Output.connect(self.opOut.Output)
-        self.opOut.Input.connect(self._Output)
 
     def setupOutputs(self):
-        self._Output.meta.assignFrom(self.opIn.Output.meta)
-        self._Output.meta.dtype=np.uint32
-        self.opOut.AxisOrder.setValue(self.ArgmaxInput.meta.getAxisKeys())
+        self.Output.meta.assignFrom(self.ArgmaxInput.meta)
+        # output is a label image, therefore uint32
+        self.Output.meta.dtype = np.uint32
 
     def execute(self, slot, subindex, roi, result):
-        tmp_input = self.opIn.Output.get(roi).wait()
-        tmp_cc = self.opInCC.Output.get(roi).wait()
-        result[...] = np.zeros(tmp_input.shape, dtype=np.uint32)
-        # all elements that are nonzero and are within a cc 
+        tmp_input = self.ArgmaxInput.get(roi).wait()
+        tmp_cc = self.CCInput.get(roi).wait()
+        result[...] = 0
+        # all elements that are nonzero and are within a cc
         # are transfered
         # TODO faster computation?
-        for cc in np.unique(tmp_cc): 
+        for cc in np.unique(tmp_cc):
             if cc == 0:
                 continue
-            result[tmp_cc==cc] = tmp_input[tmp_cc==cc]
+            # FIXME is this correct??
+            result[tmp_cc == cc] = tmp_input[tmp_cc == cc]
 
     def propagateDirty(self, inputSlot, subindex, roi):
         if inputSlot is self.ArgmaxInput:
-            self.Output.setDirty( roi )
+            self.Output.setDirty(roi)
         if inputSlot is self.CCInput:
-            self.Output.setDirty( roi )
+            self.Output.setDirty(roi)
 

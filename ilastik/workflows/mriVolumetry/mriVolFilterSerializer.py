@@ -16,7 +16,7 @@ class MriVolFilterSerializer(AppletSerializer):
     ...
     """
 
-    version = "0.3"
+    version = "0.4"
 
     def __init__(self, op, projectFileGroupName):
         slots = [SerialDictSlot(op.Configuration),
