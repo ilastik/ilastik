@@ -23,7 +23,7 @@ import numpy, copy
 import cPickle as pickle
 import collections
 
-from lazyflow.roi import TinyVector, sliceToRoi, roiToSlice
+from lazyflow.roi import TinyVector, sliceToRoi, roiToSlice, roiFromShape
 from lazyflow.utility import slicingtools
 
 import logging
@@ -106,10 +106,12 @@ class List(Roi):
 class SubRegion(Roi):
     def __init__(self, slot, start = None, stop = None, pslice = None):
         super(SubRegion,self).__init__(slot)
+        shape = None
+        if slot is not None:
+            shape = slot.meta.shape
         if pslice != None or start is not None and stop is None and pslice is None:
             if pslice is None:
                 pslice = start
-            shape = self.slot.meta.shape
             if shape is None:
                 # Okay to use a shapeless slot if the key is bounded
                 # AND if the key has the correct length
@@ -118,7 +120,8 @@ class SubRegion(Roi):
                 shape = [0] * len(pslice)
             self.start, self.stop = sliceToRoi(pslice,shape)
         elif start is None and pslice is None:
-            self.start, self.stop = sliceToRoi(slice(None,None,None),self.slot.meta.shape)
+            assert shape is not None, "Can't create a default subregion without a slot and a shape."
+            self.start, self.stop = roiFromShape(shape)
         else:
             self.start = TinyVector(start)
             self.stop = TinyVector(stop)
@@ -128,7 +131,7 @@ class SubRegion(Roi):
             assert isinstance(start, (int, long, numpy.integer)), "Roi contains non-integers: {}".format( self )
             assert isinstance(start, (int, long, numpy.integer)), "Roi contains non-integers: {}".format( self )
 
-        if self.slot.meta.shape is not None:
+        if self.slot is not None and self.slot.meta.shape is not None:
             assert all(self.stop <= self.slot.meta.shape), \
                 "Roi is out of bounds. roi={}, {}.{}.meta.shape={}"\
                 .format((self.start, self.stop), slot.getRealOperator().name, slot.name, self.slot.meta.shape)
