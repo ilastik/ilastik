@@ -106,7 +106,7 @@ class MriVolumetryWorkflowPrediction(MriVolumetryWorkflowBase):
         if len(slot) > 0:
             ready = True
             for sub in slot:
-                input_ready = ready and \
+                ready = ready and \
                     all([sub[i].ready() for i in range(nRoles)])
         else:
             ready = False
@@ -169,7 +169,7 @@ class MriVolumetryWorkflowPixel(MriVolumetryWorkflowBase):
         if len(slot) > 0:
             ready = True
             for sub in slot:
-                input_ready = ready and \
+                ready = ready and \
                     all([sub[i].ready() for i in range(nRoles)])
         else:
             ready = False
