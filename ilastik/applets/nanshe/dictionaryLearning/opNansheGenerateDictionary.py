@@ -25,7 +25,6 @@ __date__ = "$Oct 17, 2014 13:07:51 EDT$"
 
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-
 from lazyflow.operators import OpArrayCache
 
 import numpy
