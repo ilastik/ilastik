@@ -150,6 +150,16 @@ class Workflow( Operator ):
         # Clean up the graph as usual.
         super(Workflow, self).cleanUp()
 
+    def menus(self):
+        """
+            Returns an iterable of QMenus to be added to the GUI
+
+            Returns:
+                iterable:       QMenus to be added to the GUI
+        """
+
+        return []
+
     @classmethod
     def getSubclass(cls, name):
         for subcls in cls.all_subclasses:
