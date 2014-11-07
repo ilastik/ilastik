@@ -18,6 +18,10 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+
+__author__ = "John Kirkham <kirkhamj@janelia.hhmi.org>"
+__date__ = "$Oct 16, 2014 16:04:03 EDT$"
+
 from lazyflow.graph import Graph
 
 from ilastik.workflow import Workflow
