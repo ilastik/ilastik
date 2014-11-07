@@ -174,6 +174,7 @@ class OpDataExport(Operator):
         # Not permitted to make this connection because we can't connect our own output to a child operator.
         # Instead, dirty state is copied manually into the child op whenever we change it.
         #self._opImageOnDiskProvider.Dirty.connect( self.Dirty )
+        self._opImageOnDiskProvider.Dirty.setValue( False )
         
         self.ImageOnDisk.connect( self._opImageOnDiskProvider.Output )
         

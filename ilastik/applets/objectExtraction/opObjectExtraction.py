@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 #Python
-from copy import copy
+from copy import copy, deepcopy
 import collections
 from collections import defaultdict
 
@@ -246,7 +246,7 @@ class OpRegionFeatures3d(Operator):
         
         logger.debug("Computing default features")
 
-        feature_names = self.Features([]).wait()
+        feature_names = deepcopy(self.Features([]).wait())
 
         # do global features
         logger.debug("computing global features")

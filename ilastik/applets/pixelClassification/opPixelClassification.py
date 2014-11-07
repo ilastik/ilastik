@@ -614,6 +614,7 @@ class OpEnsembleMargin(Operator):
         return result 
 
     def propagateDirty(self, inputSlot, subindex, roi):
+        roi = roi.copy()
         chanAxis = self.Input.meta.axistags.index('c')
         roi.start[chanAxis] = 0
         roi.stop[chanAxis] = 1

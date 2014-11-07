@@ -8,10 +8,6 @@ args = ilastik_main.parser.parse_args([])
 args.headless = True
 args.project = '/Users/bergs/MyProject.ilp'
 
-input_data = numpy.random.randint(0,255, (200,200,1) ).astype(numpy.uint8)
-print input_data.shape
-input_data = vigra.taggedView( input_data, 'yxc' )
-
 shell = ilastik_main.main( args )
 assert isinstance(shell.workflow, PixelClassificationWorkflow)
 
@@ -21,6 +17,11 @@ opPixelClassification = shell.workflow.pcApplet.topLevelOperator
 # Sanity checks
 assert len(opPixelClassification.InputImages) > 0
 assert opPixelClassification.Classifier.ready()
+
+# For this example, we'll use random input data to "batch process"
+input_data = numpy.random.randint(0,255, (200,200,1) ).astype(numpy.uint8)
+print input_data.shape
+input_data = vigra.taggedView( input_data, 'yxc' )
 
 label_names = opPixelClassification.LabelNames.value
 label_colors = opPixelClassification.LabelColors.value
