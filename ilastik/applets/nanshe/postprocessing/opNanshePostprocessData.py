@@ -27,6 +27,8 @@ __date__ = "$Oct 23, 2014 09:45:39 EDT$"
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpArrayCache
 
+from ilastik.applets.base.applet import DatasetConstraintError
+
 import vigra
 
 import numpy
@@ -77,6 +79,45 @@ class OpNanshePostprocessData(Operator):
 
     def __init__(self, *args, **kwargs):
         super( OpNanshePostprocessData, self ).__init__( *args, **kwargs )
+
+    def _checkConstraints(self, *args):
+        slot = self.InputImage
+
+        sh = slot.meta.shape
+        ax = slot.meta.axistags
+        if (len(slot.meta.shape) != 3) and (len(slot.meta.shape) != 4):
+            # Raise a regular exception.  This error is for developers, not users.
+            raise RuntimeError("was expecting a 3D or 4D dataset, got shape=%r" % (sh,))
+
+        if "t" in slot.meta.getTaggedShape():
+            raise DatasetConstraintError(
+                "RemoveZeroedLines",
+                "Input must not have time.")
+
+        if "c" not in slot.meta.getTaggedShape():
+            raise DatasetConstraintError(
+                "RemoveZeroedLines",
+                "Input must have channel.")
+
+        if "y" not in slot.meta.getTaggedShape():
+            raise DatasetConstraintError(
+                "RemoveZeroedLines",
+                "Input must have space dim y.")
+
+        if "x" not in slot.meta.getTaggedShape():
+            raise DatasetConstraintError(
+                "RemoveZeroedLines",
+                "Input must have space dim x.")
+
+        if not ax[0].isChannel():
+            raise DatasetConstraintError(
+                "RemoveZeroedLines",
+                "Input image must have channel first." )
+
+        for i in range(1, len(ax)):
+            if not ax[i].isSpatial():
+                # This is for developers.  Don't need a user-friendly error.
+                raise RuntimeError("%d-th axis %r is not spatial" % (i, ax[i]))
 
     def setupOutputs(self):
         # Copy the input metadata to both outputs
