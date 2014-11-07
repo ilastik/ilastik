@@ -27,6 +27,8 @@ __date__ = "$Oct 17, 2014 13:07:51 EDT$"
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpArrayCache
 
+from ilastik.applets.base.applet import DatasetConstraintError
+
 import numpy
 
 import vigra
@@ -65,6 +67,59 @@ class OpNansheGenerateDictionary(Operator):
 
     def __init__(self, *args, **kwargs):
         super( OpNansheGenerateDictionary, self ).__init__( *args, **kwargs )
+
+        self.InputImage.notifyReady( self._checkConstraints )
+
+    def _checkConstraints(self, *args):
+        slot = self.InputImage
+
+        sh = slot.meta.shape
+        ax = slot.meta.axistags
+        if (len(slot.meta.shape) != 4) and (len(slot.meta.shape) != 5):
+            # Raise a regular exception.  This error is for developers, not users.
+            raise RuntimeError("was expecting a 4D or 5D dataset, got shape=%r" % (sh,))
+
+        if "t" not in slot.meta.getTaggedShape():
+            raise DatasetConstraintError(
+                "RemoveZeroedLines",
+                "Input must have time.")
+
+        if "y" not in slot.meta.getTaggedShape():
+            raise DatasetConstraintError(
+                "RemoveZeroedLines",
+                "Input must have space dim y.")
+
+        if "x" not in slot.meta.getTaggedShape():
+            raise DatasetConstraintError(
+                "RemoveZeroedLines",
+                "Input must have space dim x.")
+
+        if "c" not in slot.meta.getTaggedShape():
+            raise DatasetConstraintError(
+                "RemoveZeroedLines",
+                "Input must have channel.")
+
+        numChannels = slot.meta.getTaggedShape()["c"]
+        if numChannels != 1:
+            raise DatasetConstraintError(
+                "RemoveZeroedLines",
+                "Input image must have exactly one channel.  " +
+                "You attempted to add a dataset with {} channels".format( numChannels ) )
+
+        if not ax[0].isTemporal():
+            raise DatasetConstraintError(
+                "RemoveZeroedLines",
+                "Input image must have time first." )
+
+        if not ax[-1].isChannel():
+            raise DatasetConstraintError(
+                "RemoveZeroedLines",
+                "Input image must have channel last." )
+
+        for i in range(1, len(ax) - 1):
+            if not ax[i].isSpatial():
+                # This is for developers.  Don't need a user-friendly error.
+                raise RuntimeError("%d-th axis %r is not spatial" % (i, ax[i]))
 
     def setupOutputs(self):
         # Copy the input metadata to both outputs
