@@ -40,12 +40,12 @@ class OpSmoothedArgMax(Operator):
         self._op.Configuration.connect(self.Configuration)
         self._op.Implementation.connect(self.Method)
 
-        self._opOut = OpReorderAxes(parent=self)
-        self._opOut.Input.connect(self._op.Output)
+        self._opArgMax= OpMriArgmax(parent=self)
+        self._opArgMax.Input.connect(self.Smoothed)
 
-        self._opGlobThres = OpMriArgmax(parent=self)
-        self._opGlobThres.Input.connect(self.Smoothed)
-        self.Output.connect(self._opGlobThres.Output)
+        self._opOut = OpReorderAxes(parent=self)
+        self._opOut.Input.connect(self._opArgMax.Output)
+        self.Output.connect(self._opOut.Output)
 
         self._cache = None
 
@@ -80,7 +80,9 @@ class OpSmoothedArgMax(Operator):
         for k in pa:
             if k in ts:
                 ts[k] = 1
-        self._cache.Input.connect(self._opOut.Output)
+        # FIXME should probably be two caches, one at Smoothed and
+        # one at Output
+        self._cache.Input.connect(self._op.Output)
         self._cache.BlockShape.setValue([ts[k] for k in ts])
         self.Smoothed.connect(self._cache.Output)
 
@@ -338,32 +340,20 @@ class OpMriArgmax(Operator):
 
     name = "Argmax Operator"
 
+    # accepts 5D data only, 'txyzc'
     Input = InputSlot()
     Output = OutputSlot()
-
-    _Output = OutputSlot() # second (private) output
 
     Threshold = InputSlot(optional=True, stype='float', value=0.0)
 
     def __init__(self, *args, **kwargs):
         super(OpMriArgmax, self).__init__(*args, **kwargs)
 
-        # TODO reordering not needed for new OpSmoothedArgMax
-        self.opIn = OpReorderAxes(parent=self)
-        self.opIn.Input.connect(self.Input)
-        self.opIn.AxisOrder.setValue('txyzc') 
-
-        self.opOut = OpReorderAxes(parent=self)
-        self.Output.connect(self.opOut.Output)
-        self.opOut.Input.connect(self._Output)
-
     def setupOutputs(self):
-        self._Output.meta.assignFrom(self.opIn.Output.meta)
-        tagged_shape = self.opIn.Output.meta.getTaggedShape()
+        self.Output.meta.assignFrom(self.Input.meta)
+        tagged_shape = self.Input.meta.getTaggedShape()
         tagged_shape['c'] = 1
-        self._Output.meta.shape = tuple(tagged_shape.values())
-
-        self.opOut.AxisOrder.setValue(self.Input.meta.getAxisKeys())
+        self.Output.meta.shape = tuple(tagged_shape.values())
 
     @staticmethod
     def _globalArgmax(vol):
@@ -374,8 +364,8 @@ class OpMriArgmax(Operator):
 
     def execute(self, slot, subindex, roi, result):
         tmp_roi = roi.copy()
-        tmp_roi.setDim(-1,0,self.opIn.Output.meta.shape[-1])
-        tmp_data = self.opIn.Output.get(tmp_roi).wait().astype(np.float32)
+        tmp_roi.setDim(-1,0,self.Input.meta.shape[-1])
+        tmp_data = self.Input.get(tmp_roi).wait().astype(np.float32)
 
         assert tmp_data.shape[-1] == \
             self.Input.meta.getTaggedShape()['c'],\
@@ -384,6 +374,11 @@ class OpMriArgmax(Operator):
         
     def propagateDirty(self, inputSlot, subindex, roi):
          if inputSlot is self.Input:
-             self.Output.setDirty(roi)
+             start = np.asarray(roi.start, dtype=int)
+             stop = np.asarray(roi.stop, dtype=int)
+             start[-1] = 0
+             stop[-1] = 1
+             newroi = SubRegion(self.Output, start=start, stop=stop)
+             self.Output.setDirty(newroi)
          if inputSlot is self.Threshold:
              self.Output.setDirty(slice(None))
