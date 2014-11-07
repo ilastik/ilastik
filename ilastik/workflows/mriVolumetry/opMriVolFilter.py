@@ -25,12 +25,12 @@ logger = logging.getLogger(__name__)
 #                         |--> ArgMax
 #                        /           \
 # (b) Guided Filter -----             \
-#                                      |--> (PostProcessing) TODO
+#                                      |--> (PostProcessing) TODO document
 #                                     /
 # (c) OpenGM -------------------------
 #
 # We try to keep the code clean by using OpImplementationChoice for
-# switching between [(a), (b)] and [(c)]. 
+# switching between [(a), (b)] and [(c)].
 class OpMriVolFilter(Operator):
     name = "MRI Processing"
 
@@ -103,6 +103,7 @@ class OpMriVolFilter(Operator):
         self.opCC = OpLabelVolume(parent=self)
         self.opCC.Input.connect(self.opBinarize.Output)
         self.CCsOutput.connect(self.opCC.CachedOutput)
+
         # Filters CCs
         self.opFilter = OpFilterLabels(parent=self)
         self.opFilter.Input.connect(self.opCC.CachedOutput)
@@ -111,7 +112,7 @@ class OpMriVolFilter(Operator):
 
         self.opRevertBinarize = OpMriRevertBinarize(parent=self)
         self.opRevertBinarize.ArgmaxInput.connect(self.op.Output)
-        self.opRevertBinarize.CCInput.connect(self.opCC.CachedOutput)
+        self.opRevertBinarize.CCInput.connect(self.opFilter.Output)
 
         self.Output.connect(self.opRevertBinarize.Output)
 
@@ -177,8 +178,8 @@ class OpMriBinarizeImage(Operator):
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
+        # output is binary image
         self.Output.meta.dtype = np.uint8
-        self.opOut.AxisOrder.setValue(self.Input.meta.getAxisKeys())
 
     def execute(self, slot, subindex, roi, result):
         # TODO faster computation?

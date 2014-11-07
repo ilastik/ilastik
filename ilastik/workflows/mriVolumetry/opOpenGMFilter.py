@@ -92,10 +92,12 @@ class OpOpenGMFilter(Operator):
     @staticmethod
     def _opengmFilter(vol, mask, sigma, unaries, out, eps=1e-6):
         # make uncertainty edge image
-        pfiltered = np.zeros_like(vol[0])
+        pfiltered = np.empty(vol[0].shape, dtype=vol.dtype)
         for c in xrange(vol.shape[-1]):
-            pfiltered[..., c] = vigra.gaussianSmoothing(vol[0, ..., c],
-                                                        sigma)
+            vigra.gaussianSmoothing(vol[0, ..., c],
+                                    sigma,
+                                    out=pfiltered[..., c])
+        print(type(pfiltered))
         pmap = np.sort(pfiltered, axis=-1)
         uncertainties = pmap[..., -1] - pmap[..., -2]
         # set starting point
