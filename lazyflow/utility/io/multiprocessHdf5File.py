@@ -6,14 +6,15 @@ import warnings
 import multiprocessing
 import numpy
 
-from lazyflow.roi import sliceToRoi 
-
 # This code uses multiprocessing to read hdf5 datasets faster
+# I'm still experimenting with implementation details, 
+#  and switching between implementation variants via the METHOD setting below.
+#
 # NOTES:
 # - So far, this code is:
-#  -- *much slower* for unchunked datasets,
-#  -- somewhat slower for chunked uncompressed datasets,
 #  -- faster for compressed datasets
+#  -- somewhat slower for chunked uncompressed datasets
+#  -- *much slower* for unchunked datasets
 #
 # THINGS TO TRY:
 #  -- Right now we launch the process only once, which means it must serve requests of varying sizes
@@ -21,7 +22,7 @@ from lazyflow.roi import sliceToRoi
 #     Overhead would be increased, but it would allow us to pass a shared-memory Array to the process, 
 #         since we know the request size in advance.
 #  -- Could memory-sharing be achieved instead via memory-mapped files and/or mem-mapped arrays?
-#  -- Create a pool of requests instead of creating a request for every thread and volume combo.
+#  -- Create a pool of processes instead of creating a processes for every thread and volume combo.
 
 # DEBUG: In this file (including the __main__ section), we are experimenting with various implementations.
 #        The METHOD setting switches between each.
@@ -54,11 +55,11 @@ class ReaderProcess(multiprocessing.Process):
             while internal_path is not None:
                 try:
                     if METHOD == 'shared-array':
-                        read_roi = sliceToRoi( slicing, h5_file[internal_path].shape )
+                        read_roi = slice_to_roi( slicing, h5_file[internal_path].shape )
+                        read_roi = numpy.array(read_roi)
                         read_shape = read_roi[1] - read_roi[0]
                         num_bytes = h5_file[internal_path].dtype.itemsize * numpy.prod( read_shape )
-                        if num_bytes > self.available_bytes:
-                            assert False
+                        assert num_bytes <= self.available_bytes, "I don't yet support really big slicings"
                         read_array = numpy.frombuffer( self.transfer_buffer, dtype=numpy.uint8, count=num_bytes )
                         read_array.setflags(write=True)
                         read_array = read_array.view(h5_file[internal_path].dtype).reshape( read_shape )
@@ -106,7 +107,14 @@ class ReaderProcess(multiprocessing.Process):
         self._request_queue_send.send( (None, None) )
         super( ReaderProcess, self ).join()
 
+
 class _Dataset(object):
+    """
+    Stand-in proxy object for a h5py.Dataset object.
+    For __getitem__, we retrieve the requested data from our helper process.
+    For all other attributes, we *open* the file temporarily and read the attribute.
+    (This makes attribute access very slow.)
+    """
     def __init__(self, mp_file, reader_process, internal_path):
         self._internal_path = internal_path
         self._reader_process = reader_process
@@ -139,6 +147,11 @@ class _Dataset(object):
         out_array[:] = self[slicing]
 
 class _Group(object):
+    """
+    Stand-in proxy object for a h5py.Group object.
+    If the caller attempts to access a dataset, we return a _Dataset helper object.
+    For most other attributes, we temporarily open the file and retrieve the attribute.
+    """
     def __init__(self, mp_file, internal_path):
         self.mp_file = mp_file
         if internal_path == '':
@@ -208,7 +221,10 @@ class _Group(object):
                 return copy.copy(val)
 
 class MultiProcessHdf5File(_Group):
-    
+    """
+    Stand-in proxy object for an h5py.File object.
+    Users requesting a group or 
+    """
     def __init__(self, filepath, mode='r'):
         super( MultiProcessHdf5File, self ).__init__( self, '' )
         assert mode == 'r', "Only read-only access is permitted when using MultiProcessHdf5File objects."
@@ -251,6 +267,84 @@ class MultiProcessHdf5File(_Group):
     def __exit__(self, *args):
         self.close()
 
+
+def slice_to_roi(slicing, shape):
+    """
+    Given a slicing tuple and a shape, return equivalent start/stop bounds for the slicing.
+
+    For example:
+    
+    >>> slice_to_roi(numpy.s_[:,0:10,17], (100,100,100))
+    array([[  0,   0,  17],
+           [100,  10,  18]])
+    """
+    slicing = expandSlicing(slicing, shape)
+    full_slicing = []
+    for sl, sh in zip(slicing, shape):
+        if isinstance(sl, slice):
+            assert sl.step is None, "Can't handle slices with steps."
+            start, stop = sl.start, sl.stop
+            if sl.start is None:
+                start = 0
+            if sl.stop is None:
+                stop = sh
+            full_slicing.append( slice(start, stop) )
+        else:
+            full_slicing.append( slice(sl, sl+1) )
+
+    start_bounds = [s.start for s in full_slicing]
+    stop_bounds = [s.stop for s in full_slicing]
+    return numpy.array((start_bounds, stop_bounds))
+
+def expandSlicing(s, shape):
+    """
+    Args:
+        s: Anything that can be used as a numpy array index:
+           - int
+           - slice
+           - Ellipsis (i.e. ...)
+           - Some combo of the above as a tuple or list
+        
+        shape: The shape of the array that will be accessed
+        
+    Returns:
+        A tuple of length N where N=len(shape)
+        slice(None) is inserted in missing positions so as not to change the meaning of the slicing.
+        e.g. if shape=(1,2,3,4,5):
+            0 --> (0,:,:,:,:)
+            (0:1) --> (0:1,:,:,:,:)
+            : --> (:,:,:,:,:)
+            ... --> (:,:,:,:,:)
+            (0,0,...,4) --> (0,0,:,:,4)            
+    """
+    if type(s) == list:
+        s = tuple(s)
+    if type(s) != tuple:
+        # Convert : to (:,), or 5 to (5,)
+        s = (s,)
+
+    # Compute number of axes missing from the slicing
+    if len(shape) - len(s) < 0:
+        assert s == (Ellipsis,) or s == (slice(None),), "Slicing must not have more elements than the shape, except for [:] and [...] slices"
+
+    # Replace Ellipsis with (:,:,:)
+    if Ellipsis in s:
+        ei = s.index(Ellipsis) # Ellipsis Index
+        s = s[0:ei] + (len(shape) - len(s) + 1)*(slice(None),) + s[ei+1:]
+
+    # Append (:,) until we get the right length
+    s += (len(shape) - len(s))*(slice(None),)
+    
+    # Special case: we allow [:] and [...] for empty shapes ()
+    if shape == ():
+        s = ()
+    
+    return s
+
+#
+# Miscellaneous tests below.
+# TODO: Write some proper unit tests...
+#
 if __name__ == "__main__":
     import numpy
     from functools import partial
@@ -318,7 +412,7 @@ if __name__ == "__main__":
     with h5py.File(bigfile_path, 'r') as f:
         bigvol = f['data'][:]
     
-    from lazyflow.utility import Timer
+    import time
     
     with fileclass(bigfile_path, 'r') as bf:
         def test_subvol( slicings ):
@@ -338,11 +432,14 @@ if __name__ == "__main__":
                          numpy.s_[i+4:i+9] ]
             threads.append( threading.Thread(target=partial(test_subvol, slicings)))
 
-        with Timer() as timer:
-            for thread in threads:
-                thread.start()
-            
-            for thread in threads:
-                thread.join()
+        start_time = time.time()
 
-        print "Time: {} seconds".format( timer.seconds() )
+        for thread in threads:
+            thread.start()
+        
+        for thread in threads:
+            thread.join()
+            
+        stop_time = time.time()
+
+        print "Time: {} seconds".format( stop_time - start_time )
