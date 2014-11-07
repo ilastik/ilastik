@@ -257,7 +257,8 @@ class OpFanIn(Operator):
     def propagateDirty(self, inputSlot, subindex, roi):
         if inputSlot is self.Input:
             self.Output.setDirty(roi)
-                
+
+
 class OpMriBinarizeImage(Operator):
     """
     Takes an input label image and computes a binary image given one or
@@ -265,17 +266,16 @@ class OpMriBinarizeImage(Operator):
     """
 
     name = "MRI Binarize Image"
-    
+
     Input = InputSlot()
     ActiveChannels = InputSlot()
 
     Output = OutputSlot()
-    _Output = OutputSlot() # second (private) output
+    _Output = OutputSlot()  # second (private) output
 
-    
     def __init__(self, *args, **kwargs):
         super(OpMriBinarizeImage, self).__init__(*args, **kwargs)
-        
+
         self.opIn = OpReorderAxes(parent=self)
         self.opIn.Input.connect(self.Input)
         self.opIn.AxisOrder.setValue('txyzc') 
@@ -293,7 +293,15 @@ class OpMriBinarizeImage(Operator):
         # TODO faster computation?
         tmp_data = self.opIn.Output.get(roi).wait()
         result[...] = np.ones(result.shape, dtype=np.uint32)
-        for idx, active in enumerate(self.ActiveChannels.value):
+
+        # if only one channel is present, the active channel list might be
+        # interpreted as a single value
+        try:
+            enum = enumerate(self.ActiveChannels.value)
+        except TypeError:
+            enum = [(0, self.ActiveChannels.value)]
+
+        for idx, active in enum:
             if active == 0:
                 result[tmp_data==idx+1] = 0
 
