@@ -130,28 +130,19 @@ class OpMriVolFilter(Operator):
         assert False, "Shouldn't get here."
 
     def propagateDirty(self, inputSlot, subindex, roi):
-        if inputSlot in [self.Input, self.RawInput]:
-            self.Output.setDirty(roi)
-        if inputSlot in [self.Method, self.Configuration]:
-            self.Output.setDirty(slice(None))
-        if inputSlot is self.Threshold:
-            self.Output.setDirty(slice(None))
-        if inputSlot is self.ActiveChannels:
-            self.Output.setDirty(slice(None))
+        # dirty handling is done by internal operators
+        pass
 
     def setupOutputs(self):
         ts = self.Input.meta.getTaggedShape()
 
-        ts['c'] = 1
-        self.Output.meta.assignFrom(self.Input.meta)
-        self.Output.meta.shape = tuple(ts.values())
-        self.Output.meta.dtype = np.uint32
-
         # set cache chunk shape to the whole spatial volume
+        # we need to use a better smoothing operator and lazy labeling if we
+        # want to be lazy, probably not woth it
+        ts['c'] = 1
         ts['t'] = 1
-        blockshape = map(lambda k: ts[k], ''.join(ts.keys()))
+        blockshape = map(lambda k: ts[k], ts.keys())
         self._cache.BlockShape.setValue(tuple(blockshape))
-        # this is not a good idea!
 
     def setInSlot(self, slot, subindex, roi, value):
         if slot is not self.InputHdf5:

@@ -35,6 +35,7 @@ class MriVolFilterGui(LayerViewerGui):
     def __init__(self, *args, **kwargs):
         self.__cleanup_fns = []
         self._channelColors = self._createDefault16ColorColorTable()
+        self._disable_label_changes = False
         super(MriVolFilterGui, self).__init__(*args, **kwargs)
         #  use default colors
         # self._channelColors = create_default_16bit()
@@ -197,7 +198,7 @@ class MriVolFilterGui(LayerViewerGui):
         op = self.topLevelOperatorView
 
         if op.Output.ready():
-            outputLayer = ColortableLayer(LazyflowSource(op.Output),
+            outputLayer = ColortableLayer(LazyflowSource(op.CachedOutput),
                                           colorTable=self._channelColors)
             outputLayer.name = "Output"
             outputLayer.visible = True
