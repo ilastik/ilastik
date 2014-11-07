@@ -293,9 +293,8 @@ class OpMriBinarizeImage(Operator):
         # TODO faster computation?
         tmp_data = self.opIn.Output.get(roi).wait()
         result[...] = np.ones(result.shape, dtype=np.uint32)
-        # result[tmp_data==self.BackgroundChannel.value] = 0
         for idx, active in enumerate(self.ActiveChannels.value):
-            if active == 0: # and idx != self.BackgroundChannel.value:
+            if active == 0:
                 result[tmp_data==idx+1] = 0
 
     def propagateDirty(self, inputSlot, subindex, roi):

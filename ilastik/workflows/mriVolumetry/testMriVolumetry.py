@@ -59,6 +59,20 @@ class TestOpMriBinarizeImage(unittest.TestCase):
         assert np.all(np.unique(out) == [0, 1]), \
             'Not a binary image (0,1)'
 
+    def testSingleChannel(self):
+        vol = np.ones_like(self.vol)
+        vol = vigra.taggedView(vol, axistags='xyz')
+        g = Graph()
+        op = OpMriBinarizeImage(graph=g)
+        op.Input.setValue(vol)
+
+        op.ActiveChannels.setValue(np.zeros((1,), dtype=int))
+        out = op.Output[...].wait()
+
+        op.ActiveChannels.setValue(np.array([1], dtype=int))
+        out = op.Output[...].wait()
+
+
 class TestOpFanOut(unittest.TestCase):
     def setUp(self):
         self.num_channels = 4
