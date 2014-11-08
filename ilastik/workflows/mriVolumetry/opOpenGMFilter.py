@@ -115,8 +115,9 @@ class OpOpenGMFilter(Operator):
             
         inf.setStartingPoint(init_data)
         inf.infer(inf.verboseVisitor())
-        out[:] = opengm.makeMaskedState(mask, inf.arg(), labelIdx=0) + 1
+        out[:] = opengm.makeMaskedState(mask, inf.arg(), labelIdx=0)+1
         # +1 to adjust the indices
+        out[mask==0] = 0
 
 
 class OpBrainMask(Operator):
