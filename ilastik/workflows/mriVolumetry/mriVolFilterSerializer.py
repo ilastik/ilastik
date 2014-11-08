@@ -16,7 +16,7 @@ class MriVolFilterSerializer(AppletSerializer):
     ...
     """
 
-    version = "0.3"
+    version = "0.4"
 
     def __init__(self, op, projectFileGroupName):
         slots = [SerialDictSlot(op.Configuration),
@@ -34,6 +34,9 @@ class MriVolFilterSerializer(AppletSerializer):
 
     def _serializeToHdf5(self, group, hdf5File, projectFilePath):
         slot = self.operator.LabelNames
+        if len(slot) < 1:
+            # no data yet
+            return
         if slot[0].partner is not None:
             # slot is connected, upstream will serialize the names
             data = None

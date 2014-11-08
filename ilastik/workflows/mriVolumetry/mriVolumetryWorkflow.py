@@ -9,6 +9,9 @@ from mriVolReportApplet import MriVolReportApplet
 from ilastik.applets.pixelClassification import PixelClassificationApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
 
+import numpy as np
+import vigra
+
 
 class MriVolumetryWorkflowBase(Workflow):
     workflowName = "MRI Volumetry Base"
@@ -173,6 +176,39 @@ class MriVolumetryWorkflowPixel(MriVolumetryWorkflowBase):
                     all([sub[i].ready() for i in range(nRoles)])
         else:
             ready = False
-        # TODO check availability of features, pc
-        super(self.__class__, self).handleAppletStateUpdateRequested(ready)
+
+        input_ready = ready
+        cumulated_readyness = ready
+        self._shell.setAppletEnabled(self.featureSelectionApplet,
+                                     cumulated_readyness)
+
+        def reallyReady(s):
+            r = (len(s) > 0
+                 and s[0].ready()
+                 and np.prod(s[0].meta.shape) > 0)
+            return r
+
+        opFeatureSelection = self.featureSelectionApplet.topLevelOperator
+        features_ready = reallyReady(opFeatureSelection.OutputImage)
+        cumulated_readyness = cumulated_readyness and features_ready
+        self._shell.setAppletEnabled(self.pcApplet, cumulated_readyness)
+
+        slot = self.pcApplet.topLevelOperator.PredictionProbabilities
+        predictions_ready = reallyReady(slot)
+
+        cumulated_readyness = cumulated_readyness and predictions_ready
+
+        # Problems can occur if the features or input data are changed during
+        # live update mode.
+        # Don't let the user do that.
+        opPixelClassification = self.pcApplet.topLevelOperator
+        live_update_active = not opPixelClassification.FreezePredictions.value
+
+        self._shell.setAppletEnabled(self.dataSelectionApplet,
+                                     not live_update_active)
+        self._shell.setAppletEnabled(self.featureSelectionApplet,
+                                     input_ready and not live_update_active)
+
+        super(self.__class__, self).handleAppletStateUpdateRequested(
+            cumulated_readyness)
 
