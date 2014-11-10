@@ -166,6 +166,8 @@ class OpNanshePreprocessDataCached(Operator):
     WhichQuantile = InputSlot(value=0.15, stype='float')
     TemporalSmoothingGaussianFilterStdev = InputSlot(value=5.0, stype='float')
     SpatialSmoothingGaussianFilterStdev = InputSlot(value=5.0, stype='float')
+    TemporalSmoothingGaussianFilterWindowSize = InputSlot(value=5.0, stype='float')
+    SpatialSmoothingGaussianFilterWindowSize = InputSlot(value=5.0, stype='float')
     BiasEnabled = InputSlot(value=False, stype='bool')
     Bias = InputSlot(value=0.0, stype='float')
 
@@ -193,6 +195,8 @@ class OpNanshePreprocessDataCached(Operator):
         self.opNansheExtractF0.WhichQuantile.connect(self.WhichQuantile)
         self.opNansheExtractF0.TemporalSmoothingGaussianFilterStdev.connect(self.TemporalSmoothingGaussianFilterStdev)
         self.opNansheExtractF0.SpatialSmoothingGaussianFilterStdev.connect(self.SpatialSmoothingGaussianFilterStdev)
+        self.opNansheExtractF0.TemporalSmoothingGaussianFilterWindowSize.connect(self.TemporalSmoothingGaussianFilterWindowSize)
+        self.opNansheExtractF0.SpatialSmoothingGaussianFilterWindowSize.connect(self.SpatialSmoothingGaussianFilterWindowSize)
         self.opNansheExtractF0.BiasEnabled.connect(self.BiasEnabled)
         self.opNansheExtractF0.Bias.connect(self.Bias)
 
