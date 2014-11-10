@@ -34,6 +34,7 @@ from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.nanshe.preprocessing.nanshePreprocessingApplet import NanshePreprocessingApplet
 from ilastik.applets.nanshe.dictionaryLearning.nansheDictionaryLearningApplet import NansheDictionaryLearningApplet
 from ilastik.applets.nanshe.postprocessing.nanshePostprocessingApplet import NanshePostprocessingApplet
+from ilastik.applets.nanshe.dataExport.nansheDataExportApplet import NansheDataExportApplet
 
 
 class NansheWorkflow(Workflow):
@@ -49,25 +50,37 @@ class NansheWorkflow(Workflow):
         self.nanshePreprocessingApplet = NanshePreprocessingApplet(self, "Preprocessing", "NanshePreprocessing")
         self.nansheDictionaryLearningApplet = NansheDictionaryLearningApplet(self, "DictionaryLearning", "NansheDictionaryLearning")
         self.nanshePostprocessingApplet = NanshePostprocessingApplet(self, "Postprocessing", "NanshePostprocessing")
+        self.nansheDataExportApplet = NansheDataExportApplet(self, "Data Export")
 
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
+
+        opDataExport = self.nansheDataExportApplet.topLevelOperator
+        opDataExport.SelectionNames.setValue( ['Segmentation'] )
+        opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
 
         self._applets.append( self.dataSelectionApplet )
         self._applets.append( self.nanshePreprocessingApplet )
         self._applets.append( self.nansheDictionaryLearningApplet )
         self._applets.append( self.nanshePostprocessingApplet )
+        self._applets.append( self.nansheDataExportApplet )
 
     def connectLane(self, laneIndex):
         opDataSelection = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)        
         opPreprocessing = self.nanshePreprocessingApplet.topLevelOperator.getLane(laneIndex)
         opDictionaryLearning = self.nansheDictionaryLearningApplet.topLevelOperator.getLane(laneIndex)
         opPostprocessing = self.nanshePostprocessingApplet.topLevelOperator.getLane(laneIndex)
+        opDataExport = self.nansheDataExportApplet.topLevelOperator.getLane(laneIndex)
 
         # Connect top-level operators
         opPreprocessing.InputImage.connect( opDataSelection.Image )
         opDictionaryLearning.InputImage.connect( opPreprocessing.CacheOutput )
         opPostprocessing.InputImage.connect( opDictionaryLearning.Output )
+
+        opDataExport.RawData.connect( opDataSelection.Image )
+        opDataExport.RawDatasetInfo.connect( opDataSelection.DatasetGroup[0] )
+        opDataExport.Inputs.resize(1)
+        opDataExport.Inputs[0].connect( opPostprocessing.Output )
 
     def menus(self):
         from PyQt4.QtGui import QMenu
