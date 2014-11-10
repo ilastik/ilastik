@@ -56,6 +56,8 @@ class NanshePreprocessingGui(LayerViewerGui):
         self.topLevelOperatorView = topLevelOperatorView
         self.ndim = 0
         super(NanshePreprocessingGui, self).__init__(parentApplet, self.topLevelOperatorView)
+
+        self._register_notify_dirty()
             
     def initAppletDrawerUi(self):
         # Load the ui file (find it in our own directory)
@@ -75,6 +77,46 @@ class NanshePreprocessingGui(LayerViewerGui):
         self._drawer.BiasEnabled.clicked.connect(self.applyBiasEnabled)
 
         self._drawer.WaveletTransformEnabled.clicked.connect(self.applyWaveletTransformEnabled)
+
+    def _register_notify_dirty(self):
+        self.topLevelOperatorView.ToRemoveZeroedLines.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.ErosionShape.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.DilationShape.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+
+        self.topLevelOperatorView.ToExtractF0.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.HalfWindowSize.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.WhichQuantile.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.TemporalSmoothingGaussianFilterStdev.notifyDirty(
+            self.apply_dirty_operator_settings_to_gui
+        )
+        self.topLevelOperatorView.SpatialSmoothingGaussianFilterStdev.notifyDirty(
+            self.apply_dirty_operator_settings_to_gui
+        )
+        self.topLevelOperatorView.BiasEnabled.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.Bias.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+
+        self.topLevelOperatorView.ToWaveletTransform.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.Scale.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+
+    def _unregister_notify_dirty(self):
+        self.topLevelOperatorView.ToRemoveZeroedLines.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.ErosionShape.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.DilationShape.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+
+        self.topLevelOperatorView.ToExtractF0.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.HalfWindowSize.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.WhichQuantile.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.TemporalSmoothingGaussianFilterStdev.unregisterDirty(
+            self.apply_dirty_operator_settings_to_gui
+        )
+        self.topLevelOperatorView.SpatialSmoothingGaussianFilterStdev.unregisterDirty(
+            self.apply_dirty_operator_settings_to_gui
+        )
+        self.topLevelOperatorView.BiasEnabled.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.Bias.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+
+        self.topLevelOperatorView.ToWaveletTransform.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.Scale.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
 
     def applyRemoveZeroedLinesEnabled(self, checked):
         print("checked = " + repr(checked))
@@ -113,10 +155,14 @@ class NanshePreprocessingGui(LayerViewerGui):
     def apply_operator_settings_to_gui(self):
         self.ndim = len(self.topLevelOperatorView.InputImage.meta.shape)
 
+        self._unregister_notify_dirty()
+
         if not isinstance(self.topLevelOperatorView.Scale.value, (list, tuple)):
             self.topLevelOperatorView.Scale.setValue(self.ndim*[self.topLevelOperatorView.Scale.value])
         elif len(self.topLevelOperatorView.Scale.value) == 1:
             self.topLevelOperatorView.Scale.setValue(self.ndim*[self.topLevelOperatorView.Scale.value[0]])
+
+        self._register_notify_dirty()
 
         assert(4 <= self.ndim <= 5)
 
@@ -206,7 +252,12 @@ class NanshePreprocessingGui(LayerViewerGui):
             self._drawer.ScaleValue_Y.setValue(self.topLevelOperatorView.Scale.value[2])
             self._drawer.ScaleValue_X.setValue(self.topLevelOperatorView.Scale.value[3])
 
+    def apply_dirty_operator_settings_to_gui(self, slot, roi, **kwargs):
+        self.apply_operator_settings_to_gui()
+
     def apply_gui_settings_to_operator(self):
+        self._unregister_notify_dirty()
+
         if self.ndim == 4:
             self._drawer.ErosionShapeValue_Z.hide()
             self._drawer.DilationShapeValue_Z.hide()
@@ -279,6 +330,8 @@ class NanshePreprocessingGui(LayerViewerGui):
 
             self.topLevelOperatorView.ToWaveletTransform.setValue(self._drawer.WaveletTransformEnabled.isChecked())
             self.topLevelOperatorView.Scale.setValue([self._drawer.ScaleValue_T.value(), self._drawer.ScaleValue_Z.value(), self._drawer.ScaleValue_Y.value(), self._drawer.ScaleValue_X.value()])
+
+        self._register_notify_dirty()
 
         for i in xrange(len(self.layerstack)):
             if self.layerstack[i].name == "Output":
