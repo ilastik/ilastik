@@ -35,6 +35,8 @@ class NanshePreprocessingSerializer(AppletSerializer):
                                                                    SerialSlot(operator.WhichQuantile, selfdepends=True),
                                                                    SerialSlot(operator.TemporalSmoothingGaussianFilterStdev, selfdepends=True),
                                                                    SerialSlot(operator.SpatialSmoothingGaussianFilterStdev, selfdepends=True),
+                                                                   SerialSlot(operator.TemporalSmoothingGaussianFilterWindowSize, selfdepends=True),
+                                                                   SerialSlot(operator.SpatialSmoothingGaussianFilterWindowSize, selfdepends=True),
                                                                    SerialSlot(operator.BiasEnabled, selfdepends=True),
                                                                    SerialSlot(operator.Bias, selfdepends=True),
                                                                    SerialSlot(operator.ToWaveletTransform, selfdepends=True),
