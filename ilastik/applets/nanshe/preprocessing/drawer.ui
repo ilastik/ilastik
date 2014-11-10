@@ -327,7 +327,7 @@
          </layout>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout">
+         <layout class="QHBoxLayout" name="SpatialSmoothing">
           <item>
            <widget class="QLabel" name="SpatialSmoothingLabel">
             <property name="sizePolicy">
