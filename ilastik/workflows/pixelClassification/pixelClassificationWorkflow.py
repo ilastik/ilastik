@@ -344,6 +344,10 @@ class PixelClassificationWorkflow(Workflow):
             return self.opBatchPredictionPipeline.HeadlessUint8PredictionProbabilities
         
         raise Exception("Unknown headless output slot")
+
+
+    def getSecondaryHeadlessOutputSlots(self, slotId):
+        return []
     
     def onProjectLoaded(self, projectManager):
         """

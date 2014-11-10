@@ -103,6 +103,8 @@ def runWorkflow(cluster_args):
     ilastik_main_args.logfile = cluster_args.logfile
     ilastik_main_args.process_name = cluster_args.process_name
     
+    assert cluster_args.project is not None, "Didn't get a project file."
+    
     # Read the config file
     configFilePath = cluster_args.option_config_file
     config = parseClusterConfigFile( configFilePath )
@@ -125,14 +127,17 @@ def runWorkflow(cluster_args):
     assert finalOutputSlot is not None
 
     secondaryOutputSlots = workflow.getSecondaryHeadlessOutputSlots( config.output_slot_id )
-    secondaryOutputDescriptions = cluster_args.secondary_output_description_file # This is a list (see 'action' above)
+    secondaryOutputDescriptions = cluster_args.secondary_output_description_file or [] # This is a list (see 'action' above)
     if len(secondaryOutputDescriptions) != len(secondaryOutputSlots):
-        raise RuntimeError( "This workflow produces exactly {} SECONDARY outputs.  You provided {}.".format( len(secondaryOutputSlots), len(secondaryOutputDescriptions) ) )
+        raise RuntimeError( "This workflow produces exactly {} SECONDARY outputs.  "
+                            "You provided {}.".format( len(secondaryOutputSlots), 
+                                                       len(secondaryOutputDescriptions) ) )
     
     clusterOperator = None
     try:
         if cluster_args._node_work_ is not None:
-            clusterOperator, resultSlot = prepare_node_cluster_operator(cluster_args, 
+            clusterOperator, resultSlot = prepare_node_cluster_operator(config,
+                                                                        cluster_args, 
                                                                         finalOutputSlot, 
                                                                         secondaryOutputSlots, 
                                                                         secondaryOutputDescriptions)
@@ -166,60 +171,60 @@ def runWorkflow(cluster_args):
     if not result:
         logger.error( "FAILED TO COMPLETE!" )
 
-    def prepare_node_cluster_operator(cluster_args, finalOutputSlot, secondaryOutputSlots, secondaryOutputDescriptions):
-        # We're doing node work
-        opClusterTaskWorker = OperatorWrapper( OpTaskWorker, parent=finalOutputSlot.getRealOperator().parent )
+def prepare_node_cluster_operator(config, cluster_args, finalOutputSlot, secondaryOutputSlots, secondaryOutputDescriptions):
+    # We're doing node work
+    opClusterTaskWorker = OperatorWrapper( OpTaskWorker, parent=finalOutputSlot.getRealOperator().parent )
 
-        # FIXME: Image index is hard-coded as 0.  We assume we are working with only one (big) dataset in cluster mode.            
-        opClusterTaskWorker.Input.connect( finalOutputSlot )
-        opClusterTaskWorker.RoiString[0].setValue( cluster_args._node_work_ )
-        opClusterTaskWorker.TaskName.setValue( cluster_args.process_name )
-        opClusterTaskWorker.ConfigFilePath.setValue( cluster_args.option_config_file )
+    # FIXME: Image index is hard-coded as 0.  We assume we are working with only one (big) dataset in cluster mode.            
+    opClusterTaskWorker.Input.connect( finalOutputSlot )
+    opClusterTaskWorker.RoiString[0].setValue( cluster_args._node_work_ )
+    opClusterTaskWorker.TaskName.setValue( cluster_args.process_name )
+    opClusterTaskWorker.ConfigFilePath.setValue( cluster_args.option_config_file )
 
-        # Configure optional slots first for efficiency (avoid multiple calls to setupOutputs)
-        opClusterTaskWorker.SecondaryInputs[0].resize( len( secondaryOutputSlots ) )
-        opClusterTaskWorker.SecondaryOutputDescriptions[0].resize( len( secondaryOutputSlots ) )
-        for i in range( len(secondaryOutputSlots) ):
-            opClusterTaskWorker.SecondaryInputs[0][i].connect( secondaryOutputSlots[i][0] )
-            opClusterTaskWorker.SecondaryOutputDescriptions[0][i].setValue( secondaryOutputDescriptions[i] )
+    # Configure optional slots first for efficiency (avoid multiple calls to setupOutputs)
+    opClusterTaskWorker.SecondaryInputs[0].resize( len( secondaryOutputSlots ) )
+    opClusterTaskWorker.SecondaryOutputDescriptions[0].resize( len( secondaryOutputSlots ) )
+    for i in range( len(secondaryOutputSlots) ):
+        opClusterTaskWorker.SecondaryInputs[0][i].connect( secondaryOutputSlots[i][0] )
+        opClusterTaskWorker.SecondaryOutputDescriptions[0][i].setValue( secondaryOutputDescriptions[i] )
 
-        opClusterTaskWorker.OutputFilesetDescription.setValue( cluster_args.output_description_file )
+    opClusterTaskWorker.OutputFilesetDescription.setValue( cluster_args.output_description_file )
 
-        # If we have a way to report task progress (e.g. by updating the job name),
-        #  then subscribe to progress signals
-        if config.task_progress_update_command is not None:
-            def report_progress( progress ):
-                cmd = config.task_progress_update_command.format( progress=int(progress) )
-                def shell_call(shell_cmd):
-                    logger.debug( "Executing progress command: " + cmd )
-                    subprocess.call( shell_cmd, shell=True )
-                background_tasks.put( functools.partial( shell_call, cmd ) )
-            opClusterTaskWorker.innerOperators[0].progressSignal.subscribe( report_progress )
-        
-        resultSlot = opClusterTaskWorker.ReturnCode
-        clusterOperator = opClusterTaskWorker
-        return (clusterOperator, resultSlot)
+    # If we have a way to report task progress (e.g. by updating the job name),
+    #  then subscribe to progress signals
+    if config.task_progress_update_command is not None:
+        def report_progress( progress ):
+            cmd = config.task_progress_update_command.format( progress=int(progress) )
+            def shell_call(shell_cmd):
+                logger.debug( "Executing progress command: " + cmd )
+                subprocess.call( shell_cmd, shell=True )
+            background_tasks.put( functools.partial( shell_call, cmd ) )
+        opClusterTaskWorker.innerOperators[0].progressSignal.subscribe( report_progress )
+    
+    resultSlot = opClusterTaskWorker.ReturnCode
+    clusterOperator = opClusterTaskWorker
+    return (clusterOperator, resultSlot)
 
-    def prepare_master_cluster_operator(cluster_args, finalOutputSlot, secondaryOutputSlots, secondaryOutputDescriptions):
-        # We're the master
-        opClusterizeMaster = OperatorWrapper( OpClusterize, parent=finalOutputSlot.getRealOperator().parent )
+def prepare_master_cluster_operator(cluster_args, finalOutputSlot, secondaryOutputSlots, secondaryOutputDescriptions):
+    # We're the master
+    opClusterizeMaster = OperatorWrapper( OpClusterize, parent=finalOutputSlot.getRealOperator().parent )
 
-        opClusterizeMaster.Input.connect( finalOutputSlot )
-        opClusterizeMaster.ProjectFilePath.setValue( cluster_args.project )
-        opClusterizeMaster.OutputDatasetDescription.setValue( cluster_args.output_description_file )
+    opClusterizeMaster.Input.connect( finalOutputSlot )
+    opClusterizeMaster.ProjectFilePath.setValue( cluster_args.project )
+    opClusterizeMaster.OutputDatasetDescription.setValue( cluster_args.output_description_file )
 
-        # Configure optional slots first for efficiency (avoid multiple calls to setupOutputs)
-        opClusterizeMaster.SecondaryInputs[0].resize( len( secondaryOutputSlots ) )
-        opClusterizeMaster.SecondaryOutputDescriptions[0].resize( len( secondaryOutputSlots ) )
-        for i in range( len(secondaryOutputSlots) ):
-            opClusterizeMaster.SecondaryInputs[0][i].connect( secondaryOutputSlots[i][0] )
-            opClusterizeMaster.SecondaryOutputDescriptions[0][i].setValue( secondaryOutputDescriptions[i] )    
+    # Configure optional slots first for efficiency (avoid multiple calls to setupOutputs)
+    opClusterizeMaster.SecondaryInputs[0].resize( len( secondaryOutputSlots ) )
+    opClusterizeMaster.SecondaryOutputDescriptions[0].resize( len( secondaryOutputSlots ) )
+    for i in range( len(secondaryOutputSlots) ):
+        opClusterizeMaster.SecondaryInputs[0][i].connect( secondaryOutputSlots[i][0] )
+        opClusterizeMaster.SecondaryOutputDescriptions[0][i].setValue( secondaryOutputDescriptions[i] )    
 
-        opClusterizeMaster.ConfigFilePath.setValue( cluster_args.option_config_file )
+    opClusterizeMaster.ConfigFilePath.setValue( cluster_args.option_config_file )
 
-        resultSlot = opClusterizeMaster.ReturnCode
-        clusterOperator = opClusterizeMaster
-        return (clusterOperator, resultSlot)
+    resultSlot = opClusterizeMaster.ReturnCode
+    clusterOperator = opClusterizeMaster
+    return (clusterOperator, resultSlot)
 
 if __name__ == "__main__":
 
@@ -228,8 +233,8 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     #debug = None
-    debug = 'Master'
-    #debug = 'Node'
+    #debug = 'Master'
+    debug = 'Node'
 
     # Task debug args
     if debug == 'Node' and len(sys.argv) == 1:
@@ -245,22 +250,22 @@ if __name__ == "__main__":
 #        args.append( "--sys_tmp_dir=/scratch/bergs")
 
         # pixel classification
-#        args.append( "--option_config_file=/nobackup/bock/ilastik_trials/bock11-256_cluster_options.json")
-#        args.append( "--project=/nobackup/bock/ilastik_trials/bock11-256.ilp")
-#        args.append( "--output_description_file=/nobackup/bock/ilastik_trials/results/results_description.json")
-#        args.append( "--sys_tmp_dir=/scratch/bergs")
-#        args.append( '--_node_work_=SubRegion:SubRegion(None, [0, 0, 0, 0], [1233, 1024, 1024, 2])' )
-#        args.append( "--process_name=JOB00" )
+        args.append( "--option_config_file=/magnetic/bock_pilot/cluster_debug/example_cluster_options.json")
+        args.append( "--project=/Users/bergs/MyProject.ilp")
+        args.append( "--output_description_file=/magnetic/bock_pilot/cluster_debug/results_description.json")
+        #args.append( "--sys_tmp_dir=/scratch/bergs")
+        args.append( '--_node_work_=SubRegion:SubRegion(None, [0, 60000, 60000, 0], [260, 61000, 61000, 3])' )
+        args.append( "--process_name=JOB00" )
 
-        args.append( "--option_config_file=/nobackup/bock/ilastik_trials/object_runs/bock11-256_object_cluster_options.json")
-        #args.append( "--project=/nobackup/bock/ilastik_trials/object_runs/MyMutant.ilp")
-        args.append( "--project=/nobackup/bock/ilastik_trials/object_runs/smaller_blockwise_object_test.ilp")
-        args.append( "--output_description_file=/nobackup/bock/ilastik_trials/object_runs/primary_results/object_prediction_description.json")
-        args.append( "--secondary_output_description_file=/nobackup/bock/ilastik_trials/object_runs/secondary_results_features/region_features_description.json")
-        args.append( '--_node_work_=SubRegion:SubRegion(None, [0, 1024, 0, 0, 0], [1, 2048, 1024, 1233, 1])' )
-        #args.append( '--_node_work_=SubRegion:SubRegion(None, [0, 1024, 0, 0, 0], [1, 2048, 1024, 1233, 1])' )
-        args.append("--process_name=JOBXX")
-        args.append( "--sys_tmp_dir=/scratch/bergs")
+#         args.append( "--option_config_file=/nobackup/bock/ilastik_trials/object_runs/bock11-256_object_cluster_options.json")
+#         #args.append( "--project=/nobackup/bock/ilastik_trials/object_runs/MyMutant.ilp")
+#         args.append( "--project=/nobackup/bock/ilastik_trials/object_runs/smaller_blockwise_object_test.ilp")
+#         args.append( "--output_description_file=/nobackup/bock/ilastik_trials/object_runs/primary_results/object_prediction_description.json")
+#         args.append( "--secondary_output_description_file=/nobackup/bock/ilastik_trials/object_runs/secondary_results_features/region_features_description.json")
+#         args.append( '--_node_work_=SubRegion:SubRegion(None, [0, 1024, 0, 0, 0], [1, 2048, 1024, 1233, 1])' )
+#         #args.append( '--_node_work_=SubRegion:SubRegion(None, [0, 1024, 0, 0, 0], [1, 2048, 1024, 1233, 1])' )
+#         args.append("--process_name=JOBXX")
+#         args.append( "--sys_tmp_dir=/scratch/bergs")
 
         sys.argv += args
 
@@ -292,13 +297,13 @@ if __name__ == "__main__":
 #        args.append( "--output_description_file=/nobackup/bock/ilastik_trials/pixel_results/results_description.json")
 #        args.append( "--sys_tmp_dir=/scratch/bergs")
 
-        # Synapse Object classification
-        args.append( "--option_config_file=/nobackup/bock/ilastik_trials/object_runs/bock11-256_object_cluster_options.json")
-        args.append( "--project=/nobackup/bock/ilastik_trials/object_runs/MyMutant.ilp")
-        #args.append( "--project=/nobackup/bock/ilastik_trials/object_runs/smaller_blockwise_object_test.ilp")
-        args.append( "--output_description_file=/nobackup/bock/ilastik_trials/object_runs/primary_results/object_prediction_description.json")
-        args.append( "--secondary_output_description_file=/nobackup/bock/ilastik_trials/object_runs/secondary_results_features/region_features_description.json")
-        args.append( "--sys_tmp_dir=/scratch/bergs")
+#         # Synapse Object classification
+#         args.append( "--option_config_file=/nobackup/bock/ilastik_trials/object_runs/bock11-256_object_cluster_options.json")
+#         args.append( "--project=/nobackup/bock/ilastik_trials/object_runs/MyMutant.ilp")
+#         #args.append( "--project=/nobackup/bock/ilastik_trials/object_runs/smaller_blockwise_object_test.ilp")
+#         args.append( "--output_description_file=/nobackup/bock/ilastik_trials/object_runs/primary_results/object_prediction_description.json")
+#         args.append( "--secondary_output_description_file=/nobackup/bock/ilastik_trials/object_runs/secondary_results_features/region_features_description.json")
+#         args.append( "--sys_tmp_dir=/scratch/bergs")
 
         sys.argv += args
 

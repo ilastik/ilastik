@@ -105,16 +105,9 @@ class OpTaskWorker(Operator):
         assert (blockwiseFileset.getEntireBlockRoi( roi.start )[1] == roi.stop).all(), "Each task must execute exactly one full block.  ({},{}) is not a valid block roi.".format( roi.start, roi.stop )
         assert self.Input.ready()
 
-        # Convert the task subrequest shape dict into a shape for this dataset (and axisordering)
-        subrequest_shape = map( lambda tag: config.task_subrequest_shape[tag.key], self.Input.meta.axistags )
-        primary_subrequest_shape = self._primaryBlockwiseFileset.description.sub_block_shape
-        if primary_subrequest_shape is not None:
-            # If the output dataset specified a sub_block_shape, override the cluster config
-            subrequest_shape = primary_subrequest_shape
-
         with Timer() as computeTimer:
             # Stream the data out to disk.
-            streamer = BigRequestStreamer(self.Input, (roi.start, roi.stop), subrequest_shape, config.task_parallel_subrequests )
+            streamer = BigRequestStreamer(self.Input, (roi.start, roi.stop) )
             streamer.progressSignal.subscribe( self.progressSignal )
             streamer.resultSignal.subscribe( self._handlePrimaryResultBlock )
             streamer.execute()
@@ -134,10 +127,11 @@ class OpTaskWorker(Operator):
         self._primaryBlockwiseFileset.writeData(roi, result)
 
         # Get this block's index with respect to the primary dataset
-        sub_block_index = roi[0] / self._primaryBlockwiseFileset.description.sub_block_shape
+        #sub_block_index = roi[0] / self._primaryBlockwiseFileset.description.sub_block_shape
         
         # Now request the secondaries
         for slot, fileset in zip(self.SecondaryInputs, self._secondaryBlockwiseFilesets):
+            assert False, "FIXME: secondary inputs need to be requested in the right blocks... or we need a new plan for this."
             # Compute the corresponding sub_block in this output dataset
             sub_block_shape = fileset.description.sub_block_shape
             sub_block_start = sub_block_index * sub_block_shape
@@ -171,11 +165,11 @@ class OpClusterize(Operator):
         # Check for errors
         primaryOutputDescription = BlockwiseFileset.readDescription(self.OutputDatasetDescription.value)
         primary_block_shape = primaryOutputDescription.block_shape
-        primary_sub_block_shape = primaryOutputDescription.sub_block_shape
-        assert primary_sub_block_shape is not None, "Primary output description file must specify a sub_block_shape"
+        #primary_sub_block_shape = primaryOutputDescription.sub_block_shape
+        #assert primary_sub_block_shape is not None, "Primary output description file must specify a sub_block_shape"
 
         # Ratio of blocks to sub-blocks for all secondaries must match the primary.
-        primary_sub_block_factor = (primary_block_shape + primary_sub_block_shape - 1) / primary_sub_block_shape
+        #primary_sub_block_factor = (primary_block_shape + primary_sub_block_shape - 1) / primary_sub_block_shape
         
         for i, slot in enumerate( self.SecondaryOutputDescriptions ):
             descriptionPath = slot.value
@@ -185,14 +179,10 @@ class OpClusterize(Operator):
             assert sub_block_shape is not None, "Secondary output description #{} doesn't specify a sub_block_shape".format( i )
             
             sub_block_factor = (block_shape + sub_block_shape - 1) / sub_block_shape
-            if (tuple(primary_sub_block_factor) != tuple(sub_block_factor)):
-                msg = "Error: Ratio of sub_block_shape to block_shape must be the same in the primary output dataset and in all secondary datasets.\n"
-                msg += "Secondary dataset {} has a factor of {}, which doesn't match primary factor of {}".format( i, sub_block_factor, primary_sub_block_factor )
-                raise RuntimeError(msg)
-    
-    def _validateConfig(self):
-        if not self._config.use_master_local_scratch:
-            assert self._config.node_output_compression_cmd is None, "Can't use node dataset compression unless master local scratch is also used."
+#             if (tuple(primary_sub_block_factor) != tuple(sub_block_factor)):
+#                 msg = "Error: Ratio of sub_block_shape to block_shape must be the same in the primary output dataset and in all secondary datasets.\n"
+#                 msg += "Secondary dataset {} has a factor of {}, which doesn't match primary factor of {}".format( i, sub_block_factor, primary_sub_block_factor )
+#                 raise RuntimeError(msg)
     
     def execute(self, slot, subindex, roi, result):
         dtypeBytes = self._getDtypeBytes()
@@ -202,8 +192,6 @@ class OpClusterize(Operator):
 
         configFilePath = self.ConfigFilePath.value
         self._config = parseClusterConfigFile( configFilePath )
-
-        self._validateConfig()
 
         # Create the destination file if necessary
         blockwiseFileset, taskInfos = self._prepareDestination()
