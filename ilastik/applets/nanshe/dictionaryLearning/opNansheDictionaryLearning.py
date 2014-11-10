@@ -54,8 +54,8 @@ class OpNansheDictionaryLearning(Operator):
     Ord = InputSlot(value=2.0)
 
     K = InputSlot(value=100, stype="int")
-    Gamma1 = InputSlot(value=0)
-    Gamma2 = InputSlot(value=0)
+    Gamma1 = InputSlot(value=0.0)
+    Gamma2 = InputSlot(value=0.0)
     NumThreads = InputSlot(value=1)
     Batchsize = InputSlot(value=256)
     NumIter = InputSlot(value=100, stype="int")
