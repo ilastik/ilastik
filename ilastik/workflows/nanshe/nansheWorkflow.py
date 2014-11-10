@@ -130,9 +130,11 @@ class NansheWorkflow(Workflow):
 
             bias = local_config.get("bias")
             temporal_smoothing_gaussian_filter_stdev = local_config["temporal_smoothing_gaussian_filter_stdev"]
+            temporal_smoothing_gaussian_filter_window_size = local_config["temporal_smoothing_gaussian_filter_window_size"]
             half_window_size = local_config["half_window_size"]
             which_quantile = local_config["which_quantile"]
             spatial_smoothing_gaussian_filter_stdev = local_config["spatial_smoothing_gaussian_filter_stdev"]
+            spatial_smoothing_gaussian_filter_window_size = local_config["spatial_smoothing_gaussian_filter_window_size"]
 
 
             self.nanshePreprocessingApplet.topLevelOperator.ToExtractF0.setValue(True)
@@ -144,9 +146,11 @@ class NansheWorkflow(Workflow):
                 self.nanshePreprocessingApplet.topLevelOperator.BiasEnabled.setValue(False)
 
             self.nanshePreprocessingApplet.topLevelOperator.TemporalSmoothingGaussianFilterStdev.setValue(temporal_smoothing_gaussian_filter_stdev)
+            self.nanshePreprocessingApplet.topLevelOperator.TemporalSmoothingGaussianFilterWindowSize.setValue(temporal_smoothing_gaussian_filter_window_size)
             self.nanshePreprocessingApplet.topLevelOperator.HalfWindowSize.setValue(half_window_size)
             self.nanshePreprocessingApplet.topLevelOperator.WhichQuantile.setValue(which_quantile)
             self.nanshePreprocessingApplet.topLevelOperator.SpatialSmoothingGaussianFilterStdev.setValue(spatial_smoothing_gaussian_filter_stdev)
+            self.nanshePreprocessingApplet.topLevelOperator.SpatialSmoothingGaussianFilterWindowSize.setValue(spatial_smoothing_gaussian_filter_window_size)
         else:
             self.nanshePreprocessingApplet.topLevelOperator.ToExtractF0.setValue(False)
 
@@ -330,6 +334,9 @@ class NansheWorkflow(Workflow):
                 extract_f0_config["__comment__temporal_smoothing_gaussian_filter_stdev"] = "What standard deviation to use for the smoothing gaussian applied along time."
                 extract_f0_config["temporal_smoothing_gaussian_filter_stdev"] = self.nanshePreprocessingApplet.topLevelOperator.TemporalSmoothingGaussianFilterStdev.value
 
+                extract_f0_config["__comment__temporal_smoothing_gaussian_filter_window_size"] = "Size of the window to use for the smoothing gaussian applied along time. Measured in standard deviations."
+                extract_f0_config["temporal_smoothing_gaussian_filter_window_size"] = self.nanshePreprocessingApplet.topLevelOperator.TemporalSmoothingGaussianFilterWindowSize.value
+
                 extract_f0_config["__comment__half_window_size"] = "How many frames to include in half of the window. All windows are odd. So, the total window size will be 2 * half_window_size + 1."
                 extract_f0_config["half_window_size"] = self.nanshePreprocessingApplet.topLevelOperator.HalfWindowSize.value
 
@@ -338,6 +345,9 @@ class NansheWorkflow(Workflow):
 
                 extract_f0_config["__comment__spatial_smoothing_gaussian_filter_stdev"] = "What standard deviation to use for the smoothing gaussian applied along each spatial dimension, independently."
                 extract_f0_config["spatial_smoothing_gaussian_filter_stdev"] = self.nanshePreprocessingApplet.topLevelOperator.SpatialSmoothingGaussianFilterStdev.value
+
+                extract_f0_config["__comment__spatial_smoothing_gaussian_filter_window_size"] = "Size of the window to use for the smoothing gaussian applied along each spatial dimension, independently. Measured in standard deviations."
+                extract_f0_config["spatial_smoothing_gaussian_filter_window_size"] = self.nanshePreprocessingApplet.topLevelOperator.SpatialSmoothingGaussianFilterWindowSize.value
 
 
             if self.nanshePreprocessingApplet.topLevelOperator.ToWaveletTransform.value:
