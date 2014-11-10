@@ -360,15 +360,14 @@ class OpPixelFeaturesPresmoothed(Operator):
         if slot == self.Features:
             key = roiToSlice(rroi.start, rroi.stop)
             index = subindex[0]
-            subslot = self.Features[index]
             key = list(key)
             channelIndex = self.Input.meta.axistags.index('c')
             
             # Translate channel slice to the correct location for the output slot.
             key[channelIndex] = slice(self.featureOutputChannels[index][0] + key[channelIndex].start,
                                       self.featureOutputChannels[index][0] + key[channelIndex].stop)
-            rroi = SubRegion(subslot, pslice=key)
-    
+            rroi = SubRegion(self.Output, pslice=key)
+
             # Get output slot region for this channel
             return self.execute(self.Output, (), rroi, result)
         elif slot == self.outputs["Output"]:
@@ -577,7 +576,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                                 destArea = result[tuple(reskey)]
                                 #print "destination area:", destArea.shape
                                 logger.debug(oldkey, destArea.shape, sourceArraysForSigmas[j].shape)
-                                oldroi = SubRegion(self.Input, pslice=oldkey)
+                                oldroi = SubRegion(oslot, pslice=oldkey)
                                 #print "passing roi:", oldroi
                                 closure = partial(oslot.operator.execute, oslot, (), oldroi, destArea, sourceArray = sourceArraysForSigmas[j])
                                 closures.append(closure)
@@ -851,7 +850,7 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
             # Translate channel slice to the correct location for the output slot.
             key[channelIndex] = slice(self.featureOutputChannels[index][0] + key[channelIndex].start,
                                       self.featureOutputChannels[index][0] + key[channelIndex].stop)
-            rroi = SubRegion(subslot, pslice=key)
+            rroi = SubRegion(self.Output, pslice=key)
     
             # Get output slot region for this channel
             return self.execute(self.Output, (), rroi, result)
@@ -1080,7 +1079,7 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                                     newRoi = copy.copy(roiSmootherList)
                                     newRoi.insert(axisindex, slice(begin, end, None))
                                     newRoi[zaxis] = slice(z, z+1, None)
-                                    newRoi = SubRegion(self.Input, pslice=newRoi)
+                                    newRoi = SubRegion(None, pslice=newRoi)
                                     #print "roi smoother:", roiSmoother
                                     
                                     zStart, zStop = roi.extendSlice(z, z+1, sourceArraysForSigmas[j].shape[zaxis], 0.7, self.WINDOW_SIZE)
@@ -1095,7 +1094,7 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                                     reskey[zaxis] = slice(iz, iz+1, None)
                                     
                                     destArea = result[tuple(reskey)]
-                                    roi_ = SubRegion(self.Input, pslice=key_)
+                                    roi_ = SubRegion(oslot, pslice=key_)
                                     
                                     #print "passing to filter:", sourceArraysForSigmas[j][0, 0, zStart:zStop, 0]                                
                                     #closure = partial(oslot.operator.execute, oslot, (), roi_, destArea, sourceArray = sourceArraysForSigmas[j][sourceKey])
@@ -1113,7 +1112,7 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
 
                                 destArea = result[tuple(reskey)]
                                 logger.debug(oldkey, destArea.shape, sourceArraysForSigmas[j].shape)
-                                oldroi = SubRegion(self.Input, pslice=oldkey)
+                                oldroi = SubRegion(oslot, pslice=oldkey)
                                 closure = partial(oslot.operator.execute, oslot, (), oldroi, destArea, sourceArray = sourceArraysForSigmas[j])
                                 closures.append(closure)
 
