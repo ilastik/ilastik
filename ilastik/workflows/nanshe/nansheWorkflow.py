@@ -78,6 +78,7 @@ class NansheWorkflow(Workflow):
             configuration_menu = QMenu("Configuration")
 
             configuration_menu.addAction("Import").triggered.connect(self._import_configuration)
+            configuration_menu.addAction("Export").triggered.connect(self._export_configuration)
 
             self._menus.append(configuration_menu)
 
@@ -254,3 +255,228 @@ class NansheWorkflow(Workflow):
         self.nanshePostprocessingApplet.topLevelOperator.Fuse_FractionMeanNeuronMaxThreshold.setValue(
             postprocess_config["merge_neuron_sets"]["fuse_neurons"]["fraction_mean_neuron_max_threshold"]
         )
+
+    def _export_configuration(self):
+        from PyQt4.QtGui import QFileDialog
+        import json
+        from collections import OrderedDict
+
+
+        filename = QFileDialog.getSaveFileName(caption="Export Configuration", filter="*.json")
+        filename = str(filename)
+
+
+        with open(filename, "w") as file_handle:
+            config = OrderedDict()
+            config["generate_neurons_blocks"] = OrderedDict()
+            generate_neurons_blocks_config = config["generate_neurons_blocks"]
+
+
+            generate_neurons_blocks_config["__comment__use_drmaa"] = "Whether to use DRMAA for job submission, false by default."
+            generate_neurons_blocks_config["use_drmaa"] = True
+
+            generate_neurons_blocks_config["__comment__num_drmaa_cores"] = "Number of cores per job."
+            generate_neurons_blocks_config["num_drmaa_cores"] = 1
+
+            generate_neurons_blocks_config["__comment__block_shape"] = "The shape of the blocks. -1 represents an unspecified length, which must be specified in num_blocks."
+            generate_neurons_blocks_config["block_shape"] = [10000, -1, -1]
+
+            generate_neurons_blocks_config["__comment__num_blocks"] = "The number of the blocks per dimension. -1 represents an unspecified length, which must be specified in block_shape."
+            generate_neurons_blocks_config["num_blocks"] = [-1, 8, 8]
+
+            generate_neurons_blocks_config["__comment__half_border_shape"] = "The shape of the border to remove. Trims on both sides of each axis."
+            generate_neurons_blocks_config["half_border_shape"] = [0, 16, 16]
+
+            generate_neurons_blocks_config["__comment__half_window_shape"] = "The shape of the overlap in each direction. The time portion must be bigger or equal to the half_window_size."
+            generate_neurons_blocks_config["half_window_shape"] = [400, 20, 20]
+
+            generate_neurons_blocks_config["__comment__debug"] = "Whether to include debug information. False by default."
+            generate_neurons_blocks_config["debug"] = False
+
+            generate_neurons_blocks_config["generate_neurons"] = OrderedDict()
+            generate_neurons_config = generate_neurons_blocks_config["generate_neurons"]
+
+
+            generate_neurons_config["__comment__run_stage"] = "Where to run until either preprocessing, dictionary, or postprocessing. If resume, is true then it will delete the previous results at this stage. By default (all can be set explicitly to null string) runs all the way through."
+            generate_neurons_config["run_stage"] = ""
+
+
+            generate_neurons_config["__comment__preprocess_data"] = "Performs all processing before dictionary learning."
+            generate_neurons_config["preprocess_data"] = OrderedDict()
+            preprocess_data_config = generate_neurons_config["preprocess_data"]
+
+
+            if self.nanshePreprocessingApplet.topLevelOperator.ToRemoveZeroedLines.value:
+                preprocess_data_config["__comment__remove_zeroed_lines"] = "Optional. Interpolates over missing lines that could not be registered. This is done by finding an outline around all missing points to use for calculating the interpolation."
+                preprocess_data_config["remove_zeroed_lines"] = OrderedDict()
+                remove_zeroed_lines_config = preprocess_data_config["remove_zeroed_lines"]
+
+                remove_zeroed_lines_config["__comment__erosion_shape"] = "Kernel shape for performing erosion. Axis order is [y, x] or [z, y, x]."
+                remove_zeroed_lines_config["__comment__dilation_shape"] = "Kernel shape for performing dilation. Axis order is [y, x] or [z, y, x]."
+
+                remove_zeroed_lines_config["erosion_shape"] = self.nanshePreprocessingApplet.topLevelOperator.ErosionShape.value
+                remove_zeroed_lines_config["dilation_shape"] = self.nanshePreprocessingApplet.topLevelOperator.DilationShape.value
+
+
+            if self.nanshePreprocessingApplet.topLevelOperator.ToExtractF0.value:
+                preprocess_data_config["__comment__extract_f0"] = "Optional. Estimates and removes f0 from the data using a percentile (rank order) filter."
+                preprocess_data_config["extract_f0"] = OrderedDict()
+                extract_f0_config = preprocess_data_config["extract_f0"]
+
+                if self.nanshePreprocessingApplet.topLevelOperator.BiasEnabled.value:
+                    extract_f0_config["__comment__bias"] = "To avoid division by zero, this constant is added to the data. If unspecified, a bias will be found so that the smallest value is 1."
+                    extract_f0_config["bias"] = self.nanshePreprocessingApplet.topLevelOperator.Bias.value
+
+                extract_f0_config["__comment__temporal_smoothing_gaussian_filter_stdev"] = "What standard deviation to use for the smoothing gaussian applied along time."
+                extract_f0_config["temporal_smoothing_gaussian_filter_stdev"] = self.nanshePreprocessingApplet.topLevelOperator.TemporalSmoothingGaussianFilterStdev.value
+
+                extract_f0_config["__comment__half_window_size"] = "How many frames to include in half of the window. All windows are odd. So, the total window size will be 2 * half_window_size + 1."
+                extract_f0_config["half_window_size"] = self.nanshePreprocessingApplet.topLevelOperator.HalfWindowSize.value
+
+                extract_f0_config["__comment__which_quantile"] = "The quantile to be used for filtering. Must be a single float from [0.0, 1.0]. If set to 0.5, this is a median filter."
+                extract_f0_config["which_quantile"] = self.nanshePreprocessingApplet.topLevelOperator.WhichQuantile.value
+
+                extract_f0_config["__comment__spatial_smoothing_gaussian_filter_stdev"] = "What standard deviation to use for the smoothing gaussian applied along each spatial dimension, independently."
+                extract_f0_config["spatial_smoothing_gaussian_filter_stdev"] = self.nanshePreprocessingApplet.topLevelOperator.SpatialSmoothingGaussianFilterStdev.value
+
+
+            if self.nanshePreprocessingApplet.topLevelOperator.ToWaveletTransform.value:
+                preprocess_data_config["__comment__wavelet_transform"] = "Optional. Runs a wavelet transform on the data."
+                preprocess_data_config["wavelet_transform"] = OrderedDict()
+                wavelet_transform_config = preprocess_data_config["wavelet_transform"]
+
+                wavelet_transform_config["__comment__scale"] = "This can be a single value, which is then applied on all axes or it can be an array. For the array, the axis order is [t, y, x] for 2D and [t, z, y, x] for 3D."
+                wavelet_transform_config["scale"] = self.nanshePreprocessingApplet.topLevelOperator.Scale.value
+
+
+            preprocess_data_config["__comment__normalize_data"] = "How to normalize data. L_2 norm recommended."
+            preprocess_data_config["normalize_data"] = OrderedDict()
+            preprocess_data_config["normalize_data"]["simple_image_processing.renormalized_images"] = OrderedDict()
+            preprocess_data_config["normalize_data"]["simple_image_processing.renormalized_images"]["ord"] = 2
+
+
+
+            generate_neurons_config["__comment__generate_dictionary"] = "Wrapper function that calls spams.trainDL. Comments borrowed from SPAMS documentation ( http://spams-devel.gforge.inria.fr/doc-python/html/doc_spams004.html#sec5 ). Only relevant parameters have comments included here."
+            generate_neurons_config["generate_dictionary"] = OrderedDict()
+            generate_dictionary_config = generate_neurons_config["generate_dictionary"]
+
+            generate_dictionary_config["__comment__spams.trainDL"] = "spams.trainDL is an efficient implementation of the dictionary learning technique presented in 'Online Learning for Matrix Factorization and Sparse Coding' by Julien Mairal, Francis Bach, Jean Ponce and Guillermo Sapiro arXiv:0908.0050"
+            generate_dictionary_config["spams.trainDL"] = OrderedDict()
+
+            generate_dictionary_config["spams.trainDL"]["K"] = self.nansheDictionaryLearningApplet.topLevelOperator.K.value
+            generate_dictionary_config["spams.trainDL"]["gamma1"] = self.nansheDictionaryLearningApplet.topLevelOperator.Gamma1.value
+            generate_dictionary_config["spams.trainDL"]["gamma2"] = self.nansheDictionaryLearningApplet.topLevelOperator.Gamma2.value
+            generate_dictionary_config["spams.trainDL"]["numThreads"] = self.nansheDictionaryLearningApplet.topLevelOperator.NumThreads.value
+            generate_dictionary_config["spams.trainDL"]["batchsize"] = self.nansheDictionaryLearningApplet.topLevelOperator.Batchsize.value
+            generate_dictionary_config["spams.trainDL"]["iter"] = self.nansheDictionaryLearningApplet.topLevelOperator.NumIter.value
+            generate_dictionary_config["spams.trainDL"]["lambda1"] = self.nansheDictionaryLearningApplet.topLevelOperator.Lambda1.value
+            generate_dictionary_config["spams.trainDL"]["lambda2"] = self.nansheDictionaryLearningApplet.topLevelOperator.Lambda2.value
+            generate_dictionary_config["spams.trainDL"]["posAlpha"] = True
+            generate_dictionary_config["spams.trainDL"]["posD"] = True
+            generate_dictionary_config["spams.trainDL"]["clean"] = True
+            generate_dictionary_config["spams.trainDL"]["mode"] = 2
+            generate_dictionary_config["spams.trainDL"]["modeD"] = 0
+
+
+
+            generate_neurons_config["postprocess_data"] = OrderedDict()
+            postprocess_data_config = generate_neurons_config["postprocess_data"]
+
+
+            postprocess_data_config["__comment__wavelet_denoising"] = "Performs segmentation on each basis image to extract neurons."
+            postprocess_data_config["wavelet_denoising"] = OrderedDict()
+            wavelet_denoising_config = postprocess_data_config["wavelet_denoising"]
+
+            wavelet_denoising_config["__comment__denoising.estimate_noise"] = "Estimates the upper bound on the noise by finding the standard deviation on a subset of the data. The subset is determined by finding the standard deviation ( std_all ) for all of the data and determining what is within that std_all*significance_threshold. It is recommended that significance_threshold is left at 3.0."
+            wavelet_denoising_config["denoising.estimate_noise"] = OrderedDict()
+            wavelet_denoising_config["denoising.estimate_noise"]["significance_threshold"] = self.nanshePostprocessingApplet.topLevelOperator.SignificanceThreshold.value
+
+            wavelet_denoising_config["__comment__wavelet_transform.wavelet_transform"] = "Performed on the basis image."
+            wavelet_denoising_config["wavelet_transform.wavelet_transform"] = OrderedDict()
+            wavelet_denoising_config["wavelet_transform.wavelet_transform"]["__comment__scale"] = "Scalars are applied to all dimensions. It is recommended that this be symmetric."
+            wavelet_denoising_config["wavelet_transform.wavelet_transform"]["scale"] = self.nanshePostprocessingApplet.topLevelOperator.WaveletTransformScale.value
+
+            wavelet_denoising_config["__comment__denoising.significant_mask"] = "Using the noise estimate from denoising.estimate_noise and the wavelet transformed image from wavelet_transform.wavelet_transform, anything within the noise range from before scaled up by the noise_threshold. Typical values are 2.0-4.0."
+            wavelet_denoising_config["denoising.significant_mask"] = OrderedDict()
+            wavelet_denoising_config["denoising.significant_mask"]["noise_threshold"] = self.nanshePostprocessingApplet.topLevelOperator.NoiseThreshold.value
+
+
+            wavelet_denoising_config["__comment__accepted_region_shape_constraints"] = "Set of region constraints to determine if the wavelet transform is too high for that region. If so, the next lowest transform replaces it."
+            wavelet_denoising_config["accepted_region_shape_constraints"] = OrderedDict()
+            wavelet_denoising_config["accepted_region_shape_constraints"]["__comment__major_axis_length"] = "Acceptable range or single bound for the major axis length."
+
+            if self.nanshePostprocessingApplet.topLevelOperator.AcceptedRegionShapeConstraints_MajorAxisLength_Min_Enabled.value or\
+                self.nanshePostprocessingApplet.topLevelOperator.AcceptedRegionShapeConstraints_MajorAxisLength_Max_Enabled.value:
+                wavelet_denoising_config["accepted_region_shape_constraints"]["major_axis_length"] = OrderedDict()
+
+                if self.nanshePostprocessingApplet.topLevelOperator.AcceptedRegionShapeConstraints_MajorAxisLength_Min_Enabled.value:
+                    wavelet_denoising_config["accepted_region_shape_constraints"]["major_axis_length"]["min"] =\
+                        self.nanshePostprocessingApplet.topLevelOperator.AcceptedRegionShapeConstraints_MajorAxisLength_Min.value
+                if self.nanshePostprocessingApplet.topLevelOperator.AcceptedRegionShapeConstraints_MajorAxisLength_Max_Enabled.value:
+                    wavelet_denoising_config["accepted_region_shape_constraints"]["major_axis_length"]["max"] =\
+                        self.nanshePostprocessingApplet.topLevelOperator.AcceptedRegionShapeConstraints_MajorAxisLength_Max.value
+
+
+            wavelet_denoising_config["__comment__remove_low_intensity_local_maxima"] = "Removes regions that don't have enough pixels below their max."
+            wavelet_denoising_config["remove_low_intensity_local_maxima"] = OrderedDict()
+            wavelet_denoising_config["remove_low_intensity_local_maxima"]["__comment__percentage_pixels_below_max"] = "Ratio of pixels below their max to number of pixels in the region. This sets the upper bound."
+            wavelet_denoising_config["remove_low_intensity_local_maxima"]["percentage_pixels_below_max"] =\
+                self.nanshePostprocessingApplet.topLevelOperator.PercentagePixelsBelowMax.value
+
+
+            wavelet_denoising_config["__comment__remove_too_close_local_maxima"] = "Removes regions that are too close to each other. Keeps the one with the highest intensity. No other tie breakers."
+            wavelet_denoising_config["remove_too_close_local_maxima"] = OrderedDict()
+            wavelet_denoising_config["remove_too_close_local_maxima"]["__comment__min_local_max_distance"] = "Constraint on how close they can be."
+            wavelet_denoising_config["remove_too_close_local_maxima"]["min_local_max_distance"] =\
+                self.nanshePostprocessingApplet.topLevelOperator.MinLocalMaxDistance.value
+
+
+            wavelet_denoising_config["__comment__accepted_neuron_shape_constraints"] = "Constraints required for a region to be extracted and used as a neuron."
+            wavelet_denoising_config["accepted_neuron_shape_constraints"] = OrderedDict()
+
+            if self.nanshePostprocessingApplet.topLevelOperator.AcceptedNeuronShapeConstraints_Area_Min_Enabled.value or\
+                self.nanshePostprocessingApplet.topLevelOperator.AcceptedNeuronShapeConstraints_Area_Max_Enabled.value:
+                wavelet_denoising_config["accepted_neuron_shape_constraints"]["area"] = OrderedDict()
+
+                if self.nanshePostprocessingApplet.topLevelOperator.AcceptedNeuronShapeConstraints_Area_Min_Enabled.value:
+                    wavelet_denoising_config["accepted_neuron_shape_constraints"]["area"]["min"] =\
+                        self.nanshePostprocessingApplet.topLevelOperator.AcceptedNeuronShapeConstraints_Area_Min.value
+                if self.nanshePostprocessingApplet.topLevelOperator.AcceptedNeuronShapeConstraints_Area_Max_Enabled.value:
+                    wavelet_denoising_config["accepted_neuron_shape_constraints"]["area"]["max"] =\
+                        self.nanshePostprocessingApplet.topLevelOperator.AcceptedNeuronShapeConstraints_Area_Max.value
+
+            if self.nanshePostprocessingApplet.topLevelOperator.AcceptedNeuronShapeConstraints_Eccentricity_Min_Enabled.value or\
+                self.nanshePostprocessingApplet.topLevelOperator.AcceptedNeuronShapeConstraints_Eccentricity_Max_Enabled.value:
+                wavelet_denoising_config["accepted_neuron_shape_constraints"]["eccentricity"] = OrderedDict()
+
+                if self.nanshePostprocessingApplet.topLevelOperator.AcceptedNeuronShapeConstraints_Eccentricity_Min_Enabled.value:
+                    wavelet_denoising_config["accepted_neuron_shape_constraints"]["eccentricity"]["min"] =\
+                        self.nanshePostprocessingApplet.topLevelOperator.AcceptedNeuronShapeConstraints_Eccentricity_Min.value
+                if self.nanshePostprocessingApplet.topLevelOperator.AcceptedNeuronShapeConstraints_Eccentricity_Max_Enabled.value:
+                    wavelet_denoising_config["accepted_neuron_shape_constraints"]["eccentricity"]["max"] =\
+                        self.nanshePostprocessingApplet.topLevelOperator.AcceptedNeuronShapeConstraints_Eccentricity_Max.value
+
+
+
+            postprocess_data_config["__comment__merge_neuron_sets"] = "Merges sets of neurons that may be duplicated in the dictionary (i.e. if one neuron is active with two different sets of neurons, it may show up in two frames)."
+            postprocess_data_config["merge_neuron_sets"] = OrderedDict()
+            merge_neuron_sets_config = postprocess_data_config["merge_neuron_sets"]
+
+            merge_neuron_sets_config["__comment__alignment_min_threshold"] = "If the images associated with two neurons, are arranged as vectors. It would be possible to find the cosine of the angle between them. Then, this represents the lower bound for them to merge."
+            merge_neuron_sets_config["alignment_min_threshold"] =\
+                self.nanshePostprocessingApplet.topLevelOperator.AlignmentMinThreshold.value
+
+            merge_neuron_sets_config["__comment__overlap_min_threshold"] = "If the masks associated with two neurons, are arranged as vectors. It would be possible to find the L_1 norm between them. This could then be turned into a ratio by dividing by the area of either neuron. Then, this represents the lower bound for them to merge."
+            merge_neuron_sets_config["overlap_min_threshold"] =\
+                self.nanshePostprocessingApplet.topLevelOperator.OverlapMinThreshold.value
+
+            merge_neuron_sets_config["__comment__fuse_neurons"] = "Fuses two neurons into one."
+            merge_neuron_sets_config["fuse_neurons"] = OrderedDict()
+            merge_neuron_sets_config["fuse_neurons"]["__comment__fraction_mean_neuron_max_threshold"] = "When determining the mask of the fused neuron, it must not include any values less that max of the fused image times this threshold."
+            merge_neuron_sets_config["fuse_neurons"]["fraction_mean_neuron_max_threshold"] =\
+                self.nanshePostprocessingApplet.topLevelOperator.Fuse_FractionMeanNeuronMaxThreshold.value
+
+
+            json.dump(config, file_handle, indent=4, separators=(",", " : "))
+
+            file_handle.write("\n")
