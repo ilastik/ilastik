@@ -22,3 +22,9 @@ __author__ = "John Kirkham <kirkhamj@janelia.hhmi.org>"
 __date__ = "$Nov 10, 2014 17:28:16 EST$"
 
 
+
+from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
+
+
+class NansheDataExportApplet(DataExportApplet):
+    pass
