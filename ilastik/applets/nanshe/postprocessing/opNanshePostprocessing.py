@@ -63,7 +63,7 @@ class OpNanshePostprocessing(Operator):
 
     AcceptedNeuronShapeConstraints_Area_Min = InputSlot(value=45, stype="int")
     AcceptedNeuronShapeConstraints_Area_Min_Enabled = InputSlot(value=True, stype="bool")
-    AcceptedNeuronShapeConstraints_Area_Max = InputSlot(value=60, stype="int")
+    AcceptedNeuronShapeConstraints_Area_Max = InputSlot(value=600, stype="int")
     AcceptedNeuronShapeConstraints_Area_Max_Enabled = InputSlot(value=True, stype="bool")
 
     AcceptedNeuronShapeConstraints_Eccentricity_Min = InputSlot(value=0.0, stype="float")
