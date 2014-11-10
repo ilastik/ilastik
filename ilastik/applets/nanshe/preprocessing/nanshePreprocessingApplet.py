@@ -46,6 +46,7 @@ class NanshePreprocessingApplet( StandardApplet ):
         return ["ToRemoveZeroedLines", "ErosionShape", "DilationShape", \
         "ToExtractF0", "HalfWindowSize", "WhichQuantile", \
         "TemporalSmoothingGaussianFilterStdev", "SpatialSmoothingGaussianFilterStdev", \
+        "TemporalSmoothingGaussianFilterWindowSize", "SpatialSmoothingGaussianFilterWindowSize", \
         "BiasEnabled", "Bias", "ToWaveletTransform", "Scale"]
     
     @property
