@@ -54,6 +54,8 @@ class OpNansheExtractF0(Operator):
     WhichQuantile = InputSlot(value=0.15, stype='float')
     TemporalSmoothingGaussianFilterStdev = InputSlot(value=5.0, stype='float')
     SpatialSmoothingGaussianFilterStdev = InputSlot(value=5.0, stype='float')
+    TemporalSmoothingGaussianFilterWindowSize = InputSlot(value=5.0, stype='float')
+    SpatialSmoothingGaussianFilterWindowSize = InputSlot(value=5.0, stype='float')
     BiasEnabled = InputSlot(value=False, stype='bool')
     Bias = InputSlot(value=0.0, stype='float')
 
@@ -172,6 +174,9 @@ class OpNansheExtractF0(Operator):
         temporal_smoothing_gaussian_filter_stdev = self.TemporalSmoothingGaussianFilterStdev.value
         spatial_smoothing_gaussian_filter_stdev = self.SpatialSmoothingGaussianFilterStdev.value
 
+        temporal_smoothing_gaussian_filter_window_size = self.TemporalSmoothingGaussianFilterWindowSize.value
+        spatial_smoothing_gaussian_filter_window_size = self.SpatialSmoothingGaussianFilterWindowSize.value
+
 
         image_shape = self.InputImage.meta.shape
 
@@ -188,6 +193,8 @@ class OpNansheExtractF0(Operator):
                                                                 which_quantile=which_quantile,
                                                                 temporal_smoothing_gaussian_filter_stdev=temporal_smoothing_gaussian_filter_stdev,
                                                                 spatial_smoothing_gaussian_filter_stdev=spatial_smoothing_gaussian_filter_stdev,
+                                                                temporal_smoothing_gaussian_filter_window_size=temporal_smoothing_gaussian_filter_window_size,
+                                                                spatial_smoothing_gaussian_filter_window_size=spatial_smoothing_gaussian_filter_window_size,
                                                                 bias=bias)
         processed = processed[..., None]
         
@@ -206,8 +213,10 @@ class OpNansheExtractF0(Operator):
                                                                 self.SpatialSmoothingGaussianFilterStdev.value)[0])
         elif slot.name == "Bias" or slot.name == "BiasEnabled" or \
              slot.name == "TemporalSmoothingGaussianFilterStdev" or \
+             slot.name == "TemporalSmoothingGaussianFilterWindowSize" or \
              slot.name == "HalfWindowSize" or slot.name == "WhichQuantile" or \
-             slot.name == "SpatialSmoothingGaussianFilterStdev":
+             slot.name == "SpatialSmoothingGaussianFilterStdev" or \
+             slot.name == "SpatialSmoothingGaussianFilterWindowSize":
             self._generation[self.name] += 1
             self.Output.setDirty( slice(None) )
         else:
