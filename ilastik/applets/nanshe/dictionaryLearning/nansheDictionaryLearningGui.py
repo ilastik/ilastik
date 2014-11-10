@@ -57,6 +57,8 @@ class NansheDictionaryLearningGui(LayerViewerGui):
         self.topLevelOperatorView = topLevelOperatorView
         self.ndim = 0
         super(NansheDictionaryLearningGui, self).__init__(parentApplet, self.topLevelOperatorView)
+
+        self._register_notify_dirty()
             
     def initAppletDrawerUi(self):
         # Load the ui file (find it in our own directory)
@@ -71,6 +73,40 @@ class NansheDictionaryLearningGui(LayerViewerGui):
         self._drawer.Apply.clicked.connect(self.apply_gui_settings_to_operator)
 
         self._drawer.NormValueSelection.currentIndexChanged.connect(self.applyNormValueSelection)
+
+    def _register_notify_dirty(self):
+        self.topLevelOperatorView.Ord.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+
+        self.topLevelOperatorView.K.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.Gamma1.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.Gamma2.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.NumThreads.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.Batchsize.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.NumIter.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.Lambda1.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.Lambda2.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.PosAlpha.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.PosD.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.Clean.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.Mode.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.ModeD.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+
+    def _unregister_notify_dirty(self):
+        self.topLevelOperatorView.Ord.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+
+        self.topLevelOperatorView.K.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.Gamma1.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.Gamma2.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.NumThreads.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.Batchsize.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.NumIter.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.Lambda1.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.Lambda2.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.PosAlpha.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.PosD.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.Clean.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.Mode.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.ModeD.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
 
     def applyNormValueSelection(self, index):
         self._drawer.NormValue.setEnabled(index == 0)
@@ -103,7 +139,12 @@ class NansheDictionaryLearningGui(LayerViewerGui):
         self._drawer.ModeValue.setValue(self.topLevelOperatorView.Mode.value)
         self._drawer.ModeDValue.setValue(self.topLevelOperatorView.ModeD.value)
 
+    def apply_dirty_operator_settings_to_gui(self, slot, roi, **kwargs):
+        self.apply_operator_settings_to_gui()
+
     def apply_gui_settings_to_operator(self):
+        self._unregister_notify_dirty()
+
         if self._drawer.NormValueSelection.currentIndex() == 1:
             self._drawer.NormValue.setEnabled(False)
             self.topLevelOperatorView.Ord.setValue(-numpy.inf)
@@ -127,6 +168,8 @@ class NansheDictionaryLearningGui(LayerViewerGui):
         self.topLevelOperatorView.Clean.setValue(self._drawer.CleanValue.isChecked())
         self.topLevelOperatorView.Mode.setValue(self._drawer.ModeValue.value())
         self.topLevelOperatorView.ModeD.setValue(self._drawer.ModeDValue.value())
+
+        self._register_notify_dirty()
 
         for i in xrange(len(self.layerstack)):
             if self.layerstack[i].name == "Output":
