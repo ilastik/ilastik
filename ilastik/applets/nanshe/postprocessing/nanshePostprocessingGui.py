@@ -60,6 +60,8 @@ class NanshePostprocessingGui(LayerViewerGui):
         self.ndim = 0
         super(NanshePostprocessingGui, self).__init__(parentApplet, self.topLevelOperatorView)
 
+        self._register_notify_dirty()
+
     def initAppletDrawerUi(self):
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
@@ -96,6 +98,108 @@ class NanshePostprocessingGui(LayerViewerGui):
             self.applyAcceptedNeuronShapeConstraints_Eccentricity_MaxEnabled
         )
 
+    def _register_notify_dirty(self):
+        self.topLevelOperatorView.SignificanceThreshold.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.WaveletTransformScale.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.NoiseThreshold.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Min.notifyDirty(
+            self.apply_dirty_operator_settings_to_gui
+        )
+        self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Min_Enabled.notifyDirty(
+            self.apply_dirty_operator_settings_to_gui
+        )
+        self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Max.notifyDirty(
+            self.apply_dirty_operator_settings_to_gui
+        )
+        self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Max_Enabled.notifyDirty(
+            self.apply_dirty_operator_settings_to_gui
+        )
+
+        self.topLevelOperatorView.PercentagePixelsBelowMax.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.MinLocalMaxDistance.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+
+        self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Min.notifyDirty(
+            self.apply_dirty_operator_settings_to_gui
+        )
+        self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Min_Enabled.notifyDirty(
+            self.apply_dirty_operator_settings_to_gui
+        )
+        self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Max.notifyDirty(
+            self.apply_dirty_operator_settings_to_gui
+        )
+        self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Max_Enabled.notifyDirty(
+            self.apply_dirty_operator_settings_to_gui
+        )
+
+        self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Min.notifyDirty(
+            self.apply_dirty_operator_settings_to_gui
+        )
+        self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Min_Enabled.notifyDirty(
+            self.apply_dirty_operator_settings_to_gui
+        )
+        self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Max.notifyDirty(
+            self.apply_dirty_operator_settings_to_gui
+        )
+        self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Max_Enabled.notifyDirty(
+            self.apply_dirty_operator_settings_to_gui
+        )
+
+        self.topLevelOperatorView.AlignmentMinThreshold.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.OverlapMinThreshold.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+
+        self.topLevelOperatorView.Fuse_FractionMeanNeuronMaxThreshold.notifyDirty(self.apply_dirty_operator_settings_to_gui)
+
+    def _unregister_notify_dirty(self):
+        self.topLevelOperatorView.SignificanceThreshold.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.WaveletTransformScale.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.NoiseThreshold.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Min.unregisterDirty(
+            self.apply_dirty_operator_settings_to_gui
+        )
+        self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Min_Enabled.unregisterDirty(
+            self.apply_dirty_operator_settings_to_gui
+        )
+        self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Max.unregisterDirty(
+            self.apply_dirty_operator_settings_to_gui
+        )
+        self.topLevelOperatorView.AcceptedRegionShapeConstraints_MajorAxisLength_Max_Enabled.unregisterDirty(
+            self.apply_dirty_operator_settings_to_gui
+        )
+
+        self.topLevelOperatorView.PercentagePixelsBelowMax.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.MinLocalMaxDistance.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+
+        self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Min.unregisterDirty(
+            self.apply_dirty_operator_settings_to_gui
+        )
+        self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Min_Enabled.unregisterDirty(
+            self.apply_dirty_operator_settings_to_gui
+        )
+        self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Max.unregisterDirty(
+            self.apply_dirty_operator_settings_to_gui
+        )
+        self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Area_Max_Enabled.unregisterDirty(
+            self.apply_dirty_operator_settings_to_gui
+        )
+
+        self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Min.unregisterDirty(
+            self.apply_dirty_operator_settings_to_gui
+        )
+        self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Min_Enabled.unregisterDirty(
+            self.apply_dirty_operator_settings_to_gui
+        )
+        self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Max.unregisterDirty(
+            self.apply_dirty_operator_settings_to_gui
+        )
+        self.topLevelOperatorView.AcceptedNeuronShapeConstraints_Eccentricity_Max_Enabled.unregisterDirty(
+            self.apply_dirty_operator_settings_to_gui
+        )
+
+        self.topLevelOperatorView.AlignmentMinThreshold.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+        self.topLevelOperatorView.OverlapMinThreshold.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+
+        self.topLevelOperatorView.Fuse_FractionMeanNeuronMaxThreshold.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
+
     def applyAcceptedRegionShapeConstraints_MajorAxisLength_MinEnabled(self, checked):
         self._drawer.AcceptedRegionShapeConstraints_MajorAxisLength_MinValue.setEnabled(checked)
 
@@ -117,11 +221,15 @@ class NanshePostprocessingGui(LayerViewerGui):
     def apply_operator_settings_to_gui(self):
         self.ndim = len(self.topLevelOperatorView.InputImage.meta.shape) - 1
 
+        self._unregister_notify_dirty()
+
         # Convert a single value or singleton list into a list of values equal to the number of dimensions
         if not isinstance(self.topLevelOperatorView.WaveletTransformScale.value, (list, tuple)):
             self.topLevelOperatorView.WaveletTransformScale.setValue(self.ndim*[self.topLevelOperatorView.WaveletTransformScale.value])
         elif len(self.topLevelOperatorView.WaveletTransformScale.value) == 1:
             self.topLevelOperatorView.WaveletTransformScale.setValue(self.ndim*[self.topLevelOperatorView.WaveletTransformScale.value[0]])
+
+        self._register_notify_dirty()
 
         assert(2 <= self.ndim <= 3)
 
@@ -270,7 +378,12 @@ class NanshePostprocessingGui(LayerViewerGui):
             self._drawer.OverlapMinThresholdValue.setValue(self.topLevelOperatorView.OverlapMinThreshold.value)
             self._drawer.FuseFractionMeanNeuronMaxThresholdValue.setValue(self.topLevelOperatorView.Fuse_FractionMeanNeuronMaxThreshold.value)
 
+    def apply_dirty_operator_settings_to_gui(self, slot, roi, **kwargs):
+        self.apply_operator_settings_to_gui()
+
     def apply_gui_settings_to_operator(self):
+        self._unregister_notify_dirty()
+
         if self.ndim == 2:
             self._drawer.ScaleValue_Z.hide()
 
@@ -389,6 +502,8 @@ class NanshePostprocessingGui(LayerViewerGui):
             self.topLevelOperatorView.AlignmentMinThreshold.setValue(self._drawer.AlignmentMinThresholdValue.value())
             self.topLevelOperatorView.OverlapMinThreshold.setValue(self._drawer.OverlapMinThresholdValue.value())
             self.topLevelOperatorView.Fuse_FractionMeanNeuronMaxThreshold.setValue(self._drawer.FuseFractionMeanNeuronMaxThresholdValue.value())
+
+        self._register_notify_dirty()
 
         for i in xrange(len(self.layerstack)):
             if self.layerstack[i].name == "Output":
