@@ -244,14 +244,14 @@
          </layout>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="TemporalSmoothing">
+         <layout class="QHBoxLayout" name="TemporalSmoothingStdev">
           <item>
-           <widget class="QLabel" name="TemporalSmoothingLabel">
+           <widget class="QLabel" name="TemporalSmoothingStdevLabel">
             <property name="toolTip">
              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;What standard deviation to use for the smoothing gaussian applied along time.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
             <property name="text">
-             <string>Temporal Smoothing</string>
+             <string>Temporal Smoothing Standard Deviation</string>
             </property>
             <property name="alignment">
              <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
@@ -259,7 +259,21 @@
            </widget>
           </item>
           <item>
-           <widget class="QDoubleSpinBox" name="TemporalSmoothingValue"/>
+           <widget class="QDoubleSpinBox" name="TemporalSmoothingStdevValue"/>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="TemporalSmoothingWindowSize">
+          <item>
+           <widget class="QLabel" name="TemporalSmoothingWindowSizeLabel">
+            <property name="text">
+             <string>Temporal Smoothing Window Size</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QDoubleSpinBox" name="TemporalSmoothingWindowSizeValue"/>
           </item>
          </layout>
         </item>
@@ -327,9 +341,9 @@
          </layout>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="SpatialSmoothing">
+         <layout class="QHBoxLayout" name="SpatialSmoothingStdev">
           <item>
-           <widget class="QLabel" name="SpatialSmoothingLabel">
+           <widget class="QLabel" name="SpatialSmoothingStdevLabel">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
               <horstretch>1</horstretch>
@@ -340,12 +354,12 @@
              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;What standard deviation to use for the smoothing gaussian applied along each spatial dimension, independently.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
             <property name="text">
-             <string>Spatial Smoothing</string>
+             <string>Spatial Smoothing Standard Deviation</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QDoubleSpinBox" name="SpatialSmoothingValue">
+           <widget class="QDoubleSpinBox" name="SpatialSmoothingStdevValue">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
               <horstretch>1</horstretch>
@@ -353,6 +367,20 @@
              </sizepolicy>
             </property>
            </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="SpatialSmoothingWindowSize">
+          <item>
+           <widget class="QLabel" name="SpatialSmoothingWindowSizeLabel">
+            <property name="text">
+             <string>Spatial Smoothing Window Size</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QDoubleSpinBox" name="SpatialSmoothingWindowSizeValue"/>
           </item>
          </layout>
         </item>
