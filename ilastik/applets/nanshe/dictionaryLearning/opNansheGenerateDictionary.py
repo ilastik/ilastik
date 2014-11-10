@@ -50,8 +50,8 @@ class OpNansheGenerateDictionary(Operator):
     InputImage = InputSlot()
 
     K = InputSlot(value=100, stype="int")
-    Gamma1 = InputSlot(value=0)
-    Gamma2 = InputSlot(value=0)
+    Gamma1 = InputSlot(value=0.0)
+    Gamma2 = InputSlot(value=0.0)
     NumThreads = InputSlot(value=1)
     Batchsize = InputSlot(value=256)
     NumIter = InputSlot(value=100, stype="int")
@@ -218,8 +218,8 @@ class OpNansheGenerateDictionaryCached(Operator):
     CacheInput = InputSlot(optional=True)
 
     K = InputSlot(value=100, stype="int")
-    Gamma1 = InputSlot(value=0)
-    Gamma2 = InputSlot(value=0)
+    Gamma1 = InputSlot(value=0.0)
+    Gamma2 = InputSlot(value=0.0)
     NumThreads = InputSlot(value=1)
     Batchsize = InputSlot(value=256)
     NumIter = InputSlot(value=100, stype="int")
