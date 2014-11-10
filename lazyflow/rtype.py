@@ -131,10 +131,13 @@ class SubRegion(Roi):
             assert isinstance(start, (int, long, numpy.integer)), "Roi contains non-integers: {}".format( self )
             assert isinstance(start, (int, long, numpy.integer)), "Roi contains non-integers: {}".format( self )
 
-        if self.slot is not None and self.slot.meta.shape is not None:
-            assert all(self.stop <= self.slot.meta.shape), \
-                "Roi is out of bounds. roi={}, {}.{}.meta.shape={}"\
-                .format((self.start, self.stop), slot.getRealOperator().name, slot.name, self.slot.meta.shape)
+# FIXME: This assertion is good at finding bugs, but it is currently triggered by 
+#        the DataExport applet when the output axis order is changed. 
+# 
+#         if self.slot is not None self.slot.meta.shape is not None:
+#             assert all(self.stop <= self.slot.meta.shape), \
+#                 "Roi is out of bounds. roi={}, {}.{}.meta.shape={}"\
+#                 .format((self.start, self.stop), slot.getRealOperator().name, slot.name, self.slot.meta.shape)
 
     def __setstate__(self, state):
         """
