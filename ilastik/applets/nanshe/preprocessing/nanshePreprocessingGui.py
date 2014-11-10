@@ -134,8 +134,10 @@ class NanshePreprocessingGui(LayerViewerGui):
 
         self._drawer.HalfWindowSizeValue.setEnabled(checked)
         self._drawer.QuantileValue.setEnabled(checked)
-        self._drawer.TemporalSmoothingValue.setEnabled(checked)
-        self._drawer.SpatialSmoothingValue.setEnabled(checked)
+        self._drawer.TemporalSmoothingStdevValue.setEnabled(checked)
+        self._drawer.TemporalSmoothingWindowSizeValue.setEnabled(checked)
+        self._drawer.SpatialSmoothingStdevValue.setEnabled(checked)
+        self._drawer.SpatialSmoothingWindowSizeValue.setEnabled(checked)
         self._drawer.BiasEnabled.setEnabled(checked)
         self._drawer.BiasValue.setEnabled(checked and self._drawer.BiasEnabled.isChecked())
 
@@ -189,8 +191,10 @@ class NanshePreprocessingGui(LayerViewerGui):
 
             self._drawer.HalfWindowSizeValue.setValue(self.topLevelOperatorView.HalfWindowSize.value)
             self._drawer.QuantileValue.setValue(self.topLevelOperatorView.WhichQuantile.value)
-            self._drawer.TemporalSmoothingValue.setValue(self.topLevelOperatorView.TemporalSmoothingGaussianFilterStdev.value)
-            self._drawer.SpatialSmoothingValue.setValue(self.topLevelOperatorView.SpatialSmoothingGaussianFilterStdev.value)
+            self._drawer.TemporalSmoothingStdevValue.setValue(self.topLevelOperatorView.TemporalSmoothingGaussianFilterStdev.value)
+            self._drawer.TemporalSmoothingWindowSizeValue.setValue(self.topLevelOperatorView.TemporalSmoothingGaussianFilterWindowSize.value)
+            self._drawer.SpatialSmoothingStdevValue.setValue(self.topLevelOperatorView.SpatialSmoothingGaussianFilterStdev.value)
+            self._drawer.SpatialSmoothingWindowSizeValue.setValue(self.topLevelOperatorView.SpatialSmoothingGaussianFilterWindowSize.value)
 
             self._drawer.BiasValue.setValue(self.topLevelOperatorView.Bias.value)
             if self.topLevelOperatorView.BiasEnabled.value:
@@ -234,8 +238,10 @@ class NanshePreprocessingGui(LayerViewerGui):
 
             self._drawer.HalfWindowSizeValue.setValue(self.topLevelOperatorView.HalfWindowSize.value)
             self._drawer.QuantileValue.setValue(self.topLevelOperatorView.WhichQuantile.value)
-            self._drawer.TemporalSmoothingValue.setValue(self.topLevelOperatorView.TemporalSmoothingGaussianFilterStdev.value)
-            self._drawer.SpatialSmoothingValue.setValue(self.topLevelOperatorView.SpatialSmoothingGaussianFilterStdev.value)
+            self._drawer.TemporalSmoothingStdevValue.setValue(self.topLevelOperatorView.TemporalSmoothingGaussianFilterStdev.value)
+            self._drawer.TemporalSmoothingWindowSizeValue.setValue(self.topLevelOperatorView.TemporalSmoothingGaussianFilterWindowSize.value)
+            self._drawer.SpatialSmoothingStdevValue.setValue(self.topLevelOperatorView.SpatialSmoothingGaussianFilterStdev.value)
+            self._drawer.SpatialSmoothingWindowSizeValue.setValue(self.topLevelOperatorView.SpatialSmoothingGaussianFilterWindowSize.value)
 
             self._drawer.BiasValue.setValue(self.topLevelOperatorView.Bias.value)
             if self.topLevelOperatorView.BiasEnabled.value:
@@ -278,8 +284,10 @@ class NanshePreprocessingGui(LayerViewerGui):
 
             self.topLevelOperatorView.HalfWindowSize.setValue(self._drawer.HalfWindowSizeValue.value())
             self.topLevelOperatorView.WhichQuantile.setValue(self._drawer.QuantileValue.value())
-            self.topLevelOperatorView.TemporalSmoothingGaussianFilterStdev.setValue(self._drawer.TemporalSmoothingValue.value())
-            self.topLevelOperatorView.SpatialSmoothingGaussianFilterStdev.setValue(self._drawer.SpatialSmoothingValue.value())
+            self.topLevelOperatorView.TemporalSmoothingGaussianFilterStdev.setValue(self._drawer.TemporalSmoothingStdevValue.value())
+            self.topLevelOperatorView.TemporalSmoothingGaussianFilterWindowSize.setValue(self._drawer.TemporalSmoothingWindowSizeValue.value())
+            self.topLevelOperatorView.SpatialSmoothingGaussianFilterStdev.setValue(self._drawer.SpatialSmoothingStdevValue.value())
+            self.topLevelOperatorView.SpatialSmoothingGaussianFilterWindowSize.setValue(self._drawer.SpatialSmoothingWindowSizeValue.value())
 
             self.topLevelOperatorView.Bias.setValue(self._drawer.BiasValue.value())
             if self._drawer.BiasEnabled.isChecked():
@@ -316,8 +324,10 @@ class NanshePreprocessingGui(LayerViewerGui):
 
             self.topLevelOperatorView.HalfWindowSize.setValue(self._drawer.HalfWindowSizeValue.value())
             self.topLevelOperatorView.WhichQuantile.setValue(self._drawer.QuantileValue.value())
-            self.topLevelOperatorView.TemporalSmoothingGaussianFilterStdev.setValue(self._drawer.TemporalSmoothingValue.value())
-            self.topLevelOperatorView.SpatialSmoothingGaussianFilterStdev.setValue(self._drawer.SpatialSmoothingValue.value())
+            self.topLevelOperatorView.TemporalSmoothingGaussianFilterStdev.setValue(self._drawer.TemporalSmoothingStdevValue.value())
+            self.topLevelOperatorView.TemporalSmoothingGaussianFilterWindowSize.setValue(self._drawer.TemporalSmoothingWindowSizeValue.value())
+            self.topLevelOperatorView.SpatialSmoothingGaussianFilterStdev.setValue(self._drawer.SpatialSmoothingStdevValue.value())
+            self.topLevelOperatorView.SpatialSmoothingGaussianFilterWindowSize.setValue(self._drawer.SpatialSmoothingWindowSizeValue.value())
 
             self.topLevelOperatorView.Bias.setValue(self._drawer.BiasValue.value())
             if self._drawer.BiasEnabled.isChecked():
