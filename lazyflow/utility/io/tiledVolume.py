@@ -38,11 +38,11 @@ class TiledVolume(object):
         "format" : str,
         "dtype" : AutoEval(),
         "bounds_zyx" : AutoEval(numpy.array), # Maximum coordinates (+1)
-        "view_origin_zyx" : AutoEval(numpy.array),
+        
+        "view_origin_zyx" : AutoEval(numpy.array), # Optional offset for output 'view'
+        "view_shape_zyx" : AutoEval(numpy.array), # Shape of the output 'view'.  If not provided, defaults to bounds - origin
 
-        "shape_zyx" : AutoEval(numpy.array), # Do not provide.  Calculated as bounds - origin
         "resolution_zyx" : AutoEval(numpy.array), 
-
         "tile_shape_2d_yx" : AutoEval(numpy.array),
 
         "username" : str,
@@ -86,14 +86,11 @@ class TiledVolume(object):
         # Augment with default parameters.
         logger.debug(str(description))
 
-        orig_shape_zyx = description.shape_zyx
-
         if description.view_origin_zyx is None:
             description.view_origin_zyx = numpy.array( [0]*len(description.bounds_zyx) )
-        description.shape_zyx = description.bounds_zyx - description.view_origin_zyx
-
-        if orig_shape_zyx is not None:
-            assert all( description.shape_zyx == orig_shape_zyx ), "The shape you provided appears to be incorrect."
+        
+        if description.view_shape_zyx is None:
+            description.view_shape_zyx = description.bounds_zyx - description.view_origin_zyx
 
         if not description.output_axes:
             description.output_axes = "zyx"
@@ -115,9 +112,9 @@ class TiledVolume(object):
         
         assert self.description.tile_shape_2d_yx.shape == (2,)
         assert self.description.bounds_zyx.shape == (3,)
-        assert self.description.shape_zyx.shape == (3,)
+        assert self.description.view_shape_zyx.shape == (3,)
 
-        shape_dict = dict( zip('zyx', self.description.shape_zyx) )
+        shape_dict = dict( zip('zyx', self.description.view_shape_zyx) )
         self.output_shape = tuple( shape_dict[k] for k in self.description.output_axes )
 
         self._slice_remapping = {}
