@@ -250,11 +250,12 @@ if __name__ == "__main__":
 #        args.append( "--sys_tmp_dir=/scratch/bergs")
 
         # pixel classification
-        args.append( "--option_config_file=/magnetic/bock_pilot/cluster_debug/example_cluster_options.json")
-        args.append( "--project=/Users/bergs/MyProject.ilp")
-        args.append( "--output_description_file=/magnetic/bock_pilot/cluster_debug/results_description.json")
+        args.append( "--option_config_file=/nobackup/bock/ilastik/bock-pilot-cluster-options/example_cluster_options.json")
+        args.append( "--project=/nobackup/bock/ilastik/gamma-alpha/gammaAlphaFanPixelProject.ilp")
+        #args.append( "--output_description_file=/magnetic/bock_pilot/cluster_debug/results_description.json")
+        args.append( "--output_description_file=/nobackup/bock/ilastik/bock-pilot-cluster-options/results_description.json")
         #args.append( "--sys_tmp_dir=/scratch/bergs")
-        args.append( '--_node_work_=SubRegion:SubRegion(None, [0, 60000, 60000, 0], [260, 61000, 61000, 3])' )
+        args.append( '--_node_work_=SubRegion:SubRegion(None, [0, 0, 0, 0], [260, 1000, 1000, 3])' )
         args.append( "--process_name=JOB00" )
 
 #         args.append( "--option_config_file=/nobackup/bock/ilastik_trials/object_runs/bock11-256_object_cluster_options.json")
@@ -274,10 +275,16 @@ if __name__ == "__main__":
         args = []
         args.append( "--process_name=MASTER")
 
-        # SMALL TEST
-        args.append( "--option_config_file=/magnetic/bock_pilot/cluster_debug/example_cluster_options.json")
-        args.append( "--project=/Users/bergs/MyProject.ilp")
-        args.append( "--output_description_file=/magnetic/bock_pilot/cluster_debug/results_description.json")
+        # LOCAL TEST
+        args.append( "--option_config_file=/nobackup/bock/ilastik/bock-pilot-cluster-options/example_cluster_options.json")
+        args.append( "--project=/nobackup/bock/ilastik/gamma-alpha/gammaAlphaFanPixelProject.ilp")
+        args.append( "--output_description_file=/nobackup/bock/ilastik/bock-pilot-cluster-options/results_description.json")
+
+        # REMOTE TEST
+        args.append( "--option_config_file=/nobackup/bock/ilastik/bock-pilot-cluster-options/example_cluster_options.json")
+        args.append( "--project=/nobackup/bock/ilastik/gamma-alpha/gammaAlphaFanPixelProject.ilp")
+        args.append( "--output_description_file=/nobackup/bock/ilastik/bock-pilot-cluster-options/results_description.json")
+
 
 #        # SMALL TEST
 #        args.append( "--option_config_file=/groups/flyem/data/bergs_scratch/cluster_options.json")
