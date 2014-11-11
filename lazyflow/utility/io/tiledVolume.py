@@ -15,6 +15,7 @@ from StringIO import StringIO
 # Use PIL instead of vigra since it allows us to open images in-memory
 #from PIL import Image
 
+from lazyflow.utility.timer import Timer 
 from lazyflow.utility.jsonConfig import JsonConfigParser, AutoEval, FormattedField
 from lazyflow.roi import getIntersectingBlocks, getBlockBounds, roiToSlice, getIntersection
 
@@ -213,8 +214,11 @@ class TiledVolume(object):
             else:
                 # execute serially (leave the pool empty)
                 retrieval_fn()
-        
-        pool.wait()
+
+        if PARALLEL_REQ:
+            with Timer() as timer:
+                pool.wait()
+            logger.info("Loading {} tiles took a total of {}".format( len(pool), timer.seconds() ))
         
         # Clean up our temp files.
         shutil.rmtree(tmpdir)
