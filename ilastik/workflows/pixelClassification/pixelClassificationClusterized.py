@@ -116,6 +116,9 @@ def runWorkflow(cluster_args):
     # Nowadays, this is done via an environment variable setting for ilastik_main to detect.
     if cluster_args._node_work_ is not None and config.task_threadpool_size is not None:
         os.environ["LAZYFLOW_THREADS"] = str(config.task_threadpool_size)
+    
+    if cluster_args._node_work_ is not None and config.task_total_ram_mb is not None:
+        os.environ["LAZYFLOW_TOTAL_RAM_MB"] = str(config.task_total_ram_mb)
 
     # Instantiate 'shell' by calling ilastik_main with our 
     shell = ilastik_main.main( ilastik_main_args )
@@ -233,7 +236,7 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     debug = None
-    #debug = 'Master'
+    debug = 'Master'
     #debug = 'Node'
 
     # Task debug args

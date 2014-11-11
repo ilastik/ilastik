@@ -32,6 +32,7 @@ ClusterConfigFields = \
 
     "sys_tmp_dir" : str,
     "task_threadpool_size" : AutoEval(int),
+    "task_total_ram_mb" : AutoEval(int),
     "task_timeout_secs" : AutoEval(int),
     "use_node_local_scratch" : bool,
     "use_master_local_scratch" : bool,
