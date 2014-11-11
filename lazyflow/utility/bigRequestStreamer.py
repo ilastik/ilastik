@@ -88,7 +88,7 @@ class BigRequestStreamer(object):
         :param blockshape: The amount of data to request in each request. If omitted, a default blockshape is chosen by inspecting the metadata of the given slot.
         :param batchSize: The maximum number of requests to launch in parallel.  This should not be necessary if the blockshape is small enough that you won't run out of RAM.
         :param blockAlignment: Determines how block the requests. Choices are 'absolute' or 'relative'.
-        :param allowParallelResults: If True, The resultSignal will not be called in parallel.
+        :param allowParallelResults: If False, The resultSignal will not be called in parallel.
                                      In that case, your handler function has no need for locks.
         """
         self._outputSlot = outputSlot
