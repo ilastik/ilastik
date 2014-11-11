@@ -57,10 +57,17 @@ class TiledVolume(object):
         # Offset not supported for now...
         #"origin_offset" : AutoEval(numpy.array),
 
-        # For now, 3D-only, sliced across Z
-        # TODO: support 5D.
-        # Allow multiple url schemes: tiles might be addressed via pixel coordinates or row/column indexing
+        # For now we support 3D-only, sliced across Z (TODO: Support 5D?)
+
+        # We allow multiple url schemes: tiles might be addressed via pixel coordinates or row/column indexing
         # (z_index and z_start are synonyms here -- either is allowed)
+        # Example: pixel-wise tile names:
+        #   "tile_url_format" : "http://my.tiles.org/my_tiles/{z_start}-{z_stop}/{y_start}-{y_stop}/{x_start}-{x_stop}.jpg"
+        # Example: row/column-wise tile names
+        #   "tile_url_format" : "http://my.tiles.org/my_tiles/{z_index}/{y_index}/{x_index}.jpg"
+
+        # Also, local tile sources (filesystem, not http) are okay:
+        # "tile_url_format" : "/my_hard_disk/my_tiles/{z_index}/{y_index}/{x_index}.jpg"
         "tile_url_format" : FormattedField( requiredFields=[],
                                             optionalFields=["x_start", "y_start", "z_start",
                                                             "x_stop",  "y_stop",  "z_stop",
@@ -193,7 +200,10 @@ class TiledVolume(object):
             # Quick sanity check
             assert rest_args['z_index'] == rest_args['z_start']
 
-            retrieval_fn = partial( self._retrieve_tile, tmpdir, rest_args, tile_relative_intersection, result_region )
+            if self.description.tile_url_format.startswith('http'):
+                retrieval_fn = partial( self._retrieve_remote_tile, tmpdir, rest_args, tile_relative_intersection, result_region )
+            else:
+                retrieval_fn = partial( self._retrieve_local_tile, tmpdir, rest_args, tile_relative_intersection, result_region )            
 
             PARALLEL_REQ = True
             if PARALLEL_REQ:
@@ -207,13 +217,29 @@ class TiledVolume(object):
         # Clean up our temp files.
         shutil.rmtree(tmpdir)
 
+    def _retrieve_local_tile(self, tmpdir, rest_args, tile_relative_intersection, data_out):
+        tile_path = self.description.tile_url_format.format( **rest_args )
+        logger.debug("Opening {}".format( tile_path ))
+
+        # Read the image from the disk with vigra
+        img = vigra.impex.readImage(tile_path, dtype='NATIVE')
+        assert img.ndim == 3
+        assert img.shape[-1] == 1
+        
+        # img has axes xyc, but we want zyx
+        img = img.transpose()[None,0,:,:]
+    
+        # Copy just the part we need into the destination array
+        assert img[roiToSlice(*tile_relative_intersection)].shape == data_out.shape
+        data_out[:] = img[roiToSlice(*tile_relative_intersection)]
+
     # For late imports
     requests = None
     PIL = None
     
     TEST_MODE = False # For testing purposes only. See below.    
 
-    def _retrieve_tile(self, tmpdir, rest_args, tile_relative_intersection, data_out):
+    def _retrieve_remote_tile(self, tmpdir, rest_args, tile_relative_intersection, data_out):
         # Late import
         if not TiledVolume.requests:
             import requests
@@ -221,11 +247,6 @@ class TiledVolume(object):
         requests = TiledVolume.requests
 
         tile_url = self.description.tile_url_format.format( **rest_args )
-
-        tmp_filename = 'z{z_start}_y{y_start}_x{x_start}'.format( **rest_args )
-        tmp_filename += '.' + self.description.format
-        tmp_filepath = os.path.join(tmpdir, tmp_filename) 
-
         logger.debug("Retrieving {}".format( tile_url ))
         try:
             if self._session is None:
@@ -262,7 +283,7 @@ class TiledVolume(object):
                 raise
                 
         if r.status_code == requests.codes.not_found:
-            logger.warn("NOTFOUND: {}".format( tile_url, tmp_filepath ))
+            logger.warn("NOTFOUND: {}".format( tile_url ))
             data_out[:] = 0
         else:
             USE_PIL = True
@@ -280,6 +301,10 @@ class TiledVolume(object):
                 img = img[None]
                 #img = img.transpose()[None]
             else: 
+                tmp_filename = 'z{z_start}_y{y_start}_x{x_start}'.format( **rest_args )
+                tmp_filename += '.' + self.description.format
+                tmp_filepath = os.path.join(tmpdir, tmp_filename) 
+
                 logger.debug("saving to {}".format( tmp_filepath ))
                 with open(tmp_filepath, 'wb') as f:
                     CHUNK_SIZE = 10*1024
