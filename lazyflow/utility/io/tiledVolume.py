@@ -44,6 +44,8 @@ class TiledVolume(object):
 
         "resolution_zyx" : AutoEval(numpy.array), 
         "tile_shape_2d_yx" : AutoEval(numpy.array),
+        
+        "is_rgb" : bool, # Indicates that we must convert to grayscale
 
         "username" : str,
         "password" : str,
@@ -221,10 +223,18 @@ class TiledVolume(object):
         tile_path = self.description.tile_url_format.format( **rest_args )
         logger.debug("Opening {}".format( tile_path ))
 
+        if not os.path.exists(tile_path):
+            logger.error("Tile does not exist: {}".format( tile_path ))
+            return
+
         # Read the image from the disk with vigra
         img = vigra.impex.readImage(tile_path, dtype='NATIVE')
         assert img.ndim == 3
-        assert img.shape[-1] == 1
+        if self.description.is_rgb:
+            # "Convert" to grayscale -- just take first channel.
+            img = img[...,0:1]
+        assert img.shape[-1] == 1, "Image has more channels than expected.  "\
+                                   "If it is RGB, be sure to set the is_rgb flag in your description json."
         
         # img has axes xyc, but we want zyx
         img = img.transpose()[None,0,:,:]
@@ -296,7 +306,12 @@ class TiledVolume(object):
                 PIL = TiledVolume.PIL
 
                 img = numpy.asarray( PIL.Image.open(StringIO(r.content)) )
-                assert img.ndim == 2
+                if self.description.is_rgb:
+                    # "Convert" to grayscale -- just take first channel.
+                    assert img.ndim == 3
+                    img = img[...,0]
+                assert img.ndim == 2, "Image seems to be of the wrong dimension.  "\
+                                      "If it is RGB, be sure to set the is_rgb flag in your description json."
                 # img has axes xy, but we want zyx
                 img = img[None]
                 #img = img.transpose()[None]
@@ -314,7 +329,11 @@ class TiledVolume(object):
                 # Read the image from the disk with vigra
                 img = vigra.impex.readImage(tmp_filepath, dtype='NATIVE')
                 assert img.ndim == 3
-                assert img.shape[-1] == 1
+                if self.description.is_rgb:
+                    # "Convert" to grayscale -- just take first channel.
+                    img = img[...,0:1]
+                assert img.shape[-1] == 1, "Image has more channels than expected.  "\
+                                           "If it is RGB, be sure to set the is_rgb flag in your description json."
                 
                 # img has axes xyc, but we want zyx
                 img = img.transpose()[None,0,:,:]
