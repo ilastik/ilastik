@@ -232,9 +232,9 @@ if __name__ == "__main__":
     import signal
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-    #debug = None
+    debug = None
     #debug = 'Master'
-    debug = 'Node'
+    #debug = 'Node'
 
     # Task debug args
     if debug == 'Node' and len(sys.argv) == 1:
@@ -273,6 +273,11 @@ if __name__ == "__main__":
     if debug == 'Master' and len(sys.argv) == 1:
         args = []
         args.append( "--process_name=MASTER")
+
+        # SMALL TEST
+        args.append( "--option_config_file=/magnetic/bock_pilot/cluster_debug/example_cluster_options.json")
+        args.append( "--project=/Users/bergs/MyProject.ilp")
+        args.append( "--output_description_file=/magnetic/bock_pilot/cluster_debug/results_description.json")
 
 #        # SMALL TEST
 #        args.append( "--option_config_file=/groups/flyem/data/bergs_scratch/cluster_options.json")
