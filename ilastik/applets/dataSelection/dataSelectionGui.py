@@ -655,7 +655,7 @@ class DataSelectionGui(QWidget):
                 total_volume = numpy.prod(shape)
                 
                 # Only copy to the project file if the total volume is reasonably small
-                if total_volume < 10e9:
+                if total_volume < 0.5e9:
                     info_slot = opTop.DatasetGroup[lane_index][roleIndex]
                     info = info_slot.value
                     info.location = DatasetInfo.Location.ProjectInternal
