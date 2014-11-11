@@ -218,7 +218,7 @@ class TiledVolume(object):
         if PARALLEL_REQ:
             with Timer() as timer:
                 pool.wait()
-            logger.info("Loading {} tiles took a total of {}".format( len(pool), timer.seconds() ))
+            logger.info("Loading {} tiles took a total of {}".format( len(tile_starts), timer.seconds() ))
         
         # Clean up our temp files.
         shutil.rmtree(tmpdir)
