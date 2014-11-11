@@ -48,6 +48,7 @@ class DataSetup(object):
         self.REFERENCE_VOL_PATH = None
         self.VOLUME_DESCRIPTION_FILE = None
         self.TRANSPOSED_VOLUME_DESCRIPTION_FILE = None
+        self.TRANSLATED_VOLUME_DESCRIPTION_FILE = None
         
         self.teardown = lambda: None
 
@@ -70,7 +71,9 @@ class DataSetup(object):
         ref_vol_path_comp = PathComponents(self.REFERENCE_VOL_PATH)
         self.REFERENCE_VOL_FILE = ref_vol_path_comp.externalPath
         self.VOLUME_DESCRIPTION_FILE = os.path.join( self.TILE_DIRECTORY, 'volume_description.json' )
+        self.LOCAL_VOLUME_DESCRIPTION_FILE = os.path.join( self.TILE_DIRECTORY, 'local_volume_description.json' )
         self.TRANSPOSED_VOLUME_DESCRIPTION_FILE = os.path.join( self.TILE_DIRECTORY, 'transposed_volume_description.json' )
+        self.TRANSLATED_VOLUME_DESCRIPTION_FILE = os.path.join( self.TILE_DIRECTORY, 'translated_volume_description.json' )
     
         if not os.path.exists(self.TILE_DIRECTORY):
             print "Creating new tile directory: {}".format( self.TILE_DIRECTORY )
@@ -91,19 +94,32 @@ class DataSetup(object):
             with open(self.VOLUME_DESCRIPTION_FILE, 'r') as f:
                 if f.read() != volume_description_text:
                     need_rewrite = True
-        
+
         if need_rewrite:
             with open(self.VOLUME_DESCRIPTION_FILE, 'w') as f:
                 f.write(volume_description_text)
     
             # Read the volume description as a JsonConfig Namespace
             volume_description = TiledVolume.readDescription(self.VOLUME_DESCRIPTION_FILE)
-    
+            
+            # Write out a copy of the description, but with a local tile path instead of a URL
+            config_helper = JsonConfigParser( TiledVolume.DescriptionFields )
+            local_description = copy.copy(volume_description)
+            local_description.tile_url_format = self.TILE_DIRECTORY + "/tile_z{z_start:05}_y{y_start:05}_x{x_start:05}.png"
+            config_helper.writeConfigFile(self.LOCAL_VOLUME_DESCRIPTION_FILE, local_description)
+
             # Write out a copy of the description, but with custom output axes
             config_helper = JsonConfigParser( TiledVolume.DescriptionFields )
             transposed_description = copy.copy(volume_description)
             transposed_description.output_axes = "xyz"
             config_helper.writeConfigFile(self.TRANSPOSED_VOLUME_DESCRIPTION_FILE, transposed_description)
+
+            # Write out another copy of the description, but with an origin translation
+            config_helper = JsonConfigParser( TiledVolume.DescriptionFields )
+            translated_description = copy.copy(volume_description)
+            translated_description.view_origin_zyx = [10, 20, 30]
+            translated_description.shape_zyx = None
+            config_helper.writeConfigFile(self.TRANSLATED_VOLUME_DESCRIPTION_FILE, translated_description)
     
             # Remove all old image tiles in the tile directory
             files = os.listdir(self.TILE_DIRECTORY)
@@ -230,6 +246,35 @@ class TestTiledVolume(object):
    
         assert (expected == result_out).all()
 
+class TestLocalTiledVolume(object):
+
+    @classmethod
+    def setupClass(cls):
+        cls.data_setup = DataSetup()
+        cls.data_setup.setup()
+
+    @classmethod
+    def teardownClass(cls):
+        cls.data_setup.teardown()
+
+    def testBasic(self):
+        tiled_volume = TiledVolume( self.data_setup.LOCAL_VOLUME_DESCRIPTION_FILE )
+        tiled_volume.TEST_MODE = True
+        roi = numpy.array( [(10, 150, 100), (30, 550, 550)] )
+        result_out = numpy.zeros( roi[1] - roi[0], dtype=tiled_volume.description.dtype )
+        tiled_volume.read( roi, result_out )
+         
+        ref_path_comp = PathComponents(self.data_setup.REFERENCE_VOL_PATH)
+        with h5py.File(ref_path_comp.externalPath, 'r') as f:
+            ref_data = f[ref_path_comp.internalPath][:]
+ 
+        expected = ref_data[roiToSlice(*roi)]
+         
+        #numpy.save('/tmp/expected.npy', expected)
+        #numpy.save('/tmp/result_out.npy', result_out)
+ 
+        assert (expected == result_out).all()
+
 class TestCustomAxes(object):
 
     @classmethod
@@ -257,6 +302,38 @@ class TestCustomAxes(object):
             ref_data = f[ref_path_comp.internalPath][:]
  
         expected = ref_data[roiToSlice(*roi)]
+         
+        #numpy.save('/tmp/expected.npy', expected)
+        #numpy.save('/tmp/result_out.npy', result_out)
+ 
+        assert (expected == result_out).all()
+
+class TestAAViewOriginOffset(object):
+
+    @classmethod
+    def setupClass(cls):
+        cls.data_setup = DataSetup()
+        cls.data_setup.setup()
+
+    @classmethod
+    def teardownClass(cls):
+        cls.data_setup.teardown()
+        
+    def testViewOriginOffset(self):
+        tiled_volume = TiledVolume( self.data_setup.TRANSLATED_VOLUME_DESCRIPTION_FILE )
+        tiled_volume.TEST_MODE = True
+        reference_roi = numpy.array( [(10, 150, 100), (30, 550, 550)] )
+        result_out = numpy.zeros( reference_roi[1] - reference_roi[0], dtype=tiled_volume.description.dtype )
+
+        roi_translated = reference_roi - [10,20,30]
+        
+        tiled_volume.read( roi_translated, result_out )
+         
+        ref_path_comp = PathComponents(self.data_setup.REFERENCE_VOL_PATH)
+        with h5py.File(ref_path_comp.externalPath, 'r') as f:
+            ref_data = f[ref_path_comp.internalPath][:]
+ 
+        expected = ref_data[roiToSlice(*reference_roi)]
          
         #numpy.save('/tmp/expected.npy', expected)
         #numpy.save('/tmp/result_out.npy', result_out)

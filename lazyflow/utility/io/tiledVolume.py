@@ -37,10 +37,12 @@ class TiledVolume(object):
         "name" : str,
         "format" : str,
         "dtype" : AutoEval(),
-        "bounds_zyx" : AutoEval(numpy.array),
-        "shape_zyx" : AutoEval(numpy.array), # synonym for bounds_zyx (until we support offset_origin)
-        "resolution_zyx" : AutoEval(numpy.array), 
+        "bounds_zyx" : AutoEval(numpy.array), # Maximum coordinates (+1)
+        
+        "view_origin_zyx" : AutoEval(numpy.array), # Optional offset for output 'view'
+        "view_shape_zyx" : AutoEval(numpy.array), # Shape of the output 'view'.  If not provided, defaults to bounds - origin
 
+        "resolution_zyx" : AutoEval(numpy.array), 
         "tile_shape_2d_yx" : AutoEval(numpy.array),
 
         "username" : str,
@@ -55,10 +57,17 @@ class TiledVolume(object):
         # Offset not supported for now...
         #"origin_offset" : AutoEval(numpy.array),
 
-        # For now, 3D-only, sliced across Z
-        # TODO: support 5D.
-        # Allow multiple url schemes: tiles might be addressed via pixel coordinates or row/column indexing
+        # For now we support 3D-only, sliced across Z (TODO: Support 5D?)
+
+        # We allow multiple url schemes: tiles might be addressed via pixel coordinates or row/column indexing
         # (z_index and z_start are synonyms here -- either is allowed)
+        # Example: pixel-wise tile names:
+        #   "tile_url_format" : "http://my.tiles.org/my_tiles/{z_start}-{z_stop}/{y_start}-{y_stop}/{x_start}-{x_stop}.jpg"
+        # Example: row/column-wise tile names
+        #   "tile_url_format" : "http://my.tiles.org/my_tiles/{z_index}/{y_index}/{x_index}.jpg"
+
+        # Also, local tile sources (filesystem, not http) are okay:
+        # "tile_url_format" : "/my_hard_disk/my_tiles/{z_index}/{y_index}/{x_index}.jpg"
         "tile_url_format" : FormattedField( requiredFields=[],
                                             optionalFields=["x_start", "y_start", "z_start",
                                                             "x_stop",  "y_stop",  "z_stop",
@@ -83,19 +92,12 @@ class TiledVolume(object):
         """
         # Augment with default parameters.
         logger.debug(str(description))
-        
-        # offset not supported yet...
-        #if description.origin_offset is None:
-        #    description.origin_offset = numpy.array( [0]*len(description.bounds_zyx) )
-        #description.shape = description.bounds_zyx - description.origin_offset
 
-        # for now, there's no difference between shape and bounds        
-        if description.shape_zyx is not None and description.bounds_zyx is not None:
-            assert all(description.shape_zyx == description.bounds_zyx)
-        if description.shape_zyx is None:
-            description.shape_zyx = tuple(description.bounds_zyx)
-        if description.bounds_zyx is None:
-            description.bounds_zyx = tuple(description.shape_zyx)
+        if description.view_origin_zyx is None:
+            description.view_origin_zyx = numpy.array( [0]*len(description.bounds_zyx) )
+        
+        if description.view_shape_zyx is None:
+            description.view_shape_zyx = description.bounds_zyx - description.view_origin_zyx
 
         if not description.output_axes:
             description.output_axes = "zyx"
@@ -117,8 +119,9 @@ class TiledVolume(object):
         
         assert self.description.tile_shape_2d_yx.shape == (2,)
         assert self.description.bounds_zyx.shape == (3,)
+        assert self.description.view_shape_zyx.shape == (3,)
 
-        shape_dict = dict( zip('zyx', self.description.bounds_zyx) )
+        shape_dict = dict( zip('zyx', self.description.view_shape_zyx) )
         self.output_shape = tuple( shape_dict[k] for k in self.description.output_axes )
 
         self._slice_remapping = {}
@@ -130,22 +133,27 @@ class TiledVolume(object):
         if self._session:
             self._session.close()
 
-    def read(self, roi, result_out):
+    def read(self, view_roi, result_out):
         """
         roi: (start, stop) tuples, ordered according to description.output_axes
+             roi should be relative to the view
         """
         output_axes = self.description.output_axes
-        roi_transposed = zip(*roi)
+        roi_transposed = zip(*view_roi)
         roi_dict = dict( zip(output_axes, roi_transposed) )
-        roi = zip( *(roi_dict['z'], roi_dict['y'], roi_dict['x']) )
+        view_roi = zip( *(roi_dict['z'], roi_dict['y'], roi_dict['x']) )
 
         # First, normalize roi and result to zyx order
         result_out = vigra.taggedView(result_out, output_axes)
         result_out = result_out.withAxes(*'zyx')
         
-        assert numpy.array(roi).shape == (2,3), "Invalid roi for 3D volume: {}".format( roi )
-        roi = numpy.array(roi)
-        assert (result_out.shape == (roi[1] - roi[0])).all()
+        assert numpy.array(view_roi).shape == (2,3), "Invalid roi for 3D volume: {}".format( view_roi )
+        view_roi = numpy.array(view_roi)
+        assert (result_out.shape == (view_roi[1] - view_roi[0])).all()
+        
+        # User gave roi according to the view output.
+        # Now offset it find global roi.
+        roi = view_roi + self.description.view_origin_zyx
         
         tile_blockshape = (1,) + tuple(self.description.tile_shape_2d_yx)
         tile_starts = getIntersectingBlocks( tile_blockshape, roi )
@@ -155,7 +163,7 @@ class TiledVolume(object):
         
         pool = RequestPool()
         for tile_start in tile_starts:
-            tile_roi_in = getBlockBounds( self.description.shape_zyx, tile_blockshape, tile_start )
+            tile_roi_in = getBlockBounds( self.description.bounds_zyx, tile_blockshape, tile_start )
             tile_roi_in = numpy.array(tile_roi_in)
 
             # This tile's portion of the roi
@@ -192,7 +200,10 @@ class TiledVolume(object):
             # Quick sanity check
             assert rest_args['z_index'] == rest_args['z_start']
 
-            retrieval_fn = partial( self._retrieve_tile, tmpdir, rest_args, tile_relative_intersection, result_region )
+            if self.description.tile_url_format.startswith('http'):
+                retrieval_fn = partial( self._retrieve_remote_tile, tmpdir, rest_args, tile_relative_intersection, result_region )
+            else:
+                retrieval_fn = partial( self._retrieve_local_tile, tmpdir, rest_args, tile_relative_intersection, result_region )            
 
             PARALLEL_REQ = True
             if PARALLEL_REQ:
@@ -206,13 +217,29 @@ class TiledVolume(object):
         # Clean up our temp files.
         shutil.rmtree(tmpdir)
 
+    def _retrieve_local_tile(self, tmpdir, rest_args, tile_relative_intersection, data_out):
+        tile_path = self.description.tile_url_format.format( **rest_args )
+        logger.debug("Opening {}".format( tile_path ))
+
+        # Read the image from the disk with vigra
+        img = vigra.impex.readImage(tile_path, dtype='NATIVE')
+        assert img.ndim == 3
+        assert img.shape[-1] == 1
+        
+        # img has axes xyc, but we want zyx
+        img = img.transpose()[None,0,:,:]
+    
+        # Copy just the part we need into the destination array
+        assert img[roiToSlice(*tile_relative_intersection)].shape == data_out.shape
+        data_out[:] = img[roiToSlice(*tile_relative_intersection)]
+
     # For late imports
     requests = None
     PIL = None
     
     TEST_MODE = False # For testing purposes only. See below.    
 
-    def _retrieve_tile(self, tmpdir, rest_args, tile_relative_intersection, data_out):
+    def _retrieve_remote_tile(self, tmpdir, rest_args, tile_relative_intersection, data_out):
         # Late import
         if not TiledVolume.requests:
             import requests
@@ -220,11 +247,6 @@ class TiledVolume(object):
         requests = TiledVolume.requests
 
         tile_url = self.description.tile_url_format.format( **rest_args )
-
-        tmp_filename = 'z{z_start}_y{y_start}_x{x_start}'.format( **rest_args )
-        tmp_filename += '.' + self.description.format
-        tmp_filepath = os.path.join(tmpdir, tmp_filename) 
-
         logger.debug("Retrieving {}".format( tile_url ))
         try:
             if self._session is None:
@@ -261,7 +283,7 @@ class TiledVolume(object):
                 raise
                 
         if r.status_code == requests.codes.not_found:
-            logger.warn("NOTFOUND: {}".format( tile_url, tmp_filepath ))
+            logger.warn("NOTFOUND: {}".format( tile_url ))
             data_out[:] = 0
         else:
             USE_PIL = True
@@ -279,6 +301,10 @@ class TiledVolume(object):
                 img = img[None]
                 #img = img.transpose()[None]
             else: 
+                tmp_filename = 'z{z_start}_y{y_start}_x{x_start}'.format( **rest_args )
+                tmp_filename += '.' + self.description.format
+                tmp_filepath = os.path.join(tmpdir, tmp_filename) 
+
                 logger.debug("saving to {}".format( tmp_filepath ))
                 with open(tmp_filepath, 'wb') as f:
                     CHUNK_SIZE = 10*1024
