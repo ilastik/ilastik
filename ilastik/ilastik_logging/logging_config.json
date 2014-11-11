@@ -19,7 +19,7 @@
         "lazyflow.operators.ioOperators":                           { "level":"INFO" },
         "lazyflow.operators.ioOperators.opRESTfulVolumeReader":     { "level":"INFO" },
         "lazyflow.operators.opVigraWatershed":                      { "level":"INFO" },
-        "lazyflow.operators.opFeatureMatrixCache":                  { "level":"DEBUG" },
+        "lazyflow.operators.opFeatureMatrixCache":                  { "level":"INFO" },
         "lazyflow.operators.opConcatenateFeatureMatrices":          { "level":"INFO" },
         
         "lazyflow.operators.opArrayCache.OpArrayCache":                           { "level":"INFO" },
@@ -34,8 +34,8 @@
         "volumina.pixelpipeline.imagesources.GrayscaleImageSource":  { "level": "INFO" },
         "volumina.pixelpipeline.imagesources.GrayscaleImageRequest": { "level": "INFO" },
         
-        "lazyflow.operators.operators.OpArrayCache":                { "level":"INFO" },
-        "lazyflow.operators.operators.ArrayCacheMemoryMgr":         { "level":"INFO" },
+        "lazyflow.operators.opArrayCache.OpArrayCache":                { "level":"INFO" },
+        "lazyflow.operators.arrayCacheMemoryMgr.ArrayCacheMemoryMgr":  { "level":"INFO" },
         "lazyflow.operators.vigraOperators":                        { "level":"INFO" },
         "lazyflow.operators.ioOperators.ioOperators.OpH5WriterBigDataset":  	{ "level":"INFO" },
         "lazyflow.operators.classifierOperators":                   { "level":"INFO" },
@@ -43,7 +43,7 @@
         "lazyflow.utility.bigRequestStreamer":                      { "level":"INFO" },
         "lazyflow.utility.roiRequestBatch":                         { "level":"INFO" },
         "lazyflow.utility.io.RESTfulVolume":                        { "level":"INFO" },
-        "lazyflow.utility.io.tiledVolume":                          { "level":"DEBUG" },
+        "lazyflow.utility.io.tiledVolume":                          { "level":"INFO" },
         "ilastik":                                                  { "level":"INFO" },
         "ilastik.clusterOps":                                       { "level":"INFO" },
         "ilastik.applets":                                          { "level":"INFO" },
