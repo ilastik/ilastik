@@ -100,8 +100,14 @@ def runWorkflow(cluster_args):
     # Copy relevant args from cluster cmdline options to ilastik_main cmdline options
     ilastik_main_args.headless = True
     ilastik_main_args.project = cluster_args.project
-    ilastik_main_args.logfile = cluster_args.logfile
     ilastik_main_args.process_name = cluster_args.process_name
+
+    # Nodes should not write to a common logfile.
+    # Override with /dev/null
+    if cluster_args._node_work_ is None:
+        ilastik_main_args.logfile = cluster_args.logfile
+    else:
+        ilastik_main_args.logfile = "/dev/null"
     
     assert cluster_args.project is not None, "Didn't get a project file."
     
