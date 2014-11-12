@@ -18,6 +18,8 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+import copy
+
 from PyQt4 import QtCore
 from PyQt4.QtCore import QObject, QTimer
 from PyQt4.QtGui import QMessageBox
@@ -43,7 +45,10 @@ class ErrorMessageFilter(QObject):
         self.messages[caption] = text
         
     def timeout(self):
-        for caption, text in self.messages.iteritems():
+        # Must copy now because the eventloop is allowed to run during QMessageBox.critical, below.
+        # That is, self.messages might change while the loop is executing (not allowed).
+        messages = copy.copy(self.messages)
+        for caption, text in messages.iteritems():
             QMessageBox.critical(self.parent(), caption, text)
         self.messages = {}
         

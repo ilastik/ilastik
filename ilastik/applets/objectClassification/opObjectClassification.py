@@ -551,6 +551,116 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         new_labels[0]=0 #FIXME: hardcoded background value again
         return new_labels, old_labels_lost, new_labels_lost
 
+    def exportLabelInfo(self, file_path):
+        """
+        For all images with labels, export object bounding boxes and label classes as JSON.
+        """
+        import json
+        import collections
+        from functools import partial
+
+        logger.info("Exporting label information as json to: {}".format( file_path ))
+
+        json_data_all_lanes = collections.OrderedDict()
+        
+        for lane_index, (label_slot, object_feature_slot) in enumerate(zip(self.LabelInputs, self.ObjectFeatures)):
+            logger.info("Processing image #{}".format( lane_index ))
+            json_data_this_lane = collections.OrderedDict()
+            labels_timewise = label_slot.value
+            for t in sorted(labels_timewise.keys()):
+                labels = map(int, labels_timewise[t] )
+                if not any(labels):
+                    continue
+
+                object_features_timewise = object_feature_slot([t]).wait()
+                object_features = object_features_timewise[t]
+
+                json_data_this_time = collections.OrderedDict()
+                bounding_boxes = collections.OrderedDict()
+                # Convert from numpy array to list (for json)
+                bounding_boxes["Coord<Minimum>"] = map( partial(map, int), object_features["Default features"]["Coord<Minimum>"] )
+                bounding_boxes["Coord<Maximum>"] = map( partial(map, int), object_features["Default features"]["Coord<Maximum>"] )
+                
+                json_data_this_time["bounding_boxes"] = bounding_boxes
+                json_data_this_time["labels"] = labels
+                
+                json_data_this_lane[int(t)] = json_data_this_time
+            json_data_all_lanes[lane_index] = json_data_this_lane
+
+        with open(file_path, 'w') as f:
+            json.dump(json_data_all_lanes, f)
+        logger.info("Label export FINISHED.")
+
+    def importLabelInfo(self, file_path):
+        """
+        Read labels and bounding boxes from a JSON file.  
+        For all image lanes in the JSON file, replace all labels in that image.  
+        For image lanes NOT listed in the JSON file, keep the existing labels.
+        """
+        import json
+        logger.info("Reading label information from json: {}".format( file_path ))
+        
+        with open(file_path, 'r') as f:
+            json_data_all_lanes = json.load(f)
+        
+        max_label = 0
+        
+        new_labels_all_lanes = {}
+        for lane_index_str in sorted(json_data_all_lanes.keys(), key=int):
+            lane_index = int(lane_index_str)
+            logger.info("Processing image #{}".format( lane_index ))
+
+            json_data_this_lane = json_data_all_lanes[lane_index_str]
+            
+            new_labels_this_lane = {}
+            for time_str in sorted(json_data_this_lane.keys(), key=int):
+                time = int(time_str)
+                
+                old_features_timewise = self.ObjectFeatures[lane_index]([time]).wait()
+                old_features = old_features_timewise[time]
+                
+                current_bboxes = {}
+                current_bboxes["Coord<Minimum>"] = old_features["Default features"]["Coord<Minimum>"]
+                current_bboxes["Coord<Maximum>"] = old_features["Default features"]["Coord<Maximum>"]
+
+                json_data_this_time = json_data_this_lane[time_str]
+                saved_labels = numpy.array( json_data_this_time["labels"] )
+                max_label = max( max_label, saved_labels.max() )
+
+                saved_bboxes = {}
+                saved_bboxes["Coord<Minimum>"] = numpy.array( json_data_this_time["bounding_boxes"]["Coord<Minimum>"] )
+                saved_bboxes["Coord<Maximum>"] = numpy.array( json_data_this_time["bounding_boxes"]["Coord<Maximum>"] )
+                
+                # Calculate new labels
+                newlabels, oldlost, newlost = OpObjectClassification.transferLabels(saved_labels, saved_bboxes, current_bboxes, None)
+                new_labels_this_lane[time] = newlabels
+
+                logger.info("Lane {}, time {} new labels: {}".format( lane_index, time, list(newlabels) ))
+                logger.info("Lane {}, time {} lost OLD: {}".format( lane_index, time, oldlost ))
+                logger.info("Lane {}, time {} lost NEW: {}".format( lane_index, time, newlost ))
+                
+            # Apply new labels
+            new_labels_all_lanes[lane_index] = new_labels_this_lane
+
+        # If we have a new max label, add label classes as needed.
+        label_names = self.LabelNames.value
+        if len(self.LabelNames.value) < max_label:
+            new_label_names = list(label_names)
+            for class_index in range( len(label_names)+1, int(max_label)+1 ):
+                new_label_names.append( "Label {}".format( class_index ) )
+            self.LabelNames.setValue( new_label_names )
+        
+        for lane_index, new_labels_timewise in sorted(new_labels_all_lanes.items()):
+            for t in range( self.SegmentationImages[lane_index].meta.getTaggedShape()['t'] ):
+                if t not in new_labels_timewise:
+                    # No replacement labels. Copy old labels.
+                    new_labels_timewise[t] = self.LabelInputs[lane_index].value[t]
+            
+            logger.info("Applying new labels to lane {}".format( lane_index ))
+            self.LabelInputs[lane_index].setValue(new_labels_timewise)
+        
+        logger.info("Label import FINISHED")
+
 
     def createExportTable(self, lane, roi):
         numLanes = len(self.SegmentationImages)

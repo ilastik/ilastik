@@ -26,7 +26,7 @@ import numpy
 
 # lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.request import RequestLock
+from lazyflow.request import RequestLock, RequestPool
 from lazyflow.roi import getIntersectingBlocks, getBlockBounds, getIntersection, roiToSlice
 from lazyflow.operators import OpSubRegion, OpMultiArrayStacker
 from lazyflow.stype import Opaque
@@ -246,27 +246,35 @@ class OpBlockwiseObjectClassification( Operator ):
                       "Your datasets have shapes: {} and {}".format( self.RawImage.meta.shape, self.BinaryImage.meta.shape )
                 raise DatasetConstraintError( "Blockwise Object Classification", msg )
         
+        self._block_shape_dict = self.BlockShape3dDict.value
+        self._halo_padding_dict = self.HaloPadding3dDict.value
+
         self.PredictionImage.meta.assignFrom( self.RawImage.meta )
         self.PredictionImage.meta.dtype = numpy.uint8 # Ultimately determined by meta.mapping_dtype from OpRelabelSegmentation
         prediction_tagged_shape = self.RawImage.meta.getTaggedShape()
         prediction_tagged_shape['c'] = 1
         self.PredictionImage.meta.shape = tuple( prediction_tagged_shape.values() )
 
+        block_shape = self._getFullShape( self._block_shape_dict )
+        self.PredictionImage.meta.ideal_blockshape = block_shape
+
+        raw_ruprp = self.RawImage.meta.ram_usage_per_requested_pixel
+        binary_ruprp = self.BinaryImage.meta.ram_usage_per_requested_pixel
+        prediction_ruprp = max( raw_ruprp, binary_ruprp )
+        self.PredictionImage.meta.ram_usage_per_requested_pixel = prediction_ruprp
+
         self.ProbabilityChannelImage.meta.assignFrom( self.RawImage.meta )
         self.ProbabilityChannelImage.meta.dtype = numpy.float32
         prediction_channels_tagged_shape = self.RawImage.meta.getTaggedShape()
         prediction_channels_tagged_shape['c'] = self.LabelsCount.value
         self.ProbabilityChannelImage.meta.shape = tuple( prediction_channels_tagged_shape.values() )
+        self.ProbabilityChannelImage.meta.ram_usage_per_requested_pixel = prediction_ruprp
 
-        self._block_shape_dict = self.BlockShape3dDict.value
-        self._halo_padding_dict = self.HaloPadding3dDict.value
-
-        block_shape = self._getFullShape( self._block_shape_dict )
-        
         region_feature_output_shape = ( numpy.array( self.PredictionImage.meta.shape ) + block_shape - 1 ) / block_shape
         self.BlockwiseRegionFeatures.meta.shape = tuple(region_feature_output_shape)
         self.BlockwiseRegionFeatures.meta.dtype = object
         self.BlockwiseRegionFeatures.meta.axistags = self.PredictionImage.meta.axistags
+
         
     def execute(self, slot, subindex, roi, destination):
         if slot == self.PredictionImage or slot == self.ProbabilityChannelImage:
@@ -289,7 +297,7 @@ class OpBlockwiseObjectClassification( Operator ):
             self._ensurePipelineExists(block_start)
 
         # Retrieve result from each block, and write into the appropriate region of the destination
-        # TODO: Parallelize this loop
+        pool = RequestPool()
         for block_start in block_starts:
             opBlockPipeline = self._blockPipelines[block_start]
             block_roi = opBlockPipeline.block_roi
@@ -310,7 +318,8 @@ class OpBlockwiseObjectClassification( Operator ):
             destination_slice = roiToSlice( *destination_relative_intersection )
             req = block_slot( *block_relative_intersection )
             req.writeInto( destination[destination_slice] )
-            req.wait()
+            pool.add( req )
+        pool.wait()
 
         return destination
 
@@ -331,6 +340,7 @@ class OpBlockwiseObjectClassification( Operator ):
         block_starts = getIntersectingBlocks( block_shape, pixel_roi )
         block_starts = map( tuple, block_starts )
         
+        # TODO: Parallelize this?
         for block_start in block_starts:
             assert block_start in self._blockPipelines, "Not allowed to request region features for blocks that haven't yet been processed." # See note above
 
