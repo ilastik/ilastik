@@ -66,7 +66,12 @@ class MriVolFilterGui(LayerViewerGui):
             widget.installEventFilter(self)
 
         # load default parameters for spin-boxes
+        self._params_valid = True
         self._getParamsFromOp()
+        if not self._params_valid:
+            logger.info("Fixing invalid parameters")
+            self._setParamsToOp()
+            self._params_valid = True
 
         # prepare the label table
         self.model = QStandardItemModel(self._drawer.labelListView)
@@ -422,6 +427,7 @@ class MriVolFilterGui(LayerViewerGui):
             if sigma != conf['sigma']:
                 logger.warn("Could not apply sigma {} because of "
                             "operator restrictions".format(conf['sigma']))
+                self._params_valid = False
             if tab_index == 0:
                 self._drawer.sigmaSpinBox.setValue(sigma)
             elif tab_index == 1:
@@ -440,6 +446,7 @@ class MriVolFilterGui(LayerViewerGui):
                     'Unknown tab {} selected'.format(tab_index))
         except KeyError:
             logger.warn("Bad smoothing configuration encountered")
+            params_valid = False
 
     # =================================================================
     #                          CALLBACKS
@@ -448,9 +455,12 @@ class MriVolFilterGui(LayerViewerGui):
     def _connectCallbacks(self):
         op = self.topLevelOperatorView
 
-        op.Input.notifyMetaChanged(self._onInputChanged)
-        self.__cleanup_fns.append(
-            lambda: op.Input.unregisterMetaChanged(self._onInputChanged))
+        # GUI is recreated every time the input changes, so we don't need to
+        # trap that case
+        # op.Input.notifyMetaChanged(self._onInputChanged)
+        # self.__cleanup_fns.append(
+        #     lambda: op.Input.unregisterMetaChanged(self._onInputChanged))
+
         self._drawer.applyButton.clicked.connect(self._onApplyButtonClicked)
 
         # syncronize slider and spinbox
