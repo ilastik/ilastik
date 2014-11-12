@@ -27,4 +27,8 @@ from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 
 
 class NansheDataExportApplet(DataExportApplet):
-    pass
+    def getMultiLaneGui(self):
+        if self._gui is None:
+            from nansheDataExportGui import NansheDataExportGui
+            self._gui = NansheDataExportGui( self, self.topLevelOperator )
+        return self._gui
