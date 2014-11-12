@@ -265,6 +265,8 @@ class OpClusterize(Operator):
 
             # Output log directory might be a relative path (relative to config file)
             absLogDir, _ = getPathVariants(self._config.output_log_directory, os.path.split( self.ConfigFilePath.value )[0] )
+            if not os.path.exists(absLogDir):
+                os.makedirs(absLogDir)
             taskOutputLogFilename = taskName + ".log"
             taskOutputLogPath = os.path.join( absLogDir, taskOutputLogFilename )
             
