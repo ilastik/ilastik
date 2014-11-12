@@ -27,6 +27,7 @@ import itertools
 import math
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.operators import OpBlockedArrayCache
 
 import vigra
 
@@ -109,3 +110,82 @@ class OpMeanProjection(Operator):
             self.Output.setDirty( slice(None) )
         else:
             assert False, "Unknown dirty input slot"
+
+
+class OpMeanProjectionCached(Operator):
+    """
+    Given an input image and max/min bounds,
+    masks out (i.e. sets to zero) all pixels that fall outside the bounds.
+    """
+    name = "OpMeanProjectionCached"
+    category = "Pointwise"
+
+
+    InputImage = InputSlot()
+
+    Axis = InputSlot(value=0, stype="int")
+
+    Output = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super( OpMeanProjectionCached, self ).__init__( *args, **kwargs )
+
+        self.opMaxProjection = OpMeanProjection(parent=self)
+
+        self.opMaxProjection.Axis.connect(self.Axis)
+
+
+        self.opCache = OpBlockedArrayCache(parent=self)
+        self.opCache.fixAtCurrent.setValue(False)
+
+        self.opMaxProjection.InputImage.connect( self.InputImage )
+        self.opCache.Input.connect( self.opMaxProjection.Output )
+        self.Output.connect( self.opCache.Output )
+
+    def setupOutputs(self):
+        axes_shape_iter = itertools.izip(self.opMaxProjection.Output.meta.axistags,
+                                         self.opMaxProjection.Output.meta.shape)
+
+        halo_center_slicing = []
+
+        for each_axistag, each_len in axes_shape_iter:
+            each_halo_center = each_len
+            each_halo_center_slicing = slice(0, each_len, 1)
+
+            if each_axistag.isTemporal() or each_axistag.isSpatial():
+                each_halo_center /= 2.0
+                # Must take floor consider the singleton dimension case
+                each_halo_center = int(math.floor(each_halo_center))
+                each_halo_center_slicing = slice(each_halo_center, each_halo_center + 1, 1)
+
+            halo_center_slicing.append(each_halo_center_slicing)
+
+        halo_center_slicing = tuple(halo_center_slicing)
+
+        halo_slicing = self.opMaxProjection.compute_halo(halo_center_slicing,
+                                                         self.InputImage.meta.shape,
+                                                         self.Axis.value)[0]
+
+
+        block_shape = nanshe.additional_generators.len_slices(halo_slicing)
+
+
+        block_shape = list(block_shape)
+
+        for i, each_axistag in enumerate(self.opMaxProjection.Output.meta.axistags):
+            if each_axistag.isSpatial():
+                block_shape[i] = max(block_shape[i], 256)
+
+            block_shape[i] = min(block_shape[i], self.opMaxProjection.Output.meta.shape[i])
+
+        block_shape = tuple(block_shape)
+
+
+        self.opCache.innerBlockShape.setValue(block_shape)
+        self.opCache.outerBlockShape.setValue(block_shape)
+
+    def setInSlot(self, slot, subindex, roi, value):
+        pass
+
+    def propagateDirty(self, slot, subindex, roi):
+        pass
