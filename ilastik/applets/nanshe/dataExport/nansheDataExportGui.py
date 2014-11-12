@@ -57,7 +57,6 @@ class NansheDataExportLayerViewerGui(DataExportLayerViewerGui):
         colors.append( QColor( Qt.blue ) )
         colors.append( QColor( Qt.magenta ) )
         colors.append( QColor( Qt.darkYellow ) )
-        colors.append( QColor( Qt.lightGray ) )
 
         # Additional colors
         colors.append( QColor(255, 105, 180) ) #hot pink
@@ -69,8 +68,6 @@ class NansheDataExportLayerViewerGui(DataExportLayerViewerGui):
         colors.append( QColor(128,0, 128) )    #purple
         colors.append( QColor(240, 230, 140) ) #khaki
 
-        colors.append( QColor(192, 192, 192) ) #silver
-        colors.append( QColor(69, 69, 69) )    # dark grey
         colors.append( QColor( Qt.cyan ) )
 
         colors = [c.rgba() for c in colors]
