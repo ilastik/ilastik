@@ -6,6 +6,7 @@ import h5py
 import copy
 import SimpleHTTPServer
 import SocketServer
+import nose
 
 from lazyflow.utility.io.tiledVolume import TiledVolume
 from lazyflow.utility import PathComponents, export_to_tiles
@@ -43,6 +44,12 @@ class DataSetup(object):
     Can also be used by other test modules (e.g. testOpTiledVolumeReader.py)
     """
     def __init__(self):
+        try:
+            import PIL
+            import requests
+        except ImportError:
+            raise nose.SkipTest
+        
         self.TILE_DIRECTORY = None
         self.REFERENCE_VOL_FILE = None
         self.REFERENCE_VOL_PATH = None
