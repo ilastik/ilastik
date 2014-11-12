@@ -68,7 +68,8 @@ class OpExportSlot(Operator):
     _4d_sequence_formats = [ FormatInfo('multipage tiff sequence', 'tiff', 4, 4) ]
     nd_format_formats = [ FormatInfo('hdf5', 'h5', 0, 5),
                           FormatInfo('numpy', 'npy', 0, 5),
-                          FormatInfo('dvid', '', 2, 5) ]
+                          FormatInfo('dvid', '', 2, 5),
+                          FormatInfo('blockwise hdf5', 'json', 0, 5) ]
     
     ALL_FORMATS = _2d_formats + _3d_sequence_formats + _3d_volume_formats\
                 + _4d_sequence_formats + nd_format_formats
@@ -82,6 +83,7 @@ class OpExportSlot(Operator):
         export_impls['hdf5'] = ('h5', self._export_hdf5)
         export_impls['npy'] = ('npy', self._export_npy)
         export_impls['dvid'] = ('', self._export_dvid)
+        export_impls['blockwise hdf5'] = ('json', self._export_blockwise_hdf5)
         
         for fmt in self._2d_formats:
             export_impls[fmt.name] = (fmt.extension, partial(self._export_2d, fmt.extension) )
@@ -155,7 +157,7 @@ class OpExportSlot(Operator):
         output_format = self.OutputFormat.value
 
         # These cases support all combinations
-        if output_format in ('hdf5', 'npy'):
+        if output_format in ('hdf5', 'npy', 'blockwise hdf5'):
             return ""
         
         tagged_shape = self.Input.meta.getTaggedShape()
@@ -275,6 +277,9 @@ class OpExportSlot(Operator):
         finally:
             opExport.cleanUp()
             self.progressSignal(100)
+    
+    def _export_blockwise_hdf5(self):
+        raise NotImplementedError
     
     def _export_2d(self, fmt):
         self.progressSignal(0)
