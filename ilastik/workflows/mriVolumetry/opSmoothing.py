@@ -16,6 +16,20 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def getMaxSigma(spatialShape):
+    # http://ukoethe.github.io/vigra/doc/vigra/classvigra_1_1Gaussian
+    # required filter radius for a discrete approximation
+    # of the Gaussian
+    # TODO the equation might actually not be what the code is doing
+    # check and update accordingly
+    minDim = int(np.min(spatialShape))
+    maxSigma = np.floor(minDim//6) - .1
+    # -.1 for safety reasons
+    # Experimentally 3. (see Anna's comment on issue below)
+    # https://github.com/ilastik/ilastik/issues/996
+    return maxSigma
+
+
 # this operator wraps multiple implementations of smoothing algorithms while
 # also taking care of caching and reordering
 class OpSmoothedArgMax(Operator):
@@ -189,11 +203,6 @@ class OpCostVolumeFilter(OpSmoothingImplementation):
             vol /= z
 
     def execute(self, slot, subindex, roi, result):
-        # http://ukoethe.github.io/vigra/doc/vigra/classvigra_1_1Gaussian
-        # required filter radius for a discrete approximation
-        # of the Gaussian
-        # TODO the equation might actually not be what the code is doing
-        # check and update accordingly
 
         logger.debug("Gaussian on roi {}".format(roi))
 
@@ -202,6 +211,12 @@ class OpCostVolumeFilter(OpSmoothingImplementation):
             raise self.ConfigurationError(
                 "expected key 'sigma' in configuration")
         sigma = conf['sigma']
+        maxSigma = getMaxSigma(self.Input.meta.shape[1:4])
+        if sigma > maxSigma and sigma > 0:
+            logger.warn("Smoothing sigma too large: "
+                        "replacing sigma={} with "
+                        "sigma={}".format(sigma, maxSigma))
+            sigma = maxSigma
 
         result[...] = self.Input.get(roi).wait().astype(self.Output.meta.dtype)
         self._costVolumeFilter(result, sigma, normalize=True)
@@ -247,6 +262,12 @@ class OpGuidedFilter(OpSmoothingImplementation):
             raise self.ConfigurationError(
                 "expected key 'sigma' in configuration")
         sigma = conf['sigma']
+        maxSigma = getMaxSigma(self.Input.meta.shape[1:4])
+        if sigma > maxSigma and sigma > 0:
+            logger.warn("Smoothing sigma too large: "
+                        "replacing sigma={} with "
+                        "sigma={}".format(sigma, maxSigma))
+            sigma = maxSigma
 
         if 'eps' not in conf:
             raise self.ConfigurationError(
@@ -268,10 +289,10 @@ class OpGuidedFilter(OpSmoothingImplementation):
             if uncertaintyGuideImage:
                 pfiltered = np.zeros_like(vol[0])
                 for c in xrange(vol.shape[-1]):
-                    pfiltered[...,c] = vigra.gaussianSmoothing( vol[0,...,c], 
+                    pfiltered[..., c] = vigra.gaussianSmoothing(vol[0, ..., c],
                                                                 float(1.2))
                 pmap = np.sort(pfiltered, axis=-1)
-                uncertainties  = pmap[...,-1]-pmap[...,-2] 
+                uncertainties = pmap[..., -1] - pmap[..., -2]
 
             for c in xrange(vol.shape[-1]):
                 if uncertaintyGuideImage:

@@ -10,6 +10,7 @@ from PyQt4.QtGui import QColor, QMessageBox, QListView, QStandardItemModel, \
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.utility.gui import threadRouted
+from ilastik.workflows.mriVolumetry.opSmoothing import getMaxSigma
 
 from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer
 # from volumina.colortables import create_default_16bit
@@ -365,7 +366,7 @@ class MriVolFilterGui(LayerViewerGui):
         op = self.topLevelOperatorView
         ts = op.Input.meta.getTaggedShape()
         shape = [ts[k] for k in ts if k in 'xyz']
-        max_sigma = self._maxSigma(shape)
+        max_sigma = getMaxSigma(shape)
         self._drawer.sigmaSpinBox.setMaximum(max_sigma)
         self._drawer.sigmaGuidedSpinBox.setMaximum(max_sigma)
         self._drawer.sigmaGMSpinBox.setMaximum(max_sigma)
@@ -510,14 +511,6 @@ class MriVolFilterGui(LayerViewerGui):
     #                         STATIC METHODS
     # =================================================================
 
-    @staticmethod
-    def _maxSigma(spatialShape):
-        minDim = np.min(spatialShape)
-        maxSigma = np.floor(minDim/6.) - .1
-        # -.1 for safety reasons
-        # Experimentally 3. (see Anna's comment on issue below)
-        # https://github.com/ilastik/ilastik/issues/996
-        return maxSigma
 
     @staticmethod
     def _createDefault16ColorColorTable():

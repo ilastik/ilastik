@@ -1,6 +1,7 @@
 import unittest
 
 from ilastik.workflows.mriVolumetry.opSmoothing import OpCostVolumeFilter
+from ilastik.workflows.mriVolumetry.opSmoothing import getMaxSigma
 from ilastik.workflows.mriVolumetry.opMriVolFilter import OpMriBinarizeImage
 from ilastik.workflows.mriVolumetry.opMriVolFilter import OpMriVolFilter
 from ilastik.workflows.mriVolumetry.opImplementationChoice import OpImplementationChoice
@@ -268,6 +269,20 @@ class TestOpOpenGMFilter(unittest.TestCase):
 
         out = op.Output[...].wait()
         print(out[0,...].sum())
+
+
+class TestVariousSmallComponents(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def deFactoVigraMaxSigma(self, minShape):
+        return minShape/3.0
+
+    def testGetMaxSigma(self):
+        # http://ukoethe.github.io/vigra/doc/vigra/classvigra_1_1Gaussian
+        for s in np.arange(10, 1000, 10):
+            np.testing.assert_array_less(getMaxSigma((s,)),
+                                         self.deFactoVigraMaxSigma(s))
 
 
 if __name__ == "__main__": 
