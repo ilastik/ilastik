@@ -107,7 +107,8 @@ class OpTaskWorker(Operator):
 
         with Timer() as computeTimer:
             # Stream the data out to disk.
-            streamer = BigRequestStreamer(self.Input, (roi.start, roi.stop) )
+            request_blockshape = self._primaryBlockwiseFileset.description.sub_block_shape # Could be None.  That's okay as long as there are no secondary outputs
+            streamer = BigRequestStreamer(self.Input, (roi.start, roi.stop), request_blockshape )
             streamer.progressSignal.subscribe( self.progressSignal )
             streamer.resultSignal.subscribe( self._handlePrimaryResultBlock )
             streamer.execute()
@@ -126,21 +127,24 @@ class OpTaskWorker(Operator):
         # First write the primary
         self._primaryBlockwiseFileset.writeData(roi, result)
 
-        # Get this block's index with respect to the primary dataset
-        #sub_block_index = roi[0] / self._primaryBlockwiseFileset.description.sub_block_shape
-        
-        # Now request the secondaries
-        for slot, fileset in zip(self.SecondaryInputs, self._secondaryBlockwiseFilesets):
-            assert False, "FIXME: secondary inputs need to be requested in the right blocks... or we need a new plan for this."
-            # Compute the corresponding sub_block in this output dataset
-            sub_block_shape = fileset.description.sub_block_shape
-            sub_block_start = sub_block_index * sub_block_shape
-            sub_block_stop = sub_block_start + sub_block_shape
-            sub_block_stop = numpy.minimum( sub_block_stop, fileset.description.shape )
-            sub_block_roi = (sub_block_start, sub_block_stop)
+        if len(self.SecondaryInputs) > 0:
+            assert self._primaryBlockwiseFileset.description.sub_block_shape is not None, \
+                "The use of secondary results REQUIRES you to specify a sub_block_shape in both the primary and secondary result data descroption files."
+            # Get this block's index with respect to the primary dataset
+            sub_block_index = roi[0] / self._primaryBlockwiseFileset.description.sub_block_shape
             
-            secondary_result = slot( *sub_block_roi ).wait()
-            fileset.writeData( sub_block_roi, secondary_result )
+            # Now request the secondaries
+            for slot, fileset in zip(self.SecondaryInputs, self._secondaryBlockwiseFilesets):
+                assert False, "FIXME: secondary inputs need to be requested in the right blocks... or we need a new plan for this."
+                # Compute the corresponding sub_block in this output dataset
+                sub_block_shape = fileset.description.sub_block_shape
+                sub_block_start = sub_block_index * sub_block_shape
+                sub_block_stop = sub_block_start + sub_block_shape
+                sub_block_stop = numpy.minimum( sub_block_stop, fileset.description.shape )
+                sub_block_roi = (sub_block_start, sub_block_stop)
+                
+                secondary_result = slot( *sub_block_roi ).wait()
+                fileset.writeData( sub_block_roi, secondary_result )
 
 class OpClusterize(Operator):
     Input = InputSlot()
