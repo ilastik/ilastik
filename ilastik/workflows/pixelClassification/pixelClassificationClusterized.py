@@ -292,12 +292,13 @@ if __name__ == "__main__":
         # REMOTE TEST
         #args.append( "--option_config_file=/nobackup/bock/ilastik/bock-pilot-cluster-options/example_cluster_options.json")
         #args.append( "--project=/nobackup/bock/ilastik/gamma-alpha/gammaAlphaFanPixelProject.ilp")
-        #args.append( "--output_description_file=/nobackup/bock/ilastik/bock-pilot-cluster-options/results_description.json")
+        #args.append( "--output_description_file=/nobackup/bock/ilastik/bock-pilot-cluster-options/pixel_results_description.json")
 
-        args.append( "--option_config_file=/nobackup/bock/ilastik/bock-pilot-cluster-options/example_cluster_options.json")
-        args.append( "--project=/nobackup/bock/ilastik/gamma-alpha/gammaAlphaFanPixelProject.ilp")
-        args.append( "--output_description_file=/nobackup/bock/ilastik/bock-pilot-cluster-options/results_description.json")
-
+        # Object test
+        args.append( "--option_config_file=/nobackup/bock/ilastik/bock-pilot-cluster-options/object_cluster_options.json")
+        args.append( "--project=/nobackup/bock/ilastik/gamma-alpha/gamma-object-experimental-updated.ilp")
+        args.append( "--output_description_file=/nobackup/bock/ilastik/bock-pilot-cluster-options/object_results/object_results_description.json")
+        args.append( "--secondary_output_description_file=/nobackup/bock/ilastik/bock-pilot-cluster-options/object_results/region_features_description.json")
 
 #        # SMALL TEST
 #        args.append( "--option_config_file=/groups/flyem/data/bergs_scratch/cluster_options.json")
