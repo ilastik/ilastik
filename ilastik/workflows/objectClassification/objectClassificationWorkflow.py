@@ -150,6 +150,8 @@ class ObjectClassificationWorkflow(Workflow):
 
             self._initBatchWorkflow()
 
+            self._batch_export_args = None
+            self._batch_input_args = None
             if unused_args:
                 # Additional export args (specific to the object classification workflow)
                 export_arg_parser = argparse.ArgumentParser()
