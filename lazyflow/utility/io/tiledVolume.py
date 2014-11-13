@@ -1,7 +1,6 @@
 import os
 import numpy
 import vigra
-import tempfile
 import shutil
 from functools import partial
 from StringIO import StringIO
@@ -15,6 +14,7 @@ from StringIO import StringIO
 # Use PIL instead of vigra since it allows us to open images in-memory
 #from PIL import Image
 
+from lazyflow.utility.timer import Timer 
 from lazyflow.utility.jsonConfig import JsonConfigParser, AutoEval, FormattedField
 from lazyflow.roi import getIntersectingBlocks, getBlockBounds, roiToSlice, getIntersection
 
@@ -160,9 +160,6 @@ class TiledVolume(object):
         tile_blockshape = (1,) + tuple(self.description.tile_shape_2d_yx)
         tile_starts = getIntersectingBlocks( tile_blockshape, roi )
 
-        # We use a fresh tmp dir for each read to avoid conflicts between parallel reads
-        tmpdir = tempfile.mkdtemp()
-        
         pool = RequestPool()
         for tile_start in tile_starts:
             tile_roi_in = getBlockBounds( self.description.bounds_zyx, tile_blockshape, tile_start )
@@ -203,9 +200,9 @@ class TiledVolume(object):
             assert rest_args['z_index'] == rest_args['z_start']
 
             if self.description.tile_url_format.startswith('http'):
-                retrieval_fn = partial( self._retrieve_remote_tile, tmpdir, rest_args, tile_relative_intersection, result_region )
+                retrieval_fn = partial( self._retrieve_remote_tile, rest_args, tile_relative_intersection, result_region )
             else:
-                retrieval_fn = partial( self._retrieve_local_tile, tmpdir, rest_args, tile_relative_intersection, result_region )            
+                retrieval_fn = partial( self._retrieve_local_tile, rest_args, tile_relative_intersection, result_region )            
 
             PARALLEL_REQ = True
             if PARALLEL_REQ:
@@ -213,13 +210,13 @@ class TiledVolume(object):
             else:
                 # execute serially (leave the pool empty)
                 retrieval_fn()
-        
-        pool.wait()
-        
-        # Clean up our temp files.
-        shutil.rmtree(tmpdir)
 
-    def _retrieve_local_tile(self, tmpdir, rest_args, tile_relative_intersection, data_out):
+        if PARALLEL_REQ:
+            with Timer() as timer:
+                pool.wait()
+            logger.info("Loading {} tiles took a total of {}".format( len(tile_starts), timer.seconds() ))
+        
+    def _retrieve_local_tile(self, rest_args, tile_relative_intersection, data_out):
         tile_path = self.description.tile_url_format.format( **rest_args )
         logger.debug("Opening {}".format( tile_path ))
 
@@ -249,7 +246,7 @@ class TiledVolume(object):
     
     TEST_MODE = False # For testing purposes only. See below.    
 
-    def _retrieve_remote_tile(self, tmpdir, rest_args, tile_relative_intersection, data_out):
+    def _retrieve_remote_tile(self, rest_args, tile_relative_intersection, data_out):
         # Late import
         if not TiledVolume.requests:
             import requests
@@ -296,48 +293,23 @@ class TiledVolume(object):
             logger.warn("NOTFOUND: {}".format( tile_url ))
             data_out[:] = 0
         else:
-            USE_PIL = True
-            if USE_PIL:
-                # late import
-                if not TiledVolume.PIL:
-                    import PIL
-                    import PIL.Image
-                    TiledVolume.PIL = PIL
-                PIL = TiledVolume.PIL
+            # late import
+            if not TiledVolume.PIL:
+                import PIL
+                import PIL.Image
+                TiledVolume.PIL = PIL
+            PIL = TiledVolume.PIL
 
-                img = numpy.asarray( PIL.Image.open(StringIO(r.content)) )
-                if self.description.is_rgb:
-                    # "Convert" to grayscale -- just take first channel.
-                    assert img.ndim == 3
-                    img = img[...,0]
-                assert img.ndim == 2, "Image seems to be of the wrong dimension.  "\
-                                      "If it is RGB, be sure to set the is_rgb flag in your description json."
-                # img has axes xy, but we want zyx
-                img = img[None]
-                #img = img.transpose()[None]
-            else: 
-                tmp_filename = 'z{z_start}_y{y_start}_x{x_start}'.format( **rest_args )
-                tmp_filename += '.' + self.description.format
-                tmp_filepath = os.path.join(tmpdir, tmp_filename) 
-
-                logger.debug("saving to {}".format( tmp_filepath ))
-                with open(tmp_filepath, 'wb') as f:
-                    CHUNK_SIZE = 10*1024
-                    for chunk in r.iter_content(CHUNK_SIZE):
-                        f.write(chunk)
-
-                # Read the image from the disk with vigra
-                img = vigra.impex.readImage(tmp_filepath, dtype='NATIVE')
+            img = numpy.asarray( PIL.Image.open(StringIO(r.content)) )
+            if self.description.is_rgb:
+                # "Convert" to grayscale -- just take first channel.
                 assert img.ndim == 3
-                if self.description.is_rgb:
-                    # "Convert" to grayscale -- just take first channel.
-                    img = img[...,0:1]
-                assert img.shape[-1] == 1, "Image has more channels than expected.  "\
-                                           "If it is RGB, be sure to set the is_rgb flag in your description json."
-                
-                # img has axes xyc, but we want zyx
-                img = img.transpose()[None,0,:,:]
-            
+                img = img[...,0]
+            assert img.ndim == 2, "Image seems to be of the wrong dimension.  "\
+                                  "If it is RGB, be sure to set the is_rgb flag in your description json."
+            # img has axes xy, but we want zyx
+            img = img[None]
+        
             # Copy just the part we need into the destination array
             assert img[roiToSlice(*tile_relative_intersection)].shape == data_out.shape
             data_out[:] = img[roiToSlice(*tile_relative_intersection)]
