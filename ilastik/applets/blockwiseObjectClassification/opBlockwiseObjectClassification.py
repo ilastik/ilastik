@@ -28,7 +28,7 @@ import numpy
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.request import RequestLock, RequestPool
 from lazyflow.roi import getIntersectingBlocks, getBlockBounds, getIntersection, roiToSlice
-from lazyflow.operators import OpSubRegion, OpMultiArrayStacker
+from lazyflow.operators import OpSubRegion, OpMultiArrayStacker, OpArrayCache
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List
 
@@ -125,6 +125,9 @@ class OpSingleBlockObjectPrediction( Operator ):
         self._opPredictionImage.Image.connect( self._opExtract.LabelImage ) 
         self._opPredictionImage.Features.connect( self._opExtract.RegionFeatures )
         self._opPredictionImage.ObjectMap.connect( self._opPredict.Predictions )
+
+        self._opPredictionCache = OpArrayCache( parent=self )
+        self._opPredictionCache.Input.connect( self._opPredictionImage.Output )
         
         self._opProbabilityChannelsToImage = OpMultiRelabelSegmentation( parent=self )
         self._opProbabilityChannelsToImage.Image.connect( self._opExtract.LabelImage )
@@ -161,6 +164,7 @@ class OpSingleBlockObjectPrediction( Operator ):
         self.PredictionImage.meta.shape = tuple( numpy.subtract( self.block_roi[1], self.block_roi[0] ) )
 
         # Forward dirty regions to our own output
+        self._opPredictionCache.blockShape.setValue( self._opPredictionCache.Input.meta.shape )
         self._opPredictionImage.Output.notifyDirty( self._handleDirtyPrediction )
     
     def execute(self, slot, subindex, roi, destination):
@@ -171,7 +175,7 @@ class OpSingleBlockObjectPrediction( Operator ):
         halo_offset = numpy.subtract(self.block_roi[0], self._halo_roi[0])
         adjusted_roi = ( halo_offset + roi.start,
                          halo_offset + roi.stop )
-        return self._opPredictionImage.Output(*adjusted_roi).writeInto(destination).wait()
+        return self._opPredictionCache.Output(*adjusted_roi).writeInto(destination).wait()
 
     def propagateDirty(self, slot, subindex, roi):
         """
