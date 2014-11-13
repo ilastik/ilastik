@@ -129,13 +129,12 @@ class OpTaskWorker(Operator):
 
         if len(self.SecondaryInputs) > 0:
             assert self._primaryBlockwiseFileset.description.sub_block_shape is not None, \
-                "The use of secondary results REQUIRES you to specify a sub_block_shape in both the primary and secondary result data descroption files."
+                "The use of secondary results REQUIRES you to specify a sub_block_shape in both the primary and secondary result data description files."
             # Get this block's index with respect to the primary dataset
             sub_block_index = roi[0] / self._primaryBlockwiseFileset.description.sub_block_shape
             
             # Now request the secondaries
             for slot, fileset in zip(self.SecondaryInputs, self._secondaryBlockwiseFilesets):
-                assert False, "FIXME: secondary inputs need to be requested in the right blocks... or we need a new plan for this."
                 # Compute the corresponding sub_block in this output dataset
                 sub_block_shape = fileset.description.sub_block_shape
                 sub_block_start = sub_block_index * sub_block_shape
