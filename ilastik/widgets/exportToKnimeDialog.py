@@ -1,8 +1,11 @@
 from PyQt4 import uic
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
+
 import os.path
 import re
+from operator import mul
+
 
 class ExportToKnimeDialog(QDialog):
 
@@ -12,23 +15,40 @@ class ExportToKnimeDialog(QDialog):
     RE_EXT = r"\.[a-zA-Z0-9]+$"
     RE_FNAME = r"/'"
 
+    #dimensions: t, x, y, z, c
     def __init__(self, layerstack, dimensions, feature_table, req_features=None, parent=None):
         super(ExportToKnimeDialog, self).__init__(parent)
+
         ui_class, widget_class = uic.loadUiType(os.path.split(__file__)[0] + "/exportToKnimeDialog.ui")
         self.ui = ui_class()
         self.ui.setupUi(self)
 
-        self.raw_size = dimensions[0] * dimensions[1] * dimensions[2]
+        self.raw_size = reduce(mul, dimensions)
 
         self._setup_stack(layerstack)
 
         if req_features is None:
             req_features = []
         req_features.extend(["Coord<Minimum>", "Coord<Maximum>"])
+
         self._setup_features(feature_table, req_features)
         self.ui.featureView.setHeaderLabels(("Select Features",))
-        self.ui.exportPath.setText(os.path.expanduser("~") + "/a.h5")
         self.ui.featureView.expandAll()
+
+        self.ui.exportPath.setText(os.path.expanduser("~") + "/a.h5")
+        self.ui.exportPath.dropEvent = self._drop_event
+        self.ui.forceUniqueIds.setEnabled(dimensions[0] > 1)
+
+    def _drop_event(self, event):
+        data = event.mimeData()
+        if data.hasText():
+            pattern = r"([^/]+)\://(.*)"
+            match = re.findall(pattern, data.text())
+            if match:
+                text = unicode(match[0][1]).strip()
+            else:
+                text = data.text()
+            self.ui.exportPath.setText(text)
 
     def _setup_features(self, features, reqs, max_depth=2, parent=None):
         if max_depth == 0:
@@ -137,6 +157,12 @@ class ExportToKnimeDialog(QDialog):
             if button == QMessageBox.No:
                 self.ui.includeRaw.setCheckState(Qt.Unchecked)
 
+    # slot is called from comboBox.change
+    def change_compression(self, qstring):
+        hidden = str(qstring) != "gzip"
+        self.ui.gzipRate.setHidden(hidden)
+        self.ui.rateLabel.setHidden(hidden)
+
     # iterator for all features to export
     def checked_features(self):
         flags = QTreeWidgetItemIterator.Checked
@@ -152,21 +178,22 @@ class ExportToKnimeDialog(QDialog):
             if item.checkState() == Qt.Checked:
                 yield str(item.text())
 
-    # should the raw layer be exported
-    def include_raw_layer(self):
-        return self.ui.includeRaw.checkState()
+    def _compression_settings(self):
+        settings = {}
+        if self.ui.enableCompression.checkState() == Qt.Checked:
+            settings["compression"] = str(self.ui.compressionType.currentText())
+            settings["shuffle"] = str(self.ui.enableShuffling.checkState() == Qt.Checked)
+            if settings["compression"] == "gzip":
+                settings["compression_opts"] = self.ui.gzipRate.value()
+        return settings
 
-    def advanced_settings(self):
-        return  {
+    def settings(self):
+        return {
             "normalize": self.ui.normalizeLabeling.checkState() == Qt.Checked,
-            "margin": self.ui.addMargin.value()
+            "margin": self.ui.addMargin.value(),
+            "compression": self._compression_settings(),
+            "file type": "h5",
+            "file path": self.ui.exportPath.text(),
+            "include raw": self.ui.includeRaw.checkState(),
+            "force unique ids": self.ui.forceUniqueIds.checkState(),
         }
-
-    # the file format the user wants to export
-    # hd5 or csv
-    def file_format(self):
-        return re.findall(ExportToKnimeDialog.RE_EXT, self.ui.exportPath.text())[0]
-
-    # the file path
-    def file_path(self):
-        return self.ui.exportPath.text()
