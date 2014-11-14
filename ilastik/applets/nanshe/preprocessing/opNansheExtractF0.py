@@ -299,6 +299,8 @@ class OpNansheExtractF0Cached(Operator):
         for i, each_axistag in enumerate(self.opExtractF0.Output.meta.axistags):
             if each_axistag.isSpatial():
                 block_shape[i] = max(block_shape[i], 256)
+            elif each_axistag.isTemporal():
+                block_shape[i] = max(block_shape[i], 50)
 
             block_shape[i] = min(block_shape[i], self.opExtractF0.Output.meta.shape[i])
 
