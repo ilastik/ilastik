@@ -27,6 +27,7 @@ from ilastik.widgets.featureTableWidget import FeatureEntry
 from ilastik.widgets.featureDlg import FeatureDlg
 from ilastik.widgets.exportToKnimeDialog_old import ExportToKnimeDialog
 from ilastik.widgets.exportToKnimeDialog import ExportToKnimeDialog
+from ilastik.widgets.multiProgressDialog import MultiProgressDialog
 from ilastik.applets.objectExtraction.opObjectExtraction import OpRegionFeatures3d
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 from lazyflow.operators.ioOperators.opExportToKnime import OpExportToKnime
@@ -220,23 +221,27 @@ class ObjectClassificationGui(LabelingGui):
     def exportObjectInfo(self):
         main_operator = self.topLevelOperatorView
         features = main_operator.ComputedFeatureNames([]).wait()
-        raw_image = main_operator.RawImages([]).wait()
-        dimensions = raw_image.shape
+        dimensions = main_operator.RawImages.meta.shape
         dialog = ExportToKnimeDialog(self.layerstack, dimensions, features)
         if dialog.exec_() == 1:
+            progress_bar = MultiProgressDialog(2)
+            progress_bar.show()
+            while not progress_bar.is_ready():
+                pass
+            progress_bar.update_step(1)
             feature_selection = list(dialog.checked_features())
             #layers = list(dialog.checked_layers())
-            type_ = dialog.file_format()
-            path = dialog.file_path()
-            inc_raw = dialog.include_raw_layer()
-            settings = dialog.advanced_settings()
+            settings = dialog.settings()
             settings.update({"dimensions": dimensions})
-            feature_table = main_operator.createExportTable(0, [])
 
-            op = OpExportToKnime(settings, parent=main_operator.viewed_operator())
-            op.FileType.setValue(type_)
-            op.IncludeRawImage.setValue(inc_raw)
-            op.OutputFileName.setValue(path)
+            print "CREATE TABLE..."
+            feature_table = main_operator.createExportTable(0, [])
+            print "TABLE"
+
+            op = OpExportToKnime(settings, progress_bar, parent=main_operator.viewed_operator())
+            op.FileType.setValue(settings["file type"])
+            op.IncludeRawImage.setValue(settings["include raw"])
+            op.OutputFileName.setValue(settings["file path"])
             op.ObjectFeatures.setValue(feature_table)
             op.SelectedFeatures.setValue(feature_selection)
             op.RawImage.connect(main_operator.RawImages)
@@ -244,11 +249,7 @@ class ObjectClassificationGui(LabelingGui):
 
             result = op.WriteData([]).wait()
             logger.info("Export to KNIME exited with status: {}".format(result))
-            print "Export to KNIME exited with status: {}".format(result)
             # TODO: remove print
-
-
-
 
     def exportObjectInfo_old(self):
         if not self.layerstack or len(self.layerstack)==0:
@@ -261,7 +262,8 @@ class ObjectClassificationGui(LabelingGui):
             objLayer = self.layerstack[objIndex]
             mainOperator = self.topLevelOperatorView
             computedFeatures = mainOperator.ComputedFeatureNames([]).wait()
-            
+
+
             dlg = ExportToKnimeDialog(rawLayer, objLayer, computedFeatures)
             if dlg.exec_() == QDialog.Accepted:
                 if self._knime_exporter is None:
