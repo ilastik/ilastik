@@ -260,6 +260,8 @@ class OpNansheWaveletTransformCached(Operator):
         for i, each_axistag in enumerate(self.opWaveletTransform.Output.meta.axistags):
             if each_axistag.isSpatial():
                 block_shape[i] = max(block_shape[i], 256)
+            elif each_axistag.isTemporal():
+                block_shape[i] = max(block_shape[i], 50)
 
             block_shape[i] = min(block_shape[i], self.opWaveletTransform.Output.meta.shape[i])
 
