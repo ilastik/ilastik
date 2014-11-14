@@ -186,7 +186,7 @@ class OpNansheRemoveZeroedLinesCached(Operator):
             if each_axistag.isSpatial():
                 each_len = 256
             elif each_axistag.isTemporal():
-                each_len = 10
+                each_len = 50
 
             block_shape.append(each_len)
 
