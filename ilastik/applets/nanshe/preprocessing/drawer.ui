@@ -267,6 +267,9 @@
          <layout class="QHBoxLayout" name="TemporalSmoothingWindowSize">
           <item>
            <widget class="QLabel" name="TemporalSmoothingWindowSizeLabel">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Size of the window to use for the smoothing gaussian applied along time. Measured in standard deviations.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
             <property name="text">
              <string>Temporal Smoothing Window Size</string>
             </property>
@@ -374,6 +377,9 @@
          <layout class="QHBoxLayout" name="SpatialSmoothingWindowSize">
           <item>
            <widget class="QLabel" name="SpatialSmoothingWindowSizeLabel">
+            <property name="toolTip">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Size of the window to use for the smoothing gaussian applied along each spatial dimension, independently. Measured in standard deviations.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
             <property name="text">
              <string>Spatial Smoothing Window Size</string>
             </property>
