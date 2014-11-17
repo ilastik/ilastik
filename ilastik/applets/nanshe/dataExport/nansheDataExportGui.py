@@ -91,7 +91,7 @@ class NansheDataExportLayerViewerGui(DataExportLayerViewerGui):
         # Show the (live-updated) data we're exporting
         previewSlot = opLane.ImageToExport
         if previewSlot.ready():
-            previewLayer = self.createStandardLayerFromSlot( previewSlot )
+            previewLayer = ColortableLayer( LazyflowSource(previewSlot), colorTable=NansheDataExportLayerViewerGui.colorTableList() )
             previewLayer.name = "Live Preview"
             previewLayer.visible = False # off by default
             previewLayer.opacity = 1.0
