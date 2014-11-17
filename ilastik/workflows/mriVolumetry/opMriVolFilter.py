@@ -212,7 +212,9 @@ class OpMriBinarizeImage(Operator):
 
 class OpMriRevertBinarize(Operator):
     """
-    Reverts the binarize option
+    Reverts the binarize option. All elements that are in a non-zero
+    connected component are assigned their original Argmax class.
+
     all inputs have to be in 'txyzc' order
     """
 
@@ -227,21 +229,11 @@ class OpMriRevertBinarize(Operator):
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.ArgmaxInput.meta)
-        # output is a label image, therefore uint32
-        self.Output.meta.dtype = np.uint32
 
     def execute(self, slot, subindex, roi, result):
         tmp_input = self.ArgmaxInput.get(roi).wait()
         tmp_cc = self.CCInput.get(roi).wait()
-        result[...] = 0
-        # all elements that are nonzero and are within a cc
-        # are transfered
-        # TODO faster computation?
-        for cc in np.unique(tmp_cc):
-            if cc == 0:
-                continue
-            # FIXME is this correct??
-            result[tmp_cc == cc] = tmp_input[tmp_cc == cc]
+        result[...] = np.where(tmp_cc, tmp_input, 0)
 
     def propagateDirty(self, inputSlot, subindex, roi):
         if inputSlot is self.ArgmaxInput:
