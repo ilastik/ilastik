@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 #                         |--> ArgMax
 #                        /           \
 # (b) Guided Filter -----             \
-#                                      |--> Binarize --> Connected Components --> Size Filter --> Revert Binarize --> Cache
+#                                      |--> Connected Components --> Binarize --> Connected Components --> Size Filter --> Revert Binarize
 #                                     /
 # (c) OpenGM -------------------------
 #
@@ -75,7 +75,11 @@ class OpMriVolFilter(Operator):
     # the argmax output (single channel)
     ArgmaxOutput = OutputSlot()
 
+    # final class decision (use CachedOutput if calling from GUI)
     Output = OutputSlot()
+
+    # final class decision
+    # aka 'current class assignment'
     CachedOutput = OutputSlot() 
 
     # slots for serialization
@@ -114,24 +118,36 @@ class OpMriVolFilter(Operator):
         self.op.Configuration.connect(self.Configuration)
 
         self.Smoothed.connect(self.op.Smoothed)
-        self.ArgmaxOutput.connect(self.op.Output)
 
+        # cache the argmax output for GUI access
+        # TODO serialize this cache too
+        self._argmaxcache = OpCompressedCache(parent=self)
+        self._argmaxcache.name = "OpMriVol.ArgmaxCache"
+        self._argmaxcache.Input.connect(self.op.Output)
+        self.ArgmaxOutput.connect(self._argmaxcache.Output)
+
+        # first labeling operator to keep track of all labels
+        self.opCC = OpLabelVolume(parent=self)
+        self.opCC.Input.connect(self.ArgmaxOutput)
+        self.ObjectIds.connect(self.opCC.CachedOutput)
+
+        # binarization to keep small objects inside big ones, etc.
         self.opBinarize = OpMriBinarizeImage(parent=self)
-        self.opBinarize.Input.connect(self.op.Output)
+        self.opBinarize.Input.connect(self.ArgmaxOutput)
         self.opBinarize.ActiveChannels.connect(self.ActiveChannels)
 
-        self.opCC = OpLabelVolume(parent=self)
-        self.opCC.Input.connect(self.opBinarize.Output)
-        self.ObjectIds.connect(self.opCC.CachedOutput)
+        # labeling needed for filtering
+        self.opLabelBinarized = OpLabelVolume(parent=self)
+        self.opLabelBinarized.Input.connect(self.opBinarize.Output)
 
         # Filters CCs
         self.opFilter = OpFilterLabels(parent=self)
-        self.opFilter.Input.connect(self.opCC.CachedOutput)
+        self.opFilter.Input.connect(self.opLabelBinarized.CachedOutput)
         self.opFilter.MinLabelSize.connect(self.Threshold)
         self.opFilter.BinaryOut.setValue(False)
 
         self.opRevertBinarize = OpMriRevertBinarize(parent=self)
-        self.opRevertBinarize.ArgmaxInput.connect(self.op.Output)
+        self.opRevertBinarize.ArgmaxInput.connect(self.ArgmaxOutput)
         self.opRevertBinarize.CCInput.connect(self.opFilter.Output)
 
         self.Output.connect(self.opRevertBinarize.Output)
@@ -174,7 +190,7 @@ class OpMriVolFilter(Operator):
             raise NotImplementedError("setInSlot not implemented for"
                                       "slot {}".format(slot))
 
-    def _assignChannel(self, roi, newID):
+    def _assignChannel(self, roi, newChannel):
         objectIds = self.ObjectIds.get(roi).wait()
         assert objectIds.min() == objectIds.max(),\
             "cannot determine object from ROI"
@@ -182,15 +198,19 @@ class OpMriVolFilter(Operator):
 
         # TODO optimize for single time slice
         # compute bounding box
-        labels = self.ObjectIds[...].wait()
-        indices = np.where(labels == ID)
+        objectIds = self.ObjectIds[...].wait()
+        indices = np.where(objectIds == ID)
         start = tuple(min(d) for d in indices)
         stop = tuple(max(d)+1 for d in indices)
         shape = tuple(b-a for a, b in zip(start, stop))
         roi = SubRegion(self._cache.Input, start=start, stop=stop)
-        labels[indices] = newID
-        values = labels[roi.toSlice()]
-        self._cache.Input[roi.toSlice()] = values
+        print("Bounding Box: {}".format(roi))
+        labels = self.CachedOutput.get(roi).wait()
+
+        # convert indices to fit into label cut-out
+        indices = tuple([k - s for k in ind] for ind, s in zip(indices, start))
+        labels[indices] = newChannel
+        self._cache.Input[roi.toSlice()] = labels
         self.CachedOutput.setDirty(roi)
 
 

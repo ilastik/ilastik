@@ -1,7 +1,7 @@
 import os
 import itertools
 from functools import partial
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QEvent
@@ -15,6 +15,7 @@ from ilastik.workflows.mriVolumetry.opSmoothing import getMaxSigma
 from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer
 # from volumina.colortables import create_default_16bit
 from volumina.utility import encode_from_qstring, decode_to_qstring
+from volumina.colortables import create_default_16bit
 
 from lazyflow.operators import OpMultiArraySlicer
 
@@ -106,103 +107,80 @@ class MriVolFilterGui(LayerViewerGui):
     #                   USER INTERACTION WITH CCs
     # =================================================================
 
-    def _getObjectID(self, pos5d):
-        op = self.topLevelOperatorView
-        return self._getObjectHelper(op.ObjectIds, pos5d)
-
     @staticmethod
     def _getObjectHelper(slot, pos5d):
         slicing = tuple(slice(i, i+1) for i in pos5d)
         arr = slot[slicing].wait()
         return arr.flat[0]
 
-    def _getClassName(self, pos5d):
-        op = self.topLevelOperatorView
-        names = op.LabelNames.value
-        names = list(names)
-        names.insert(0, 'Background')
-        # get current id
-        # @Markus Why does op.Output not work here?
-        idx = self._getObjectHelper(op.CachedOutput, pos5d)
-        return names[idx], idx
-        
     def _getPossibleLabels(self):
         '''
         returns a OrderdDict containing name and id of labels
         that can be used for assignment
         '''
         labels = OrderedDict()
-        labels['Background'] = 0
+        labels[0] = 'Background'
         op = self.topLevelOperatorView
         states = op.ActiveChannels.value
         names = list(op.LabelNames.value)
         for i,n in enumerate(names):
-            if states[i] == 2:
-                labels[n] = i+1
+            if states[i] > 0:
+                labels[i+1] = n
         return labels
-        
-    def assignNewClassEntry(self, objID, oldValue, newValue, pos5d):
-        # TODO Implement me
-        print 'ObjectID {}, old class {}, new class {}'.format(objID, 
-                                                               oldValue, 
-                                                               newValue)
+
+    def _getOriginalLabel(self, object_id):
+        try:
+            label = self._originalLabels[object_id]
+        except AttributeError:
+            self._originalLabels = defaultdict(lambda: None)
+            label = None
+        return label
+
+    def _assignNewLabel(self, pos5d, object_id, new_label, original_label):
+        op = self.topLevelOperatorView
         slicing = tuple(slice(i, i+1) for i in pos5d)
-        print 'Slicing: ', slicing
-        op = self.topLevelOperatorView
-        op.AssignChannelForObject[slicing]=newValue
-        
-    def restoreClassEntry(self, pos5d):
-        print pos5d
-        idx = self._getObjectID(pos5d)
-         
-    def _updateDefaultCCMembership(self): 
-        print 'CCs changed'
-        op = self.topLevelOperatorView
-        # get a list of all CCs
-        # TODO Once assignNewClassEntry is executed keep track of the changes
-        # eg. using a dict
+        self._originalLabels[object_id] = original_label
+        op.AssignChannelForObject[slicing] = new_label
 
     def handleEditorLeftClick(self, position5d, globalWindowCoordinate):
-        print 'left click'
-        
-        obj = self._getObjectID(position5d)
-        class_name, old_class = self._getClassName(position5d)
-        print 'Class name: ', class_name 
-        print 'Found object with ID {}'.format(obj)
+        op = self.topLevelOperatorView
 
-        if obj == 0:
-            return
+        # get list of possible channel names and labels
+        labels = self._getPossibleLabels()
+        print("possible labels: {}".format(labels))
 
+        # get current channel
+        current = self._getObjectHelper(op.CachedOutput, position5d)
+        print("current label: {}".format(current))
+
+        # check if channel was changed
+        object_id = self._getObjectHelper(op.ObjectIds, position5d)
+        original_label = self._getOriginalLabel(object_id) or current
+        print("object_id: {}".format(object_id))
+        print("original label: {}".format(original_label))
+
+        # launch menu
         menu = QMenu(self)
-
         submenu = QMenu(self)
         submenu.setTitle('Assign membership to')
-        entries = self._getPossibleLabels()
-        for k,v  in entries.iteritems():
-            if v != old_class: 
-                submenu.addAction(k, partial(self.assignNewClassEntry, obj,
-                                             old_class, v, position5d))
+        for k in labels:
+            if k != current and k != original_label: 
+                submenu.addAction(labels[k],
+                                  partial(self._assignNewLabel, position5d,
+                                          object_id, k, original_label))
         menu.addMenu(submenu)
 
-        # menu.addSeparator()
-        org_member = 'Restore original membership ({})'.format('TODO')
-        # TODO keep track of original membership
-        menu.addAction(org_member, partial(self.restoreClassEntry, 
-                                           position5d))
+        if current != original_label:
+            orig_name = labels[original_label]
+            org_member = 'Restore original membership ({})'.format(orig_name)
+            menu.addAction(org_member,
+                           partial(self._assignNewLabel, position5d,
+                                   object_id, original_label, original_label))
 
-        action = menu.exec_(globalWindowCoordinate)
-
-        if action is None:
-            return
-        # if action.text() == org_member:
-         #   pass
+        menu.exec_(globalWindowCoordinate)
 
     def handleEditorRightClick(self, position5d, globalWindowCoordiante):
-        print 'right click - nothing assigned'
-        # layer = self.getLayer('Output')
-        # op = self.topLevelOperatorView
-        # obj = self._getObjectHelper(op.CCsOutput, position5d)
-        # print obj
+        pass
 
     # =================================================================
     #                      LAYER MANIPULATION
@@ -224,6 +202,14 @@ class MriVolFilterGui(LayerViewerGui):
             outLayer = ColortableLayer(LazyflowSource(op.ArgmaxOutput),
                                        colorTable=self._channelColors)
             outLayer.name = "Argmax"
+            outLayer.visible = False
+            outLayer.opacity = 1.0
+            layers.append(outLayer)
+
+        if op.ObjectIds.ready():
+            outLayer = ColortableLayer(LazyflowSource(op.ObjectIds),
+                                       colorTable=create_default_16bit())
+            outLayer.name = "ObjectIds"
             outLayer.visible = False
             outLayer.opacity = 1.0
             layers.append(outLayer)
