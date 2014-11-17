@@ -49,7 +49,7 @@ class MriVolumetryWorkflowBase(Workflow):
             opMriVolFilter.LabelNames.connect(labelNameSlot)
 
         opMriVolReport.RawInput.connect(rawSlot)
-        opMriVolReport.Input.connect(opMriVolFilter.Output)
+        opMriVolReport.Input.connect(opMriVolFilter.CachedOutput)
         opMriVolReport.LabelNames.connect(opMriVolFilter.LabelNames)
         opMriVolReport.ActiveChannels.connect(opMriVolFilter.ActiveChannels)
 
