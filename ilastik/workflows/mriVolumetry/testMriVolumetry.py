@@ -160,7 +160,7 @@ class TestOpImplementationChoice(unittest.TestCase):
 
         wrap = OpImplementationChoice(self.Base, graph=Graph())
         wrap.implementations = choices
- 
+
         wrap.Implementation.setValue('pipe')
         vol = np.zeros((2, 10, 15, 20, 3))
         vol = vigra.taggedView(vol, axistags='txyzc')
@@ -189,7 +189,7 @@ class TestOpImplementationChoice(unittest.TestCase):
 
         wrap = OpImplementationChoice(self.ABC, graph=Graph())
         wrap.implementations = choices
- 
+
         wrap.Implementation.setValue('pixop')
         vol = np.zeros((2, 10, 15, 20, 3), dtype=np.int)
         vol = vigra.taggedView(vol, axistags='txyzc')
@@ -219,7 +219,7 @@ class TestOpImplementationChoice(unittest.TestCase):
         vol = np.zeros((2, 10, 15, 20, 3), dtype=np.int)
         vol = vigra.taggedView(vol, axistags='txyzc')
         wrap.Input.setValue(vol)
- 
+
         wrap.Implementation.setValue('1')
         assert wrap.Output.ready()
         assert wrap.AltOutput1.ready()
@@ -251,7 +251,7 @@ class TestOpMriVolFilter(unittest.TestCase):
         op.Input.setValue(self.pred)
         op.Configuration.setValue({'sigma': 0.2})
         op.Threshold.setValue(0)
-        
+
         op.ActiveChannels.setValue(np.ones((2,), dtype=np.int))
         op.LabelNames.setValue(np.asarray(["black", "white"]))
 
@@ -266,7 +266,7 @@ class TestOpMriVolFilter(unittest.TestCase):
         d = {'sigma': 0.2, 'eps': 0.2, 'guided': False}
         op.Configuration.setValue(d)
         op.Threshold.setValue(0)
-        
+
         op.ActiveChannels.setValue(np.ones((2,), dtype=np.int))
         op.LabelNames.setValue(np.asarray(["black", "white"]))
 
@@ -285,11 +285,13 @@ class TestOpMriVolFilter(unittest.TestCase):
         vol = vol.withAxes(*'txyzc')
 
         # make 3 channel prediction image, last channel unused
-        pred = np.zeros((1, 4, 7, 1, 3), dtype=np.float32)
+        pred = np.zeros((1, 4, 7, 1, 4), dtype=np.float32)
         pred = vigra.taggedView(pred, axistags='txyzc')
         pred[..., 0:1] = vol == 0
-        pred[..., 1:2] = vol > 0
-        assert pred.sum() == vol.size 
+        pred[0, 1:3, 1, 0, 1] = 1.0
+        pred[0, 1:3, 2, 0, 2] = 1.0
+        pred[0, 1, 5, 0, 2] = 1.0
+        assert pred.sum() == vol.size
 
         g = Graph()
         op = OpMriVolFilter(graph=g)
@@ -301,7 +303,7 @@ class TestOpMriVolFilter(unittest.TestCase):
         op.Threshold.setValue(2)
 
         # ignore background of 0's
-        op.ActiveChannels.setValue(np.asarray([0, 1, 1], dtype=np.int))
+        op.ActiveChannels.setValue(np.asarray([0, 1, 1, 1], dtype=np.int))
         op.LabelNames.setValue(np.asarray(
             ["black", "white", "?"], dtype=np.object))
 
@@ -309,17 +311,18 @@ class TestOpMriVolFilter(unittest.TestCase):
         result = op.CachedOutput[...].wait()
         tags = op.CachedOutput.meta.axistags
         result = vigra.taggedView(result, axistags=tags)
-        expected = vol.copy()
-        expected[0, 1, 5, 0, 0] = 0
-        expected = np.where(expected>0, 2, 0).astype(np.uint32)
-        assert_array_equal(result, expected)
+        expected = vol.copy().astype(np.uint32)
+        expected[:] = 0
+        expected[0, 1:3, 1, 0, 0] = 2
+        expected[0, 1:3, 2, 0, 0] = 3
+        assert_array_equal(result.squeeze(), expected.squeeze())
 
         class DirtyException(Exception):
             pass
 
         def dirtyHandler(self, roi):
             exp_start = [0, 1, 1, 0, 0]
-            exp_stop = [1, 3, 3, 1, 1]
+            exp_stop = [1, 3, 2, 1, 1]
             assert_array_equal(exp_start, roi.start)
             assert_array_equal(exp_stop, roi.stop)
             raise DirtyException()
@@ -327,10 +330,16 @@ class TestOpMriVolFilter(unittest.TestCase):
         op.CachedOutput.notifyDirty(dirtyHandler)
 
         with self.assertRaises(DirtyException):
-            op.AssignChannelForObject[0:1, 1:2, 1:2, 0:1, 0:1] = 3
+            op.AssignChannelForObject[0:1, 1:2, 1:2, 0:1, 0:1] = 4
 
-        result = op.CachedOutput[0, 1:3, 1:3, 0, 0].wait().squeeze()
+        # check that class was assigned
+        result = op.CachedOutput[0, 1:3, 1:2, 0, 0].wait().squeeze()
+        assert np.all(result == 4)
+
+        # check that the rest was not assigned
+        result = op.CachedOutput[0, 1:3, 2:3, 0, 0].wait().squeeze()
         assert np.all(result == 3)
+
 
 class TestOpOpenGMFilter(unittest.TestCase):
     def setUp(self):
@@ -339,7 +348,7 @@ class TestOpOpenGMFilter(unittest.TestCase):
         pred[:, 3:6, 4:8, 5:10, 0] = .9
         pred[..., 1] = 1 - pred[..., 0]
         self.pred = pred
-        vol = 255*(pred[..., 0]>.5)
+        vol = 255*(pred[..., 0] > .5)
         vol = vol.astype(np.uint8).withAxes(*'txyzc')
         self.vol = vol
         self.g = Graph()
@@ -354,7 +363,7 @@ class TestOpOpenGMFilter(unittest.TestCase):
         assert s[4] == 1
 
         out = op.Output[...].wait()
-        print(out[0,...].sum())
+        print(out[0, ...].sum())
 
 
 class TestVariousSmallComponents(unittest.TestCase):

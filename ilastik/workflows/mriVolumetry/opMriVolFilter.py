@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 #                         |--> ArgMax
 #                        /           \
 # (b) Guided Filter -----             \
-#                                      |--> Binarize --> Connected Components --> Size Filter --> Revert Binarize --> Cache
+#                                      |--> Connected Components --> Binarize --> Connected Components --> Size Filter --> Revert Binarize
 #                                     /
 # (c) OpenGM -------------------------
 #
@@ -114,24 +114,33 @@ class OpMriVolFilter(Operator):
         self.op.Configuration.connect(self.Configuration)
 
         self.Smoothed.connect(self.op.Smoothed)
-        self.ArgmaxOutput.connect(self.op.Output)
 
-        self.opBinarize = OpMriBinarizeImage(parent=self)
-        self.opBinarize.Input.connect(self.op.Output)
-        self.opBinarize.ActiveChannels.connect(self.ActiveChannels)
+        # cache the argmax output for GUI access
+        # TODO serialize this cache too
+        self._argmaxcache = OpCompressedCache(parent=self)
+        self._argmaxcache.name = "OpMriVol.ArgmaxCache"
+        self._argmaxcache.Input.connect(self.op.Output)
+        self.ArgmaxOutput.connect(self._argmaxcache.Output)
 
         self.opCC = OpLabelVolume(parent=self)
-        self.opCC.Input.connect(self.opBinarize.Output)
+        self.opCC.Input.connect(self.ArgmaxOutput)
         self.ObjectIds.connect(self.opCC.CachedOutput)
+
+        self.opBinarize = OpMriBinarizeImage(parent=self)
+        self.opBinarize.Input.connect(self.ArgmaxOutput)
+        self.opBinarize.ActiveChannels.connect(self.ActiveChannels)
+
+        self.opLabelBinarized = OpLabelVolume(parent=self)
+        self.opLabelBinarized.Input.connect(self.opBinarize.Output)
 
         # Filters CCs
         self.opFilter = OpFilterLabels(parent=self)
-        self.opFilter.Input.connect(self.opCC.CachedOutput)
+        self.opFilter.Input.connect(self.opLabelBinarized.CachedOutput)
         self.opFilter.MinLabelSize.connect(self.Threshold)
         self.opFilter.BinaryOut.setValue(False)
 
         self.opRevertBinarize = OpMriRevertBinarize(parent=self)
-        self.opRevertBinarize.ArgmaxInput.connect(self.op.Output)
+        self.opRevertBinarize.ArgmaxInput.connect(self.ArgmaxOutput)
         self.opRevertBinarize.CCInput.connect(self.opFilter.Output)
 
         self.Output.connect(self.opRevertBinarize.Output)
