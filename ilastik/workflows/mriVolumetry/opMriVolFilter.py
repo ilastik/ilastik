@@ -18,6 +18,8 @@ logger = logging.getLogger(__name__)
 
 
 # top level operator of MRIVolFilter applet
+# =========================================
+#
 # There are in total 3 possible starting points for this operator:
 #
 # (a) Gaussian Smoothing
@@ -25,12 +27,25 @@ logger = logging.getLogger(__name__)
 #                         |--> ArgMax
 #                        /           \
 # (b) Guided Filter -----             \
-#                                      |--> (PostProcessing) TODO document
+#                                      |--> Binarize --> Connected Components --> Size Filter --> Revert Binarize --> Cache
 #                                     /
 # (c) OpenGM -------------------------
 #
 # We try to keep the code clean by using OpImplementationChoice for
 # switching between [(a), (b)] and [(c)].
+#
+# Why are the operators chained like that?
+# ========================================
+#
+# * The alternatives [(a), (b)] and (c) provide different means for
+#   segmentation of prediction data.
+# * The segmentation is binarized before connected components analysis
+#   to keep small structures inside larger ones from being filtered.
+#   Only the foreground channels (as indicated by ActiveChannels) are
+#   binarized to 1, the rest is assigned to background.
+# * CC is prerequesite for size filter.
+# * Size filter filters out unwanted prediction noise.
+# * Revert binarize assigns the original class to the objects.
 class OpMriVolFilter(Operator):
     name = "MRI Processing"
 

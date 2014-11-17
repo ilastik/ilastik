@@ -3,6 +3,7 @@ import unittest
 from ilastik.workflows.mriVolumetry.opSmoothing import OpCostVolumeFilter
 from ilastik.workflows.mriVolumetry.opSmoothing import getMaxSigma
 from ilastik.workflows.mriVolumetry.opMriVolFilter import OpMriBinarizeImage
+from ilastik.workflows.mriVolumetry.opMriVolFilter import OpMriRevertBinarize
 from ilastik.workflows.mriVolumetry.opMriVolFilter import OpMriVolFilter
 from ilastik.workflows.mriVolumetry.opImplementationChoice import OpImplementationChoice
 from ilastik.workflows.mriVolumetry.opOpenGMFilter import OpOpenGMFilter
@@ -71,6 +72,32 @@ class TestOpMriBinarizeImage(unittest.TestCase):
 
         op.ActiveChannels.setValue(np.array([1], dtype=int))
         out = op.Output[...].wait()
+
+
+class TestOpMriRevertBinarize(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def testBasics(self):
+        argmax = np.asarray([[1, 1, 1, 1],
+                             [1, 2, 1, 3],
+                             [1, 2, 1, 1],
+                             [1, 1, 1, 1]], dtype=np.uint32)
+        cc = np.asarray([[0, 0, 0, 0],
+                         [0, 1, 0, 0],
+                         [0, 1, 0, 0],
+                         [0, 0, 0, 0]], dtype=np.uint32)
+
+        expected = np.asarray([[0, 0, 0, 0],
+                               [0, 2, 0, 0],
+                               [0, 2, 0, 0],
+                               [0, 0, 0, 0]], dtype=np.uint32)
+
+        op = OpMriRevertBinarize(graph=Graph())
+        op.ArgmaxInput.setValue(argmax)
+        op.CCInput.setValue(cc)
+        out = op.Output[...].wait()
+        assert_array_equal(out, expected)
 
 
 class TestOpImplementationChoice(unittest.TestCase):
