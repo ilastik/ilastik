@@ -64,19 +64,24 @@ class NanshePreprocessingGui(LayerViewerGui):
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
 
-        # Initialize the gui with the operator's current values
-        self.apply_operator_settings_to_gui()
-
         # Add handlers for different selection events
 
         self._drawer.Apply.clicked.connect(self.apply_gui_settings_to_operator)
 
+        self.applyRemoveZeroedLinesEnabled(self.topLevelOperatorView.ToRemoveZeroedLines.value)
         self._drawer.RemoveZeroedLinesEnabled.clicked.connect(self.applyRemoveZeroedLinesEnabled)
 
+        self.applyExtractF0Enabled(self.topLevelOperatorView.ToExtractF0.value)
         self._drawer.ExtractF0Enabled.clicked.connect(self.applyExtractF0Enabled)
+
+        self.applyBiasEnabled(self.topLevelOperatorView.BiasEnabled.value)
         self._drawer.BiasEnabled.clicked.connect(self.applyBiasEnabled)
 
+        self.applyWaveletTransformEnabled(self.topLevelOperatorView.ToWaveletTransform.value)
         self._drawer.WaveletTransformEnabled.clicked.connect(self.applyWaveletTransformEnabled)
+
+        # Initialize the gui with the operator's current values
+        self.apply_operator_settings_to_gui()
 
     def _register_notify_dirty(self):
         self.topLevelOperatorView.ToRemoveZeroedLines.notifyDirty(self.apply_dirty_operator_settings_to_gui)
