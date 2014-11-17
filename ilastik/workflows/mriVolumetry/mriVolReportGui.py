@@ -12,6 +12,7 @@ from matplotlib.figure import Figure
 from matplotlib.font_manager import FontProperties
 
 import numpy as np
+from collections import defaultdict, OrderedDict
 
 class MriVolReportGui( QWidget ):
     """
@@ -50,8 +51,8 @@ class MriVolReportGui( QWidget ):
             if slot.level == 0 or slot.level == 1:
                 observedSlots.append(slot)
 
-        for slot in observedSlots:
-            print slot
+        # for slot in observedSlots:
+          #  print slot
         # data = self.op.LabelNames.value
         # print data
         # data = self.op.Input.get(slice(None)).wait()
@@ -63,15 +64,21 @@ class MriVolReportGui( QWidget ):
         # set variables
         # TODO
 
+        self._availablePlots = OrderedDict()
+        self._availablePlots['Volume'] = 'volume'
+        self._availablePlots['Relative Composition'] = 'percentage'
+        self._availablePlots['Volume Change (previous)'] = 'delta'
+        self._availablePlots['Volume Change (baseline)'] = 'baseline'
+        
         # load and initialize user interfaces
         self._initCentralUic()
         self._initAppletDrawerUic()
 
-        self._isReportStatusDirty = False
-        self.op.ReportStatus.notifyDirty(self._reportStatus)
-
+        self._isReportStatusDirty = True
+        self.op.Input.notifyDirty( self._reportStatus )
 
     def _reportStatus(self, *args, **kwargs):
+        print 'Report input has changed'
         self._isReportStatusDirty = True
 
     def _initCentralUic(self):
@@ -86,34 +93,30 @@ class MriVolReportGui( QWidget ):
         expandingPolicy = QSizePolicy(QSizePolicy.Expanding, 
                                       QSizePolicy.Expanding)
 
-        # Volume pie chart
-        self._vol_fig = Figure()
-        self._vol_canvas = FigureCanvas(self._vol_fig)
-        self._vol_canvas.setParent(self)
-        self._vol_canvas.setSizePolicy(expandingPolicy)
+        # Volume fig 1-3
+        self._vol_fig1 = Figure()
+        self._vol_canvas1 = FigureCanvas(self._vol_fig1)
+        self._vol_canvas1.setParent(self)
+        self._vol_canvas1.setSizePolicy(expandingPolicy)
         # create and initialize plot axis
-        self._vol_axis = self._vol_fig.add_subplot(111, aspect='equal')
-        self.set_axis_properties(self._vol_axis)
+        self._vol_axis1 = self._vol_fig1.add_subplot(111)#, aspect='equal')
+        self.set_axis_properties(self._vol_axis1)
 
-        # Scatter plot
-        self._scatter_fig = Figure()
-        self._scatter_canvas = FigureCanvas(self._scatter_fig)
-        self._scatter_canvas.setParent(self)
-        self._scatter_canvas.setSizePolicy(expandingPolicy)
+        self._vol_fig2 = Figure()
+        self._vol_canvas2 = FigureCanvas(self._vol_fig2)
+        self._vol_canvas2.setParent(self)
+        self._vol_canvas2.setSizePolicy(expandingPolicy)
         # create and initialize plot axis
-        self._scatter_axis = self._scatter_fig.add_subplot(111)
-        self.set_axis_properties(self._scatter_axis)
-        
+        self._vol_axis2 = self._vol_fig2.add_subplot(111)#, aspect='equal')
+        self.set_axis_properties(self._vol_axis2)
 
-        # Histogram plot
-        self._histo_fig = Figure()
-        self._histo_canvas = FigureCanvas(self._histo_fig)
-        self._histo_canvas.setParent(self)
-        self._histo_canvas.setSizePolicy(expandingPolicy)
+        self._vol_fig3 = Figure()
+        self._vol_canvas3 = FigureCanvas(self._vol_fig3)
+        self._vol_canvas3.setParent(self)
+        self._vol_canvas3.setSizePolicy(expandingPolicy)
         # create and initialize plot axis
-        self._histo_axis = self._histo_fig.add_subplot(111)
-        self.set_axis_properties(self._histo_axis)
-        self._bins = 64
+        self._vol_axis3 = self._vol_fig3.add_subplot(111)#, aspect='equal')
+        self.set_axis_properties(self._vol_axis3)
 
         # result summary table
         # TODO
@@ -128,11 +131,11 @@ class MriVolReportGui( QWidget ):
         # table_view.setFont(font)
         # set column width to fit contents (set font first!)
 
-        self.bottomLeft.insertWidget(0,self._vol_canvas)
-        self.bottomRight.insertWidget(0,self._vol_table)
+        self.topLeft.insertWidget(0,self._vol_canvas1)
+        self.topRight.insertWidget(0,self._vol_canvas2)
 
-        self.topLeft.insertWidget(0,self._scatter_canvas)
-        self.topRight.insertWidget(0,self._histo_canvas)
+        self.bottomLeft.insertWidget(0,self._vol_canvas3)
+        self.bottomRight.insertWidget(0,self._vol_table)
 
         self.pushButtonCSV.clicked.connect(self.exportToCSV)
         # self.label.setText('adasdad')
@@ -175,46 +178,129 @@ class MriVolReportGui( QWidget ):
         axis.grid(True)
 
     def showEvent(self, event):
+        pass
+        '''
         if self._isReportStatusDirty:
             print 'ReportStatus Dirty' , event
-            self._get_data()
-            self._plot_volume()
+            # self._get_data()
+            # self._compute_values()
             self._isReportStatusDirty = False
         else:
             print 'ReportStatus Clean'
-
+        '''
     def _get_data(self):
-        # TODO only ask for data if it is dirty
+        # TODO only ask for data if it is dirty HOW? 
+        # connect this function to notifydirty of input data
         self._active_channels = np.nonzero(self.op.ActiveChannels.value)[0]
-        self._mask = self.op.Input[...].wait().squeeze()
-        self._raw = self.op.RawInput[...].wait().squeeze()
+        self._mask = self.op.Input[...].wait()
+        # self._raw = self.op.RawInput[...].wait().squeeze()
+        # print self._raw.shape
+        print self._mask.shape
         self._labels = self.op.LabelNames.value
 
-    def _plot_volume(self):
-        counts = np.bincount(self._mask.ravel())
+    def _compute_values(self):
+        """
+        Function computes 'volume', percentage change of volume ('delta'), 
+        'total' volume (all foreground classes combined) and 
+        relative contribution ('percentage') of the tumor classes
+        for each timepoint
+        """
+        assert len(self._mask.shape) == 5, 'Data is not 5D (txyzc)'
+        timepoints = self._mask.shape[0]
+        total = []
+        colors = {}
+        values = defaultdict(list)
+        for t in range(timepoints):
+            counts = np.bincount(self._mask[t].ravel())
+            tmp_total = 0.0
+            for i in range(counts.size):
+                if i in self._active_channels:
+                    # print self._labels[i], counts[i+1]
+                    values[self._labels[i]].append(counts[i+1])
+                    colors[self._labels[i]]= self._channelColors[i]
+                    tmp_total += counts[i+1]
+            total.append(tmp_total)
+        total = np.array(total)
 
-        abs_counts = []
-        labels = []
-        colors = []
-        data_list = []
-        for i in range(counts.size):
-            if i in self._active_channels:
-                print self._labels[i], counts[i+1]
-                labels.append(self._labels[i])
-                abs_counts.append(counts[i+1])
-                colors.append(self._channelColors[i])
-                data_list.append((self._labels[i], str(counts[i+1])))
-        abs_counts = np.array(abs_counts, dtype=np.uint32)
-        percentage = abs_counts/np.float(abs_counts.sum())
+        self._values = defaultdict(dict) 
+        for k,v in values.iteritems():
+            self._values[k].update({'volume': np.array(v)})
+            self._values[k].update({'percentage':np.array(v)/total})
+            self._values[k].update({'color':colors[k]})
+            if timepoints > 1:
+                delta_total = (np.array(v)[1:]/ \
+                               np.array(v,dtype=np.float32)[:-1])*100.0-100.0
+                delta_total = np.insert(delta_total,0,0.0)
+                self._values[k].update({'delta':delta_total})
+                baseline = np.array([100.*(i/v[0])-100.0 for i in np.array(v,
+                                        dtype=np.float32)],dtype=np.float32)
+                self._values[k].update({'baseline':baseline})
+        self._values['Total'].update({'volume' : np.array(total)})
+        self._values['Total'].update({'color':(0.0, 0.0, 0.0, 1.0)}) #black
+        if timepoints > 1:
+            delta_total = (total[1:]/total[:-1])*100.0-100.0
+            delta_total = np.insert(delta_total,0,0.0)
+            self._values['Total'].update({'delta':delta_total})
+            baseline = np.array([100.*(i/total[0])-100.0 for i in total], 
+                                dtype=np.float32)
+            self._values['Total'].update({'baseline':baseline})
+        print self._values 
 
-        data_list = [x + ('{0:.2f}'.format(percentage[idx]*100),) for idx,x in enumerate(data_list)]
+    def plot_timecourse(self, axis, canvas, mode='volume'):
+        # TODO If only one timepoint make pie chart
+        self.clear_figure(axis)
+        for k,v in self._values.iteritems():
+            if mode == 'volume':
+                data = v[mode].astype(np.float32)/1000.
+                axis.plot(data,'o-', color = v['color'],
+                          label=k, lw=2.5)
+            elif mode == 'percentage':
+                if k != 'Total':
+                    data = v[mode].astype(np.float32)
+                    axis.plot(data,'o-', color = v['color'],
+                              label=k, lw=2.5)
+            elif mode == 'delta' or mode == 'baseline':
+                data = v[mode].astype(np.float32)
+                axis.plot(data,'o-', color = v['color'],
+                          label=k, lw=2.5)
+                
 
-        print '##################################################'
-        print percentage, 'Perc'
-        print abs_counts, 'ABS'
-        print labels
-        print colors
+        if mode == 'volume':
+            axis.set_title('Volume', fontweight='bold')
+            axis.set_xlabel(str('Timepoint'), fontweight='bold')
+            axis.set_ylabel(str('Volume [ml]'), fontweight='bold')
+        elif mode == 'delta':
+            axis.set_title('$\Delta$ Volume (previous)', 
+                           fontweight='bold')
+            axis.set_xlabel(str('Timepoint'), fontweight='bold')
+            axis.set_ylabel(str('Volume [%]'), fontweight='bold')
+            axis.axhline(y=25,color='Gray',ls='dashed')
+            axis.axhline(y=-25,color='Gray',ls='dashed')
+            axis.fill_between(range(len(data)), -25, 25, 
+                                  facecolor='Gray', alpha=0.1)
+            ticks = list(axis.yaxis.get_majorticklocs())
+            axis.yaxis.set_ticks(ticks + [-25, 25])
+        elif mode == 'baseline':
+            axis.set_title('$\Delta$ Volume (baseline)', 
+                           fontweight='bold')
+            axis.set_xlabel(str('Timepoint'), fontweight='bold')
+            axis.set_ylabel(str('Volume [%]'), fontweight='bold')
+            axis.axhline(y=25,color='Gray',ls='dashed')
+            axis.axhline(y=-25,color='Gray',ls='dashed')
+            axis.fill_between(range(len(data)), -25, 25, 
+                                  facecolor='Gray', alpha=0.1)
+            ticks = list(axis.yaxis.get_majorticklocs())
+            axis.yaxis.set_ticks(ticks + [-25, 25])
+        elif mode == 'percentage':
+            axis.set_title('Relative Composition', fontweight='bold')
+            axis.set_xlabel(str('Timepoint'), fontweight='bold')
+            axis.set_ylabel(str('Composition [%]'), fontweight='bold')
 
+        canvas.draw()
+
+
+        # Pie chart
+        '''
         explode = (0.1,)*len(labels) 
 
         self.clear_figure(self._vol_axis)
@@ -226,77 +312,24 @@ class MriVolReportGui( QWidget ):
 
         self._vol_canvas.draw()
         self.update_table(data_list)
-
-    def _scatter_plot(self):
-        # TODO x- and y- labels according to channel name
-        chX = self._drawer.scatterXComboBox.currentIndex()
-        chY = self._drawer.scatterYComboBox.currentIndex()
-        print self._raw.shape
-
-        self.clear_figure(self._scatter_axis)
-
-        # counts = np.bincount(self._mask.ravel())
-        for i in self._active_channels:
-            tmp_mask = self._mask==i+1
-            print tmp_mask.shape
-            X_ = self._raw[...,chX][tmp_mask]
-            Y_ = self._raw[...,chY][tmp_mask]
-            print self._labels[i]
-            print 'X_', X_.size
-            print 'Y_', Y_.size
-            self._scatter_axis.scatter(X_,Y_,color=self._channelColors[i])
-
-        self._scatter_canvas.draw()
-
-    def _histo_plot(self):
-        idx = self._drawer.histogramComboBox.currentIndex()
-        self.clear_figure(self._histo_axis)
-        min_= 1e6
-        max_= -1e6
-        for i in self._active_channels:
-            tmp_mask = self._mask==i+1
-            if self._raw[...,idx][tmp_mask].min() < min_:
-                min_ = self._raw[...,idx][tmp_mask].min()
-            if self._raw[...,idx][tmp_mask].max() > max_:
-                max_ = self._raw[...,idx][tmp_mask].max()
-                
-        handels = [None]*len(self._active_channels)
-        for x,i in enumerate(self._active_channels):
-            tmp_mask = self._mask==i+1
-            n, bins, patches = \
-                        self._histo_axis.hist(self._raw[...,idx][tmp_mask],
-                                              self._bins, normed=1, 
-                                              histtype='stepfilled',
-                                              color=self._channelColors[i],
-                                              alpha=0.4)
-            '''
-            bins,edges = np.histogram(self._raw[...,idx][tmp_mask],
-                                      bins=self._bins,
-                                      density=True,
-                                      range=[min_,max_])
-            left,right = edges[:-1],edges[1:]
-            X = np.array([left,right]).T.flatten()
-            Y = np.array([bins,bins]).T.flatten()
-            handels[x], = self._histo_axis.plot(X,Y,'-',
-                                            color=self._channelColors[i],
-                                                lw=1.5)
-            '''
-        self._histo_canvas.draw()
+        '''
 
     def _onApplyButtonClicked(self):
-        '''
-        if self.op.Input.ready():
-            print self.op.Input.meta.getTaggedShape()
-            data = self.op.Input[...].wait()
-            print data.shape
-        '''
-        # test = self.op.ReportStatus.value
-        # When the output slot is called the execute method is triggered
-        # self.op.computeVolume()
-        self._get_data()
-        self._plot_volume()
-        self._scatter_plot()
-        self._histo_plot()
+        if self._isReportStatusDirty:
+            self._get_data()
+            self._compute_values()
+            self._isReportStatusDirty = False 
+
+        mode = str(self._drawer.comboBoxPlot1.currentText())
+        self.plot_timecourse(self._vol_axis1, self._vol_canvas1, 
+                             mode=self._availablePlots[mode])
+        mode = str(self._drawer.comboBoxPlot2.currentText())
+        self.plot_timecourse(self._vol_axis2, self._vol_canvas2, 
+                             mode=self._availablePlots[mode])
+        mode = str(self._drawer.comboBoxPlot3.currentText())
+        self.plot_timecourse(self._vol_axis3, self._vol_canvas3, 
+                             mode=self._availablePlots[mode])
+
 
 
     def _initAppletDrawerUic(self):
@@ -308,31 +341,39 @@ class MriVolReportGui( QWidget ):
         
         self._drawer.applyButton.clicked.connect( self._onApplyButtonClicked )
 
-        ts = self.op.RawInput.meta.getTaggedShape()
-        for i in range(ts['c']):
-            ch_ = 'MRI Channel {}'.format(i)
-            self._drawer.histogramComboBox.addItem( ch_ )
-            self._drawer.scatterXComboBox.addItem( ch_ )
-            self._drawer.scatterYComboBox.addItem( ch_ )
+        for k in self._availablePlots.keys():
+            self._drawer.comboBoxPlot1.addItem(k)
+            self._drawer.comboBoxPlot2.addItem(k)
+            self._drawer.comboBoxPlot3.addItem(k)
+        
+        self._drawer.comboBoxPlot1.setCurrentIndex(0)
+        self._drawer.comboBoxPlot2.setCurrentIndex(1)
+        self._drawer.comboBoxPlot3.setCurrentIndex(2)
 
-        self._drawer.histogramComboBox.currentIndexChanged.connect( \
-                                                self._histoChannelChanged )
-        self._drawer.scatterXComboBox.currentIndexChanged.connect( \
-                                                self._scatterXChannelChanged )
-        self._drawer.scatterYComboBox.currentIndexChanged.connect( \
-                                                self._scatterYChannelChanged )
+        self._drawer.comboBoxPlot1.currentIndexChanged.connect( \
+                                                self._plot1Changed )
+        self._drawer.comboBoxPlot2.currentIndexChanged.connect( \
+                                                self._plot2Changed )
+        self._drawer.comboBoxPlot3.currentIndexChanged.connect( \
+                                                self._plot3Changed )
 
-    def _histoChannelChanged(self):
-        idx = self._drawer.histogramComboBox.currentIndex()
-        print 'Histogram channel changed to {}'.format(idx)
+    def _plot1Changed(self):
+        if not self._isReportStatusDirty:
+            mode = str(self._drawer.comboBoxPlot1.currentText())
+            self.plot_timecourse(self._vol_axis1, self._vol_canvas1, 
+                                 mode=self._availablePlots[mode])
 
-    def _scatterXChannelChanged(self):
-        idx = self._drawer.scatterXComboBox.currentIndex()
-        print 'ScatterX channel changed to {}'.format(idx)
+    def _plot2Changed(self):
+        if not self._isReportStatusDirty:
+            mode = str(self._drawer.comboBoxPlot2.currentText())
+            self.plot_timecourse(self._vol_axis2, self._vol_canvas2, 
+                                 mode=self._availablePlots[mode])
 
-    def _scatterYChannelChanged(self):
-        idx = self._drawer.scatterYComboBox.currentIndex()
-        print 'ScatterY channel changed to {}'.format(idx)
+    def _plot3Changed(self):
+        if not self._isReportStatusDirty:
+            mode = str(self._drawer.comboBoxPlot3.currentText())
+            self.plot_timecourse(self._vol_axis3, self._vol_canvas3, 
+                                 mode=self._availablePlots[mode])
 
     def _createDefault16ColorColorTable(self):
         colors = []

@@ -24,6 +24,8 @@ class OpMriVolReport(Operator):
         # print 'init'
         # self.ReportStatus.setDirty(slice(None))
         self.LabelNames.notifyValueChanged( self._debugPrint )
+        # TODO opReorderAxis to make sure data comes as txyzc
+
 
     def execute(self, slot, subindex, roi, destination):
         print 'execute'

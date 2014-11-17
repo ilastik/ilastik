@@ -28,9 +28,6 @@
      <item row="0" column="1">
       <layout class="QHBoxLayout" name="topRight"/>
      </item>
-     <item row="1" column="0">
-      <layout class="QVBoxLayout" name="bottomLeft"/>
-     </item>
      <item row="1" column="1">
       <layout class="QVBoxLayout" name="bottomRight">
        <item>
@@ -58,6 +55,9 @@
         </layout>
        </item>
       </layout>
+     </item>
+     <item row="1" column="0">
+      <layout class="QVBoxLayout" name="bottomLeft"/>
      </item>
     </layout>
    </item>
