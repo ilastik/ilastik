@@ -49,7 +49,7 @@ logger = logging.getLogger(__name__)
 class OpMriVolFilter(Operator):
     name = "MRI Processing"
 
-    RawInput = InputSlot(optional=True)  # Display only
+    RawInput = InputSlot(optional=True)
     Input = InputSlot()
 
     Method = InputSlot(value='gaussian')
@@ -61,11 +61,16 @@ class OpMriVolFilter(Operator):
     ActiveChannels = InputSlot()
     LabelNames = InputSlot()
 
-    # internal output after filtering
+    # smoothed predictions
+    # not available if opengm is selected
     Smoothed = OutputSlot()
 
-    # internal output of CCs
-    CCsOutput = OutputSlot()
+    # original object IDs
+    ObjectIds = OutputSlot()
+
+    # change class assignment for object (at coordinates)
+    # use setInSlot: op.AssignChannelForObject[coords] = channel
+    AssignChannelForObject = InputSlot(optional=True)
 
     # the argmax output (single channel)
     ArgmaxOutput = OutputSlot()
@@ -117,7 +122,7 @@ class OpMriVolFilter(Operator):
 
         self.opCC = OpLabelVolume(parent=self)
         self.opCC.Input.connect(self.opBinarize.Output)
-        self.CCsOutput.connect(self.opCC.CachedOutput)
+        self.ObjectIds.connect(self.opCC.CachedOutput)
 
         # Filters CCs
         self.opFilter = OpFilterLabels(parent=self)
@@ -160,9 +165,33 @@ class OpMriVolFilter(Operator):
         self._cache.BlockShape.setValue(tuple(blockshape))
 
     def setInSlot(self, slot, subindex, roi, value):
-        if slot is not self.InputHdf5:
+        if slot is self.InputHdf5:
+            # handled by cache
+            pass
+        elif slot is self.AssignChannelForObject:
+            self._assignChannel(roi, value)
+        else:
             raise NotImplementedError("setInSlot not implemented for"
                                       "slot {}".format(slot))
+
+    def _assignChannel(self, roi, newID):
+        objectIds = self.ObjectIds.get(roi).wait()
+        assert objectIds.min() == objectIds.max(),\
+            "cannot determine object from ROI"
+        ID = objectIds.min()
+
+        # TODO optimize for single time slice
+        # compute bounding box
+        labels = self.ObjectIds[...].wait()
+        indices = np.where(labels == ID)
+        start = tuple(min(d) for d in indices)
+        stop = tuple(max(d)+1 for d in indices)
+        shape = tuple(b-a for a, b in zip(start, stop))
+        roi = SubRegion(self._cache.Input, start=start, stop=stop)
+        labels[indices] = newID
+        values = labels[roi.toSlice()]
+        self._cache.Input[roi.toSlice()] = values
+        self.CachedOutput.setDirty(roi)
 
 
 class OpMriBinarizeImage(Operator):

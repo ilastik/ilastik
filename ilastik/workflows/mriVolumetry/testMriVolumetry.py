@@ -272,6 +272,65 @@ class TestOpMriVolFilter(unittest.TestCase):
 
         out = op.ArgmaxOutput[...].wait()
 
+    # TODO implement test for opengm
+
+    def testObjectAssignment(self):
+        m = 255
+        v = [[0, 0, 0, 0, 0, 0, 0],
+             [0, m, m, 0, 0, m, 0],
+             [0, m, m, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0, 0, 0]]
+        vol = np.asarray(v, dtype=np.uint8)
+        vol = vigra.taggedView(vol, axistags='xy')
+        vol = vol.withAxes(*'txyzc')
+
+        # make 3 channel prediction image, last channel unused
+        pred = np.zeros((1, 4, 7, 1, 3), dtype=np.float32)
+        pred = vigra.taggedView(pred, axistags='txyzc')
+        pred[..., 0:1] = vol == 0
+        pred[..., 1:2] = vol > 0
+        assert pred.sum() == vol.size 
+
+        g = Graph()
+        op = OpMriVolFilter(graph=g)
+        op.Method.setValue('gaussian')
+        op.Input.setValue(pred)
+        op.RawInput.setValue(vol)
+        op.Configuration.setValue({'sigma': 0})
+        # filter single pixel object
+        op.Threshold.setValue(2)
+
+        # ignore background of 0's
+        op.ActiveChannels.setValue(np.asarray([0, 1, 1], dtype=np.int))
+        op.LabelNames.setValue(np.asarray(
+            ["black", "white", "?"], dtype=np.object))
+
+        # trigger computation
+        result = op.CachedOutput[...].wait()
+        tags = op.CachedOutput.meta.axistags
+        result = vigra.taggedView(result, axistags=tags)
+        expected = vol.copy()
+        expected[0, 1, 5, 0, 0] = 0
+        expected = np.where(expected>0, 2, 0).astype(np.uint32)
+        assert_array_equal(result, expected)
+
+        class DirtyException(Exception):
+            pass
+
+        def dirtyHandler(self, roi):
+            exp_start = [0, 1, 1, 0, 0]
+            exp_stop = [1, 3, 3, 1, 1]
+            assert_array_equal(exp_start, roi.start)
+            assert_array_equal(exp_stop, roi.stop)
+            raise DirtyException()
+
+        op.CachedOutput.notifyDirty(dirtyHandler)
+
+        with self.assertRaises(DirtyException):
+            op.AssignChannelForObject[0:1, 1:2, 1:2, 0:1, 0:1] = 3
+
+        result = op.CachedOutput[0, 1:3, 1:3, 0, 0].wait().squeeze()
+        assert np.all(result == 3)
 
 class TestOpOpenGMFilter(unittest.TestCase):
     def setUp(self):

@@ -375,6 +375,7 @@ class OpMriArgmax(Operator):
         tagged_shape = self.Input.meta.getTaggedShape()
         tagged_shape['c'] = 1
         self.Output.meta.shape = tuple(tagged_shape.values())
+        self.Output.meta.dtype = np.uint32
 
     @staticmethod
     def _globalArgmax(vol):
