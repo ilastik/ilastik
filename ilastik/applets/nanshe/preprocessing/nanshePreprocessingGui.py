@@ -124,8 +124,6 @@ class NanshePreprocessingGui(LayerViewerGui):
         self.topLevelOperatorView.Scale.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
 
     def applyRemoveZeroedLinesEnabled(self, checked):
-        print("checked = " + repr(checked))
-
         self._drawer.ErosionShapeValue_Z.setEnabled(checked)
         self._drawer.ErosionShapeValue_Y.setEnabled(checked)
         self._drawer.ErosionShapeValue_X.setEnabled(checked)
@@ -135,8 +133,6 @@ class NanshePreprocessingGui(LayerViewerGui):
         self._drawer.DilationShapeValue_X.setEnabled(checked)
 
     def applyExtractF0Enabled(self, checked):
-        print("checked = " + repr(checked))
-
         self._drawer.HalfWindowSizeValue.setEnabled(checked)
         self._drawer.QuantileValue.setEnabled(checked)
         self._drawer.TemporalSmoothingStdevValue.setEnabled(checked)
@@ -147,13 +143,9 @@ class NanshePreprocessingGui(LayerViewerGui):
         self._drawer.BiasValue.setEnabled(checked and self._drawer.BiasEnabled.isChecked())
 
     def applyBiasEnabled(self, checked):
-        print("checked = " + repr(checked))
-
         self._drawer.BiasValue.setEnabled(checked)
 
     def applyWaveletTransformEnabled(self, checked):
-        print("checked = " + repr(checked))
-
         self._drawer.ScaleValue_T.setEnabled(checked)
         self._drawer.ScaleValue_Z.setEnabled(checked)
         self._drawer.ScaleValue_Y.setEnabled(checked)
