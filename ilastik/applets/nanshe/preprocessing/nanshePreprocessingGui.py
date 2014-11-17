@@ -194,13 +194,6 @@ class NanshePreprocessingGui(LayerViewerGui):
             self._drawer.SpatialSmoothingWindowSizeValue.setValue(self.topLevelOperatorView.SpatialSmoothingGaussianFilterWindowSize.value)
 
             self._drawer.BiasValue.setValue(self.topLevelOperatorView.Bias.value)
-            if self.topLevelOperatorView.BiasEnabled.value:
-                self._drawer.BiasEnabled.setChecked(True)
-                self._drawer.BiasValue.setEnabled(True)
-            else:
-                self._drawer.BiasEnabled.setChecked(False)
-                self._drawer.BiasValue.setEnabled(False)
-
 
             self._drawer.WaveletTransformEnabled.setChecked(self.topLevelOperatorView.ToWaveletTransform.value)
             self._drawer.ScaleValue_T.setValue(self.topLevelOperatorView.Scale.value[0])
