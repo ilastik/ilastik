@@ -108,7 +108,7 @@ class MriVolFilterGui(LayerViewerGui):
 
     def _getObjectID(self, pos5d):
         op = self.topLevelOperatorView
-        return self._getObjectHelper(op.CCsOutput, pos5d)
+        return self._getObjectHelper(op.ObjectIds, pos5d)
 
     @staticmethod
     def _getObjectHelper(slot, pos5d):
@@ -122,7 +122,8 @@ class MriVolFilterGui(LayerViewerGui):
         names = list(names)
         names.insert(0, 'Background')
         # get current id
-        idx = self._getObjectHelper(op.Output,pos5d)
+        # @Markus Why does op.Output not work here?
+        idx = self._getObjectHelper(op.CachedOutput, pos5d)
         return names[idx], idx
         
     def _getPossibleLabels(self):
@@ -140,11 +141,19 @@ class MriVolFilterGui(LayerViewerGui):
                 labels[n] = i+1
         return labels
         
-    def assignNewClassEntry(self, objID, oldValue, newValue):
+    def assignNewClassEntry(self, objID, oldValue, newValue, pos5d):
         # TODO Implement me
         print 'ObjectID {}, old class {}, new class {}'.format(objID, 
                                                                oldValue, 
                                                                newValue)
+        slicing = tuple(slice(i, i+1) for i in pos5d)
+        print 'Slicing: ', slicing
+        op = self.topLevelOperatorView
+        op.AssignChannelForObject[slicing]=newValue
+        
+    def restoreClassEntry(self, pos5d):
+        print pos5d
+        idx = self._getObjectID(pos5d)
          
     def _updateDefaultCCMembership(self): 
         print 'CCs changed'
@@ -172,14 +181,14 @@ class MriVolFilterGui(LayerViewerGui):
         for k,v  in entries.iteritems():
             if v != old_class: 
                 submenu.addAction(k, partial(self.assignNewClassEntry, obj,
-                                             old_class, v))
+                                             old_class, v, position5d))
         menu.addMenu(submenu)
 
         # menu.addSeparator()
-
         org_member = 'Restore original membership ({})'.format('TODO')
         # TODO keep track of original membership
-        menu.addAction(org_member)
+        menu.addAction(org_member, partial(self.restoreClassEntry, 
+                                           position5d))
 
         action = menu.exec_(globalWindowCoordinate)
 
