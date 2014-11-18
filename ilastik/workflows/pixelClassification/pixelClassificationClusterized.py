@@ -184,6 +184,8 @@ def prepare_node_cluster_operator(config, cluster_args, finalOutputSlot, seconda
     # We're doing node work
     opClusterTaskWorker = OperatorWrapper( OpTaskWorker, parent=finalOutputSlot.getRealOperator().parent )
 
+    # TODO: Raise an error if finalOutputSlot has len=0.  That means the user didn't load a batch dataset into the project.
+
     # FIXME: Image index is hard-coded as 0.  We assume we are working with only one (big) dataset in cluster mode.            
     opClusterTaskWorker.Input.connect( finalOutputSlot )
     opClusterTaskWorker.RoiString[0].setValue( cluster_args._node_work_ )
@@ -217,6 +219,8 @@ def prepare_node_cluster_operator(config, cluster_args, finalOutputSlot, seconda
 def prepare_master_cluster_operator(cluster_args, finalOutputSlot, secondaryOutputSlots, secondaryOutputDescriptions):
     # We're the master
     opClusterizeMaster = OperatorWrapper( OpClusterize, parent=finalOutputSlot.getRealOperator().parent )
+
+    # TODO: Raise an error if finalOutputSlot has len=0.  That means the user didn't load a batch dataset into the project.
 
     opClusterizeMaster.Input.connect( finalOutputSlot )
     opClusterizeMaster.ProjectFilePath.setValue( cluster_args.project )

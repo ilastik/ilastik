@@ -446,6 +446,26 @@ class ObjectClassificationWorkflow(Workflow):
             return [self.opBatchClassify.BlockwiseRegionFeatures]
         raise Exception("Unknown headless output slot")
 
+    def postprocessClusterSubResult(self, roi, result, blockwise_fileset):
+        """
+        """
+        from lazyflow.utility.io.blockwiseFileset import vectorized_pickle_dumps
+        # Assume that roi always starts as a multiple of the blockshape
+        block_shape = self.opBatchClassify.get_blockshape()
+        assert all((roi[0] % block_shape) == 0), "Sub-blocks must exactly correspond to the blockwise object classification blockshape"
+        sub_block_index = roi[0] / blockwise_fileset.description.sub_block_shape
+
+        sub_block_start = sub_block_index
+        sub_block_stop = sub_block_start + 1
+        sub_block_roi = (sub_block_start, sub_block_stop)
+        
+        region_features = self.opBatchClassify.BlockwiseRegionFeatures( *sub_block_roi ).wait()
+
+        h5File = blockwise_fileset.getOpenHdf5FileForBlock( roi[0] )
+        if 'pickled_region_features' in h5File:
+            del h5File['pickled_region_features']
+        h5File['pickled'] = vectorized_pickle_dumps(region_features)
+
     def handleAppletStateUpdateRequested(self, upstream_ready=False):
         """
         Overridden from Workflow base class

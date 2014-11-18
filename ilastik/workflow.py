@@ -105,6 +105,9 @@ class Workflow( Operator ):
         except Exception, e:
             logger.error("Failed sending message to server '%s': %s" % (name, e))
 
+    def postprocessClusterSubResult(self, roi, result, blockwise_fileset):
+        pass
+
     ##################
     # Public methods #
     ##################

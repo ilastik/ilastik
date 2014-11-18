@@ -31,10 +31,11 @@ from lazyflow.rtype import Roi, SubRegion
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
 from lazyflow.utility import BigRequestStreamer
 from lazyflow.utility.io.blockwiseFileset import BlockwiseFileset
-
-from ilastik.clusterConfig import parseClusterConfigFile
 from lazyflow.utility.timer import Timer
 from lazyflow.utility.pathHelpers import getPathVariants
+
+from ilastik.clusterConfig import parseClusterConfigFile
+from ilastik.workflow import Workflow
 
 import logging
 logger = logging.getLogger(__name__)
@@ -127,23 +128,32 @@ class OpTaskWorker(Operator):
         # First write the primary
         self._primaryBlockwiseFileset.writeData(roi, result)
 
-        if len(self.SecondaryInputs) > 0:
-            assert self._primaryBlockwiseFileset.description.sub_block_shape is not None, \
-                "The use of secondary results REQUIRES you to specify a sub_block_shape in both the primary and secondary result data description files."
-            # Get this block's index with respect to the primary dataset
-            sub_block_index = roi[0] / self._primaryBlockwiseFileset.description.sub_block_shape
-            
-            # Now request the secondaries
-            for slot, fileset in zip(self.SecondaryInputs, self._secondaryBlockwiseFilesets):
-                # Compute the corresponding sub_block in this output dataset
-                sub_block_shape = fileset.description.sub_block_shape
-                sub_block_start = sub_block_index * sub_block_shape
-                sub_block_stop = sub_block_start + sub_block_shape
-                sub_block_stop = numpy.minimum( sub_block_stop, fileset.description.shape )
-                sub_block_roi = (sub_block_start, sub_block_stop)
-                
-                secondary_result = slot( *sub_block_roi ).wait()
-                fileset.writeData( sub_block_roi, secondary_result )
+        # Ask the workflow if there is any special post-processing to do...
+        self.get_workflow().postprocessClusterSubResult(roi, result, self._primaryBlockwiseFileset)
+
+#         if len(self.SecondaryInputs) > 0:
+#             assert self._primaryBlockwiseFileset.description.sub_block_shape is not None, \
+#                 "The use of secondary results REQUIRES you to specify a sub_block_shape in both the primary and secondary result data description files."
+#             # Get this block's index with respect to the primary dataset
+#             sub_block_index = roi[0] / self._primaryBlockwiseFileset.description.sub_block_shape
+#             
+#             # Now request the secondaries
+#             for slot, fileset in zip(self.SecondaryInputs, self._secondaryBlockwiseFilesets):
+#                 # Compute the corresponding sub_block in this output dataset
+#                 sub_block_shape = fileset.description.sub_block_shape
+#                 sub_block_start = sub_block_index * sub_block_shape
+#                 sub_block_stop = sub_block_start + sub_block_shape
+#                 sub_block_stop = numpy.minimum( sub_block_stop, fileset.description.shape )
+#                 sub_block_roi = (sub_block_start, sub_block_stop)
+#                 
+#                 secondary_result = slot( *sub_block_roi ).wait()
+#                 fileset.writeData( sub_block_roi, secondary_result )
+
+    def get_workflow(self):
+        op = self
+        while not isinstance(op, Workflow):
+            op = op.parent
+        return op
 
 class OpClusterize(Operator):
     Input = InputSlot()

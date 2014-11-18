@@ -396,6 +396,8 @@ class OpBlockwiseObjectClassification( Operator ):
             
             self._blockPipelines[block_start] = opBlockPipeline
 
+    def get_blockshape(self):
+        return self._getFullShape(self.BlockShape3dDict.value)
     
     def _getFullShape(self, spatialShapeDict):
         # 't' should match raw input
