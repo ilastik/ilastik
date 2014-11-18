@@ -467,15 +467,6 @@ class NanshePostprocessingGui(LayerViewerGui):
             outputLayer.opacity = 1.0
             layers.append(outputLayer)
 
-        # Show the max projection of the input data
-        outputImageSlot = self.topLevelOperatorView.InputImageMax
-        if outputImageSlot.ready():
-            outputLayer = self.createStandardLayerFromSlot( outputImageSlot )
-            outputLayer.name = "Input Max"
-            outputLayer.visible = True
-            outputLayer.opacity = 1.0
-            layers.append(outputLayer)
-
         # Show the input data
         inputImageSlot = self.topLevelOperatorView.InputImage
         if inputImageSlot.ready():
