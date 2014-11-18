@@ -106,14 +106,6 @@ class NansheDataExportLayerViewerGui(DataExportLayerViewerGui):
             previewLayer.opacity = 1.0
             layers.append(previewLayer)
 
-        rawSlot = opLane.FormattedRawData
-        if rawSlot.ready():
-            rawLayer = self.createStandardLayerFromSlot( rawSlot )
-            rawLayer.name = "Raw Data"
-            rawLayer.visible = True
-            rawLayer.opacity = 1.0
-            layers.append(rawLayer)
-
         maxSlot = opLane.FormattedMaxProjection
         if maxSlot.ready():
             maxLayer = self.createStandardLayerFromSlot( maxSlot )
@@ -129,5 +121,13 @@ class NansheDataExportLayerViewerGui(DataExportLayerViewerGui):
             meanLayer.visible = True
             meanLayer.opacity = 1.0
             layers.append(meanLayer)
+
+        rawSlot = opLane.RawData
+        if rawSlot.ready():
+            rawLayer = self.createStandardLayerFromSlot( rawSlot )
+            rawLayer.name = "Raw Data"
+            rawLayer.visible = True
+            rawLayer.opacity = 1.0
+            layers.append(rawLayer)
 
         return layers
