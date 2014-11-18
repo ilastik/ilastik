@@ -468,6 +468,7 @@ class ObjectClassificationWorkflow(Workflow):
         from lazyflow.utility.io.blockwiseFileset import vectorized_pickle_dumps
         # Assume that roi always starts as a multiple of the blockshape
         block_shape = opBatchClassify.get_blockshape()
+        assert all(block_shape == blockwise_fileset.description.sub_block_shape), "block shapes don't match"
         assert all((roi[0] % block_shape) == 0), "Sub-blocks must exactly correspond to the blockwise object classification blockshape"
         sub_block_index = roi[0] / blockwise_fileset.description.sub_block_shape
 
