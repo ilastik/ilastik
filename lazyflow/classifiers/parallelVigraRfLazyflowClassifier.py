@@ -30,6 +30,7 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
 
         # By default, num_forests matches the number of lazyflow worker threads
         self._num_forests = num_forests or Request.global_thread_pool.num_workers
+        self._num_forests = max(1, self._num_forests)
     
     def create_and_train(self, X, y):
         # Distribute trees as evenly as possible

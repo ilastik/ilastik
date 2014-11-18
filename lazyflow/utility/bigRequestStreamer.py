@@ -153,7 +153,7 @@ class BigRequestStreamer(object):
         ideal_blockshape = outputSlot.meta.ideal_blockshape
         ram_usage_per_requested_pixel = outputSlot.meta.ram_usage_per_requested_pixel
         
-        num_threads = Request.global_thread_pool.num_workers
+        num_threads = max(1, Request.global_thread_pool.num_workers)
         if lazyflow.AVAILABLE_RAM_MB != 0:
             available_ram = lazyflow.AVAILABLE_RAM_MB * 1e6
         else:

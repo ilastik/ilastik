@@ -51,6 +51,7 @@ def vectorized_pickle_loads(a):
 
 
 from lazyflow.utility.jsonConfig import AutoEval, FormattedField, JsonConfigParser
+from lazyflow.utility.log_exception import log_exception
 from lazyflow.roi import getIntersection, roiToSlice
 from lazyflow.utility import PathComponents, getPathVariants, FileLock
 from lazyflow.roi import getIntersectingBlocks, getBlockBounds, TinyVector
@@ -550,7 +551,7 @@ class BlockwiseFileset(object):
                         assert False, "Unsupported mode"
                     self._openBlockFiles[ blockFilePath ] = h5py.File( blockFilePath, self.mode )
                 except:
-                    logger.error( "Couldn't open {}".format(blockFilePath) )
+                    log_exception( logger, "Couldn't open {}".format(blockFilePath) )
                     raise
             return self._openBlockFiles[ blockFilePath ]
 

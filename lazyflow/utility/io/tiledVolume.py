@@ -330,7 +330,7 @@ class TiledVolume(object):
         session = requests.Session()
 
         # Replace the session http adapters with ones that use larger connection pools
-        n_threads = Request.global_thread_pool.num_workers
+        n_threads = max(1, Request.global_thread_pool.num_workers)
         adapter = requests.adapters.HTTPAdapter(pool_connections=n_threads, pool_maxsize=n_threads)
         adapter2 = requests.adapters.HTTPAdapter(pool_connections=n_threads, pool_maxsize=n_threads)
         session.mount('http://', adapter)
