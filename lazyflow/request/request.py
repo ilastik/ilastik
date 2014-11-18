@@ -949,7 +949,7 @@ class RequestPool(object):
             # For now, we forbid this because it would allow some corner cases that we aren't unit-testing yet.
             # If this exception blocks a desirable use case, then change this behavior and provide a unit test.
             raise RequestPool.RequestPoolError("Attempted to add a request to a pool that was already started!")
-        def remove_request(result):
+        def remove_request(*args):
             # This request is done executing, but not quite finished with its callbacks.
             # See docstring in wait() for details.
             self._finishing_requests.add(req)
@@ -961,6 +961,8 @@ class RequestPool(object):
                 pass
 
         req.notify_finished(remove_request)
+        req.notify_failed(remove_request)
+        req.notify_cancelled(remove_request)
         self._requests.add(req)
 
     def submit(self):
