@@ -27,8 +27,8 @@ from lazyflow.graph import OutputSlot
 
 from ilastik.applets.dataExport.opDataExport import OpDataExport,OpRawSubRegionHelper, OpFormattedDataExport
 
-from ilastik.applets.nanshe.opMaxProjection import OpMaxProjection
-from ilastik.applets.nanshe.opMeanProjection import OpMeanProjection
+from ilastik.applets.nanshe.opMaxProjection import OpMaxProjectionCached
+from ilastik.applets.nanshe.opMeanProjection import OpMeanProjectionCached
 
 
 class OpNansheDataExport( OpDataExport ):
@@ -44,7 +44,7 @@ class OpNansheDataExport( OpDataExport ):
         # so it can be displayed alongside the data to export in the same viewer.
         # This keeps axis order, shape, etc. in sync with the displayed export data.
         # Note that we must not modify the channels of the raw data, so it gets passed through a helper.
-        self._opMax = OpMaxProjection( parent=self )
+        self._opMax = OpMaxProjectionCached( parent=self )
         self._opMax.InputImage.connect( self.RawData )
         self._opMax.Axis.setValue( 0 )
 
@@ -73,7 +73,7 @@ class OpNansheDataExport( OpDataExport ):
         # so it can be displayed alongside the data to export in the same viewer.
         # This keeps axis order, shape, etc. in sync with the displayed export data.
         # Note that we must not modify the channels of the raw data, so it gets passed through a helper.
-        self._opMean = OpMeanProjection( parent=self )
+        self._opMean = OpMeanProjectionCached( parent=self )
         self._opMean.InputImage.connect( self.RawData )
         self._opMean.Axis.setValue( 0 )
 
