@@ -60,29 +60,24 @@
            <widget class="QComboBox" name="NormValueSelection">
             <item>
              <property name="text">
-              <string>other</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>-inf</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
               <string>inf</string>
              </property>
             </item>
-           </widget>
-          </item>
-          <item>
-           <widget class="QDoubleSpinBox" name="NormValue">
-            <property name="minimum">
-             <double>-10.000000000000000</double>
-            </property>
-            <property name="maximum">
-             <double>10.000000000000000</double>
-            </property>
+            <item>
+             <property name="text">
+              <string>2</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>1</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>0</string>
+             </property>
+            </item>
            </widget>
           </item>
          </layout>
