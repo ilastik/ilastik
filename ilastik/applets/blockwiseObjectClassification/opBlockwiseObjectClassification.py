@@ -50,6 +50,7 @@ class OpSingleBlockObjectPrediction( Operator ):
     Classifier = InputSlot()
     LabelsCount = InputSlot()
     
+    ObjectwisePredictions = OutputSlot(stype=Opaque, rtype=List)
     PredictionImage = OutputSlot()
     ProbabilityChannelImage = OutputSlot()
     BlockwiseRegionFeatures = OutputSlot() # Indexed by (t,c)
@@ -120,6 +121,7 @@ class OpSingleBlockObjectPrediction( Operator ):
         self._opPredict.SelectedFeatures.connect( self.SelectedFeatures )
         self._opPredict.Classifier.connect( self.Classifier )
         self._opPredict.LabelsCount.connect( self.LabelsCount )
+        self.ObjectwisePredictions.connect( self._opPredict.Predictions )
         
         self._opPredictionImage = OpRelabelSegmentation( parent=self )
         self._opPredictionImage.Image.connect( self._opExtract.LabelImage ) 
