@@ -353,13 +353,16 @@ class OpBlockwiseObjectClassification( Operator ):
             tagged_block_start_tc = filter( lambda (k,v): k in 'tc', tagged_block_start )
             block_start_tc = map( lambda (k,v): v, tagged_block_start_tc )
             block_roi_tc = ( block_start_tc, block_start_tc + numpy.array([1,1]) )
+            block_roi_t = (block_roi_tc[0][:-1], block_roi_tc[1][:-1])
 
             destination_start = numpy.array(block_start) / block_shape - roi.start
             destination_stop = destination_start + numpy.array( [1]*len(axiskeys) )
 
             opBlockPipeline = self._blockPipelines[block_start]
-            req = opBlockPipeline.BlockwiseRegionFeatures( *block_roi_tc )
-            req.writeInto( destination[ roiToSlice( destination_start, destination_stop ) ] )
+            req = opBlockPipeline.BlockwiseRegionFeatures( *block_roi_t )
+            destination_without_channel = destination[ roiToSlice( destination_start, destination_stop ) ]
+            destination_with_channel = destination_without_channel[ ...,block_roi_tc[0][-1] : block_roi_tc[1][-1] ]
+            req.writeInto( destination_with_channel )
             req.wait()
         
         return destination
