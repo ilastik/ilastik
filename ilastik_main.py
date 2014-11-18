@@ -203,18 +203,23 @@ def _prepare_lazyflow_config( parsed_args ):
     total_ram_mb = os.getenv("LAZYFLOW_TOTAL_RAM_MB", None)
 
     # Convert str -> int
-    n_threads = n_threads and int(n_threads)
+    if n_threads is not None:
+        n_threads = int(n_threads)
     total_ram_mb = total_ram_mb and int(total_ram_mb)
 
     # If not in env, check config file.
-    n_threads = n_threads or ilastik_config.getint('lazyflow', 'threads')
+    if n_threads is None:
+        n_threads = ilastik_config.getint('lazyflow', 'threads')
+        if n_threads == -1:
+            n_threads = None
     total_ram_mb = total_ram_mb or ilastik_config.getint('lazyflow', 'total_ram_mb')
     
-    if n_threads or total_ram_mb:
+    # Note that n_threads == 0 is valid and useful for debugging.
+    if (n_threads is not None) or total_ram_mb:
         def _configure_lazyflow_settings(shell):
             import lazyflow
             import lazyflow.request
-            if n_threads > 0:
+            if n_threads is not None:
                 logger.info("Resetting lazyflow thread pool with {} threads.".format( n_threads ))
                 lazyflow.request.Request.reset_thread_pool(n_threads)
             if total_ram_mb > 0:
