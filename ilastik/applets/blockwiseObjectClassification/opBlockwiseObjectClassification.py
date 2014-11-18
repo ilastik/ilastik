@@ -27,7 +27,7 @@ import numpy
 # lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.request import RequestLock, RequestPool
-from lazyflow.roi import getIntersectingBlocks, getBlockBounds, getIntersection, roiToSlice
+from lazyflow.roi import getIntersectingBlocks, getBlockBounds, getIntersection, roiToSlice, TinyVector
 from lazyflow.operators import OpSubRegion, OpMultiArrayStacker, OpArrayCache
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List
@@ -398,6 +398,20 @@ class OpBlockwiseObjectClassification( Operator ):
 
     def get_blockshape(self):
         return self._getFullShape(self.BlockShape3dDict.value)
+
+    def get_block_roi(self, block_start):
+        block_shape = self._getFullShape( self._block_shape_dict )
+        input_shape = self.RawImage.meta.shape
+        block_stop = getBlockBounds( input_shape, block_shape, block_start )[1]
+        block_roi = (block_start, block_stop)
+        return block_roi
+
+    def is_in_block(self, block_start, coord):
+        block_roi = self.get_block_roi(block_start)
+        coord_roi = (coord, TinyVector( coord ) + 1)
+        intersection = getIntersection(block_roi, coord_roi, False)
+        return (intersection is not None)
+        
     
     def _getFullShape(self, spatialShapeDict):
         # 't' should match raw input
