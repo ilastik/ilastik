@@ -27,6 +27,7 @@ import numpy
 import vigra
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.utility import Timer
 
 logger = logging.getLogger(__name__)    
 
@@ -115,7 +116,13 @@ class OpStreamingHdf5Reader(Operator):
         key = roi.toSlice()
         hdf5File = self._hdf5File
         internalPath = self.InternalPath.value
-        
+
+        timer = None
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("Reading HDF5 block: [{}, {}]".format( roi.start, roi.stop ))
+            timer = Timer()
+            timer.unpause()        
+
         if result.flags.c_contiguous:
             hdf5File[internalPath].read_direct( result[...], key )
         else:
@@ -123,6 +130,10 @@ class OpStreamingHdf5Reader(Operator):
         if logger.getEffectiveLevel() >= logging.DEBUG:
             t = 1000.0*(time.time()-t)
             logger.debug("took %f msec." % t)
+
+        if timer:
+            timer.pause()
+            logger.debug("Completed HDF5 read in {} seconds: [{}, {}]".format( timer.seconds(), roi.start, roi.stop ))            
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.Hdf5File or slot == self.InternalPath:
