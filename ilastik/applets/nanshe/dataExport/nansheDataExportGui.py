@@ -122,7 +122,6 @@ class NansheDataExportLayerViewerGui(DataExportLayerViewerGui):
             maxLayer.opacity = 1.0
             layers.append(maxLayer)
 
-
         meanSlot = opLane.FormattedMeanProjection
         if meanSlot.ready():
             meanLayer = self.createStandardLayerFromSlot( meanSlot )
