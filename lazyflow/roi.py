@@ -247,7 +247,9 @@ def expandSlicing(s, shape):
 
     # Compute number of axes missing from the slicing
     if len(shape) - len(s) < 0:
-        assert s == (Ellipsis,) or s == (slice(None),), "Slicing must not have more elements than the shape, except for [:] and [...] slices"
+        assert s == (Ellipsis,) or s == (slice(None),), \
+            "Slicing must not have more elements than the shape, except for [:] and [...] slices.\n"\
+            "Your slicing: {}, your shape: {}".format( s, shape )            
 
     # Replace Ellipsis with (:,:,:)
     if Ellipsis in s:
