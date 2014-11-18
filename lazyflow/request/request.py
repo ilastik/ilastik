@@ -98,8 +98,8 @@ class Request( object ):
         """
         Change the number of threads allocated to the request system.
 
-        As a special case, you may set num_workers to 0.  
-        In that case, the thread pool is not used at all.  
+        As a special case, you may set ``num_workers`` to 0.  
+        In that case, the normal thread pool is not used at all.  
         Instead, all requests will execute synchronously, from within the submitting thread.  
         Utilities like ``RequestLock``, ``SimpleRequestCondition`` will use alternate 
         implementations based on equivalent classes in the builtin ``threading`` module. 
