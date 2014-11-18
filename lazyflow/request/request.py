@@ -341,11 +341,19 @@ class Request( object ):
         """
         If this request isn't started yet, schedule it to be started.
         """
-        with self._lock:
+        if Request.global_thread_pool.num_workers > 0:
+            with self._lock:
+                if not self.started:
+                    self.started = True
+                    self._wake_up()
+        else:
+            # For debug purposes, we support a worker count of zero.
+            # In that case, ALL REQUESTS ARE synchronous.
+            # This can have unintended consequences.  Use with care.
             if not self.started:
                 self.started = True
-                self._wake_up()
-    
+                self._execute()                
+
     def _wake_up(self):
         """
         Resume this request's execution (put it back on the worker's job queue).
@@ -724,15 +732,35 @@ class RequestLock(object):
     """
     logger = logging.getLogger(__name__ + ".RequestLock")
     def __init__(self):
-        # This member holds the state of this RequestLock
-        self._modelLock = threading.Lock()
+        if Request.global_thread_pool.num_workers == 0:
+            self._debug_mode_init()
+        else:
+            # This member holds the state of this RequestLock
+            self._modelLock = threading.Lock()
+    
+            # This member protects the _pendingRequests set from corruption
+            self._selfProtectLock = threading.Lock()
+            
+            # This is a list of requests that are currently waiting for the lock.
+            # Other waiting threads (i.e. non-request "foreign" threads) are each listed as a single "None" item. 
+            self._pendingRequests = collections.deque()
 
-        # This member protects the _pendingRequests set from corruption
-        self._selfProtectLock = threading.Lock()
-        
-        # This is a list of requests that are currently waiting for the lock.
-        # Other waiting threads (i.e. non-request "foreign" threads) are each listed as a single "None" item. 
-        self._pendingRequests = collections.deque()
+    def _debug_mode_init(self):
+        """
+        For debug purposes, the user can use an empty threadpool.
+        In that case, all requests are executing synchronously.
+        (See Request.submit().)
+        In this debug mode, this class is simply a stand-in for an 
+        RLock object from the builtin threading module.
+        """
+        # Special debugging scenario:
+        # If there is no threadpool, just pretend to be an RLock
+        self._debug_lock = threading.RLock()
+        self.acquire = self._debug_lock.acquire
+        self.release = self._debug_lock.release
+        self.__enter__ = self._debug_lock.__enter__
+        self.__exit__ = self._debug_lock.__exit__
+        self.locked = lambda: self._debug_lock._RLock__owner is not None
 
     def locked(self):
         """
@@ -841,7 +869,7 @@ class SimpleRequestCondition(object):
     .. note:: It would be nice if we could simply use ``threading.Condition( RequestLock() )`` instead of rolling 
              our own custom condition variable class, but that doesn't quite work in cases where we need to call 
              ``wait()`` from a worker thread (a non-foreign thread).
-             (``threading.Condition`` uses ``threading.Lock()`` as it's 'waiter' lock, which blocks the entire worker.)
+             (``threading.Condition`` uses ``threading.Lock()`` as its 'waiter' lock, which blocks the entire worker.)
 
     **Example:**
     
@@ -876,13 +904,37 @@ class SimpleRequestCondition(object):
     logger = logging.getLogger(__name__ + ".SimpleRequestCondition")
     
     def __init__(self):
-        self._ownership_lock = RequestLock()
-        self._waiter_lock = RequestLock()   # Only one "waiter".  
-                                            # Used to block the current request while we wait to be notify()ed.
-    
-        # Export the acquire/release methods of the ownership lock
-        self.acquire = self._ownership_lock.acquire
-        self.release = self._ownership_lock.release
+        if Request.global_thread_pool.num_workers == 0:
+            # Special debug mode.
+            self._debug_mode_init()
+        else:
+            self._ownership_lock = RequestLock()
+            self._waiter_lock = RequestLock()   # Only one "waiter".  
+                                                # Used to block the current request while we wait to be notify()ed.
+        
+            # Export the acquire/release methods of the ownership lock
+            self.acquire = self._ownership_lock.acquire
+            self.release = self._ownership_lock.release
+
+    def _debug_mode_init(self):
+        """
+        For debug purposes, the user can use an empty threadpool.
+        In that case, all requests are executing synchronously.
+        (See Request.submit().)
+        In this debug mode, this class is simply a stand-in for a 'real' 
+        condition variable from the builtin threading module.
+        """
+        # Special debug mode initialization: 
+        # Just use a normal condition variable.
+        self._debug_condition = threading.Condition(threading.RLock())
+        self.acquire = self._debug_condition.acquire
+        self.release = self._debug_condition.release
+        self.wait = self._debug_condition.wait
+        self.notify = self._debug_condition.notify
+        
+        self._ownership_lock = self._debug_condition
+        #self.__enter__ = self._debug_condition.__enter__
+        #self.__exit__ = self._debug_condition.__exit__        
 
     def __enter__(self):
         self._ownership_lock.__enter__()
