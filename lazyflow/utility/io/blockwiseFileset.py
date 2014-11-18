@@ -555,6 +555,14 @@ class BlockwiseFileset(object):
                     raise
             return self._openBlockFiles[ blockFilePath ]
 
+    def getOpenHdf5FileForBlock(self, block_start):
+        """
+        Returns a handle to a file in this dataset.
+        """
+        block_start = tuple(block_start)
+        path_components = self.getDatasetPathComponents(block_start)
+        return self._getOpenHdf5Blockfile(path_components.extenralPath)
+    
     def purgeAllLocks(self):
         """
         Clears all .lock files from the local blockwise fileset.
