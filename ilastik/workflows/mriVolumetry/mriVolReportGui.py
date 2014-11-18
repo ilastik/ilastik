@@ -142,20 +142,9 @@ class MriVolReportGui( QWidget ):
                                        right=0.85, top=0.85)
         self.set_axis_properties(self._vol_axis3)
 
-        # result summary table
-        # TODO Fix csv export to include all data, 5D, etc.
-        # TODO export csv for all data sets
-
+        # setup result table
         self._vol_table = QTableView()
         self._vol_table.setSizePolicy(expandingPolicy)
-        header = ['Label','Voxel Count', 'Relative [%]']
-        # data_list = [('Dummy', 0, 0)]
-        data_list = [()]
-        table_model = MriTableModel(self, data_list, header)
-        self._vol_table.setModel(table_model)
-        # font = QFont("Courier New", 14)
-        # table_view.setFont(font)
-        # set column width to fit contents (set font first!)
 
         self.topLeft.insertWidget(0,self._vol_canvas1)
         self.topRight.insertWidget(0,self._vol_canvas2)
@@ -165,6 +154,41 @@ class MriVolReportGui( QWidget ):
 
         self.pushButtonCSV.clicked.connect(self.exportToCSV)
         # self.label.setText('adasdad')
+
+    def setupTable(self):
+        # result summary table
+        # TODO export csv for all data sets in level=1 slots
+        timepoints = self._mask.shape[0]
+        if timepoints > 1:
+            header = ['TP {}'.format(t) for t in range(timepoints)]
+            header.insert(0,'Name')
+            data_list = []
+            for n,w in self._availablePlots.iteritems():
+                for k in self._values.keys():
+                    if w in self._values[k].keys():
+                        tmp_name = str(n+' '+k)
+                        if w == 'volume':
+                            tmp_data = tuple(['{0:.2f}'.format(x/1000.) for x in list(self._values[k][str(w)])])
+                        else:
+                            tmp_data = tuple(['{0:.2f}'.format(x) for x in list(self._values[k][str(w)])])
+                        data_list.append((tmp_name,)+ tmp_data)
+        else:
+            header = ['Label','Volume [ml]', 'Relative Composition [%]']
+            data_list = []
+            for k in self._values.keys():
+                if k != 'Total':
+                    vol = '{0:.2f}'.format(self._values[k]['volume'][0]/1000.)
+                    perc = '{0:.2f}'.format(self._values[k]['percentage'][0])
+                    print k, vol, perc
+                    data_list.append((k, vol, perc))
+
+        table_model = MriTableModel(self, data_list, header)
+        self._vol_table.setModel(table_model)
+        # TODO necessary ?
+        self._vol_table.resizeColumnsToContents()
+        # font = QFont("Courier New", 14)
+        # table_view.setFont(font)
+        # set column width to fit contents (set font first!)
 
     def exportToCSV(self):
         # TODO write header
@@ -250,7 +274,7 @@ class MriVolReportGui( QWidget ):
         self._values = defaultdict(dict) 
         for k,v in values.iteritems():
             self._values[k].update({'volume': np.array(v)})
-            self._values[k].update({'percentage':np.array(v)/total})
+            self._values[k].update({'percentage':(np.array(v)/total)*100.})
             self._values[k].update({'color':colors[k]})
             if timepoints > 1:
                 delta_total = (np.array(v)[1:]/ \
@@ -272,7 +296,7 @@ class MriVolReportGui( QWidget ):
         print self._values
         self._updateLabelList()
         # TODO update table
-        # self.update_table(data_list)
+        self.setupTable()
 
     def plot_piechart(self, axis, canvas, mode='percentage'):
         if mode == 'percentage':
@@ -454,6 +478,7 @@ class MriVolReportGui( QWidget ):
 
 
 class MriTableModel( QAbstractTableModel ):
+    # TODO Fix alignment
     def __init__(self, parent, data, header, *args):
         QAbstractTableModel.__init__(self, parent, *args)
         self.data = data
@@ -472,7 +497,7 @@ class MriTableModel( QAbstractTableModel ):
         if role == Qt.DisplayRole:
             return QVariant(self.data[index.row()][index.column()])
         elif role == Qt.TextAlignmentRole:
-           return QVariant(Qt.AlignLeft | Qt.AlignCenter | Qt.AlignCenter)
+           return QVariant(Qt.AlignLeft | Qt.AlignCenter ) #| Qt.AlignCenter)
         
         return QVariant() 
     
