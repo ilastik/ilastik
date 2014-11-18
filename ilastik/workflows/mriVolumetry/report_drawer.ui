@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>280</width>
+    <width>285</width>
     <height>364</height>
    </rect>
   </property>
@@ -49,11 +49,18 @@
     </layout>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_2">
+    <layout class="QVBoxLayout" name="verticalLayout_2">
      <item>
       <widget class="QPushButton" name="applyButton">
        <property name="text">
         <string>Generate Report</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="exportButton">
+       <property name="text">
+        <string>Export All</string>
        </property>
       </widget>
      </item>

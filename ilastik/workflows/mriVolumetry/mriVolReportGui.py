@@ -4,7 +4,8 @@ import csv
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QAbstractTableModel, QVariant, QModelIndex
 from PyQt4.QtGui import QWidget, QListWidget, QLabel, QPainter, QColor, \
-    QPixmap, QSizePolicy, QTableView, QFileDialog
+    QPixmap, QSizePolicy, QTableView, QFileDialog, QListWidgetItem, QPixmap, \
+    QIcon
 
 from matplotlib.backends.backend_qt4agg import \
     FigureCanvasQTAgg as FigureCanvas
@@ -13,6 +14,8 @@ from matplotlib.font_manager import FontProperties
 
 import numpy as np
 from collections import defaultdict, OrderedDict
+from ilastik.utility import bind
+from volumina.utility import encode_from_qstring, decode_to_qstring
 
 class MriVolReportGui( QWidget ):
     """
@@ -39,30 +42,25 @@ class MriVolReportGui( QWidget ):
 
         self.title = title
         self.parentApplet = parentApplet
-        # self.parentApplet.topLevelOperator.parent.mriVolFilterApplet.topLevelOperator.Output.setDirty()
+
         # Region in the lower left
         self._viewerControlWidgetStack = QListWidget(self)
+
         self.op = topLevelOperatorView
 
         self._channelColors = self._createDefault16ColorColorTable()
+
+        '''
+        # TODO Why did I put this here?!
         observedSlots = []
 
         for slot in self.op.inputs.values() + self.op.outputs.values():
             if slot.level == 0 or slot.level == 1:
                 observedSlots.append(slot)
 
-        # for slot in observedSlots:
-          #  print slot
-        # data = self.op.LabelNames.value
-        # print data
-        # data = self.op.Input.get(slice(None)).wait()
-        # print data.shape, 'SADD'
-
-        # subscribe to dirty notifications of input data
-        # TODO
-
-        # set variables
-        # TODO
+        for slot in observedSlots:
+            print slot
+        '''
 
         self._availablePlots = OrderedDict()
         self._availablePlots['Volume'] = 'volume'
@@ -76,10 +74,30 @@ class MriVolReportGui( QWidget ):
 
         self._isReportStatusDirty = True
         self.op.Input.notifyDirty( self._reportStatus )
+        self.op.LabelNames.notifyDirty( bind(self._updateLabelList) )
 
     def _reportStatus(self, *args, **kwargs):
         print 'Report input has changed'
         self._isReportStatusDirty = True
+
+    def _updateLabelList(self):
+        self._viewerControlWidgetStack.clear()
+        for idx,l in enumerate(self._labels):
+            if idx in self._active_channels:
+                item = QListWidgetItem()
+                item.setText(decode_to_qstring(l))
+                pixmap = QPixmap(16, 16)
+                pixmap.fill(QColor(self._channelColors[idx].rgba()))
+                item.setIcon(QIcon(pixmap))
+                self._viewerControlWidgetStack.addItem(item)
+
+        if self._mask.shape[0] > 1:
+            item = QListWidgetItem()
+            item.setText(decode_to_qstring('Combined'))
+            pixmap = QPixmap(16, 16)
+            pixmap.fill(QColor(Qt.black))
+            item.setIcon(QIcon(pixmap))
+            self._viewerControlWidgetStack.addItem(item)
 
     def _initCentralUic(self):
         """
@@ -100,6 +118,8 @@ class MriVolReportGui( QWidget ):
         self._vol_canvas1.setSizePolicy(expandingPolicy)
         # create and initialize plot axis
         self._vol_axis1 = self._vol_fig1.add_subplot(111)#, aspect='equal')
+        self._vol_fig1.subplots_adjust(left=0.15, bottom=0.15, 
+                                       right=0.85, top=0.85)
         self.set_axis_properties(self._vol_axis1)
 
         self._vol_fig2 = Figure()
@@ -108,6 +128,8 @@ class MriVolReportGui( QWidget ):
         self._vol_canvas2.setSizePolicy(expandingPolicy)
         # create and initialize plot axis
         self._vol_axis2 = self._vol_fig2.add_subplot(111)#, aspect='equal')
+        self._vol_fig2.subplots_adjust(left=0.15, bottom=0.15, 
+                                       right=0.85, top=0.85)     
         self.set_axis_properties(self._vol_axis2)
 
         self._vol_fig3 = Figure()
@@ -116,10 +138,14 @@ class MriVolReportGui( QWidget ):
         self._vol_canvas3.setSizePolicy(expandingPolicy)
         # create and initialize plot axis
         self._vol_axis3 = self._vol_fig3.add_subplot(111)#, aspect='equal')
+        self._vol_fig3.subplots_adjust(left=0.15, bottom=0.15, 
+                                       right=0.85, top=0.85)
         self.set_axis_properties(self._vol_axis3)
 
         # result summary table
-        # TODO
+        # TODO Fix csv export to include all data, 5D, etc.
+        # TODO export csv for all data sets
+
         self._vol_table = QTableView()
         self._vol_table.setSizePolicy(expandingPolicy)
         header = ['Label','Voxel Count', 'Relative [%]']
@@ -191,10 +217,10 @@ class MriVolReportGui( QWidget ):
     def _get_data(self):
         # TODO only ask for data if it is dirty HOW? 
         # connect this function to notifydirty of input data
-        self._active_channels = np.nonzero(self.op.ActiveChannels.value)[0]
-        self._mask = self.op.Input[...].wait()
         # self._raw = self.op.RawInput[...].wait().squeeze()
         # print self._raw.shape
+        self._active_channels = np.nonzero(self.op.ActiveChannels.value)[0]
+        self._mask = self.op.Input[...].wait()
         print self._mask.shape
         self._labels = self.op.LabelNames.value
 
@@ -215,9 +241,8 @@ class MriVolReportGui( QWidget ):
             tmp_total = 0.0
             for i in range(counts.size):
                 if i in self._active_channels:
-                    # print self._labels[i], counts[i+1]
                     values[self._labels[i]].append(counts[i+1])
-                    colors[self._labels[i]]= self._channelColors[i]
+                    colors[self._labels[i]]= self._channelColors[i].getRgbF()
                     tmp_total += counts[i+1]
             total.append(tmp_total)
         total = np.array(total)
@@ -244,11 +269,49 @@ class MriVolReportGui( QWidget ):
             baseline = np.array([100.*(i/total[0])-100.0 for i in total], 
                                 dtype=np.float32)
             self._values['Total'].update({'baseline':baseline})
-        print self._values 
+        print self._values
+        self._updateLabelList()
+        # TODO update table
+        # self.update_table(data_list)
+
+    def plot_piechart(self, axis, canvas, mode='percentage'):
+        if mode == 'percentage':
+            percentage = []
+            labels = []
+            colors = []
+            for k,v in self._values.iteritems():
+                if k != 'Total':
+                    labels.append(k)
+                    percentage.append(v['percentage'][0])
+                    colors.append(v['color'])
+            explode = (0.1,)*len(labels) 
+
+            self.clear_figure(axis)
+            axis.pie(percentage, 
+                     labels=labels,explode=explode, 
+                     colors=colors, autopct='%1.1f%%', 
+                     shadow=True, 
+                     textprops=self._fnt_props) #  startangle=90)
+            axis.set_aspect('equal')
+            canvas.draw()
+        else:
+            self.clear_figure(axis)
+            axis.axis('off')
+            axis.set_ylim([0.,1.])
+            axis.set_xlim([0.,1.])
+            axis.text(0.5,0.5,'Single Timepoint', ha='center',
+                      fontweight='bold')
+            axis.set_aspect('normal')
+            canvas.draw()
 
     def plot_timecourse(self, axis, canvas, mode='volume'):
-        # TODO If only one timepoint make pie chart
+        timepoints = self._mask.shape[0]
+        if timepoints == 1:
+            self.plot_piechart(axis, canvas, mode)
+            return
+
         self.clear_figure(axis)
+        axis.set_aspect('normal')
         for k,v in self._values.iteritems():
             if mode == 'volume':
                 data = v[mode].astype(np.float32)/1000.
@@ -263,7 +326,6 @@ class MriVolReportGui( QWidget ):
                 data = v[mode].astype(np.float32)
                 axis.plot(data,'o-', color = v['color'],
                           label=k, lw=2.5)
-                
 
         if mode == 'volume':
             axis.set_title('Volume', fontweight='bold')
@@ -295,24 +357,7 @@ class MriVolReportGui( QWidget ):
             axis.set_title('Relative Composition', fontweight='bold')
             axis.set_xlabel(str('Timepoint'), fontweight='bold')
             axis.set_ylabel(str('Composition [%]'), fontweight='bold')
-
         canvas.draw()
-
-
-        # Pie chart
-        '''
-        explode = (0.1,)*len(labels) 
-
-        self.clear_figure(self._vol_axis)
-        self._vol_axis.pie(percentage, 
-                           labels=labels,explode=explode, 
-                           colors=colors, autopct='%1.1f%%', 
-                           shadow=True, 
-                           textprops=self._fnt_props) #  startangle=90)
-
-        self._vol_canvas.draw()
-        self.update_table(data_list)
-        '''
 
     def _onApplyButtonClicked(self):
         if self._isReportStatusDirty:
@@ -329,8 +374,6 @@ class MriVolReportGui( QWidget ):
         mode = str(self._drawer.comboBoxPlot3.currentText())
         self.plot_timecourse(self._vol_axis3, self._vol_canvas3, 
                              mode=self._availablePlots[mode])
-
-
 
     def _initAppletDrawerUic(self):
         """
@@ -406,7 +449,8 @@ class MriVolReportGui( QWidget ):
 #        colors.append( QColor( Qt.cyan ) )
 
         assert len(colors) == 16
-        return [c.getRgbF() for c in colors]
+        # return [c.getRgbF() for c in colors]
+        return colors 
 
 
 class MriTableModel( QAbstractTableModel ):
