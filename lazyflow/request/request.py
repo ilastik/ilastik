@@ -300,17 +300,34 @@ class Request( object ):
             else:
                 self._sig_finished(self._result)
 
+        except Exception as ex:
+            # If we're here, then our completion handler function (e.g. sig_finished or sig_failed)
+            #  raised an exception.
+            failed_during_failure_handler = (self.exception is not None)
+
+            # Save the exception so we can re-raise it in any requests that are waiting for us.
+            # Otherwise, the threadpool just dies.
+            self.exception = ex
+            self.exception_info = sys.exc_info()    # Documentation warns of circular references here,
+                                                    #  but that should be okay for us.
+                
+            # If we already fired sig_failed(), then there's no point in firing it again.
+            #  That's the function that caused this problem in the first place!
+            if not failed_during_failure_handler:
+                self._sig_failed( self.exception, self.exception_info )
+
+        else:
             # Now that we're complete, the signals have fired and any requests we needed to wait for have completed.
             # To free memory (and child requests), we can clean up everything but the result.
             self.clean( _fullClean=False )
 
+        finally:
             # Unconditionally signal (internal use only)
             with self._lock:
                 self.execution_complete = True
                 self._sig_execution_complete()
                 self._sig_execution_complete.clean()
 
-        finally:
             # Notify non-request-based threads
             self.finished_event.set()
 
