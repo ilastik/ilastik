@@ -56,6 +56,9 @@ from volumina.utility import encode_from_qstring
 from volumina.interpreter import ClickInterpreter
 from volumina.utility import ShortcutManager
 
+from ilastik.shell.gui.ilastikShell import IlastikShell
+
+
 def _listReplace(old, new):
     if len(old) > len(new):
         return new + old[len(new):]
@@ -209,10 +212,13 @@ class ObjectClassificationGui(LabelingGui):
         self.checkEnableButtons()
 
     def menus(self):
-        m = QMenu("KNIME", self.volumeEditorWidget)
-        m.addAction( "Export to KNIME" ).triggered.connect(self.exportObjectInfo)
-        mlist = [m]
-        return mlist
+        if not ilastik_config.getboolean("ilastik", "debug"):
+            return []
+
+        m = QMenu("&Export", self.volumeEditorWidget)
+        m.addAction("Export Object Information").triggered.connect(self.exportObjectInfo)
+
+        return [m]
 
     def exportObjectInfo(self):
         main_operator = self.topLevelOperatorView
@@ -224,28 +230,26 @@ class ObjectClassificationGui(LabelingGui):
             progress_bar.show()
             while not progress_bar.is_ready():
                 pass
-            progress_bar.update_step(1)
+            progress_bar.update_step(0)
             feature_selection = list(dialog.checked_features())
             #layers = list(dialog.checked_layers())
             settings = dialog.settings()
             settings.update({"dimensions": dimensions})
 
-            print "CREATE TABLE..."
-            feature_table = main_operator.createExportTable(0, [])
-            print "TABLE"
+            #feature_table = main_operator.createExportTable(0, [])
 
             op = OpExportToKnime(settings, progress_bar, parent=main_operator.viewed_operator())
             op.FileType.setValue(settings["file type"])
             op.IncludeRawImage.setValue(settings["include raw"])
             op.OutputFileName.setValue(settings["file path"])
-            op.ObjectFeatures.setValue(feature_table)
+            #op.ObjectFeatures.setValue(feature_table)
+            op.ObjectFeatures.connect(main_operator.opPredict.Features)
             op.SelectedFeatures.setValue(feature_selection)
             op.RawImage.connect(main_operator.RawImages)
             op.LabelImage.connect(main_operator.SegmentationImages)
 
             result = op.WriteData([]).wait()
-            logger.info("Export to KNIME exited with status: {}".format(result))
-            # TODO: remove print
+            logger.info("Export to KNIME exited with status: '%s'" % "succes" if result[0] else "failure")
 
     def exportObjectInfo_old(self):
         if not self.layerstack or len(self.layerstack)==0:
@@ -280,7 +284,6 @@ class ObjectClassificationGui(LabelingGui):
                     self._knime_exporter.ImagePerTime.setValue(False)
                 
                 success = self._knime_exporter.WriteData([]).wait()
-                print "EXPORTED:", success
                         
     @property
     def labelMode(self):
