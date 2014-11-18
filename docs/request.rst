@@ -386,6 +386,42 @@ Also see the :py:class:`SimpleRequestCondition` documentation for a ``threading.
           As long as ``wait()`` is not called while the lock is held, there is no increased risk of deadlock or unexpected race conditions.
           The ``ResultLock`` class relieves the developer of this constraint, so it should be favored over ``threading.Lock``.
 
+Debugging Features
+==================
+
+Synchronous Requests
+--------------------
+
+If you're using an interactive debugger like the one in PyDev/Eclipse, it can be hard to figure out *where* a particular request came from.  Often, the current thread's stack is truncated because it's executing inside a worker thread.  The original request which "spawned" the problematic one is probably suspended or running in a separate thread.
+
+For debugging purposes, the lazyflow request system can be forced in a special single-threaded mode, in which all requests execute synchronously within the calling thread.  (Specifically, they are executed when my_request.submit() is called.)  If you're wondering "how did I end up in this function?", try re-running your test in single-threaded mode, and just use your debugger to follow the stack frames down to the root cause.
+
+To activate this mode in a unit test, set the size of the lazyflow worker thread pool to 0 threads:
+
+.. code-block:: python
+
+    from lazyflow.request import Request
+    Request.reset_thread_pool(num_workers=0)
+
+Or when debugging in ilastik, change the ``[lazyflow]/threads`` config file setting:
+
+.. code-block:: none
+
+    [ilastik]
+    debug: true
+    plugin_directories: ~/Documents/workspace/object_feature_plugins
+    
+    [lazyflow]
+    total_ram_mb: 8000
+    threads: 0
+
+Alternatively, use this environment variable when launching ilastik:
+
+.. code-block:: bash
+
+    LAZYFLOW_THREADS=0 python ilastik.py
+
+
 Implementation Details
 ======================
 

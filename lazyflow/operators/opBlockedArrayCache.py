@@ -201,8 +201,8 @@ class OpBlockedArrayCache(OpCache):
         report.type = type(self)
         report.id = id(self)
        
-        for b_ind, block in self._cache_list.iteritems():
-            start = self._blockShape*self._get_block_multi_index(b_ind)
+        for block_index, block in self._cache_list.iteritems():
+            start = self._blockShape*self._get_block_multi_index(block_index)
             stop  = numpy.minimum(start + self._blockShape, self.Output.meta.shape)
             
             n = MemInfoNode()
@@ -237,9 +237,9 @@ class OpBlockedArrayCache(OpCache):
         innerBlocks = self._get_block_numbers(blockStart, blockStop)
 
         pool = RequestPool()
-        for b_ind in innerBlocks.flat:
+        for block_index in innerBlocks.flat:
             #which part of the original key does this block fill?
-            block_multi_index = self._get_block_multi_index(b_ind)
+            block_multi_index = self._get_block_multi_index(block_index)
             offset = self._blockShape*block_multi_index
             bigstart = numpy.maximum(offset, start)
             bigstop = numpy.minimum(offset + self._blockShape, stop)
@@ -252,27 +252,27 @@ class OpBlockedArrayCache(OpCache):
 
             with self._lock:    
                 if not self._fixed:
-                    if not self._cache_list.has_key(b_ind):
+                    if not self._cache_list.has_key(block_index):
 
-                        self._opSub_list[b_ind] = generic.OpSubRegion(parent=self)
-                        self._opSub_list[b_ind].inputs["Input"].connect(self.inputs["Input"])
+                        self._opSub_list[block_index] = generic.OpSubRegion(parent=self)
+                        self._opSub_list[block_index].inputs["Input"].connect(self.inputs["Input"])
                         tstart = self._blockShape*block_multi_index
                         tstop = numpy.minimum((block_multi_index+numpy.ones(block_multi_index.shape, numpy.uint8))*self._blockShape, self.shape)
     
-                        self._opSub_list[b_ind].Roi.setValue( (tuple(tstart), tuple(tstop)) )
+                        self._opSub_list[block_index].Roi.setValue( (tuple(tstart), tuple(tstop)) )
     
-                        self._cache_list[b_ind] = OpArrayCache(parent=self)
-                        self._cache_list[b_ind].inputs["Input"].connect(self._opSub_list[b_ind].outputs["Output"])
-                        self._cache_list[b_ind].inputs["fixAtCurrent"].connect( self.fixAtCurrent )
-                        self._cache_list[b_ind].inputs["blockShape"].setValue(self.inputs["innerBlockShape"].value)
+                        self._cache_list[block_index] = OpArrayCache(parent=self)
+                        self._cache_list[block_index].inputs["Input"].connect(self._opSub_list[block_index].outputs["Output"])
+                        self._cache_list[block_index].inputs["fixAtCurrent"].connect( self.fixAtCurrent )
+                        self._cache_list[block_index].inputs["blockShape"].setValue(self.inputs["innerBlockShape"].value)
                         # we dont register a callback for dirtyness, since we already forward the signal
                         
                         # Forward value changed notifications to our own output.
-                        self._cache_list[b_ind].Output.notifyValueChanged( self.Output._sig_value_changed )
+                        self._cache_list[block_index].Output.notifyValueChanged( self.Output._sig_value_changed )
 
-            if self._cache_list.has_key(b_ind):
-                op = self._cache_list[b_ind]
-                #req = self._cache_list[b_ind].outputs["Output"][smallkey].writeInto(result[bigkey])
+            if self._cache_list.has_key(block_index):
+                op = self._cache_list[block_index]
+                #req = self._cache_list[block_index].outputs["Output"][smallkey].writeInto(result[bigkey])
 
                 smallroi = SubRegion(op.outputs["Output"], start = smallstart , stop= smallstop)
                 req = op.Output(smallroi.start, smallroi.stop)
@@ -291,7 +291,7 @@ class OpBlockedArrayCache(OpCache):
                     # Since a downstream operator has expressed an interest in this block,
                     #  mark it to be signaled as dirty when we become unfixed.
                     # Otherwise, downstream operators won't know when there's valid data in this block.
-                    self._fixed_dirty_blocks.add(b_ind)
+                    self._fixed_dirty_blocks.add(block_index)
 
         pool.wait()
             
@@ -319,8 +319,8 @@ class OpBlockedArrayCache(OpCache):
                     # shortcut, if everything is dirty already, dont loop over the blocks
                     if self._fixed_all_dirty is False:
                         innerBlocks = self._get_block_numbers(blockStart, blockStop)
-                        for b_ind in innerBlocks.flat:
-                            self._fixed_dirty_blocks.add(b_ind)            
+                        for block_index in innerBlocks.flat:
+                            self._fixed_dirty_blocks.add(block_index)            
 
         if slot == self.fixAtCurrent:
             self._fixed = self.fixAtCurrent.value
@@ -335,8 +335,8 @@ class OpBlockedArrayCache(OpCache):
                     elif len(self._fixed_dirty_blocks) > 0:
                         dirtystart = self.Output.meta.shape
                         dirtystop = [0] * len(self.Output.meta.shape)
-                        for b_ind in self._fixed_dirty_blocks:
-                            offset = self._blockShape*self._get_block_multi_index(b_ind)
+                        for block_index in self._fixed_dirty_blocks:
+                            offset = self._blockShape*self._get_block_multi_index(block_index)
                             bigstart = offset
                             bigstop = numpy.minimum(offset + self._blockShape, self.Output.meta.shape)
                             
