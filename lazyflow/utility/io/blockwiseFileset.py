@@ -561,7 +561,7 @@ class BlockwiseFileset(object):
         """
         block_start = tuple(block_start)
         path_components = self.getDatasetPathComponents(block_start)
-        return self._getOpenHdf5Blockfile(path_components.extenralPath)
+        return self._getOpenHdf5Blockfile(path_components.externalPath)
     
     def purgeAllLocks(self):
         """
