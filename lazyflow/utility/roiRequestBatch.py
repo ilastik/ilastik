@@ -98,7 +98,7 @@ class RoiRequestBatch( object ):
                             Used to provide the progress reporting signal. 
                             If not provided, then no intermediate progress will be signaled.
         :param batchSize: The maximum number of requests to launch in parallel.
-        :param allowParallelResults: If True, The resultSignal will not be called in parallel.
+        :param allowParallelResults: If False, The resultSignal will not be called in parallel.
                                      In that case, your handler function has no need for locks.
         """
         self._resultSignal = OrderedSignal()
