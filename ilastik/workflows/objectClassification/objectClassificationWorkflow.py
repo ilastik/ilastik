@@ -56,7 +56,6 @@ EXPORT_SELECTION_PROBABILITIES = 1
 EXPORT_SELECTION_PIXEL_PROBABILITIES = 2
 
 # Constants for pointcloud generation on cluster
-POSITIVE_LABEL = 2
 CSV_FORMAT = { 'delimiter' : '\t', 'lineterminator' : '\n' }
 OUTPUT_COLUMNS = ["x_px", "y_px", "z_px", 
                   "size_px", 
@@ -481,14 +480,28 @@ class ObjectClassificationWorkflow(Workflow):
         region_features_dict = region_features.flat[0]
         region_centers = region_features_dict['Default features']['RegionCenter']
 
+        opBlockPipeline = opBatchClassify._blockPipelines[ tuple(roi[0]) ]
+
+        # Compute the block offset within the image coordinates
+        halo_roi = opBlockPipeline._halo_roi
+
+        translated_region_centers = region_centers + halo_roi[0]
+
         # TODO: If this is too slow, vectorize this
         mask = numpy.zeros( region_centers.shape[0], dtype=numpy.bool_ )
-        for index, region_center in enumerate(region_centers):
+        for index, translated_region_center in enumerate(translated_region_centers):
             # FIXME: Here we assume t=0 and c=0
-            mask[index] = opBatchClassify.is_in_block( roi[0], (0,) + tuple(region_center) + (0,) )
+            mask[index] = opBatchClassify.is_in_block( roi[0], (0,) + tuple(translated_region_center) + (0,) )
         
         # Always exclude the first object (it's the background??)
         mask[0] = False
+        
+        # Remove all 'negative' predictions, emit only 'positive' predictions
+        # FIXME: Don't hardcode this?
+        POSITIVE_LABEL = 2
+        objectwise_predictions = opBlockPipeline.ObjectwisePredictions([]).wait()[0]
+        assert objectwise_predictions.shape == mask.shape
+        mask[objectwise_predictions != POSITIVE_LABEL] = False
 
         filtered_features = {}
         for feature_group, feature_dict in region_features_dict.items():
@@ -502,11 +515,7 @@ class ObjectClassificationWorkflow(Workflow):
         #  so we need to add the start of the block-with-halo as an offset.
         # BUT the image itself may be offset relative to the BlockwiseFileset coordinates
         #  (due to the view_origin setting), so we also need to add an offset for that, too
-        
-        # Compute the block offset within the image coordinates
-        opBlockPipeline = opBatchClassify._blockPipelines[ tuple(roi[0]) ]
-        halo_roi = opBlockPipeline._halo_roi
-        
+
         # Get the image offset relative to the file coordinates
         image_offset = blockwise_fileset.description.view_origin
         
