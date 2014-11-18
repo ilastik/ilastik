@@ -3,7 +3,7 @@ Name = 2D Skeleton Features
 Module = vigra_objfeats_skeleton
 
 [Documentation]
-Author = Kemal Eren
+Author = Janez Ales
 Version = 0.1
 Website = todo
 Description = todo

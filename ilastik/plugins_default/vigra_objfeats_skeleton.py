@@ -24,6 +24,8 @@ import ilastik.applets.objectExtraction.opObjectExtraction
 import vigra
 import numpy as np
 from lazyflow.request import Request, RequestPool
+import logging
+logger = logging.getLogger(__name__)
 
 def cleanup_value(val, nObjects):
     """ensure that the value is a numpy array with the correct shape."""
@@ -51,7 +53,12 @@ class VigraSkeletonObjFeats(ObjectFeaturesPlugin):
     
     def availableFeatures(self, image, labels):
         
-        names = vigra.analysis.supportedSkeletonFeatures(labels)
+        try:
+            names = vigra.analysis.supportedSkeletonFeatures(labels)
+            logger.info('2D Skeleton Features: Supported Skeleton Features: done.')
+        except:
+            logger.error('2D Skeleton Features: Supported Skeleton Features: failed (Vigra commit must be f8e48031abb1158ea804ca3cbfe781ccc62d09a2 or newer).')
+            return None
         
         tooltips = {}
         result = dict((n, {}) for n in names)  

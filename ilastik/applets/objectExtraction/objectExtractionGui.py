@@ -389,7 +389,6 @@ class ObjectExtractionGui(LayerViewerGui):
             selectedFeatures = None
 
         plugins = pluginManager.getPluginsOfCategory('ObjectFeatures')
-
         taggedShape = mainOperator.RawImage.meta.getTaggedShape()
         fakeimg = None
         fakeimgshp = [taggedShape['x'], taggedShape['y']]
@@ -419,9 +418,9 @@ class ObjectExtractionGui(LayerViewerGui):
                 fakeimg = vigra.taggedView(fakeimg, 'xyc')
             else:
                 fakeimg = vigra.taggedView(fakeimg, 'xy')
-        
         for pluginInfo in plugins:
-            featureDict[pluginInfo.name] = pluginInfo.plugin_object.availableFeatures(fakeimg, fakelabels)
+            if not pluginInfo.plugin_object.availableFeatures(fakeimg, fakelabels) == None:
+                featureDict[pluginInfo.name] = pluginInfo.plugin_object.availableFeatures(fakeimg, fakelabels)
         dlg = FeatureSelectionDialog(featureDict=featureDict,
                                      selectedFeatures=selectedFeatures, ndim=ndim)
         dlg.exec_()

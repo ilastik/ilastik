@@ -24,6 +24,8 @@ import ilastik.applets.objectExtraction.opObjectExtraction
 import vigra
 import numpy as np
 from lazyflow.request import Request, RequestPool
+import logging
+logger = logging.getLogger(__name__)
 
 def cleanup_value(val, nObjects):
     """ensure that the value is a numpy array with the correct shape."""
@@ -52,7 +54,12 @@ class VigraConvexHullObjFeats(ObjectFeaturesPlugin):
     ndim = None
     
     def availableFeatures(self, image, labels):
-        names = vigra.analysis.supportedConvexHullFeatures(labels)
+        try:
+            names = vigra.analysis.supportedConvexHullFeatures(labels)
+            logger.info('2D Convex Hull Features: Supported Convex Hull Features: done.')
+        except:
+            logger.error('2D Convex Hull Features: Supported Convex Hull Features: failed (Vigra commit must be f8e48031abb1158ea804ca3cbfe781ccc62d09a2 or newer).')
+            return None
         
         # 'Polygon' is NOT usable as a feature 
         names.remove('Polygon')
