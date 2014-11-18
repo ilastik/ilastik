@@ -97,9 +97,15 @@ class Request( object ):
     def reset_thread_pool( cls, num_workers = multiprocessing.cpu_count() ):
         """
         Change the number of threads allocated to the request system.
+
+        As a special case, you may set num_workers to 0.  
+        In that case, the thread pool is not used at all.  
+        Instead, all requests will execute synchronously, from within the submitting thread.  
+        Utilities like ``RequestLock``, ``SimpleRequestCondition`` will use alternate 
+        implementations based on equivalent classes in the builtin ``threading`` module. 
         
-        .. note:: It is only valid to call this during startup.
-                  Any existing requests will be dropped from the pool.
+        .. note:: It is only valid to call this function during startup.
+                  Any existing requests will be dropped from the pool!
         """
         if cls.global_thread_pool is not None:
             cls.global_thread_pool.stop()
