@@ -10,7 +10,7 @@ from operator import mul
 class ExportToKnimeDialog(QDialog):
 
     REQ_MSG = " (REQUIRED)"
-    RAW_LAYER_SIZE_LIMIT = 100000
+    RAW_LAYER_SIZE_LIMIT = 1000000
     ALLOWED_EXTENSIONS = [".hdf5", ".hd5", ".h5", ".csv"]
     RE_EXT = r"\.[a-zA-Z0-9]+$"
     RE_FNAME = r"/'"
@@ -37,7 +37,7 @@ class ExportToKnimeDialog(QDialog):
 
         self.ui.exportPath.setText(os.path.expanduser("~") + "/a.h5")
         self.ui.exportPath.dropEvent = self._drop_event
-        self.ui.forceUniqueIds.setEnabled(dimensions[0] > 1)
+        #self.ui.forceUniqueIds.setEnabled(dimensions[0] > 1)
 
     def _drop_event(self, event):
         data = event.mimeData()
@@ -168,7 +168,10 @@ class ExportToKnimeDialog(QDialog):
         flags = QTreeWidgetItemIterator.Checked
         it = QTreeWidgetItemIterator(self.ui.featureView, flags)
         while it.value():
-            yield str(it.value().text(0))
+            text = str(it.value().text(0))
+            if text[-len(self.REQ_MSG):] == self.REQ_MSG:
+                text = text[:-len(self.REQ_MSG)]
+            yield text
             it += 1
 
     # iterator for all layers to export
@@ -189,11 +192,11 @@ class ExportToKnimeDialog(QDialog):
 
     def settings(self):
         return {
-            "normalize": self.ui.normalizeLabeling.checkState() == Qt.Checked,
+            "normalize": True,  # self.ui.normalizeLabeling.checkState() == Qt.Checked,
             "margin": self.ui.addMargin.value(),
             "compression": self._compression_settings(),
             "file type": "h5",
             "file path": self.ui.exportPath.text(),
             "include raw": self.ui.includeRaw.checkState(),
-            "force unique ids": self.ui.forceUniqueIds.checkState(),
+            "force unique ids": True,  # self.ui.forceUniqueIds.checkState(),
         }
