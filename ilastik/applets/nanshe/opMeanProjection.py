@@ -130,21 +130,21 @@ class OpMeanProjectionCached(Operator):
     def __init__(self, *args, **kwargs):
         super( OpMeanProjectionCached, self ).__init__( *args, **kwargs )
 
-        self.opMaxProjection = OpMeanProjection(parent=self)
+        self.opMeanProjection = OpMeanProjection(parent=self)
 
-        self.opMaxProjection.Axis.connect(self.Axis)
+        self.opMeanProjection.Axis.connect(self.Axis)
 
 
         self.opCache = OpBlockedArrayCache(parent=self)
         self.opCache.fixAtCurrent.setValue(False)
 
-        self.opMaxProjection.InputImage.connect( self.InputImage )
-        self.opCache.Input.connect( self.opMaxProjection.Output )
+        self.opMeanProjection.InputImage.connect( self.InputImage )
+        self.opCache.Input.connect( self.opMeanProjection.Output )
         self.Output.connect( self.opCache.Output )
 
     def setupOutputs(self):
-        axes_shape_iter = itertools.izip(self.opMaxProjection.Output.meta.axistags,
-                                         self.opMaxProjection.Output.meta.shape)
+        axes_shape_iter = itertools.izip(self.opMeanProjection.Output.meta.axistags,
+                                         self.opMeanProjection.Output.meta.shape)
 
         halo_center_slicing = []
 
@@ -162,7 +162,7 @@ class OpMeanProjectionCached(Operator):
 
         halo_center_slicing = tuple(halo_center_slicing)
 
-        halo_slicing = self.opMaxProjection.compute_halo(halo_center_slicing,
+        halo_slicing = self.opMeanProjection.compute_halo(halo_center_slicing,
                                                          self.InputImage.meta.shape,
                                                          self.Axis.value)[0]
 
@@ -172,11 +172,11 @@ class OpMeanProjectionCached(Operator):
 
         block_shape = list(block_shape)
 
-        for i, each_axistag in enumerate(self.opMaxProjection.Output.meta.axistags):
+        for i, each_axistag in enumerate(self.opMeanProjection.Output.meta.axistags):
             if each_axistag.isSpatial():
                 block_shape[i] = max(block_shape[i], 256)
 
-            block_shape[i] = min(block_shape[i], self.opMaxProjection.Output.meta.shape[i])
+            block_shape[i] = min(block_shape[i], self.opMeanProjection.Output.meta.shape[i])
 
         block_shape = tuple(block_shape)
 
