@@ -74,6 +74,15 @@ class NansheDataExportLayerViewerGui(DataExportLayerViewerGui):
 
         return(colors)
 
+    def determineDatashape(self):
+        """Overridden from DataExportGui"""
+
+        shape = None
+        if self.topLevelOperatorView.RawData.ready():
+            shape = self.getVoluminaShapeForSlot(self.topLevelOperatorView.RawData)
+
+        return shape
+
     def setupLayers(self):
         layers = []
 
