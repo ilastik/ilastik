@@ -1032,6 +1032,7 @@ class OpObjectPredict(Operator):
             for t in times:
                 if t in self.prob_cache:
                     continue
+                logger.debug("Predicting object probabilities for time step: {}".format( t ))
                 req = Request( partial(predict_forest, t) )
                 pool.add(req)
 
