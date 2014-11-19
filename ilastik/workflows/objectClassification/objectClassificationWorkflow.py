@@ -485,7 +485,7 @@ class ObjectClassificationWorkflow(Workflow):
         # Compute the block offset within the image coordinates
         halo_roi = opBlockPipeline._halo_roi
 
-        translated_region_centers = region_centers + halo_roi[0]
+        translated_region_centers = region_centers + halo_roi[0][1:-1]
 
         # TODO: If this is too slow, vectorize this
         mask = numpy.zeros( region_centers.shape[0], dtype=numpy.bool_ )
