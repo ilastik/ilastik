@@ -41,7 +41,9 @@ class MriVolReportGui( QWidget ):
         super(MriVolReportGui, self).__init__()
 
         self.title = title
-        self.parentApplet = parentApplet
+        self.applet = parentApplet
+        # FIX Progressbar does not work, maybe because we inherit from QWidget
+        # self.progressSignal = parentApplet.progressSignal
 
         # Region in the lower left
         self._viewerControlWidgetStack = QListWidget(self)
@@ -68,6 +70,9 @@ class MriVolReportGui( QWidget ):
         self._availablePlots['Volume Change (previous)'] = 'delta'
         self._availablePlots['Volume Change (baseline)'] = 'baseline'
         
+        self._availableModes = OrderedDict()
+        self._availableModes['Tumor'] = 'tumor'
+
         # load and initialize user interfaces
         self._initCentralUic()
         self._initAppletDrawerUic()
@@ -142,6 +147,16 @@ class MriVolReportGui( QWidget ):
                                        right=0.85, top=0.85)
         self.set_axis_properties(self._vol_axis3)
 
+        self._vol_fig4 = Figure()
+        self._vol_canvas4 = FigureCanvas(self._vol_fig4)
+        self._vol_canvas4.setParent(self)
+        self._vol_canvas4.setSizePolicy(expandingPolicy)
+        # create and initialize plot axis
+        self._vol_axis4 = self._vol_fig4.add_subplot(111)#, aspect='equal')
+        self._vol_fig4.subplots_adjust(left=0.15, bottom=0.15, 
+                                       right=0.85, top=0.85)
+        self.set_axis_properties(self._vol_axis4)
+
         # setup result table
         self._vol_table = QTableView()
         self._vol_table.setSizePolicy(expandingPolicy)
@@ -150,9 +165,8 @@ class MriVolReportGui( QWidget ):
         self.topRight.insertWidget(0,self._vol_canvas2)
 
         self.bottomLeft.insertWidget(0,self._vol_canvas3)
-        self.bottomRight.insertWidget(0,self._vol_table)
+        self.bottomRight.insertWidget(0,self._vol_canvas4)
 
-        self.pushButtonCSV.clicked.connect(self.exportToCSV)
         # self.label.setText('adasdad')
 
     def setupTable(self):
@@ -197,6 +211,8 @@ class MriVolReportGui( QWidget ):
         if not path.isEmpty():
             with open(unicode(path), 'wb') as stream:
                 writer = csv.writer(stream)
+                header = self._vol_table.model().getHeader()
+                writer.writerow(header)
                 for row in range(self._vol_table.model().rowCount()):
                     rowdata = []
                     for column in range(self._vol_table.model().columnCount()):
@@ -228,7 +244,7 @@ class MriVolReportGui( QWidget ):
         axis.grid(True)
 
     def showEvent(self, event):
-        pass
+        super( MriVolReportGui, self ).showEvent(event)
         '''
         if self._isReportStatusDirty:
             print 'ReportStatus Dirty' , event
@@ -298,6 +314,7 @@ class MriVolReportGui( QWidget ):
         self.setupTable()
 
     def plot_piechart(self, axis, canvas, mode='percentage'):
+        # TODO Show volume information in second canvas (eg as text)
         if mode == 'percentage':
             percentage = []
             labels = []
@@ -315,6 +332,7 @@ class MriVolReportGui( QWidget ):
                      colors=colors, autopct='%1.1f%%', 
                      shadow=True, 
                      textprops=self._fnt_props) #  startangle=90)
+            axis.set_title('Relative Composition', fontweight='bold')
             axis.set_aspect('equal')
             canvas.draw()
         else:
@@ -383,20 +401,34 @@ class MriVolReportGui( QWidget ):
         canvas.draw()
 
     def _onApplyButtonClicked(self):
+        # FIXME Computation does not run in background
+        self.applet.progressSignal.emit(0)
+        self.applet.progressSignal.emit(1)
+        self.applet.busy = True
         if self._isReportStatusDirty:
             self._get_data()
+            self.applet.progressSignal.emit(70)
             self._compute_values()
+            self.applet.progressSignal.emit(90)
             self._isReportStatusDirty = False 
 
-        mode = str(self._drawer.comboBoxPlot1.currentText())
-        self.plot_timecourse(self._vol_axis1, self._vol_canvas1, 
-                             mode=self._availablePlots[mode])
-        mode = str(self._drawer.comboBoxPlot2.currentText())
-        self.plot_timecourse(self._vol_axis2, self._vol_canvas2, 
-                             mode=self._availablePlots[mode])
-        mode = str(self._drawer.comboBoxPlot3.currentText())
-        self.plot_timecourse(self._vol_axis3, self._vol_canvas3, 
-                             mode=self._availablePlots[mode])
+        mode = str(self._drawer.comboBoxMode.currentText())
+        if self._availableModes[mode] == 'tumor':
+            self.plot_timecourse(self._vol_axis1, self._vol_canvas1, 
+                                 mode='percentage')
+            self.plot_timecourse(self._vol_axis2, self._vol_canvas2, 
+                                 mode='delta')
+            self.plot_timecourse(self._vol_axis3, self._vol_canvas3, 
+                                 mode='volume')
+            self.plot_timecourse(self._vol_axis4, self._vol_canvas4, 
+                                 mode='baseline')
+        else:
+            print 'not implemented yet'
+        self.applet.busy = False
+        self.applet.progressSignal.emit(100)
+        self._drawer.applyButton.setEnabled(True)
+        self._drawer.exportButton.setEnabled(True)
+
 
     def _initAppletDrawerUic(self):
         """
@@ -407,21 +439,23 @@ class MriVolReportGui( QWidget ):
         
         self._drawer.applyButton.clicked.connect( self._onApplyButtonClicked )
 
-        for k in self._availablePlots.keys():
-            self._drawer.comboBoxPlot1.addItem(k)
-            self._drawer.comboBoxPlot2.addItem(k)
-            self._drawer.comboBoxPlot3.addItem(k)
+        for k in self._availableModes.keys():
+            self._drawer.comboBoxMode.addItem(k)
         
-        self._drawer.comboBoxPlot1.setCurrentIndex(0)
-        self._drawer.comboBoxPlot2.setCurrentIndex(1)
-        self._drawer.comboBoxPlot3.setCurrentIndex(2)
+        self._drawer.comboBoxMode.setCurrentIndex(0)
+        self._drawer.comboBoxMode.currentIndexChanged.connect( \
+                                                    self._modeChanged )
+        self._drawer.exportButton.clicked.connect(self.exportToCSV)
+        self._drawer.exportButton.setEnabled(False)
+        
+        
 
-        self._drawer.comboBoxPlot1.currentIndexChanged.connect( \
-                                                self._plot1Changed )
-        self._drawer.comboBoxPlot2.currentIndexChanged.connect( \
-                                                self._plot2Changed )
-        self._drawer.comboBoxPlot3.currentIndexChanged.connect( \
-                                                self._plot3Changed )
+    def _modeChanged(self):
+        # TODO implement me
+        if not self._isReportStatusDirty:
+            mode = str(self._drawer.comboBoxMode.currentText())
+            print 'Mode changed to {}'.format(mode)
+        
 
     def _plot1Changed(self):
         if not self._isReportStatusDirty:
@@ -499,7 +533,10 @@ class MriTableModel( QAbstractTableModel ):
            return QVariant(Qt.AlignLeft | Qt.AlignCenter ) #| Qt.AlignCenter)
         
         return QVariant() 
-    
+        
+    def getHeader(self):
+        return self.header
+
     def setData(self, newData):
         print 'Updating Model'
         print newData
