@@ -59,10 +59,12 @@ class VigraConvexHullObjFeats(ObjectFeaturesPlugin):
             logger.info('2D Convex Hull Features: Supported Convex Hull Features: done.')
         except:
             logger.error('2D Convex Hull Features: Supported Convex Hull Features: failed (Vigra commit must be f8e48031abb1158ea804ca3cbfe781ccc62d09a2 or newer).')
-            return None
-        
-        # 'Polygon' is NOT usable as a feature 
-        names.remove('Polygon')
+            names = []
+        try:
+            # 'Polygon' is NOT usable as a feature
+            names.remove('Polygon')
+        except:
+            pass
         
         tooltips = {}
         result = dict((n, {}) for n in names)  

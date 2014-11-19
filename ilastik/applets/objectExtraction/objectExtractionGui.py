@@ -419,8 +419,9 @@ class ObjectExtractionGui(LayerViewerGui):
             else:
                 fakeimg = vigra.taggedView(fakeimg, 'xy')
         for pluginInfo in plugins:
-            if not pluginInfo.plugin_object.availableFeatures(fakeimg, fakelabels) == None:
-                featureDict[pluginInfo.name] = pluginInfo.plugin_object.availableFeatures(fakeimg, fakelabels)
+            availableFeatures = pluginInfo.plugin_object.availableFeatures(fakeimg, fakelabels)
+            if len(availableFeatures) > 0:
+                featureDict[pluginInfo.name] = availableFeatures
         dlg = FeatureSelectionDialog(featureDict=featureDict,
                                      selectedFeatures=selectedFeatures, ndim=ndim)
         dlg.exec_()

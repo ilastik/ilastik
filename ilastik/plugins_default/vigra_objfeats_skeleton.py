@@ -58,7 +58,7 @@ class VigraSkeletonObjFeats(ObjectFeaturesPlugin):
             logger.info('2D Skeleton Features: Supported Skeleton Features: done.')
         except:
             logger.error('2D Skeleton Features: Supported Skeleton Features: failed (Vigra commit must be f8e48031abb1158ea804ca3cbfe781ccc62d09a2 or newer).')
-            return None
+            names = []
         
         tooltips = {}
         result = dict((n, {}) for n in names)  
