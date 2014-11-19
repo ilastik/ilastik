@@ -139,7 +139,7 @@ class MriVolFilterGui(LayerViewerGui):
     def _assignNewLabel(self, pos5d, object_id, new_label, original_label):
         op = self.topLevelOperatorView
         slicing = tuple(slice(i, i+1) for i in pos5d)
-        self._originalLabels[object_id] = original_label
+        self._originalLabels[(pos5d[0],object_id)] = original_label
         op.AssignChannelForObject[slicing] = new_label
 
     def handleEditorLeftClick(self, position5d, globalWindowCoordinate):
@@ -153,9 +153,12 @@ class MriVolFilterGui(LayerViewerGui):
         current = self._getObjectHelper(op.CachedOutput, position5d)
         print("current label: {}".format(current))
 
+        t = position5d[0]
         # check if channel was changed
         object_id = self._getObjectHelper(op.ObjectIds, position5d)
-        original_label = self._getOriginalLabel(object_id) or current
+        original_label = self._getOriginalLabel((t,object_id))
+        if original_label is None:
+            original_label = current
         print("object_id: {}".format(object_id))
         print("original label: {}".format(original_label))
 

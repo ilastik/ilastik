@@ -179,6 +179,7 @@ class OpMriVolFilter(Operator):
         ts['t'] = 1
         blockshape = map(lambda k: ts[k], ts.keys())
         self._cache.BlockShape.setValue(tuple(blockshape))
+        self._argmaxcache.BlockShape.setValue(tuple(blockshape))
 
     def setInSlot(self, slot, subindex, roi, value):
         if slot is self.InputHdf5:
@@ -198,12 +199,14 @@ class OpMriVolFilter(Operator):
 
         # TODO optimize for single time slice
         # compute bounding box
-        objectIds = self.ObjectIds[...].wait()
+        t = roi.start[0]
+        objectIds = self.ObjectIds[t,...].wait()
         indices = np.where(objectIds == ID)
-        start = tuple(min(d) for d in indices)
-        stop = tuple(max(d)+1 for d in indices)
+        start = (t,)+tuple(min(d) for d in indices[1:])
+        stop = (t+1,)+tuple(max(d)+1 for d in indices[1:])
         shape = tuple(b-a for a, b in zip(start, stop))
         roi = SubRegion(self._cache.Input, start=start, stop=stop)
+        
         print("Bounding Box: {}".format(roi))
         labels = self.CachedOutput.get(roi).wait()
 
