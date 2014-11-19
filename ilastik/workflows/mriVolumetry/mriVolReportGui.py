@@ -97,8 +97,6 @@ class MriVolReportGui( QWidget ):
         # hide buttons
         self._drawer.exportButton.setEnabled(False)
         self._drawer.plotButton.setEnabled(False)
-        
-
 
     def _updateLabelList(self):
         self._viewerControlWidgetStack.clear()
@@ -347,6 +345,23 @@ class MriVolReportGui( QWidget ):
             axis.set_title('Relative Composition', fontweight='bold')
             axis.set_aspect('equal')
             canvas.draw()
+        elif mode == 'volume':
+            self.clear_figure(axis)
+            axis.axis('off')
+            vol_text = []
+            for k,v in self._values.iteritems():
+                vol_text.append((k,'{0:.2f}'.format(v['volume'][0]/1000.)))
+            header = ('Name','Volume [ml]')
+            # rows = ('eins', 'zwei')
+            the_table = axis.table(cellText=vol_text,
+                                   colLabels=header,
+                                   cellLoc='left',
+                                   # rowLabels=rows,
+                                   loc='center')
+            # the_table.set_fontsize(24)
+            the_table.scale(1.2, 1.2)
+            axis.set_title('Volume', fontweight='bold')
+            canvas.draw()
         else:
             self.clear_figure(axis)
             axis.axis('off')
@@ -469,6 +484,7 @@ class MriVolReportGui( QWidget ):
         self._drawer.comboBoxMode.setCurrentIndex(0)
         self._drawer.comboBoxMode.currentIndexChanged.connect( \
                                                     self._modeChanged )
+        self._drawer.comboBoxMode.setEnabled(False)
 
         self._drawer.plotButton.clicked.connect(self._plotReport)
         self._drawer.plotButton.setEnabled(False)
