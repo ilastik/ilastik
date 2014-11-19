@@ -38,6 +38,13 @@
       </widget>
      </item>
      <item>
+      <widget class="QPushButton" name="plotButton">
+       <property name="text">
+        <string>Plot Report</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QPushButton" name="exportButton">
        <property name="text">
         <string>Export to CSV</string>

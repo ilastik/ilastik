@@ -1,5 +1,6 @@
 import os
 import csv
+import threading
 
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QAbstractTableModel, QVariant, QModelIndex
@@ -84,6 +85,20 @@ class MriVolReportGui( QWidget ):
     def _reportStatus(self, *args, **kwargs):
         print 'Report input has changed'
         self._isReportStatusDirty = True
+        # erase plots
+        self.clear_figure(self._vol_axis1)
+        self.clear_figure(self._vol_axis2)
+        self.clear_figure(self._vol_axis3)
+        self.clear_figure(self._vol_axis4)
+        self._vol_canvas1.draw()
+        self._vol_canvas2.draw()
+        self._vol_canvas3.draw()
+        self._vol_canvas4.draw()
+        # hide buttons
+        self._drawer.exportButton.setEnabled(False)
+        self._drawer.plotButton.setEnabled(False)
+        
+
 
     def _updateLabelList(self):
         self._viewerControlWidgetStack.clear()
@@ -309,9 +324,6 @@ class MriVolReportGui( QWidget ):
                                 dtype=np.float32)
             self._values['Total'].update({'baseline':baseline})
         print self._values
-        self._updateLabelList()
-        # TODO update table
-        self.setupTable()
 
     def plot_piechart(self, axis, canvas, mode='percentage'):
         # TODO Show volume information in second canvas (eg as text)
@@ -400,8 +412,7 @@ class MriVolReportGui( QWidget ):
             axis.set_ylabel(str('Composition [%]'), fontweight='bold')
         canvas.draw()
 
-    def _onApplyButtonClicked(self):
-        # FIXME Computation does not run in background
+    def _reportGenerator(self):
         self.applet.progressSignal.emit(0)
         self.applet.progressSignal.emit(1)
         self.applet.busy = True
@@ -411,7 +422,17 @@ class MriVolReportGui( QWidget ):
             self._compute_values()
             self.applet.progressSignal.emit(90)
             self._isReportStatusDirty = False 
+        self.applet.busy = False
+        self.applet.progressSignal.emit(100)
+        self._drawer.applyButton.setEnabled(True)
+        self._drawer.plotButton.setEnabled(True)
+        self._drawer.exportButton.setEnabled(True)
+        
 
+    def _plotReport(self):
+        self._updateLabelList()
+        # TODO update table
+        self.setupTable()
         mode = str(self._drawer.comboBoxMode.currentText())
         if self._availableModes[mode] == 'tumor':
             self.plot_timecourse(self._vol_axis1, self._vol_canvas1, 
@@ -424,10 +445,13 @@ class MriVolReportGui( QWidget ):
                                  mode='baseline')
         else:
             print 'not implemented yet'
-        self.applet.busy = False
-        self.applet.progressSignal.emit(100)
-        self._drawer.applyButton.setEnabled(True)
-        self._drawer.exportButton.setEnabled(True)
+
+
+    def _onApplyButtonClicked(self):
+        self._drawer.applyButton.setEnabled(False)
+        getDataThread = threading.Thread(target=bind(self._reportGenerator), 
+                                             name="GetDataThread")
+        getDataThread.start()
 
 
     def _initAppletDrawerUic(self):
@@ -445,6 +469,10 @@ class MriVolReportGui( QWidget ):
         self._drawer.comboBoxMode.setCurrentIndex(0)
         self._drawer.comboBoxMode.currentIndexChanged.connect( \
                                                     self._modeChanged )
+
+        self._drawer.plotButton.clicked.connect(self._plotReport)
+        self._drawer.plotButton.setEnabled(False)
+
         self._drawer.exportButton.clicked.connect(self.exportToCSV)
         self._drawer.exportButton.setEnabled(False)
         
