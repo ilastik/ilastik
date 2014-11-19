@@ -201,9 +201,11 @@ class OpMriVolFilter(Operator):
         # compute bounding box
         t = roi.start[0]
         objectIds = self.ObjectIds[t,...].wait()
-        indices = np.where(objectIds == ID)
-        start = (t,)+tuple(min(d) for d in indices[1:])
-        stop = (t+1,)+tuple(max(d)+1 for d in indices[1:])
+        indices = list(np.where(objectIds == ID))
+        indices[0] = [t]*len(indices[0])
+        indices = tuple(indices)
+        start = tuple(min(d) for d in indices)
+        stop = tuple(max(d)+1 for d in indices)
         shape = tuple(b-a for a, b in zip(start, stop))
         roi = SubRegion(self._cache.Input, start=start, stop=stop)
         
@@ -211,7 +213,8 @@ class OpMriVolFilter(Operator):
         labels = self.CachedOutput.get(roi).wait()
 
         # convert indices to fit into label cut-out
-        indices = tuple([k - s for k in ind] for ind, s in zip(indices, start))
+        indices = tuple([k - s for k in ind] for ind, s in zip(indices, 
+                                                               start))
         labels[indices] = newChannel
         self._cache.Input[roi.toSlice()] = labels
         self.CachedOutput.setDirty(roi)
