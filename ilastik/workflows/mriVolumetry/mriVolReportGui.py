@@ -245,7 +245,6 @@ class MriVolReportGui( QWidget ):
         # print self._raw.shape
         self._active_channels = np.nonzero(self.op.ActiveChannels.value)[0]
         self._mask = self.op.Input[...].wait()
-        print self._mask.shape
         self._labels = self.op.LabelNames.value
 
     def _compute_values(self):

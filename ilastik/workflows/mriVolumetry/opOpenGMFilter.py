@@ -43,6 +43,7 @@ class OpOpenGMFilter(Operator):
 
     def setupOutputs(self):
         self._Output.meta.assignFrom(self.Input.meta)
+        self._Output.meta.dtype = np.uint32
 
         ts = self.Input.meta.getTaggedShape()
         ts['c'] = 1
