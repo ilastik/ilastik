@@ -97,6 +97,8 @@ class MriVolReportGui( QWidget ):
         # hide buttons
         self._drawer.exportButton.setEnabled(False)
         self._drawer.plotButton.setEnabled(False)
+        # enable gerate report button
+        self._drawer.applyButton.setEnabled(True)
 
     def _updateLabelList(self):
         self._viewerControlWidgetStack.clear()
@@ -289,13 +291,14 @@ class MriVolReportGui( QWidget ):
         colors = {}
         values = defaultdict(list)
         for t in range(timepoints):
-            counts = np.bincount(self._mask[t].ravel())
+            counts = np.bincount(self._mask[t].ravel(),
+                                 minlength=max(self._active_channels)+2)
+            # plus 2 for background and offset
             tmp_total = 0.0
-            for i in range(counts.size):
-                if i in self._active_channels:
-                    values[self._labels[i]].append(counts[i+1])
-                    colors[self._labels[i]]= self._channelColors[i].getRgbF()
-                    tmp_total += counts[i+1]
+            for i in self._active_channels:
+                values[self._labels[i]].append(counts[i+1])
+                colors[self._labels[i]]= self._channelColors[i].getRgbF()
+                tmp_total += counts[i+1]
             total.append(tmp_total)
         total = np.array(total)
 
