@@ -13,6 +13,9 @@ from opImplementationChoice import OpImplementationChoice
 import vigra
 import numpy as np
 
+from ilastik.utility import bind
+import threading
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -192,6 +195,14 @@ class OpMriVolFilter(Operator):
                                       "slot {}".format(slot))
 
     def _assignChannel(self, roi, newChannel):
+        assignChannelThread = \
+                    threading.Thread(target=bind(self._assignChannelThreaded, 
+                                                 roi, newChannel), 
+                                     name="AssignChannelThread")
+        assignChannelThread.start()
+
+
+    def _assignChannelThreaded(self, roi, newChannel):
         objectIds = self.ObjectIds.get(roi).wait()
         assert objectIds.min() == objectIds.max(),\
             "cannot determine object from ROI"
