@@ -352,8 +352,12 @@ class MriVolReportGui( QWidget ):
             self.clear_figure(axis)
             axis.axis('off')
             vol_text = []
-            for k,v in self._values.iteritems():
-                vol_text.append((k,'{0:.2f}'.format(v['volume'][0]/1000.)))
+            for l in self._active_channels:
+                name = self._labels[l]
+                vol_text.append((name,
+                    '{0:.2f}'.format(self._values[name]['volume'][0]/1000.)))
+            vol_text.append(('Total',
+                    '{0:.2f}'.format(self._values['Total']['volume'][0]/1000.)))
             header = ('Name','Volume [ml]')
             # rows = ('eins', 'zwei')
             the_table = axis.table(cellText=vol_text,
