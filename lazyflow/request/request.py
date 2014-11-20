@@ -358,7 +358,14 @@ class Request( object ):
             # This can have unintended consequences.  Use with care.
             if not self.started:
                 self.started = True
-                self._execute()                
+                self._execute()
+
+            # TODO: Exactly how to handle cancellation in this debug mode is not quite clear...
+
+            # The _execute() function normally intercepts exceptions to hide them from the worker threads.
+            # In this debug mode, we want to re-raise the exception.
+            if self.exception is not None:
+                raise self.exception_info[0], self.exception_info[1], self.exception_info[2]
 
     def _wake_up(self):
         """
@@ -480,7 +487,10 @@ class Request( object ):
             #  but we allow it if the request is already "finished"
             # (which can happen if the request is calling wait() from within a notify_finished callback)
             if self.finished:
-                return
+                if self.exception is not None:
+                    raise self.exception_info[0], self.exception_info[1], self.exception_info[2]
+                else:
+                    return
             else:
                 raise Request.CircularWaitException()
 

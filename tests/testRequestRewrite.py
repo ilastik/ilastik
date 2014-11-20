@@ -27,6 +27,7 @@ import numpy
 import gc
 import platform
 from functools import partial
+import nose
 
 import psutil
 
@@ -43,6 +44,11 @@ handler.setFormatter(formatter)
 logger = logging.getLogger("tests.testRequestRewrite")
 # Test Trace
 traceLogger = logging.getLogger("TRACE." + logger.name)
+
+
+TEST_WITH_SINGLE_THREADED_DEBUG_MODE = False
+if TEST_WITH_SINGLE_THREADED_DEBUG_MODE:
+    Request.reset_thread_pool(0)
 
 class TestRequest(object):
  
@@ -180,6 +186,9 @@ class TestRequest(object):
         """
         Start a workload and cancel it.  Verify that it was actually cancelled before all the work was finished.
         """
+        if Request.global_thread_pool.num_workers == 0:
+            raise nose.SkipTest
+        
         counter_lock = threading.RLock()
  
         def workload():
@@ -233,6 +242,8 @@ class TestRequest(object):
         """
         Test that a request isn't cancelled if it has requests pending for it.
         """
+        if Request.global_thread_pool.num_workers == 0:
+            raise nose.SkipTest
  
         cancelled_requests = []
          
@@ -400,22 +411,35 @@ class TestRequest(object):
         req1.notify_failed( partial(handle_failed_req, 1) )
         req2.notify_failed( partial(handle_failed_req, 2) )
          
-        req1.submit()
-        req2.submit()
+        try:
+            req1.submit()
+        except:
+            # submit may fail here if in single-threaded debug mode.
+            assert Request.global_thread_pool.num_workers == 0
+
+        try:            
+            req2.submit()
+        except:
+            # submit may fail here if in single-threaded debug mode.
+            assert Request.global_thread_pool.num_workers == 0
  
         try:
             req1.wait()
         except RuntimeError:
             pass
         else:
-            assert False, "Expected an exception from that request, but didn't get it."
+            # submit may fail here if in single-threaded debug mode.
+            if Request.global_thread_pool.num_workers > 0:
+                assert False, "Expected an exception from that request, but didn't get it."
  
         try:
             req2.wait()
         except RuntimeError:
             pass
         else:
-            assert False, "Expected an exception from that request, but didn't get it."
+            # submit may fail here if in single-threaded debug mode.
+            if Request.global_thread_pool.num_workers > 0:
+                assert False, "Expected an exception from that request, but didn't get it."
  
         assert 1 in failed_ids
         assert 2 in failed_ids
@@ -502,6 +526,9 @@ class TestRequest(object):
         Test the timeout feature when calling wait() from a foreign thread.
         See wait() for details.
         """
+        if Request.global_thread_pool.num_workers == 0:
+            raise nose.SkipTest
+        
         def slowWorkload():
             time.sleep( 10.0 )
          
@@ -522,9 +549,14 @@ class TestRequest(object):
         The list will eventually be 0,1,2...99, and each request will append a single number to the list.
         Each request must wait its turn before it can append it's number and finish.
         """
+        # This test doesn't work if the request system is working in single-threaded 'debug' mode.
+        # It depends on concurrent execution to make progress.  Otherwise it hangs.
+        if Request.global_thread_pool.num_workers == 0:
+            raise nose.SkipTest
+        
         req_lock = RequestLock()
         l = [0]
-         
+        
         def append_n(n):
             #print "Starting append_{}\n".format(n)
             while True:
@@ -535,14 +567,15 @@ class TestRequest(object):
                         return
  
         # Create 50 requests
+        N = 50
         reqs = []
-        for i in range(1,100,2):
+        for i in range(1,2*N,2):
             req = Request( partial(append_n, i) )
             reqs.append(req)
  
         # Create 49 threads
         thrds = []
-        for i in range(2,100,2):
+        for i in range(2,2*N,2):
             thrd = threading.Thread( target=partial(append_n, i) )
             thrds.append(thrd)
          
@@ -570,6 +603,7 @@ class TestRequest(object):
         Test the SimpleRequestCondition, which is like threading.Condition, but with a subset of the functionality.
         (See the docs for details.)
         """
+        num_workers = Request.global_thread_pool.num_workers
         Request.reset_thread_pool(num_workers=1)
         N_ELEMENTS = 10
  
@@ -615,12 +649,17 @@ class TestRequest(object):
         logger.debug( "produced: {}".format(produced) )
         logger.debug( "consumed: {}".format(consumed) )
         assert set(consumed) == set( range(N_ELEMENTS) ), "Expected set(range(N_ELEMENTS)), got {}".format( consumed )
+
+        Request.reset_thread_pool(num_workers)
  
     def testRequestLockSemantics(self):
         """
         To be used with threading.Condition, RequestLock objects MUST NOT have RLock semantics.
         It is important that the RequestLock is NOT re-entrant.
         """
+        if Request.global_thread_pool.num_workers == 0:
+            raise nose.SkipTest
+        
         with RequestLock() as lock:
             assert not lock.acquire(0)
  
@@ -686,6 +725,7 @@ class TestRequest(object):
         assert memory_increase < resultSize, "All requests are finished an inaccessible, but not all memory was released!"
  
     def testThreadPoolReset(self):
+        num_workers = Request.global_thread_pool.num_workers
         Request.reset_thread_pool(num_workers=1)
          
         lock = threading.Lock()
@@ -701,7 +741,7 @@ class TestRequest(object):
             req.wait()
          
         # Set it back to what it was
-        Request.reset_thread_pool()
+        Request.reset_thread_pool(num_workers)
  
  
 class TestRequestExceptions(object):
@@ -725,14 +765,25 @@ class TestRequestExceptions(object):
             raise Exception()
          
         req = Request(always_fails)
-        req.submit()
+
+        try:
+            req.submit()
+        except:
+            if Request.global_thread_pool.num_workers > 0:
+                raise
+        else:
+            if Request.global_thread_pool.num_workers == 0:
+                # In the single-threaded debug mode, the exception should be raised within submit()
+                assert False, "Expected to request to raise an Exception!"
  
         try:
             req.wait()
         except:
             pass
         else:
-            assert False, "Expected to request to raise an Exception!"
+            if Request.global_thread_pool.num_workers > 0:
+                # In the single-threaded debug mode, the exception should be raised within submit()
+                assert False, "Expected to request to raise an Exception!"
          
         for worker in Request.global_thread_pool.workers:
             assert worker.is_alive(), "An exception was propagated to a worker run loop!"
@@ -819,7 +870,8 @@ class TestRequestPool(object):
         # All requests should be run in parallel...
         for req in reqs:
             assert req.started
-            assert not req.finished
+            if Request.global_thread_pool.num_workers > 0:
+                assert not req.finished
         
         pool.wait()
 
