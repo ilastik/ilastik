@@ -1,12 +1,13 @@
 import os
 import csv
 import threading
+from functools import partial
 
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QAbstractTableModel, QVariant, QModelIndex
 from PyQt4.QtGui import QWidget, QListWidget, QLabel, QPainter, QColor, \
     QPixmap, QSizePolicy, QTableView, QFileDialog, QListWidgetItem, QPixmap, \
-    QIcon
+    QIcon, QMenu
 
 from matplotlib.backends.backend_qt4agg import \
     FigureCanvasQTAgg as FigureCanvas
@@ -172,6 +173,12 @@ class MriVolReportGui( QWidget ):
                                        right=0.85, top=0.85)
         self.set_axis_properties(self._vol_axis4)
 
+        for p in [self._vol_canvas1, self._vol_canvas2, self._vol_canvas3, 
+                  self._vol_canvas4]:
+            p.mpl_connect('button_press_event',
+                          partial(self._mouseButtonPressed,p))
+
+
         # setup result table
         self._vol_table = QTableView()
         self._vol_table.setSizePolicy(expandingPolicy)
@@ -183,6 +190,20 @@ class MriVolReportGui( QWidget ):
         self.bottomRight.insertWidget(0,self._vol_canvas4)
 
         # self.label.setText('adasdad')
+
+    def _mouseButtonPressed(self, canvas, event):
+        '''
+        # TODO How to get global position for menu display
+        menu = QMenu(self)
+        menu.addAction('Save Figure', partial(self._saveFigure, canvas))
+        menu.exec_()
+        def _saveFigure(self, canvas):
+        print 'yep'
+        '''
+        path = QFileDialog.getSaveFileName(
+            self, 'Save Figure', '', 'PNG(*.png)')
+        if not path.isEmpty():
+            canvas.print_figure(unicode(path),dpi=300)
 
     def setupTable(self):
         # result summary table
