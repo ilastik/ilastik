@@ -137,10 +137,12 @@ class OpArrayCache(OpCache):
     def _freeMemory(self, refcheck = True):
         with self._cacheLock:
             freed  = self.usedMemory()
-            if self._cache is not None:
+            if self._cache is not None and (self._blockState != OpArrayCache.IN_PROCESS).all():
+                if self._cache.shape == ():
+                    return
                 fshape = self._cache.shape
                 try:
-                    self._cache.resize((1,), refcheck = refcheck)
+                    self._cache.resize((), refcheck = refcheck)
                 except ValueError:
                     freed = 0
                     self.logger.debug("OpArrayCache (name={}): freeing failed due to view references".format(self.name))
