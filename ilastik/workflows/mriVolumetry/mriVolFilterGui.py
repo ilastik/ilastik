@@ -154,11 +154,9 @@ class MriVolFilterGui(LayerViewerGui):
 
         # get list of possible channel names and labels
         labels = self._getPossibleLabels()
-        print("possible labels: {}".format(labels))
 
         # get current channel
         current = self._getObjectHelper(op.CachedOutput, position5d)
-        print("current label: {}".format(current))
 
         t = position5d[0]
         # check if channel was changed
@@ -166,8 +164,6 @@ class MriVolFilterGui(LayerViewerGui):
         original_label = self._getOriginalLabel((t,object_id))
         if original_label is None:
             original_label = current
-        print("object_id: {}".format(object_id))
-        print("original label: {}".format(original_label))
 
         # launch menu
         menu = QMenu(self)
