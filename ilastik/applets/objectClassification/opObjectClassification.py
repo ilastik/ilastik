@@ -568,21 +568,29 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
             json_data_this_lane = collections.OrderedDict()
             labels_timewise = label_slot.value
             for t in sorted(labels_timewise.keys()):
-                labels = map(int, labels_timewise[t] )
+                labels = labels_timewise[t]
                 if not any(labels):
                     continue
 
                 object_features_timewise = object_feature_slot([t]).wait()
                 object_features = object_features_timewise[t]
 
+                min_coords = object_features["Default features"]["Coord<Minimum>"]
+                max_coords = object_features["Default features"]["Coord<Maximum>"]
+
+                # Don't bother saving info for objects that aren't labeled
+                min_coords = min_coords[labels.nonzero()]
+                max_coords = max_coords[labels.nonzero()]
+                labels = labels[labels.nonzero()]
+
                 json_data_this_time = collections.OrderedDict()
                 bounding_boxes = collections.OrderedDict()
                 # Convert from numpy array to list (for json)
-                bounding_boxes["Coord<Minimum>"] = map( partial(map, int), object_features["Default features"]["Coord<Minimum>"] )
-                bounding_boxes["Coord<Maximum>"] = map( partial(map, int), object_features["Default features"]["Coord<Maximum>"] )
+                bounding_boxes["Coord<Minimum>"] = map( partial(map, int), min_coords )
+                bounding_boxes["Coord<Maximum>"] = map( partial(map, int), max_coords )
                 
                 json_data_this_time["bounding_boxes"] = bounding_boxes
-                json_data_this_time["labels"] = labels
+                json_data_this_time["labels"] = map(int, labels)
                 
                 json_data_this_lane[int(t)] = json_data_this_time
             json_data_all_lanes[lane_index] = json_data_this_lane
