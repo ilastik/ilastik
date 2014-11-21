@@ -22,7 +22,8 @@ class MriVolFilterApplet(StandardApplet):
 
     @property
     def broadcastingSlots(self):
-        return ['Method', 'Configuration', 'Threshold', 'ActiveChannels']
+        return []
+        #return ['Method', 'Configuration', 'Threshold', 'ActiveChannels']
 
     @property
     def dataSerializers(self):
