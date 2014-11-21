@@ -262,14 +262,22 @@ if __name__ == "__main__":
 #        args.append( "--secondary_output_description_file=/nobackup/bock/ilastik_trials/dummy_object_results/debug_feature_output_description.json")
 #        args.append( "--sys_tmp_dir=/scratch/bergs")
 
-        # pixel classification
-        args.append( "--option_config_file=/nobackup/bock/ilastik/bock-pilot-cluster-options/example_cluster_options.json")
-        args.append( "--project=/nobackup/bock/ilastik/gamma-alpha/gammaAlphaFanPixelProject.ilp")
-        #args.append( "--output_description_file=/magnetic/bock_pilot/cluster_debug/results_description.json")
-        args.append( "--output_description_file=/nobackup/bock/ilastik/bock-pilot-cluster-options/results_description.json")
-        #args.append( "--sys_tmp_dir=/scratch/bergs")
-        args.append( '--_node_work_=SubRegion:SubRegion(None, [0, 0, 0, 0], [260, 1000, 1000, 3])' )
-        args.append( "--process_name=JOB00" )
+#         # pixel classification
+#         args.append( "--option_config_file=/nobackup/bock/ilastik/bock-pilot-cluster-options/example_cluster_options.json")
+#         args.append( "--project=/nobackup/bock/ilastik/gamma-alpha/gammaAlphaFanPixelProject.ilp")
+#         #args.append( "--output_description_file=/magnetic/bock_pilot/cluster_debug/results_description.json")
+#         args.append( "--output_description_file=/nobackup/bock/ilastik/bock-pilot-cluster-options/results_description.json")
+#         #args.append( "--sys_tmp_dir=/scratch/bergs")
+#         args.append( '--_node_work_=SubRegion:SubRegion(None, [0, 0, 0, 0], [260, 1000, 1000, 3])' )
+#         args.append( "--process_name=JOB00" )
+
+        # object classification
+        args.append( "--_node_work_=SubRegion:SubRegion(None, [0, 0, 35000, 0, 0], [1, 1000, 36000, 130, 1])" )
+        args.append( "--option_config_file=/nobackup/bock/ilastik/bock-pilot-cluster-options/object_cluster_options.json")
+        args.append( "--project=/nobackup/bock/ilastik/gamma-alpha/gamma-object-experimental-updated.ilp")
+        args.append( "--output_description_file=/nobackup/bock/ilastik/bock-pilot-cluster-options/object_results/object_results_description.json")
+        args.append( "--secondary_output_description_file=/nobackup/bock/ilastik/bock-pilot-cluster-options/object_results/region_features_description.json")
+        args.append( "--process_name=JOBXX" )
 
 #         args.append( "--option_config_file=/nobackup/bock/ilastik_trials/object_runs/bock11-256_object_cluster_options.json")
 #         #args.append( "--project=/nobackup/bock/ilastik_trials/object_runs/MyMutant.ilp")
