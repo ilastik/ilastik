@@ -35,9 +35,12 @@ class MriVolFilterGui(LayerViewerGui):
             fn()
 
     def __init__(self, *args, **kwargs):
+        self.applet = args[0]
         self.__cleanup_fns = []
         self._channelColors = self._createDefault16ColorColorTable()
+        # some markers that keep track of the GUI's state
         self._disable_label_changes = False
+        self._ready_for_layers = False
         super(MriVolFilterGui, self).__init__(*args, **kwargs)
         #  use default colors
         # self._channelColors = create_default_16bit()
@@ -78,10 +81,14 @@ class MriVolFilterGui(LayerViewerGui):
         self.model = QStandardItemModel(self._drawer.labelListView)
         # see if we need to update our labels from the operator (i.e.,
         # we are restored from a project file)
-        self._setStandardLabelList()
         if op.LabelNames.ready():
             self._getLabelNamesFromOp()
         else:
+            if op.Input.ready():
+                n = op.Input.meta.getTaggedShape()['c']
+            else:
+                n = 0
+            self._setStandardLabelList(numLabels=n)
             self._setLabelNamesToOp()
         if self.topLevelOperatorView.ActiveChannels.ready():
             self._getActiveChannelsFromOp()
@@ -193,7 +200,10 @@ class MriVolFilterGui(LayerViewerGui):
         layers = []
         op = self.topLevelOperatorView
 
-        if op.Output.ready():
+        # don't show output if operator is not configured
+        out_ready = self._ready_for_layers
+
+        if op.Output.ready() and out_ready:
             outputLayer = ColortableLayer(LazyflowSource(op.CachedOutput),
                                           colorTable=self._channelColors)
             outputLayer.name = "Output"
@@ -201,7 +211,7 @@ class MriVolFilterGui(LayerViewerGui):
             outputLayer.opacity = 0.7
             layers.append(outputLayer)
 
-        if op.ArgmaxOutput.ready():
+        if op.ArgmaxOutput.ready() and out_ready:
             outLayer = ColortableLayer(LazyflowSource(op.ArgmaxOutput),
                                        colorTable=self._channelColors)
             outLayer.name = "Argmax"
@@ -209,7 +219,7 @@ class MriVolFilterGui(LayerViewerGui):
             outLayer.opacity = 1.0
             layers.append(outLayer)
 
-        if op.ObjectIds.ready():
+        if op.ObjectIds.ready() and out_ready:
             outLayer = ColortableLayer(LazyflowSource(op.ObjectIds),
                                        colorTable=create_default_16bit())
             outLayer.name = "ObjectIds"
@@ -217,7 +227,7 @@ class MriVolFilterGui(LayerViewerGui):
             outLayer.opacity = 1.0
             layers.append(outLayer)
 
-        if op.Smoothed.ready():
+        if op.Smoothed.ready() and out_ready:
             numChannels = op.Smoothed.meta.getTaggedShape()['c']
             slicer = OpMultiArraySlicer(
                 parent=op.Smoothed.getRealOperator().parent)
@@ -235,7 +245,10 @@ class MriVolFilterGui(LayerViewerGui):
                     normalize=(0.0, 1.0))
                 inputChannelLayer.opacity = 0.5
                 inputChannelLayer.visible = False
-                labelName = op.LabelNames.value[i]
+                try:
+                    labelName = op.LabelNames.value[i]
+                except IndexError:
+                    labelName = "Unknown class {}".format(i)
                 inputChannelLayer.name = decode_to_qstring(labelName)
                 inputChannelLayer.setToolTip(decode_to_qstring(
                     "Smoothed predictions for label '{}'".format(labelName)))
@@ -267,25 +280,29 @@ class MriVolFilterGui(LayerViewerGui):
     # =================================================================
 
     @threadRouted
-    def _setStandardLabelList(self):
+    def _setLabelList(self, numLabels=0, names=None, active=None):
         op = self.topLevelOperatorView
+        if names is not None:
+            assert len(names) >= numLabels, "Too few labels provided"
+        if active is not None:
+            assert len(active) >= numLabels, "Too few booleans provided"
 
-        if not op.Input.ready():
-            # do nothing if we have no data
-            numChannels = 0
-        else:
-            numChannels = op.Input.meta.getTaggedShape()['c']
-
-        # setup labels
+        # trash current model
         self.model.clear()
-        for i in range(numChannels):
+
+        # fill model with entries
+        for i in range(numLabels):
             item = QStandardItem()
-            item_name = 'Prediction {}'.format(i+1)
+            if names is not None:
+                item_name = names[i]
+            else:
+                item_name = 'Prediction {}'.format(i+1)
             item.setText(decode_to_qstring(item_name))
             item.setCheckable(True)
-            # Per default set the last channel active
-            if i == numChannels-1:
-                item.setCheckState(2)
+
+            if active is not None:
+                item.setCheckState(2 if active[i] else 0)
+            # else: states are 0
 
             pixmap = QPixmap(16, 16)
             pixmap.fill(QColor(self._channelColors[i+1]))
@@ -345,13 +362,24 @@ class MriVolFilterGui(LayerViewerGui):
     @threadRouted
     def _getLabelNamesFromOp(self):
         op = self.topLevelOperatorView
-        # quit if LabelNames are not there
+        # do we have label names? if not, then create empty list
         if not op.LabelNames.ready():
-            #FIXME perhaps we should delete the list
+            self._setLabelList()
             return
-        # update the channel list
         names = op.LabelNames.value
-        for i in range(min(self.model.rowCount(), len(names))):
+
+        # do we have a change in size? If yes, then replace label list
+        oldNumLabels = self.model.rowCount()
+        numLabels = len(names)
+        if oldNumLabels != numLabels:
+            self._setLabelList(numLabels=numLabels, names=names)
+            # we need to reset the active channels, too
+            self._setActiveChannelsToOp()
+            return
+
+        # we can assume that only a label name changed
+        # update the channel list
+        for i in range(len(names)):
             self.model.item(i).setText(decode_to_qstring(names[i]))
 
     @threadRouted
@@ -479,8 +507,9 @@ class MriVolFilterGui(LayerViewerGui):
         '''
         call this method whenever the top level operators input changes
         '''
-        # FIXME what if labels are provided from upstream?
-        self._setStandardLabelList()
+        class UnexpectedStuffHappening(Exception):
+            pass
+        raise UnexpectedStuffHappening("input changed mysteriously")
 
     def _onGuiLabelsChanged(self, *args, **kwargs):
         # apply new labels to GUI, ignore labels_changed callback until
@@ -495,8 +524,6 @@ class MriVolFilterGui(LayerViewerGui):
         if self._disable_label_changes:
             return
         self._getLabelNamesFromOp()
-        # need to update layer names
-        #   - we don't know which labels were which before, so recreate all
         self.updateAllLayers()
 
     def _onApplyButtonClicked(self, *args, **kwargs):
@@ -505,7 +532,7 @@ class MriVolFilterGui(LayerViewerGui):
         '''
         self._setActiveChannelsToOp()
         self._setParamsToOp()
-        # not needed
+        self._ready_for_layers = True
         self.updateAllLayers()
 
     def _slider_value_changed(self, value):

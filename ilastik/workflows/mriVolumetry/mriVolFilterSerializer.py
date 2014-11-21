@@ -11,6 +11,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+# FIXME serialization not good for current multi lane gui
 class MriVolFilterSerializer(AppletSerializer):
     """
     ...
