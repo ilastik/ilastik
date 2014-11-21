@@ -116,6 +116,8 @@ class OpSingleBlockObjectPrediction( Operator ):
         self._opExtract.Features.connect(self.SelectedFeatures)
         self.BlockwiseRegionFeatures.connect( self._opExtract.BlockwiseRegionFeatures )
         
+        self._opExtract._opRegFeats._opCache.name = "blockwise-regionfeats-cache"
+        
         self._opPredict = OpObjectPredict( parent=self )
         self._opPredict.Features.connect( self._opExtract.RegionFeatures )
         self._opPredict.SelectedFeatures.connect( self.SelectedFeatures )
