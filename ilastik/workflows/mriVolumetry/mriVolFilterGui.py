@@ -132,6 +132,7 @@ class MriVolFilterGui(LayerViewerGui):
         slicing = tuple(slice(i, i+1) for i in pos5d)
         self._originalLabels[(pos5d[0],object_id)] = original_label
         op.AssignChannelForObject[slicing] = new_label
+        op.ReassignedObjects.setValue(dict(self._originalLabels))
 
     def handleEditorLeftClick(self, position5d, globalWindowCoordinate):
         op = self.topLevelOperatorView
@@ -349,7 +350,7 @@ class MriVolFilterGui(LayerViewerGui):
         thres = self._drawer.thresSpinBox.value()
         op.Threshold.setValue(thres)
 
-        op.ReassignedObjects.setValue(self._originalLabels)
+        op.ReassignedObjects.setValue(dict(self._originalLabels))
 
     @threadRouted
     def _getLabelNamesFromOp(self):
@@ -410,7 +411,8 @@ class MriVolFilterGui(LayerViewerGui):
         self._setTabConfig(op.Configuration.value)
 
         if op.ReassignedObjects.ready():
-            self._originalLabels = op.ReassignedObjects.value
+            self._originalLabels = defaultdict(
+                lambda: None, op.ReassignedObjects.value)
 
     # =================================================================
     #                       HELPER FUNCTIONS

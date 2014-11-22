@@ -12,14 +12,19 @@ import cPickle as pickle
 import logging
 logger = logging.getLogger(__name__)
 
-class SerialDefaultDictSlot(SerialDictSlot):
-    def __init__(self, factory, *args, **kwargs):
-        super(SerialDefaultDictSlot, self).__init__(*args, **kwargs)
-        self._fn = factory
 
-    def _getValueHelper(self, sub):
-        d = super(SerialDefaultDictSlot, self)._getValueHelper(sub)
-        return defaultdict(self._fn, d)
+class SerialPickledSlot(SerialSlot):
+    def __init__(self, slot, name=None):
+        super(SerialPickledSlot, self).__init__(slot, name=name)
+
+    def _saveValue(self, group, name, value):
+        pickled = pickle.dumps(value)
+        group.create_dataset(name, data=pickled)
+
+    def _getValue(self, dset, slot):
+        pickled = dset[()]
+        value = pickle.loads(pickled)
+        slot.setValue( value )
 
 
 class MriVolFilterSerializer(AppletSerializer):
@@ -27,12 +32,11 @@ class MriVolFilterSerializer(AppletSerializer):
     ...
     """
 
-    version = "0.5"
+    version = "0.6"
 
     def __init__(self, op, projectFileGroupName):
         slots = [SerialDictSlot(op.Configuration),
-                 SerialDefaultDictSlot(lambda: None,
-                                       op.ReassignedObjects),
+                 SerialPickledSlot(op.ReassignedObjects),
                  SerialSlot(op.Method),
                  SerialSlot(op.Threshold),
                  SerialSlot(op.ActiveChannels),

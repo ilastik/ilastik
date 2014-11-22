@@ -226,7 +226,9 @@ class OpMriVolFilter(Operator):
                                                                start))
         labels[indices] = newChannel
         self._cache.Input[roi.toSlice()] = labels
+        # HACK this should be done by OpCompressedCache, but isn't.
         self.CachedOutput.setDirty(roi)
+        self.OutputHdf5.setDirty(roi)
 
 
 class OpMriBinarizeImage(Operator):
