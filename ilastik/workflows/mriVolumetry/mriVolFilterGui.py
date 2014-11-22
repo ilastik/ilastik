@@ -38,6 +38,7 @@ class MriVolFilterGui(LayerViewerGui):
         self.applet = args[0]
         self.__cleanup_fns = []
         self._channelColors = self._createDefault16ColorColorTable()
+        self._originalLabels = defaultdict(lambda: None)
         # some markers that keep track of the GUI's state
         self._disable_label_changes = False
         self._ready_for_layers = False
@@ -69,31 +70,18 @@ class MriVolFilterGui(LayerViewerGui):
         for widget in self._allWatchedWidgets:
             widget.installEventFilter(self)
 
-        # load default parameters for spin-boxes
-        self._params_valid = True
-        self._getParamsFromOp()
-        if not self._params_valid:
-            logger.info("Fixing invalid parameters")
-            self._setParamsToOp()
-            self._params_valid = True
-
         # prepare the label table
         self.model = QStandardItemModel(self._drawer.labelListView)
+
         # see if we need to update our labels from the operator (i.e.,
         # we are restored from a project file)
-        if op.LabelNames.ready():
-            self._getLabelNamesFromOp()
+        # FIXME find better way of determining this
+        deserializing = op.ReassignedObjects.ready()
+
+        if deserializing:
+            self._onDeserialization()
         else:
-            if op.Input.ready():
-                n = op.Input.meta.getTaggedShape()['c']
-            else:
-                n = 0
-            self._setStandardLabelList(numLabels=n)
-            self._setLabelNamesToOp()
-        if self.topLevelOperatorView.ActiveChannels.ready():
-            self._getActiveChannelsFromOp()
-        else:
-            self._setActiveChannelsToOp()
+            self._onCreation()
 
         # connect callbacks last to avoid collision
         self._connectCallbacks()
@@ -136,11 +124,7 @@ class MriVolFilterGui(LayerViewerGui):
         return labels
 
     def _getOriginalLabel(self, object_id):
-        try:
-            label = self._originalLabels[object_id]
-        except AttributeError:
-            self._originalLabels = defaultdict(lambda: None)
-            label = None
+        label = self._originalLabels[object_id]
         return label
 
     def _assignNewLabel(self, pos5d, object_id, new_label, original_label):
@@ -279,8 +263,16 @@ class MriVolFilterGui(LayerViewerGui):
     def _setLabelList(self, numLabels=0, names=None, active=None):
         op = self.topLevelOperatorView
         if names is not None:
+            try:
+                n = len(names)
+            except TypeError:
+                names = [names]
             assert len(names) >= numLabels, "Too few labels provided"
         if active is not None:
+            try:
+                n = len(active)
+            except TypeError:
+                active = [active]
             assert len(active) >= numLabels, "Too few booleans provided"
 
         # trash current model
@@ -298,7 +290,9 @@ class MriVolFilterGui(LayerViewerGui):
 
             if active is not None:
                 item.setCheckState(2 if active[i] else 0)
-            # else: states are 0
+            else:
+                # check all classes by default
+                item.setCheckState(2)
 
             pixmap = QPixmap(16, 16)
             pixmap.fill(QColor(self._channelColors[i+1]))
@@ -354,6 +348,8 @@ class MriVolFilterGui(LayerViewerGui):
 
         thres = self._drawer.thresSpinBox.value()
         op.Threshold.setValue(thres)
+
+        op.ReassignedObjects.setValue(self._originalLabels)
 
     @threadRouted
     def _getLabelNamesFromOp(self):
@@ -413,6 +409,9 @@ class MriVolFilterGui(LayerViewerGui):
         self._drawer.tabWidget.setCurrentIndex(i)
         self._setTabConfig(op.Configuration.value)
 
+        if op.ReassignedObjects.ready():
+            self._originalLabels = op.ReassignedObjects.value
+
     # =================================================================
     #                       HELPER FUNCTIONS
     # =================================================================
@@ -469,6 +468,23 @@ class MriVolFilterGui(LayerViewerGui):
         except KeyError:
             logger.warn("Bad smoothing configuration encountered")
             params_valid = False
+
+    def _getLabelDetails(self):
+        op = self.topLevelOperatorView
+
+        if op.Input.ready():
+            n = op.Input.meta.getTaggedShape()['c']
+        else:
+            n = 0
+        if op.LabelNames.ready():
+            names = op.LabelNames.value
+        else:
+            names = None
+        if op.ActiveChannels.ready():
+            active = op.ActiveChannels.value
+        else:
+            active = None
+        return n, names, active
 
     # =================================================================
     #                          CALLBACKS
@@ -529,6 +545,31 @@ class MriVolFilterGui(LayerViewerGui):
         self._setActiveChannelsToOp()
         self._setParamsToOp()
         self._ready_for_layers = True
+        self.updateAllLayers()
+
+    def _onCreation(self):
+        logger.debug("Creating MriVolFilterGui")
+        op = self.topLevelOperatorView
+
+        # get default parameters from op
+        self._getParamsFromOp()
+        # set the parameters so that invalid parameters get overwritten
+        # this also sets the ReassignedObjects slot
+        self._setParamsToOp()
+        n, names, active = self._getLabelDetails()
+
+        # fill the label list -> creates label names if unavailable
+        self._setLabelList(numLabels=n, names=names, active=active)
+        self._setLabelNamesToOp()
+        self._setActiveChannelsToOp()
+
+    def _onDeserialization(self):
+        logger.debug("Deserializing MriVolFilterGui")
+        op = self.topLevelOperatorView
+        n, names, active = self._getLabelDetails()
+        self._setLabelList(numLabels=n, names=names, active=active)
+        self._getParamsFromOp()
+        self._ready_for_layers = op.CachedOutput.ready()
         self.updateAllLayers()
 
     def _slider_value_changed(self, value):

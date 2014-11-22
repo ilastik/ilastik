@@ -1,4 +1,3 @@
-from collections import OrderedDict
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpReorderAxes, OpCompressedCache, \
@@ -9,6 +8,7 @@ from lazyflow.stype import Opaque
 from opSmoothing import OpSmoothedArgMax, smoothers_available
 from opOpenGMFilter import OpOpenGMFilter
 from opImplementationChoice import OpImplementationChoice
+from opBlockShapeExtractor import OpBlockShapeExtractor
 
 import vigra
 import numpy as np
@@ -89,6 +89,7 @@ class OpMriVolFilter(Operator):
     InputHdf5 = InputSlot(optional=True)
     CleanBlocks = OutputSlot()
     OutputHdf5 = OutputSlot()
+    ReassignedObjects = InputSlot(stype=Opaque, optional=True)
 
     # common interface for OpSmoothedArgMax and OpOpenGMFilter
     class _ABC(Operator):
@@ -123,10 +124,14 @@ class OpMriVolFilter(Operator):
         self.Smoothed.connect(self.op.Smoothed)
 
         # cache the argmax output for GUI access
-        # TODO serialize this cache too
+        # TODO serialize this cache too?
+        self._bsExtractor = OpBlockShapeExtractor(parent=self)
+        self._bsExtractor.Input.connect(self.op.Output)
         self._argmaxcache = OpCompressedCache(parent=self)
         self._argmaxcache.name = "OpMriVol.ArgmaxCache"
         self._argmaxcache.Input.connect(self.op.Output)
+        self._argmaxcache.BlockShape.connect(
+            self._bsExtractor.BlockShape)
         self.ArgmaxOutput.connect(self._argmaxcache.Output)
 
         # first labeling operator to keep track of all labels
@@ -158,8 +163,11 @@ class OpMriVolFilter(Operator):
         self._cache = OpCompressedCache(parent=self)
         self._cache.name = "OpMriVol.OutputCache"
 
+        self._bsExtractor2 = OpBlockShapeExtractor(parent=self)
+        self._bsExtractor2.Input.connect(self.Output)
         self._cache.Input.connect(self.Output)
         self._cache.InputHdf5.connect(self.InputHdf5)
+        self._cache.BlockShape.connect(self._bsExtractor2.BlockShape)
 
         self.CleanBlocks.connect(self._cache.CleanBlocks)
         self.OutputHdf5.connect(self._cache.OutputHdf5)
@@ -173,16 +181,7 @@ class OpMriVolFilter(Operator):
         pass
 
     def setupOutputs(self):
-        ts = self.Input.meta.getTaggedShape()
-
-        # set cache chunk shape to the whole spatial volume
-        # we need to use a better smoothing operator and lazy labeling if we
-        # want to be lazy, probably not woth it
-        ts['c'] = 1
-        ts['t'] = 1
-        blockshape = map(lambda k: ts[k], ts.keys())
-        self._cache.BlockShape.setValue(tuple(blockshape))
-        self._argmaxcache.BlockShape.setValue(tuple(blockshape))
+        pass
 
     def setInSlot(self, slot, subindex, roi, value):
         if slot is self.InputHdf5:
@@ -220,7 +219,6 @@ class OpMriVolFilter(Operator):
         shape = tuple(b-a for a, b in zip(start, stop))
         roi = SubRegion(self._cache.Input, start=start, stop=stop)
         
-        print("Bounding Box: {}".format(roi))
         labels = self.CachedOutput.get(roi).wait()
 
         # convert indices to fit into label cut-out

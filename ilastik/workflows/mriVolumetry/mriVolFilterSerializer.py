@@ -1,4 +1,6 @@
 
+from collections import defaultdict
+
 import numpy as np
 from ilastik.applets.base.appletSerializer import AppletSerializer
 from ilastik.applets.base.appletSerializer import SerialHdf5BlockSlot
@@ -10,17 +12,27 @@ import cPickle as pickle
 import logging
 logger = logging.getLogger(__name__)
 
+class SerialDefaultDictSlot(SerialDictSlot):
+    def __init__(self, factory, *args, **kwargs):
+        super(SerialDefaultDictSlot, self).__init__(*args, **kwargs)
+        self._fn = factory
 
-# FIXME serialization not good for current multi lane gui
+    def _getValueHelper(self, sub):
+        d = super(SerialDefaultDictSlot, self)._getValueHelper(sub)
+        return defaultdict(self._fn, d)
+
+
 class MriVolFilterSerializer(AppletSerializer):
     """
     ...
     """
 
-    version = "0.4"
+    version = "0.5"
 
     def __init__(self, op, projectFileGroupName):
         slots = [SerialDictSlot(op.Configuration),
+                 SerialDefaultDictSlot(lambda: None,
+                                       op.ReassignedObjects),
                  SerialSlot(op.Method),
                  SerialSlot(op.Threshold),
                  SerialSlot(op.ActiveChannels),
@@ -60,12 +72,3 @@ class MriVolFilterSerializer(AppletSerializer):
         slot = self.operator.LabelNames
         for i, d in enumerate(data):
             slot[i].setValue(d)
-
-    def _saveValue(self, group, name, value):
-        pickled = pickle.dumps(value)
-        group.create_dataset(name, data=pickled)
-
-    def _getValue(self, dset, slot):
-        pickled = dset[()]
-        value = pickle.loads(pickled)
-        slot.setValue(value)
