@@ -86,9 +86,28 @@ class OpMriVolFilter(Operator):
     CachedOutput = OutputSlot() 
 
     # slots for serialization
+    # =======================
+    #
+    # these slots are intended to be used by several caches:
+    #   0: Output cache
+    #   1: Argmax cache
+    #   2: ObjectIds cache
+
+    # 0
     InputHdf5 = InputSlot(optional=True)
     CleanBlocks = OutputSlot()
     OutputHdf5 = OutputSlot()
+
+    # 1
+    IdsInputHdf5 = InputSlot(optional=True)
+    IdsCleanBlocks = OutputSlot()
+    IdsOutputHdf5 = OutputSlot()
+
+    # 2
+    ArgmaxInputHdf5 = InputSlot(optional=True)
+    ArgmaxCleanBlocks = OutputSlot()
+    ArgmaxOutputHdf5 = OutputSlot()
+
     ReassignedObjects = InputSlot(stype=Opaque, optional=True)
 
     # common interface for OpSmoothedArgMax and OpOpenGMFilter
@@ -124,7 +143,6 @@ class OpMriVolFilter(Operator):
         self.Smoothed.connect(self.op.Smoothed)
 
         # cache the argmax output for GUI access
-        # TODO serialize this cache too?
         self._bsExtractor = OpBlockShapeExtractor(parent=self)
         self._bsExtractor.Input.connect(self.op.Output)
         self._argmaxcache = OpCompressedCache(parent=self)
@@ -132,12 +150,19 @@ class OpMriVolFilter(Operator):
         self._argmaxcache.Input.connect(self.op.Output)
         self._argmaxcache.BlockShape.connect(
             self._bsExtractor.BlockShape)
+        self._argmaxcache.InputHdf5.connect(self.ArgmaxInputHdf5)
+        self.ArgmaxCleanBlocks.connect(self._argmaxcache.CleanBlocks)
+        self.ArgmaxOutputHdf5.connect(self._argmaxcache.OutputHdf5)
+
         self.ArgmaxOutput.connect(self._argmaxcache.Output)
 
         # first labeling operator to keep track of all labels
         self.opCC = OpLabelVolume(parent=self)
         self.opCC.Input.connect(self.ArgmaxOutput)
         self.ObjectIds.connect(self.opCC.CachedOutput)
+        self.opCC.InputHdf5.connect(self.IdsInputHdf5)
+        self.IdsCleanBlocks.connect(self.opCC.CleanBlocks)
+        self.IdsOutputHdf5.connect(self.opCC.OutputHdf5)
 
         # binarization to keep small objects inside big ones, etc.
         self.opBinarize = OpMriBinarizeImage(parent=self)
@@ -184,7 +209,7 @@ class OpMriVolFilter(Operator):
         pass
 
     def setInSlot(self, slot, subindex, roi, value):
-        if slot is self.InputHdf5:
+        if "InputHdf5" in slot.name:
             # handled by cache
             pass
         elif slot is self.AssignChannelForObject:

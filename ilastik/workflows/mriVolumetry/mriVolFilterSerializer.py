@@ -32,7 +32,7 @@ class MriVolFilterSerializer(AppletSerializer):
     ...
     """
 
-    version = "0.6"
+    version = "0.7"
 
     def __init__(self, op, projectFileGroupName):
         slots = [SerialDictSlot(op.Configuration),
@@ -44,6 +44,16 @@ class MriVolFilterSerializer(AppletSerializer):
                                      op.InputHdf5,
                                      op.CleanBlocks,
                                      name='caches',
+                                     subname='cache{:03d}',),
+                 SerialHdf5BlockSlot(op.IdsOutputHdf5,
+                                     op.IdsInputHdf5,
+                                     op.IdsCleanBlocks,
+                                     name='idcache',
+                                     subname='cache{:03d}',),
+                 SerialHdf5BlockSlot(op.ArgmaxOutputHdf5,
+                                     op.ArgmaxInputHdf5,
+                                     op.ArgmaxCleanBlocks,
+                                     name='argmaxcache',
                                      subname='cache{:03d}',),
                  ]
         super(MriVolFilterSerializer, self).__init__(

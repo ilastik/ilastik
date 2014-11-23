@@ -178,7 +178,7 @@ class MriVolumetryWorkflowPixel(MriVolumetryWorkflowBase):
 
         super(self.__class__, self).connectLane(
             laneIndex, opData.ImageGroup[0],
-            opClassify.CachedPredictionProbabilities,
+            opClassify.PredictionProbabilities,
             opClassify.LabelNames)
 
     def handleAppletStateUpdateRequested(self):
@@ -223,10 +223,6 @@ class MriVolumetryWorkflowPixel(MriVolumetryWorkflowBase):
                                      not live_update_active)
         self._shell.setAppletEnabled(self.featureSelectionApplet,
                                      input_ready and not live_update_active)
-
-        # also problematic: if live update is not active, downstream
-        # can't access the predictions, or gets invalid predictions
-        cumulated_readiness &=live_update_active
 
         super(self.__class__, self).handleAppletStateUpdateRequested(
             cumulated_readiness)
