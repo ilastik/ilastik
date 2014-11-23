@@ -1,7 +1,8 @@
 import os
 import csv
-import threading
 from functools import partial
+
+from lazyflow.request import Request
 
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QAbstractTableModel, QVariant, QModelIndex
@@ -494,9 +495,8 @@ class MriVolReportGui( QWidget ):
 
     def _onApplyButtonClicked(self):
         self._drawer.applyButton.setEnabled(False)
-        getDataThread = threading.Thread(target=bind(self._reportGenerator), 
-                                             name="GetDataThread")
-        getDataThread.start()
+        req = Request(bind(self._reportGenerator))
+        req.submit()
 
 
     def _initAppletDrawerUic(self):

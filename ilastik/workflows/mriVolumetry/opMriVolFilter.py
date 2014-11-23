@@ -4,6 +4,7 @@ from lazyflow.operators import OpReorderAxes, OpCompressedCache, \
     OpLabelVolume, OpFilterLabels, OperatorWrapper
 from lazyflow.rtype import SubRegion
 from lazyflow.stype import Opaque
+from lazyflow.request import Request
 
 from opSmoothing import OpSmoothedArgMax, smoothers_available
 from opOpenGMFilter import OpOpenGMFilter
@@ -14,7 +15,6 @@ import vigra
 import numpy as np
 
 from ilastik.utility import bind
-import threading
 
 import logging
 logger = logging.getLogger(__name__)
@@ -194,11 +194,9 @@ class OpMriVolFilter(Operator):
                                       "slot {}".format(slot))
 
     def _assignChannel(self, roi, newChannel):
-        assignChannelThread = \
-                    threading.Thread(target=bind(self._assignChannelThreaded, 
-                                                 roi, newChannel), 
-                                     name="AssignChannelThread")
-        assignChannelThread.start()
+        req = Request(
+            bind(self._assignChannelThreaded, roi, newChannel))
+        req.submit()
 
 
     def _assignChannelThreaded(self, roi, newChannel):
