@@ -548,6 +548,7 @@ class MriVolFilterGui(LayerViewerGui):
         self._setParamsToOp()
         self._ready_for_layers = True
         self.updateAllLayers()
+        self.applet.appletStateUpdateRequested.emit()
 
     def _onCreation(self):
         logger.debug("Creating MriVolFilterGui")

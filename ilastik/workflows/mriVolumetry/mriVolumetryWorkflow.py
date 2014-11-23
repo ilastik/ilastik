@@ -71,8 +71,23 @@ class MriVolumetryWorkflowBase(Workflow):
         their own applet readyness findings as keyword argument.
         """
 
-        for applet in (self.mriVolFilterApplet, self.mriVolReportApplet):
-            self._shell.setAppletEnabled(applet, child_ready)
+        # if upstream is ready, we can enable the filter applet
+        # (and vice-versa)
+        self._shell.setAppletEnabled(self.mriVolFilterApplet,
+                                     child_ready)
+
+        # the filter operator is ready when the apply button has been
+        # pressed at least once
+        # FIXME why is CachedOutput ready even if ActiveChannels is not
+        # set?
+        op = self.mriVolFilterApplet.topLevelOperator
+        filter_ready = child_ready
+        for slot in (op.CachedOutput,):# op.ActiveChannels):
+            filter_ready &= (len(slot) > 0 and
+                             all(s.ready() for s in slot))
+
+        self._shell.setAppletEnabled(self.mriVolReportApplet,
+                                     filter_ready)
 
 
 # standard workflow
@@ -178,9 +193,9 @@ class MriVolumetryWorkflowPixel(MriVolumetryWorkflowBase):
             ready = False
 
         input_ready = ready
-        cumulated_readyness = ready
+        cumulated_readiness = ready
         self._shell.setAppletEnabled(self.featureSelectionApplet,
-                                     cumulated_readyness)
+                                     cumulated_readiness)
 
         def reallyReady(s):
             r = (len(s) > 0
@@ -190,16 +205,16 @@ class MriVolumetryWorkflowPixel(MriVolumetryWorkflowBase):
 
         opFeatureSelection = self.featureSelectionApplet.topLevelOperator
         features_ready = reallyReady(opFeatureSelection.OutputImage)
-        cumulated_readyness = cumulated_readyness and features_ready
-        self._shell.setAppletEnabled(self.pcApplet, cumulated_readyness)
+        cumulated_readiness &= features_ready
+        self._shell.setAppletEnabled(self.pcApplet, cumulated_readiness)
 
         slot = self.pcApplet.topLevelOperator.PredictionProbabilities
         predictions_ready = reallyReady(slot)
 
-        cumulated_readyness = cumulated_readyness and predictions_ready
+        cumulated_readiness &= predictions_ready
 
-        # Problems can occur if the features or input data are changed during
-        # live update mode.
+        # Problems can occur if the features or input data are changed
+        # during live update mode.
         # Don't let the user do that.
         opPixelClassification = self.pcApplet.topLevelOperator
         live_update_active = not opPixelClassification.FreezePredictions.value
@@ -209,6 +224,10 @@ class MriVolumetryWorkflowPixel(MriVolumetryWorkflowBase):
         self._shell.setAppletEnabled(self.featureSelectionApplet,
                                      input_ready and not live_update_active)
 
+        # also problematic: if live update is not active, downstream
+        # can't access the predictions, or gets invalid predictions
+        cumulated_readiness &=live_update_active
+
         super(self.__class__, self).handleAppletStateUpdateRequested(
-            cumulated_readyness)
+            cumulated_readiness)
 
