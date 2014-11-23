@@ -312,7 +312,9 @@ class MriVolReportGui( QWidget ):
         colors = {}
         values = defaultdict(list)
         for t in range(timepoints):
-            counts = np.bincount(self._mask[t].ravel(),
+            # bincount() takes only int32 data
+            # let's hope that we don't have more than 2**31 channels
+            counts = np.bincount(self._mask[t].astype(np.int32).ravel(),
                                  minlength=max(self._active_channels)+2)
             # plus 2 for background and offset
             tmp_total = 0.0
