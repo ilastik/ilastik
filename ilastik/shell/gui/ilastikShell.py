@@ -69,7 +69,8 @@ from ilastik.shell.gui.licenseDialog import LicenseDialog
 from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox
 from ilastik.widgets.filePathButton import FilePathButton
 
-from ilastik.shell.gui.messageServer import MessageServer
+#from ilastik.shell.gui.messageServer import MessageServer
+from ilastik.shell.gui.ipcServer import IPCServerManager
 
 # Import all known workflows now to make sure they are all registered with getWorkflowFromName()
 import ilastik.workflows
@@ -254,7 +255,8 @@ class IlastikShell( QMainWindow ):
         # Server/client for inter process communication for receiving remote commands (e.g. from KNIME)
         # For now, this is a developer-only feature, activated by a debug menu item.
         #TODO: Change Server class
-        self.socketServer = MessageServer(self, "localhost", 9997, True) if ilastik_config.getboolean("ilastik", "debug") else None
+        #self.socketServer = MessageServer(self, "localhost", 9997, True) if ilastik_config.getboolean("ilastik", "debug") else None
+        self.ipcManager = IPCServerManager()
         
         self.openFileButtons = []
         self.cleanupFunctions = []
@@ -562,8 +564,13 @@ class IlastikShell( QMainWindow ):
                 QMessageBox.critical( self, 
                                       "Failed to start server", 
                                       "Couldn't start message server.  See error log for details." )
-        server_action = menu.addAction("Start message server")
-        server_action.triggered.connect(start_message_server)
+        #server_action = menu.addAction("Start message server")
+        #server_action.triggered.connect(start_message_server)
+
+        def show_ipc_server_info():
+            self.ipcManager.show_info()
+        server_action = menu.addAction("Show IPC Server Info")
+        server_action.triggered.connect(show_ipc_server_info)
 
         return menu
 
