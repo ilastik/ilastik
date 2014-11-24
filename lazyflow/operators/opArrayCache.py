@@ -415,13 +415,13 @@ class OpArrayCache(OpCache):
         temp = itertools.count(0)
 
         #wait for all requests to finish
+        something_updated = len( dirtyPool ) > 0
         dirtyPool.wait()
-        if len( dirtyPool ) > 0:
+        if something_updated:
             # Signal that something was updated.
             # Note that we don't need to do this for the 'in process' queries (below)  
             #  because they are already in the dirtyPool in some other thread
             self.Output._sig_value_changed()
-        dirtyPool.clean()
 
         # indicate the finished inprocess state (i.e. CLEAN)
         if not self._fixed and temp.next() == 0:
