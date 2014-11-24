@@ -7,13 +7,15 @@ import os
 
 class MultiProgressDialog(QDialog):
     finished = pyqtSignal()
-    def __init__(self, max_steps, parent=None):
+
+    def __init__(self, steps, parent=None):
         super(MultiProgressDialog, self).__init__(parent)
         ui_class, widget_class = uic.loadUiType(os.path.split(__file__)[0] + "/multiProgressDialog.ui")
         self.ui = ui_class()
         self.ui.setupUi(self)
 
-        self.max_steps = max_steps
+        self.steps = steps
+        self.max_steps = len(steps)
         self.current_step = 1
         self._has_finished = False
 
@@ -21,7 +23,7 @@ class MultiProgressDialog(QDialog):
         self._update_label()
         self.ui.finished.setEnabled(False)
 
-        self._isready = False
+        self._is_ready = False
 
     #slot
     def finish_step(self):
@@ -40,26 +42,41 @@ class MultiProgressDialog(QDialog):
     def update_step(self, progress):
         self.ui.progressBar.setValue(progress)
 
+    #slot
+    def set_busy(self, busy):
+        if busy:
+            self.ui.progressBar.setMinimum(0)
+            self.ui.progressBar.setMaximum(0)
+        else:
+            self.ui.progressBar.setMaximum(100)
+
     def _update_label(self):
-        self.ui.steps.setText("step {} of {}".format(self.current_step, self.max_steps))
+        self.ui.steps.setText("step {} of {} ({})".format(self.current_step,
+                                                          self.max_steps,
+                                                          self.steps[self.current_step - 1]))
 
     def showEvent(self, event):
-        self._isready = True
+        self._is_ready = True
 
     def is_ready(self):
         return self._isready
 
 if __name__ == "__main__":
     import sys, time
+    from functools import partial
     app = QApplication(sys.argv)
 
     d = MultiProgressDialog(3)
     d.show()
-    for j in xrange(3):
-        for i in xrange(1, 21):
-            d.update_step(i*5)
-            time.sleep(.05)
-        d.finish_step()
+    for i in xrange(1, 21):
+        d.update_step(i*5)
+        time.sleep(.05)
+    d.finish_step()
+    d.set_busy(True)
+    QTimer.singleShot(5000, partial(d.set_busy, False))
+    QTimer.singleShot(5100, d.finish_step)
+    QTimer.singleShot(5200, d.finish_step)
+
 
 
 
