@@ -74,9 +74,6 @@ class TrackingBaseGui( LayerViewerGui ):
         super(TrackingBaseGui, self).__init__(parentApplet, topLevelOperatorView)
         self.mainOperator = topLevelOperatorView
   
-        if self.mainOperator.LabelImage.meta.shape:
-            self.editor.dataShape = self.mainOperator.LabelImage.meta.shape
-        
         # get the applet reference from the workflow (needed for the progressSignal)
         self.applet = self.mainOperator.parent.parent.trackingApplet
 
@@ -137,7 +134,6 @@ class TrackingBaseGui( LayerViewerGui ):
         
         
         if self.topLevelOperatorView.LabelImage.meta.shape:
-            self.editor.dataShape = self.topLevelOperatorView.LabelImage.meta.shape
 
             maxt = self.topLevelOperatorView.LabelImage.meta.shape[0] - 1
             maxx = self.topLevelOperatorView.LabelImage.meta.shape[1] - 1            
