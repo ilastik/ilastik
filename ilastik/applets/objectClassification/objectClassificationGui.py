@@ -234,7 +234,7 @@ class ObjectClassificationGui(LabelingGui):
             settings = dialog.settings()
             settings.update({"dimensions": dimensions})
 
-            progress_bar = MultiProgressDialog(["Calculating Features...", "Exporting..."])
+            progress_bar = MultiProgressDialog(["Computing Features...", "Exporting..."])
             progress_bar.show()
 
             op = OpExportObjectInfo(settings, progress_bar, parent=main_operator.viewed_operator())
