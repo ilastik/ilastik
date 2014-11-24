@@ -19,6 +19,7 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
+import sys
 from functools import partial
 
 import numpy
@@ -116,7 +117,7 @@ class RoiRequestBatch( object ):
         self._activated_count = 0
         self._completed_count = 0
         
-        self._failed = False
+        self._failure_excinfo = None
 
         # Progress bookkeeping
         self._totalVolume = totalVolume
@@ -165,26 +166,30 @@ class RoiRequestBatch( object ):
             while True:
                 # Wait for at least one active request to finish
                 with self._condition:
-                    while not self._failed and (self._activated_count - self._completed_count) == self._batchSize:
+                    while not self._failure_excinfo and (self._activated_count - self._completed_count) == self._batchSize:
                         self._condition.wait()
 
-                if self._failed:
-                    break
+                if self._failure_excinfo:
+                    raise self._failure_excinfo[0], self._failure_excinfo[1], self._failure_excinfo[2]
 
                 # Launch new requests until we have the correct number of active requests
-                while not self._failed and self._activated_count - self._completed_count < self._batchSize:
+                while not self._failure_excinfo and self._activated_count - self._completed_count < self._batchSize:
                     with self._condition:
                         self._activateNewRequest() # Eventually raises StopIteration
                         self._activated_count += 1
 
-                if self._failed:
-                    break
+                if self._failure_excinfo:
+                    raise self._failure_excinfo[0], self._failure_excinfo[1], self._failure_excinfo[2]
+
         except StopIteration:
             # We've run out of requests to launch.
             # Wait for the remaining active requests to finish.
             with self._condition:
-                while self._completed_count < self._activated_count:
+                while not self._failure_excinfo and self._completed_count < self._activated_count:
                     self._condition.wait()
+
+            if self._failure_excinfo:
+                raise self._failure_excinfo[0], self._failure_excinfo[1], self._failure_excinfo[2]
 
         self.progressSignal( 100 )
 
@@ -213,10 +218,10 @@ class RoiRequestBatch( object ):
             if self._allowParallelResults:
                 # Signal the user with the result before the critical section
                 self.resultSignal(roi, result)
-        except:
+        except Exception:
             # Always notify.
             with self._condition:
-                self._failed = True
+                self._failure_excinfo = sys.exc_info()
                 self._condition.notify()
             raise
 
@@ -243,7 +248,7 @@ class RoiRequestBatch( object ):
         with self._condition:
             msg = "Encountered exception while processing roi: {}".format( roi )
             log_exception( logger, msg, exc_info )
-            self._failed = True
+            self._failure_excinfo = exc_info
             self._condition.notify()
     
     def _handleCancelledRequest(self, roi):
