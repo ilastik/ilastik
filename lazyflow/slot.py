@@ -62,6 +62,12 @@ class ValueRequest(object):
     def notify_finished(self, callback):
         callback(self.result)
 
+    def notify_failed(self, callback):
+        pass
+
+    def notify_cancelled(self, callback):
+        pass
+
     def clean(self):
         self.result = None
 
