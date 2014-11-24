@@ -1,177 +1,164 @@
-from SocketServer import BaseRequestHandler, TCPServer, ThreadingMixIn
+from SocketServer import BaseRequestHandler, TCPServer
 import socket
-import json
-from threading import Thread, Event
-from Queue import Queue
 import logging
-from PyQt4 import QtGui
-from choosePortDialog import Ui_ChoosePortDialog
+import threading
 import atexit
+import json
+from Queue import Queue
+from collections import OrderedDict
+
+from ilastik.widgets.ipcServerInfoWidget import IPCServerInfoWidget, ChoosePortDialog
 
 logger = logging.getLogger(__name__)
 
 
-class IPCHandler(BaseRequestHandler):
-    SOCKET_TIMEOUT = 1
-    SOCKET_READ_BYTES = 1024
+def p(mode):
+    def inner(*args):
+        print mode, ": ",
+        print args
+    return inner
 
-    def handle(self):
-        self.request.settimeout(IPCHandler.SOCKET_TIMEOUT)
-        status, name = self._authenticate
-        if status:
-            #host, port = self.request.getpeername()
-            #TODO: Add connection to array?
-            self._loop(name)
-
-    def _authenticate(self):
-        while not self.server.stop_event.is_set():
-            try:
-                data = self.request.recv(IPCHandler.SOCKET_READ_BYTES).strip()
-            except socket.timeout:  # no problem
-                continue
-            except socket.error as error:
-                logger.exception(error)
-                return False, None
-            if data == "":
-                return False, None
-            try:
-                message = json.loads(data)
-            except ValueError:
-                #ignore
-                return False, None
-            if "command" in message and message["command"] == "handshake"\
-                    and "name" in message:
-                #TODO: Check if <name> is allowed to connect!
-                return True, message["name"]
-        return False, None
-
-    def _loop(self, name):
-        queue = self.server.queue
-        while not self.server.stop_event.is_set():
-            try:
-                data = self.request.recv(IPCHandler.SOCKET_READ_BYTES).strip()
-                if data == "":  # connection closed
-                    #TODO: Notify connection close
-                    return
-                command = json.loads(data)
-                queue.put((name, command))
-            except socket.timeout:
-                # no problem
-                continue
-            except socket.error as error:
-                logger.exception(error)
-                return
-            except ValueError:
-                # ignore
-                continue
+logger.info = p("info")
+logger.debug = p("debug")
+logger.exception = p("exception")
 
 
-class IPCServer(ThreadingMixIn, TCPServer):
-    pass
+class IPCServerManager(object):
+    DEFAULT_PORT = 9999
 
-
-class IPCManager(object):
-    STOP = object()  # sentinel
-
-    def __init__(self, parent, host=None, port=None):
-        self.parent = parent
-        self.host = host
-        self.port = port
+    """
+    manages the IPC Server
+    """
+    def __init__(self):
         self.server = None
-        self.server_thread = None
-        self.cmd_thread = None
-        self.clients = {}
+        self.queue = None
+        self.queue_thread = None
+        self.port = self.DEFAULT_PORT
+        self.info = IPCServerInfoWidget()
+        self.info.statusToggled.connect(self.toggle_server)
+        self.info.connectionChanged.connect(self.change_connection)
+        self.connections = OrderedDict()
 
-    # setup and start the server
-    # promt for port if port is taken
-    def start(self):
+    """
+    Start the server if it is not already running
+    Asks for a port if the default port is already used
+    """
+    def start_server(self, port=None):
+        if port is not None:
+            self.port = port
         if self.server is not None:
+            logger.debug("IPC Server is already running")
             return
-        dialog = ChoosePortDialog(self.parent, self.port)
-        server = None
-        while self.server is None:
-            try:
-                server = IPCServer((self.host, self.port), IPCHandler)
-            except socket.error as socketError:
-                dialog.set_error(str(socketError))
-                if dialog.exec_() == 0:  # Cancel/Abort
-                    logger.warning("IPCServer setup aborted (by user)")
+
+        try:
+            self.server = TCPServer(("0.0.0.0", self.port), Handler)
+            self.queue = Queue()
+            self.server.queue = self.queue
+        except socket.error as e:
+            self.server = None
+            if e.errno == 98:  # Address already in use
+                dialog = ChoosePortDialog(str(self.port), self.info)
+                dialog.set_error(str(e))
+                if dialog.exec_():
+                    self.start_server(dialog.get_port())
+                else:
+                    self.info.server_running(False)
                     return
-                self.port = dialog.get_port()
-        self.server = server
-        self.server.stop_event = Event()
-        self.server.queue = Queue()
-        self.server_thread = Thread(target=self.server.serve_forever, name="ilastik IPCServer Thread")
-        self.server_thread.daemon = True
-        self.server_thread.start()
-        self.cmd_thread = Thread(target=self._process_cmds, name="ilastik CMD Thread")
-        atexit.register(self.stop)
-        logger.info("IPCServer setup and running")
+        self.queue_thread = threading.Thread(target=self._handle_queue)
+        self.queue_thread.daemon = True
+        self.queue_thread.start()
 
-    # stop all threads and the server
-    # close all client connections
-    def stop(self):
-        self.server.stop_event.set()
-        self.server.shutdown()
-        self.server.queue.put(IPCManager.STOP)
-        for client in self.clients.itervalues():
-            client.close()
-        logger.info("IPCServer stopped")
+        server_thread = threading.Thread(target=self.server.serve_forever)
+        server_thread.daemon = True
+        server_thread.start()
+        logger.info("IPC Server started on port %d" % self.server.socket.getsockname()[1])
+        atexit.register(self.stop_server)
+        self.info.server_running(True, self.port)
 
-    # send command to all clients
-    # commmand is a python dict
-    # add filter (optional)
-    #   f(host, port, name) => True/False
-    def broadcast(self, command, filter_=lambda h, p, n: True):
-        data = json.dumps(command)
-        for key, client in self.clients.iteritems():
-            if filter_(*key):
-                client.sendall(data)
+    """
+    Start the server if it is not already shutdown
+    """
+    def stop_server(self):
+        if self.server is not None:
+            self.server.shutdown()
+            self.info.server_running(False)
+            logger.info("IPC Server stopped")
+            self.server = None
+            self.queue.put(None)
+            self.queue_thread = None
+            self.connections = {}
+            self.info.connections_changed(self.connections)
+        else:
+            logger.debug("IPC Server is not running")
 
-    def connect(self, host, port, name):
-        if (host, port, name) in self.clients:
-            logger.warning("Connection to (%s %s:%d) already established" % (name, host, port))
-            return
-        try:
-            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client.connect((host, port))
-        except socket.error as error:
-            logger.exception(error)
-            return
-        self.clients[(host, port, name)] = client
+    """
+    starts if not started etc.
+    """
+    def toggle_server(self):
+        if self.server is None:
+            self.start_server()
+        else:
+            self.stop_server()
 
-    def disconnect(self, host, port, name):
-        if(host, port, name) in self.clients:
-            self.clients[(host, port, name)].close()
-            del self.clients[(host, port, name)]
+    """
+    Shows a widget that displays information about the server
+    """
+    def show_info(self):
+        self.info.show()
 
-    def _process_cmds(self):
-        queue = self.server.queue
+    def add_connection(self, name, host, server_port):
+        if (name, host) not in self.connections:
+            self.connections[(name, host)] = {"enabled": True}
+            self.info.connections_changed(self.connections)
+
+    def change_connection(self, index, enabled):
+        self.connections.values()[index]["enabled"] = enabled
+
+    def filter_command(self, cmd):
+        self.info.add_command(cmd)
+        #todo: redirect to shell
+
+
+    def _handle_queue(self):
         while True:
-            item = queue.get()
-            if item is IPCManager.STOP:
+            command = self.queue.get()
+            if command is None:
                 return
-            # process
 
-    def __del__(self):
-        self.stop()
+            cmd_name = command["command"]
+            if cmd_name == "handshake":
+                self.add_connection(command["name"], command["host"], command["port"])
+            else:
+                self.filter_command(command)
 
 
-class ChoosePortDialog(QtGui.QDialog):
-    def __init__(self, parent, default_port):
-        QtGui.QDialog.__init__(self, parent)
-        self.ui = Ui_ChoosePortDialog()
-        self.ui.setupUi(self)
-        self.validator = QtGui.QIntValidator(0, 65535)
-        self.ui.port.setValidator(self.validator)
-        self.ui.port.setText(default_port)
 
-    def get_port(self):
+class Handler(BaseRequestHandler):
+    valid_commands = [
+        "handshake",
+        "setviewerposition"
+    ]
+    def handle(self):
         try:
-            port = int(self.ui.port.text())
-        except ValueError:
-            return None
-        return port
-
-    def set_error(self, error):
-        self.ui.error.setText(error)
+            data = self.request.recv(4096).strip()
+        except socket.error as e:
+            logger.exception(e)
+            return
+        try:
+            command = json.loads(data)
+        except ValueError as e:
+            logger.exception(e)
+            return
+        try:
+            command_name = command["command"]
+        except KeyError as e:
+            logger.exception(e)
+            return
+        if command_name in self.valid_commands:
+            cmd = command
+            if command_name == "handshake":
+                cmd.update({"host": self.client_address[0]})
+            self.server.queue.put(cmd)
+        else:
+            logger.debug("Unknown command: %s" % command_name)
+            return
