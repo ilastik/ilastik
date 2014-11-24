@@ -26,11 +26,11 @@ from PyQt4.QtGui import QFileDialog
 from ilastik.widgets.featureTableWidget import FeatureEntry
 from ilastik.widgets.featureDlg import FeatureDlg
 from ilastik.widgets.exportToKnimeDialog_old import ExportToKnimeDialog
-from ilastik.widgets.exportToKnimeDialog import ExportToKnimeDialog
+from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog
 from ilastik.widgets.multiProgressDialog import MultiProgressDialog
 from ilastik.applets.objectExtraction.opObjectExtraction import OpRegionFeatures3d
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
-from lazyflow.operators.ioOperators.opExportToKnime import OpExportToKnime
+from lazyflow.operators.ioOperators.opExportObjectInfo import OpExportObjectInfo
 from ilastik.applets.objectClassification.opObjectClassification import OpObjectClassification
 
 import os
@@ -41,7 +41,7 @@ from functools import partial
 from ilastik.config import cfg as ilastik_config
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
-from lazyflow.operators.ioOperators import OpExportToKnime 
+from lazyflow.operators.ioOperators import OpExportObjectInfo
 
 import logging
 logger = logging.getLogger(__name__)
@@ -57,8 +57,6 @@ from volumina.utility import encode_from_qstring
 
 from volumina.interpreter import ClickInterpreter
 from volumina.utility import ShortcutManager
-
-from ilastik.shell.gui.ilastikShell import IlastikShell
 
 
 def _listReplace(old, new):
@@ -228,28 +226,26 @@ class ObjectClassificationGui(LabelingGui):
 
         return [m]
 
+    """
+    Opens the exportObjectInfoDialog dialog
+    when accepted creates an opExportObjectInfo and executes it
+    """
     def exportObjectInfo(self):
         main_operator = self.topLevelOperatorView
         features = main_operator.ComputedFeatureNames([]).wait()
         dimensions = main_operator.RawImages.meta.shape
-        dialog = ExportToKnimeDialog(self.layerstack, dimensions, features)
+        dialog = ExportObjectInfoDialog(dimensions, features)
+        self.dialog = dialog
         if dialog.exec_() == 1:
-            progress_bar = MultiProgressDialog(2)
-            progress_bar.show()
-            while not progress_bar.is_ready():
-                pass
-            progress_bar.update_step(0)
+
             feature_selection = list(dialog.checked_features())
-            #layers = list(dialog.checked_layers())
             settings = dialog.settings()
             settings.update({"dimensions": dimensions})
 
-            #feature_table = main_operator.createExportTable(0, [])
+            progress_bar = MultiProgressDialog(["Calculating Features...", "Exporting..."])
+            progress_bar.show()
 
-            op = OpExportToKnime(settings, progress_bar, parent=main_operator.viewed_operator())
-            op.FileType.setValue(settings["file type"])
-            op.IncludeRawImage.setValue(settings["include raw"])
-            op.OutputFileName.setValue(settings["file path"])
+            op = OpExportObjectInfo(settings, progress_bar, parent=main_operator.viewed_operator())
             #op.ObjectFeatures.setValue(feature_table)
             op.ObjectFeatures.connect(main_operator.opPredict.Features)
             op.SelectedFeatures.setValue(feature_selection)
@@ -257,7 +253,7 @@ class ObjectClassificationGui(LabelingGui):
             op.LabelImage.connect(main_operator.SegmentationImages)
 
             result = op.WriteData([]).wait()
-            logger.info("Export to KNIME exited with status: '%s'" % "succes" if result[0] else "failure")
+            logger.debug("Export Object Info exited with status: '%s'" % "succes" if result[0] else "failure")
 
     def exportObjectInfo_old(self):
         if not self.layerstack or len(self.layerstack)==0:
@@ -277,7 +273,7 @@ class ObjectClassificationGui(LabelingGui):
                 if self._knime_exporter is None:
                     #topLevelOp = self.topLevelOperatorView.viewed_operator()
                     #imageIndex = topLevelOp.LabelInputs.index( self.topLevelOperatorView.LabelInputs )
-                    self._knime_exporter = OpExportToKnime(parent=mainOperator.viewed_operator())
+                    self._knime_exporter = OpExportObjectInfo(parent=mainOperator.viewed_operator())
                     
                     
                     
