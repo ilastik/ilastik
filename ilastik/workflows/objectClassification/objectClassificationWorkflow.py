@@ -453,11 +453,6 @@ class ObjectClassificationWorkflow(Workflow):
             return self.opBatchClassify.PredictionImage
         raise Exception("Unknown headless output slot")
 
-    def getSecondaryHeadlessOutputSlots(self, slotId):
-        if slotId == "BatchPredictionImage":
-            return [self.opBatchClassify.BlockwiseRegionFeatures]
-        raise Exception("Unknown headless output slot")
-
     def postprocessClusterSubResult(self, roi, result, blockwise_fileset):
         """
         """

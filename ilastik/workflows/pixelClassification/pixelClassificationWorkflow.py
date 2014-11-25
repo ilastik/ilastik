@@ -346,9 +346,6 @@ class PixelClassificationWorkflow(Workflow):
         raise Exception("Unknown headless output slot")
 
 
-    def getSecondaryHeadlessOutputSlots(self, slotId):
-        return []
-    
     def onProjectLoaded(self, projectManager):
         """
         Overridden from Workflow base class.  Called by the Project Manager.

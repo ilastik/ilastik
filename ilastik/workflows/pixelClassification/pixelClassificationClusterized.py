@@ -79,7 +79,6 @@ def getArgParser():
     parser.add_argument('--project', help='An .ilp file with feature selections and at least one labeled input image', required=True)
     parser.add_argument('--output_description_file', help='The JSON file that describes the output dataset', required=False)
     parser.add_argument('--logfile', help='A filepath to dump all log messages to.', required=False)
-    parser.add_argument('--secondary_output_description_file', help='A secondary output description file, which will be used if the workflow supports secondary outputs.', required=False, action='append')
     parser.add_argument('--_node_work_', help='Internal use only', required=False)
 
     return parser
@@ -135,26 +134,12 @@ def runWorkflow(cluster_args):
     finalOutputSlot = workflow.getHeadlessOutputSlot( config.output_slot_id )
     assert finalOutputSlot is not None
 
-    secondaryOutputSlots = workflow.getSecondaryHeadlessOutputSlots( config.output_slot_id )
-    secondaryOutputDescriptions = cluster_args.secondary_output_description_file or [] # This is a list (see 'action' above)
-    if len(secondaryOutputDescriptions) != len(secondaryOutputSlots):
-        raise RuntimeError( "This workflow produces exactly {} SECONDARY outputs.  "
-                            "You provided {}.".format( len(secondaryOutputSlots), 
-                                                       len(secondaryOutputDescriptions) ) )
-    
     clusterOperator = None
     try:
         if cluster_args._node_work_ is not None:
-            clusterOperator, resultSlot = prepare_node_cluster_operator(config,
-                                                                        cluster_args, 
-                                                                        finalOutputSlot, 
-                                                                        secondaryOutputSlots, 
-                                                                        secondaryOutputDescriptions)
+            clusterOperator, resultSlot = prepare_node_cluster_operator(config, cluster_args, finalOutputSlot)
         else:
-            clusterOperator, resultSlot = prepare_master_cluster_operator(cluster_args, 
-                                                                          finalOutputSlot, 
-                                                                          secondaryOutputSlots, 
-                                                                          secondaryOutputDescriptions)
+            clusterOperator, resultSlot = prepare_master_cluster_operator(cluster_args, finalOutputSlot)
         
         # Get the result
         logger.info("Starting task")
@@ -180,7 +165,7 @@ def runWorkflow(cluster_args):
     if not result:
         logger.error( "FAILED TO COMPLETE!" )
 
-def prepare_node_cluster_operator(config, cluster_args, finalOutputSlot, secondaryOutputSlots, secondaryOutputDescriptions):
+def prepare_node_cluster_operator(config, cluster_args, finalOutputSlot):
     # We're doing node work
     opClusterTaskWorker = OperatorWrapper( OpTaskWorker, parent=finalOutputSlot.getRealOperator().parent )
 
@@ -191,14 +176,6 @@ def prepare_node_cluster_operator(config, cluster_args, finalOutputSlot, seconda
     opClusterTaskWorker.RoiString[0].setValue( cluster_args._node_work_ )
     opClusterTaskWorker.TaskName.setValue( cluster_args.process_name )
     opClusterTaskWorker.ConfigFilePath.setValue( cluster_args.option_config_file )
-
-    # Configure optional slots first for efficiency (avoid multiple calls to setupOutputs)
-    opClusterTaskWorker.SecondaryInputs[0].resize( len( secondaryOutputSlots ) )
-    opClusterTaskWorker.SecondaryOutputDescriptions[0].resize( len( secondaryOutputSlots ) )
-    for i in range( len(secondaryOutputSlots) ):
-        opClusterTaskWorker.SecondaryInputs[0][i].connect( secondaryOutputSlots[i][0] )
-        opClusterTaskWorker.SecondaryOutputDescriptions[0][i].setValue( secondaryOutputDescriptions[i] )
-
     opClusterTaskWorker.OutputFilesetDescription.setValue( cluster_args.output_description_file )
 
     # If we have a way to report task progress (e.g. by updating the job name),
@@ -216,7 +193,7 @@ def prepare_node_cluster_operator(config, cluster_args, finalOutputSlot, seconda
     clusterOperator = opClusterTaskWorker
     return (clusterOperator, resultSlot)
 
-def prepare_master_cluster_operator(cluster_args, finalOutputSlot, secondaryOutputSlots, secondaryOutputDescriptions):
+def prepare_master_cluster_operator(cluster_args, finalOutputSlot):
     # We're the master
     opClusterizeMaster = OperatorWrapper( OpClusterize, parent=finalOutputSlot.getRealOperator().parent )
 
@@ -225,14 +202,6 @@ def prepare_master_cluster_operator(cluster_args, finalOutputSlot, secondaryOutp
     opClusterizeMaster.Input.connect( finalOutputSlot )
     opClusterizeMaster.ProjectFilePath.setValue( cluster_args.project )
     opClusterizeMaster.OutputDatasetDescription.setValue( cluster_args.output_description_file )
-
-    # Configure optional slots first for efficiency (avoid multiple calls to setupOutputs)
-    opClusterizeMaster.SecondaryInputs[0].resize( len( secondaryOutputSlots ) )
-    opClusterizeMaster.SecondaryOutputDescriptions[0].resize( len( secondaryOutputSlots ) )
-    for i in range( len(secondaryOutputSlots) ):
-        opClusterizeMaster.SecondaryInputs[0][i].connect( secondaryOutputSlots[i][0] )
-        opClusterizeMaster.SecondaryOutputDescriptions[0][i].setValue( secondaryOutputDescriptions[i] )    
-
     opClusterizeMaster.ConfigFilePath.setValue( cluster_args.option_config_file )
 
     resultSlot = opClusterizeMaster.ReturnCode
