@@ -32,7 +32,7 @@ import logging
 logger = logging.getLogger("tests.testRoiRequestBatch")
 
 class TestRoiRequestBatch(object):
-    
+
     def testBasic(self):
         op = OpArrayPiper( graph=Graph() )
         inputData = numpy.indices( (100,100) ).sum(0)
@@ -78,10 +78,40 @@ class TestRoiRequestBatch(object):
         
         logger.debug( "FINISHED" )
 
+    def testFailedProcessing(self):
+        op = OpArrayPiper( graph=Graph() )
+        inputData = numpy.indices( (100,100) ).sum(0)
+        op.Input.setValue( inputData )
+        roiList = []
+        block_starts = getIntersectingBlocks( [10,10], ([0,0], [100, 100]) )
+        for block_start in block_starts:
+            roiList.append( getBlockBounds( [100,100], [10,10], block_start ) )    
+    
+        class SpecialException(Exception): pass
+        def handleResult(roi, result):
+            raise SpecialException("Intentional Exception: raised while handling the result")
+        
+        totalVolume = numpy.prod( inputData.shape )
+        batch = RoiRequestBatch(op.Output, roiList.__iter__(), totalVolume, batchSize=10, allowParallelResults=False)
+        batch.resultSignal.subscribe( handleResult )
+        
+        # FIXME: There are multiple places where the RoiRequestBatch tool should be prepared to handle exceptions.
+        #        This only tests one of them (in the notify_finished() handler)
+        try:
+            batch.execute()
+        except SpecialException:
+            pass
+        else:
+            assert False, "Expected exception to be propagated out of the RoiRequestBatch."
+
 if __name__ == "__main__":
     # Run this file independently to see debug output.
+    handler = logging.StreamHandler(sys.stdout)
     logger.setLevel(logging.DEBUG)
-    logger.addHandler(logging.StreamHandler(sys.stdout))
+    logging.getLogger("lazyflow.utility.roiRequestBatch").setLevel(logging.INFO)
+
+    logger.addHandler(handler)
+    logging.getLogger("lazyflow.utility.roiRequestBatch").addHandler(handler)
 
     import sys
     import nose
