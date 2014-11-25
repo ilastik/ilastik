@@ -58,6 +58,7 @@ class MriVolFilterSerializer(AppletSerializer):
                  ]
         super(MriVolFilterSerializer, self).__init__(
             projectFileGroupName, slots, op)
+        self._labelString = "labelNames"
 
     def _serializeToHdf5(self, group, hdf5File, projectFilePath):
         slot = self.operator.LabelNames
@@ -68,21 +69,21 @@ class MriVolFilterSerializer(AppletSerializer):
             # slot is connected, upstream will serialize the names
             data = None
         else:
-            data = [s.value for s in slot]
+            data = [(s.value if s.ready() else None) for s in slot]
 
         pickled = pickle.dumps(data)
-        name = "labelNames"
-        if name in group:
+        if self._labelString in group:
             # don't know how to require_dataset() for pickled dataset
-            del group[name]
-        group.create_dataset(name, data=pickled)
+            del group[self._labelString]
+        group.create_dataset(self._labelString, data=pickled)
 
     def _deserializeFromHdf5(self, group, groupVersion, hdf5File,
                              projectFilePath, headless=False):
-        pickled = group['labelNames'][()]
+        pickled = group[self._labelString][()]
         data = pickle.loads(pickled)
         if data is None:
             return
         slot = self.operator.LabelNames
         for i, d in enumerate(data):
-            slot[i].setValue(d)
+            if d is not None:
+                slot[i].setValue(d)
