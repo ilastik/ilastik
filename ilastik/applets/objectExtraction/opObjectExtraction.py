@@ -307,9 +307,6 @@ class OpRegionFeatures3d(Operator):
             for features in feature_dict.itervalues():
                 if 'margin' in features:
                     has_local_features[plugin_name] = True
-                    # Must create default value for this feature list
-                    # Feature list must exist even if nobj == 0
-                    local_features[plugin_name] = {}
                     break
             
                             
