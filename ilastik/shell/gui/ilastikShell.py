@@ -256,7 +256,7 @@ class IlastikShell( QMainWindow ):
         # For now, this is a developer-only feature, activated by a debug menu item.
         #TODO: Change Server class
         #self.socketServer = MessageServer(self, "localhost", 9997, True) if ilastik_config.getboolean("ilastik", "debug") else None
-        self.ipcManager = IPCServerManager()
+        self.ipcManager = IPCServerManager(self)
         
         self.openFileButtons = []
         self.cleanupFunctions = []
