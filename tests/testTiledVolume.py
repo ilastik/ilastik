@@ -81,6 +81,7 @@ class DataSetup(object):
         self.LOCAL_VOLUME_DESCRIPTION_FILE = os.path.join( self.TILE_DIRECTORY, 'local_volume_description.json' )
         self.TRANSPOSED_VOLUME_DESCRIPTION_FILE = os.path.join( self.TILE_DIRECTORY, 'transposed_volume_description.json' )
         self.TRANSLATED_VOLUME_DESCRIPTION_FILE = os.path.join( self.TILE_DIRECTORY, 'translated_volume_description.json' )
+        self.SPECIAL_Z_VOLUME_DESCRIPTION_FILE = os.path.join( self.TILE_DIRECTORY, 'special_z_volume_description.json' )
     
         if not os.path.exists(self.TILE_DIRECTORY):
             print "Creating new tile directory: {}".format( self.TILE_DIRECTORY )
@@ -127,6 +128,12 @@ class DataSetup(object):
             translated_description.view_origin_zyx = [10, 20, 30]
             translated_description.shape_zyx = None
             config_helper.writeConfigFile(self.TRANSLATED_VOLUME_DESCRIPTION_FILE, translated_description)
+    
+            # Write out another copy of the description, but with a special function for translating z-coordinates.
+            config_helper = JsonConfigParser( TiledVolume.DescriptionFields )
+            special_z_description = copy.copy(volume_description)
+            special_z_description.z_translation_function = "lambda z: z+11"
+            config_helper.writeConfigFile(self.SPECIAL_Z_VOLUME_DESCRIPTION_FILE, special_z_description)
     
             # Remove all old image tiles in the tile directory
             files = os.listdir(self.TILE_DIRECTORY)
@@ -315,7 +322,7 @@ class TestCustomAxes(object):
  
         assert (expected == result_out).all()
 
-class TestAAViewOriginOffset(object):
+class TestViewOriginOffset(object):
 
     @classmethod
     def setupClass(cls):
@@ -333,6 +340,41 @@ class TestAAViewOriginOffset(object):
         result_out = numpy.zeros( reference_roi[1] - reference_roi[0], dtype=tiled_volume.description.dtype )
 
         roi_translated = reference_roi - [10,20,30]
+        
+        tiled_volume.read( roi_translated, result_out )
+         
+        ref_path_comp = PathComponents(self.data_setup.REFERENCE_VOL_PATH)
+        with h5py.File(ref_path_comp.externalPath, 'r') as f:
+            ref_data = f[ref_path_comp.internalPath][:]
+ 
+        expected = ref_data[roiToSlice(*reference_roi)]
+         
+        #numpy.save('/tmp/expected.npy', expected)
+        #numpy.save('/tmp/result_out.npy', result_out)
+ 
+        assert (expected == result_out).all()
+
+class TestSpecialZTranslation(object):
+
+    @classmethod
+    def setupClass(cls):
+        cls.data_setup = DataSetup()
+        cls.data_setup.setup()
+
+    @classmethod
+    def teardownClass(cls):
+        cls.data_setup.teardown()
+        
+    def test_special_z_translation(self):
+        """
+        This tests the special 
+        """
+        tiled_volume = TiledVolume( self.data_setup.SPECIAL_Z_VOLUME_DESCRIPTION_FILE )
+        tiled_volume.TEST_MODE = True
+        reference_roi = numpy.array( [(20, 150, 100), (40, 550, 550)] )
+        result_out = numpy.zeros( reference_roi[1] - reference_roi[0], dtype=tiled_volume.description.dtype )
+
+        roi_translated = reference_roi - [11,0,0]
         
         tiled_volume.read( roi_translated, result_out )
          
