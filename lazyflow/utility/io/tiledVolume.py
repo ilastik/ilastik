@@ -74,7 +74,21 @@ class TiledVolume(object):
                                             optionalFields=["x_start", "y_start", "z_start",
                                                             "x_stop",  "y_stop",  "z_stop",
                                                             "x_index", "y_index", "z_index"] ),
-        "extend_slices" : list
+        
+        # A list of lists, mapping src slices to destination slices (for "filling in" missing slices)
+        # Example If slices 101,102,103 are missing data, you might want to simply repeat the data from slice 100:
+        # "extend_slices" : [ [100, [101, 102, 103]] ]
+        "extend_slices" : list,
+        
+        # Some tiled volumes have complicated mappings from "real" or "global" coordinates to url/filepath coordinates.
+        # This field will be eval()'d before the tile is retrieved
+        # For example, if the slices were named according to their position in nanometers instead of pixels, this might do the trick:
+        # "z_translation_function" : "lambda z: 40*z"
+        "z_translation_function" : str,
+
+        # Optional data transform.  For example:
+        # "data_transform_function" : "lambda a: a == 0",
+        "data_transform_function" : str
     }
     DescriptionSchema = JsonConfigParser( DescriptionFields )
 
@@ -196,6 +210,12 @@ class TiledVolume(object):
                           'y_index' : tile_index[1],
                           'x_index' : tile_index[2] }
 
+            # Apply special z_translation_function
+            if self.description.z_translation_function is not None:
+                z_update_func = eval(self.description.z_translation_function)
+                rest_args['z_index'] = rest_args['z_start'] = z_update_func(rest_args['z_index'])
+                rest_args['z_stop'] = 1 + rest_args['z_start']
+
             # Quick sanity check
             assert rest_args['z_index'] == rest_args['z_start']
 
@@ -239,6 +259,11 @@ class TiledVolume(object):
         # Copy just the part we need into the destination array
         assert img[roiToSlice(*tile_relative_intersection)].shape == data_out.shape
         data_out[:] = img[roiToSlice(*tile_relative_intersection)]
+
+        # If there's a special transform, apply it now.
+        if self.description.data_transform_function is not None:
+            transform = eval(self.description.data_transform_function)
+            data_out[:] = transform(data_out)
 
     # For late imports
     requests = None
@@ -313,6 +338,11 @@ class TiledVolume(object):
             # Copy just the part we need into the destination array
             assert img[roiToSlice(*tile_relative_intersection)].shape == data_out.shape
             data_out[:] = img[roiToSlice(*tile_relative_intersection)]
+            
+            # If there's a special transform, apply it now.
+            if self.description.data_transform_function is not None:
+                transform = eval(self.description.data_transform_function)
+                data_out[:] = transform(data_out)
     
     @classmethod
     def _create_session(cls):
