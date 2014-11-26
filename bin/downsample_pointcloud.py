@@ -7,6 +7,8 @@ import numpy
 import logging
 logger = logging.getLogger(__name__)
 
+# NOTE: This file depends on numpy.add.at(), which requires numpy v1.8.0
+
 def downsample_pointcloud( pointcloud_csv_filepath, 
                        output_filepath, 
                        scale_xyz=None, 
@@ -61,6 +63,8 @@ def density_volume_from_pointcloud( pointcloud_csv_filepath,
     according to how many points fall within each downsampled pixel.
     
     Optionally, also weight the intensity of each downsampled pixel according to the size of each point.
+    
+    NOTE: This function depends on numpy.add.at(), which requires numpy v1.8.0
     
     pointcloud_csv_filepath: The input pointcloud file.  Must include
     scale_xyz: (optional) The downsampling factor, specified as a tuple in XYZ order, e.g. (10,10,1).
