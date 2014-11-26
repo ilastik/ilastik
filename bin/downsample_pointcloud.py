@@ -280,15 +280,11 @@ def export_tiff( density_volume_zyx, output_filepath ):
 
 
 if __name__ == "__main__":
-    # Here's some default cmd-line args for debugging...
-    DEBUG = False
-    if DEBUG:
-        sys.argv += [#"--weight_by_size",
-                     "--smooth_with_sigma_xyz=(0.1, 0.1, 2.0)",
-                     "bock-pilot-863-pointcloud-80pct.csv", 
-                     "downsampled-density-bock-pilot-863-pointcloud-80pct.h5", 
-                     "(100, 100, 10)"]
-    
+    # When executing from cmdline, print all logging output
+    logger.addHandler( logging.StreamHandler(sys.stdout) )
+    logger.setLevel(logging.DEBUG)    
+
+    # Define cmd-line API    
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--weight_by_size", action='store_true', 
@@ -306,19 +302,25 @@ if __name__ == "__main__":
     parser.add_argument("volume_shape_xyz", nargs='?', default=None, 
                         help="Full shape of the original volume. If not provided, use bounding box of the pointcloud.")
 
+    # Here's some default cmd-line args for debugging...
+    DEBUG = False
+    if DEBUG:
+        sys.argv += [#"--weight_by_size",
+                     "--smooth_with_sigma_xyz=(0.1, 0.1, 2.0)",
+                     "bock-pilot-863-pointcloud-80pct.csv", 
+                     "downsampled-density-bock-pilot-863-pointcloud-80pct.h5", 
+                     "(100, 100, 10)"]
+
+    # Parse!
     parsed_args = parser.parse_args()
 
-    logger.addHandler( logging.StreamHandler(sys.stdout) )
-    logger.setLevel(logging.DEBUG)    
-
+    # Evaluate tuple args if provided
     volume_shape_xyz = parsed_args.volume_shape_xyz and eval(parsed_args.volume_shape_xyz)
-
-    # Evaluate offset/scale strings if provided
     offset_xyz = parsed_args.offset_xyz and eval(parsed_args.offset_xyz)
-    scale_xyz = parsed_args.scale_xyz and eval(parsed_args.scale_xyz)
-    
+    scale_xyz = parsed_args.scale_xyz and eval(parsed_args.scale_xyz)    
     smoothing_sigma_xyz = parsed_args.smooth_with_sigma_xyz and eval(parsed_args.smooth_with_sigma_xyz)
 
+    # Main func.
     sys.exit( downsample_pointcloud( parsed_args.pointcloud_csv_filepath,
                                      parsed_args.output_filepath,
                                      scale_xyz,
