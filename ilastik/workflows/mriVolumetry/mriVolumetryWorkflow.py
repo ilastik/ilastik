@@ -52,6 +52,7 @@ class MriVolumetryWorkflowBase(Workflow):
         opMriVolReport.Input.connect(opMriVolFilter.CachedOutput)
         opMriVolReport.LabelNames.connect(opMriVolFilter.LabelNames)
         opMriVolReport.ActiveChannels.connect(opMriVolFilter.ActiveChannels)
+        opMriVolReport.DataLanes.connect(self.imageNameListSlot[laneIndex])
 
     @property
     def applets(self):

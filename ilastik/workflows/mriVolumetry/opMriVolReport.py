@@ -13,7 +13,8 @@ class OpMriVolReport(Operator):
     Input = InputSlot()
     LabelNames = InputSlot()
     ActiveChannels = InputSlot()
-    
+    DataLanes = InputSlot()
+
     # Pseudo slot for dirty signal propagation to gui
     ReportStatus = OutputSlot(stype=Opaque)
 

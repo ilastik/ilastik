@@ -3,6 +3,7 @@ import csv
 from functools import partial
 
 from lazyflow.request import Request
+from lazyflow.operatorWrapper import OperatorWrapper
 
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QAbstractTableModel, QVariant, QModelIndex
@@ -291,14 +292,16 @@ class MriVolReportGui( QWidget ):
         else:
             print 'ReportStatus Clean'
         '''
-    def _get_data(self):
+    def _get_data(self, op=None):
         # TODO only ask for data if it is dirty HOW? 
         # connect this function to notifydirty of input data
         # self._raw = self.op.RawInput[...].wait().squeeze()
         # print self._raw.shape
-        self._active_channels = np.nonzero(self.op.ActiveChannels.value)[0]
-        self._mask = self.op.Input[...].wait()
-        self._labels = self.op.LabelNames.value
+        if op is None:
+            op = self.op
+        self._active_channels = np.nonzero(op.ActiveChannels.value)[0]
+        self._mask = op.Input[...].wait()
+        self._labels = op.LabelNames.value
 
     def _compute_values(self):
         """
@@ -349,6 +352,8 @@ class MriVolReportGui( QWidget ):
                                 dtype=np.float32)
             self._values['Total'].update({'baseline':baseline})
         print self._values
+        
+
 
     def plot_piechart(self, axis, canvas, mode='percentage'):
         # TODO Show volume information in second canvas (eg as text)
@@ -436,22 +441,24 @@ class MriVolReportGui( QWidget ):
             axis.set_xlabel(str('Timepoint'), fontweight='bold')
             axis.set_ylabel(str('Volume [%]'), fontweight='bold')
             axis.axhline(y=25,color='Gray',ls='dashed')
-            axis.axhline(y=-25,color='Gray',ls='dashed')
-            axis.fill_between(range(len(data)), -25, 25, 
+            axis.axhline(y=-50,color='Gray',ls='dashed')
+            axis.fill_between(range(len(data)), -50, 25, 
                                   facecolor='Gray', alpha=0.1)
             ticks = list(axis.yaxis.get_majorticklocs())
-            axis.yaxis.set_ticks(ticks + [-25, 25])
+            axis.yaxis.set_ticks(ticks + [-50, 25])
+            # axis.set_ylim([-100,200])
         elif mode == 'baseline':
             axis.set_title('$\Delta$ Volume (baseline)', 
                            fontweight='bold')
             axis.set_xlabel(str('Timepoint'), fontweight='bold')
             axis.set_ylabel(str('Volume [%]'), fontweight='bold')
             axis.axhline(y=25,color='Gray',ls='dashed')
-            axis.axhline(y=-25,color='Gray',ls='dashed')
-            axis.fill_between(range(len(data)), -25, 25, 
+            axis.axhline(y=-50,color='Gray',ls='dashed')
+            axis.fill_between(range(len(data)), -50, 25, 
                                   facecolor='Gray', alpha=0.1)
             ticks = list(axis.yaxis.get_majorticklocs())
-            axis.yaxis.set_ticks(ticks + [-25, 25])
+            axis.yaxis.set_ticks(ticks + [-50, 25])
+            # axis.set_ylim([-100,200])
         elif mode == 'percentage':
             axis.set_title('Relative Composition', fontweight='bold')
             axis.set_xlabel(str('Timepoint'), fontweight='bold')
@@ -476,9 +483,6 @@ class MriVolReportGui( QWidget ):
         
 
     def _plotReport(self):
-        self._updateLabelList()
-        # TODO update table
-        self.setupTable()
         mode = str(self._drawer.comboBoxMode.currentText())
         if self._availableModes[mode] == 'tumor':
             self.plot_timecourse(self._vol_axis1, self._vol_canvas1, 
@@ -492,11 +496,27 @@ class MriVolReportGui( QWidget ):
         else:
             print 'not implemented yet'
 
+    def _onExportAllButtonClicked(self):
+        parent_op = self.op.parent
+        print parent_op.__class__
+        assert isinstance(parent_op, OperatorWrapper)
+        result = []
+        for idx, op in enumerate(parent_op):
+            print self.op.DataLanes
+            print idx, op.DataLanes.value
+            self._get_data(op)
+            self._compute_values()
+            # TODO 
+            # write value dict to hdf5
+            # in memory hdf5
+        print 'ASDASD'
 
     def _onApplyButtonClicked(self):
         self._drawer.applyButton.setEnabled(False)
         req = Request(bind(self._reportGenerator))
         req.submit()
+        self._updateLabelList()
+        self.setupTable()
 
 
     def _initAppletDrawerUic(self):
@@ -521,6 +541,9 @@ class MriVolReportGui( QWidget ):
 
         self._drawer.exportButton.clicked.connect(self.exportToCSV)
         self._drawer.exportButton.setEnabled(False)
+
+        self._drawer.exportAllButton.clicked.connect( \
+                                            self._onExportAllButtonClicked)
         
         
 
