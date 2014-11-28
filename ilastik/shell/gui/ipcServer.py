@@ -1,4 +1,5 @@
 from SocketServer import BaseRequestHandler, TCPServer
+from operator import itemgetter
 import socket
 import logging
 import threading
@@ -7,7 +8,7 @@ import json
 from Queue import Queue
 from collections import OrderedDict
 
-from ilastik.widgets.ipcServerInfoWidget import IPCServerInfoWidget, ChoosePortDialog
+from ilastik.widgets.ipcServerInfoWidget import IPCServerInfoWidget
 from ilastik.utility.commandProcessor import CommandProcessor
 
 logger = logging.getLogger(__name__)
@@ -41,41 +42,39 @@ class IPCServerManager(object):
         self.queue = None
         self.queue_thread = None
         self.port = self.DEFAULT_PORT
+
         self.info = IPCServerInfoWidget()
         self.info.statusToggled.connect(self.toggle_server)
         self.info.connectionChanged.connect(self.change_connection)
         self.info.broadcast.connect(self._broadcast)
+        self.info.portChanged.connect(self.change_port)
+        self.info.notify_server_status_update("port", self.port)
+
         self.connections = OrderedDict()
         self.shell = shell
         self.cmd_processor = CommandProcessor(shell)
 
-    def start_server(self, port=None):
+        atexit.register(self.stop_server, silent=True)
+
+    def start_server(self):
         """
         Start the server if it is not already running
-        Asks for a port if the default port is already used
-        :param port: the port the socket will be listening on, None for default
-        :type port: int or None
+        Asks for a port if the default port is already used or permissions are too low
         """
-        if port is not None:
-            self.port = port
         if self.server is not None:
             logger.debug("IPC Server is already running")
             return
 
         try:
             self.server = TCPServer(("0.0.0.0", self.port), Handler)
-            self.queue = Queue()
-            self.server.queue = self.queue
         except socket.error as e:
             self.server = None
-            if e.errno == 98:  # Address already in use
-                dialog = ChoosePortDialog(str(self.port), self.info)
-                dialog.set_error(str(e))
-                if dialog.exec_():
-                    self.start_server(dialog.get_port())
-                else:
-                    self.info.set_server_running(False)
-                    return
+            if e.errno in [13, 98]:  # Permission denied or Address already in use
+                self.info.change_port(self.port, str(e))
+            self.info.notify_server_status_update("running", False)
+            return
+        self.queue = Queue()
+        self.server.queue = self.queue
         self.queue_thread = threading.Thread(target=self._handle_queue)
         self.queue_thread.daemon = True
         self.queue_thread.start()
@@ -84,24 +83,23 @@ class IPCServerManager(object):
         server_thread.daemon = True
         server_thread.start()
         logger.info("IPC Server started on port %d" % self.server.socket.getsockname()[1])
-        atexit.register(self.stop_server)
-        self.info.set_server_running(True, self.port)
+        self.info.notify_server_status_update("running", True)
 
-    def stop_server(self):
+    def stop_server(self, silent=False):
         """
         Start the server if it is not already shutdown
         """
         if self.server is not None:
             self.server.shutdown()
-            self.info.set_server_running(False)
+            self.info.notify_server_status_update("running", False)
             logger.info("IPC Server stopped")
             self.server = None
             self.queue.put(None)
             self.queue_thread = None
-            self.connections = {}
+            self.connections = OrderedDict()
             self.info.update_connections(self.connections)
-        else:
-            logger.debug("IPC Server is not running")
+        elif not silent:
+            logger.debug("Can't stop, because IPC Server is not running")
 
     def toggle_server(self):
         """
@@ -176,15 +174,17 @@ class IPCServerManager(object):
             else:
                 self.filter_command(command)
 
-    def broadcast(self, command_name, **kvargs):
+    def broadcast(self, command_name, to_all=False, **kvargs):
         """
         creates a socket for each connection and sends the command as json
         :param command_name: the name of the command
         :type command_name: str
+        :param to_all: if True the cmd is sent to all ( even the disabled ones ) connections
+        :type to_all: bool
         :param kvargs: the arguments specific for the command
         :type kvargs: any JSON type (int, float, str, bool, list, dict)
         """
-        for connection in self.connections.itervalues():
+        for connection in filter(None if to_all else itemgetter("enabled"), self.connections.itervalues()):
             client = connection["client"]
             kvargs.update({
                 "command": command_name
@@ -194,6 +194,7 @@ class IPCServerManager(object):
             try:
                 s.connect(client)
                 s.sendall(command)
+
             except socket.error as e:
                 logger.exception("broadcast to %s:%s failed (%s)" % (client[0], client[1], e))
             finally:
@@ -204,6 +205,23 @@ class IPCServerManager(object):
         convenience method for info.broadcast signal
         """
         self.broadcast(str(command_name), **kvargs)
+
+    def change_port(self, port, start_server=False):
+        """
+        Changes the server port to the new port
+        The server must be shutdown to change the port
+        :param port: the new port
+        :type port: int
+        :param start_server: starts the server after changing the port if set to True
+        :type start_server: bool
+        """
+        if self.server is None:
+            self.port = port
+            self.info.notify_server_status_update("port", port)
+            if start_server:
+                self.start_server()
+        else:
+            logger.warn("Can't change the port while running")
 
 
 class Handler(BaseRequestHandler):

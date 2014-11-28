@@ -2,10 +2,29 @@ from PyQt4.QtGui import *
 from PyQt4 import uic
 from PyQt4.QtCore import *
 
+import re
+import logging
 import os
 from functools import partial
 
 from ilastik.config import cfg as ilastik_config
+
+logger = logging.getLogger(__name__)
+
+
+def convert_to_type(string):
+    if string[0] == "'" and string[-1] == "'" or \
+            string[0] == '"' and string[-1] == '"':
+        return string[1:-1]
+    try:
+        return int(string)
+    except ValueError:
+        pass
+    try:
+        return float(string)
+    except ValueError:
+        pass
+    return string
 
 
 class IPCServerInfoWidget(QWidget):
@@ -15,6 +34,7 @@ class IPCServerInfoWidget(QWidget):
     """
     statusToggled = pyqtSignal()
     connectionChanged = pyqtSignal(int, bool)
+    portChanged = pyqtSignal(int)
 
     broadcast = pyqtSignal(str, dict)  # debug
 
@@ -28,14 +48,24 @@ class IPCServerInfoWidget(QWidget):
         self.ui = ui_class()
         self.ui.setupUi(self)
 
+        self.server_status = {
+            "port": None,
+            "running": False
+        }
+
         self.ui.toggleStatus.clicked.connect(partial(self.ui.toggleStatus.setEnabled, False))
         self.ui.toggleStatus.clicked.connect(self.statusToggled.emit)
+        menu = QMenu("options")
+        self.change_port_action = menu.addAction("Change Port", self.change_port)
+        self.ui.toggleStatus.setMenu(menu)
 
         self.status_style = "background-color: %s; border: 3px inset gray"
 
         if ilastik_config.getboolean("ilastik", "debug"):
             args = {
-                "hilite": "row? 0?",
+                "hilite": "objectid 'Row0'",
+                "unhilite": "objectid '0'",
+                "clearhilite": "",
                 "setviewerposition": "x 0.0\ny 0.0\nz 0.0\nt 0.0\nc 0.0",
                 "handshake": "name ilastik\nport <port>",
                 "brotbacken": "mehl 100g\nwasser 200ml\nhefe 20g",
@@ -52,24 +82,33 @@ class IPCServerInfoWidget(QWidget):
         else:
             self.ui.debugDock.close()
 
-    def set_server_running(self, is_running, port=None):
+    def notify_server_status_update(self, attribute, value):
         """
-        Changes the server status label to display the server status
-        Enables the server toggle button
-        :param is_running: new server status
-        :type is_running: bool
-        :param port: the port to display
-        :type port: int
+        Notifies to the GUI that the IPCServer's status has changed
+        :param attribute: the attribute that has changed ("port", "running")
+        :type attribute: str
+        :param value: the value that the attribute has changed to
+        :type value: any
         """
-        if is_running:
-            self.ui.serverStatus.setText("running: %s" % port)
-            self.ui.serverStatus.setStyleSheet(self.status_style % "lime")
-            self.ui.toggleStatus.setText("Stop Server")
+
+        if attribute == "port":
+            pass
+        elif attribute == "running":
+            if value:  # server is running now
+                self.ui.serverStatus.setText("running: %s" % self.server_status["port"])
+                self.ui.serverStatus.setStyleSheet(self.status_style % "lime")
+                self.ui.toggleStatus.setText("Stop Server")
+            else:
+                self.ui.serverStatus.setText("shutdown")
+                self.ui.serverStatus.setStyleSheet(self.status_style % "red")
+                self.ui.toggleStatus.setText("Start Server")
+            self.change_port_action.setEnabled(not value)
+            self.ui.toggleStatus.setEnabled(True)
+
         else:
-            self.ui.serverStatus.setText("shutdown")
-            self.ui.serverStatus.setStyleSheet(self.status_style % "red")
-            self.ui.toggleStatus.setText("Start Server")
-        self.ui.toggleStatus.setEnabled(True)
+            logger.warn("'%s' is no valid server status attribute ")
+            return
+        self.server_status[attribute] = value
 
     def add_command(self, cmd, success):
         """
@@ -108,10 +147,24 @@ class IPCServerInfoWidget(QWidget):
             item.setBackground(QBrush(color, Qt.SolidPattern))
             self.ui.connectionList.addItem(item)
 
+    def change_port(self, old_port=None, message=""):
+        """
+        shows the ChoosePortDialog and returns the new port
+        :param old_port: the old port if None the Widgets internal server_port is used
+        :type old_port: int or None
+        :param message: an optinal message to be displayed why the port must be changed
+        :type message: str
+        :return: the new port
+        """
+        dialog = ChoosePortDialog(self.server_status["port"] if old_port is None else old_port)
+        dialog.set_message(message)
+        if dialog.exec_() == 1:
+            self.portChanged.emit(dialog.get_port())
+
     # slot called from QListWidgetItem check
     def list_widget_changed(self, item):
         index = self.ui.connectionList.row(item)
-        self.connectionChanged(index, True if item.checkState == Qt.Checked else False)
+        self.connectionChanged.emit(index, True if item.checkState() == Qt.Checked else False)
 
     # debug
     def broadcast_clicked(self):
@@ -120,6 +173,7 @@ class IPCServerInfoWidget(QWidget):
         kvargs = {}
         for arg in args.splitlines():
             key, value = arg.split(None, 1)
+            value = convert_to_type(value)
             kvargs[key] = value
         self.broadcast.emit(command, kvargs)
 
@@ -134,7 +188,8 @@ class ChoosePortDialog(QDialog):
 
         self.validator = QIntValidator(0, 65535)
         self.ui.port.setValidator(self.validator)
-        self.ui.port.setText(port)
+        self.ui.port.setText(str(port))
+        self.ui.port.selectAll()
 
     def get_port(self):
         try:
@@ -143,7 +198,7 @@ class ChoosePortDialog(QDialog):
             return None
         return port
 
-    def set_error(self, error):
+    def set_message(self, error):
         self.ui.error.setText(error)
 
 if __name__ == "__main__":
