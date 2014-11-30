@@ -1,5 +1,6 @@
 import os
 import csv
+import cPickle as pickle
 from functools import partial
 
 from lazyflow.request import Request
@@ -303,6 +304,12 @@ class MriVolReportGui( QWidget ):
         self._mask = op.Input[...].wait()
         self._labels = op.LabelNames.value
 
+    def _get_mask(self):
+        data = np.zeros_like(self._mask, dtype=np.uint8)
+        for i in self._active_channels:
+            data[self._mask==i+1] = i+1
+        return data
+
     def _compute_values(self):
         """
         Function computes 'volume', percentage change of volume ('delta'), 
@@ -496,20 +503,36 @@ class MriVolReportGui( QWidget ):
         else:
             print 'not implemented yet'
 
-    def _onExportAllButtonClicked(self):
+    def _save_data_as_pickle(self, path):
         parent_op = self.op.parent
         print parent_op.__class__
         assert isinstance(parent_op, OperatorWrapper)
-        result = []
+        result = {}
         for idx, op in enumerate(parent_op):
-            print self.op.DataLanes
-            print idx, op.DataLanes.value
+            # print idx, op.DataLanes.value
             self._get_data(op)
             self._compute_values()
-            # TODO 
-            # write value dict to hdf5
-            # in memory hdf5
-        print 'ASDASD'
+            d = self._get_mask()
+            if op.DataLanes.value not in result:
+                result[op.DataLanes.value] = d
+            else:
+                print 'Warning! Key {} already exists'.format( \
+                                                        op.DataLanes.value)
+        if not path.isEmpty():
+            pickle.dump( result, open( unicode(path), 'wb' ) )
+        self._drawer.exportAllButton.setEnabled(True)
+        self._drawer.applyButton.setEnabled(True)
+
+    def _onExportAllButtonClicked(self):
+        # TODO 
+        # alternative: write value dict to hdf5
+        self._drawer.exportAllButton.setEnabled(False)
+        self._drawer.applyButton.setEnabled(False)
+        path = QFileDialog.getSaveFileName(
+            self, 'Save File', '', 'Pickle (*.pkl)')
+        req = Request(bind(self._save_data_as_pickle, path))
+        req.submit()
+        
 
     def _onApplyButtonClicked(self):
         self._drawer.applyButton.setEnabled(False)
