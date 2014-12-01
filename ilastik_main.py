@@ -40,7 +40,6 @@ def main( parsed_args, workflow_cmdline_args=[] ):
 
     _init_configfile( parsed_args )
     
-    _clean_paths( parsed_args, ilastik_dir )
     _update_debug_mode( parsed_args )
     _init_threading_monkeypatch()
     _validate_arg_compatibility( parsed_args )
@@ -90,31 +89,6 @@ def _init_configfile( parsed_args ):
     # Re-initialize the config module for it.
     if parsed_args.configfile:
         ilastik.config.init_ilastik_config( parsed_args.configfile )
-    
-def _clean_paths( parsed_args, ilastik_dir ):
-    if parsed_args.clean_paths:
-        # remove undesired paths from PYTHONPATH and add ilastik's submodules
-        pythonpath = [k for k in sys.path if k.startswith(ilastik_dir)]
-        for k in ['/ilastik/lazyflow', '/ilastik/volumina', '/ilastik/ilastik']:
-            pythonpath.append(ilastik_dir + k.replace('/', os.path.sep))
-        sys.path = pythonpath
-        
-        if sys.platform.startswith('win'):
-            # empty PATH except for gurobi and CPLEX and add ilastik's installation paths
-            path = [k for k in os.environ.get('PATH').split(os.pathsep) \
-                       if k.count('CPLEX') > 0 or k.count('gurobi') > 0 or \
-                          k.count('windows\\system32') > 0]
-            for k in ['/Qt4/bin', '/python', '/bin']:
-                path.append(ilastik_dir + k.replace('/', os.path.sep))
-            os.environ['PATH'] = os.pathsep.join(reversed(path))
-        else:
-            # clean LD_LIBRARY_PATH and add ilastik's installation paths
-            # (gurobi and CPLEX are supposed to be located there as well)
-            path = [k for k in os.environ['LD_LIBRARY_PATH'] if k.startswith(ilastik_dir)]
-            
-            for k in ['/lib/vtk-5.10', '/lib']:
-                path.append(ilastik_dir + k.replace('/', os.path.sep))
-            os.environ['LD_LIBRARY_PATH'] = os.pathsep.join(reversed(path))
 
 stdout_redirect_file = None
 old_stdout = None

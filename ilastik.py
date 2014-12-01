@@ -21,13 +21,48 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 
-import ilastik_main
+import sys
+import os
 
-# Special command-line control over default tmp dir
-import ilastik.monkey_patches
-ilastik.monkey_patches.extend_arg_parser(ilastik_main.parser)
+def _clean_paths( ilastik_dir ):
+    # remove undesired paths from PYTHONPATH and add ilastik's submodules
+    pythonpath = [k for k in sys.path if k.startswith(ilastik_dir)]
+    for k in ['/ilastik/lazyflow', '/ilastik/volumina', '/ilastik/ilastik']:
+        pythonpath.append(ilastik_dir + k.replace('/', os.path.sep))
+    sys.path = pythonpath
+    
+    if sys.platform.startswith('win'):
+        # empty PATH except for gurobi and CPLEX and add ilastik's installation paths
+        path_var = os.environ.get('PATH')
+        if path_var is None:
+            path_array = []
+        else:
+            path_array = path_var.split(os.pathsep)
+        path = [k for k in path_array \
+                   if k.count('CPLEX') > 0 or k.count('gurobi') > 0 or \
+                      k.count('windows\\system32') > 0]
+        for k in ['/Qt4/bin', '/python', '/bin']:
+            path.append(ilastik_dir + k.replace('/', os.path.sep))
+        os.environ['PATH'] = os.pathsep.join(reversed(path))
+    else:
+        # clean LD_LIBRARY_PATH and add ilastik's installation paths
+        # (gurobi and CPLEX are supposed to be located there as well)
+        path = [k for k in os.environ['LD_LIBRARY_PATH'] if k.startswith(ilastik_dir)]
+        
+        for k in ['/lib/vtk-5.10', '/lib']:
+            path.append(ilastik_dir + k.replace('/', os.path.sep))
+        os.environ['LD_LIBRARY_PATH'] = os.pathsep.join(reversed(path))
 
 def main():
+    if "--clean_paths" in sys.argv:
+        this_path = os.path.dirname(__file__)
+        ilastik_dir = os.path.abspath(os.path.join(this_path, "..%s.." % os.path.sep))
+        _clean_paths( ilastik_dir )
+
+    import ilastik_main
+    # Special command-line control over default tmp dir
+    import ilastik.monkey_patches
+    ilastik.monkey_patches.extend_arg_parser(ilastik_main.parser)
     parsed_args, workflow_cmdline_args = ilastik_main.parser.parse_known_args()
     
     # allow to start-up by double-clicking an '.ilp' file
