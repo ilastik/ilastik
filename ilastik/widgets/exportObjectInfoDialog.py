@@ -79,7 +79,6 @@ class ExportObjectInfoDialog(QDialog):
                 "margin": self.ui.addMargin.value(),
                 "compression": self._compression_settings(),
                 "include raw": self.ui.includeRaw.checkState(),
-                "force unique ids": True,  # self.ui.forceUniqueIds.checkState(),
             })
         return s
 
