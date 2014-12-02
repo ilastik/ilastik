@@ -230,7 +230,7 @@ class ProjectManager(object):
             for aplt in self._applets:
                 for item in aplt.dataSerializers:
                     assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
-                    if force_all_save or item.isDirty():
+                    if force_all_save or item.isDirty() or item.shouldSerialize(self.currentProjectFile):
                         item.serializeToHdf5(self.currentProjectFile, self.currentProjectPath)
             
             #save the current workflow as standard workflow
