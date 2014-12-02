@@ -25,6 +25,7 @@ from lazyflow.roi import TinyVector
 
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.layerViewer import LayerViewerApplet
+from ilastik.applets.multiEditorViewer.multiViewerApplet import MultiViewerApplet
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 
 import logging
@@ -45,7 +46,7 @@ class LayerViewerWorkflow(Workflow):
                                                        supportIlastik05Import=True, 
                                                        batchDataGui=False,
                                                        force5d=True)
-        self.viewerApplet = LayerViewerApplet(self)
+        self.viewerApplet = MultiViewerApplet(self)
         self.dataExportApplet = DataExportApplet(self, "Data Export")
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.SelectionNames.setValue( ['Raw Data', 'Other Data'] )
