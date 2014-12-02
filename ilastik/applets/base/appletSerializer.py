@@ -789,6 +789,20 @@ class AppletSerializer(object):
         """
         return any(list(ss.dirty for ss in self.serialSlots))
 
+    def shouldSerialize(self, hdf5File):
+        """Whether to serialize or not."""
+
+        if self.isDirty():
+            return True
+
+        # Need to check if slots should be serialized. First must verify that self.topGroupName is not an empty string
+        # (as this seems to happen sometimes).
+        if self.topGroupName:
+            topGroup = getOrCreateGroup(hdf5File, self.topGroupName)
+            return any([ss.shouldSerialize(topGroup) for ss in self.serialSlots])
+
+        return False
+
     @property
     def ignoreDirty(self):
         return self._ignoreDirty
