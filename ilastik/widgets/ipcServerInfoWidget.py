@@ -2,7 +2,6 @@ from PyQt4.QtGui import *
 from PyQt4 import uic
 from PyQt4.QtCore import *
 
-import re
 import logging
 import os
 from functools import partial
@@ -36,7 +35,7 @@ class IPCServerInfoWidget(QWidget):
     connectionChanged = pyqtSignal(int, bool)
     portChanged = pyqtSignal(int)
 
-    broadcast = pyqtSignal(str, dict)  # debug
+    broadcast = pyqtSignal(dict)  # debug
 
     connectionColors = [QColor("yellow"), QColor("lime")]
     commandFailureColor = QColor(255, 150, 150)  # bright red
@@ -64,8 +63,11 @@ class IPCServerInfoWidget(QWidget):
         if ilastik_config.getboolean("ilastik", "debug"):
             args = {
                 "hilite": "objectid 'Row0'",
-                "unhilite": "objectid '0'",
+                "0": "objectid 'Row0'",
+                "unhilite": "objectid 'Row0'",
+                "1": "objectid 'Row0'",
                 "clearhilite": "",
+                "2": "",
                 "setviewerposition": "x 0.0\ny 0.0\nz 0.0\nt 0.0\nc 0.0",
                 "handshake": "name ilastik\nport <port>",
                 "brotbacken": "mehl 100g\nwasser 200ml\nhefe 20g",
@@ -166,16 +168,21 @@ class IPCServerInfoWidget(QWidget):
         index = self.ui.connectionList.row(item)
         self.connectionChanged.emit(index, True if item.checkState() == Qt.Checked else False)
 
+    #slot called from QCheckBox toggle
+    def stay_on_top(self, state):
+        pass
+
     # debug
     def broadcast_clicked(self):
-        command = self.ui.debugCommandName.text()
+        command = convert_to_type(str(self.ui.debugCommandName.text()))
         args = str(self.ui.debugCommandArgs.toPlainText())
         kvargs = {}
         for arg in args.splitlines():
             key, value = arg.split(None, 1)
             value = convert_to_type(value)
             kvargs[key] = value
-        self.broadcast.emit(command, kvargs)
+        kvargs["command"] = command
+        self.broadcast.emit(kvargs)
 
 
 class ChoosePortDialog(QDialog):

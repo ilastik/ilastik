@@ -25,6 +25,86 @@ logger.debug = p("debug")
 logger.exception = p("exception")
 
 
+class Singleton(type):
+    _instances = {}
+
+    def __call__(cls, *args):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args)
+        return cls._instances[cls]
+
+
+class IPCServerFacade(object):
+    """
+    Singleton for access to the ServerManager
+    """
+    __metaclass__ = Singleton
+
+    def __init__(self):
+        self.server = None
+
+    def convert_id_by_config(self, id_, time=0):
+        """
+        Converts the id used in ilastik to the id used in the Exporter
+        :param id_: the id in ilastik
+        :param time: the frame number
+        :return: the id used in the exporter
+        """
+        #todo: read config first
+        return id_ - 1
+
+    def set_server(self, server):
+        """
+        Sets the server that will receive all messages
+        :param server: the server to set
+        :type server: IPCServerManager
+        """
+        self.server = server
+
+    def is_running(self):
+        """
+        :returns: True if the server is running else False
+        """
+        if self.server is None:
+            return False
+        return self.server.is_running()
+
+    def hilite(self, object_id, time=0):
+        """
+        Sends a hilite command to all clients
+        :param object_id: the id of the object that should be hilited
+        """
+        if self.server is None:
+            logger.debug("no server")
+            return False
+        object_id = self.convert_id_by_config(object_id)
+        self.server.broadcast(command=0, objectid="Row%d" % object_id)
+        logger.debug("hiliting object '%d'" % object_id)
+
+    def unhilite(self, object_id, time=0):
+        """
+        Sends an unhilite command to all clients
+        :param object_id: the id of the object that should be unhilited
+        """
+        if self.server is None:
+            logger.debug("no server")
+            return False
+        object_id = self.convert_id_by_config(object_id)
+        self.server.broadcast(command=1, objectid="Row%d" % object_id)
+        logger.debug("unhiliting object '%d'" % object_id)
+
+    def clear_hilite(self):
+        """
+        Sends a clearhilite command to all clients
+        So all object will be unhilited
+        """
+        if self.server is None:
+            logger.debug("no server")
+            return False
+        self.server.broadcast(command=2)
+        logger.debug("clearing hilite")
+
+
 class IPCServerManager(object):
     """
     This ServerManager updates the IPCServerInfoWidget,
@@ -101,6 +181,12 @@ class IPCServerManager(object):
         elif not silent:
             logger.debug("Can't stop, because IPC Server is not running")
 
+    def is_running(self):
+        """
+        :return: True if the server is currently running False otherwise
+        """
+        return self.server is not None
+
     def toggle_server(self):
         """
         starts if not started etc.
@@ -132,6 +218,8 @@ class IPCServerManager(object):
                 "client": (host, remote_server_port)
             }
             self.info.update_connections(self.connections)
+        elif self.connections[(name, host)]["client"][0] != remote_server_port:
+            self.connections[(name, host)]["client"][0] = remote_server_port
 
     def change_connection(self, index, enabled):
         """
@@ -155,7 +243,10 @@ class IPCServerManager(object):
         # noinspection PyBroadException
         try:
             self.cmd_processor.execute(cmd["command"], cmd)
-        except Exception:
+        except Exception as e:
+            print "Exception", e
+        except:
+            print "Unknown Error"
             success = False
         self.info.add_command(cmd, success)
 
@@ -174,7 +265,7 @@ class IPCServerManager(object):
             else:
                 self.filter_command(command)
 
-    def broadcast(self, command_name, to_all=False, **kvargs):
+    def broadcast(self, to_all=False, **kvargs):
         """
         creates a socket for each connection and sends the command as json
         :param command_name: the name of the command
@@ -185,26 +276,23 @@ class IPCServerManager(object):
         :type kvargs: any JSON type (int, float, str, bool, list, dict)
         """
         for connection in filter(None if to_all else itemgetter("enabled"), self.connections.itervalues()):
+            # noinspection PyTypeChecker
             client = connection["client"]
-            kvargs.update({
-                "command": command_name
-            })
             command = json.dumps(kvargs)
             s = socket.socket()  # default is fine
             try:
                 s.connect(client)
                 s.sendall(command)
-
             except socket.error as e:
                 logger.exception("broadcast to %s:%s failed (%s)" % (client[0], client[1], e))
             finally:
                 s.close()
 
-    def _broadcast(self, command_name, kvargs):
+    def _broadcast(self, kvargs):
         """
         convenience method for info.broadcast signal
         """
-        self.broadcast(str(command_name), **kvargs)
+        self.broadcast(**kvargs)
 
     def change_port(self, port, start_server=False):
         """
