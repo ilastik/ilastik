@@ -70,7 +70,7 @@ from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox
 from ilastik.widgets.filePathButton import FilePathButton
 
 #from ilastik.shell.gui.messageServer import MessageServer
-from ilastik.shell.gui.ipcServer import IPCServerManager
+from ilastik.shell.gui.ipcServer import IPCServerManager, IPCServerFacade
 
 # Import all known workflows now to make sure they are all registered with getWorkflowFromName()
 import ilastik.workflows
@@ -254,9 +254,8 @@ class IlastikShell( QMainWindow ):
         
         # Server/client for inter process communication for receiving remote commands (e.g. from KNIME)
         # For now, this is a developer-only feature, activated by a debug menu item.
-        #TODO: Change Server class
-        #self.socketServer = MessageServer(self, "localhost", 9997, True) if ilastik_config.getboolean("ilastik", "debug") else None
         self.ipcManager = IPCServerManager(self)
+        IPCServerFacade().set_server(self.ipcManager)
         
         self.openFileButtons = []
         self.cleanupFunctions = []

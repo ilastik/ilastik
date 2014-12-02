@@ -22,6 +22,7 @@ from PyQt4.QtGui import *
 from PyQt4 import uic
 from PyQt4.QtCore import pyqtSignal, pyqtSlot, Qt, QObject
 from PyQt4.QtGui import QFileDialog
+from ilastik.shell.gui.ipcServer import IPCServerFacade
 
 from ilastik.widgets.featureTableWidget import FeatureEntry
 from ilastik.widgets.featureDlg import FeatureDlg
@@ -759,7 +760,8 @@ class ObjectClassificationGui(LabelingGui):
         menu = QMenu(self)
         text = "Print info for object {} in the terminal".format(obj)
         menu.addAction(text)
-        
+
+        #todo: remove old
         if self.applet.connected_to_knime:
             menu.addSeparator()
             knime_hilite = "Highlight object {} in KNIME".format(obj)
@@ -768,7 +770,13 @@ class ObjectClassificationGui(LabelingGui):
             menu.addAction(knime_unhilite)
             knime_clearhilite = "Clear all highlighted objects in KNIME".format(obj)
             menu.addAction(knime_clearhilite)
-            
+        if IPCServerFacade().is_running():
+            time = position5d[0]
+            menu.addSeparator()
+            menu.addAction("hilite object", partial(IPCServerFacade().hilite, obj, time))
+            menu.addAction("unhilite object", partial(IPCServerFacade().unhilite, obj, time))
+            menu.addAction("clear hilites", IPCServerFacade().clear_hilite)
+
         menu.addSeparator()
         clearlabel = "Clear label for object {}".format(obj)
         menu.addAction(clearlabel)
@@ -835,7 +843,8 @@ class ObjectClassificationGui(LabelingGui):
             topLevelOp = self.topLevelOperatorView.viewed_operator()
             imageIndex = topLevelOp.LabelInputs.index( self.topLevelOperatorView.LabelInputs )
             self.topLevelOperatorView.assignObjectLabel(imageIndex, position5d, 0)
-            
+
+        #todo: remove old
         elif self.applet.connected_to_knime: 
             if action.text()==knime_hilite:
                 data = {'command': 0, 'objectid': 'Row'+str(obj)}
