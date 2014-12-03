@@ -52,8 +52,11 @@ def getOrCreateGroup(parentGroup, groupName):
 
 def deleteIfPresent(parentGroup, name):
     """Deletes parentGroup[name], if it exists."""
-    if name in parentGroup:
+
+    try:
         del parentGroup[name]
+    except KeyError:
+        pass
 
 def slicingToString(slicing):
     """Convert the given slicing into a string of the form
