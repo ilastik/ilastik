@@ -47,9 +47,8 @@ def getOrCreateGroup(parentGroup, groupName):
     necessary.
 
     """
-    if groupName in parentGroup:
-        return parentGroup[groupName]
-    return parentGroup.create_group(groupName)
+
+    return parentGroup.require_group(groupName)
 
 def deleteIfPresent(parentGroup, name):
     """Deletes parentGroup[name], if it exists."""
