@@ -278,7 +278,7 @@ class ProjectManager(object):
                     for item in aplt.dataSerializers:
                         assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
 
-                        if item.isDirty():
+                        if item.isDirty() or item.shouldSerialize(self.currentProjectFile):
                             # Use a COPY of the serializer, so the original serializer doesn't forget it's dirty state
                             itemCopy = copy.copy(item)
                             itemCopy.serializeToHdf5(snapshotFile, snapshotPath)
