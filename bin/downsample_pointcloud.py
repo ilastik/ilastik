@@ -14,8 +14,10 @@ def downsample_pointcloud( pointcloud_csv_filepath,
                        scale_xyz=None, 
                        offset_xyz=None, 
                        volume_shape_xyz=None, 
-                       weight_by_size=False,
-                       smoothing_sigma_xyz=None ):
+                       method='by_count',
+                       smoothing_sigma_xyz=None,
+                       normalize_with_max=None,
+                       output_dtype=None ):
     """
     Generate an intensity image volume from the given pointcloud 
     file as described in density_volume_from_pointcloud(), below.
@@ -26,7 +28,10 @@ def downsample_pointcloud( pointcloud_csv_filepath,
     
     pointcloud_csv_filepath: The input pointcloud csv file.
     output_filepath: The path to store the output image volume.  Either .h5 or .tif
-    smoothing_sigma_xyz: A float or tuple to use with vigra.filters.gaussianSmoothing, in XYZ order.
+    
+    smoothing_sigma_xyz: A float or tuple to use with vigra.filters.gaussianSmoothing, in XYZ order.    
+    normalize_with_max: If provided, renormalize the intensities with the given max value
+    output_dtype: If provided, convert the image to the given dtype before export
     
     other parameters: See density_volume_from_pointcloud(), below.
     """
@@ -34,15 +39,27 @@ def downsample_pointcloud( pointcloud_csv_filepath,
                                                      scale_xyz,
                                                      offset_xyz, 
                                                      volume_shape_xyz, 
-                                                     weight_by_size )
+                                                     method )
     
     if smoothing_sigma_xyz:
         logger.debug("Smoothing with sigma: {}".format( smoothing_sigma_xyz ))
         import vigra
         smoothing_sigma_zyx = smoothing_sigma_xyz[::-1]
+        density_volume_zyx = numpy.asarray( density_volume_zyx, numpy.float32 )
+        density_volume_zyx = vigra.taggedView(density_volume_zyx, 'zyx')
         vigra.filters.gaussianSmoothing( density_volume_zyx, 
                                          smoothing_sigma_zyx,
                                          out=density_volume_zyx )
+
+    if normalize_with_max:
+        logger.debug("Normalizing with max: {}".format( normalize_with_max ))
+        max_px = density_volume_zyx.max()
+        if max_px > 0:
+            density_volume_zyx[:] *= normalize_with_max / max_px
+    
+    if output_dtype:
+        logger.debug("Converting to dtype: {}".format( str(output_dtype().dtype) ))
+        density_volume_zyx = numpy.asarray( density_volume_zyx, dtype=output_dtype )        
 
     # Now write the volume to the output file
     output_ext = os.path.splitext(output_filepath)[1]
@@ -57,7 +74,7 @@ def density_volume_from_pointcloud( pointcloud_csv_filepath,
                                     scale_xyz=None, 
                                     offset_xyz=None,
                                     volume_shape_xyz=None,
-                                    weight_by_size=False ): 
+                                    method='by_count' ): 
     """
     Read the given pointcloud file and generate a downsampled intensity volume 
     according to how many points fall within each downsampled pixel.
@@ -73,7 +90,10 @@ def density_volume_from_pointcloud( pointcloud_csv_filepath,
                 If not provided, the output will be shifted according to the bounding box of the pointcloud data.
     volume_shape_xyz: (optional) Sets the size of the output volume.
                 If not provided, the output shape will be set according to the bounding box of the pointcloud data.
-    weight_by_size: If True, weight the intensity of each downsampled pixel according to the size of each point (via the size_px column).    
+    method: One of the following:
+               - 'binary': Produce a binary image.  No scaling for downsampled voxels containing more than one detection.
+               - 'by_count': Each downsampled voxel represents the count of points contained within it.
+               - 'by_size': Weight the intensity of each downsampled voxel according to the size of each point (via the size_px column).    
     """
     # Load csv data
     pointcloud_data = array_from_csv( pointcloud_csv_filepath, 
@@ -134,26 +154,38 @@ def density_volume_from_pointcloud( pointcloud_csv_filepath,
             for field in fields:
                 pointcloud_data[field] /= axis_scale
 
-    # Prepare weights
-    weights = 1.0
-    if weight_by_size:
-        weights = pointcloud_data['size_px']
-
-    # Initialize volume
-    scaled_volume_shape_zyx = tuple(scaled_volume_shape_xyz[::-1])
-    logger.debug("Initializing volume of zyx shape: {}".format( scaled_volume_shape_zyx ))
-    density_volume_zyx = numpy.zeros( scaled_volume_shape_zyx, dtype=numpy.float32 )
-
-    # We can't just use the following:
-    # density_volume_zyx[coordinates_zyx] = weights
-    # Because that wouldn't correctly handle multiple rows with identical coordinates
-    # (the multiple rows wouldn't both be counted).
-    # Instead, we must use an "unbuffered" (accumulated) operation:
-    logger.debug("Accumulating densities...")
+    # All coords
     coordinates_zyx = ( pointcloud_data['z_px'],
                         pointcloud_data['y_px'],
                         pointcloud_data['x_px'] )
-    numpy.add.at( density_volume_zyx, coordinates_zyx, weights )
+
+    if method == 'binary':
+        scaled_volume_shape_zyx = tuple(scaled_volume_shape_xyz[::-1])
+        logger.debug("Initializing binary volume of zyx shape: {}".format( scaled_volume_shape_zyx ))
+        density_volume_zyx = numpy.zeros( scaled_volume_shape_zyx, dtype=numpy.uint8 )
+        density_volume_zyx[coordinates_zyx] = 1
+    else:
+        # Prepare weights
+        if method == 'by_size':
+            weights = pointcloud_data['size_px']
+        elif method == 'by_count':
+            weights = 1
+        else:
+            assert False, "Unknown method: {}".format( method )
+    
+        # Initialize volume
+        scaled_volume_shape_zyx = tuple(scaled_volume_shape_xyz[::-1])
+        logger.debug("Initializing volume of zyx shape: {}".format( scaled_volume_shape_zyx ))
+        density_volume_zyx = numpy.zeros( scaled_volume_shape_zyx, dtype=numpy.float32 )
+
+        # We can't just use the following:
+        # density_volume_zyx[coordinates_zyx] = weights
+        # Because that wouldn't correctly handle multiple rows with identical coordinates
+        # (the multiple rows wouldn't both be counted).
+        # Instead, we must use an "unbuffered" (accumulated) operation:
+        logger.debug("Accumulating densities...")
+        numpy.add.at( density_volume_zyx, coordinates_zyx, weights )
+
     return density_volume_zyx
 
 
@@ -276,7 +308,7 @@ def export_tiff( density_volume_zyx, output_filepath ):
     if os.path.exists( output_filepath ):
         os.remove( output_filepath )
     for z_slice in density_volume_zyx:
-        vigra.impex.writeImage( z_slice, output_filepath, dtype='', compression='', mode='a' )    
+        vigra.impex.writeImage( z_slice, output_filepath, dtype='', compression='', mode='a' )
 
 
 if __name__ == "__main__":
@@ -287,10 +319,11 @@ if __name__ == "__main__":
     # Define cmd-line API    
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument("--weight_by_size", action='store_true', 
-                        help="If provided, weight pixel intensities by the size of the contributing points. "\
-                             "(Your CSV file must include a column for size_px.)")
-    parser.add_argument("--smooth_with_sigma_xyz", required=False) 
+    parser.add_argument("--method", choices=['binary', 'by_count', 'by_size'], default='by_count', 
+                        help="The method by which points will be accumulated into the downsampled volume.")
+    parser.add_argument("--smooth_with_sigma_xyz", required=False)
+    parser.add_argument("--normalize_with_max", required=False)
+    parser.add_argument("--output_dtype", required=False)
     parser.add_argument("pointcloud_csv_filepath")
     parser.add_argument("output_filepath", help="Path to .h5 or .tiff file to (over)write.")
     parser.add_argument("scale_xyz", nargs='?', default=None, 
@@ -305,10 +338,12 @@ if __name__ == "__main__":
     # Here's some default cmd-line args for debugging...
     DEBUG = False
     if DEBUG:
-        sys.argv += [#"--weight_by_size",
-                     "--smooth_with_sigma_xyz=(0.1, 0.1, 2.0)",
-                     "bock-pilot-863-pointcloud-80pct.csv", 
-                     "downsampled-density-bock-pilot-863-pointcloud-80pct.h5", 
+        sys.argv += ["--method=binary",
+                     #"--smooth_with_sigma_xyz=(3.0, 3.0, 3.0)",
+                     "--normalize_with_max=255",
+                     "--output_dtype=uint8",
+                     "../pointclouds/bock-863-pointcloud-20141203.csv", 
+                     "../pointclouds/bock-863-pointcloud-20141203.tif", 
                      "(100, 100, 10)"]
 
     # Parse!
@@ -317,8 +352,18 @@ if __name__ == "__main__":
     # Evaluate tuple args if provided
     volume_shape_xyz = parsed_args.volume_shape_xyz and eval(parsed_args.volume_shape_xyz)
     offset_xyz = parsed_args.offset_xyz and eval(parsed_args.offset_xyz)
-    scale_xyz = parsed_args.scale_xyz and eval(parsed_args.scale_xyz)    
+    scale_xyz = parsed_args.scale_xyz and eval(parsed_args.scale_xyz)
     smoothing_sigma_xyz = parsed_args.smooth_with_sigma_xyz and eval(parsed_args.smooth_with_sigma_xyz)
+    
+    # Evaluate other optional args
+    output_dtype = None
+    if parsed_args.output_dtype:
+        assert parsed_args.output_dtype in \
+            [ 'uint8', 'int8', 'uint16', 'int16', 'uint32', 'int32', 'uint64', 'int64', 'float32', 'float64' ], \
+            "Unknown dtype: {}".format( parsed_args.output_dtype )
+        output_dtype = eval( "numpy." + parsed_args.output_dtype )
+    
+    normalize_with_max = parsed_args.normalize_with_max and eval(parsed_args.normalize_with_max)
 
     # Main func.
     sys.exit( downsample_pointcloud( parsed_args.pointcloud_csv_filepath,
@@ -326,5 +371,7 @@ if __name__ == "__main__":
                                      scale_xyz,
                                      offset_xyz,
                                      volume_shape_xyz, 
-                                     parsed_args.weight_by_size,
-                                     smoothing_sigma_xyz ) )
+                                     parsed_args.method,
+                                     smoothing_sigma_xyz,
+                                     normalize_with_max,
+                                     output_dtype ) )
