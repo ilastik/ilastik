@@ -404,19 +404,24 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         labelslot.setDirty([(timeCoord, objIndex)])
 
         #Fill the cache of label bounding boxes, if it was empty
-        if len(self._labelBBoxes[imageIndex].keys())==0:
-            #it's the first label for this image
-            feats = self.ObjectFeatures[imageIndex]([timeCoord]).wait()
-
-            #the bboxes should be the same for all channels
-            mins = feats[timeCoord][default_features_key]["Coord<Minimum>"]
-            maxs = feats[timeCoord][default_features_key]["Coord<Maximum>"]
-            bboxes = dict()
-            bboxes["Coord<Minimum>"] = mins
-            bboxes["Coord<Maximum>"] = maxs
-            self._labelBBoxes[imageIndex][timeCoord]=bboxes
+        # FIXME: TRANSFER LABELS:
+        #        Apparently this code was required for triggerTransferLabels(),
+        #        But it has the unfortunate effect of synchronously computing the object features for the current image
+        #        as soon as the user has clicked her first label.  It causes quite a noticeable lag!
+#         if len(self._labelBBoxes[imageIndex].keys())==0:
+#             #it's the first label for this image
+#             feats = self.ObjectFeatures[imageIndex]([timeCoord]).wait()
+# 
+#             #the bboxes should be the same for all channels
+#             mins = feats[timeCoord][default_features_key]["Coord<Minimum>"]
+#             maxs = feats[timeCoord][default_features_key]["Coord<Maximum>"]
+#             bboxes = dict()
+#             bboxes["Coord<Minimum>"] = mins
+#             bboxes["Coord<Maximum>"] = maxs
+#             self._labelBBoxes[imageIndex][timeCoord]=bboxes
 
     def triggerTransferLabels(self, imageIndex):
+        # FIXME: This function no longer works, partly thanks to the code commented out above.  See "FIXME: TRANSFER LABELS"
         if not self._needLabelTransfer:
             return None
         if not self.SegmentationImages[imageIndex].ready():
