@@ -837,47 +837,53 @@ class OpObjectTrain(Operator):
             # no features - no predictions
             self.Classifier.setValue(None)
             return
-        
-        for i in range(len(self.Labels)):
-            # this loop is by image, not time! 
 
+        lock = RequestLock()
+        def fetch_features(lane_index):
             # TODO: we should be able to use self.Labels[i].value,
             # but the current implementation of Slot.value() does not
             # do the right thing.
-            labels_image = self.Labels[i]([]).wait()
+            labels_image = self.Labels[lane_index]([]).wait()
             labels_image_filtered = {}
             nztimes = []
             for timestep, labels_time in labels_image.iteritems():
                 nz = numpy.nonzero(labels_time)
                 if len(nz[0])==0:
-                    continue
+                    return
                 else:
                     nztimes.append(timestep)
                     labels_image_filtered[timestep] = labels_time
 
             if len(nztimes)==0:
-                continue
+                return
             # compute the features if there are nonzero labels in this image
             # and only for the time steps, which have labels
-            feats = self.Features[i](nztimes).wait()
+            feats = self.Features[lane_index](nztimes).wait()
 
             featstmp, row_names, col_names, labelstmp = make_feature_array(feats, selected, labels_image_filtered)
             if labelstmp.size == 0 or featstmp.size == 0:
-                continue
+                return
 
             rows, cols = replace_missing(featstmp)
 
-            featList.append(featstmp)
-            all_col_names.append(tuple(col_names))
-            labelsList.append(labelstmp)
+            # Critical section: Adding to shared lists.
+            with lock:
+                featList.append(featstmp)
+                all_col_names.append(tuple(col_names))
+                labelsList.append(labelstmp)
+    
+                for idx in rows:
+                    t, obj = row_names[idx]
+                    all_bad_objects[lane_index][t].append(obj)
+    
+                for c in cols:
+                    all_bad_feats.add(col_names[c])
 
-            for idx in rows:
-                t, obj = row_names[idx]
-                all_bad_objects[i][t].append(obj)
-
-            for c in cols:
-                all_bad_feats.add(col_names[c])
-
+        pool = RequestPool()
+        for i in range(len(self.Labels)):
+            # this loop is by image, not time! 
+            pool.add( Request( partial(fetch_features, i) ) )
+        pool.wait()
 
         if len(labelsList)==0:
             #no labels, return here
