@@ -210,7 +210,8 @@ class OpInputDataReader(Operator):
             # If the h5 dataset is compressed, we'll have better performance 
             #  with a multi-process hdf5 access object.
             # (Otherwise, single-process is faster.)
-            if compression_setting is not None:
+            allow_multiprocess_hdf5 = "LAZYFLOW_MULTIPROCESS_HDF5" in os.environ and os.environ["LAZYFLOW_MULTIPROCESS_HDF5"] != ""
+            if compression_setting is not None and allow_multiprocess_hdf5:
                 h5File.close()                
                 h5File = MultiProcessHdf5File(externalPath, 'r')
         except OpInputDataReader.DatasetReadError:
