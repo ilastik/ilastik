@@ -31,10 +31,11 @@ from lazyflow.rtype import Roi, SubRegion
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
 from lazyflow.utility import BigRequestStreamer
 from lazyflow.utility.io.blockwiseFileset import BlockwiseFileset
-
-from ilastik.clusterConfig import parseClusterConfigFile
 from lazyflow.utility.timer import Timer
 from lazyflow.utility.pathHelpers import getPathVariants
+
+from ilastik.clusterConfig import parseClusterConfigFile
+from ilastik.workflow import Workflow
 
 import logging
 logger = logging.getLogger(__name__)
@@ -46,16 +47,12 @@ class OpTaskWorker(Operator):
     ConfigFilePath = InputSlot(stype='filestring')
     OutputFilesetDescription = InputSlot(stype='filestring')
 
-    SecondaryInputs = InputSlot(level=1, optional=True)
-    SecondaryOutputDescriptions = InputSlot(level=1, optional=True)
-    
     ReturnCode = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super( OpTaskWorker, self ).__init__( *args, **kwargs )
         self.progressSignal = OrderedSignal()
         self._primaryBlockwiseFileset = None
-        self._secondaryBlockwiseFilesets = []
 
     def setupOutputs(self):
         self.ReturnCode.meta.dtype = bool
@@ -63,10 +60,6 @@ class OpTaskWorker(Operator):
         
         self._closeFiles()
         self._primaryBlockwiseFileset = BlockwiseFileset( self.OutputFilesetDescription.value, 'a' )        
-        self._secondaryBlockwiseFilesets = []
-        for slot in self.SecondaryOutputDescriptions:
-            descriptionPath = slot.value
-            self._secondaryBlockwiseFilesets.append( BlockwiseFileset( descriptionPath, 'a' ) )
     
     def cleanUp(self):
         self._closeFiles()
@@ -75,10 +68,7 @@ class OpTaskWorker(Operator):
     def _closeFiles(self):
         if self._primaryBlockwiseFileset is not None:
             self._primaryBlockwiseFileset.close()
-        for fileset in self._secondaryBlockwiseFilesets:
-            fileset.close()
         self._primaryBlockwiseFileset = None
-        self._secondaryBlockwiseFilesets = []
 
     def execute(self, slot, subindex, ignored_roi, result):
         configFilePath = self.ConfigFilePath.value
@@ -105,16 +95,10 @@ class OpTaskWorker(Operator):
         assert (blockwiseFileset.getEntireBlockRoi( roi.start )[1] == roi.stop).all(), "Each task must execute exactly one full block.  ({},{}) is not a valid block roi.".format( roi.start, roi.stop )
         assert self.Input.ready()
 
-        # Convert the task subrequest shape dict into a shape for this dataset (and axisordering)
-        subrequest_shape = map( lambda tag: config.task_subrequest_shape[tag.key], self.Input.meta.axistags )
-        primary_subrequest_shape = self._primaryBlockwiseFileset.description.sub_block_shape
-        if primary_subrequest_shape is not None:
-            # If the output dataset specified a sub_block_shape, override the cluster config
-            subrequest_shape = primary_subrequest_shape
-
         with Timer() as computeTimer:
             # Stream the data out to disk.
-            streamer = BigRequestStreamer(self.Input, (roi.start, roi.stop), subrequest_shape, config.task_parallel_subrequests )
+            request_blockshape = self._primaryBlockwiseFileset.description.sub_block_shape # Could be None.  That's okay.
+            streamer = BigRequestStreamer(self.Input, (roi.start, roi.stop), request_blockshape )
             streamer.progressSignal.subscribe( self.progressSignal )
             streamer.resultSignal.subscribe( self._handlePrimaryResultBlock )
             streamer.execute()
@@ -133,29 +117,20 @@ class OpTaskWorker(Operator):
         # First write the primary
         self._primaryBlockwiseFileset.writeData(roi, result)
 
-        # Get this block's index with respect to the primary dataset
-        sub_block_index = roi[0] / self._primaryBlockwiseFileset.description.sub_block_shape
-        
-        # Now request the secondaries
-        for slot, fileset in zip(self.SecondaryInputs, self._secondaryBlockwiseFilesets):
-            # Compute the corresponding sub_block in this output dataset
-            sub_block_shape = fileset.description.sub_block_shape
-            sub_block_start = sub_block_index * sub_block_shape
-            sub_block_stop = sub_block_start + sub_block_shape
-            sub_block_stop = numpy.minimum( sub_block_stop, fileset.description.shape )
-            sub_block_roi = (sub_block_start, sub_block_stop)
-            
-            secondary_result = slot( *sub_block_roi ).wait()
-            fileset.writeData( sub_block_roi, secondary_result )
+        # Ask the workflow if there is any special post-processing to do...
+        self.get_workflow().postprocessClusterSubResult(roi, result, self._primaryBlockwiseFileset)
+
+    def get_workflow(self):
+        op = self
+        while not isinstance(op, Workflow):
+            op = op.parent
+        return op
 
 class OpClusterize(Operator):
     Input = InputSlot()
     OutputDatasetDescription = InputSlot()
     ProjectFilePath = InputSlot(stype='filestring')
     ConfigFilePath = InputSlot(stype='filestring')
-
-    SecondaryInputs = InputSlot(level=1, optional=True)
-    SecondaryOutputDescriptions = InputSlot(level=1, optional=True)
     
     ReturnCode = OutputSlot()
 
@@ -168,32 +143,6 @@ class OpClusterize(Operator):
         self.ReturnCode.meta.dtype = bool
         self.ReturnCode.meta.shape = (1,)
 
-        # Check for errors
-        primaryOutputDescription = BlockwiseFileset.readDescription(self.OutputDatasetDescription.value)
-        primary_block_shape = primaryOutputDescription.block_shape
-        primary_sub_block_shape = primaryOutputDescription.sub_block_shape
-        assert primary_sub_block_shape is not None, "Primary output description file must specify a sub_block_shape"
-
-        # Ratio of blocks to sub-blocks for all secondaries must match the primary.
-        primary_sub_block_factor = (primary_block_shape + primary_sub_block_shape - 1) / primary_sub_block_shape
-        
-        for i, slot in enumerate( self.SecondaryOutputDescriptions ):
-            descriptionPath = slot.value
-            secondaryDescription = BlockwiseFileset.readDescription(descriptionPath)
-            block_shape = secondaryDescription.block_shape
-            sub_block_shape = secondaryDescription.sub_block_shape
-            assert sub_block_shape is not None, "Secondary output description #{} doesn't specify a sub_block_shape".format( i )
-            
-            sub_block_factor = (block_shape + sub_block_shape - 1) / sub_block_shape
-            if (tuple(primary_sub_block_factor) != tuple(sub_block_factor)):
-                msg = "Error: Ratio of sub_block_shape to block_shape must be the same in the primary output dataset and in all secondary datasets.\n"
-                msg += "Secondary dataset {} has a factor of {}, which doesn't match primary factor of {}".format( i, sub_block_factor, primary_sub_block_factor )
-                raise RuntimeError(msg)
-    
-    def _validateConfig(self):
-        if not self._config.use_master_local_scratch:
-            assert self._config.node_output_compression_cmd is None, "Can't use node dataset compression unless master local scratch is also used."
-    
     def execute(self, slot, subindex, roi, result):
         dtypeBytes = self._getDtypeBytes()
         totalBytes = dtypeBytes * numpy.prod(self.Input.meta.shape)
@@ -202,8 +151,6 @@ class OpClusterize(Operator):
 
         configFilePath = self.ConfigFilePath.value
         self._config = parseClusterConfigFile( configFilePath )
-
-        self._validateConfig()
 
         # Create the destination file if necessary
         blockwiseFileset, taskInfos = self._prepareDestination()
@@ -268,8 +215,6 @@ class OpClusterize(Operator):
             commandArgs.append( "--_node_work_=\"" + Roi.dumps( taskInfo.subregion ) + "\"" )
             commandArgs.append( "--process_name={}".format(taskName)  )
             commandArgs.append( "--output_description_file={}".format( self.OutputDatasetDescription.value )  )
-            for slot in self.SecondaryOutputDescriptions:
-                commandArgs.append( "--secondary_output_description_file={}".format( slot.value )  )
 
             # Check the command format string: We need to know where to put our args...
             commandFormat = self._config.command_format
@@ -277,6 +222,8 @@ class OpClusterize(Operator):
 
             # Output log directory might be a relative path (relative to config file)
             absLogDir, _ = getPathVariants(self._config.output_log_directory, os.path.split( self.ConfigFilePath.value )[0] )
+            if not os.path.exists(absLogDir):
+                os.makedirs(absLogDir)
             taskOutputLogFilename = taskName + ".log"
             taskOutputLogPath = os.path.join( absLogDir, taskOutputLogFilename )
             

@@ -22,6 +22,10 @@ import sys
 import os
 import warnings
 import argparse
+import csv
+
+import numpy
+import h5py
 
 from ilastik.workflow import Workflow
 from ilastik.applets.projectMetadata import ProjectMetadataApplet
@@ -50,6 +54,14 @@ logger = logging.getLogger(__name__)
 EXPORT_SELECTION_PREDICTIONS = 0
 EXPORT_SELECTION_PROBABILITIES = 1
 EXPORT_SELECTION_PIXEL_PROBABILITIES = 2
+
+# Constants for pointcloud generation on cluster
+CSV_FORMAT = { 'delimiter' : '\t', 'lineterminator' : '\n' }
+OUTPUT_COLUMNS = ["x_px", "y_px", "z_px", 
+                  "size_px", 
+                  "min_x_px", "min_y_px", "min_z_px", 
+                  "max_x_px", "max_y_px", "max_z_px"]
+
 
 class ObjectClassificationWorkflow(Workflow):
     workflowName = "Object Classification Workflow Base"
@@ -150,6 +162,8 @@ class ObjectClassificationWorkflow(Workflow):
 
             self._initBatchWorkflow()
 
+            self._batch_export_args = None
+            self._batch_input_args = None
             if unused_args:
                 # Additional export args (specific to the object classification workflow)
                 export_arg_parser = argparse.ArgumentParser()
@@ -439,10 +453,111 @@ class ObjectClassificationWorkflow(Workflow):
             return self.opBatchClassify.PredictionImage
         raise Exception("Unknown headless output slot")
 
-    def getSecondaryHeadlessOutputSlots(self, slotId):
-        if slotId == "BatchPredictionImage":
-            return [self.opBatchClassify.BlockwiseRegionFeatures]
-        raise Exception("Unknown headless output slot")
+    def postprocessClusterSubResult(self, roi, result, blockwise_fileset):
+        """
+        """
+        # TODO: Here, we hard-code to select from the first lane only.
+        opBatchClassify = self.opBatchClassify[0]
+        
+        from lazyflow.utility.io.blockwiseFileset import vectorized_pickle_dumps
+        # Assume that roi always starts as a multiple of the blockshape
+        block_shape = opBatchClassify.get_blockshape()
+        assert all(block_shape == blockwise_fileset.description.sub_block_shape), "block shapes don't match"
+        assert all((roi[0] % block_shape) == 0), "Sub-blocks must exactly correspond to the blockwise object classification blockshape"
+        sub_block_index = roi[0] / blockwise_fileset.description.sub_block_shape
+
+        sub_block_start = sub_block_index
+        sub_block_stop = sub_block_start + 1
+        sub_block_roi = (sub_block_start, sub_block_stop)
+        
+        # FIRST, remove all objects that lie outside the block (i.e. remove the ones in the halo)
+        region_features = opBatchClassify.BlockwiseRegionFeatures( *sub_block_roi ).wait()
+        region_features_dict = region_features.flat[0]
+        region_centers = region_features_dict['Default features']['RegionCenter']
+
+        opBlockPipeline = opBatchClassify._blockPipelines[ tuple(roi[0]) ]
+
+        # Compute the block offset within the image coordinates
+        halo_roi = opBlockPipeline._halo_roi
+
+        translated_region_centers = region_centers + halo_roi[0][1:-1]
+
+        # TODO: If this is too slow, vectorize this
+        mask = numpy.zeros( region_centers.shape[0], dtype=numpy.bool_ )
+        for index, translated_region_center in enumerate(translated_region_centers):
+            # FIXME: Here we assume t=0 and c=0
+            mask[index] = opBatchClassify.is_in_block( roi[0], (0,) + tuple(translated_region_center) + (0,) )
+        
+        # Always exclude the first object (it's the background??)
+        mask[0] = False
+        
+        # Remove all 'negative' predictions, emit only 'positive' predictions
+        # FIXME: Don't hardcode this?
+        POSITIVE_LABEL = 2
+        objectwise_predictions = opBlockPipeline.ObjectwisePredictions([]).wait()[0]
+        assert objectwise_predictions.shape == mask.shape
+        mask[objectwise_predictions != POSITIVE_LABEL] = False
+
+        filtered_features = {}
+        for feature_group, feature_dict in region_features_dict.items():
+            filtered_group = filtered_features[feature_group] = {}
+            for feature_name, feature_array in feature_dict.items():
+                filtered_group[feature_name] = feature_array[mask]
+
+        # SECOND, translate from block-local coordinates to global (file) coordinates.
+        # Unfortunately, we've got multiple translations to perform here:
+        # Coordinates in the region features are relative to their own block INCLUDING HALO,
+        #  so we need to add the start of the block-with-halo as an offset.
+        # BUT the image itself may be offset relative to the BlockwiseFileset coordinates
+        #  (due to the view_origin setting), so we also need to add an offset for that, too
+
+        # Get the image offset relative to the file coordinates
+        image_offset = blockwise_fileset.description.view_origin
+        
+        total_offset_5d = halo_roi[0] + image_offset
+        total_offset_3d = total_offset_5d[1:-1]
+
+        filtered_features["Default features"]["RegionCenter"] += total_offset_3d
+        filtered_features["Default features"]["Coord<Minimum>"] += total_offset_3d
+        filtered_features["Default features"]["Coord<Maximum>"] += total_offset_3d
+
+        # Finally, write the features to hdf5
+        h5File = blockwise_fileset.getOpenHdf5FileForBlock( roi[0] )
+        if 'pickled_region_features' in h5File:
+            del h5File['pickled_region_features']
+
+        # Must use str dtype
+        dtype = h5py.new_vlen(str)
+        dataset = h5File.create_dataset( 'pickled_region_features', shape=(1,), dtype=dtype )
+        pickled_features = vectorized_pickle_dumps(numpy.array((filtered_features,)))
+        dataset[0] = pickled_features
+
+        object_centers_xyz = filtered_features["Default features"]["RegionCenter"].astype(int)
+        object_min_coords_xyz = filtered_features["Default features"]["Coord<Minimum>"].astype(int)
+        object_max_coords_xyz = filtered_features["Default features"]["Coord<Maximum>"].astype(int)
+        object_sizes = filtered_features["Default features"]["Count"][:,0].astype(int)
+
+        # Also, write out selected features as a 'point cloud' csv file.
+        # (Store the csv file next to this block's h5 file.)
+        dataset_directory = blockwise_fileset.getDatasetDirectory(roi[0])
+        pointcloud_path = os.path.join( dataset_directory, "block-pointcloud.csv" )
+        
+        logger.info("Writing to csv: {}".format( pointcloud_path ))
+        with open(pointcloud_path, "w") as fout:
+            csv_writer = csv.DictWriter(fout, OUTPUT_COLUMNS, **CSV_FORMAT)
+            csv_writer.writeheader()
+        
+            for obj_id in range(len(object_sizes)):
+                fields = {}
+                fields["x_px"], fields["y_px"], fields["z_px"], = object_centers_xyz[obj_id]
+                fields["min_x_px"], fields["min_y_px"], fields["min_z_px"], = object_min_coords_xyz[obj_id]
+                fields["max_x_px"], fields["max_y_px"], fields["max_z_px"], = object_max_coords_xyz[obj_id]
+                fields["size_px"] = object_sizes[obj_id]
+
+                csv_writer.writerow( fields )
+                #fout.flush()
+        
+        logger.info("FINISHED csv export")
 
     def handleAppletStateUpdateRequested(self, upstream_ready=False):
         """

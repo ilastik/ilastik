@@ -38,7 +38,7 @@ debug: false
 plugin_directories: ~/.ilastik/plugins,
 
 [lazyflow]
-threads: 0
+threads: -1
 total_ram_mb: 0
 """
 
