@@ -437,6 +437,7 @@ class SerialHdf5BlockSlot(SerialBlockSlot):
             return int(index_capture.match(s).groups()[0])
         for index, t in enumerate(sorted(mygroup.items(), key=lambda (k,v): extract_index(k))):
             groupName, labelGroup = t
+            assert extract_index(groupName) == index, "subgroup extraction order should be numerical order!"
             for blockRoiString, blockDataset in labelGroup.items():
                 blockRoi = eval(blockRoiString)
                 roiShape = TinyVector(blockRoi[1]) - TinyVector(blockRoi[0])
