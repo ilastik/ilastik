@@ -14,17 +14,6 @@ from ilastik.utility.commandProcessor import CommandProcessor
 logger = logging.getLogger(__name__)
 
 
-def p(mode):
-    def inner(*args):
-        print mode, ": ",
-        print args
-    return inner
-
-logger.info = p("info")
-logger.debug = p("debug")
-logger.exception = p("exception")
-
-
 class Singleton(type):
     _instances = {}
 
@@ -218,8 +207,9 @@ class IPCServerManager(object):
                 "client": (host, remote_server_port)
             }
             self.info.update_connections(self.connections)
-        elif self.connections[(name, host)]["client"][0] != remote_server_port:
-            self.connections[(name, host)]["client"][0] = remote_server_port
+        elif self.connections[(name, host)]["client"][1] != remote_server_port:
+            client = self.connections[(name, host)]["client"]
+            self.connections[(name, host)]["client"] = (client[0], remote_server_port)
 
     def change_connection(self, index, enabled):
         """
