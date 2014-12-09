@@ -169,7 +169,7 @@ class OpNansheGenerateDictionary(Operator):
         mode = self.Mode.value
         modeD = self.ModeD.value
 
-        processed = nanshe.advanced_image_processing.generate_dictionary(raw.astype(numpy.float64),
+        processed = nanshe.advanced_image_processing.generate_dictionary(raw,
                                                                          **{ "spams.trainDL" :
                                                                                  {
                                                                                      "K" : K,
