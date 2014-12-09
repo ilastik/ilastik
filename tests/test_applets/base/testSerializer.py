@@ -293,7 +293,8 @@ class TestSerialBlockSlot(unittest.TestCase):
         return opLabelArrays, slotSerializer
 
     def testBasic(self):
-        h5_filepath = os.path.join( tempfile.mkdtemp(), 'serial_blockslot_test.h5' )
+        tmp_dir = tempfile.mkdtemp()
+        h5_filepath = os.path.join(tmp_dir , 'serial_blockslot_test.h5' )
 
         # Create an operator and a serializer to write the data.
         opLabelArrays, slotSerializer = self._init_objects()
@@ -317,6 +318,9 @@ class TestSerialBlockSlot(unittest.TestCase):
         # Verify that we get the same data back.
         assert ( opLabelArrays.Output[0][10:11, 10:20, 10:20, 0:1].wait() == 1 ).all()
         assert ( opLabelArrays.Output[0][11:12, 10:20, 10:20, 0:1].wait() == 2 ).all()
+
+        os.remove(h5_filepath)
+        shutil.rmtree(tmp_dir)
 
 if __name__ == "__main__":
     unittest.main()
