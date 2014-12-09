@@ -15,6 +15,7 @@ class NewSegmentor(object):
             self.volume_feat = numpy.require(self.volume_feat, dtype=numpy.float32)
 
             self.shape = self.labels.shape
+            self.nDim = len(self.shape)
             self.gridGraph = vgraph.gridGraph(self.shape)
             self.rag = vgraph.regionAdjacencyGraph(self.gridGraph, self.labels)
 
@@ -27,8 +28,12 @@ class NewSegmentor(object):
 
         with vigra.Timer("alloc maps"):
             self.uncertainty = numpy.zeros((self.rag.nodeNum,),numpy.uint8)
-            self.segmentation =  numpy.zeros(self.shape + (1,),numpy.uint32)
-            self.seeds =  numpy.zeros(self.shape + (1,1),numpy.uint32)
+            if(self.nDim == 2):
+                self.segmentation =  numpy.zeros(self.shape + (1,),numpy.uint32)
+                self.seeds =  numpy.zeros(self.shape + (1,1),numpy.uint32)
+            else:
+                self.segmentation =  numpy.zeros(self.shape ,numpy.uint32)
+                self.seeds =  numpy.zeros(self.shape + (1,),numpy.uint32)
             #self.regionCenter = calcRegionCenters(self._regionVol, self.rag.nodeNum)
             #self.regionSize = calcRegionSizes(self._regionVol, self.rag.nodeNum)
 
@@ -55,4 +60,7 @@ class NewSegmentor(object):
         print "seg is done"
         print seg.shape
         print numpy.unique(seg)
-        self.segmentation[:,:,0] = seg
+        if self.nDim == 2:
+            self.segmentation[:,:,0] = seg
+        else :
+            self.segmentation[:,:,:] = seg
