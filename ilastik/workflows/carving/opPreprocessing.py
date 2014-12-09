@@ -36,6 +36,8 @@ from ilastik.applets.base.applet import DatasetConstraintError
 #carving Cython module
 from cylemon.segmentation import MSTSegmentor
 
+from newMst import NewSegmentor
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -221,16 +223,21 @@ class OpMstSegmentorProvider(Operator):
                 self.applet.progressSignal.emit(x)
                 self.applet.progress = x
         
-        mst= MSTSegmentor(labelVolume[0,...,0], 
-                          numpy.asarray(volume_feat[0,...,0], numpy.float32), 
-                          edgeWeightFunctor = "minimum",
-                          progressCallback = updateProgressBar)
-        #mst.raw is not set here in order to avoid redundant data storage 
-        mst.raw = None
+       #mst= MSTSegmentor(labelVolume[0,...,0], 
+       #                  numpy.asarray(volume_feat[0,...,0], numpy.float32), 
+       #                  edgeWeightFunctor = "minimum",
+       #                  progressCallback = updateProgressBar)
+       ##mst.raw is not set here in order to avoid redundant data storage 
+       #mst.raw = None
         
+
+        newMst = NewSegmentor(labelVolume[0,...,0],numpy.asarray(volume_feat[0,...,0], numpy.float32), 
+                          edgeWeightFunctor = "minimum",progressCallback = updateProgressBar)
+
         #Output is of shape 1
-        result[0] = mst
-        
+        #result[0] = mst
+        newMst.raw = None
+        result[0] = newMst
         return result        
 
     def propagateDirty(self, slot, subindex, roi):

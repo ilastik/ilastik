@@ -613,6 +613,9 @@ class OpCarving(Operator):
         sl = roi.toSlice()
         if slot == self.Segmentation:
             #avoid data being copied
+            print "SLICE",sl
+
+
             temp = self._mst.segmentation[sl[1:4]]
             temp.shape = (1,) + temp.shape + (1,)
         elif slot == self.Supervoxels:
@@ -672,6 +675,8 @@ class OpCarving(Operator):
             with Timer() as timer:
                 logger.info( "Writing seeds to MST" )
                 if hasattr(key, '__len__'):
+                    print "self._mst.seeds",self._mst.seeds.shape
+                    print "value",value.shape
                     self._mst.seeds[key[1:4]] = value
                 else:
                     self._mst.seeds[key] = value
@@ -708,7 +713,8 @@ class OpCarving(Operator):
             logger.info( " ... carving took %f sec." % (time.time()-t1) )
 
             self.Segmentation.setDirty(slice(None))
-            hasSeg = numpy.any(self._mst.segmentation.lut > 0 )
+            hasSeg = numpy.any(self._mst.segmentation)
+            #hasSeg = numpy.any(self._mst.segmentation.lut > 0 )
             self.HasSegmentation.setValue(hasSeg)
             
         elif slot == self.MST:
