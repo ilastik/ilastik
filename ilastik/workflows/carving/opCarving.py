@@ -313,12 +313,12 @@ class OpCarving(Operator):
         Clears the current labeling.
         """
         self._clearLabels()
-
-        lut_segmentation = self._mst.segmentation.lut[:]
-        lut_segmentation[:] = 0
-        lut_seeds = self._mst.seeds.lut[:]
-        lut_seeds[:] = 0
-        self.HasSegmentation.setValue(False)
+        self._mst.seeds[:] = 0
+        #lut_segmentation = self._mst.segmentation.lut[:]
+        #lut_segmentation[:] = 0
+        #lut_seeds = self._mst.seeds.lut[:]
+        #lut_seeds[:] = 0
+        #self.HasSegmentation.setValue(False)
 
         self.Trigger.setDirty(slice(None))
                 
@@ -668,16 +668,20 @@ class OpCarving(Operator):
 
             # Important: mst.seeds will requires erased values to be 255 (a.k.a -1)
             value[:] = numpy.where(value == 100, 255, value)
-
+            seedVal = value.max()
             with Timer() as timer:
                 logger.info( "Writing seeds to MST" )
                 if hasattr(key, '__len__'):
-                    print "self._mst.seeds",self._mst.seeds.shape
-                    print "value",value.shape
                     print numpy.unique(value)
 
-
-                    self._mst.seeds[key[1:4]] = value
+                    
+                    seedView = self._mst.seeds[key[1:4]].squeeze()
+                    valueView = value.squeeze()
+                    whereSeed = numpy.where(valueView!=0)
+                    if seedVal == 1 or seedVal == 2:
+                        seedView[whereSeed] = valueView[whereSeed]
+                    else :
+                        seedView[whereSeed] = 0
                 else:
                     self._mst.seeds[key] = value
             logger.info( "Writing seeds to MST took {} seconds".format( timer.seconds() ) )
