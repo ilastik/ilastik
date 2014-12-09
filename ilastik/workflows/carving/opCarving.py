@@ -613,9 +613,6 @@ class OpCarving(Operator):
         sl = roi.toSlice()
         if slot == self.Segmentation:
             #avoid data being copied
-            print "SLICE",sl
-
-
             temp = self._mst.segmentation[sl[1:4]]
             temp.shape = (1,) + temp.shape + (1,)
         elif slot == self.Supervoxels:
@@ -677,6 +674,9 @@ class OpCarving(Operator):
                 if hasattr(key, '__len__'):
                     print "self._mst.seeds",self._mst.seeds.shape
                     print "value",value.shape
+                    print numpy.unique(value)
+
+
                     self._mst.seeds[key[1:4]] = value
                 else:
                     self._mst.seeds[key] = value

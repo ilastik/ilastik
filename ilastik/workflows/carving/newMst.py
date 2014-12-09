@@ -7,7 +7,7 @@ class NewSegmentor(object):
     def __init__(self, labels, volume_feat, edgeWeightFunctor, progressCallback):
         iEdgeMap = vgraph.implicitMeanEdgeMap
 
-
+        self.regionVol = labels
         with vigra.Timer("computeRag"):
             self.labels = numpy.squeeze(labels)
             self.labels = numpy.require(self.labels, dtype=numpy.uint32)
@@ -41,7 +41,8 @@ class NewSegmentor(object):
     def run(self, unaries, prios = None, uncertainty="exchangeCount",
             moving_average = False, noBiasBelow = 0, **kwargs):
         
-
+        backgroundPrior = 0.1 #float(prios[1])
+        print "prior ",backgroundPrior
         print "accumulate seeds"
         seeds = numpy.squeeze(self.seeds)
         self.accSeeds = self.rag.accumulateSeeds(seeds)
@@ -53,11 +54,11 @@ class NewSegmentor(object):
 
         print "cues",self.edgeCuesMean.shape, self.edgeCuesMean.dtype
         print "seeds",seeds.shape, seeds.dtype
-
-        labelsNodeWeighted  = vgraph.edgeWeightedWatersheds(self.rag, self.edgeCuesMean, self.accSeeds)
+        print "unique seeds",numpy.unique(seeds)
+        labelsNodeWeighted  = vgraph.edgeWeightedWatersheds(self.rag, self.edgeCuesMean, self.accSeeds,backgroundBias=backgroundPrior, backgroundLabel=1)
 
         seg = self.rag.projectLabelsToBaseGraph(labelsNodeWeighted)
-        print "seg is done"
+        print "seg is done",self.nDim
         print seg.shape
         print numpy.unique(seg)
         if self.nDim == 2:
