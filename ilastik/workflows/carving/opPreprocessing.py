@@ -86,12 +86,16 @@ class OpFilter(Operator):
                 # true 3D volume
                 if volume_filter == OpFilter.HESSIAN_BRIGHT:
                     logger.info( "lowest eigenvalue of Hessian of Gaussian" )
-                    result_view[...] = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,:,2]
+                    options = vigra.blockwise.BlockwiseConvolutionOptions3D()
+                    options.stdDev = (sigma, )*3 
+                    result_view[...] = vigra.blockwise.hessianOfGaussianEigenvalues(fvol,options)[:,:,:,2]
                     result_view[:] = numpy.max(result_view) - result_view
                 
                 elif volume_filter == OpFilter.HESSIAN_DARK:
                     logger.info( "greatest eigenvalue of Hessian of Gaussian" )
-                    result_view[...] = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,:,0]
+                    options = vigra.blockwise.BlockwiseConvolutionOptions3D()
+                    options.stdDev = (sigma, )*3 
+                    result_view[...] = vigra.blockwise.hessianOfGaussianEigenvalues(fvol,options)[:,:,:,0]
                      
                 elif volume_filter == OpFilter.STEP_EDGES:
                     logger.info( "Gaussian Gradient Magnitude" )

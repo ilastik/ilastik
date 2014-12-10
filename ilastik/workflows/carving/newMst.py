@@ -22,14 +22,12 @@ class NewSegmentor(object):
 
             self.numNodes = self.rag.nodeNum
         with vigra.Timer("accumulate edge features"):
+
+
             print self.volume_feat.shape, self.volume_feat.dtype
             gridGraphEdgeMap = iEdgeMap(self.rag.baseGraph, self.volume_feat) 
-            self.edgeCuesMean = self.rag.accumulateEdgeFeatures(gridGraphEdgeMap)
+            self.edgeCuesMean = self.rag.accumulateEdgeFeatures(gridGraphEdgeMap, acc='mean')
 
-            print "min", self.edgeCuesMean.min()
-            print "max", self.edgeCuesMean.max()
-
-            self.edgeCuesMean = 1.0 - numpy.exp(-0.001*self.edgeCuesMean)
 
             print "min", self.edgeCuesMean.min()
             print "max", self.edgeCuesMean.max()
@@ -54,15 +52,15 @@ class NewSegmentor(object):
         seeds = numpy.squeeze(self.seeds)
         self.accSeeds = self.rag.accumulateSeeds(seeds)
 
-        print "unaries",unaries.shape, unaries.min(),unaries.max()
+        print "prior", prios, backgroundPrior
 
 
         # node weighted watersheds
         
+        resultSeg  = vgraph.edgeWeightedWatersheds(self.rag, self.edgeCuesMean, self.accSeeds,backgroundBias=backgroundPrior, backgroundLabel=1)
+        #resultSeg  = vgraph.nodeWeightedWatersheds(self.rag, self.nodeCuesMean, self.accSeeds)#,backgroundBias=backgroundPrior, backgroundLabel=1)
 
-        labelsNodeWeighted  = vgraph.edgeWeightedWatersheds(self.rag, self.edgeCuesMean, self.accSeeds,backgroundBias=backgroundPrior, backgroundLabel=1)
-
-        seg = self.rag.projectLabelsToBaseGraph(labelsNodeWeighted)
+        seg = self.rag.projectLabelsToBaseGraph(resultSeg)
         print "seg is done",self.nDim
         print seg.shape
         print numpy.unique(seg)
