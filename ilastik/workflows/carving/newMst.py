@@ -1,10 +1,28 @@
 import vigra
 from vigra import graphs as vgraph
+from vigra import ilastiktools as ilastiktools
 import numpy
+
+
+
+
+
 
 
 class NewSegmentor(object):
     def __init__(self, labels, volume_feat, edgeWeightFunctor, progressCallback):
+
+
+        self.superpixels = numpy.require(labels, dtype="uint32")
+        self.gridRag = ilastiktools.GridRag_3D_UInt32()
+
+        with vigra.Timer("computeRagNew"):
+            self.gridRag.assignLabels(self.superpixels)
+
+
+
+
+
         iEdgeMap = vgraph.implicitMeanEdgeMap
 
         self.object_names = dict()
@@ -19,20 +37,11 @@ class NewSegmentor(object):
             self.nDim = len(self.shape)
             self.gridGraph = vgraph.gridGraph(self.shape)
             self.rag = vgraph.regionAdjacencyGraph(self.gridGraph, self.labels)
-
             self.numNodes = self.rag.nodeNum
+
         with vigra.Timer("accumulate edge features"):
-
-
-            print self.volume_feat.shape, self.volume_feat.dtype
             gridGraphEdgeMap = iEdgeMap(self.rag.baseGraph, self.volume_feat) 
             self.edgeCuesMean = self.rag.accumulateEdgeFeatures(gridGraphEdgeMap, acc='mean')
-
-
-            print "min", self.edgeCuesMean.min()
-            print "max", self.edgeCuesMean.max()
-
-
         with vigra.Timer("alloc maps"):
             self.uncertainty = numpy.zeros((self.rag.nodeNum,),numpy.uint8)
             if(self.nDim == 2):
@@ -47,27 +56,29 @@ class NewSegmentor(object):
 
     def run(self, unaries, prios = None, uncertainty="exchangeCount",
             moving_average = False, noBiasBelow = 0, **kwargs):
-            
-        backgroundPrior = float(prios[1])
-        seeds = numpy.squeeze(self.seeds)
-        self.accSeeds = self.rag.accumulateSeeds(seeds)
+        
+        with vigra.Timer("extract seeds"):
+            backgroundPrior = float(prios[1])
+            seeds = numpy.squeeze(self.seeds)
+            self.accSeeds = self.rag.accumulateSeeds(seeds)
 
-        print "prior", prios, backgroundPrior
+
 
 
         # node weighted watersheds
-        
-        resultSeg  = vgraph.edgeWeightedWatersheds(self.rag, self.edgeCuesMean, self.accSeeds,backgroundBias=backgroundPrior, backgroundLabel=1)
-        #resultSeg  = vgraph.nodeWeightedWatersheds(self.rag, self.nodeCuesMean, self.accSeeds)#,backgroundBias=backgroundPrior, backgroundLabel=1)
+        with vigra.Timer("run watersheds"):
+            resultSeg  = vgraph.edgeWeightedWatersheds(self.rag, self.edgeCuesMean, 
+                                                       self.accSeeds,backgroundBias=backgroundPrior, 
+                                                       backgroundLabel=1)
 
-        seg = self.rag.projectLabelsToBaseGraph(resultSeg)
-        print "seg is done",self.nDim
-        print seg.shape
-        print numpy.unique(seg)
-        if self.nDim == 2:
-            self.segmentation[:,:,0] = seg
-        else :
-            self.segmentation[:,:,:] = seg
+        with vigra.Timer("project RAG seg to voxel seg"):
+            seg = self.rag.projectLabelsToBaseGraph(resultSeg)
+
+        with vigra.Timer("minor stuff"):
+            if self.nDim == 2:
+                self.segmentation[:,:,0] = seg
+            else :
+                self.segmentation[:,:,:] = seg
 
 
 
