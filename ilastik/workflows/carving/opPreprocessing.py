@@ -88,14 +88,14 @@ class OpFilter(Operator):
                     logger.info( "lowest eigenvalue of Hessian of Gaussian" )
                     options = vigra.blockwise.BlockwiseConvolutionOptions3D()
                     options.stdDev = (sigma, )*3 
-                    result_view[...] = vigra.blockwise.hessianOfGaussianEigenvalues(fvol,options)[:,:,:,2]
+                    result_view[...] = vigra.blockwise.hessianOfGaussianLastEigenvalue(fvol,options)[:,:,:]
                     result_view[:] = numpy.max(result_view) - result_view
                 
                 elif volume_filter == OpFilter.HESSIAN_DARK:
                     logger.info( "greatest eigenvalue of Hessian of Gaussian" )
                     options = vigra.blockwise.BlockwiseConvolutionOptions3D()
                     options.stdDev = (sigma, )*3 
-                    result_view[...] = vigra.blockwise.hessianOfGaussianEigenvalues(fvol,options)[:,:,:,0]
+                    result_view[...] = vigra.blockwise.hessianOfGaussianFirstEigenvalue(fvol,options)[:,:,:]
                      
                 elif volume_filter == OpFilter.STEP_EDGES:
                     logger.info( "Gaussian Gradient Magnitude" )

@@ -142,3 +142,11 @@ class NewSegmentor(object):
                 print "   done"
         """
         pass
+
+
+
+    def addSeed(self, roi, seeds):
+        pass
+
+    def getVoxelSegmentation(self):
+        pass
