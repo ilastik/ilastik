@@ -199,7 +199,6 @@ class OpConservationTracking(OpTrackingBase):
                                             transWeight,
                                             disappearance_cost, # disappearance cost
                                             appearance_cost, # appearance cost
-                                            withMergerResolution,
                                             ndim,
                                             transition_parameter,
                                             borderAwareWidth,
