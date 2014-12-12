@@ -229,5 +229,28 @@ class ConservationTrackingGui( TrackingBaseGui ):
         req.notify_failed( _handle_failure )
         req.notify_finished( _handle_finished )
         req.submit()
-                
 
+    def menus(self):
+        if not ilastik_config.getboolean("ilastik", "debug"):
+            return []
+
+        m = QtGui.QMenu("&Export", self.volumeEditorWidget)
+        m.addAction("Export Tracking Information").triggered.connect(self.export_tracking_info)
+
+        return [m]
+                
+    def export_tracking_info(self):
+        op = self.topLevelOperatorView
+        from ilastik.utility.hdfFile import HdfFile, TableType, objects_per_frame, ilastik_id
+        label_image = op.LabelImage
+        obj_count = list(objects_per_frame(label_image))
+        track_ids, extra_track_ids = op._setLabel2Color(export_mode=True)
+
+        hdf_file = HdfFile("/home/niels/tracking_gen.h5")
+        hdf_file.add_table("table", TableType.List, range(sum(obj_count)), {"names": ("object id",)})
+        ids = ilastik_id(obj_count)
+        hdf_file.add_table("table", TableType.List, list(ids), {"names": ("time", "ilastik_id")})
+        hdf_file.add_table("table", TableType.IlastikTrackingTable, track_ids,
+                           {"max": 2, "counts": obj_count, "extra ids": extra_track_ids})
+        hdf_file.add_table("table", TableType.IlastikFeatureTable, op.ObjectFeatures, {"selection": []})
+        hdf_file.write_all()
