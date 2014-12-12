@@ -42,7 +42,7 @@ class ExportObjectInfoDialog(QDialog):
         self.ui.featureView.setHeaderLabels(("Select Features",))
         self.ui.featureView.expandAll()
 
-        self.ui.exportPath.setText(os.path.expanduser("~") + "/a.h5")
+        self.ui.exportPath.setText(os.path.expanduser("~") + "/data.h5")
         self.ui.exportPath.dropEvent = self._drop_event
         #self.ui.forceUniqueIds.setEnabled(dimensions[0] > 1)
 

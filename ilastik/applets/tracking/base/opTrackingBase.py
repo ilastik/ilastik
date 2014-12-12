@@ -37,6 +37,7 @@ from lazyflow.roi import sliceToRoi
 import logging
 logger = logging.getLogger(__name__)
 
+
 class OpTrackingBase(Operator):
     name = "Tracking"
     category = "other"
@@ -161,11 +162,14 @@ class OpTrackingBase(Operator):
     def setInSlot(self, slot, subindex, roi, value):
         assert slot == self.InputHdf5, "Invalid slot for setInSlot(): {}".format( slot.name )
         
-    def _setLabel2Color(self, successive_ids=True):
+    def _setLabel2Color(self, successive_ids=True, export_mode=False):
         if not self.EventsVector.ready() or not self.Parameters.ready() \
             or not self.FilteredLabels.ready():            
             return
-        
+
+        if export_mode:
+            assert successive_ids, "Export mode only works for successive ids"
+
         events = self.EventsVector.value
         parameters = self.Parameters.value
         time_min, time_max = parameters['time_range']
@@ -183,7 +187,12 @@ class OpTrackingBase(Operator):
         for i in range(time_range[0]):            
             label2color.append({})
             mergers.append({})
-        
+
+        if export_mode:
+            extra_track_ids = {}
+            multi_move = {}
+            multi_move_next = {}
+
         for i in time_range:
             dis = get_dict_value(events[str(i-time_range[0]+1)], "dis", [])
             app = get_dict_value(events[str(i-time_range[0]+1)], "app", [])
@@ -202,6 +211,9 @@ class OpTrackingBase(Operator):
             label2color.append({})
             mergers.append({})
             moves_at = []
+
+            if export_mode:
+                moves_to = {}
                         
             for e in app:
                 if successive_ids:
@@ -210,7 +222,16 @@ class OpTrackingBase(Operator):
                 else:
                     label2color[-1][int(e[0])] = np.random.randint(1, 255)
 
-            for e in mov:                
+            for e in mov:
+                if export_mode:
+                    if e[1] in moves_to:
+                        multi_move.setdefault(i, {})
+                        multi_move[i][e[0]] = e[1]
+                        multi_move[i][moves_to[e[1]][0]] = e[1]
+                        multi_move_next[(i, e[1])] = 0
+                    moves_to.setdefault(e[1], [])
+                    moves_to[e[1]].append(e[0])
+
                 if not label2color[-2].has_key(int(e[0])):
                     if successive_ids:
                         label2color[-2][int(e[0])] = maxId
@@ -220,16 +241,28 @@ class OpTrackingBase(Operator):
                 label2color[-1][int(e[1])] = label2color[-2][int(e[0])]
                 moves_at.append(int(e[0]))
 
-            for e in div:
-                if not label2color[-2].has_key(int(e[0])):
+                if export_mode:
+                    key = i-1, e[0]
+                    if key in multi_move_next:
+                        multi_move_next[key] = e[1]
+                        multi_move_next[(i, e[1])] = 0
+
+            for e in div:  # event(parent, child, child)
+                #if not label2color[-2].has_key(int(e[0])):
+                if not int(e[0]) in label2color[-2]:
                     if successive_ids:
                         label2color[-2][int(e[0])] = maxId
                         maxId += 1
                     else:
                         label2color[-2][int(e[0])] = np.random.randint(1, 255)
-                ancestor_color = label2color[-2][int(e[0])]
-                label2color[-1][int(e[1])] = ancestor_color
-                label2color[-1][int(e[2])] = ancestor_color
+                if export_mode:
+                    label2color[-1][int(e[1])] = maxId
+                    label2color[-1][int(e[1])] = maxId + 1
+                    maxId += 2
+                else:
+                    ancestor_color = label2color[-2][int(e[0])]
+                    label2color[-1][int(e[1])] = ancestor_color
+                    label2color[-1][int(e[2])] = ancestor_color
             
             for e in merger:
                 mergers[-1][int(e[0])] = int(e[1])
@@ -242,6 +275,19 @@ class OpTrackingBase(Operator):
                     else:
                         label2color[time_range[0] + int(e[2])][int(e[0])] = np.random.randint(1, 255)
                 label2color[-1][int(e[1])] = label2color[time_range[0] + int(e[2])][int(e[0])]
+                if export_mode:
+                    print "multi {} -> {} [{} -> {}]".format(e[0], e[1], time_range[0] + e[2], i)
+                    e_start = int(time_range[0] + e[2])
+                    e_end = int(i)
+                    track_id = label2color[time_range[0] + int(e[2])][int(e[0])]
+                    double_object = multi_move[e_start][e[0]]
+                    for t in xrange(e_start, e_end):
+                        extra_track_ids.setdefault(t+1, {})
+                        extra_track_ids[t+1].setdefault(double_object, [])
+                        extra_track_ids[t+1][double_object].append(track_id)
+                        next_key = (t, double_object)
+                        double_object = multi_move_next[next_key]
+
 
         # last timestep
         merger = get_dict_value(events[str(time_range[-1] - time_range[0] + 1)], "merger", [])
@@ -258,6 +304,9 @@ class OpTrackingBase(Operator):
             for l in fl_at:
                 assert l not in label2color[int(i)+time_range[0]]
                 label2color[int(i)+time_range[0]][l] = 0                
+
+        if export_mode:  # don't set fields when in export_mode
+            return label2color, extra_track_ids
 
         self.label2color = label2color
         self.mergers = mergers        
