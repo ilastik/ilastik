@@ -1,73 +1,27 @@
 import vigra
 from vigra import graphs as vgraph
+from vigra import ilastiktools as ilastiktools
 import numpy
 
 
 class NewSegmentor(object):
     def __init__(self, labels, volume_feat, edgeWeightFunctor, progressCallback):
-        iEdgeMap = vgraph.implicitMeanEdgeMap
 
-        self.object_names = dict()
-        self.regionVol = labels
-        with vigra.Timer("computeRag"):
-            self.labels = numpy.squeeze(labels)
-            self.labels = numpy.require(self.labels, dtype=numpy.uint32)
-            self.volume_feat = numpy.squeeze(volume_feat)
-            self.volume_feat = numpy.require(self.volume_feat, dtype=numpy.float32)
+        self.supervoxelUint32 = labels.astype('uint32')
+        self.volumeFeat = volume_feat.squeeze()
+        with vigra.Timer("new rag"):
+            self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
+            self.gridSegmentor.preprocessing(self.supervoxelUint32,self.volumeFeat)
 
-            self.shape = self.labels.shape
-            self.nDim = len(self.shape)
-            self.gridGraph = vgraph.gridGraph(self.shape)
-            self.rag = vgraph.regionAdjacencyGraph(self.gridGraph, self.labels)
-
-            self.numNodes = self.rag.nodeNum
-        with vigra.Timer("accumulate edge features"):
-
-
-            print self.volume_feat.shape, self.volume_feat.dtype
-            gridGraphEdgeMap = iEdgeMap(self.rag.baseGraph, self.volume_feat) 
-            self.edgeCuesMean = self.rag.accumulateEdgeFeatures(gridGraphEdgeMap, acc='mean')
-
-
-            print "min", self.edgeCuesMean.min()
-            print "max", self.edgeCuesMean.max()
-
-
-        with vigra.Timer("alloc maps"):
-            self.uncertainty = numpy.zeros((self.rag.nodeNum,),numpy.uint8)
-            if(self.nDim == 2):
-                self.segmentation =  numpy.zeros(self.shape + (1,),numpy.uint32)
-                self.seeds =  numpy.zeros(self.shape + (1,1),numpy.uint32)
-            else:
-                self.segmentation =  numpy.zeros(self.shape ,numpy.uint32)
-                self.seeds =  numpy.zeros(self.shape + (1,),numpy.uint32)
-            #self.regionCenter = calcRegionCenters(self._regionVol, self.rag.nodeNum)
-            #self.regionSize = calcRegionSizes(self._regionVol, self.rag.nodeNum)
+        # fixe! which of both??!
+        self.nodeNum = self.gridSegmentor.nodeNum()
+        self.numNodes = self.nodeNum
+       
 
 
     def run(self, unaries, prios = None, uncertainty="exchangeCount",
             moving_average = False, noBiasBelow = 0, **kwargs):
-            
-        backgroundPrior = float(prios[1])
-        seeds = numpy.squeeze(self.seeds)
-        self.accSeeds = self.rag.accumulateSeeds(seeds)
-
-        print "prior", prios, backgroundPrior
-
-
-        # node weighted watersheds
-        
-        resultSeg  = vgraph.edgeWeightedWatersheds(self.rag, self.edgeCuesMean, self.accSeeds,backgroundBias=backgroundPrior, backgroundLabel=1)
-        #resultSeg  = vgraph.nodeWeightedWatersheds(self.rag, self.nodeCuesMean, self.accSeeds)#,backgroundBias=backgroundPrior, backgroundLabel=1)
-
-        seg = self.rag.projectLabelsToBaseGraph(resultSeg)
-        print "seg is done",self.nDim
-        print seg.shape
-        print numpy.unique(seg)
-        if self.nDim == 2:
-            self.segmentation[:,:,0] = seg
-        else :
-            self.segmentation[:,:,:] = seg
+        self.gridSegmentor.run(backgroundPrior=priors[1],noBiasBelow = boBiasBelow)
 
 
 
@@ -145,8 +99,23 @@ class NewSegmentor(object):
 
 
 
-    def addSeed(self, roi, seeds):
-        pass
+    def addSeeds(self, roi, brushStroke):
+        roiBegin  = roi.start[1:4]
+        roiEnd  = roi.stop[1:4]
+        roiShape = [e-b for b,e in zip(roiBegin,roiEnd)]
+        print roiShape
+        brushStroke = brushStroke.reshape(roiShape)
+        brushStroke = vigra.taggedView(brushStroke, 'xyz')
 
-    def getVoxelSegmentation(self):
-        pass
+
+        self.gridSegmentor.addSeeds(
+                                    brushStroke=brushStroke, 
+                                    roiBegin=roiBegin, 
+                                    roiEnd=roiEnd, 
+                                    clearLabel=255)
+
+
+    def getVoxelSegmentation(self, roi, out = None):
+        roiBegin  = roi.start[1:4]
+        roiEnd  = roi.stop[1:4]
+        return self.gridSegmentor.getSegmentation(roiBegin=roiBegin, roiEnd=roiEnd)

@@ -613,8 +613,9 @@ class OpCarving(Operator):
         sl = roi.toSlice()
         if slot == self.Segmentation:
             #avoid data being copied
-            temp = self._mst.segmentation[sl[1:4]]
+            temp = self._mst.getVoxelSegmentation(roi=roi)
             temp.shape = (1,) + temp.shape + (1,)
+            
         elif slot == self.Supervoxels:
             #avoid data being copied
             temp = self._mst.regionVol[sl[1:4]]
@@ -667,22 +668,14 @@ class OpCarving(Operator):
             assert self._mst is not None
 
             # Important: mst.seeds will requires erased values to be 255 (a.k.a -1)
-            value[:] = numpy.where(value == 100, 255, value)
+            #value[:] = numpy.where(value == 100, 255, value)
             seedVal = value.max()
             with Timer() as timer:
                 logger.info( "Writing seeds to MST" )
                 if hasattr(key, '__len__'):
-                    print numpy.unique(value)
-
-                    
-                    seedView = self._mst.seeds[key[1:4]].squeeze()
-                    valueView = value.squeeze()
-                    whereSeed = numpy.where(valueView!=0)
-                    if seedVal == 1 or seedVal == 2:
-                        seedView[whereSeed] = valueView[whereSeed]
-                    else :
-                        seedView[whereSeed] = 0
+                    self._mst.addSeeds(roi=roi, brushStroke=value.squeeze())
                 else:
+                    raise RuntimeError("when is this part of the code called")
                     self._mst.seeds[key] = value
             logger.info( "Writing seeds to MST took {} seconds".format( timer.seconds() ) )
 
