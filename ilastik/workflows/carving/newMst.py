@@ -6,8 +6,7 @@ import numpy
 
 class NewSegmentor(object):
     def __init__(self, labels, volume_feat, edgeWeightFunctor, progressCallback):
-
-        self.supervoxelUint32 = labels.astype('uint32')
+        self.supervoxelUint32 = labels
         self.volumeFeat = volume_feat.squeeze()
         with vigra.Timer("new rag"):
             self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
@@ -24,6 +23,22 @@ class NewSegmentor(object):
         self.gridSegmentor.run(float(prios[1]),float(noBiasBelow))
         self.hasSeg = True
 
+
+    def addSeeds(self, roi, brushStroke):
+        roiBegin  = roi.start[1:4]
+        roiEnd  = roi.stop[1:4]
+        roiShape = [e-b for b,e in zip(roiBegin,roiEnd)]
+        print roiShape
+        brushStroke = brushStroke.reshape(roiShape)
+        self.gridSegmentor.addSeeds(
+                                    brushStroke=brushStroke, 
+                                    roiBegin=roiBegin, 
+                                    roiEnd=roiEnd, 
+                                    maxValidLabel=2)
+
+
+    def getVoxelSegmentation(self, roi, out = None):
+        return self.gridSegmentor.getSegmentation(roiBegin=roi.start[1:4],roiEnd=roi.stop[1:4], out=out)
 
 
     def saveH5(self, filename, groupname, mode="w"):
@@ -96,26 +111,3 @@ class NewSegmentor(object):
                 print "   done"
         """
         pass
-
-
-
-    def addSeeds(self, roi, brushStroke):
-        roiBegin  = roi.start[1:4]
-        roiEnd  = roi.stop[1:4]
-        roiShape = [e-b for b,e in zip(roiBegin,roiEnd)]
-        print roiShape
-        brushStroke = brushStroke.reshape(roiShape)
-        brushStroke = vigra.taggedView(brushStroke, 'xyz')
-
-        print "MAX LABEL",brushStroke.max()
-        self.gridSegmentor.addSeeds(
-                                    brushStroke=brushStroke, 
-                                    roiBegin=roiBegin, 
-                                    roiEnd=roiEnd, 
-                                    maxValidLabel=2)
-
-
-    def getVoxelSegmentation(self, roi, out = None):
-        roiBegin  = roi.start[1:4]
-        roiEnd  = roi.stop[1:4]
-        return self.gridSegmentor.getSegmentation(roiBegin=roiBegin, roiEnd=roiEnd)

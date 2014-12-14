@@ -172,7 +172,9 @@ class OpSimpleWatershed(Operator):
         self.Output.meta.assignFrom(self.Input.meta)
         
         # Use a SIGNED int32 becacuse that's what cylemon.segmentation expects. (Unfortunately.)
-        self.Output.meta.dtype = numpy.int32
+
+        # not any more!
+        self.Output.meta.dtype = numpy.uint32
 
     def execute(self, slot, subindex, roi, result):
         assert roi.stop - roi.start == self.Output.meta.shape, "Watershed must be run on the entire volume."
@@ -188,7 +190,7 @@ class OpSimpleWatershed(Operator):
             else:
                 sys.stdout.write("Watershed..."); sys.stdout.flush()
                 
-                labelVolume = vigra.analysis.watersheds(volume_feat[:,:,0])[0].view(dtype=numpy.int32)
+                labelVolume = vigra.analysis.watersheds(volume_feat[:,:,0])[0]#.view(dtype=numpy.int32)
                 result_view[...] = labelVolume[:,:,numpy.newaxis]
                 logger.info( "done {}".format(numpy.max(labelVolume)) )
 
