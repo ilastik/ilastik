@@ -107,12 +107,12 @@ class NewSegmentor(object):
         brushStroke = brushStroke.reshape(roiShape)
         brushStroke = vigra.taggedView(brushStroke, 'xyz')
 
-
+        print "MAX LABEL",brushStroke.max()
         self.gridSegmentor.addSeeds(
                                     brushStroke=brushStroke, 
                                     roiBegin=roiBegin, 
                                     roiEnd=roiEnd, 
-                                    clearLabel=255)
+                                    maxValidLabel=2)
 
 
     def getVoxelSegmentation(self, roi, out = None):

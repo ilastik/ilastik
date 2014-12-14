@@ -313,7 +313,7 @@ class OpCarving(Operator):
         Clears the current labeling.
         """
         self._clearLabels()
-        self._mst.seeds[:] = 0
+        self._mst.gridSegmentor.clearSeeds()
         #lut_segmentation = self._mst.segmentation.lut[:]
         #lut_segmentation[:] = 0
         #lut_seeds = self._mst.seeds.lut[:]
