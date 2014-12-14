@@ -17,12 +17,12 @@ class NewSegmentor(object):
         self.nodeNum = self.gridSegmentor.nodeNum()
         self.numNodes = self.nodeNum
        
-
+        self.hasSeg = False
 
     def run(self, unaries, prios = None, uncertainty="exchangeCount",
             moving_average = False, noBiasBelow = 0, **kwargs):
-        self.gridSegmentor.run(backgroundPrior=priors[1],noBiasBelow = boBiasBelow)
-
+        self.gridSegmentor.run(float(prios[1]),float(noBiasBelow))
+        self.hasSeg = True
 
 
 
