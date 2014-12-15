@@ -192,6 +192,7 @@ class OpTrackingBase(Operator):
             extra_track_ids = {}
             multi_move = {}
             multi_move_next = {}
+            divisions = []
 
         for i in time_range:
             dis = get_dict_value(events[str(i-time_range[0]+1)], "dis", [])
@@ -255,12 +256,13 @@ class OpTrackingBase(Operator):
                         maxId += 1
                     else:
                         label2color[-2][int(e[0])] = np.random.randint(1, 255)
+                ancestor_color = label2color[-2][int(e[0])]
                 if export_mode:
                     label2color[-1][int(e[1])] = maxId
                     label2color[-1][int(e[1])] = maxId + 1
                     maxId += 2
+                    divisions.append((i, int(e[0]), ancestor_color, int(e[1]), int(e[2])))
                 else:
-                    ancestor_color = label2color[-2][int(e[0])]
                     label2color[-1][int(e[1])] = ancestor_color
                     label2color[-1][int(e[2])] = ancestor_color
             
@@ -276,7 +278,6 @@ class OpTrackingBase(Operator):
                         label2color[time_range[0] + int(e[2])][int(e[0])] = np.random.randint(1, 255)
                 label2color[-1][int(e[1])] = label2color[time_range[0] + int(e[2])][int(e[0])]
                 if export_mode:
-                    print "multi {} -> {} [{} -> {}]".format(e[0], e[1], time_range[0] + e[2], i)
                     e_start = int(time_range[0] + e[2])
                     e_end = int(i)
                     track_id = label2color[time_range[0] + int(e[2])][int(e[0])]
@@ -306,7 +307,7 @@ class OpTrackingBase(Operator):
                 label2color[int(i)+time_range[0]][l] = 0                
 
         if export_mode:  # don't set fields when in export_mode
-            return label2color, extra_track_ids
+            return label2color, extra_track_ids, divisions
 
         self.label2color = label2color
         self.mergers = mergers        
@@ -317,7 +318,9 @@ class OpTrackingBase(Operator):
         if 'MergerOutput' in self.outputs:
             self.MergerOutput._value = None
             self.MergerOutput.setDirty(slice(None))            
-        
+
+    def export_track_ids(self):
+        return self._setLabel2Color(export_mode=True)
 
     def _generate_traxelstore(self,
                                time_range,

@@ -10,7 +10,7 @@ FILE_TYPES = ["h5", "csv"]
 REQ_MSG = " (REQUIRED)"
 RAW_LAYER_SIZE_LIMIT = 1000000
 ALLOWED_EXTENSIONS = ["hdf5", "hd5", "h5", "csv"]
-
+DEFAULT_REQUIRED_FEATURES = ["Count", "Coord", "RegionCenter", ]
 
 class ExportObjectInfoDialog(QDialog):
     """
@@ -69,8 +69,9 @@ class ExportObjectInfoDialog(QDialog):
     """
     def settings(self):
         s = {
-            "file type": FILE_TYPES[self.ui.fileFormat.currentIndex()],
-            "file path": self.ui.exportPath.text(),
+            "file type": unicode(FILE_TYPES[self.ui.fileFormat.currentIndex()]),
+            "file path": unicode(self.ui.exportPath.text()),
+            "compression": {}
         }
 
         if s["file type"] == "h5":
