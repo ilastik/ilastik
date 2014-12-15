@@ -5,18 +5,44 @@ import numpy
 
 
 class NewSegmentor(object):
-    def __init__(self, labels, volume_feat, edgeWeightFunctor, progressCallback):
-        self.supervoxelUint32 = labels
-        self.volumeFeat = volume_feat.squeeze()
-        with vigra.Timer("new rag"):
-            self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
-            self.gridSegmentor.preprocessing(self.supervoxelUint32,self.volumeFeat)
+    def __init__(self, labels = None, volume_feat = None, edgeWeightFunctor = None, progressCallback = None,
+                 h5file = None):
 
-        # fixe! which of both??!
-        self.nodeNum = self.gridSegmentor.nodeNum()
-        self.numNodes = self.nodeNum
+        if h5file is None:
+            self.supervoxelUint32 = labels
+            self.volumeFeat = volume_feat.squeeze()
+            with vigra.Timer("new rag"):
+                self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
+                self.gridSegmentor.preprocessing(self.supervoxelUint32,self.volumeFeat)
+
+            # fixe! which of both??!
+            self.nodeNum = self.gridSegmentor.nodeNum()
+            self.numNodes = self.nodeNum
        
-        self.hasSeg = False
+            self.hasSeg = False
+        else:
+            self.numNodes = h5file.attrs["numNodes"]
+            self.nodeNum = self.numNodes
+            self.supervoxelUint32 = h5file['labels'][:]
+
+            self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
+
+            graphS = h5file['graph'][:]
+            edgeWeights = h5file['edgeWeights'][:]
+            nodeSeeds = h5file['nodeSeeds'][:]
+            resultSegmentation = h5file['resultSegmentation'][:]
+
+            print "self.supervoxelUint32",type(self.supervoxelUint32),self.supervoxelUint32.dtype,self.supervoxelUint32.shape
+            print "graphS",type(graphS),graphS.dtype,graphS.shape
+            print "edgeWeights",type(edgeWeights),edgeWeights.dtype,edgeWeights.shape
+            print "nodeSeeds",type(nodeSeeds),nodeSeeds.dtype,nodeSeeds.shape
+            print "resultSegmentation",type(resultSegmentation),resultSegmentation.dtype,resultSegmentation.shape
+
+            self.gridSegmentor.preprocessingFromSerialization(labels=self.supervoxelUint32,
+                serialization=graphS, edgeWeights=edgeWeights, nodeSeeds=nodeSeeds, 
+                resultSegmentation=resultSegmentation)
+
+            self.hasSeg = resultSegmentation.max()>0
 
     def run(self, unaries, prios = None, uncertainty="exchangeCount",
             moving_average = False, noBiasBelow = 0, **kwargs):
@@ -28,14 +54,9 @@ class NewSegmentor(object):
         roiBegin  = roi.start[1:4]
         roiEnd  = roi.stop[1:4]
         roiShape = [e-b for b,e in zip(roiBegin,roiEnd)]
-        print roiShape
         brushStroke = brushStroke.reshape(roiShape)
-        self.gridSegmentor.addSeeds(
-                                    brushStroke=brushStroke, 
-                                    roiBegin=roiBegin, 
-                                    roiEnd=roiEnd, 
-                                    maxValidLabel=2)
-
+        self.gridSegmentor.addSeeds(brushStroke=brushStroke,roiBegin=roiBegin, 
+                                    roiEnd=roiEnd, maxValidLabel=2)
 
     def getVoxelSegmentation(self, roi, out = None):
         return self.gridSegmentor.getSegmentation(roiBegin=roi.start[1:4],roiEnd=roi.stop[1:4], out=out)
@@ -110,4 +131,17 @@ class NewSegmentor(object):
                 g.file.flush()
                 print "   done"
         """
-        pass
+        g = h5g
+
+        g.attrs["numNodes"] = self.numNodes
+
+
+        g.create_dataset("labels", data = self.supervoxelUint32)
+
+        gridSeg = self.gridSegmentor
+        g.create_dataset("graph", data = gridSeg.serializeGraph())
+        g.create_dataset("edgeWeights", data = gridSeg.getEdgeWeights())
+        g.create_dataset("nodeSeeds", data = gridSeg.getNodeSeeds())
+        g.create_dataset("resultSegmentation", data = gridSeg.getResultSegmentation())
+        
+        g.file.flush()

@@ -217,9 +217,9 @@ class OpCarving(Operator):
     def dataIsStorable(self):
         if self._mst is None:
             return False
-        lut_seeds = self._mst.seeds.lut[:]
-        fg_seedNum = len(numpy.where(lut_seeds == 2)[0])
-        bg_seedNum = len(numpy.where(lut_seeds == 1)[0])
+        nodeSeeds = self._mst.gridSegmentor.getNodeSeeds()
+        fg_seedNum = len(numpy.where(nodeSeeds == 2)[0])
+        bg_seedNum = len(numpy.where(nodeSeeds == 1)[0])
         if not (fg_seedNum > 0 and bg_seedNum > 0):
             return False
         else:

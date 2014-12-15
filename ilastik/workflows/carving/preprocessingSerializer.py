@@ -24,6 +24,8 @@ import h5py
 import numpy
 import os
 
+from newMst import NewSegmentor
+
 class PreprocessingSerializer( AppletSerializer ):
     def __init__(self, preprocessingTopLevelOperator, *args, **kwargs):
         super(PreprocessingSerializer, self).__init__(*args, **kwargs)
@@ -96,7 +98,8 @@ class PreprocessingSerializer( AppletSerializer ):
             opPre.initialFilter = sfilter
             opPre.Filter.setValue(sfilter)
             
-            mst = MSTSegmentor.loadH5G(graphgroup)
+            #mst = MSTSegmentor.loadH5G(graphgroup)
+            mst = NewSegmentor(h5file=graphgroup)
             opPre._prepData = numpy.array([mst])
         
             
