@@ -240,17 +240,45 @@ class ConservationTrackingGui( TrackingBaseGui ):
         return [m]
                 
     def export_tracking_info(self):
-        op = self.topLevelOperatorView
-        from ilastik.utility.hdfFile import HdfFile, TableType, objects_per_frame, ilastik_id
-        label_image = op.LabelImage
-        obj_count = list(objects_per_frame(label_image))
-        track_ids, extra_track_ids = op._setLabel2Color(export_mode=True)
+        from ilastik.utility.exportFile import ExportFile, ColData, objects_per_frame, ilastik_ids, ProgressPrinter
+        from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog
 
-        hdf_file = HdfFile("/home/niels/tracking_gen.h5")
-        hdf_file.add_table("table", TableType.List, range(sum(obj_count)), {"names": ("object id",)})
-        ids = ilastik_id(obj_count)
-        hdf_file.add_table("table", TableType.List, list(ids), {"names": ("time", "ilastik_id")})
-        hdf_file.add_table("table", TableType.IlastikTrackingTable, track_ids,
-                           {"max": 2, "counts": obj_count, "extra ids": extra_track_ids})
-        hdf_file.add_table("table", TableType.IlastikFeatureTable, op.ObjectFeatures, {"selection": []})
-        hdf_file.write_all()
+        op = self.topLevelOperatorView
+        dimensions = op.RawImage.meta.shape
+        computed_features = op.ObjectFeatures
+
+        dialog = ExportObjectInfoDialog(dimensions, {})
+        if not dialog.exec_():
+            return
+        settings = dialog.settings()
+        selected_features = dialog.checked_features()
+
+        obj_count = list(objects_per_frame(op.LabelImage))
+        track_ids, extra_track_ids, divisions = op.export_track_ids()
+
+        export_file = ExportFile(settings["file path"])
+
+        ip = ProgressPrinter("InsertionProgress", range(100, -1, -5))
+        ep = ProgressPrinter("ExportProgress", range(100, -1, -5))
+        export_file.ExportProgress.subscribe(ep)
+        export_file.InsertionProgress.subscribe(ip)
+        multi_move_max = op.Parameters["maxObj"] if op.Parameters.ready() else 2
+
+        export_file.add_columns("table", range(sum(obj_count)), ColData.List, {"names": ("object id",)})
+        ids = ilastik_ids(obj_count)
+        export_file.add_columns("table", list(ids), ColData.List, {"names": ("time", "ilastik_id")})
+        export_file.add_columns("table", track_ids, ColData.IlastikTrackingTable,
+                                {"max": multi_move_max, "counts": obj_count, "extra ids": extra_track_ids})
+        export_file.add_columns("table", computed_features, ColData.IlastikFeatureTable,
+                                {"selection": selected_features})
+        export_file.add_columns("divisions", divisions, ColData.List,
+                                {"names": ("time", "parent", "track", "child1", "child2")})
+
+        if settings["file type"] == "h5":
+            export_file.add_rois("/images/{}/labeling", op.LabelImage, "table", settings["margin"])
+            if settings["include raw"]:
+                export_file.add_image("/images/raw", op.RawImage)
+            else:
+                export_file.add_rois("/images/{}/raw", op.RawImage, "table", settings["margin"])
+
+        export_file.write_all(settings["file type"], settings["compression"])
