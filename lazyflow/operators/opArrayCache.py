@@ -102,10 +102,9 @@ class OpArrayCache(OpCache):
     def _blockShapeForIndex(self, index):
         if self._cache is None:
             return None
-        cacheShape = numpy.array(self._cache.shape)
-        blockStart = index * self._blockShape
-        blockStop = numpy.minimum(blockStart + self._blockShape, cacheShape)
-        
+        # BUG this does not do what is expected!
+        return self._blockShape
+
     def fractionOfUsedMemoryDirty(self):
         if self.Output.meta.shape is None:
             return 0

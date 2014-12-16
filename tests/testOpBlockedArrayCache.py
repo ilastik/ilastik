@@ -25,6 +25,7 @@ import vigra
 from lazyflow.graph import Graph
 from lazyflow.roi import sliceToRoi, roiToSlice
 from lazyflow.operators import OpArrayPiper, OpBlockedArrayCache
+from lazyflow.operators.arrayCacheMemoryMgr import MemInfoNode
 
 class KeyMaker():
     def __getitem__(self, *args):
@@ -302,6 +303,28 @@ class TestOpBlockedArrayCache(object):
         assert opProvider.accessCount >= minAccess
         assert opProvider.accessCount <= maxAccess
         oldAccessCount = opProvider.accessCount
+
+    def testReportGeneration(self):
+        opCache = self.opCache
+        opProvider = self.opProvider        
+        
+        expectedAccessCount = 0
+        assert opProvider.accessCount == expectedAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, expectedAccessCount)
+        
+        # Block-aligned request
+        slicing = make_key[0:1, 0:10, 10:20, 0:10, 0:1]
+        data = opCache.Output( slicing ).wait()
+        data = data.view(vigra.VigraArray)
+        data.axistags = opCache.Output.meta.axistags
+        expectedAccessCount += 1        
+        assert (data == self.data[slicing]).all()
+
+        r = MemInfoNode()
+        opCache.generateReport(r)
+        # we are expecting exactly one block being reserved, with 20^3*4 byte
+        usedMemory = 20**3*4
+        assert abs(usedMemory - r.usedMemory) < 1e-3
+        
 
 if __name__ == "__main__":
     import sys

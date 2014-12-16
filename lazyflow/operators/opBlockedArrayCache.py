@@ -40,6 +40,7 @@ from lazyflow.operators.opCache import OpCache
 from lazyflow.operators.opArrayCache import OpArrayCache
 from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
 
+
 class OpBlockedArrayCache(OpCache):
     name = "OpBlockedArrayCache"
     description = ""
@@ -200,10 +201,11 @@ class OpBlockedArrayCache(OpCache):
         report.lastAccessTime = self.lastAccessTime()
         report.type = type(self)
         report.id = id(self)
-       
+
         for block_index, block in self._cache_list.iteritems():
             start = self._blockShape*self._get_block_multi_index(block_index)
-            stop  = numpy.minimum(start + self._blockShape, self.Output.meta.shape)
+            stop = map(lambda z: z[0]+z[1], zip(start, self._blockShape))
+            stop = numpy.minimum(stop, self.Output.meta.shape)
             
             n = MemInfoNode()
             n.roi = (start, stop)
