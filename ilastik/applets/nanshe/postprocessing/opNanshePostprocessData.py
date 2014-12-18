@@ -332,7 +332,6 @@ class OpNanshePostprocessDataCached(Operator):
     def setupOutputs(self):
         self.opCache.blockShape.setValue( self.opPostprocessing.Output.meta.shape )
 
-
         self.Output.meta.assignFrom( self.opCache.Output.meta )
 
     def setInSlot(self, slot, subindex, key, value):
