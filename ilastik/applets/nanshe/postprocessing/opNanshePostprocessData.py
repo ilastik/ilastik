@@ -27,6 +27,8 @@ __date__ = "$Oct 23, 2014 09:45:39 EDT$"
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpArrayCache
 
+from ilastik.applets.nanshe.opColorizeLabelImage import OpColorizeLabelImage
+
 from ilastik.applets.base.applet import DatasetConstraintError
 
 import vigra
@@ -76,9 +78,14 @@ class OpNanshePostprocessData(Operator):
     Fuse_FractionMeanNeuronMaxThreshold = InputSlot(value=0.01, stype="float")
 
     Output = OutputSlot()
+    ColorizedOutput = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super( OpNanshePostprocessData, self ).__init__( *args, **kwargs )
+
+        self.opColorizeLabelImage = OpColorizeLabelImage(parent=self)
+        self.opColorizeLabelImage.InputImage.connect(self.Output)
+        self.ColorizedOutput.connect(self.opColorizeLabelImage.Output)
 
     def _checkConstraints(self, *args):
         slot = self.InputImage
