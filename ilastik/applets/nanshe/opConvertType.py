@@ -77,3 +77,55 @@ class OpConvertType(Operator):
             self.Output.setDirty( slice(None) )
         else:
             assert False, "Unknown dirty input slot"
+
+
+class OpConvertTypeCached(Operator):
+    """
+    Given an input image and max/min bounds,
+    masks out (i.e. sets to zero) all pixels that fall outside the bounds.
+    """
+    name = "OpConvertTypeCached"
+    category = "Pointwise"
+
+
+    InputImage = InputSlot()
+
+    Dtype = InputSlot()
+
+    Output = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super( OpConvertTypeCached, self ).__init__( *args, **kwargs )
+
+        self.opConvertType = OpConvertType(parent=self)
+
+        self.opConvertType.Dtype.connect(self.Dtype)
+
+
+        self.opCache = OpBlockedArrayCache(parent=self)
+        self.opCache.fixAtCurrent.setValue(False)
+
+        self.opConvertType.InputImage.connect( self.InputImage )
+        self.opCache.Input.connect( self.opConvertType.Output )
+        self.Output.connect( self.opCache.Output )
+
+    def setupOutputs(self):
+        block_shape = self.opConvertType.Output.meta.shape
+
+        block_shape = list(block_shape)
+        for i, each_axistag in enumerate(self.opConvertType.Output.meta.axistags):
+            if each_axistag.isSpatial():
+                block_shape[i] = 256
+
+            block_shape[i] = min(block_shape[i], self.opConvertType.Output.meta.shape[i])
+
+        block_shape = tuple(block_shape)
+
+        self.opCache.innerBlockShape.setValue(block_shape)
+        self.opCache.outerBlockShape.setValue(block_shape)
+
+    def setInSlot(self, slot, subindex, roi, value):
+        pass
+
+    def propagateDirty(self, slot, subindex, roi):
+        pass
