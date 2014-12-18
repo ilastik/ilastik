@@ -23,4 +23,57 @@ __date__ = "$Dec 03, 2014 14:29:15 EST$"
 
 
 
+import numpy
 
+from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.operators import OpBlockedArrayCache
+
+
+class OpConvertType(Operator):
+    """
+    Given an input image and max/min bounds,
+    masks out (i.e. sets to zero) all pixels that fall outside the bounds.
+    """
+    name = "OpConvertType"
+    category = "Pointwise"
+
+
+    InputImage = InputSlot()
+
+    Dtype = InputSlot()
+
+    Output = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super( OpConvertType, self ).__init__( *args, **kwargs )
+
+    def setupOutputs(self):
+        # Copy the input metadata to both outputs
+        self.Output.meta.assignFrom( self.InputImage.meta )
+
+        self.Output.meta.dtype = numpy.dtype(self.Dtype.value).type
+
+    def execute(self, slot, subindex, roi, result):
+        dtype = numpy.dtype(self.Dtype.value).type
+
+        key = roi.toSlice()
+
+        raw = self.InputImage[key].wait()
+
+        processed = raw.astype(dtype, copy=False)
+
+        if slot.name == 'Output':
+            result[...] = processed
+
+    def setInSlot(self, slot, subindex, roi, value):
+        pass
+
+    def propagateDirty(self, slot, subindex, roi):
+        if slot.name == "InputImage":
+            slicing = roi.toSlice()
+
+            self.Output.setDirty(slicing)
+        elif slot.name == "Dtype":
+            self.Output.setDirty( slice(None) )
+        else:
+            assert False, "Unknown dirty input slot"
