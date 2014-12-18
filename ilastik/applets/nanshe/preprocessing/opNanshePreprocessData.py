@@ -23,9 +23,13 @@ __author__ = "John Kirkham <kirkhamj@janelia.hhmi.org>"
 __date__ = "$Oct 14, 2014 16:37:05 EDT$"
 
 
+
+import numpy
+
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpArrayCache
 
+from ilastik.applets.nanshe.opConvertType import OpConvertType, OpConvertTypeCached
 from ilastik.applets.nanshe.preprocessing.opNansheRemoveZeroedLines import OpNansheRemoveZeroedLines, OpNansheRemoveZeroedLinesCached
 from ilastik.applets.nanshe.preprocessing.opNansheExtractF0 import OpNansheExtractF0, OpNansheExtractF0Cached
 from ilastik.applets.nanshe.preprocessing.opNansheWaveletTransform import OpNansheWaveletTransform, OpNansheWaveletTransformCached
@@ -70,6 +74,9 @@ class OpNanshePreprocessData(Operator):
     def __init__(self, *args, **kwargs):
         super( OpNanshePreprocessData, self ).__init__( *args, **kwargs )
 
+        self.opConvertType = OpConvertType(parent=self)
+        self.opConvertType.Dtype.setValue(numpy.float32)
+
         self.opNansheRemoveZeroedLines = OpNansheRemoveZeroedLines(parent=self)
         self.opNansheRemoveZeroedLines.ErosionShape.connect(self.ErosionShape)
         self.opNansheRemoveZeroedLines.DilationShape.connect(self.DilationShape)
@@ -98,6 +105,9 @@ class OpNanshePreprocessData(Operator):
         self.opNansheWaveletTransform.InputImage.disconnect()
 
         next_output = self.InputImage
+
+        self.opConvertType.InputImage.connect(next_output)
+        next_output = self.opConvertType.Output
 
         if self.ToRemoveZeroedLines.value:
             self.opNansheRemoveZeroedLines.InputImage.connect(next_output)
@@ -186,6 +196,9 @@ class OpNanshePreprocessDataCached(Operator):
     def __init__(self, *args, **kwargs):
         super( OpNanshePreprocessDataCached, self ).__init__( *args, **kwargs )
 
+        self.opConvertType = OpConvertTypeCached(parent=self)
+        self.opConvertType.Dtype.setValue(numpy.float32)
+
         self.opNansheRemoveZeroedLines = OpNansheRemoveZeroedLinesCached(parent=self)
         self.opNansheRemoveZeroedLines.ErosionShape.connect(self.ErosionShape)
         self.opNansheRemoveZeroedLines.DilationShape.connect(self.DilationShape)
@@ -221,6 +234,9 @@ class OpNanshePreprocessDataCached(Operator):
         self.opCache.Input.disconnect()
 
         next_output = self.InputImage
+
+        self.opConvertType.InputImage.connect(next_output)
+        next_output = self.opConvertType.Output
 
         if self.ToRemoveZeroedLines.value:
             self.opNansheRemoveZeroedLines.InputImage.connect(next_output)
