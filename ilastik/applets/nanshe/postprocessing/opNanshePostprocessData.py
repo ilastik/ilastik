@@ -300,6 +300,7 @@ class OpNanshePostprocessDataCached(Operator):
 
     CleanBlocks = OutputSlot()
     Output = OutputSlot()
+    ColorizedOutput = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super( OpNanshePostprocessDataCached, self ).__init__( *args, **kwargs )
@@ -335,6 +336,10 @@ class OpNanshePostprocessDataCached(Operator):
         self.opPostprocessing.InputImage.connect( self.InputImage )
         self.opCache.Input.connect( self.opPostprocessing.Output )
         self.Output.connect( self.opCache.Output )
+
+        self.opColorizeLabelImage = OpColorizeLabelImage(parent=self)
+        self.opColorizeLabelImage.InputImage.connect(self.Output)
+        self.ColorizedOutput.connect(self.opColorizeLabelImage.Output)
 
     def setupOutputs(self):
         self.opCache.blockShape.setValue( self.opPostprocessing.Output.meta.shape )
