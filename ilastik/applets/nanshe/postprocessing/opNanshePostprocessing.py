@@ -77,6 +77,7 @@ class OpNanshePostprocessing(Operator):
 
     CleanBlocks = OutputSlot()
     Output = OutputSlot()
+    ColorizedOutput = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super( OpNanshePostprocessing, self ).__init__( *args, **kwargs )
@@ -112,6 +113,7 @@ class OpNanshePostprocessing(Operator):
 
         self.CleanBlocks.connect( self.opPostprocess.CleanBlocks )
         self.Output.connect( self.opPostprocess.Output )
+        self.ColorizedOutput.connect(self.opPostprocess.ColorizedOutput)
 
     def setInSlot(self, slot, subindex, roi, value):
         pass
