@@ -69,6 +69,8 @@ class OpMaxProjection(Operator):
     def execute(self, slot, subindex, roi, result):
         axis = self.Axis.value
 
+        assert(axis < len(self.InputImage.meta.shape))
+
         key = roi.toSlice()
         key = list(key)
         key = key[:axis] + [slice(None)] + key[axis:]
