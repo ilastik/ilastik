@@ -55,14 +55,14 @@ class OpColorizeLabelImage(Operator):
         colors = []
 
         # Transparent for the zero label
-        colors.append((0,0,0))
+        colors.append((0,0,0,0))
 
         rgb_color_values = list(nanshe.additional_generators.splitting_xrange(num_colors))
         converter = matplotlib.colors.ColorConverter()
 
         for _ in rgb_color_values:
             a_rgb_color = tuple()
-            for __ in converter.to_rgb(matplotlib.cm.gist_rainbow(_)):
+            for __ in converter.to_rgba(matplotlib.cm.gist_rainbow(_)):
                  a_rgb_color += ( int(round(255*__)), )
 
             colors.append(a_rgb_color)
@@ -79,7 +79,7 @@ class OpColorizeLabelImage(Operator):
     def setupOutputs(self):
         # Copy the input metadata to both outputs
         self.Output.meta.assignFrom( self.InputImage.meta )
-        self.Output.meta.shape = self.Output.meta.shape[:-1] + (3,)
+        self.Output.meta.shape = self.Output.meta.shape[:-1] + (4,)
         self.Output.meta.dtype = numpy.uint8
 
         dims = [_ for _ in self.Output.meta.axistags if not _.isChannel()]
