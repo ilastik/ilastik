@@ -49,7 +49,7 @@ class OpNansheRemoveZeroedLines(Operator):
 
     ErosionShape = InputSlot(value=[21, 1])
     DilationShape = InputSlot(value=[1, 3])
-    
+
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
@@ -109,14 +109,14 @@ class OpNansheRemoveZeroedLines(Operator):
             if not ax[i].isSpatial():
                 # This is for developers.  Don't need a user-friendly error.
                 raise RuntimeError("%d-th axis %r is not spatial" % (i, ax[i]))
-    
+
     def setupOutputs(self):
         # Copy the input metadata to both outputs
         self.Output.meta.assignFrom( self.InputImage.meta )
         self.Output.meta.dtype = numpy.float32
 
         self.Output.meta.generation = self._generation
-    
+
     def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
         raw = self.InputImage[key].wait()
@@ -129,7 +129,7 @@ class OpNansheRemoveZeroedLines(Operator):
                                                                          erosion_shape=erosion_shape,
                                                                          dilation_shape=dilation_shape)
         processed = processed[..., None]
-        
+
         if slot.name == 'Output':
             result[...] = processed
 
