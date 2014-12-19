@@ -36,6 +36,7 @@ from PyQt4.QtCore import Qt
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from volumina.api import LazyflowSource, ColortableLayer
 
+
 class NanshePostprocessingGui(LayerViewerGui):
     """
     Simple example of an applet tha
