@@ -74,7 +74,7 @@ class OpColorizeLabelImage(Operator):
     def __init__(self, *args, **kwargs):
         super( OpColorizeLabelImage, self ).__init__( *args, **kwargs )
 
-        self.colors = OpColorizeLabelImage.colorTableList()
+        self.colors = numpy.zeros((0,4), dtype=numpy.uint8)
 
     def setupOutputs(self):
         # Copy the input metadata to both outputs
@@ -94,6 +94,9 @@ class OpColorizeLabelImage(Operator):
         input_key = tuple(input_key)
 
         raw = self.InputImage[input_key].wait()
+
+        if not self.colors.size:
+            self.colors = OpColorizeLabelImage.colorTableList()
 
         processed = numpy.empty(nanshe.additional_generators.len_slices(key), dtype=numpy.uint8)
         for each_label in numpy.unique(raw):
