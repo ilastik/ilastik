@@ -115,7 +115,10 @@ class TestOpNansheGenerateDictionary(object):
         graph = Graph()
         op = OpNansheGenerateDictionaryCached(graph=graph)
 
-        op.InputImage.setValue(gv)
+        opPrep = OpArrayPiper(graph=graph)
+        opPrep.Input.setValue(gv)
+
+        op.InputImage.connect(opPrep.Output)
 
         op.K.setValue(len(g))
         op.Gamma1.setValue(0)
