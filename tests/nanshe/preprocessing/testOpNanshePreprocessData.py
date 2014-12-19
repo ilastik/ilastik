@@ -39,10 +39,11 @@ import ilastik.applets
 import ilastik.applets.nanshe
 import ilastik.applets.nanshe.preprocessing
 import ilastik.applets.nanshe.preprocessing.opNanshePreprocessData
-from ilastik.applets.nanshe.preprocessing.opNanshePreprocessData import OpNanshePreprocessData
+from ilastik.applets.nanshe.preprocessing.opNanshePreprocessData import OpNanshePreprocessData,\
+                                                                        OpNanshePreprocessDataCached
 
 class TestOpNanshePreprocessData(object):
-    def testBasic(self):
+    def testBasic1(self):
         # Does NOT test accuracy.
 
         space = numpy.array([100, 100, 100])
@@ -63,6 +64,48 @@ class TestOpNanshePreprocessData(object):
         opPrep.Input.setValue(image_stack)
 
         op = OpNanshePreprocessData(graph=graph)
+        op.InputImage.connect(opPrep.Output)
+
+
+        op.ToRemoveZeroedLines.setValue(True)
+        op.ErosionShape.setValue([21, 1])
+        op.DilationShape.setValue([1, 3])
+
+        op.ToExtractF0.setValue(True)
+        op.HalfWindowSize.setValue(20)
+        op.WhichQuantile.setValue(0.5)
+        op.TemporalSmoothingGaussianFilterStdev.setValue(5.0)
+        op.SpatialSmoothingGaussianFilterStdev.setValue(5.0)
+        op.Bias.setValue(100)
+        op.BiasEnabled.setValue(True)
+
+        op.ToWaveletTransform.setValue(True)
+        op.Scale.setValue([3, 4, 4])
+
+        b = op.Output[...].wait()
+        b = vigra.taggedView(b, "tyxc")
+
+    def testBasic2(self):
+        # Does NOT test accuracy.
+
+        space = numpy.array([100, 100, 100])
+        radii = numpy.array([5, 6])
+        magnitudes = numpy.array([15, 16])
+        points = numpy.array([[20, 30, 24],
+                              [70, 59, 65]])
+
+        masks = synthetic_data.synthetic_data.generate_hypersphere_masks(space, points, radii)
+        images = synthetic_data.synthetic_data.generate_gaussian_images(space, points, radii/3.0, magnitudes) * masks
+        image_stack = images.max(axis = 0)
+        image_stack = image_stack[..., None]
+        image_stack = vigra.taggedView(image_stack, "tyxc")
+
+        graph = Graph()
+
+        opPrep = OpArrayPiper(graph=graph)
+        opPrep.Input.setValue(image_stack)
+
+        op = OpNanshePreprocessDataCached(graph=graph)
         op.InputImage.connect(opPrep.Output)
 
 
