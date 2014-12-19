@@ -24,8 +24,11 @@ __date__ = "$Oct 24, 2014 08:05:35 EDT$"
 
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.operators import OpBlockedArrayCache
 
 from ilastik.applets.base.applet import DatasetConstraintError
+
+import itertools
 
 import numpy
 import matplotlib
@@ -145,3 +148,56 @@ class OpColorizeLabelImage(Operator):
             self.Output.setDirty(key)
         else:
             assert False, "Unknown dirty input slot"
+
+
+class OpColorizeLabelImageCached(Operator):
+    """
+    Given an input image and max/min bounds,
+    masks out (i.e. sets to zero) all pixels that fall outside the bounds.
+    """
+    name = "OpColorizeLabelImageCached"
+    category = "Pointwise"
+
+
+    InputImage = InputSlot()
+    NumColors = InputSlot(value=256, stype='int')
+
+    Output = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super( OpColorizeLabelImageCached, self ).__init__( *args, **kwargs )
+
+        self.opColorizeLabelImage = OpColorizeLabelImage(parent=self)
+        self.opColorizeLabelImage.NumColors.connect(self.NumColors)
+
+        self.opCache = OpBlockedArrayCache(parent=self)
+        self.opCache.fixAtCurrent.setValue(False)
+
+        self.opColorizeLabelImage.InputImage.connect( self.InputImage )
+        self.opCache.Input.connect( self.opColorizeLabelImage.Output )
+        self.Output.connect( self.opCache.Output )
+
+    def setupOutputs(self):
+        axes_shape_iter = itertools.izip(self.opColorizeLabelImage.Output.meta.axistags,
+                                         self.opColorizeLabelImage.Output.meta.shape)
+
+        block_shape = []
+
+        for each_axistag, each_len in axes_shape_iter:
+            if each_axistag.isSpatial():
+                each_len = min(each_len, 256)
+            elif each_axistag.isTemporal():
+                each_len = min(each_len, 50)
+
+            block_shape.append(each_len)
+
+        block_shape = tuple(block_shape)
+
+        self.opCache.innerBlockShape.setValue(block_shape)
+        self.opCache.outerBlockShape.setValue(block_shape)
+
+    def setInSlot(self, slot, subindex, roi, value):
+        pass
+
+    def propagateDirty(self, slot, subindex, roi):
+        pass
