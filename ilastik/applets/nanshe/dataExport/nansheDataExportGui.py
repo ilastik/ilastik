@@ -84,18 +84,18 @@ class NansheDataExportLayerViewerGui(DataExportLayerViewerGui):
 
         # Show the exported data on disk
         opLane = self.topLevelOperatorView
-        exportedDataSlot = opLane.ImageOnDisk
+        exportedDataSlot = opLane.ImageOnDiskColorized
         if exportedDataSlot.ready():
-            exportLayer = ColortableLayer( LazyflowSource(exportedDataSlot), colorTable=NansheDataExportLayerViewerGui.colorTableList() )
+            exportLayer = self.createStandardLayerFromSlot( exportedDataSlot )
             exportLayer.name = "Exported Image (from disk)"
             exportLayer.visible = True
             exportLayer.opacity = 1.0
             layers.append(exportLayer)
 
         # Show the (live-updated) data we're exporting
-        previewSlot = opLane.ImageToExport
+        previewSlot = opLane.ImageToExportColorized
         if previewSlot.ready():
-            previewLayer = ColortableLayer( LazyflowSource(previewSlot), colorTable=NansheDataExportLayerViewerGui.colorTableList() )
+            previewLayer = self.createStandardLayerFromSlot( previewSlot )
             previewLayer.name = "Live Preview"
             previewLayer.visible = False # off by default
             previewLayer.opacity = 1.0
