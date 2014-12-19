@@ -33,7 +33,8 @@ import ilastik.applets
 import ilastik.applets.nanshe
 import ilastik.applets.nanshe.preprocessing
 import ilastik.applets.nanshe.preprocessing.opNansheRemoveZeroedLines
-from ilastik.applets.nanshe.preprocessing.opNansheRemoveZeroedLines import OpNansheRemoveZeroedLines
+from ilastik.applets.nanshe.preprocessing.opNansheRemoveZeroedLines import OpNansheRemoveZeroedLines,\
+                                                                           OpNansheRemoveZeroedLinesCached
 
 class TestOpNansheRemoveZeroedLines(object):
     def testBasic1(self):
@@ -93,6 +94,66 @@ class TestOpNansheRemoveZeroedLines(object):
         b = vigra.taggedView(b, "tyxc")
 
         assert((a == b).all())
+
+    def testBasic3(self):
+        a = numpy.ones((1, 100, 101))
+        a = a[..., None]
+        a = vigra.taggedView(a, "tyxc")
+
+        r = numpy.array([[0, 0, 0], [1, 3, 4]]).T.copy()
+
+        ar = a.copy()
+        for each_r in r:
+            nanshe.expanded_numpy.index_axis_at_pos(nanshe.expanded_numpy.index_axis_at_pos(ar, 0, each_r[0]), -2, each_r[-1])[:] = 0
+
+
+        graph = Graph()
+
+        opPrep = OpArrayPiper(graph=graph)
+        opPrep.Input.setValue(ar)
+
+        op = OpNansheRemoveZeroedLinesCached(graph=graph)
+        op.InputImage.connect(opPrep.Output)
+
+        op.ErosionShape.setValue([21, 1])
+        op.DilationShape.setValue([1, 3])
+
+
+        b = op.Output[...].wait()
+        b = vigra.taggedView(b, "tyxc")
+
+        assert((a == b).all())
+
+    def testBasic4(self):
+        a = numpy.ones((1, 100, 101), dtype=numpy.float32)
+        a = a[..., None]
+        a = vigra.taggedView(a, "tyxc")
+
+        r = numpy.array([[0, 0, 0], [1, 3, 4]]).T.copy()
+
+        ar = a.copy()
+        for each_r in r:
+            nanshe.expanded_numpy.index_axis_at_pos(nanshe.expanded_numpy.index_axis_at_pos(ar, 0, each_r[0]), -2, each_r[-1])[:] = 0
+
+
+        graph = Graph()
+
+        opPrep = OpArrayPiper(graph=graph)
+        opPrep.Input.setValue(ar)
+
+        op = OpNansheRemoveZeroedLinesCached(graph=graph)
+        op.InputImage.connect(opPrep.Output)
+
+        op.ErosionShape.setValue([21, 1])
+        op.DilationShape.setValue([1, 3])
+
+
+        b = op.Output[...].wait()
+        b = vigra.taggedView(b, "tyxc")
+
+        assert((a == b).all())
+
+
 
 
 if __name__ == "__main__":
