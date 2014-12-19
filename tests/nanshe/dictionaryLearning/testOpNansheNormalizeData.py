@@ -21,7 +21,10 @@
 ###############################################################################
 import numpy
 
+import vigra
+
 from lazyflow.graph import Graph
+from lazyflow.operators import OpArrayPiper
 
 import ilastik
 import ilastik.applets
@@ -36,6 +39,7 @@ class TestOpNansheNormalizeData(object):
         a[1,1,1] = 1
         a[0,0,0] = 1
         a = a[..., None]
+        a = vigra.taggedView(a, "tyxc")
 
         expected_b = numpy.array([[[ 0.86602540378443870761060452423407696187496185302734375 ,
                                     -0.288675134594812921040585251830634661018848419189453125],
@@ -49,7 +53,11 @@ class TestOpNansheNormalizeData(object):
 
         graph = Graph()
         op = OpNansheNormalizeData(graph=graph)
-        op.InputImage.setValue(a)
+
+        opPrep = OpArrayPiper(graph=graph)
+        opPrep.Input.setValue(a)
+
+        op.InputImage.connect(opPrep.Output)
 
         op.Ord.setValue(2)
 
