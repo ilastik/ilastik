@@ -39,11 +39,12 @@ import ilastik.applets
 import ilastik.applets.nanshe
 import ilastik.applets.nanshe.postprocessing
 import ilastik.applets.nanshe.postprocessing.opNanshePostprocessData
-from ilastik.applets.nanshe.postprocessing.opNanshePostprocessData import OpNanshePostprocessData
+from ilastik.applets.nanshe.postprocessing.opNanshePostprocessData import OpNanshePostprocessData,\
+                                                                          OpNanshePostprocessDataCached
 
 
 class TestOpNanshePostprocessData(object):
-    def testBasic(self):
+    def testBasic1(self):
         space = numpy.array([100, 100])
         radii = numpy.array([7, 6, 6, 6, 7, 6])
         magnitudes = numpy.array([15, 16, 15, 17, 16, 16])
@@ -74,6 +75,62 @@ class TestOpNanshePostprocessData(object):
         opPrep.Input.setValue(bases_images)
 
         op = OpNanshePostprocessData(graph=graph)
+        op.InputImage.connect(opPrep.Output)
+
+        op.SignificanceThreshold.setValue(3.0)
+        op.WaveletTransformScale.setValue(4)
+        op.NoiseThreshold.setValue(3.0)
+        op.AcceptedRegionShapeConstraints_MajorAxisLength_Min.setValue(0.0)
+        op.AcceptedRegionShapeConstraints_MajorAxisLength_Min_Enabled.setValue(True)
+        op.AcceptedRegionShapeConstraints_MajorAxisLength_Max.setValue(25.0)
+        op.AcceptedRegionShapeConstraints_MajorAxisLength_Max_Enabled.setValue(True)
+        op.PercentagePixelsBelowMax.setValue(0.0)
+        op.MinLocalMaxDistance.setValue(10.0)
+        op.AcceptedNeuronShapeConstraints_Area_Min.setValue(30)
+        op.AcceptedNeuronShapeConstraints_Area_Min_Enabled.setValue(True)
+        op.AcceptedNeuronShapeConstraints_Area_Max.setValue(600)
+        op.AcceptedNeuronShapeConstraints_Area_Max_Enabled.setValue(True)
+        op.AcceptedNeuronShapeConstraints_Eccentricity_Min.setValue(0.0)
+        op.AcceptedNeuronShapeConstraints_Eccentricity_Min_Enabled.setValue(True)
+        op.AcceptedNeuronShapeConstraints_Eccentricity_Max.setValue(0.9)
+        op.AcceptedNeuronShapeConstraints_Eccentricity_Max_Enabled.setValue(True)
+        op.AlignmentMinThreshold.setValue(0.6)
+        op.OverlapMinThreshold.setValue(0.6)
+        op.Fuse_FractionMeanNeuronMaxThreshold.setValue(0.6)
+
+        neurons = op.Output[...].wait()
+
+    def testBasic2(self):
+        space = numpy.array([100, 100])
+        radii = numpy.array([7, 6, 6, 6, 7, 6])
+        magnitudes = numpy.array([15, 16, 15, 17, 16, 16])
+        points = numpy.array([[30, 24],
+                              [59, 65],
+                              [21, 65],
+                              [13, 12],
+                              [72, 16],
+                              [45, 32]])
+
+        masks = synthetic_data.synthetic_data.generate_hypersphere_masks(space, points, radii)
+        images = synthetic_data.synthetic_data.generate_gaussian_images(space, points, radii/3.0, magnitudes) * masks
+
+        bases_indices = [[1,3,4], [0,2], [5]]
+
+        bases_masks = numpy.zeros((len(bases_indices),) + masks.shape[1:] , dtype=masks.dtype)
+        bases_images = numpy.zeros((len(bases_indices),) + images.shape[1:] , dtype=images.dtype)
+
+        for i, each_basis_indices in enumerate(bases_indices):
+            bases_masks[i] = masks[list(each_basis_indices)].max(axis = 0)
+            bases_images[i] = images[list(each_basis_indices)].max(axis = 0)
+
+        bases_images = vigra.taggedView(bases_images, "cyx")
+
+        graph = Graph()
+
+        opPrep = OpArrayPiper(graph=graph)
+        opPrep.Input.setValue(bases_images)
+
+        op = OpNanshePostprocessDataCached(graph=graph)
         op.InputImage.connect(opPrep.Output)
 
         op.SignificanceThreshold.setValue(3.0)
