@@ -458,7 +458,7 @@ class NanshePostprocessingGui(LayerViewerGui):
         # Show the resulting label image
         outputImageSlot = self.topLevelOperatorView.ColorizedOutput
         if outputImageSlot.ready():
-            outputLayer = self.createStandardLayerFromSlot( outputImageSlot )
+            outputLayer = self.createStandardLayerFromSlot( outputImageSlot, lastChannelIsAlpha=True )
             outputLayer.name = "Output"
             outputLayer.visible = False
             outputLayer.opacity = 1.0
