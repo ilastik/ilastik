@@ -36,6 +36,13 @@ from PyQt4.QtCore import Qt
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from volumina.api import LazyflowSource, ColortableLayer
 
+import matplotlib
+import matplotlib.colors
+import matplotlib.cm
+
+import nanshe
+import nanshe.additional_generators
+
 
 class NanshePostprocessingGui(LayerViewerGui):
     """
@@ -426,29 +433,18 @@ class NanshePostprocessingGui(LayerViewerGui):
         colors = []
 
         # Transparent for the zero label
-        colors.append(QColor(0,0,0,0))
+        colors.append((0,0,0,0))
 
-        # ilastik v0.5 colors
-        colors.append( QColor( Qt.red ) )
-        colors.append( QColor( Qt.green ) )
-        colors.append( QColor( Qt.yellow ) )
-        colors.append( QColor( Qt.blue ) )
-        colors.append( QColor( Qt.magenta ) )
-        colors.append( QColor( Qt.darkYellow ) )
+        rgba_color_values = list(nanshe.additional_generators.splitting_xrange(256))
 
-        # Additional colors
-        colors.append( QColor(255, 105, 180) ) #hot pink
-        colors.append( QColor(102, 205, 170) ) #dark aquamarine
-        colors.append( QColor(165,  42,  42) ) #brown
-        colors.append( QColor(0, 0, 128) )     #navy
-        colors.append( QColor(255, 165, 0) )   #orange
-        colors.append( QColor(173, 255,  47) ) #green-yellow
-        colors.append( QColor(128,0, 128) )    #purple
-        colors.append( QColor(240, 230, 140) ) #khaki
+        for _ in rgba_color_values:
+            a_rgba_color = tuple()
+            for __ in matplotlib.colors.ColorConverter().to_rgba(matplotlib.cm.gist_rainbow(_)):
+                 a_rgba_color += ( int(round(255*__)), )
 
-        colors.append( QColor( Qt.cyan ) )
+            colors.append(a_rgba_color)
 
-        colors = [c.rgba() for c in colors]
+        colors = [QColor(*c).rgba() for c in colors]
 
         return(colors)
 
