@@ -34,14 +34,6 @@ from PyQt4.QtGui import QColor
 from PyQt4.QtCore import Qt
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
-from volumina.api import LazyflowSource, ColortableLayer
-
-import matplotlib
-import matplotlib.colors
-import matplotlib.cm
-
-import nanshe
-import nanshe.additional_generators
 
 
 class NanshePostprocessingGui(LayerViewerGui):
@@ -427,26 +419,6 @@ class NanshePostprocessingGui(LayerViewerGui):
         for i in xrange(len(self.layerstack)):
             if self.layerstack[i].name == "Output":
                 self.layerstack[i].visible = True
-
-    @staticmethod
-    def colorTableList():
-        colors = []
-
-        # Transparent for the zero label
-        colors.append((0,0,0,0))
-
-        rgba_color_values = list(nanshe.additional_generators.splitting_xrange(256))
-
-        for _ in rgba_color_values:
-            a_rgba_color = tuple()
-            for __ in matplotlib.colors.ColorConverter().to_rgba(matplotlib.cm.gist_rainbow(_)):
-                 a_rgba_color += ( int(round(255*__)), )
-
-            colors.append(a_rgba_color)
-
-        colors = [QColor(*c).rgba() for c in colors]
-
-        return(colors)
 
     def setupLayers(self):
         """
