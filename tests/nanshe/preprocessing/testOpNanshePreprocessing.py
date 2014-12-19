@@ -22,6 +22,7 @@
 import numpy
 
 from lazyflow.graph import Graph
+from lazyflow.operators import OpArrayPiper
 
 import vigra
 
@@ -52,8 +53,12 @@ class TestOpNanshePreprocessing(object):
         image_stack = vigra.taggedView(image_stack, "tyxc")
 
         graph = Graph()
+
+        opPrep = OpArrayPiper(graph=graph)
+        opPrep.Input.setValue(image_stack)
+
         op = OpNanshePreprocessing(graph=graph)
-        op.InputImage.setValue(image_stack)
+        op.InputImage.connect(opPrep.Output)
 
 
         op.ToRemoveZeroedLines.setValue(True)
