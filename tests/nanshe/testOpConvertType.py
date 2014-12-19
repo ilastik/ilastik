@@ -35,10 +35,10 @@ import ilastik
 import ilastik.applets
 import ilastik.applets.nanshe
 import ilastik.applets.nanshe.opConvertType
-from ilastik.applets.nanshe.opConvertType import OpConvertType
+from ilastik.applets.nanshe.opConvertType import OpConvertType, OpConvertTypeCached
 
 class TestOpConvertType(object):
-    def testBasic(self):
+    def testBasic1(self):
         a = numpy.zeros((2,2,2,), dtype=int)
         a[1,1,1] = 1
         a[0,0,0] = 1
@@ -51,6 +51,32 @@ class TestOpConvertType(object):
 
         graph = Graph()
         op = OpConvertType(graph=graph)
+
+        opPrep = OpArrayPiper(graph=graph)
+        opPrep.Input.setValue(a)
+
+        op.InputImage.connect(opPrep.Output)
+        op.Dtype.setValue(float)
+
+        b = op.Output[...].wait()
+        b = vigra.taggedView(b, "tyxc")
+
+
+        assert((b == expected_b).all())
+
+    def testBasic2(self):
+        a = numpy.zeros((2,2,2,), dtype=int)
+        a[1,1,1] = 1
+        a[0,0,0] = 1
+        a = a[..., None]
+        a = vigra.taggedView(a, "tyxc")
+
+        expected_b = a.astype(float)
+        expected_b = vigra.taggedView(expected_b, "tyxc")
+
+
+        graph = Graph()
+        op = OpConvertTypeCached(graph=graph)
 
         opPrep = OpArrayPiper(graph=graph)
         opPrep.Input.setValue(a)
