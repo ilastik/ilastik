@@ -27,18 +27,32 @@ from lazyflow.graph import OutputSlot
 
 from ilastik.applets.dataExport.opDataExport import OpDataExport,OpRawSubRegionHelper, OpFormattedDataExport
 
+from ilastik.applets.nanshe.opColorizeLabelImage import OpColorizeLabelImage
 from ilastik.applets.nanshe.opMaxProjection import OpMaxProjectionCached
 from ilastik.applets.nanshe.opMeanProjection import OpMeanProjectionCached
 
 
 class OpNansheDataExport( OpDataExport ):
     # Add these additional input slots, to be used by the GUI.
+
+    # Colorized data layers
+    ImageOnDiskColorized = OutputSlot()
+    ImageToExportColorized = OutputSlot()
+
+    # Projections
     FormattedMaxProjection = OutputSlot()
     FormattedMeanProjection = OutputSlot()
 
     def __init__(self,*args,**kwargs):
         super(OpNansheDataExport, self).__init__(*args, **kwargs)
 
+        self._opImageOnDiskColorized = OpColorizeLabelImage( parent=self )
+        self._opImageOnDiskColorized.InputImage.connect( self.ImageOnDisk )
+        self.ImageOnDiskColorized.connect( self._opImageOnDiskColorized.Output )
+
+        self._opImageToExportColorized = OpColorizeLabelImage( parent=self )
+        self._opImageToExportColorized.InputImage.connect( self.ImageToExport )
+        self.ImageToExportColorized.connect( self._opImageToExportColorized.Output )
 
         # We don't export the max projection, but we connect it to it's own op
         # so it can be displayed alongside the data to export in the same viewer.
