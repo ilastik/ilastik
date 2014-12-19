@@ -47,8 +47,8 @@ class TestOpNansheWaveletTransform(object):
         expected_b = vigra.taggedView(expected_b, "tyxc")
 
         graph = Graph()
-        op = OpNansheWaveletTransform(graph=graph)
 
+        op = OpNansheWaveletTransform(graph=graph)
         op.InputImage.setValue(a)
 
         op.Scale.setValue((0, 1, 1))
