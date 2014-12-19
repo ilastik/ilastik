@@ -20,8 +20,8 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 import numpy
-from lazyflow.graph import Graph
 
+from lazyflow.graph import Graph
 
 import ilastik
 import ilastik.applets
