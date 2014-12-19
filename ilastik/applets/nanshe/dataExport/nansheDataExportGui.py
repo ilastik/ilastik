@@ -30,15 +30,6 @@ from PyQt4.QtCore import Qt
 
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
 
-from volumina.api import LazyflowSource, ColortableLayer
-
-import matplotlib
-import matplotlib.colors
-import matplotlib.cm
-
-import nanshe
-import nanshe.additional_generators
-
 
 class NansheDataExportGui(DataExportGui):
     def createLayerViewer(self, opLane):
@@ -49,26 +40,6 @@ class NansheDataExportLayerViewerGui(DataExportLayerViewerGui):
     """
     Subclass the default LayerViewerGui implementation so we can provide a custom layer order.
     """
-
-    @staticmethod
-    def colorTableList():
-        colors = []
-
-        # Transparent for the zero label
-        colors.append((0,0,0,0))
-
-        rgba_color_values = list(nanshe.additional_generators.splitting_xrange(256))
-
-        for _ in rgba_color_values:
-            a_rgba_color = tuple()
-            for __ in matplotlib.colors.ColorConverter().to_rgba(matplotlib.cm.gist_rainbow(_)):
-                 a_rgba_color += ( int(round(255*__)), )
-
-            colors.append(a_rgba_color)
-
-        colors = [QColor(*c).rgba() for c in colors]
-
-        return(colors)
 
     def determineDatashape(self):
         """Overridden from DataExportGui"""
