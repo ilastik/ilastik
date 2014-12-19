@@ -22,6 +22,7 @@
 import numpy
 
 from lazyflow.graph import Graph
+from lazyflow.operators import OpArrayPiper
 
 import vigra
 
@@ -48,8 +49,11 @@ class TestOpNansheWaveletTransform(object):
 
         graph = Graph()
 
+        opPrep = OpArrayPiper(graph=graph)
+        opPrep.Input.setValue(a)
+
         op = OpNansheWaveletTransform(graph=graph)
-        op.InputImage.setValue(a)
+        op.InputImage.connect(opPrep.Output)
 
         op.Scale.setValue((0, 1, 1))
 
