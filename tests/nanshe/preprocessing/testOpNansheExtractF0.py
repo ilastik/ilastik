@@ -32,10 +32,10 @@ import ilastik.applets
 import ilastik.applets.nanshe
 import ilastik.applets.nanshe.preprocessing
 import ilastik.applets.nanshe.preprocessing.opNansheExtractF0
-from ilastik.applets.nanshe.preprocessing.opNansheExtractF0 import OpNansheExtractF0
+from ilastik.applets.nanshe.preprocessing.opNansheExtractF0 import OpNansheExtractF0, OpNansheExtractF0Cached
 
 class TestOpNansheExtractF0(object):
-    def testBasic(self):
+    def testBasic1(self):
         a = numpy.ones((100, 101, 102))
         a = a[..., None]
         a = vigra.taggedView(a, "tyxc")
@@ -46,6 +46,33 @@ class TestOpNansheExtractF0(object):
         opPrep.Input.setValue(a)
 
         op = OpNansheExtractF0(graph=graph)
+        op.InputImage.connect(opPrep.Output)
+
+        op.HalfWindowSize.setValue(20)
+        op.WhichQuantile.setValue(0.5)
+        op.TemporalSmoothingGaussianFilterStdev.setValue(5.0)
+        op.SpatialSmoothingGaussianFilterStdev.setValue(5.0)
+        op.Bias.setValue(100)
+        op.BiasEnabled.setValue(True)
+
+        b = op.Output[...].wait()
+        b = vigra.taggedView(b, "tyxc")
+
+        assert(a.shape == b.shape)
+
+        assert((b == 0).all())
+
+    def testBasic2(self):
+        a = numpy.ones((100, 101, 102))
+        a = a[..., None]
+        a = vigra.taggedView(a, "tyxc")
+
+        graph = Graph()
+
+        opPrep = OpArrayPiper(graph=graph)
+        opPrep.Input.setValue(a)
+
+        op = OpNansheExtractF0Cached(graph=graph)
         op.InputImage.connect(opPrep.Output)
 
         op.HalfWindowSize.setValue(20)
