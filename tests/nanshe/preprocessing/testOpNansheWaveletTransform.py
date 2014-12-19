@@ -31,10 +31,39 @@ import ilastik.applets
 import ilastik.applets.nanshe
 import ilastik.applets.nanshe.preprocessing
 import ilastik.applets.nanshe.preprocessing.opNansheWaveletTransform
-from ilastik.applets.nanshe.preprocessing.opNansheWaveletTransform import OpNansheWaveletTransform
+from ilastik.applets.nanshe.preprocessing.opNansheWaveletTransform import OpNansheWaveletTransform,\
+                                                                          OpNansheWaveletTransformCached
 
 class TestOpNansheWaveletTransform(object):
-    def testBasic(self):
+    def testBasic1(self):
+        a = numpy.eye(3, dtype = numpy.float32)
+        a = a[None, ..., None]
+
+        a = vigra.taggedView(a, "tyxc")
+
+
+        expected_b = numpy.array([[ 0.59375, -0.375  , -0.34375],
+                                  [-0.375  ,  0.625  , -0.375  ],
+                                  [-0.34375, -0.375  ,  0.59375]], dtype=numpy.float32)
+        expected_b = expected_b[None, ..., None]
+        expected_b = vigra.taggedView(expected_b, "tyxc")
+
+        graph = Graph()
+
+        opPrep = OpArrayPiper(graph=graph)
+        opPrep.Input.setValue(a)
+
+        op = OpNansheWaveletTransform(graph=graph)
+        op.InputImage.connect(opPrep.Output)
+
+        op.Scale.setValue((0, 1, 1))
+
+        b = op.Output[...].wait()
+        b = vigra.taggedView(b, "tyxc")
+
+        assert((b == expected_b).all())
+
+    def testBasic2(self):
         a = numpy.eye(3, dtype = numpy.float32)
         a = a[None, ..., None]
 
