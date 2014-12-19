@@ -25,6 +25,8 @@ __date__ = "$Oct 24, 2014 08:05:35 EDT$"
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
+from ilastik.applets.base.applet import DatasetConstraintError
+
 import numpy
 import matplotlib
 import matplotlib.colors
@@ -76,6 +78,30 @@ class OpColorizeLabelImage(Operator):
         super( OpColorizeLabelImage, self ).__init__( *args, **kwargs )
 
         self.colors = numpy.zeros((0,4), dtype=numpy.uint8)
+
+        self.InputImage.notifyReady( self._checkConstraints )
+
+    def _checkConstraints(self, *args):
+        slot = self.InputImage
+
+        sh = slot.meta.shape
+        ndim = len(sh)
+        ax = slot.meta.axistags
+        tsh = slot.meta.getTaggedShape()
+
+        if ("c" in tsh):
+            if (tsh["c"] != 1):
+                raise DatasetConstraintError(
+                    "ColorizeLabelImage",
+                    "Input image cannot have a non-singleton channel dimension.")
+            if (ndim == 1):
+                raise DatasetConstraintError(
+                    "ColorizeLabelImage",
+                    "There must be more dimensions than just the channel dimension.")
+            if not ax[-1].isChannel():
+                raise DatasetConstraintError(
+                    "ColorizeLabelImage",
+                    "Input image must have channel last." )
 
     def setupOutputs(self):
         # Copy the input metadata to both outputs
