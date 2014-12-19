@@ -266,7 +266,7 @@ class LayerViewerGui(QWidget):
                     "Your image has {} channels.".format(numChannels)
 
             # Automatically select Grayscale or RGBA based on number of channels
-            if numChannels == 2 or numChannels == 3:
+            if numChannels == 2 or numChannels == 3 or numChannels == 4:
                 display_mode = "rgba"
             else:
                 display_mode = "grayscale"
