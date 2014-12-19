@@ -30,6 +30,7 @@ import synthetic_data
 import synthetic_data.synthetic_data
 
 from lazyflow.graph import Graph
+from lazyflow.operators import OpArrayPiper
 
 import ilastik
 import ilastik.applets
@@ -55,7 +56,10 @@ class TestOpNansheDictionaryLearning(object):
         graph = Graph()
         op = OpNansheDictionaryLearning(graph=graph)
 
-        op.InputImage.setValue(gv)
+        opPrep = OpArrayPiper(graph=graph)
+        opPrep.Input.setValue(gv)
+
+        op.InputImage.connect(opPrep.Output)
 
         op.K.setValue(len(g))
         op.Gamma1.setValue(0)
