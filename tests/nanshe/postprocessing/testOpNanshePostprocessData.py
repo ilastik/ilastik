@@ -65,10 +65,11 @@ class TestOpNanshePostprocessData(object):
             bases_masks[i] = masks[list(each_basis_indices)].max(axis = 0)
             bases_images[i] = images[list(each_basis_indices)].max(axis = 0)
 
+        bases_images = vigra.taggedView(bases_images, "cyx")
+
         graph = Graph()
 
         op = OpNanshePostprocessData(graph=graph)
-        op.InputImage.meta.axistags = vigra.AxisTags(vigra.AxisInfo.c, vigra.AxisInfo.y, vigra.AxisInfo.x)
         op.InputImage.setValue(bases_images)
 
         op.SignificanceThreshold.setValue(3.0)
