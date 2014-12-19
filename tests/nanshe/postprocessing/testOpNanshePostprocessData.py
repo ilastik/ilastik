@@ -66,6 +66,7 @@ class TestOpNanshePostprocessData(object):
             bases_images[i] = images[list(each_basis_indices)].max(axis = 0)
 
         graph = Graph()
+
         op = OpNanshePostprocessData(graph=graph)
         op.InputImage.meta.axistags = vigra.AxisTags(vigra.AxisInfo.y, vigra.AxisInfo.x, vigra.AxisInfo.c)
         op.InputImage.setValue(bases_images)
