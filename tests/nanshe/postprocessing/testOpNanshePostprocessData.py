@@ -27,6 +27,7 @@ __date__ = "$Oct 29, 2014 19:42:43 EDT$"
 import numpy
 
 from lazyflow.graph import Graph
+from lazyflow.operators import OpArrayPiper
 
 import vigra
 
@@ -69,8 +70,11 @@ class TestOpNanshePostprocessData(object):
 
         graph = Graph()
 
+        opPrep = OpArrayPiper(graph=graph)
+        opPrep.Input.setValue(bases_images)
+
         op = OpNanshePostprocessData(graph=graph)
-        op.InputImage.setValue(bases_images)
+        op.InputImage.connect(opPrep.Output)
 
         op.SignificanceThreshold.setValue(3.0)
         op.WaveletTransformScale.setValue(4)
