@@ -68,7 +68,7 @@ class TestOpNanshePostprocessData(object):
         graph = Graph()
 
         op = OpNanshePostprocessData(graph=graph)
-        op.InputImage.meta.axistags = vigra.AxisTags(vigra.AxisInfo.y, vigra.AxisInfo.x, vigra.AxisInfo.c)
+        op.InputImage.meta.axistags = vigra.AxisTags(vigra.AxisInfo.c, vigra.AxisInfo.y, vigra.AxisInfo.x)
         op.InputImage.setValue(bases_images)
 
         op.SignificanceThreshold.setValue(3.0)
