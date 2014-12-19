@@ -23,6 +23,8 @@ import numpy
 
 from lazyflow.graph import Graph
 
+from lazyflow.operators import OpArrayPiper
+
 import vigra
 
 import ilastik
@@ -39,8 +41,12 @@ class TestOpNansheExtractF0(object):
         a = vigra.taggedView(a, "tyxc")
 
         graph = Graph()
+
+        opPrep = OpArrayPiper(graph=graph)
+        opPrep.Input.setValue(a)
+
         op = OpNansheExtractF0(graph=graph)
-        op.InputImage.setValue(a)
+        op.InputImage.connect(opPrep.Output)
 
         op.HalfWindowSize.setValue(20)
         op.WhichQuantile.setValue(0.5)
