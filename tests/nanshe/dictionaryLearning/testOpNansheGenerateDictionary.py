@@ -49,10 +49,12 @@ class TestOpNansheGenerateDictionary(object):
         radii = numpy.array((5, 6, 7))
 
         g = synthetic_data.synthetic_data.generate_hypersphere_masks(space, p, radii)
-        gv = vigra.VigraArray(g[..., None].astype(float), axistags=vigra.AxisTags(vigra.AxisInfo.t,
-                                                                                  vigra.AxisInfo.y,
-                                                                                  vigra.AxisInfo.x,
-                                                                                  vigra.AxisInfo.c))
+        gv = g[..., None]
+        gv = gv.astype(float)
+        gv = vigra.VigraArray(gv, axistags=vigra.AxisTags(vigra.AxisInfo.t,
+                                                          vigra.AxisInfo.y,
+                                                          vigra.AxisInfo.x,
+                                                          vigra.AxisInfo.c))
 
         graph = Graph()
         op = OpNansheGenerateDictionary(graph=graph)
