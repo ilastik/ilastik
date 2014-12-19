@@ -47,11 +47,12 @@ class OpColorizeLabelImage(Operator):
 
 
     InputImage = InputSlot()
+    NumColors = InputSlot(value=256, stype='int')
 
     Output = OutputSlot()
 
     @staticmethod
-    def colorTableList(num_colors = 256):
+    def colorTableList(num_colors):
         colors = []
 
         # Transparent for the zero label
@@ -96,7 +97,7 @@ class OpColorizeLabelImage(Operator):
         raw = self.InputImage[input_key].wait()
 
         if not self.colors.size:
-            self.colors = OpColorizeLabelImage.colorTableList()
+            self.colors = OpColorizeLabelImage.colorTableList(self.NumColors.value)
 
         processed = numpy.empty(nanshe.additional_generators.len_slices(key), dtype=numpy.uint8)
         for each_label in numpy.unique(raw):
