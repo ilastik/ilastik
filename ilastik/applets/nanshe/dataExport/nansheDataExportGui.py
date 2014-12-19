@@ -86,7 +86,6 @@ class NansheDataExportLayerViewerGui(DataExportLayerViewerGui):
         opLane = self.topLevelOperatorView
         exportedDataSlot = opLane.ImageOnDisk
         if exportedDataSlot.ready():
-            # exportLayer = self.createStandardLayerFromSlot( exportedDataSlot )
             exportLayer = ColortableLayer( LazyflowSource(exportedDataSlot), colorTable=NansheDataExportLayerViewerGui.colorTableList() )
             exportLayer.name = "Exported Image (from disk)"
             exportLayer.visible = True
