@@ -36,10 +36,10 @@ import ilastik
 import ilastik.applets
 import ilastik.applets.nanshe
 import ilastik.applets.nanshe.opColorizeLabelImage
-from ilastik.applets.nanshe.opColorizeLabelImage import OpColorizeLabelImage
+from ilastik.applets.nanshe.opColorizeLabelImage import OpColorizeLabelImage, OpColorizeLabelImageCached
 
 class TestOpColorizeLabelImage(object):
-    def testBasic(self):
+    def testBasic1(self):
         a = numpy.arange(256)
         a = expand_view(a, 256)
         a = a[..., None]
@@ -48,6 +48,26 @@ class TestOpColorizeLabelImage(object):
 
         graph = Graph()
         op = OpColorizeLabelImage(graph=graph)
+
+        opPrep = OpArrayPiper(graph=graph)
+        opPrep.Input.setValue(a)
+
+        op.InputImage.connect(opPrep.Output)
+
+        b = op.Output[...].wait()
+
+        b_colors = set([tuple(_) for _ in list(array_to_matrix(b.T).T)])
+        assert(len(b_colors) == 256)
+
+    def testBasic2(self):
+        a = numpy.arange(256)
+        a = expand_view(a, 256)
+        a = a[..., None]
+        a = vigra.taggedView(a, "xyc")
+
+
+        graph = Graph()
+        op = OpColorizeLabelImageCached(graph=graph)
 
         opPrep = OpArrayPiper(graph=graph)
         opPrep.Input.setValue(a)
