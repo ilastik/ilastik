@@ -50,10 +50,7 @@ class TestOpNansheDictionaryLearning(object):
         g = synthetic_data.synthetic_data.generate_hypersphere_masks(space, p, radii)
         gv = g[..., None]
         gv = gv.astype(float)
-        gv = vigra.VigraArray(gv, axistags=vigra.AxisTags(vigra.AxisInfo.t,
-                                                          vigra.AxisInfo.y,
-                                                          vigra.AxisInfo.x,
-                                                          vigra.AxisInfo.c))
+        gv = vigra.taggedView(gv, "tyxc")
 
         graph = Graph()
         op = OpNansheDictionaryLearning(graph=graph)
