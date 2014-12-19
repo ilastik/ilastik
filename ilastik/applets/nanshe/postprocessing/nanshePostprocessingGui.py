@@ -456,9 +456,9 @@ class NanshePostprocessingGui(LayerViewerGui):
         layers = []
 
         # Show the resulting label image
-        outputImageSlot = self.topLevelOperatorView.Output
+        outputImageSlot = self.topLevelOperatorView.ColorizedOutput
         if outputImageSlot.ready():
-            outputLayer = ColortableLayer( LazyflowSource(outputImageSlot), colorTable=NanshePostprocessingGui.colorTableList() )
+            outputLayer = self.createStandardLayerFromSlot( outputImageSlot )
             outputLayer.name = "Output"
             outputLayer.visible = False
             outputLayer.opacity = 1.0
