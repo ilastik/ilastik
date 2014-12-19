@@ -22,6 +22,7 @@
 import numpy
 
 from lazyflow.graph import Graph
+from lazyflow.operators import OpArrayPiper
 
 import vigra
 
@@ -48,8 +49,12 @@ class TestOpNansheRemoveZeroedLines(object):
 
 
         graph = Graph()
+
+        opPrep = OpArrayPiper(graph=graph)
+        opPrep.Input.setValue(ar)
+
         op = OpNansheRemoveZeroedLines(graph=graph)
-        op.InputImage.setValue(ar)
+        op.InputImage.connect(opPrep.Output)
 
         op.ErosionShape.setValue([21, 1])
         op.DilationShape.setValue([1, 3])
