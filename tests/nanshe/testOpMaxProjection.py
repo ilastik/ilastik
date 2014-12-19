@@ -35,10 +35,10 @@ import ilastik
 import ilastik.applets
 import ilastik.applets.nanshe
 import ilastik.applets.nanshe.opMaxProjection
-from ilastik.applets.nanshe.opMaxProjection import OpMaxProjection
+from ilastik.applets.nanshe.opMaxProjection import OpMaxProjection, OpMaxProjectionCached
 
 class TestOpMaxProjection(object):
-    def testBasic(self):
+    def testBasic1(self):
         a = numpy.zeros((2,2,2,))
         a[1,1,1] = 1
         a[0,0,0] = 1
@@ -51,6 +51,32 @@ class TestOpMaxProjection(object):
 
         graph = Graph()
         op = OpMaxProjection(graph=graph)
+
+        opPrep = OpArrayPiper(graph=graph)
+        opPrep.Input.setValue(a)
+
+        op.InputImage.connect(opPrep.Output)
+        op.Axis.setValue(0)
+
+        b = op.Output[...].wait()
+        b = vigra.taggedView(b, "yxc")
+
+
+        assert((b == expected_b).all())
+
+    def testBasic2(self):
+        a = numpy.zeros((2,2,2,))
+        a[1,1,1] = 1
+        a[0,0,0] = 1
+        a = a[..., None]
+        a = vigra.taggedView(a, "tyxc")
+
+        expected_b = a.max(axis=0)
+        expected_b = vigra.taggedView(expected_b, "yxc")
+
+
+        graph = Graph()
+        op = OpMaxProjectionCached(graph=graph)
 
         opPrep = OpArrayPiper(graph=graph)
         opPrep.Input.setValue(a)
