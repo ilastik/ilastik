@@ -36,6 +36,7 @@ includes = [\
                 'PyQt4.pyqtconfig', 'PyQt4.uic','PyQt4.QtCore','PyQt4.QtGui',
                 'site', 'os',
                 'vtk',
+                'rank_filter', 'nanshe'
                 'vtk.vtkCommonPythonSIP',
                 'sklearn', 'sklearn.utils',
              ]
@@ -65,6 +66,17 @@ package_data={'ilastik': ['ilastik-splash.png',
               'ilastik.plugins': ['*.yapsy-plugin'],
               '': ['*.ui']
               }
+
+class nanshe_recipe(object):
+    def check(self, dist, mf):
+        m = mf.findNode('nanshe')
+        if m is None:
+            return None
+
+        # Don't put nanshe in the site-packages.zip file
+        return dict(
+            packages=['nanshe']
+        )
 
 class ilastik_recipe(object):
     def check(self, dist, mf):
@@ -133,6 +145,7 @@ class jsonschema_recipe(object):
         )
 
 import py2app.recipes
+py2app.recipes.nanshe = nanshe_recipe()
 py2app.recipes.ilastik = ilastik_recipe()
 py2app.recipes.volumina = volumina_recipe()
 py2app.recipes.lazyflow = lazyflow_recipe()
