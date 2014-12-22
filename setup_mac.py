@@ -36,7 +36,7 @@ includes = [\
                 'PyQt4.pyqtconfig', 'PyQt4.uic','PyQt4.QtCore','PyQt4.QtGui',
                 'site', 'os',
                 'vtk',
-                'rank_filter', 'nanshe'
+                'rank_filter', 'nanshe',
                 'vtk.vtkCommonPythonSIP',
                 'sklearn', 'sklearn.utils',
              ]
