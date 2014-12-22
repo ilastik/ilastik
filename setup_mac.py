@@ -32,7 +32,7 @@ APP = ['ilastik.py']
 DATA_FILES = []
 
 includes = [\
-                'h5py', 'h5py.defs', 'h5py.utils', 'h5py._proxy', 'h5py._errors',
+                'h5py', 'h5py.defs', 'h5py.utils', 'h5py._proxy', 'h5py._errors', 'h5py.h5ac', 'h5py._objects',
                 'PyQt4.pyqtconfig', 'PyQt4.uic','PyQt4.QtCore','PyQt4.QtGui',
                 'site', 'os',
                 'vtk',
