@@ -34,8 +34,9 @@ import numpy
 import vigra
 
 import nanshe
-import nanshe.advanced_image_processing
-import nanshe.additional_generators
+import nanshe.nanshe
+import nanshe.nanshe.advanced_image_processing
+import nanshe.nanshe.additional_generators
 
 
 class OpNansheGenerateDictionary(Operator):
@@ -135,7 +136,7 @@ class OpNansheGenerateDictionary(Operator):
     def execute(self, slot, subindex, roi, result):
         output_key = roi.toSlice()
 
-        output_key = nanshe.additional_generators.reformat_slices(output_key)
+        output_key = nanshe.nanshe.additional_generators.reformat_slices(output_key)
 
         input_key = list(output_key)
 
@@ -169,7 +170,7 @@ class OpNansheGenerateDictionary(Operator):
         mode = self.Mode.value
         modeD = self.ModeD.value
 
-        processed = nanshe.advanced_image_processing.generate_dictionary(raw,
+        processed = nanshe.nanshe.advanced_image_processing.generate_dictionary(raw,
                                                                          **{ "spams.trainDL" :
                                                                                  {
                                                                                      "K" : K,

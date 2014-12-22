@@ -29,7 +29,8 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 import numpy
 
 import nanshe
-import nanshe.advanced_image_processing
+import nanshe.nanshe
+import nanshe.nanshe.advanced_image_processing
 
 
 class OpNansheNormalizeData(Operator):
@@ -61,7 +62,7 @@ class OpNansheNormalizeData(Operator):
 
         ord = self.Ord.value
 
-        processed = nanshe.advanced_image_processing.normalize_data(raw.astype(numpy.float64),
+        processed = nanshe.nanshe.advanced_image_processing.normalize_data(raw.astype(numpy.float64),
                                                                     **{"simple_image_processing.renormalized_images" : {
                                                                         "ord" : ord
                                                                        }

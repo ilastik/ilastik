@@ -37,7 +37,8 @@ import itertools
 import numpy
 
 import nanshe
-import nanshe.advanced_image_processing
+import nanshe.nanshe
+import nanshe.nanshe.advanced_image_processing
 
 
 class OpNansheExtractF0(Operator):
@@ -130,7 +131,7 @@ class OpNansheExtractF0(Operator):
     def compute_halo(slicing, image_shape, half_window_size,
                                            temporal_smoothing_gaussian_filter_stdev,
                                            spatial_smoothing_gaussian_filter_stdev):
-        slicing = nanshe.additional_generators.reformat_slices(slicing, image_shape)
+        slicing = nanshe.nanshe.additional_generators.reformat_slices(slicing, image_shape)
 
         halo = list(itertools.repeat(0, len(slicing) - 1))
         halo[0] = max(int(math.ceil(5*temporal_smoothing_gaussian_filter_stdev)), half_window_size)
@@ -188,7 +189,7 @@ class OpNansheExtractF0(Operator):
         raw = self.InputImage[halo_key].wait()
         raw = raw[..., 0]
 
-        processed = nanshe.advanced_image_processing.extract_f0(raw,
+        processed = nanshe.nanshe.advanced_image_processing.extract_f0(raw,
                                                                 half_window_size=half_window_size,
                                                                 which_quantile=which_quantile,
                                                                 temporal_smoothing_gaussian_filter_stdev=temporal_smoothing_gaussian_filter_stdev,
@@ -292,7 +293,7 @@ class OpNansheExtractF0Cached(Operator):
                                                      self.TemporalSmoothingGaussianFilterStdev.value,
                                                      self.SpatialSmoothingGaussianFilterStdev.value)[0]
 
-        block_shape = nanshe.additional_generators.len_slices(halo_slicing)
+        block_shape = nanshe.nanshe.additional_generators.len_slices(halo_slicing)
 
         block_shape = list(block_shape)
 

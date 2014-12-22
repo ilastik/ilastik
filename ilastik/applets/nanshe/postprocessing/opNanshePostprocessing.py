@@ -33,8 +33,9 @@ import vigra
 import numpy
 
 import nanshe
-import nanshe.expanded_numpy
-import nanshe.advanced_image_processing
+import nanshe.nanshe
+import nanshe.nanshe.expanded_numpy
+import nanshe.nanshe.advanced_image_processing
 
 
 class OpNanshePostprocessing(Operator):

@@ -36,8 +36,9 @@ import vigra
 import numpy
 
 import nanshe
-import nanshe.expanded_numpy
-import nanshe.advanced_image_processing
+import nanshe.nanshe
+import nanshe.nanshe.advanced_image_processing
+import nanshe.nanshe.expanded_numpy
 
 
 class OpNanshePostprocessData(Operator):
@@ -224,9 +225,9 @@ class OpNanshePostprocessData(Operator):
             }
         }
 
-        processed = nanshe.advanced_image_processing.postprocess_data(raw, **parameters)
+        processed = nanshe.nanshe.advanced_image_processing.postprocess_data(raw, **parameters)
 
-        processed_label_image = nanshe.expanded_numpy.enumerate_masks_max(processed["mask"])
+        processed_label_image = nanshe.nanshe.expanded_numpy.enumerate_masks_max(processed["mask"])
 
         processed_label_image = processed_label_image[0]
         processed_label_image = processed_label_image[..., None]

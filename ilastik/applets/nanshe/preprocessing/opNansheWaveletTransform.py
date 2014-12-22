@@ -35,8 +35,9 @@ from ilastik.applets.base.applet import DatasetConstraintError
 import numpy
 
 import nanshe
-import nanshe.wavelet_transform
-import nanshe.additional_generators
+import nanshe.nanshe
+import nanshe.nanshe.additional_generators
+import nanshe.nanshe.wavelet_transform
 
 
 class OpNansheWaveletTransform(Operator):
@@ -121,7 +122,7 @@ class OpNansheWaveletTransform(Operator):
     
     @staticmethod
     def compute_halo(slicing, image_shape, scale):
-        slicing = nanshe.additional_generators.reformat_slices(slicing, image_shape)
+        slicing = nanshe.nanshe.additional_generators.reformat_slices(slicing, image_shape)
 
         half_halo = list(itertools.repeat(0, len(slicing)))
         halo_slicing = list(slicing)
@@ -172,7 +173,7 @@ class OpNansheWaveletTransform(Operator):
         raw = self.InputImage[halo_key].wait()
         raw = raw[..., 0]
 
-        processed = nanshe.wavelet_transform.wavelet_transform(raw,
+        processed = nanshe.nanshe.wavelet_transform.wavelet_transform(raw,
                                                                scale=scale,
                                                                include_intermediates = False,
                                                                include_lower_scales = False)
@@ -252,7 +253,7 @@ class OpNansheWaveletTransformCached(Operator):
                                                             self.Scale.value)[0]
 
 
-        block_shape = nanshe.additional_generators.len_slices(halo_slicing)
+        block_shape = nanshe.nanshe.additional_generators.len_slices(halo_slicing)
 
 
         block_shape = list(block_shape)

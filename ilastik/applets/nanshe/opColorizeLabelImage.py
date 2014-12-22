@@ -38,9 +38,10 @@ import matplotlib.cm
 import vigra
 
 import nanshe
-import nanshe.additional_generators
-import nanshe.advanced_image_processing
-import nanshe.expanded_numpy
+import nanshe.nanshe
+import nanshe.nanshe.additional_generators
+import nanshe.nanshe.advanced_image_processing
+import nanshe.nanshe.expanded_numpy
 
 
 class OpColorizeLabelImage(Operator):
@@ -63,7 +64,7 @@ class OpColorizeLabelImage(Operator):
         # Transparent for the zero label
         colors.append((0,0,0,0))
 
-        rgb_color_values = list(nanshe.additional_generators.splitting_xrange(num_colors))
+        rgb_color_values = list(nanshe.nanshe.additional_generators.splitting_xrange(num_colors))
         converter = matplotlib.colors.ColorConverter()
 
         for _ in rgb_color_values:
@@ -128,7 +129,7 @@ class OpColorizeLabelImage(Operator):
         if not self.colors.size:
             self.colors = OpColorizeLabelImage.colorTableList(self.NumColors.value)
 
-        processed = numpy.empty(nanshe.additional_generators.len_slices(key), dtype=numpy.uint8)
+        processed = numpy.empty(nanshe.nanshe.additional_generators.len_slices(key), dtype=numpy.uint8)
         for each_label in numpy.unique(raw):
             mask = (raw == each_label)
             mask = mask[..., 0]
