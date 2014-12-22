@@ -24,6 +24,10 @@ import sys
 from setuptools import setup, find_packages
 from ilastik import __version__
 
+
+# Running into recursion limit too quickly, which stops build.
+sys.setrecursionlimit(1500)
+
 APP = ['ilastik.py']
 DATA_FILES = []
 
