@@ -61,7 +61,8 @@ class OpNanshePreprocessing(Operator):
 
 
     OpNansheRemoveZeroedLinesOutput = OutputSlot()
-    OpNansheExtractF0Output = OutputSlot()
+    OpNansheExtractF0_dF_F_Output = OutputSlot()
+    OpNansheExtractF0_F0_Output = OutputSlot()
     OpNansheWaveletTransformOutput = OutputSlot()
 
     CleanBlocks = OutputSlot()
@@ -96,7 +97,8 @@ class OpNanshePreprocessing(Operator):
         self.opPreprocessData.CacheInput.connect( self.CacheInput )
 
         self.OpNansheRemoveZeroedLinesOutput.connect(self.opPreprocessData.OpNansheRemoveZeroedLinesOutput)
-        self.OpNansheExtractF0Output.connect(self.opPreprocessData.OpNansheExtractF0Output)
+        self.OpNansheExtractF0_dF_F_Output.connect(self.opPreprocessData.OpNansheExtractF0_dF_F_Output)
+        self.OpNansheExtractF0_F0_Output.connect(self.opPreprocessData.OpNansheExtractF0_F0_Output)
         self.OpNansheWaveletTransformOutput.connect(self.opPreprocessData.OpNansheWaveletTransformOutput)
 
         self.CleanBlocks.connect( self.opPreprocessData.CleanBlocks )

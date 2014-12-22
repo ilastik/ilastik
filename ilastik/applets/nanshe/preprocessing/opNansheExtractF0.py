@@ -60,7 +60,8 @@ class OpNansheExtractF0(Operator):
     BiasEnabled = InputSlot(value=False, stype='bool')
     Bias = InputSlot(value=0.0, stype='float')
 
-    Output = OutputSlot()
+    F0 = OutputSlot()
+    dF_F = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super( OpNansheExtractF0, self ).__init__( *args, **kwargs )
@@ -122,10 +123,16 @@ class OpNansheExtractF0(Operator):
     
     def setupOutputs(self):
         # Copy the input metadata to both outputs
-        self.Output.meta.assignFrom( self.InputImage.meta )
-        self.Output.meta.dtype = numpy.float32
+        self.F0.meta.assignFrom( self.InputImage.meta )
+        self.F0.meta.dtype = numpy.float32
 
-        self.Output.meta.generation = self._generation
+        self.F0.meta.generation = self._generation
+
+
+        self.dF_F.meta.assignFrom( self.InputImage.meta )
+        self.dF_F.meta.dtype = numpy.float32
+
+        self.dF_F.meta.generation = self._generation
 
     @staticmethod
     def compute_halo(slicing, image_shape, half_window_size,
@@ -189,18 +196,22 @@ class OpNansheExtractF0(Operator):
         raw = self.InputImage[halo_key].wait()
         raw = raw[..., 0]
 
-        processed = nanshe.nanshe.advanced_image_processing.extract_f0(raw,
+        f0, df_f = nanshe.nanshe.advanced_image_processing.extract_f0(raw,
                                                                 half_window_size=half_window_size,
                                                                 which_quantile=which_quantile,
                                                                 temporal_smoothing_gaussian_filter_stdev=temporal_smoothing_gaussian_filter_stdev,
                                                                 spatial_smoothing_gaussian_filter_stdev=spatial_smoothing_gaussian_filter_stdev,
                                                                 temporal_smoothing_gaussian_filter_window_size=temporal_smoothing_gaussian_filter_window_size,
                                                                 spatial_smoothing_gaussian_filter_window_size=spatial_smoothing_gaussian_filter_window_size,
-                                                                bias=bias)
-        processed = processed[..., None]
-        
-        if slot.name == 'Output':
-            result[...] = processed[within_halo_key]
+                                                                bias=bias,
+                                                                return_f0=True)
+        f0 = f0[..., None]
+        df_f = df_f[..., None]
+
+        if slot.name == 'F0':
+            result[...] = f0[within_halo_key]
+        elif slot.name == 'dF_F':
+            result[...] = df_f[within_halo_key]
 
     def setInSlot(self, slot, subindex, roi, value):
         pass
@@ -208,7 +219,11 @@ class OpNansheExtractF0(Operator):
     def propagateDirty(self, slot, subindex, roi):
         if slot.name == "InputImage":
             self._generation[self.name] += 1
-            self.Output.setDirty(OpNansheExtractF0.compute_halo(roi.toSlice(), self.InputImage.meta.shape,
+            self.F0.setDirty(OpNansheExtractF0.compute_halo(roi.toSlice(), self.InputImage.meta.shape,
+                                                                self.HalfWindowSize.value,
+                                                                self.TemporalSmoothingGaussianFilterStdev.value,
+                                                                self.SpatialSmoothingGaussianFilterStdev.value)[0])
+            self.dF_F.setDirty(OpNansheExtractF0.compute_halo(roi.toSlice(), self.InputImage.meta.shape,
                                                                 self.HalfWindowSize.value,
                                                                 self.TemporalSmoothingGaussianFilterStdev.value,
                                                                 self.SpatialSmoothingGaussianFilterStdev.value)[0])
@@ -219,7 +234,8 @@ class OpNansheExtractF0(Operator):
              slot.name == "SpatialSmoothingGaussianFilterStdev" or \
              slot.name == "SpatialSmoothingGaussianFilterWindowSize":
             self._generation[self.name] += 1
-            self.Output.setDirty( slice(None) )
+            self.F0.setDirty( slice(None) )
+            self.dF_F.setDirty( slice(None) )
         else:
             assert False, "Unknown dirty input slot"
 
@@ -244,7 +260,8 @@ class OpNansheExtractF0Cached(Operator):
     BiasEnabled = InputSlot(value=False, stype='bool')
     Bias = InputSlot(value=0.0, stype='float')
 
-    Output = OutputSlot()
+    F0 = OutputSlot()
+    dF_F = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super( OpNansheExtractF0Cached, self ).__init__( *args, **kwargs )
@@ -261,15 +278,21 @@ class OpNansheExtractF0Cached(Operator):
         self.opExtractF0.Bias.connect(self.Bias)
 
 
-        self.opCache = OpBlockedArrayCache(parent=self)
-        self.opCache.fixAtCurrent.setValue(False)
+        self.opCache_dF_F = OpBlockedArrayCache(parent=self)
+        self.opCache_dF_F.fixAtCurrent.setValue(False)
+
+        self.opCache_F0 = OpBlockedArrayCache(parent=self)
+        self.opCache_F0.fixAtCurrent.setValue(False)
 
         self.opExtractF0.InputImage.connect( self.InputImage )
-        self.opCache.Input.connect( self.opExtractF0.Output )
-        self.Output.connect( self.opCache.Output )
+        self.opCache_F0.Input.connect( self.opExtractF0.F0 )
+        self.opCache_dF_F.Input.connect( self.opExtractF0.dF_F)
+
+        self.F0.connect( self.opExtractF0.F0 )
+        self.dF_F.connect( self.opExtractF0.dF_F )
 
     def setupOutputs(self):
-        axes_shape_iter = itertools.izip(self.opExtractF0.Output.meta.axistags, self.opExtractF0.Output.meta.shape)
+        axes_shape_iter = itertools.izip(self.opExtractF0.F0.meta.axistags, self.opExtractF0.F0.meta.shape)
 
         halo_center_slicing = []
 
@@ -297,18 +320,20 @@ class OpNansheExtractF0Cached(Operator):
 
         block_shape = list(block_shape)
 
-        for i, each_axistag in enumerate(self.opExtractF0.Output.meta.axistags):
+        for i, each_axistag in enumerate(self.opExtractF0.F0.meta.axistags):
             if each_axistag.isSpatial():
                 block_shape[i] = max(block_shape[i], 256)
             elif each_axistag.isTemporal():
                 block_shape[i] = max(block_shape[i], 50)
 
-            block_shape[i] = min(block_shape[i], self.opExtractF0.Output.meta.shape[i])
+            block_shape[i] = min(block_shape[i], self.opExtractF0.F0.meta.shape[i])
 
         block_shape = tuple(block_shape)
 
-        self.opCache.innerBlockShape.setValue(block_shape)
-        self.opCache.outerBlockShape.setValue(block_shape)
+        self.opCache_dF_F.innerBlockShape.setValue(block_shape)
+        self.opCache_dF_F.outerBlockShape.setValue(block_shape)
+        self.opCache_F0.innerBlockShape.setValue(block_shape)
+        self.opCache_F0.outerBlockShape.setValue(block_shape)
 
     def setInSlot(self, slot, subindex, roi, value):
         pass

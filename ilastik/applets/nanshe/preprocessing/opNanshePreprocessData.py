@@ -66,7 +66,8 @@ class OpNanshePreprocessData(Operator):
 
 
     OpNansheRemoveZeroedLinesOutput = OutputSlot()
-    OpNansheExtractF0Output = OutputSlot()
+    OpNansheExtractF0_dF_F_Output = OutputSlot()
+    OpNansheExtractF0_F0_Output = OutputSlot()
     OpNansheWaveletTransformOutput = OutputSlot()
 
     Output = OutputSlot()
@@ -96,7 +97,8 @@ class OpNanshePreprocessData(Operator):
 
 
         self.OpNansheRemoveZeroedLinesOutput.connect(self.opNansheRemoveZeroedLines.Output)
-        self.OpNansheExtractF0Output.connect(self.opNansheExtractF0.Output)
+        self.OpNansheExtractF0_dF_F_Output.connect(self.opNansheExtractF0.dF_F)
+        self.OpNansheExtractF0_F0_Output.connect(self.opNansheExtractF0.F0)
         self.OpNansheWaveletTransformOutput.connect(self.opNansheWaveletTransform.Output)
     
     def setupOutputs(self):
@@ -115,7 +117,7 @@ class OpNanshePreprocessData(Operator):
 
         if self.ToExtractF0.value:
             self.opNansheExtractF0.InputImage.connect(next_output)
-            next_output = self.opNansheExtractF0.Output
+            next_output = self.opNansheExtractF0.dF_F
 
         if self.ToWaveletTransform.value:
             self.opNansheWaveletTransform.InputImage.connect(next_output)
@@ -186,7 +188,8 @@ class OpNanshePreprocessDataCached(Operator):
 
 
     OpNansheRemoveZeroedLinesOutput = OutputSlot()
-    OpNansheExtractF0Output = OutputSlot()
+    OpNansheExtractF0_dF_F_Output = OutputSlot()
+    OpNansheExtractF0_F0_Output = OutputSlot()
     OpNansheWaveletTransformOutput = OutputSlot()
 
     CleanBlocks = OutputSlot()
@@ -218,7 +221,8 @@ class OpNanshePreprocessDataCached(Operator):
 
 
         self.OpNansheRemoveZeroedLinesOutput.connect(self.opNansheRemoveZeroedLines.Output)
-        self.OpNansheExtractF0Output.connect(self.opNansheExtractF0.Output)
+        self.OpNansheExtractF0_dF_F_Output.connect(self.opNansheExtractF0.dF_F)
+        self.OpNansheExtractF0_F0_Output.connect(self.opNansheExtractF0.F0)
         self.OpNansheWaveletTransformOutput.connect(self.opNansheWaveletTransform.Output)
 
         self.opCache = OpArrayCache(parent=self)
@@ -244,7 +248,7 @@ class OpNanshePreprocessDataCached(Operator):
 
         if self.ToExtractF0.value:
             self.opNansheExtractF0.InputImage.connect(next_output)
-            next_output = self.opNansheExtractF0.Output
+            next_output = self.opNansheExtractF0.dF_F
 
         if self.ToWaveletTransform.value:
             self.opNansheWaveletTransform.InputImage.connect(next_output)
@@ -275,7 +279,8 @@ class OpNanshePreprocessDataCached(Operator):
                     self.opCache.Input.setDirty( slice(None) )
         elif slot.name == "ToExtractF0":
             if slot.value:
-                self.opNansheExtractF0.Output.setDirty( slice(None) )
+                self.opNansheExtractF0.dF_F.setDirty( slice(None) )
+                self.opNansheExtractF0.F0.setDirty( slice(None) )
             else:
                 if self.ToWaveletTransform.value:
                     self.opNansheWaveletTransform.InputImage.setDirty( slice(None) )

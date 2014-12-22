@@ -363,7 +363,16 @@ class NanshePreprocessingGui(LayerViewerGui):
             layers.append(outputLayer)
 
         # Show the result after F_0 extraction
-        outputImageSlot = self.topLevelOperatorView.OpNansheExtractF0Output
+        outputImageSlot = self.topLevelOperatorView.OpNansheExtractF0_F0_Output
+        if outputImageSlot.ready():
+            outputLayer = self.createStandardLayerFromSlot( outputImageSlot )
+            outputLayer.name = "Output Estimate F_0"
+            outputLayer.visible = False
+            outputLayer.opacity = 1.0
+            layers.append(outputLayer)
+
+        # Show the result after F_0 extraction
+        outputImageSlot = self.topLevelOperatorView.OpNansheExtractF0_dF_F_Output
         if outputImageSlot.ready():
             outputLayer = self.createStandardLayerFromSlot( outputImageSlot )
             outputLayer.name = "Output Extract F_0"
