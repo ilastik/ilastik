@@ -854,7 +854,7 @@ class OpObjectTrain(Operator):
             for timestep, labels_time in labels_image.iteritems():
                 nz = numpy.nonzero(labels_time)
                 if len(nz[0])==0:
-                    return
+                    continue
                 else:
                     nztimes.append(timestep)
                     labels_image_filtered[timestep] = labels_time
