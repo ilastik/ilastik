@@ -39,6 +39,7 @@ includes = [\
                 'rank_filter', 'nanshe',
                 'vtk.vtkCommonPythonSIP',
                 'sklearn', 'sklearn.utils',
+                'skimage'
              ]
 
 # The py2app dependency walker finds this code, which is intended only for Python3.
@@ -133,6 +134,17 @@ class sklearn_recipe(object):
             packages=['sklearn']
         )
 
+class skimage_recipe(object):
+    def check(self, dist, mf):
+        m = mf.findNode('skimage')
+        if m is None:
+            return None
+
+        # Don't put skimage in the site-packages.zip file
+        return dict(
+            packages=['skimage']
+        )
+
 class jsonschema_recipe(object):
     def check(self, dist, mf):
         m = mf.findNode('jsonschema')
@@ -151,6 +163,7 @@ py2app.recipes.volumina = volumina_recipe()
 py2app.recipes.lazyflow = lazyflow_recipe()
 py2app.recipes.vtk = vtk_recipe()
 py2app.recipes.sklearn = sklearn_recipe()
+py2app.recipes.skimage = skimage_recipe()
 py2app.recipes.jsonschema = jsonschema_recipe()
 
 
