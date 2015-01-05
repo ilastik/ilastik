@@ -27,6 +27,9 @@ from lazyflow.roi import roiToSlice
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.operators.opSlicedBlockedArrayCache import OpSlicedBlockedArrayCache
 
+import lazyflow
+lazyflow.request.Request.reset_thread_pool(0)
+
 class KeyMaker():
     def __getitem__(self, *args):
         return list(*args)
@@ -72,8 +75,7 @@ class TestOpSlicedBlockedArrayCache(object):
     def testCacheAccess(self):
         opCache = self.opCache
         opProvider = self.opProvider        
-        
-        
+         
         # Block-aligned request
         slicing = make_key[0:1, 0:10, 10:20, 0:10, 0:1]
         oldAccessCount = opProvider.accessCount
@@ -81,32 +83,33 @@ class TestOpSlicedBlockedArrayCache(object):
         data = data.view(vigra.VigraArray)
         data.axistags = opCache.Output.meta.axistags
         assert (data == self.data[slicing]).all()
-
+ 
         # Our slice intersects 5 outer blocks and 10 inner blocks
         minAccess = oldAccessCount + 5
         maxAccess = oldAccessCount + 10
         assert opProvider.accessCount >= minAccess
         assert opProvider.accessCount <= maxAccess
         oldAccessCount = opProvider.accessCount
-
+ 
         # Same request should come from cache, so access count is unchanged
         data = opCache.Output( slicing ).wait()
         assert opProvider.accessCount == oldAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, oldAccessCount)
-
+ 
         # Not block-aligned request
         slicing = make_key[0:1, 45:65, 10:20, 0:10, 0:1]
         data = opCache.Output( slicing ).wait()
+         
         data = data.view(vigra.VigraArray)
         data.axistags = opCache.Output.meta.axistags
         assert (data == self.data[slicing]).all()
-
-        # Our slice intersects 5 outer block and 20 inner blocks
+ 
+        # Our slice intersects 10 outer block and up to 30 inner blocks
         minAccess = oldAccessCount + 10
-        maxAccess = oldAccessCount + 20
+        maxAccess = oldAccessCount + 30
         assert opProvider.accessCount >= minAccess
-        assert opProvider.accessCount <= maxAccess
+        assert opProvider.accessCount <= maxAccess, "{} <= {}".format(opProvider.accessCount, maxAccess)
         oldAccessCount = opProvider.accessCount
-
+ 
         # Same request should come from cache, so access count is unchanged
         data = opCache.Output( slicing ).wait()
         assert opProvider.accessCount == oldAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, oldAccessCount)
@@ -114,82 +117,83 @@ class TestOpSlicedBlockedArrayCache(object):
     def testDirtySource(self):
         opCache = self.opCache
         opProvider = self.opProvider        
-        
+          
         oldAccessCount = 0
         assert opProvider.accessCount == oldAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, oldAccessCount)
-
+  
         # Request
         slicing = make_key[:, 0:50, 15:45, 0:10, :]
         data = opCache.Output( slicing ).wait()
         data = data.view(vigra.VigraArray)
         data.axistags = opCache.Output.meta.axistags
         assert (data == self.data[slicing]).all()
-        
-        # Our slice intersects 3*3*5=9 outerBlocks
+          
+        # Our slice intersects 3*3*5=45 outerBlocks, which each have 8 inner blocks, 
+        #  but not all inner blocks are intersected for this access.
         minAccess = oldAccessCount + 45
-        maxAccess = oldAccessCount + 90
+        maxAccess = oldAccessCount + 200
         assert opProvider.accessCount >= minAccess
-        assert opProvider.accessCount <= maxAccess
+        assert opProvider.accessCount <= maxAccess, "{} <= {}".format(opProvider.accessCount, maxAccess)
         oldAccessCount = opProvider.accessCount
-
+  
         # Track dirty notifications
         gotDirtyKeys = []
         def handleDirty(slot, roi):
             gotDirtyKeys.append( list(roiToSlice(roi.start, roi.stop)) )
         opCache.Output.notifyDirty(handleDirty)
-        
+          
         # Change some of the input data and mark it dirty
         dirtykey = make_key[0:1, 10:20, 20:30, 0:3, 0:1]
         self.data[dirtykey] = 0.12345
         opProvider.Input.setDirty(dirtykey)        
         assert len(gotDirtyKeys) > 0
-        
+          
         # Same request, but should need to access the data again due to dirtiness
         data = opCache.Output( slicing ).wait()
         data = data.view(vigra.VigraArray)
         data.axistags = opCache.Output.meta.axistags
         assert (data == self.data[slicing]).all()
-
+  
         # The dirty data intersected 2 outerBlocks and a total of 3 innerBlock.
         minAccess = oldAccessCount + 2
         maxAccess = oldAccessCount + 3
         assert opProvider.accessCount >= minAccess, "Extra accesses: {}, expected >= {}".format( opProvider.accessCount - oldAccessCount, 2 )
         assert opProvider.accessCount <= maxAccess, "Extra accesses: {}, expected <= {}".format( opProvider.accessCount - oldAccessCount, 3 )
         oldAccessCount = opProvider.accessCount
-
+  
     def testFixAtCurrent(self):
         opCache = self.opCache
         opProvider = self.opProvider        
-
+  
         # Track dirty notifications
         gotDirtyKeys = []
         def handleDirty(slot, roi):
             gotDirtyKeys.append( list(roiToSlice(roi.start, roi.stop)) )
         opCache.Output.notifyDirty(handleDirty)
-        
+          
         opCache.fixAtCurrent.setValue(True)
-
+  
         oldAccessCount = 0
         assert opProvider.accessCount == oldAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, oldAccessCount)
-
+  
         # Request (no access to provider because fixAtCurrent)
         slicing = make_key[:, 0:50, 15:45, 0:1, :]
         data = opCache.Output( slicing ).wait()
         assert opProvider.accessCount == oldAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, oldAccessCount)
-
+  
         # We haven't accessed this data yet,
         #  but fixAtCurrent is True so the cache gives us zeros
         assert (data == 0).all()
-
+  
         opCache.fixAtCurrent.setValue(False)
-
+  
         # Request again.  Data should match this time.
         oldAccessCount = opProvider.accessCount
         data = opCache.Output( slicing ).wait()
         data = data.view(vigra.VigraArray)
         data.axistags = opCache.Output.meta.axistags
         assert (data == self.data[slicing]).all()
-
+  
         # Our slice intersects 3*3=9 outerBlocks, and a total of 20 innerBlocks
         # Inner caches are allowed to split up the accesses, so there could be as many as 20
         minAccess = oldAccessCount + 9
@@ -197,83 +201,83 @@ class TestOpSlicedBlockedArrayCache(object):
         assert opProvider.accessCount >= minAccess
         assert opProvider.accessCount <= maxAccess
         oldAccessCount = opProvider.accessCount
-
+  
         # Request again.  Data should match WITHOUT requesting from the source.
         data = opCache.Output( slicing ).wait()
         data = data.view(vigra.VigraArray)
         data.axistags = opCache.Output.meta.axistags
         assert (data == self.data[slicing]).all()
         assert opProvider.accessCount == oldAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, oldAccessCount)
-
+  
         # Freeze it again
         opCache.fixAtCurrent.setValue(True)
-
+  
         # Clear previous
         gotDirtyKeys = []
-
+  
         # Change some of the input data that ISN'T cached yet and mark it dirty
         dirtykey = make_key[0:1, 90:100, 90:100, 0:1, 0:1]
         self.data[dirtykey] = 0.12345
         opProvider.Input.setDirty(dirtykey)
-
+  
         # Dirtiness not propagated due to fixAtCurrent
         assert len(gotDirtyKeys) == 0
-        
+          
         # Same request.  Data should still match the previous data (not yet refreshed)
         data2 = opCache.Output( slicing ).wait()
         data2 = data2.view(vigra.VigraArray)
         data2.axistags = opCache.Output.meta.axistags
         assert opProvider.accessCount == oldAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, oldAccessCount)
         assert (data2 == data).all()
-
+  
         # Unfreeze.
         opCache.fixAtCurrent.setValue(False)
-
+  
         # Dirty blocks are propagated after the cache is unfixed.
         assert len(gotDirtyKeys) > 0
-
+  
         # Same request.  Data should be updated now that we're unfrozen.
         data = opCache.Output( slicing ).wait()
         data = data.view(vigra.VigraArray)
         data.axistags = opCache.Output.meta.axistags
         assert (data == self.data[slicing]).all()
-
+  
         # Dirty data did not intersect with this request.
         # Data should still be cached (no extra accesses)
         assert opProvider.accessCount == oldAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, oldAccessCount)
-
+  
         ###########################3
         # Freeze it again
         opCache.fixAtCurrent.setValue(True)
-
+  
         # Clear previous
         gotDirtyKeys = []
-        
+          
         # Change some of the input data that IS cached and mark it dirty
         dirtykey = make_key[:, 0:25, 20:40, 0:1, :]
         self.data[dirtykey] = 0.54321
         opProvider.Input.setDirty(dirtykey)
-
+  
         # Dirtiness not propagated due to fixAtCurrent
         assert len(gotDirtyKeys) == 0
-        
+          
         # Same request.  Data should still match the previous data (not yet refreshed)
         data2 = opCache.Output( slicing ).wait()
         data2 = data2.view(vigra.VigraArray)
         data2.axistags = opCache.Output.meta.axistags
         assert opProvider.accessCount == oldAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, oldAccessCount)
         assert (data2 == data).all()
-
+  
         # Unfreeze. Previous dirty notifications should now be seen.
         opCache.fixAtCurrent.setValue(False)
         assert len(gotDirtyKeys) > 0
-
+  
         # Same request.  Data should be updated now that we're unfrozen.
         data = opCache.Output( slicing ).wait()
         data = data.view(vigra.VigraArray)
         data.axistags = opCache.Output.meta.axistags
         assert (data == self.data[slicing]).all()
-
+  
         # The dirty data intersected 2 outerBlocks, and a total of 6 innerblocks
         # Inner caches are allowed to split up the accesses, so there could be as many as 6
         minAccess = oldAccessCount + 2
@@ -281,67 +285,67 @@ class TestOpSlicedBlockedArrayCache(object):
         assert opProvider.accessCount >= minAccess
         assert opProvider.accessCount <= maxAccess
         oldAccessCount = opProvider.accessCount
-
+  
         #####################        
-
+  
         #### Repeat plain dirty test to ensure fixAtCurrent didn't mess up the block states.
-
+  
         gotDirtyKeys = []
-
+  
         # Change some of the input data and mark it dirty
         dirtykey = make_key[0:1, 10:11, 20:21, 0:3, 0:1]
         self.data[dirtykey] = 0.54321
         opProvider.Input.setDirty(dirtykey)
-
+  
         assert len(gotDirtyKeys) > 0
-        
+          
         # Should need access again.
         slicing = make_key[:, 0:50, 15:45, 0:10, :]
         data = opCache.Output( slicing ).wait()
         data = data.view(vigra.VigraArray)
         data.axistags = opCache.Output.meta.axistags
         assert (data == self.data[slicing]).all()
-
+  
         # The dirty data intersected 3*3*5 outerBlocks 
         minAccess = oldAccessCount + 45
-        maxAccess = oldAccessCount + 90
+        maxAccess = oldAccessCount + 200
         assert opProvider.accessCount >= minAccess
-        assert opProvider.accessCount <= maxAccess
+        assert opProvider.accessCount <= maxAccess, "{} <= {}".format(opProvider.accessCount, maxAccess)
         oldAccessCount = opProvider.accessCount
-
+ 
     def testFixAtCurrent2(self):
         opCache = self.opCache
-
+ 
         # Track dirty notifications
         gotDirtyKeys = []
         def handleDirty(slot, roi):
             gotDirtyKeys.append( list(roiToSlice(roi.start, roi.stop)) )
         opCache.Output.notifyDirty(handleDirty)
-
+ 
         def _requestFrozenAndUnfrozen(slicing):
             opCache.fixAtCurrent.setValue(True)
-
+ 
             # Request (no access to provider because fixAtCurrent)
             data = opCache.Output( slicing ).wait()
-    
+     
             # We haven't accessed this data yet,
             #  but fixAtCurrent is True so the cache gives us zeros
             assert (data == 0).all()
-
+ 
             dirty_notifications_received_before = len(gotDirtyKeys)
             opCache.fixAtCurrent.setValue(False)
-            
+             
             # This assertion verifies the fix to ilastik Issue #546
             assert len(gotDirtyKeys) == dirty_notifications_received_before+1, \
                 "Expected to receive a dirty notification because the zeros we received " \
                 "while the cache was fixed are no longer valid now that it's unfixed."
-    
+     
             # Request again.  Data should match this time.
             data = opCache.Output( slicing ).wait()
             data = data.view(vigra.VigraArray)
             data.axistags = opCache.Output.meta.axistags
             assert (data == self.data[slicing]).all()
-
+ 
         _requestFrozenAndUnfrozen(make_key[:, 0:50, 15:45, 0:1, :])
         _requestFrozenAndUnfrozen(make_key[:, 80:100, 80:100, 0:1, :])
 

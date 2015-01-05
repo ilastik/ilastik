@@ -25,6 +25,7 @@ import vigra
 from lazyflow.graph import Graph
 from lazyflow.roi import sliceToRoi, roiToSlice
 from lazyflow.operators import OpArrayPiper, OpArrayCache
+from lazyflow.operators.opArrayCache import has_drtile
 
 class KeyMaker():
     def __getitem__(self, *args):
@@ -110,9 +111,13 @@ class TestOpArrayCache(object):
         data = opCache.Output( slicing ).wait()
         data = data.view(vigra.VigraArray)
         data.axistags = opCache.Output.meta.axistags
-        expectedAccessCount += 1        
+        if has_drtile:
+            expectedAccessCount += 1
+        else:
+            expectedAccessCount += 20            
         assert (data == self.data[slicing]).all()
-        assert opProvider.accessCount == expectedAccessCount
+        assert opProvider.accessCount == expectedAccessCount, \
+            "Expected {} accesses, but provider was accessed {} times.".format(expectedAccessCount, opProvider.accessCount)
  
         # Track dirty notifications
         gotDirtyKeys = []
@@ -162,8 +167,13 @@ class TestOpArrayCache(object):
         data = data.view(vigra.VigraArray)
         data.axistags = opCache.Output.meta.axistags
         assert (data == self.data[slicing]).all()
-        expectedAccessCount += 1        
-        assert opProvider.accessCount == expectedAccessCount
+        if has_drtile:
+            expectedAccessCount += 1
+        else:
+            expectedAccessCount += 20            
+        assert (data == self.data[slicing]).all()
+        assert opProvider.accessCount == expectedAccessCount, \
+            "Expected {} accesses, but provider was accessed {} times.".format(expectedAccessCount, opProvider.accessCount)
  
         # Freeze it again
         opCache.fixAtCurrent.setValue(True)
@@ -205,8 +215,12 @@ class TestOpArrayCache(object):
         data = data.view(vigra.VigraArray)
         data.axistags = opCache.Output.meta.axistags
         assert (data == self.data[slicing]).all()
-        expectedAccessCount += 1
-        assert opProvider.accessCount == expectedAccessCount
+        if has_drtile:
+            expectedAccessCount += 1
+        else:
+            expectedAccessCount += 2            
+        assert opProvider.accessCount == expectedAccessCount, \
+            "Expected {} accesses, but provider was accessed {} times.".format(expectedAccessCount, opProvider.accessCount)
  
         #### Repeat plain dirty test to ensure fixAtCurrent didn't mess up the block states.
  

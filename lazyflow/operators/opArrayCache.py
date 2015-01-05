@@ -35,13 +35,19 @@ import numpy
 
 #lazyflow
 from lazyflow.request import RequestPool
-from lazyflow.drtile import drtile
 from lazyflow.roi import sliceToRoi, roiToSlice, getBlockBounds, TinyVector
 from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.utility import fastWhere
 from lazyflow.operators.opCache import OpCache
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
+
+try:
+    from lazyflow.drtile import drtile
+    has_drtile = True
+except ImportError:
+    has_drtile = False
+
 
 class OpArrayCache(OpCache):
     """ Allocates a block of memory as large as Input.meta.shape (==Output.meta.shape)
@@ -354,8 +360,13 @@ class OpArrayCache(OpCache):
             tileWeights = fastWhere(cond, 1, 128**3, numpy.uint32)
             trueDirtyIndices = numpy.nonzero(cond)
     
-            tileArray = drtile.test_DRTILE(tileWeights, 128**3).swapaxes(0,1)
-    
+            if has_drtile:
+                tileArray = drtile.test_DRTILE(tileWeights, 128**3).swapaxes(0,1)
+            else:
+                tileStartArray = numpy.array(trueDirtyIndices)
+                tileStopArray = 1 + tileStartArray
+                tileArray = numpy.concatenate((tileStartArray, tileStopArray), axis=0)
+            
             dirtyRois = []
             half = tileArray.shape[0]/2
             dirtyPool = RequestPool()
@@ -373,7 +384,6 @@ class OpArrayCache(OpCache):
                 drStop = numpy.minimum(drStop, shape)
                 drStart = numpy.minimum(drStart, shape)
     
-                key3 = roiToSlice(drStart3,drStop3)
                 key2 = roiToSlice(drStart2,drStop2)
     
                 key = roiToSlice(drStart,drStop)
@@ -381,8 +391,7 @@ class OpArrayCache(OpCache):
                 if not self._fixed:
                     dirtyRois.append([drStart,drStop])
     
-                    req = self.inputs["Input"][key].writeInto(self._cache[key])
-    
+                    req = self.inputs["Input"][key].writeInto(self._cache[key])    
                     req.uncancellable = True #FIXME
                     
                     dirtyPool.add(req)
