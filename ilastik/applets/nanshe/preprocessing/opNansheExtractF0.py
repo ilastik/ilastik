@@ -48,7 +48,7 @@ class OpNansheExtractF0(Operator):
     """
     name = "OpNansheExtractF0"
     category = "Pointwise"
-    
+
     InputImage = InputSlot()
 
     HalfWindowSize = InputSlot(value=400, stype='int')
@@ -120,7 +120,7 @@ class OpNansheExtractF0(Operator):
             if not ax[i].isSpatial():
                 # This is for developers.  Don't need a user-friendly error.
                 raise RuntimeError("%d-th axis %r is not spatial" % (i, ax[i]))
-    
+
     def setupOutputs(self):
         # Copy the input metadata to both outputs
         self.F0.meta.assignFrom( self.InputImage.meta )
@@ -174,7 +174,7 @@ class OpNansheExtractF0(Operator):
         within_halo_slicing = tuple(within_halo_slicing)
 
         return(halo_slicing, within_halo_slicing)
-    
+
     def execute(self, slot, subindex, roi, result):
         half_window_size = self.HalfWindowSize.value
         which_quantile = self.WhichQuantile.value
