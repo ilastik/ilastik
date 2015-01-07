@@ -226,15 +226,14 @@ class OpNansheExtractF0(Operator):
     def propagateDirty(self, slot, subindex, roi):
         if slot.name == "InputImage":
             self._generation[self.name] += 1
-            self.F0.setDirty(OpNansheExtractF0.compute_halo(roi.toSlice(), self.InputImage.meta.shape,
-                                                            self.HalfWindowSize.value,
-                                                            self.TemporalSmoothingGaussianFilterStdev.value,
-                                                            self.SpatialSmoothingGaussianFilterStdev.value)[0])
+            roi_halo = OpNansheExtractF0.compute_halo(roi.toSlice(),
+                                                      self.InputImage.meta.shape,
+                                                      self.HalfWindowSize.value,
+                                                      self.TemporalSmoothingGaussianFilterStdev.value,
+                                                      self.SpatialSmoothingGaussianFilterStdev.value)[0]
 
-            self.dF_F.setDirty(OpNansheExtractF0.compute_halo(roi.toSlice(), self.InputImage.meta.shape,
-                                                              self.HalfWindowSize.value,
-                                                              self.TemporalSmoothingGaussianFilterStdev.value,
-                                                              self.SpatialSmoothingGaussianFilterStdev.value)[0])
+            self.F0.setDirty(roi_halo)
+            self.dF_F.setDirty(roi_halo)
         elif slot.name == "Bias" or slot.name == "BiasEnabled" or \
              slot.name == "TemporalSmoothingGaussianFilterStdev" or \
              slot.name == "TemporalSmoothingGaussianFilterWindowSize" or \
