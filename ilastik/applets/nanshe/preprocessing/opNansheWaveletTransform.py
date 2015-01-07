@@ -73,39 +73,39 @@ class OpNansheWaveletTransform(Operator):
 
         if "t" not in slot.meta.getTaggedShape():
             raise DatasetConstraintError(
-                "RemoveZeroedLines",
+                "WaveletTransform",
                 "Input must have time.")
 
         if "y" not in slot.meta.getTaggedShape():
             raise DatasetConstraintError(
-                "RemoveZeroedLines",
+                "WaveletTransform",
                 "Input must have space dim y.")
 
         if "x" not in slot.meta.getTaggedShape():
             raise DatasetConstraintError(
-                "RemoveZeroedLines",
+                "WaveletTransform",
                 "Input must have space dim x.")
 
         if "c" not in slot.meta.getTaggedShape():
             raise DatasetConstraintError(
-                "RemoveZeroedLines",
+                "WaveletTransform",
                 "Input must have channel.")
 
         numChannels = slot.meta.getTaggedShape()["c"]
         if numChannels != 1:
             raise DatasetConstraintError(
-                "RemoveZeroedLines",
+                "WaveletTransform",
                 "Input image must have exactly one channel.  " +
                 "You attempted to add a dataset with {} channels".format( numChannels ) )
 
         if not ax[0].isTemporal():
             raise DatasetConstraintError(
-                "RemoveZeroedLines",
+                "WaveletTransform",
                 "Input image must have time first." )
 
         if not ax[-1].isChannel():
             raise DatasetConstraintError(
-                "RemoveZeroedLines",
+                "WaveletTransform",
                 "Input image must have channel last." )
 
         for i in range(1, len(ax) - 1):
