@@ -230,6 +230,7 @@ class OpNansheExtractF0(Operator):
     def propagateDirty(self, slot, subindex, roi):
         if slot.name == "InputImage":
             self._generation[self.name] += 1
+
             roi_halo = OpNansheExtractF0.compute_halo(roi.toSlice(),
                                                       self.InputImage.meta.shape,
                                                       self.HalfWindowSize.value,
