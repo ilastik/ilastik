@@ -37,7 +37,7 @@ import ilastik.applets
 import ilastik.applets.nanshe
 import ilastik.applets.nanshe.preprocessing
 import ilastik.applets.nanshe.preprocessing.opNansheEstimateF0
-from ilastik.applets.nanshe.preprocessing.opNansheEstimateF0 import OpNansheEstimateF0
+from ilastik.applets.nanshe.preprocessing.opNansheEstimateF0 import OpNansheEstimateF0, OpNansheEstimateF0Cached
 
 
 class TestOpNansheEstimateF0(object):
@@ -52,6 +52,31 @@ class TestOpNansheEstimateF0(object):
         opPrep.Input.setValue(a)
 
         op = OpNansheEstimateF0(graph=graph)
+        op.InputImage.connect(opPrep.Output)
+
+        op.HalfWindowSize.setValue(20)
+        op.WhichQuantile.setValue(0.5)
+        op.TemporalSmoothingGaussianFilterStdev.setValue(5.0)
+        op.SpatialSmoothingGaussianFilterStdev.setValue(5.0)
+
+        b = op.Output[...].wait()
+        b = vigra.taggedView(b, "tyxc")
+
+        assert(a.shape == b.shape)
+
+        assert((b == 1).all())
+
+    def testBasic2(self):
+        a = numpy.ones((100, 101, 102))
+        a = a[..., None]
+        a = vigra.taggedView(a, "tyxc")
+
+        graph = Graph()
+
+        opPrep = OpArrayPiper(graph=graph)
+        opPrep.Input.setValue(a)
+
+        op = OpNansheEstimateF0Cached(graph=graph)
         op.InputImage.connect(opPrep.Output)
 
         op.HalfWindowSize.setValue(20)
