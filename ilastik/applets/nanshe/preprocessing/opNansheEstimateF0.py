@@ -231,3 +231,94 @@ class OpNansheEstimateF0(Operator):
             self.Output.setDirty( slice(None) )
         else:
             assert False, "Unknown dirty input slot"
+
+
+class OpNansheEstimateF0Cached(Operator):
+    """
+    Given an input image and max/min bounds,
+    masks out (i.e. sets to zero) all pixels that fall outside the bounds.
+    """
+    name = "OpNansheEstimateF0Cached"
+    category = "Pointwise"
+
+
+    InputImage = InputSlot()
+
+    HalfWindowSize = InputSlot(value=400, stype='int')
+    WhichQuantile = InputSlot(value=0.15, stype='float')
+    TemporalSmoothingGaussianFilterStdev = InputSlot(value=5.0, stype='float')
+    TemporalSmoothingGaussianFilterWindowSize = InputSlot(value=5.0, stype='float')
+    SpatialSmoothingGaussianFilterStdev = InputSlot(value=5.0, stype='float')
+    SpatialSmoothingGaussianFilterWindowSize = InputSlot(value=5.0, stype='float')
+
+    Output = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super( OpNansheEstimateF0Cached, self ).__init__( *args, **kwargs )
+
+        self.opEstimateF0 = OpNansheEstimateF0(parent=self)
+
+        self.opEstimateF0.HalfWindowSize.connect(self.HalfWindowSize)
+        self.opEstimateF0.WhichQuantile.connect(self.WhichQuantile)
+        self.opEstimateF0.TemporalSmoothingGaussianFilterStdev.connect(self.TemporalSmoothingGaussianFilterStdev)
+        self.opEstimateF0.TemporalSmoothingGaussianFilterWindowSize.connect(self.TemporalSmoothingGaussianFilterWindowSize)
+        self.opEstimateF0.SpatialSmoothingGaussianFilterStdev.connect(self.SpatialSmoothingGaussianFilterStdev)
+        self.opEstimateF0.SpatialSmoothingGaussianFilterWindowSize.connect(self.SpatialSmoothingGaussianFilterWindowSize)
+
+        self.opCache_F0 = OpBlockedArrayCache(parent=self)
+        self.opCache_F0.fixAtCurrent.setValue(False)
+
+        self.opEstimateF0.InputImage.connect( self.InputImage )
+        self.opCache_F0.Input.connect( self.opEstimateF0.Output )
+
+        self.Output.connect( self.opCache_F0.Output )
+
+    def setupOutputs(self):
+        axes_shape_iter = itertools.izip(self.opEstimateF0.Output.meta.axistags, self.opEstimateF0.Output.meta.shape)
+
+        halo_center_slicing = []
+
+        for each_axistag, each_len in axes_shape_iter:
+            each_halo_center = each_len
+            each_halo_center_slicing = slice(0, each_len, 1)
+
+            if each_axistag.isTemporal() or each_axistag.isSpatial():
+                each_halo_center /= 2.0
+                # Must take floor consider the singleton dimension case
+                each_halo_center = int(math.floor(each_halo_center))
+                each_halo_center_slicing = slice(each_halo_center, each_halo_center + 1, 1)
+
+            halo_center_slicing.append(each_halo_center_slicing)
+
+        halo_center_slicing = tuple(halo_center_slicing)
+
+        halo_slicing = self.opEstimateF0.compute_halo(halo_center_slicing,
+                                                     self.InputImage.meta.shape,
+                                                     self.HalfWindowSize.value,
+                                                     self.TemporalSmoothingGaussianFilterStdev.value,
+                                                     self.TemporalSmoothingGaussianFilterWindowSize.value,
+                                                     self.SpatialSmoothingGaussianFilterStdev.value,
+                                                     self.SpatialSmoothingGaussianFilterWindowSize.value)[0]
+
+        block_shape = nanshe.nanshe.additional_generators.len_slices(halo_slicing)
+
+        block_shape = list(block_shape)
+
+        for i, each_axistag in enumerate(self.opEstimateF0.Output.meta.axistags):
+            if each_axistag.isSpatial():
+                block_shape[i] = max(block_shape[i], 256)
+            elif each_axistag.isTemporal():
+                block_shape[i] = max(block_shape[i], 50)
+
+            block_shape[i] = min(block_shape[i], self.opEstimateF0.Output.meta.shape[i])
+
+        block_shape = tuple(block_shape)
+
+        self.opCache_F0.innerBlockShape.setValue(block_shape)
+        self.opCache_F0.outerBlockShape.setValue(block_shape)
+
+    def setInSlot(self, slot, subindex, roi, value):
+        pass
+
+    def propagateDirty(self, slot, subindex, roi):
+        pass
