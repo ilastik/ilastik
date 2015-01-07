@@ -200,15 +200,16 @@ class OpNansheExtractF0(Operator):
         raw = self.InputImage[halo_key].wait()
         raw = raw[..., 0]
 
-        f0, df_f = nanshe.nanshe.advanced_image_processing.extract_f0(raw,
-                                                                      half_window_size=half_window_size,
-                                                                      which_quantile=which_quantile,
-                                                                      temporal_smoothing_gaussian_filter_stdev=temporal_smoothing_gaussian_filter_stdev,
-                                                                      spatial_smoothing_gaussian_filter_stdev=spatial_smoothing_gaussian_filter_stdev,
-                                                                      temporal_smoothing_gaussian_filter_window_size=temporal_smoothing_gaussian_filter_window_size,
-                                                                      spatial_smoothing_gaussian_filter_window_size=spatial_smoothing_gaussian_filter_window_size,
-                                                                      bias=bias,
-                                                                      return_f0=True
+        f0, df_f = nanshe.nanshe.advanced_image_processing.extract_f0(
+            raw,
+            half_window_size=half_window_size,
+            which_quantile=which_quantile,
+            temporal_smoothing_gaussian_filter_stdev=temporal_smoothing_gaussian_filter_stdev,
+            spatial_smoothing_gaussian_filter_stdev=spatial_smoothing_gaussian_filter_stdev,
+            temporal_smoothing_gaussian_filter_window_size=temporal_smoothing_gaussian_filter_window_size,
+            spatial_smoothing_gaussian_filter_window_size=spatial_smoothing_gaussian_filter_window_size,
+            bias=bias,
+            return_f0=True
         )
 
         f0 = f0[..., None]
