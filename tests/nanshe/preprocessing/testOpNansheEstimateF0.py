@@ -23,3 +23,54 @@ __author__ = "John Kirkham <kirkhamj@janelia.hhmi.org>"
 __date__ = "$Jan 07, 2015 15:31:10 EST$"
 
 
+
+import numpy
+
+from lazyflow.graph import Graph
+
+from lazyflow.operators import OpArrayPiper
+
+import vigra
+
+import ilastik
+import ilastik.applets
+import ilastik.applets.nanshe
+import ilastik.applets.nanshe.preprocessing
+import ilastik.applets.nanshe.preprocessing.opNansheEstimateF0
+from ilastik.applets.nanshe.preprocessing.opNansheEstimateF0 import OpNansheEstimateF0
+
+
+class TestOpNansheEstimateF0(object):
+    def testBasic1(self):
+        a = numpy.ones((100, 101, 102))
+        a = a[..., None]
+        a = vigra.taggedView(a, "tyxc")
+
+        graph = Graph()
+
+        opPrep = OpArrayPiper(graph=graph)
+        opPrep.Input.setValue(a)
+
+        op = OpNansheEstimateF0(graph=graph)
+        op.InputImage.connect(opPrep.Output)
+
+        op.HalfWindowSize.setValue(20)
+        op.WhichQuantile.setValue(0.5)
+        op.TemporalSmoothingGaussianFilterStdev.setValue(5.0)
+        op.SpatialSmoothingGaussianFilterStdev.setValue(5.0)
+
+        b = op.Output[...].wait()
+        b = vigra.taggedView(b, "tyxc")
+
+        assert(a.shape == b.shape)
+
+        assert((b == 1).all())
+
+
+if __name__ == "__main__":
+    import sys
+    import nose
+    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+    ret = nose.run(defaultTest=__file__)
+    if not ret: sys.exit(1)
