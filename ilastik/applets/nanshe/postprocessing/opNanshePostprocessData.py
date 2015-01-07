@@ -99,27 +99,27 @@ class OpNanshePostprocessData(Operator):
 
         if "t" in slot.meta.getTaggedShape():
             raise DatasetConstraintError(
-                "RemoveZeroedLines",
+                "PostprocessData",
                 "Input must not have time.")
 
         if "c" not in slot.meta.getTaggedShape():
             raise DatasetConstraintError(
-                "RemoveZeroedLines",
+                "PostprocessData",
                 "Input must have channel.")
 
         if "y" not in slot.meta.getTaggedShape():
             raise DatasetConstraintError(
-                "RemoveZeroedLines",
+                "PostprocessData",
                 "Input must have space dim y.")
 
         if "x" not in slot.meta.getTaggedShape():
             raise DatasetConstraintError(
-                "RemoveZeroedLines",
+                "PostprocessData",
                 "Input must have space dim x.")
 
         if not ax[0].isChannel():
             raise DatasetConstraintError(
-                "RemoveZeroedLines",
+                "PostprocessData",
                 "Input image must have channel first." )
 
         for i in range(1, len(ax)):
