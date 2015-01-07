@@ -302,8 +302,8 @@ class OpNansheExtractF0Cached(Operator):
         self.opCache_F0.Input.connect( self.opExtractF0.F0 )
         self.opCache_dF_F.Input.connect( self.opExtractF0.dF_F)
 
-        self.F0.connect( self.opExtractF0.F0 )
-        self.dF_F.connect( self.opExtractF0.dF_F )
+        self.F0.connect( self.opCache_F0.F0 )
+        self.dF_F.connect( self.opCache_dF_F.dF_F )
 
     def setupOutputs(self):
         axes_shape_iter = itertools.izip(self.opExtractF0.F0.meta.axistags, self.opExtractF0.F0.meta.shape)
