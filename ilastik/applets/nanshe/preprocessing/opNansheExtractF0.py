@@ -241,12 +241,12 @@ class OpNansheExtractF0(Operator):
 
             self.F0.setDirty(roi_halo)
             self.dF_F.setDirty(roi_halo)
-        elif slot.name == "Bias" or slot.name == "BiasEnabled" or \
+        elif slot.name == "HalfWindowSize" or slot.name == "WhichQuantile" or \
              slot.name == "TemporalSmoothingGaussianFilterStdev" or \
              slot.name == "TemporalSmoothingGaussianFilterWindowSize" or \
-             slot.name == "HalfWindowSize" or slot.name == "WhichQuantile" or \
              slot.name == "SpatialSmoothingGaussianFilterStdev" or \
-             slot.name == "SpatialSmoothingGaussianFilterWindowSize":
+             slot.name == "SpatialSmoothingGaussianFilterWindowSize" or \
+             slot.name == "Bias" or slot.name == "BiasEnabled":
             self._generation[self.name] += 1
             self.F0.setDirty( slice(None) )
             self.dF_F.setDirty( slice(None) )
