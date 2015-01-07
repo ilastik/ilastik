@@ -135,9 +135,11 @@ class OpNansheExtractF0(Operator):
         self.dF_F.meta.generation = self._generation
 
     @staticmethod
-    def compute_halo(slicing, image_shape, half_window_size,
-                                           temporal_smoothing_gaussian_filter_stdev,
-                                           spatial_smoothing_gaussian_filter_stdev):
+    def compute_halo(slicing,
+                     image_shape,
+                     half_window_size,
+                     temporal_smoothing_gaussian_filter_stdev,
+                     spatial_smoothing_gaussian_filter_stdev):
         slicing = nanshe.nanshe.additional_generators.reformat_slices(slicing, image_shape)
 
         halo = list(itertools.repeat(0, len(slicing) - 1))
@@ -189,7 +191,9 @@ class OpNansheExtractF0(Operator):
         image_shape = self.InputImage.meta.shape
 
         key = roi.toSlice()
-        halo_key, within_halo_key = OpNansheExtractF0.compute_halo(key, image_shape, half_window_size,
+        halo_key, within_halo_key = OpNansheExtractF0.compute_halo(key,
+                                                                   image_shape,
+                                                                   half_window_size,
                                                                    temporal_smoothing_gaussian_filter_stdev,
                                                                    spatial_smoothing_gaussian_filter_stdev)
 
@@ -197,14 +201,16 @@ class OpNansheExtractF0(Operator):
         raw = raw[..., 0]
 
         f0, df_f = nanshe.nanshe.advanced_image_processing.extract_f0(raw,
-                                                                half_window_size=half_window_size,
-                                                                which_quantile=which_quantile,
-                                                                temporal_smoothing_gaussian_filter_stdev=temporal_smoothing_gaussian_filter_stdev,
-                                                                spatial_smoothing_gaussian_filter_stdev=spatial_smoothing_gaussian_filter_stdev,
-                                                                temporal_smoothing_gaussian_filter_window_size=temporal_smoothing_gaussian_filter_window_size,
-                                                                spatial_smoothing_gaussian_filter_window_size=spatial_smoothing_gaussian_filter_window_size,
-                                                                bias=bias,
-                                                                return_f0=True)
+                                                                      half_window_size=half_window_size,
+                                                                      which_quantile=which_quantile,
+                                                                      temporal_smoothing_gaussian_filter_stdev=temporal_smoothing_gaussian_filter_stdev,
+                                                                      spatial_smoothing_gaussian_filter_stdev=spatial_smoothing_gaussian_filter_stdev,
+                                                                      temporal_smoothing_gaussian_filter_window_size=temporal_smoothing_gaussian_filter_window_size,
+                                                                      spatial_smoothing_gaussian_filter_window_size=spatial_smoothing_gaussian_filter_window_size,
+                                                                      bias=bias,
+                                                                      return_f0=True
+        )
+
         f0 = f0[..., None]
         df_f = df_f[..., None]
 
@@ -220,13 +226,14 @@ class OpNansheExtractF0(Operator):
         if slot.name == "InputImage":
             self._generation[self.name] += 1
             self.F0.setDirty(OpNansheExtractF0.compute_halo(roi.toSlice(), self.InputImage.meta.shape,
-                                                                self.HalfWindowSize.value,
-                                                                self.TemporalSmoothingGaussianFilterStdev.value,
-                                                                self.SpatialSmoothingGaussianFilterStdev.value)[0])
+                                                            self.HalfWindowSize.value,
+                                                            self.TemporalSmoothingGaussianFilterStdev.value,
+                                                            self.SpatialSmoothingGaussianFilterStdev.value)[0])
+
             self.dF_F.setDirty(OpNansheExtractF0.compute_halo(roi.toSlice(), self.InputImage.meta.shape,
-                                                                self.HalfWindowSize.value,
-                                                                self.TemporalSmoothingGaussianFilterStdev.value,
-                                                                self.SpatialSmoothingGaussianFilterStdev.value)[0])
+                                                              self.HalfWindowSize.value,
+                                                              self.TemporalSmoothingGaussianFilterStdev.value,
+                                                              self.SpatialSmoothingGaussianFilterStdev.value)[0])
         elif slot.name == "Bias" or slot.name == "BiasEnabled" or \
              slot.name == "TemporalSmoothingGaussianFilterStdev" or \
              slot.name == "TemporalSmoothingGaussianFilterWindowSize" or \
