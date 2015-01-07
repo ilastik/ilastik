@@ -270,16 +270,15 @@ if __name__ == "__main__":
         #args.append( "--project=/nobackup/bock/ilastik/gamma-alpha/gammaAlphaFanPixelProject.ilp")
         #args.append( "--output_description_file=/nobackup/bock/ilastik/bock-pilot-cluster-options/results_description.json")
 
-        # REMOTE TEST
-        #args.append( "--option_config_file=/nobackup/bock/ilastik/bock-pilot-cluster-options/example_cluster_options.json")
-        #args.append( "--project=/nobackup/bock/ilastik/gamma-alpha/gammaAlphaFanPixelProject.ilp")
-        #args.append( "--output_description_file=/nobackup/bock/ilastik/bock-pilot-cluster-options/pixel_results_description.json")
+        # Pixel classification - bock-863
+#        args.append( "--option_config_file=/nobackup/flyTEM/ilastik/bock-pilot-cluster-options/bock_cluster_options_pixel_863.json")
+#        args.append( "--project=/nobackup/flyTEM/ilastik/gamma-alpha/gammaAlphaFanPixelProject-863.ilp")
+#        args.append( "--output_description_file=/nobackup/flyTEM/ilastik/bock-pilot-cluster-options/pixel_863_results_description.json")
 
-        # Object test
-        args.append( "--option_config_file=/nobackup/bock/ilastik/bock-pilot-cluster-options/object_cluster_options.json")
-        args.append( "--project=/nobackup/bock/ilastik/gamma-alpha/gamma-object-experimental-updated.ilp")
-        args.append( "--output_description_file=/nobackup/bock/ilastik/bock-pilot-cluster-options/object_results/object_results_description.json")
-        args.append( "--secondary_output_description_file=/nobackup/bock/ilastik/bock-pilot-cluster-options/object_results/region_features_description.json")
+        # Object classification: bock-pilot-863
+        args.append( "--option_config_file=/nobackup/flyTEM/ilastik/bock-pilot-cluster-options/object_863_cluster_options.json")
+        args.append( "--project=/nobackup/flyTEM/ilastik/gamma-alpha/gamma-object-with-topslices.ilp")
+        args.append( "--output_description_file=/nobackup/flyTEM/ilastik/bock-pilot-cluster-options/object_863_results/object_863_results_description.json")
 
 #        # SMALL TEST
 #        args.append( "--option_config_file=/groups/flyem/data/bergs_scratch/cluster_options.json")
