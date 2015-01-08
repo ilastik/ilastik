@@ -32,7 +32,7 @@ from lazyflow.operators import OpBlockedArrayCache
 
 from ilastik.applets.base.applet import DatasetConstraintError
 
-from ilastik.applets.nanshe.preprocessing.opNansheEstimateF0 import OpNansheEstimateF0
+from ilastik.applets.nanshe.preprocessing.opNansheEstimateF0 import OpNansheEstimateF0, OpNansheEstimateF0Cached
 
 import itertools
 
@@ -65,12 +65,14 @@ class OpNansheExtractF0(Operator):
     F0 = OutputSlot()
     dF_F = OutputSlot()
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, cache_f0=False, *args, **kwargs):
         super( OpNansheExtractF0, self ).__init__( *args, **kwargs )
 
         self._generation = {self.name : 0}
 
-        self.opEstimateF0 = OpNansheEstimateF0(parent=self)
+        opEstimateF0Class = OpNansheEstimateF0Cached if cache_f0 else OpNansheEstimateF0
+
+        self.opEstimateF0 = opEstimateF0Class(parent=self)
 
         self.opEstimateF0.HalfWindowSize.connect(self.HalfWindowSize)
         self.opEstimateF0.WhichQuantile.connect(self.WhichQuantile)
