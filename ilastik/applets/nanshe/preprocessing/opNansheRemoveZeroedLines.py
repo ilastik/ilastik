@@ -25,7 +25,7 @@ __date__ = "$Oct 14, 2014 16:31:56 EDT$"
 
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpBlockedArrayCache
+from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 
 from ilastik.applets.base.applet import DatasetConstraintError
 
