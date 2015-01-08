@@ -24,7 +24,7 @@ __date__ = "$Nov 06, 2014 12:38:08 EST$"
 
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpBlockedArrayCache
+from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 
 import vigra
 
