@@ -34,8 +34,6 @@ from ilastik.applets.base.applet import DatasetConstraintError
 
 from ilastik.applets.nanshe.preprocessing.opNansheEstimateF0 import OpNansheEstimateF0, OpNansheEstimateF0Cached
 
-import itertools
-
 import numpy
 
 import nanshe
