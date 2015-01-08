@@ -28,7 +28,7 @@ import itertools
 import math
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpBlockedArrayCache
+from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 
 from ilastik.applets.base.applet import DatasetConstraintError
 
