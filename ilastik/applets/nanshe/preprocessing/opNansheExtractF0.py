@@ -215,7 +215,7 @@ class OpNansheExtractF0Cached(Operator):
     def __init__(self, *args, **kwargs):
         super( OpNansheExtractF0Cached, self ).__init__( *args, **kwargs )
 
-        self.opExtractF0 = OpNansheExtractF0(parent=self)
+        self.opExtractF0 = OpNansheExtractF0(parent=self, cache_f0=True)
 
         self.opExtractF0.HalfWindowSize.connect(self.HalfWindowSize)
         self.opExtractF0.WhichQuantile.connect(self.WhichQuantile)
@@ -237,54 +237,13 @@ class OpNansheExtractF0Cached(Operator):
         self.opCache_F0.Input.connect( self.opExtractF0.F0 )
         self.opCache_dF_F.Input.connect( self.opExtractF0.dF_F)
 
-        self.F0.connect( self.opCache_F0.F0 )
-        self.dF_F.connect( self.opCache_dF_F.dF_F )
+        self.F0.connect( self.opExtractF0.F0 )
+        self.dF_F.connect( self.opExtractF0.dF_F )
 
     def setupOutputs(self):
-        axes_shape_iter = itertools.izip(self.opExtractF0.F0.meta.axistags, self.opExtractF0.F0.meta.shape)
-
-        halo_center_slicing = []
-
-        for each_axistag, each_len in axes_shape_iter:
-            each_halo_center = each_len
-            each_halo_center_slicing = slice(0, each_len, 1)
-
-            if each_axistag.isTemporal() or each_axistag.isSpatial():
-                each_halo_center /= 2.0
-                # Must take floor consider the singleton dimension case
-                each_halo_center = int(math.floor(each_halo_center))
-                each_halo_center_slicing = slice(each_halo_center, each_halo_center + 1, 1)
-
-            halo_center_slicing.append(each_halo_center_slicing)
-
-        halo_center_slicing = tuple(halo_center_slicing)
-
-        halo_slicing = self.opExtractF0.compute_halo(halo_center_slicing,
-                                                     self.InputImage.meta.shape,
-                                                     self.HalfWindowSize.value,
-                                                     self.TemporalSmoothingGaussianFilterStdev.value,
-                                                     self.TemporalSmoothingGaussianFilterWindowSize.value,
-                                                     self.SpatialSmoothingGaussianFilterStdev.value,
-                                                     self.SpatialSmoothingGaussianFilterWindowSize.value)[0]
-
-        block_shape = nanshe.nanshe.additional_generators.len_slices(halo_slicing)
-
-        block_shape = list(block_shape)
-
-        for i, each_axistag in enumerate(self.opExtractF0.F0.meta.axistags):
-            if each_axistag.isSpatial():
-                block_shape[i] = max(block_shape[i], 256)
-            elif each_axistag.isTemporal():
-                block_shape[i] = max(block_shape[i], 50)
-
-            block_shape[i] = min(block_shape[i], self.opExtractF0.F0.meta.shape[i])
-
-        block_shape = tuple(block_shape)
-
-        self.opCache_dF_F.innerBlockShape.setValue(block_shape)
-        self.opCache_dF_F.outerBlockShape.setValue(block_shape)
-        self.opCache_F0.innerBlockShape.setValue(block_shape)
-        self.opCache_F0.outerBlockShape.setValue(block_shape)
+        #TODO: This is a really ugly hack. It would be nice not to follow this surreptitious route.
+        self.opCache_dF_F.innerBlockShape.setValue(self.opExtractF0.F0.partner.partner.operator.innerBlockShape.value)
+        self.opCache_dF_F.outerBlockShape.setValue(self.opExtractF0.F0.partner.partner.operator.outerBlockShape.value)
 
     def setInSlot(self, slot, subindex, roi, value):
         pass
