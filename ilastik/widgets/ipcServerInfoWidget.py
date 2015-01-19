@@ -182,6 +182,7 @@ class IPCServerInfoWidget(QWidget):
             value = convert_to_type(value)
             kvargs[key] = value
         kvargs["command"] = command
+        print kvargs
         self.broadcast.emit(kvargs)
 
 

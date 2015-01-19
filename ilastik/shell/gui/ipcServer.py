@@ -1,4 +1,5 @@
 from SocketServer import BaseRequestHandler, TCPServer
+from functools import wraps
 from operator import itemgetter
 import socket
 import logging
@@ -7,6 +8,7 @@ import atexit
 import json
 from Queue import Queue
 from collections import OrderedDict
+import numpy
 
 from ilastik.widgets.ipcServerInfoWidget import IPCServerInfoWidget
 from ilastik.utility.commandProcessor import CommandProcessor
@@ -23,20 +25,67 @@ class Singleton(type):
         return cls._instances[cls]
 
 
+class Protocol(object):
+    ValidOps = ["and", "or"]
+
+    @staticmethod
+    def simple(operator, *wheres, **attributes):
+        operands = list(wheres)
+        for name, value in attributes.iteritems():
+            operands.append({
+                "operator": "==",
+                "row": name,
+                "value": value
+            })
+
+        return {
+            "operator": operator,
+            "operands": operands
+        }
+
+    @staticmethod
+    def simple_in(row, possibilities):
+        operands = []
+        for p in possibilities:
+            operands.append({
+                "operator": "==",
+                "row": row,
+                "value": p,
+            })
+
+        return {
+            "operator": "or",
+            "operands": operands
+        }
+
+
+def server_required(method):
+    @wraps(method)
+    def decoree(self, *args, **kvargs):
+        if self.server is None:
+            logger.debug("No Server")
+            return
+        return method(self, *args, **kvargs)
+    return decoree
+
+
 class IPCServerFacade(object):
     """
     Singleton for access to the ServerManager
     """
     __metaclass__ = Singleton
 
+    ValidHiliteModes = ["hilite", "unhilite", "toggle", "clear"]
+
     def __init__(self):
         self.server = None
 
-    def convert_id_by_config(self, id_, time=0):
+    @staticmethod
+    def convert_id_by_config(id_):
         """
+        DEPRECATED
         Converts the id used in ilastik to the id used in the Exporter
         :param id_: the id in ilastik
-        :param time: the frame number
         :return: the id used in the exporter
         """
         #todo: read config first
@@ -58,8 +107,9 @@ class IPCServerFacade(object):
             return False
         return self.server.is_running()
 
-    def hilite(self, object_id, time=0):
+    def hilite(self, object_id):
         """
+        DEPRECATED
         Sends a hilite command to all clients
         :param object_id: the id of the object that should be hilited
         """
@@ -70,8 +120,9 @@ class IPCServerFacade(object):
         self.server.broadcast(command=0, objectid="Row%d" % object_id)
         logger.debug("hiliting object '%d'" % object_id)
 
-    def unhilite(self, object_id, time=0):
+    def unhilite(self, object_id):
         """
+        DEPRECATED
         Sends an unhilite command to all clients
         :param object_id: the id of the object that should be unhilited
         """
@@ -84,6 +135,7 @@ class IPCServerFacade(object):
 
     def clear_hilite(self):
         """
+        DEPRECATED
         Sends a clearhilite command to all clients
         So all object will be unhilited
         """
@@ -92,6 +144,50 @@ class IPCServerFacade(object):
             return False
         self.server.broadcast(command=2)
         logger.debug("clearing hilite")
+
+    @server_required
+    def hilite_object(self, mode, time, obj):
+        """
+        Sends a hilite command to all clients
+        :param time: the time in which the object exists
+        :type time: int
+        :param obj: the ilastik id of the object
+        :type obj: int
+        """
+        if mode not in self.ValidHiliteModes:
+            raise ValueError("Mode ({}) must be in {}".format(mode, self.ValidHiliteModes))
+
+        self.server.broadcast({
+            "command": "hilite",
+            "mode": mode,
+            "where": Protocol.simple("and", ilastik_id=obj, time=time)
+        })
+
+    @server_required
+    def hilite_track(self, mode, *tracks):
+        """
+        Sends a hilite command to all clients
+        :param tracks: all objects with these tracks will be hilited
+        :type tracks: list
+        """
+        if mode not in self.ValidHiliteModes:
+            raise ValueError("Mode must be in {}".format(self.ValidHiliteModes))
+
+        self.server.broadcast({
+            "command": "hilite",
+            "mode": mode,
+            "where": Protocol.simple_in("track_id*", tracks)
+        })
+
+
+class NumpyJsonEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if type(obj).__module__ == numpy.__name__:
+            try:
+                return obj.tolist()
+            except (ValueError, AttributeError):
+                raise RuntimeError("Could not encode Numpy type: {}".format(type(obj)))
+        return super(json.JSONEncoder, self).default(obj)
 
 
 class IPCServerManager(object):
@@ -115,7 +211,7 @@ class IPCServerManager(object):
         self.info = IPCServerInfoWidget()
         self.info.statusToggled.connect(self.toggle_server)
         self.info.connectionChanged.connect(self.change_connection)
-        self.info.broadcast.connect(self._broadcast)
+        self.info.broadcast.connect(self.broadcast)
         self.info.portChanged.connect(self.change_port)
         self.info.notify_server_status_update("port", self.port)
 
@@ -255,20 +351,20 @@ class IPCServerManager(object):
             else:
                 self.filter_command(command)
 
-    def broadcast(self, to_all=False, **kvargs):
+    def broadcast(self, command, to_all=False):
         """
         creates a socket for each connection and sends the command as json
-        :param command_name: the name of the command
-        :type command_name: str
+        :param command: the command
+        :type command: dict
         :param to_all: if True the cmd is sent to all ( even the disabled ones ) connections
         :type to_all: bool
-        :param kvargs: the arguments specific for the command
-        :type kvargs: any JSON type (int, float, str, bool, list, dict)
         """
+        from pprint import PrettyPrinter
+        PrettyPrinter(indent=4).pprint(command)
         for connection in filter(None if to_all else itemgetter("enabled"), self.connections.itervalues()):
             # noinspection PyTypeChecker
             client = connection["client"]
-            command = json.dumps(kvargs)
+            command = json.dumps(command, cls=NumpyJsonEncoder)
             s = socket.socket()  # default is fine
             try:
                 s.connect(client)
@@ -277,12 +373,6 @@ class IPCServerManager(object):
                 logger.exception("broadcast to %s:%s failed (%s)" % (client[0], client[1], e))
             finally:
                 s.close()
-
-    def _broadcast(self, kvargs):
-        """
-        convenience method for info.broadcast signal
-        """
-        self.broadcast(**kvargs)
 
     def change_port(self, port, start_server=False):
         """

@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from functools import partial
 from PyQt4.QtGui import QColor, QFileDialog, QMessageBox, QMenu, QWidgetAction, QLabel
 
 from volumina.api import LazyflowSource, ColortableLayer
@@ -42,6 +43,7 @@ from lazyflow.request.request import Request
 from ilastik.utility.gui.threadRouter import threadRouted
 from ilastik.utility.gui.titledMenu import TitledMenu
 from ilastik.utility import log_exception
+from ilastik.shell.gui.ipcServer import IPCServerFacade
 
 
 logger = logging.getLogger(__name__)
@@ -494,11 +496,19 @@ class TrackingBaseGui( LayerViewerGui ):
         if children:
             titles.append("Children: " + ", ".join(map(str, children)))
         menu = TitledMenu(titles)
-        hilite_obj_menu = menu.addMenu("Hilite Object")
-        hilite_track_menu = menu.addMenu("Hilite Track")
-        for m in (hilite_obj_menu, hilite_track_menu):
-            for a in ("Hilite", "UnHilite", "Toggle"):
-                m.addAction(a)
+
+        submenus = [menu.addMenu("Hilite Object"), menu.addMenu("Hilite Track"),
+                    None if not parents else menu.addMenu("Hilite Parents"),
+                    None if not children else menu.addMenu("Hilite Children")]
+
+        for m, func, args in zip(submenus,
+                                 [IPCServerFacade().hilite_object] + [IPCServerFacade().hilite_track] * 3,
+                                 [(time, obj), tracks, parents, children]):
+            if m is None:
+                continue
+            for mode in ("hilite", "unhilite", "toggle"):
+                target = partial(func, mode, *args)
+                m.addAction(mode, target)
         menu.addAction("Clear Hilite")
 
         menu.exec_(win_coord)
