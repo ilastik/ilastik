@@ -168,7 +168,7 @@ def actual_axistags(axistags, shape):
     return AxisTags([axistags[j] for j, s in enumerate(shape) if s > 1])
 
 
-class ColData(object):
+class Mode(object):
     IlastikTrackingTable = 1
     IlastikFeatureTable = 2
     List = 3
@@ -184,26 +184,26 @@ class ExportFile(object):
         self.table_dict = {}
         self.meta_dict = {}
 
-    def add_columns(self, table_name, col_data, col_type, extra=None):
+    def add_columns(self, table_name, mode, col_type, extra=None):
         if extra is None:
             extra = {}
-        if col_type == ColData.IlastikTrackingTable:
+        if col_type == Mode.IlastikTrackingTable:
             if not "counts" in extra or not "max" in extra:
                 raise AttributeError("Tracking need 'counts' and 'max' extra")
-            columns = flatten_tracking_tablet(col_data, extra["extra ids"], extra["counts"], extra["max"])
-        elif col_type == ColData.List:
+            columns = flatten_tracking_tablet(mode, extra["extra ids"], extra["counts"], extra["max"])
+        elif col_type == Mode.List:
             if not "names" in extra:
                 raise AttributeError("[Tuple]List needs a tuple for the column name (extra 'names')")
             dtypes = extra["dtypes"] if "dtypes" in extra else None
-            columns = prepare_list(col_data, extra["names"], dtypes)
-        elif col_type == ColData.IlastikFeatureTable:
+            columns = prepare_list(mode, extra["names"], dtypes)
+        elif col_type == Mode.IlastikFeatureTable:
             if "selection" not in extra:
                 raise AttributeError("IlastikFeatureTable needs a feature selection (extra 'selection')")
-            columns = flatten_ilastik_feature_table(col_data, extra["selection"], self.InsertionProgress)
-        elif col_type == ColData.NumpyStructArray:
-            columns = col_data
+            columns = flatten_ilastik_feature_table(mode, extra["selection"], self.InsertionProgress)
+        elif col_type == Mode.NumpyStructArray:
+            columns = mode
         else:
-            raise AttributeError("TableType not found")
+            raise AttributeError("Invalid Mode")
         self._add_columns(table_name, columns)
 
     def add_rois(self, table_path, image_slot, feature_table_name, margin, type_="image"):

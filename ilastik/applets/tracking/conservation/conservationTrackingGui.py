@@ -240,14 +240,17 @@ class ConservationTrackingGui( TrackingBaseGui ):
         return [m]
                 
     def export_tracking_info(self):
-        from ilastik.utility.exportFile import ExportFile, ColData, objects_per_frame, ilastik_ids, ProgressPrinter
+        from ilastik.utility.exportFile import ExportFile, Mode, objects_per_frame, ilastik_ids, ProgressPrinter
         from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog
 
         op = self.topLevelOperatorView
         dimensions = op.RawImage.meta.shape
         computed_features = op.ObjectFeatures
 
-        dialog = ExportObjectInfoDialog(dimensions, {})
+        feature_names = {}
+        #feature_names = op.ComputedFeatureNames([]).wait()
+
+        dialog = ExportObjectInfoDialog(dimensions, feature_names)
         if not dialog.exec_():
             return
         settings = dialog.settings()
@@ -262,16 +265,17 @@ class ConservationTrackingGui( TrackingBaseGui ):
         ep = ProgressPrinter("ExportProgress", range(100, -1, -5))
         export_file.ExportProgress.subscribe(ep)
         export_file.InsertionProgress.subscribe(ip)
-        multi_move_max = op.Parameters["maxObj"] if op.Parameters.ready() else 2
+        #multi_move_max = op.Parameters["maxObj"] if op.Parameters.ready() else 2
+        multi_move_max = 2
 
-        export_file.add_columns("table", range(sum(obj_count)), ColData.List, {"names": ("object id",)})
+        export_file.add_columns("table", range(sum(obj_count)), Mode.List, {"names": ("object id",)})
         ids = ilastik_ids(obj_count)
-        export_file.add_columns("table", list(ids), ColData.List, {"names": ("time", "ilastik_id")})
-        export_file.add_columns("table", track_ids, ColData.IlastikTrackingTable,
+        export_file.add_columns("table", list(ids), Mode.List, {"names": ("time", "ilastik_id")})
+        export_file.add_columns("table", track_ids, Mode.IlastikTrackingTable,
                                 {"max": multi_move_max, "counts": obj_count, "extra ids": extra_track_ids})
-        export_file.add_columns("table", computed_features, ColData.IlastikFeatureTable,
+        export_file.add_columns("table", computed_features, Mode.IlastikFeatureTable,
                                 {"selection": selected_features})
-        export_file.add_columns("divisions", divisions, ColData.List,
+        export_file.add_columns("divisions", divisions, Mode.List,
                                 {"names": ("time", "parent", "track", "child1", "child2")})
 
         if settings["file type"] == "h5":

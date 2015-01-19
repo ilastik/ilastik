@@ -12,6 +12,7 @@ RAW_LAYER_SIZE_LIMIT = 1000000
 ALLOWED_EXTENSIONS = ["hdf5", "hd5", "h5", "csv"]
 DEFAULT_REQUIRED_FEATURES = ["Count", "Coord", "RegionCenter", ]
 
+
 class ExportObjectInfoDialog(QDialog):
     """
     This is a QDialog that asks for the settings for

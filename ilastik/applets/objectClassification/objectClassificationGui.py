@@ -227,6 +227,44 @@ class ObjectClassificationGui(LabelingGui):
     when accepted creates an opExportObjectInfo and executes it
     """
     def exportObjectInfo(self):
+        from ilastik.utility.exportFile import ExportFile, objects_per_frame, ProgressPrinter, Mode, ilastik_ids
+        op = self.topLevelOperatorView
+        feature_names = op.ComputedFeatureNames([]).wait()
+        dimensions = op.RawImage.meta.shape
+
+        dialog = ExportObjectInfoDialog(dimensions, feature_names)
+        if not dialog.exec_():
+            return
+
+        selected_features = dialog.checked_features()
+        settings = dialog.settings()
+
+        obj_count = list(objects_per_frame(op.LabelImage))
+
+        export_file = ExportFile(settings["file path"])
+
+        ip = ProgressPrinter("InsertionProgress", range(100, -1, -5))
+        ep = ProgressPrinter("ExportProgress", range(100, -1, -5))
+
+        export_file.ExportProgress.subscribe(ep)
+        export_file.InsertionProgress.subscribe(ip)
+
+        export_file.add_columns("table", range(sum(obj_count)), Mode.List, {"names": ("object id",)})
+        ids = ilastik_ids(obj_count)
+        export_file.add_columns("table", list(ids), Mode.List, {"names": ("time", "ilastik_id")})
+        export_file.add_columns("table", op.opPredict.Features, Mode.IlastikFeatureTable,
+                                {"selection": selected_features})
+
+        if settings["file type"] == "h5":
+            export_file.add_rois("/images/{}/labeling", op.LabelImage, "table", settings["margin"])
+            if settings["include raw"]:
+                export_file.add_image("/images/raw", op.RawImage)
+            else:
+                export_file.add_rois("/images/{}/raw", op.RawImage, "table", settings["margin"])
+
+        export_file.write_all(settings["file type"], settings["compression"])
+
+    def exportObjectInfo_old(self):
         main_operator = self.topLevelOperatorView
         features = main_operator.ComputedFeatureNames([]).wait()
         dimensions = main_operator.RawImages.meta.shape
@@ -249,7 +287,7 @@ class ObjectClassificationGui(LabelingGui):
             op.WriteData([]).submit()
             #logger.debug("Export Object Info exited with status: '%s'" % "succes" if result[0] else "failure")
 
-    def exportObjectInfo_old(self):
+    def exportObjectInfo_very_old(self):
         if not self.layerstack or len(self.layerstack)==0:
             print "Wait, nothing defined yet"
             
