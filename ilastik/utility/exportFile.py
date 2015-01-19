@@ -133,6 +133,7 @@ def ilastik_ids(obj_counts):
 def create_slicing(axistags, dimensions, margin, feature_table):
     """
     Returns an iterator on the slices for each object roi
+        yields also the actual object id
     """
     assert margin >= 0, "Margin muss be greater than or equal to 0"
     time = feature_table["time"].astype(np.int32)
@@ -150,7 +151,8 @@ def create_slicing(axistags, dimensions, margin, feature_table):
     indices = map(axistags.index, "txyzc")
     excludes = indices.count(-1)
     for i in xrange(table_shape):
-
+        if i == 0 or time[i] != time[i-1]:
+            oid = 1
         slicing = [
             slice(time[i], time[i]+1),
             slice(max(0, minx[i] - margin),
@@ -161,7 +163,8 @@ def create_slicing(axistags, dimensions, margin, feature_table):
                   min(maxz[i] + margin, dimensions[3])),
             slice(0, 1)
         ]
-        yield map(slicing.__getitem__, indices)[:5-excludes]
+        yield map(slicing.__getitem__, indices)[:5-excludes], oid
+        oid += 1
 
 
 def actual_axistags(axistags, shape):
@@ -184,34 +187,65 @@ class ExportFile(object):
         self.table_dict = {}
         self.meta_dict = {}
 
-    def add_columns(self, table_name, mode, col_type, extra=None):
+    def add_columns(self, table_name, col_data, mode, extra=None):
+        """
+        Adds new columns to the table ( creates the table if neccessary )
+        :param table_name: the table name
+        :type table_name: str
+        :param col_data: the actual data to be added
+        :type col_data: list, dict, numpy.array, whatever is supported
+        :param mode: the type of the table data
+        :type mode: exportFile.Mode
+        :param extra: extra information for the given mode
+        :type extra: dict
+        """
         if extra is None:
             extra = {}
-        if col_type == Mode.IlastikTrackingTable:
+        if mode == Mode.IlastikTrackingTable:
             if not "counts" in extra or not "max" in extra:
                 raise AttributeError("Tracking need 'counts' and 'max' extra")
-            columns = flatten_tracking_tablet(mode, extra["extra ids"], extra["counts"], extra["max"])
-        elif col_type == Mode.List:
+            columns = flatten_tracking_tablet(col_data, extra["extra ids"], extra["counts"], extra["max"])
+        elif mode == Mode.List:
             if not "names" in extra:
                 raise AttributeError("[Tuple]List needs a tuple for the column name (extra 'names')")
             dtypes = extra["dtypes"] if "dtypes" in extra else None
-            columns = prepare_list(mode, extra["names"], dtypes)
-        elif col_type == Mode.IlastikFeatureTable:
+            columns = prepare_list(col_data, extra["names"], dtypes)
+        elif mode == Mode.IlastikFeatureTable:
             if "selection" not in extra:
                 raise AttributeError("IlastikFeatureTable needs a feature selection (extra 'selection')")
-            columns = flatten_ilastik_feature_table(mode, extra["selection"], self.InsertionProgress)
-        elif col_type == Mode.NumpyStructArray:
-            columns = mode
+            columns = flatten_ilastik_feature_table(col_data, extra["selection"], self.InsertionProgress)
+        elif mode == Mode.NumpyStructArray:
+            columns = col_data
         else:
             raise AttributeError("Invalid Mode")
         self._add_columns(table_name, columns)
 
     def add_rois(self, table_path, image_slot, feature_table_name, margin, type_="image"):
+        """
+        Adds the rois as images to the table
+        :param table_path: the new name for the table
+        :type table_path: str
+        :param image_slot: the slot to read the data from
+        :type image_slot: lazyflow.slot.Slot
+        :param feature_table_name: the already added feature table to read the coords from
+        :type feature_table_name: str
+        :param margin: the margin to be added around the images
+        :type margin: int
+        :param type_: "image" for normal images, "labeling" for labeling images
+        :type type_: str
+        """
+        assert type_ in ("labeling", "image"), "Type must be 'labeling' or 'image'"
         slicings = create_slicing(image_slot.meta.axistags, image_slot.meta.shape,
                                   margin, self.table_dict[feature_table_name])
         self.InsertionProgress(0)
-        for i, slicing in enumerate(slicings):
+
+        if type_ == "labeling":
+            vec = self._normalize
+        else:
+            vec = lambda _: lambda y: y
+        for i, (slicing, oid) in enumerate(slicings):
             roi = image_slot(slicing).wait().squeeze()
+            roi = vec(oid)(roi)
             roi_path = table_path.format(i)
             self.table_dict[roi_path] = roi
             self.meta_dict[roi_path] = {
@@ -221,18 +255,45 @@ class ExportFile(object):
             self.InsertionProgress(100 * i / self.table_dict[feature_table_name].shape[0])
         self.InsertionProgress(100)
 
-    def add_image(self, table, image_slot, type_="image"):
+    @staticmethod
+    def _normalize(oid):
+        def f(pixel_value):
+            return 1 if pixel_value == oid else 0
+        return np.vectorize(f)
+
+    def add_image(self, table, image_slot):
+        """
+        Adds an image as a table
+        :param table: the name for the image
+        :type table: str
+        :param image_slot: the slot to read the image from
+        :type image_slot: lazyflow.slot.Slot
+        """
         self.table_dict[table] = image_slot([]).wait().squeeze()
         self.meta_dict[table] = {
-            "type": type_,
+            "type": "image",
             "axistags": actual_axistags(image_slot.meta.axistags, image_slot.meta.shape).toJSON()
         }
 
     def update_meta(self, table, meta):
+        """
+        Adds meta information to the table
+        :param table: the table to add meta to
+        :type table: str
+        :param meta: the meta information to add
+        :type meta: dict
+        """
         self.meta_dict.setdefault(table, {})
         self.meta_dict[table].update(meta)
 
     def write_all(self, mode, compression=None):
+        """
+        Writes all tables to the file
+        :param mode: "h[d[f]]5" or "csv" at the moment
+        :type mode: str
+        :param compression: the compression settings
+        :type compression: dict
+        """
         count = 0
         self.ExportProgress(0)
         if mode in ("h5", "hd5", "hdf5"):

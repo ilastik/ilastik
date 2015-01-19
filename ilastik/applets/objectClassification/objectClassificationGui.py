@@ -238,7 +238,7 @@ class ObjectClassificationGui(LabelingGui):
         from ilastik.utility.exportFile import ExportFile, objects_per_frame, ProgressPrinter, Mode, ilastik_ids
         op = self.topLevelOperatorView
         feature_names = op.ComputedFeatureNames([]).wait()
-        dimensions = op.RawImage.meta.shape
+        dimensions = op.RawImages.meta.shape
 
         dialog = ExportObjectInfoDialog(dimensions, feature_names)
         if not dialog.exec_():
@@ -247,7 +247,7 @@ class ObjectClassificationGui(LabelingGui):
         selected_features = dialog.checked_features()
         settings = dialog.settings()
 
-        obj_count = list(objects_per_frame(op.LabelImage))
+        obj_count = list(objects_per_frame(op.SegmentationImages))
 
         export_file = ExportFile(settings["file path"])
 
@@ -264,11 +264,11 @@ class ObjectClassificationGui(LabelingGui):
                                 {"selection": selected_features})
 
         if settings["file type"] == "h5":
-            export_file.add_rois("/images/{}/labeling", op.LabelImage, "table", settings["margin"])
+            export_file.add_rois("/images/{}/labeling", op.SegmentationImages, "table", settings["margin"], "labeling")
             if settings["include raw"]:
-                export_file.add_image("/images/raw", op.RawImage)
+                export_file.add_image("/images/raw", op.RawImages)
             else:
-                export_file.add_rois("/images/{}/raw", op.RawImage, "table", settings["margin"])
+                export_file.add_rois("/images/{}/raw", op.RawImages, "table", settings["margin"])
 
         export_file.write_all(settings["file type"], settings["compression"])
 
