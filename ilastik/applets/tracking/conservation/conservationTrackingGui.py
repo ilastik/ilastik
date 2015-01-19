@@ -276,7 +276,9 @@ class ConservationTrackingGui( TrackingBaseGui ):
         export_file.add_columns("table", computed_features, Mode.IlastikFeatureTable,
                                 {"selection": selected_features})
         export_file.add_columns("divisions", divisions, Mode.List,
-                                {"names": ("time", "parent", "track", "child1", "child2")})
+                                {"names": (
+                                    "time", "parent", "track", "child1", "child_track1", "child2", "child_track2"
+                                )})
 
         if settings["file type"] == "h5":
             export_file.add_rois("/images/{}/labeling", op.LabelImage, "table", settings["margin"], "labeling")

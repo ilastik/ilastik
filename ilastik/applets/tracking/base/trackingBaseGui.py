@@ -473,11 +473,27 @@ class TrackingBaseGui( LayerViewerGui ):
     def handleEditorRightClick(self, position5d, win_coord):
         obj, time = self.get_object(position5d)
         if obj == 0:
+            menu = TitledMenu(["Background"])
+            menu.addAction("Clear Hilite")
+            menu.exec_(win_coord)
             return
 
-        track = self.mainOperator.label2color[time][obj]
+        color = self.mainOperator.label2color[time][obj]
+        tracks = [self.mainOperator.track_id[time][obj]]
+        extra = self.mainOperator.extra_track_ids
+        if time in extra and obj in extra[time]:
+            tracks.extend(extra[time][obj])
+        children, parents = self.mainOperator.track_family(tracks[0])
 
-        menu = TitledMenu("Object {} in frame {} of track {}".format(obj, time, track))
+        titles = [
+            "Object {} in frame {} of color {}".format(obj, time, color),
+            "Tracks: " + ", ".join(map(str, set(tracks))),
+        ]
+        if parents:
+            titles.append("Parents:  " + ", ".join(map(str, parents)))
+        if children:
+            titles.append("Children: " + ", ".join(map(str, children)))
+        menu = TitledMenu(titles)
         hilite_obj_menu = menu.addMenu("Hilite Object")
         hilite_track_menu = menu.addMenu("Hilite Track")
         for m in (hilite_obj_menu, hilite_track_menu):
