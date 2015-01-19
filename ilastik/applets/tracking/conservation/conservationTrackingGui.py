@@ -279,7 +279,7 @@ class ConservationTrackingGui( TrackingBaseGui ):
                                 {"names": ("time", "parent", "track", "child1", "child2")})
 
         if settings["file type"] == "h5":
-            export_file.add_rois("/images/{}/labeling", op.LabelImage, "table", settings["margin"])
+            export_file.add_rois("/images/{}/labeling", op.LabelImage, "table", settings["margin"], "labeling")
             if settings["include raw"]:
                 export_file.add_image("/images/raw", op.RawImage)
             else:
