@@ -23,6 +23,7 @@ from lazyflow.rtype import List
 from lazyflow.stype import Opaque
 
 import numpy as np
+from functools import partial
 import pgmlink
 from ilastik.applets.tracking.base.trackingUtilities import relabel,\
     get_dict_value
@@ -62,6 +63,10 @@ class OpTrackingBase(Operator):
         super(OpTrackingBase, self).__init__(parent=parent, graph=graph)        
         self.label2color = []  
         self.mergers = []
+
+        self.track_id = None
+        self.extra_track_ids = None
+        self.divisions = None
     
         self._opCache = OpCompressedCache( parent=self )        
         self._opCache.InputHdf5.connect( self.InputHdf5 )
@@ -158,6 +163,7 @@ class OpTrackingBase(Operator):
             self.Output.setDirty(roi)
         elif inputSlot is self.EventsVector:
             self._setLabel2Color()
+            self._setLabel2Color(export_mode=True)
 
     def setInSlot(self, slot, subindex, roi, value):
         assert slot == self.InputHdf5, "Invalid slot for setInSlot(): {}".format( slot.name )
@@ -259,9 +265,12 @@ class OpTrackingBase(Operator):
                 ancestor_color = label2color[-2][int(e[0])]
                 if export_mode:
                     label2color[-1][int(e[1])] = maxId
-                    label2color[-1][int(e[1])] = maxId + 1
+                    label2color[-1][int(e[2])] = maxId + 1
+                    divisions.append((i, int(e[0]), ancestor_color,
+                                      int(e[1]), maxId,
+                                      int(e[2]), maxId + 1
+                                      ))
                     maxId += 2
-                    divisions.append((i, int(e[0]), ancestor_color, int(e[1]), int(e[2])))
                 else:
                     label2color[-1][int(e[1])] = ancestor_color
                     label2color[-1][int(e[2])] = ancestor_color
@@ -307,6 +316,9 @@ class OpTrackingBase(Operator):
                 label2color[int(i)+time_range[0]][l] = 0                
 
         if export_mode:  # don't set fields when in export_mode
+            self.track_id = label2color
+            self.extra_track_ids = extra_track_ids
+            self.divisions = divisions
             return label2color, extra_track_ids, divisions
 
         self.label2color = label2color
@@ -321,6 +333,25 @@ class OpTrackingBase(Operator):
 
     def export_track_ids(self):
         return self._setLabel2Color(export_mode=True)
+
+    def track_children(self, track_id, start=0):
+        for t, _, track, _, child_track1, _, child_track2 in self.divisions[start:]:
+            if track == track_id:
+                children_of = partial(self.track_children, start=t)
+                return [child_track1, child_track2] +\
+                    children_of(child_track1) + children_of(child_track2)
+        return []
+
+    def track_parent(self, track_id):
+        for t, oid, track, _, child_track1, _, child_track2 in self.divisions[:-1]:
+            if track_id in (child_track1, child_track2):
+                return [track] + self.track_parent(track)
+        return []
+
+    def track_family(self, track_id):
+        return self.track_children(track_id), self.track_parent(track_id)
+
+
 
     def _generate_traxelstore(self,
                                time_range,
