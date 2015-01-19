@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtGui import QColor, QFileDialog, QMessageBox
+from PyQt4.QtGui import QColor, QFileDialog, QMessageBox, QMenu, QWidgetAction, QLabel
 
 from volumina.api import LazyflowSource, ColortableLayer
 import volumina.colortables as colortables
@@ -40,6 +40,7 @@ from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.config import cfg as ilastik_config
 from lazyflow.request.request import Request
 from ilastik.utility.gui.threadRouter import threadRouted
+from ilastik.utility.gui.titledMenu import TitledMenu
 from ilastik.utility import log_exception
 
 
@@ -463,5 +464,25 @@ class TrackingBaseGui( LayerViewerGui ):
     @threadRouted
     def _criticalMessage(self, prompt):
         QMessageBox.critical(self, "Error", str(prompt), buttons=QMessageBox.Ok)
+
+    def get_object(self, pos5d):
+        slicing = tuple(slice(i, i+1) for i in pos5d)
+        label = self.mainOperator.LabelImage(slicing).wait()
+        return label.flat[0], pos5d[0]
         
-        
+    def handleEditorRightClick(self, position5d, win_coord):
+        obj, time = self.get_object(position5d)
+        if obj == 0:
+            return
+
+        track = self.mainOperator.label2color[time][obj]
+
+        menu = TitledMenu("Object {} in frame {} of track {}".format(obj, time, track))
+        hilite_obj_menu = menu.addMenu("Hilite Object")
+        hilite_track_menu = menu.addMenu("Hilite Track")
+        for m in (hilite_obj_menu, hilite_track_menu):
+            for a in ("Hilite", "UnHilite", "Toggle"):
+                m.addAction(a)
+        menu.addAction("Clear Hilite")
+
+        menu.exec_(win_coord)
