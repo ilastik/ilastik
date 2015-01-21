@@ -213,7 +213,8 @@ class OpNansheEstimateF0(Operator):
         if slot.name == "InputImage":
             self._generation[self.name] += 1
 
-            roi_halo = OpNansheEstimateF0.compute_halo(roi.toSlice(),
+            roi_slice = roi.toSlice()
+            roi_halo = OpNansheEstimateF0.compute_halo(roi_slice,
                                                        self.InputImage.meta.shape,
                                                        self.HalfWindowSize.value,
                                                        self.TemporalSmoothingGaussianFilterStdev.value,
