@@ -1,7 +1,6 @@
 import os
 import numpy
 import vigra
-import shutil
 from functools import partial
 from StringIO import StringIO
 
@@ -75,6 +74,8 @@ class TiledVolume(object):
                                                             "x_stop",  "y_stop",  "z_stop",
                                                             "x_index", "y_index", "z_index",
                                                             "raveler_z_base"] ), # Special keyword for Raveler session directories.  See notes below.
+        
+        "invert_y_axis" : bool, # For raveler volumes, the y-axis coordinate is inverted.
         
         # A list of lists, mapping src slices to destination slices (for "filling in" missing slices)
         # Example If slices 101,102,103 are missing data, you might want to simply repeat the data from slice 100:
@@ -230,6 +231,21 @@ class TiledVolume(object):
             else:
                 rest_args['raveler_z_base'] = str(raveler_z_base) + '/'
 
+            # More special Raveler support:
+            # Raveler's conventions for the Y-axis are the reverse for everyone else's.
+            if self.description.invert_y_axis:
+                y_bound = self.description.bounds_zyx[1]
+                y_tile_size = self.description.tile_shape_2d_yx[0]
+                
+                # We haven't written the logic that would allow incomplete 
+                #  'end' tiles for these crazy 'inverted' volumes, so just force 
+                #  the y-dimension to be a clean multiple of the tile size.
+                assert y_bound % y_tile_size == 0, \
+                    "When using invert_y_axis, your Y-dimension must be a multiple of the tile shape."
+                rest_args['y_start'] = rest_args['y_start'] - y_bound
+                rest_args['y_stop'] = rest_args['y_stop'] - y_bound
+                rest_args['y_index'] = (y_bound / y_tile_size) - rest_args['y_index'] - 1
+
             if self.description.tile_url_format.startswith('http'):
                 retrieval_fn = partial( self._retrieve_remote_tile, rest_args, tile_relative_intersection, result_region )
             else:
@@ -377,3 +393,4 @@ class TiledVolume(object):
         session.mount('http://', adapter)
         session.mount('https://', adapter2)
         return session
+

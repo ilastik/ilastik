@@ -113,6 +113,12 @@ class LazyflowPixelwiseClassifierFactoryABC(object):
     """
     __metaclass__ = abc.ABCMeta
 
+    def __new__(cls, *args, **kwargs):
+        # Force the VERSION class member to be copied to an instance member.
+        obj = object.__new__(cls)
+        obj.VERSION = cls.VERSION
+        return obj
+
     @abc.abstractmethod
     def create_and_train_pixelwise(self, feature_images, label_images):
         """
