@@ -73,7 +73,8 @@ class TiledVolume(object):
         "tile_url_format" : FormattedField( requiredFields=[],
                                             optionalFields=["x_start", "y_start", "z_start",
                                                             "x_stop",  "y_stop",  "z_stop",
-                                                            "x_index", "y_index", "z_index"] ),
+                                                            "x_index", "y_index", "z_index",
+                                                            "raveler_z_base"] ), # Special keyword for Raveler session directories.  See notes below.
         
         # A list of lists, mapping src slices to destination slices (for "filling in" missing slices)
         # Example If slices 101,102,103 are missing data, you might want to simply repeat the data from slice 100:
@@ -218,6 +219,16 @@ class TiledVolume(object):
 
             # Quick sanity check
             assert rest_args['z_index'] == rest_args['z_start']
+
+            # Special arg for Raveler session directories:
+            # For files with Z < 1000, no extra directory level
+            # For files with Z >= 1000, there is an extra directory level,
+            #  in which case the extra '/' is INCLUDED here in the rest arg.
+            raveler_z_base = (rest_args['z_index'] // 1000) * 1000
+            if raveler_z_base == 0:
+                rest_args['raveler_z_base'] = ""
+            else:
+                rest_args['raveler_z_base'] = str(raveler_z_base) + '/'
 
             if self.description.tile_url_format.startswith('http'):
                 retrieval_fn = partial( self._retrieve_remote_tile, rest_args, tile_relative_intersection, result_region )
