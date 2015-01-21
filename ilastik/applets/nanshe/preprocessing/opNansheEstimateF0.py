@@ -214,12 +214,12 @@ class OpNansheEstimateF0(Operator):
             self._generation[self.name] += 1
 
             roi_halo = OpNansheEstimateF0.compute_halo(roi.toSlice(),
-                                                      self.InputImage.meta.shape,
-                                                      self.HalfWindowSize.value,
-                                                      self.TemporalSmoothingGaussianFilterStdev.value,
-                                                      self.TemporalSmoothingGaussianFilterWindowSize.value,
-                                                      self.SpatialSmoothingGaussianFilterStdev.value,
-                                                      self.SpatialSmoothingGaussianFilterWindowSize.value)[0]
+                                                       self.InputImage.meta.shape,
+                                                       self.HalfWindowSize.value,
+                                                       self.TemporalSmoothingGaussianFilterStdev.value,
+                                                       self.TemporalSmoothingGaussianFilterWindowSize.value,
+                                                       self.SpatialSmoothingGaussianFilterStdev.value,
+                                                       self.SpatialSmoothingGaussianFilterWindowSize.value)[0]
 
             self.Output.setDirty(roi_halo)
         elif slot.name == "TemporalSmoothingGaussianFilterStdev" or \
