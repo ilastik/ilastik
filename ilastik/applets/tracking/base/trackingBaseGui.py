@@ -43,7 +43,7 @@ from lazyflow.request.request import Request
 from ilastik.utility.gui.threadRouter import threadRouted
 from ilastik.utility.gui.titledMenu import TitledMenu
 from ilastik.utility import log_exception
-from ilastik.shell.gui.ipcServer import IPCServerFacade, Protocol
+from ilastik.shell.gui.ipcManager import IPCFacade, Protocol
 
 
 logger = logging.getLogger(__name__)
@@ -473,6 +473,9 @@ class TrackingBaseGui( LayerViewerGui ):
         return label.flat[0], pos5d[0]
         
     def handleEditorRightClick(self, position5d, win_coord):
+        if not ilastik_config.getboolean("ilastik", "debug"):
+            return
+
         obj, time = self.get_object(position5d)
         if obj == 0:
             menu = TitledMenu(["Background"])
@@ -497,13 +500,13 @@ class TrackingBaseGui( LayerViewerGui ):
             titles.append("Children: " + ", ".join(map(str, children)))
         menu = TitledMenu(titles)
 
-        if IPCServerFacade().any_running:
+        if any(IPCFacade().sending):
 
             osubmenu = menu.addMenu("Hilite Object")
             for mode in Protocol.ValidHiliteModes:
                 where = Protocol.simple("and", ilastik_id=obj, time=time)
                 cmd = Protocol.cmd(mode, where)
-                osubmenu.addAction(mode, IPCServerFacade().broadcast(cmd))
+                osubmenu.addAction(mode, IPCFacade().broadcast(cmd))
 
             submenus = [("Tracks", Protocol.simple_in, tracks)]
             if parents:
@@ -515,12 +518,11 @@ class TrackingBaseGui( LayerViewerGui ):
                 for mode in Protocol.ValidHiliteModes:
                     where = protocol("track_id*", args)
                     cmd = Protocol.cmd(mode, where)
-                    sub.addAction(mode, IPCServerFacade().broadcast(cmd))
+                    sub.addAction(mode, IPCFacade().broadcast(cmd))
 
-
-            menu.addAction("Clear Hilite", IPCServerFacade().broadcast(Protocol.cmd("clear")))
+            menu.addAction("Clear Hilite", IPCFacade().broadcast(Protocol.cmd("clear")))
         else:
-            menu.addAction("Open IPC Server Window", IPCServerFacade().show_info)
-            menu.addAction("Start IPC Server", IPCServerFacade().start)
+            menu.addAction("Open IPC Server Window", IPCFacade().show_info)
+            menu.addAction("Start IPC Server", IPCFacade().start)
 
         menu.exec_(win_coord)

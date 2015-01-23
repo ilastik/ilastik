@@ -268,7 +268,7 @@ class ConservationTrackingGui( TrackingBaseGui ):
         #multi_move_max = op.Parameters["maxObj"] if op.Parameters.ready() else 2
         multi_move_max = 2
 
-        export_file.add_columns("table", range(sum(obj_count)), Mode.List, {"names": ("object id",)})
+        export_file.add_columns("table", range(sum(obj_count)), Mode.List, {"names": ("object_id",)})
         ids = ilastik_ids(obj_count)
         export_file.add_columns("table", list(ids), Mode.List, {"names": ("time", "ilastik_id")})
         export_file.add_columns("table", track_ids, Mode.IlastikTrackingTable,

@@ -6,8 +6,6 @@ import logging
 import os
 from functools import partial
 
-from ilastik.config import cfg as ilastik_config
-
 logger = logging.getLogger(__name__)
 
 
@@ -26,14 +24,14 @@ def convert_to_type(string):
     return string
 
 
-class IPCServerInfoWidget(QWidget):
+class TCPServerInfoWidget(QWidget):
     """
     Displays various information about the IPCServerManager
     and allows manipulation of some of its properties
     """
     statusToggled = pyqtSignal()
     connectionChanged = pyqtSignal(int, bool)
-    portChanged = pyqtSignal(int)
+    changePort = pyqtSignal()
 
     broadcast = pyqtSignal(dict)  # debug
 
@@ -41,9 +39,9 @@ class IPCServerInfoWidget(QWidget):
     commandFailureColor = QColor(255, 150, 150)  # bright red
 
     def __init__(self, parent=None):
-        super(IPCServerInfoWidget, self).__init__(parent)
+        super(TCPServerInfoWidget, self).__init__(parent)
 
-        ui_class, widget_class = uic.loadUiType(os.path.split(__file__)[0] + "/ipcServerInfoWidget.ui")
+        ui_class, widget_class = uic.loadUiType(os.path.split(__file__)[0] + "/tcpServerInfoWidget.ui")
         self.ui = ui_class()
         self.ui.setupUi(self)
 
@@ -55,34 +53,10 @@ class IPCServerInfoWidget(QWidget):
         self.ui.toggleStatus.clicked.connect(partial(self.ui.toggleStatus.setEnabled, False))
         self.ui.toggleStatus.clicked.connect(self.statusToggled.emit)
         menu = QMenu("options")
-        self.change_port_action = menu.addAction("Change Port", self.change_port)
+        self.change_port_action = menu.addAction("Change Port", self.changePort.emit)
         self.ui.toggleStatus.setMenu(menu)
 
         self.status_style = "background-color: %s; border: 3px inset gray"
-
-        if ilastik_config.getboolean("ilastik", "debug"):
-            args = {
-                "hilite": "objectid 'Row0'",
-                "0": "objectid 'Row0'",
-                "unhilite": "objectid 'Row0'",
-                "1": "objectid 'Row0'",
-                "clearhilite": "",
-                "2": "",
-                "setviewerposition": "x 0.0\ny 0.0\nz 0.0\nt 0.0\nc 0.0",
-                "handshake": "name ilastik\nport <port>",
-                "brotbacken": "mehl 100g\nwasser 200ml\nhefe 20g",
-            }
-
-            def on_complete(text):
-                self.ui.debugCommandArgs.setPlainText(args[str(text)])
-            completer = QCompleter(args.keys())
-            completer.setCaseSensitivity(Qt.CaseSensitive)
-            self.ui.debugCommandName.setCompleter(completer)
-            # noinspection PyUnresolvedReferences
-            completer.activated.connect(on_complete)
-            self.ui.broadcastButton.clicked.connect(self.broadcast_clicked)
-        else:
-            self.ui.debugDock.close()
 
     def notify_server_status_update(self, attribute, value):
         """
@@ -161,20 +135,6 @@ class IPCServerInfoWidget(QWidget):
             item.setBackground(QBrush(color, Qt.SolidPattern))
             self.ui.connectionList.addItem(item)
 
-    def change_port(self, old_port=None, message=""):
-        """
-        shows the ChoosePortDialog and returns the new port
-        :param old_port: the old port if None the Widgets internal server_port is used
-        :type old_port: int or None
-        :param message: an optinal message to be displayed why the port must be changed
-        :type message: str
-        :return: the new port
-        """
-        dialog = ChoosePortDialog(self.server_status["port"] if old_port is None else old_port)
-        dialog.set_message(message)
-        if dialog.exec_() == 1:
-            self.portChanged.emit(dialog.get_port())
-
     # slot called from QListWidgetItem check
     def list_widget_changed(self, item):
         index = self.ui.connectionList.row(item)
@@ -196,46 +156,3 @@ class IPCServerInfoWidget(QWidget):
         kvargs["command"] = command
         print kvargs
         self.broadcast.emit(kvargs)
-
-
-class ChoosePortDialog(QDialog):
-    def __init__(self, port, parent=None):
-        super(ChoosePortDialog, self).__init__(parent)
-
-        ui_class, widget_class = uic.loadUiType(os.path.split(__file__)[0] + "/choosePortDialog.ui")
-        self.ui = ui_class()
-        self.ui.setupUi(self)
-
-        self.validator = QIntValidator(0, 65535)
-        self.ui.port.setValidator(self.validator)
-        self.ui.port.setText(str(port))
-        self.ui.port.selectAll()
-
-    def get_port(self):
-        try:
-            port = int(self.ui.port.text())
-        except ValueError:
-            return None
-        return port
-
-    def set_message(self, error):
-        self.ui.error.setText(error)
-
-if __name__ == "__main__":
-
-    class IlastikConfig:
-        def __init__(self):
-            pass
-
-        @staticmethod
-        def getboolean(a, b):
-            return True
-
-    ilastik_config = IlastikConfig()
-    import sys
-    app = QApplication(sys.argv)
-
-    widget = IPCServerInfoWidget()
-    widget.show()
-
-    sys.exit(app.exec_())
