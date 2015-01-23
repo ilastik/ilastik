@@ -43,7 +43,7 @@ from lazyflow.request.request import Request
 from ilastik.utility.gui.threadRouter import threadRouted
 from ilastik.utility.gui.titledMenu import TitledMenu
 from ilastik.utility import log_exception
-from ilastik.shell.gui.ipcServer import IPCServerFacade
+from ilastik.shell.gui.ipcServer import IPCServerFacade, Protocol
 
 
 logger = logging.getLogger(__name__)
@@ -497,18 +497,30 @@ class TrackingBaseGui( LayerViewerGui ):
             titles.append("Children: " + ", ".join(map(str, children)))
         menu = TitledMenu(titles)
 
-        submenus = [menu.addMenu("Hilite Object"), menu.addMenu("Hilite Track"),
-                    None if not parents else menu.addMenu("Hilite Parents"),
-                    None if not children else menu.addMenu("Hilite Children")]
+        if IPCServerFacade().any_running:
 
-        for m, func, args in zip(submenus,
-                                 [IPCServerFacade().hilite_object] + [IPCServerFacade().hilite_track] * 3,
-                                 [(time, obj), tracks, parents, children]):
-            if m is None:
-                continue
-            for mode in ("hilite", "unhilite", "toggle"):
-                target = partial(func, mode, *args)
-                m.addAction(mode, target)
-        menu.addAction("Clear Hilite")
+            osubmenu = menu.addMenu("Hilite Object")
+            for mode in Protocol.ValidHiliteModes:
+                where = Protocol.simple("and", ilastik_id=obj, time=time)
+                cmd = Protocol.cmd(mode, where)
+                osubmenu.addAction(mode, IPCServerFacade().broadcast(cmd))
+
+            submenus = [("Tracks", Protocol.simple_in, tracks)]
+            if parents:
+                submenus += [("Parents", Protocol.simple_in, parents)]
+            if children:
+                submenus += [("Children", Protocol.simple_in, children)]
+            for name, protocol, args in submenus:
+                sub = menu.addMenu("Hilite {}".format(name))
+                for mode in Protocol.ValidHiliteModes:
+                    where = protocol("track_id*", args)
+                    cmd = Protocol.cmd(mode, where)
+                    sub.addAction(mode, IPCServerFacade().broadcast(cmd))
+
+
+            menu.addAction("Clear Hilite", IPCServerFacade().broadcast(Protocol.cmd("clear")))
+        else:
+            menu.addAction("Open IPC Server Window", IPCServerFacade().show_info)
+            menu.addAction("Start IPC Server", IPCServerFacade().start)
 
         menu.exec_(win_coord)

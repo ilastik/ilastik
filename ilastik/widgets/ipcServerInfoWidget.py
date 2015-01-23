@@ -127,9 +127,21 @@ class IPCServerInfoWidget(QWidget):
             text += " %s:%s" % (k, v)
         text += " )"
 
-        item = QListWidgetItem(text)
+        item = QListWidgetItem("::RECV      :: {}".format(text))
         if not success:
             item.setBackground(QBrush(self.commandFailureColor, Qt.SolidPattern))
+        self.ui.commandList.addItem(item)
+        self.ui.commandList.scrollToBottom()
+
+    def add_sent_command(self, cmd, count):
+        """
+        Adds the sent command to the history list
+        :param cmd: the command
+        :type cmd: str
+        :param count: the number of clients that received the message
+        :type count: int
+        """
+        item = QListWidgetItem("::SENT({:^4}):: {}".format(count, cmd))
         self.ui.commandList.addItem(item)
         self.ui.commandList.scrollToBottom()
 

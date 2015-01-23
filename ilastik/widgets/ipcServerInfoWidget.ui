@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>IPCServerInfo</class>
- <widget class="QWidget" name="IPCServerInfo">
+ <class>Form</class>
+ <widget class="QWidget" name="Form">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>576</width>
-    <height>533</height>
+    <width>577</width>
+    <height>508</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -100,6 +100,11 @@
      <layout class="QGridLayout" name="gridLayout" columnstretch="2,1">
       <item row="1" column="0">
        <widget class="QListWidget" name="commandList">
+        <property name="font">
+         <font>
+          <family>Monospace</family>
+         </font>
+        </property>
         <property name="selectionMode">
          <enum>QAbstractItemView::NoSelection</enum>
         </property>
@@ -115,7 +120,7 @@
       <item row="0" column="0">
        <widget class="QLabel" name="label">
         <property name="text">
-         <string>Received Commands</string>
+         <string>Command History</string>
         </property>
        </widget>
       </item>
@@ -242,101 +247,8 @@ c 0.0</string>
      </widget>
     </widget>
    </item>
-   <item>
-    <widget class="QFrame" name="bottomFrame">
-     <property name="frameShape">
-      <enum>QFrame::StyledPanel</enum>
-     </property>
-     <property name="frameShadow">
-      <enum>QFrame::Raised</enum>
-     </property>
-     <layout class="QHBoxLayout" name="horizontalLayout_2">
-      <item>
-       <spacer name="horizontalSpacer_2">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>40</width>
-          <height>20</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="stayOnTop">
-        <property name="text">
-         <string>Stay on top</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="closeButton">
-        <property name="text">
-         <string>&amp;Close</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </widget>
-   </item>
   </layout>
  </widget>
  <resources/>
- <connections>
-  <connection>
-   <sender>closeButton</sender>
-   <signal>clicked()</signal>
-   <receiver>IPCServerInfo</receiver>
-   <slot>close()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>199</x>
-     <y>149</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>199</x>
-     <y>149</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>connectionList</sender>
-   <signal>itemChanged(QListWidgetItem*)</signal>
-   <receiver>IPCServerInfo</receiver>
-   <slot>list_widget_changed(QListWidgetItem*)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>468</x>
-     <y>277</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>287</x>
-     <y>266</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>stayOnTop</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>IPCServerInfo</receiver>
-   <slot>stay_on_top(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>412</x>
-     <y>499</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>287</x>
-     <y>266</y>
-    </hint>
-   </hints>
-  </connection>
- </connections>
- <slots>
-  <slot>set_server_running(bool)</slot>
-  <slot>list_widget_changed(QListWidgetItem*)</slot>
-  <slot>stay_on_top(bool)</slot>
- </slots>
+ <connections/>
 </ui>

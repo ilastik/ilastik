@@ -1,5 +1,6 @@
 from SocketServer import BaseRequestHandler, TCPServer
-from functools import wraps
+from abc import ABCMeta, abstractmethod, abstractproperty
+from functools import partial
 from operator import itemgetter
 import socket
 import logging
@@ -8,10 +9,14 @@ import atexit
 import json
 from Queue import Queue
 from collections import OrderedDict
+#import zmq
+from PyQt4.QtGui import QInputDialog, QLineEdit
 import numpy
 
 from ilastik.widgets.ipcServerInfoWidget import IPCServerInfoWidget
+from ilastik.widgets.ipcServerInfoWindow import IPCServerInfoWindow
 from ilastik.utility.commandProcessor import CommandProcessor
+from ilastik.utility.lazy import lazy
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +32,21 @@ class Singleton(type):
 
 class Protocol(object):
     ValidOps = ["and", "or"]
+    ValidHiliteModes = ["hilite", "unhilite", "toggle", "clear"]
 
     @staticmethod
     def simple(operator, *wheres, **attributes):
+        """
+        Builds a simple where clause for the hilite command
+
+        :param wheres: a list of finished where sub clauses
+        :param attributes: the attributes and their values to be added
+        :returns: the where dict
+
+        e.g.
+        simple("and", ilastik_id=42, time=1337)
+            => WHERE ( ilastik_id == 42 AND time == 1337 )
+        """
         operands = list(wheres)
         for name, value in attributes.iteritems():
             operands.append({
@@ -45,6 +62,17 @@ class Protocol(object):
 
     @staticmethod
     def simple_in(row, possibilities):
+        """
+        Builds a simple where clause ( using 'in' ) for the hilite command
+
+        :param row: the row name that must be in possibilities
+        :param possibilities: the possible values row can have
+        :returns: the where dict
+
+        e.g.
+        simple("track_id1", [42, 1337, 12345])
+            => WHERE ( track_id1 == 42 OR track_id1 == 1337 OR track_id1 == 12345 )
+        """
         operands = []
         for p in possibilities:
             operands.append({
@@ -58,126 +86,118 @@ class Protocol(object):
             "operands": operands
         }
 
+    @staticmethod
+    def clear():
+        """
+        Builds the clear hilite command to clear all hilites
+        :returns: the command dict
+        """
+        return {
+            "command": "hilite",
+            "mode": "clear",
+        }
 
-def server_required(method):
-    @wraps(method)
-    def decoree(self, *args, **kvargs):
-        if self.server is None:
-            logger.debug("No Server")
-            return
-        return method(self, *args, **kvargs)
-    return decoree
+    @staticmethod
+    def cmd(mode, where=None):
+        if mode.lower() not in Protocol.ValidHiliteModes:
+            raise ValueError("Mode '{}' not supported".format(mode))
+        command = {
+            "command": "hilite",
+            "mode": mode
+        }
+        if where is not None:
+            command["where"] = where
+        return command
+
+    @staticmethod
+    def verbose(command):
+        """
+        returns the command in an SQL like readable form
+
+        :param command: the command to convert
+        :type command: dict
+        :returns: the command as str
+        """
+        assert "command" in command, "Must be a command dict"
+        assert command["command"] == "hilite", "Only hilite commands supported"
+
+        mode = command["mode"]
+        if mode == "clear":
+            return "CLEAR *"
+        where = []
+        Protocol._parse(where, command["where"])
+
+        return "{} * WHERE {}".format(mode.upper(), " ".join(where))
+
+    @staticmethod
+    def _parse(where, sub):
+        if "operand" in sub:
+            where.append(sub["operator"].upper())
+            where.append("(")
+            Protocol._parse(where, sub["operand"])
+            where.append(")")
+        elif "operands" in sub:
+            if not sub["operands"]:
+                where.append("MISSING")
+                where.append(None)
+            for operand in sub["operands"]:
+                where.append("(")
+                Protocol._parse(where, operand)
+                where.append(")")
+                where.append(sub["operator"].upper())
+            where.pop()
+        else:
+            where.append(sub["row"])
+            where.append(sub["operator"].upper())
+            where.append(str(sub["value"]))
 
 
 class IPCServerFacade(object):
-    """
-    Singleton for access to the ServerManager
-    """
     __metaclass__ = Singleton
 
-    ValidHiliteModes = ["hilite", "unhilite", "toggle", "clear"]
-
     def __init__(self):
-        self.server = None
+        self.info = IPCServerInfoWindow()
+        self.servers = {}
 
-    @staticmethod
-    def convert_id_by_config(id_):
-        """
-        DEPRECATED
-        Converts the id used in ilastik to the id used in the Exporter
-        :param id_: the id in ilastik
-        :return: the id used in the exporter
-        """
-        #todo: read config first
-        return id_ - 1
+    def add_server(self, name, server):
+        if name in self.servers:
+            raise RuntimeError("Server {} already exists".format(name))
+        self.servers[name] = server
+        self.info.add_server(name, server.widget)
 
-    def set_server(self, server):
-        """
-        Sets the server that will receive all messages
-        :param server: the server to set
-        :type server: IPCServerManager
-        """
-        self.server = server
+    @property
+    def all_running(self):
+        return all(server.running for server in self.servers.itervalues())
 
-    def is_running(self):
-        """
-        :returns: True if the server is running else False
-        """
-        if self.server is None:
-            return False
-        return self.server.is_running()
+    @property
+    def any_running(self):
+        return any(server.running for server in self.servers.itervalues())
 
-    def hilite(self, object_id):
-        """
-        DEPRECATED
-        Sends a hilite command to all clients
-        :param object_id: the id of the object that should be hilited
-        """
-        if self.server is None:
-            logger.debug("no server")
-            return False
-        object_id = self.convert_id_by_config(object_id)
-        self.server.broadcast(command=0, objectid="Row%d" % object_id)
-        logger.debug("hiliting object '%d'" % object_id)
+    def start(self, name=None):
+        if name is None:
+            for server in self.servers.itervalues():
+                server.start()
+        else:
+            self.servers[name].start()
 
-    def unhilite(self, object_id):
-        """
-        DEPRECATED
-        Sends an unhilite command to all clients
-        :param object_id: the id of the object that should be unhilited
-        """
-        if self.server is None:
-            logger.debug("no server")
-            return False
-        object_id = self.convert_id_by_config(object_id)
-        self.server.broadcast(command=1, objectid="Row%d" % object_id)
-        logger.debug("unhiliting object '%d'" % object_id)
+    def stop(self, name=None):
+        if name is None:
+            for server in self.servers.itervalues():
+                server.stop()
+        else:
+            self.servers[name].stop()
 
-    def clear_hilite(self):
-        """
-        DEPRECATED
-        Sends a clearhilite command to all clients
-        So all object will be unhilited
-        """
-        if self.server is None:
-            logger.debug("no server")
-            return False
-        self.server.broadcast(command=2)
-        logger.debug("clearing hilite")
+    @lazy
+    def broadcast(self, command):
+        #from pprint import PrettyPrinter
+        #PrettyPrinter(indent=4).pprint(command)
+        message = json.dumps(command, cls=NumpyJsonEncoder)
+        log = Protocol.verbose(command)
+        for server in self.servers.itervalues():
+            server.broadcast(message, log)
 
-    @server_required
-    def hilite_object(self, mode, time, obj):
-        """
-        Sends a hilite command to all clients
-        :param time: the time in which the object exists
-        :type time: int
-        :param obj: the ilastik id of the object
-        :type obj: int
-        """
-        if mode not in self.ValidHiliteModes:
-            raise ValueError("Mode ({}) must be in {}".format(mode, self.ValidHiliteModes))
-
-        self.server.broadcast({
-            "command": "hilite",
-            "mode": mode,
-            "where": Protocol.simple("and", ilastik_id=obj, time=time)
-        })
-
-    @server_required
-    def hilite_track(self, mode, *tracks):
-        """
-        Sends a hilite command to all clients
-        :param tracks: all objects with these tracks will be hilited
-        :type tracks: list
-        """
-        if mode not in self.ValidHiliteModes:
-            raise ValueError("Mode must be in {}".format(self.ValidHiliteModes))
-
-        self.server.broadcast({
-            "command": "hilite",
-            "mode": mode,
-            "where": Protocol.simple_in("track_id*", tracks)
-        })
+    def show_info(self):
+        self.info.show()
 
 
 class NumpyJsonEncoder(json.JSONEncoder):
@@ -190,12 +210,89 @@ class NumpyJsonEncoder(json.JSONEncoder):
         return super(json.JSONEncoder, self).default(obj)
 
 
-class IPCServerManager(object):
+class Server(object):
+    __metaclass__ = ABCMeta
+
+    @abstractproperty
+    def running(self):
+        """
+        :return: True if the server is currently running False otherwise
+        """
+        pass
+
+    @abstractproperty
+    def widget(self):
+        """
+        :return: the widget that displays information about this Server
+        """
+        pass
+
+    def start(self):
+        """
+        Start the server if it is not running
+        """
+        if not self.running:
+            self._start()
+
+    def stop(self):
+        """
+        Stop the server if it is running
+        """
+        if self.running:
+            self._stop()
+
+    def toggle(self):
+        """
+        Stop if running, start if not running
+        """
+        if self.running:
+            self._stop()
+        else:
+            self._start()
+
+    def broadcast(self, message, log):
+        """
+        Broadcasts the message
+        :param message: the message to broadcast ( will be json encoded )
+        :type message: dict
+        """
+        if self.running:
+            self._broadcast(message)
+            self.widget.add_sent_command(log, 0)
+
+    @abstractmethod
+    def _broadcast(self, message):
+        pass
+
+    def change_address(self, address):
+        """
+        Changes the address. This can only be done if the server is not running
+        :param address: the new address
+        :type address: depends on implementation ( see subclass )
+        """
+        if not self.running:
+            self._change_address(address)
+
+    @abstractmethod
+    def _change_address(self, address):
+        pass
+
+    @abstractmethod
+    def _start(self):
+        pass
+
+    @abstractmethod
+    def _stop(self):
+        pass
+
+
+class TCPHiliteServer(Server):
     """
     This ServerManager updates the IPCServerInfoWidget,
     starts/stops the server, adds connections and forwards
     commands to the command processor
     """
+
     DEFAULT_PORT = 9999
 
     def __init__(self, shell):
@@ -209,23 +306,19 @@ class IPCServerManager(object):
         self.port = self.DEFAULT_PORT
 
         self.info = IPCServerInfoWidget()
-        self.info.statusToggled.connect(self.toggle_server)
+        self.info.statusToggled.connect(self.toggle)
         self.info.connectionChanged.connect(self.change_connection)
         self.info.broadcast.connect(self.broadcast)
-        self.info.portChanged.connect(self.change_port)
+        self.info.portChanged.connect(self.change_address)
         self.info.notify_server_status_update("port", self.port)
 
         self.connections = OrderedDict()
         self.shell = shell
         self.cmd_processor = CommandProcessor(shell)
 
-        atexit.register(self.stop_server, silent=True)
+        atexit.register(self._stop, kill=True)
 
-    def start_server(self):
-        """
-        Start the server if it is not already running
-        Asks for a port if the default port is already used or permissions are too low
-        """
+    def _start(self):
         if self.server is not None:
             logger.debug("IPC Server is already running")
             return
@@ -250,12 +343,14 @@ class IPCServerManager(object):
         logger.info("IPC Server started on port %d" % self.server.socket.getsockname()[1])
         self.info.notify_server_status_update("running", True)
 
-    def stop_server(self, silent=False):
+    def _stop(self, kill=False):
         """
         Start the server if it is not already shutdown
         """
         if self.server is not None:
             self.server.shutdown()
+            if kill:
+                return
             self.info.notify_server_status_update("running", False)
             logger.info("IPC Server stopped")
             self.server = None
@@ -263,29 +358,16 @@ class IPCServerManager(object):
             self.queue_thread = None
             self.connections = OrderedDict()
             self.info.update_connections(self.connections)
-        elif not silent:
+        else:
             logger.debug("Can't stop, because IPC Server is not running")
 
-    def is_running(self):
-        """
-        :return: True if the server is currently running False otherwise
-        """
+    @property
+    def running(self):
         return self.server is not None
 
-    def toggle_server(self):
-        """
-        starts if not started etc.
-        """
-        if self.server is None:
-            self.start_server()
-        else:
-            self.stop_server()
-
-    def show_info(self):
-        """
-        Shows a widget that displays information about the server
-        """
-        self.info.show()
+    @property
+    def widget(self):
+        return self.info
 
     def add_connection(self, name, host, remote_server_port):
         """
@@ -351,45 +433,116 @@ class IPCServerManager(object):
             else:
                 self.filter_command(command)
 
-    def broadcast(self, command, to_all=False):
+    def _broadcast(self, message, to_all=False):
         """
         creates a socket for each connection and sends the command as json
-        :param command: the command
-        :type command: dict
+        :param message: the command
+        :type message: str
         :param to_all: if True the cmd is sent to all ( even the disabled ones ) connections
         :type to_all: bool
         """
-        from pprint import PrettyPrinter
-        PrettyPrinter(indent=4).pprint(command)
+        count = 0
         for connection in filter(None if to_all else itemgetter("enabled"), self.connections.itervalues()):
             # noinspection PyTypeChecker
             client = connection["client"]
-            command = json.dumps(command, cls=NumpyJsonEncoder)
             s = socket.socket()  # default is fine
             try:
                 s.connect(client)
-                s.sendall(command)
+                s.sendall(message)
             except socket.error as e:
                 logger.exception("broadcast to %s:%s failed (%s)" % (client[0], client[1], e))
+            else:
+                count += 1
             finally:
                 s.close()
 
-    def change_port(self, port, start_server=False):
+    def _change_address(self, port, start=False):
         """
         Changes the server port to the new port
         The server must be shutdown to change the port
         :param port: the new port
         :type port: int
-        :param start_server: starts the server after changing the port if set to True
-        :type start_server: bool
+        :param start: starts the server after changing the port if set to True
+        :type start: bool
         """
         if self.server is None:
             self.port = port
             self.info.notify_server_status_update("port", port)
-            if start_server:
-                self.start_server()
+            if start:
+                self.start()
         else:
             logger.warn("Can't change the port while running")
+
+
+class ZMQHilitePublisher(Server):
+    Prompt = partial(QInputDialog.getText, "Address already in use", "new address", QLineEdit.Normal)
+
+    def __init__(self, address):
+
+        self.address = address
+
+        # todo: add ZMQ
+        #self.context = zmq.Context()
+        #self.socket = self.context.socket(zmq.PUB)
+        self.context = None
+        self.socket = None
+        from PyQt4.QtGui import QLabel
+        self.info = QLabel("NOT IMPLEMENTED")
+
+
+        self.is_running = False
+
+        atexit.register(self.shutdown)
+
+    def _change_address(self, address):
+        pass
+
+    def _broadcast(self, message):
+        print "ZMQ will not send yet"
+        return
+        self.socket.send_string(message)
+
+    @property
+    def running(self):
+        return self.is_running
+
+    @property
+    def widget(self):
+        return self.info
+
+    def _start(self):
+        if self.is_running:
+            logger.debug("ZMQ Publisher already running")
+            return
+
+        # todo: add ZMQ
+        """
+        while not self.is_running:
+            try:
+                self.socket.bind(self.address)
+            except zmq.ZMQError as e:
+                if e.errno != 98:
+                    raise
+                # Address already in use
+                address, ok = self.Prompt(self.address)
+                if not ok:
+                    return
+                self.address = address
+            else:
+                self.is_running = True
+        """
+    def _stop(self):
+        if not self.is_running:
+            logger.debug("ZMQ Publisher is not running")
+            return
+
+        self.socket.unbind(self.address)
+
+    def shutdown(self):
+        #todo: add zmq
+        return
+        self.socket.close()
+        self.context.destroy()
 
 
 class Handler(BaseRequestHandler):
