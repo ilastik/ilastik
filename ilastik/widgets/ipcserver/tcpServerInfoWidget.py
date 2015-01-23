@@ -129,7 +129,7 @@ class TCPServerInfoWidget(QWidget):
         for c in connections.iterkeys():
             item = QListWidgetItem("%s (%s)" % (c[0], c[1]))
             enabled = connections[c]["enabled"]
-            client = connections[c]["client"]
+            client = connections[c]["address"]
             item.setCheckState(Qt.Checked if enabled else Qt.Unchecked)
             color = self.connectionColors[0 if client is None else 1]
             item.setBackground(QBrush(color, Qt.SolidPattern))

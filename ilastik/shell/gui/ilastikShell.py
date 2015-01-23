@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 # Standard
+from Queue import Queue
 import re
 import os
 import time
@@ -70,7 +71,7 @@ from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox
 from ilastik.widgets.filePathButton import FilePathButton
 
 #from ilastik.shell.gui.messageServer import MessageServer
-from ilastik.shell.gui.ipcManager import IPCFacade, AvailableIPCSenders
+from ilastik.shell.gui.ipcManager import IPCFacade, TCPServer, TCPClient, ZMQHilitePublisher
 
 # Import all known workflows now to make sure they are all registered with getWorkflowFromName()
 import ilastik.workflows
@@ -254,10 +255,34 @@ class IlastikShell( QMainWindow ):
         
         # Server/client for inter process communication for receiving remote commands (e.g. from KNIME)
         # For now, this is a developer-only feature, activated by a debug menu item.
-        for name, cls, mode in AvailableIPCSenders:
-            if cls.available(mode):
-                server = cls(self) if mode is None else cls(self, mode)
-                IPCFacade().add_sender(name, server)
+        self.message_queue = Queue()
+
+        tcp_server = TCPServer(self.message_queue)
+        IPCFacade().add_receiver("TCP Server", tcp_server)
+        IPCFacade().add_sender("TCP Client", TCPClient(tcp_server), "tcp")
+        if ZMQHilitePublisher.available("tcp"):
+            IPCFacade().add_sender("ZMQ TCP Publisher", ZMQHilitePublisher("tcp://*:9998"))
+        if ZMQHilitePublisher.available("ipc"):
+            IPCFacade().add_sender("ZMQ IPC Publisher", ZMQHilitePublisher("ipc:///tmp/ilastik"))
+
+
+        def queue_handler(queue):
+            try:
+                while True:
+                    m = queue.get()
+                    if m["command"] == "handshake":
+                        host = m["host"]
+                        port = m["port"]
+                        name = m["name"]
+                        prot = m["protocol"]
+                        IPCFacade().sender(prot).add_peer(name, host, port)
+                    print m
+            except Exception:
+                pass
+        self.queue_thread = threading.Thread(target=partial(queue_handler, self.message_queue))
+        self.queue_thread.daemon = True
+        self.queue_thread.start()
+
 
         self.openFileButtons = []
         self.cleanupFunctions = []
