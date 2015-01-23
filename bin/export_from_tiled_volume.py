@@ -74,17 +74,17 @@ if __name__ == "__main__":
     # Parse ROI start
     try:
         start = eval(parsed_args.cutout_start)
-        assert isinstance( start, (list, tuple) )
+        assert isinstance(start, (list, tuple))
     except:
-        sys.stderr.write("cutout_start not understood: " + parsed_args.cutout_start)
+        sys.stderr.write("cutout_start not understood: " + parsed_args.cutout_start + "\n")
         sys.exit(1)
     
     # Parse ROI stop
     try:
         stop = eval(parsed_args.cutout_stop)
-        assert isinstance( stop, (list, tuple) )
+        assert isinstance(stop, (list, tuple))
     except:
-        sys.stderr.write("cutout_stop not understood: " + parsed_args.cutout_stop)
+        sys.stderr.write("cutout_stop not understood: " + parsed_args.cutout_stop + "\n")
         sys.exit(1)
 
     # More validation.
