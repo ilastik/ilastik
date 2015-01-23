@@ -22,7 +22,7 @@ from PyQt4.QtGui import *
 from PyQt4 import uic
 from PyQt4.QtCore import pyqtSignal, pyqtSlot, Qt, QObject
 from PyQt4.QtGui import QFileDialog
-from ilastik.shell.gui.ipcServer import IPCServerFacade, Protocol
+from ilastik.shell.gui.ipcManager import IPCFacade, Protocol
 
 from ilastik.widgets.featureTableWidget import FeatureEntry
 from ilastik.widgets.featureDlg import FeatureDlg
@@ -230,10 +230,6 @@ class ObjectClassificationGui(LabelingGui):
 
         return [m]
 
-    """
-    Opens the exportObjectInfoDialog dialog
-    when accepted creates an opExportObjectInfo and executes it
-    """
     def exportObjectInfo(self):
         from ilastik.utility.exportFile import ExportFile, objects_per_frame, ProgressPrinter, Mode, ilastik_ids
         op = self.topLevelOperatorView
@@ -257,7 +253,7 @@ class ObjectClassificationGui(LabelingGui):
         export_file.ExportProgress.subscribe(ep)
         export_file.InsertionProgress.subscribe(ip)
 
-        export_file.add_columns("table", range(sum(obj_count)), Mode.List, {"names": ("object id",)})
+        export_file.add_columns("table", range(sum(obj_count)), Mode.List, {"names": ("object_id",)})
         ids = ilastik_ids(obj_count)
         export_file.add_columns("table", list(ids), Mode.List, {"names": ("time", "ilastik_id")})
         export_file.add_columns("table", op.opPredict.Features, Mode.IlastikFeatureTable,
@@ -802,18 +798,18 @@ class ObjectClassificationGui(LabelingGui):
 
         if ilastik_config.getboolean("ilastik", "debug"):
             menu.addSeparator()
-            if IPCServerFacade().any_running:
+            if any(IPCFacade().sending):
                 time = position5d[0]
 
                 sub = menu.addMenu("Hilite Object")
                 for mode in Protocol.ValidHiliteModes[:-1]:
                     where = Protocol.simple("and", time=time, ilastik_id=obj)
                     cmd = Protocol.cmd(mode, where)
-                    sub.addAction(mode, IPCServerFacade().broadcast(cmd))
-                menu.addAction("Clear Hilite", IPCServerFacade().broadcast(Protocol.cmd("clear")))
+                    sub.addAction(mode, IPCFacade().broadcast(cmd))
+                menu.addAction("Clear Hilite", IPCFacade().broadcast(Protocol.cmd("clear")))
             else:
-                menu.addAction("Open IPC Server Window", IPCServerFacade().show_info)
-                menu.addAction("Start All IPC Servers", IPCServerFacade().start)
+                menu.addAction("Open IPC Server Window", IPCFacade().show_info)
+                menu.addAction("Start All IPC Servers", IPCFacade().start)
 
 
         menu.addSeparator()

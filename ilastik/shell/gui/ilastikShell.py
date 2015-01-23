@@ -70,7 +70,7 @@ from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox
 from ilastik.widgets.filePathButton import FilePathButton
 
 #from ilastik.shell.gui.messageServer import MessageServer
-from ilastik.shell.gui.ipcServer import TCPHiliteServer, IPCServerFacade, ZMQHilitePublisher
+from ilastik.shell.gui.ipcManager import IPCFacade, AvailableIPCSenders
 
 # Import all known workflows now to make sure they are all registered with getWorkflowFromName()
 import ilastik.workflows
@@ -254,8 +254,10 @@ class IlastikShell( QMainWindow ):
         
         # Server/client for inter process communication for receiving remote commands (e.g. from KNIME)
         # For now, this is a developer-only feature, activated by a debug menu item.
-        IPCServerFacade().add_server("tcp", TCPHiliteServer(self))
-        IPCServerFacade().add_server("zmq", ZMQHilitePublisher("tcp://*:1337"))
+        for name, cls, mode in AvailableIPCSenders:
+            if cls.available(mode):
+                server = cls(self) if mode is None else cls(self, mode)
+                IPCFacade().add_sender(name, server)
 
         self.openFileButtons = []
         self.cleanupFunctions = []
@@ -556,7 +558,7 @@ class IlastikShell( QMainWindow ):
         # For now, this is a developer-only feature, activated by a menu item.
         def start_message_server():
             self.socketServer = MessageServer(self, 'localhost', 9997)
-            if self.socketServer.running:
+            if self.socketServer.sending:
                 server_action.setText("<Message server is running>")
                 server_action.setEnabled(False)
             else:
@@ -567,7 +569,7 @@ class IlastikShell( QMainWindow ):
         #server_action.triggered.connect(start_message_server)
 
 
-        menu.addAction("Show IPC Server Info", IPCServerFacade().show_info)
+        menu.addAction("Show IPC Server Info", IPCFacade().show_info)
 
         return menu
 

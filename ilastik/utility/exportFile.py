@@ -150,8 +150,9 @@ def create_slicing(axistags, dimensions, margin, feature_table):
 
     indices = map(axistags.index, "txyzc")
     excludes = indices.count(-1)
+    oid = 1
     for i in xrange(table_shape):
-        if i == 0 or time[i] != time[i-1]:
+        if time[i] != time[i-1]:
             oid = 1
         slicing = [
             slice(time[i], time[i]+1),
