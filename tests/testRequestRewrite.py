@@ -798,9 +798,33 @@ class TestRequestExceptions(object):
         req2.notify_failed( failure_handler )
         assert len(signaled_exceptions) == 3
 
-    
-class TestRequestPool(object):
+    def test_result_discarded(self):
+        """
+        After a request is deleted, its result should be discarded.
+        """
+        import weakref
+        from functools import partial
         
+        def f():
+            return numpy.zeros( (10,), dtype=numpy.uint8 ) + 1
+        
+        w = [None]
+        def onfinish(r, result):
+            w[0] = weakref.ref(result)
+            
+        req = Request(f)
+        req.notify_finished( partial(onfinish, req) )
+        
+        req.submit()
+        req.wait()
+        del req
+        assert w[0]() is None
+    
+     
+class TestRequestPool(object):
+    """
+    See also: There's a separate file for other RequestPool tests...
+    """
     def testBasic(self):
         def work():
             time.sleep(0.2)
