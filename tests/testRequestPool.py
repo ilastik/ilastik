@@ -15,14 +15,13 @@
 # Copyright 2011-2014, the ilastik developers
 
 import sys
-import os
 import time
-import psutil
+from functools import partial
 import numpy
-import gc
 
 from lazyflow.request.request import Request, RequestPool
-from lazyflow.utility.tracer import traceLogged
+
+from test_utilities import fail_after_timeout
 
 import logging
 handler = logging.StreamHandler(sys.stdout)
@@ -41,60 +40,109 @@ def test_basic():
     # threadsafe way to count how many requests ran
     import itertools
     result_counter = itertools.count()
-
+    
     def increase_counter():
-        time.sleep(0.1)
+        time.sleep(0.001)
         result_counter.next()
-
+    
     pool = RequestPool()
-    for i in xrange(500):
+    for _ in xrange(500):
         pool.add(Request(increase_counter))
     pool.wait()
+    
+    assert result_counter.next() == 500, \
+        "RequestPool has not run all submitted requests: {} out of 500"\
+        .format(result_counter.next() - 1)
 
-    assert result_counter.next() == 500, "RequestPool has not run all submitted requests {} out of 500".format(result_counter.next() - 1)
-
-def test_cleanup():
+@fail_after_timeout(5)
+def test_pool_with_failed_requests():
     """
-    Check if requests added to a RequestPool are cleaned when they are
-    completed without waiting for the RequestPool itself to be cleaned.
+    When one of the requests in a RequestPool fails, 
+    the exception should be propagated back to the caller of RequestPool.wait()
     """
-    cur_process = psutil.Process(os.getpid())
-    def getMemoryUsage():
-        # Collect garbage first
-        gc.collect()
-        return cur_process.memory_info().vms
-        #return mem_usage_mb
-
-    starting_usage = getMemoryUsage()
-    def getMemoryIncrease():
-        return getMemoryUsage() - starting_usage
-
-
-    num_workers = len(Request.global_thread_pool.workers)
-    # maximum memory this tests should use
-    # tests should not cause the machine to swap unnecessarily
-    max_mem = 1<<29 # 512 Mb
-    mem_per_req = max_mem / num_workers
-
-    # some leeway
-    max_allowed_mem = (max_mem + 2*mem_per_req)
-
-    def memoryhog():
-        increase = getMemoryIncrease()
-        assert increase < max_allowed_mem, "memory use should not go beyond {}, current use: {}".format(max_mem, increase)
-        return numpy.zeros(mem_per_req, dtype=numpy.uint8)
-
+    class ExpectedException(Exception): pass
+     
+    l = []
     pool = RequestPool()
-    for i in xrange(num_workers**2):
-        pool.add(Request(memoryhog))
+    def workload(index):
+        if index == 9:
+            raise ExpectedException("Intentionally failed request.")
+        l.append(index)
+     
+    for i in range(10):
+        pool.add( Request(partial(workload, i)) )
+ 
+    try:
+        pool.wait()
+    except ExpectedException:
+        pass
+    else:
+        assert False, "Expected the pool to fail.  Why didn't it?"
+ 
+    time.sleep(0.2)
 
+def _impl_test_pool_results_discarded():
+    """
+    After a RequestPool executes, none of its data should linger if the user didn't hang on to it.
+    """
+    import weakref
+    from functools import partial
+    import threading
+  
+    result_refs = []
+      
+    def workload():
+        # In this test, all results are discarded immediately after the 
+        #  request exits.  Therefore, AT NO POINT IN TIME, should more than N requests be alive.
+        live_result_refs = filter(lambda w:w() is not None, result_refs)
+        assert len(live_result_refs) <= Request.global_thread_pool.num_workers, \
+            "There should not be more than {} result references alive at one time!"\
+            .format( Request.global_thread_pool.num_workers )
+          
+        return numpy.zeros( (10,), dtype=numpy.uint8 ) + 1
+  
+    lock = threading.Lock()
+    def handle_result(req, result):
+        with lock:
+            result_refs.append( weakref.ref(result) )
+      
+    def handle_cancelled(req, *args):
+        assert False
+          
+    def handle_failed(req, exc, exc_info):
+        raise exc
+      
+    pool = RequestPool()
+    for _ in range( 100 ):
+        req = Request( workload )
+        req.notify_finished( partial(handle_result, req ) )
+        req.notify_cancelled( partial(handle_cancelled, req ) )
+        req.notify_failed( partial(handle_failed, req ) )
+        pool.add(req)
+        del req
     pool.wait()
-
-    assert len(pool._requests) == 0, "Not all requests were executed by the RequestPool"
-
+  
+    # This test verifies that
+    #  (1) references to all child requests have been discarded once the pool is complete, and
+    #  (2) therefore, all references to the RESULTS in those child requests are also discarded.
+    # There is a tiny window of time between a request being 'complete' (for all intents and purposes),
+    #  but before its main execute function has exited back to the main ThreadPool._Worker loop.
+    #  The request is not finally discarded until that loop discards it, so let's wait a tiny extra bit of time.
+    time.sleep(0.01)
+      
+    # Now check that ALL results are truly lost.
+    for ref in result_refs:
+        assert ref() is None, "Some data was not discarded."
+  
+def test_pool_results_discarded_THREAD_CONTEXT():
+    _impl_test_pool_results_discarded()
+   
+def test_pool_results_discarded_REQUEST_CONTEXT():
+    mainreq = Request(_impl_test_pool_results_discarded)
+    mainreq.submit()
+    mainreq.wait()
 
 if __name__ == "__main__":
-
     # Logging is OFF by default when running from command-line nose, i.e.:
     # nosetests thisFile.py)
     # but ON by default if running this test directly, i.e.:
@@ -107,5 +155,6 @@ if __name__ == "__main__":
     import nose
     sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
     sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+    
     ret = nose.run(defaultTest=__file__)
     if not ret: sys.exit(1)
