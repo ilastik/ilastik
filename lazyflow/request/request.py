@@ -92,7 +92,7 @@ class Request( object ):
     # One thread pool shared by all requests.
     # See initialization after this class definition (below)
     global_thread_pool = None
-    
+
     @classmethod
     def reset_thread_pool( cls, num_workers = multiprocessing.cpu_count() ):
         """
@@ -193,6 +193,7 @@ class Request( object ):
         self._current_foreign_thread = None
         current_request = Request._current_request()
         self.parent_request = current_request
+        self._max_child_priority = 0
         if current_request is None:
             self._priority = [ Request._root_request_counter.next() ]
         else:
@@ -201,7 +202,8 @@ class Request( object ):
                 # We must ensure that we get the same cancelled status as our parent.
                 self.cancelled = current_request.cancelled
                 # We acquire the same priority as our parent, plus our own sub-priority
-                self._priority = current_request._priority + [ len(current_request.child_requests) ]
+                current_request._max_child_priority += 1
+                self._priority = current_request._priority + [ current_request._max_child_priority ]
 
         self._lock = threading.Lock() # NOT an RLock, since requests may share threads
         self._sig_finished = SimpleSignal()
@@ -243,6 +245,10 @@ class Request( object ):
             for child in self.child_requests:
                 child.parent_request = None
             self.child_requests.clear()
+
+        if self.parent_request is not None:
+            with self.parent_request._lock:
+                self.parent_request.child_requests.discard(self)
 
         if _fullClean:
             self._cleaned = True
