@@ -1011,7 +1011,7 @@ class SimpleRequestCondition(object):
         #self.__exit__ = self._debug_condition.__exit__        
 
     def __enter__(self):
-        self._ownership_lock.__enter__()
+        return self._ownership_lock.__enter__()
         
     def __exit__(self, *args):
         self._ownership_lock.__exit__(*args)
@@ -1034,6 +1034,7 @@ class SimpleRequestCondition(object):
         self._waiter_lock.acquire()
         
         # Temporarily release the ownership lock while we wait for someone to release the waiter.
+        assert self._ownership_lock.locked(), "Forbidden to call SimpleRequestCondition.wait() unless you own the condition."
         self._ownership_lock.release()
         
         # Try to acquire the lock AGAIN.
@@ -1058,6 +1059,8 @@ class SimpleRequestCondition(object):
         
         .. note:: It is okay to call this from more than one request in parallel.
         """
+        assert self._ownership_lock.locked(), "Forbidden to call SimpleRequestCondition.notify() unless you own the condition."
+
         # Release the waiter for anyone currently waiting
         if self._waiter_lock.locked():
             self._waiter_lock.release()
