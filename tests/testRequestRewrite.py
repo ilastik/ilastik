@@ -189,8 +189,6 @@ class TestRequest(object):
         if Request.global_thread_pool.num_workers == 0:
             raise nose.SkipTest
         
-        counter_lock = threading.RLock()
- 
         def workload():
             time.sleep(0.1)
             return 1
@@ -211,6 +209,10 @@ class TestRequest(object):
                     assert not r.cancelled
             except Request.CancellationException:
                 got_cancel[0] = True
+            except Exception as ex:
+                import traceback
+                traceback.print_exc()
+                raise
          
         completed = [False]
         def handle_complete( result ):
@@ -221,7 +223,7 @@ class TestRequest(object):
         req.submit()
  
         while workcounter[0] == 0:
-            time.sleep(0.5)
+            time.sleep(0.001)
              
         req.cancel()
         time.sleep(1)
