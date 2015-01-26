@@ -1070,7 +1070,9 @@ class RequestPool(object):
     """
     Convenience class for submitting a batch of requests and waiting until they are all complete.
     Requests can not be added to the pool after it has already started.
-    Not threadsafe (don't add requests from more than one thread).
+    Not threadsafe:
+        - don't call add() from more than one thread
+        - don't call wait() or submit() from more than one thread
     """
 
     class RequestPoolError(Exception):
@@ -1080,9 +1082,12 @@ class RequestPool(object):
         pass
 
     def __init__(self):
+        self._started = False
+        self._failed = False
         self._requests = set()
         self._finishing_requests = set()
-        self._started = False
+        self._set_lock = threading.Lock()
+        self._request_completed_condition = SimpleRequestCondition()
 
     def __len__(self):
         return len(self._requests)
@@ -1091,38 +1096,18 @@ class RequestPool(object):
         """
         Add a request to the pool.  The pool must not be submitted yet.  Otherwise, an exception is raised.
         """
+        assert not req.started, "Can't submit an already-submitted request."
+        
         if self._started:
             # For now, we forbid this because it would allow some corner cases that we aren't unit-testing yet.
             # If this exception blocks a desirable use case, then change this behavior and provide a unit test.
             raise RequestPool.RequestPoolError("Attempted to add a request to a pool that was already started!")
-        def remove_request(*args):
-            # This request is done executing, but not quite finished with its callbacks.
-            # See docstring in wait() for details.
-            self._finishing_requests.add(req)
-            try:
-                self._requests.remove(req)
-            except KeyError:
-                # request may have been removed already by the while
-                # loop in the wait() method
-                pass
 
-        req.notify_finished(remove_request)
-        req.notify_failed(remove_request)
-        req.notify_cancelled(remove_request)
-        self._requests.add(req)
-
-    def submit(self):
-        """
-        Submit all the requests in the pool.  The pool must not be submitted yet.  Otherwise, an exception is raised.
-        """
-        if self._started:
-            raise RequestPool.RequestPoolError("Can't re-start a RequestPool that was already started.")
-        # shallow copy prevents python complaining when finished requests
-        # remove themselves from self._requests
-        requests = self._requests.copy()
-        # while loop with pop() allows the gc to clean up completed requests
-        while requests:
-            requests.pop().submit()
+        req.notify_finished( functools.partial(self._transfer_request_to_finishing_queue, req, 'finished' ) )
+        req.notify_failed( functools.partial(self._transfer_request_to_finishing_queue, req, 'failed' ) )
+        req.notify_cancelled( functools.partial(self._transfer_request_to_finishing_queue, req, 'cancelled' ) )
+        with self._set_lock:
+            self._requests.add(req)
 
     def wait(self):
         """
@@ -1135,43 +1120,30 @@ class RequestPool(object):
         _finishing_requests: Requests whose main work has completed, but may still be executing callbacks
                              (e.g. handlers for notify_finished)
 
-        Requests are transferred from the first set to the second as they complete.
+        Requests are transferred in batches from the first set to the second as they complete.
         
-        We try to block() for 'finishing' requests first, so they can be discarded quickly.
+        We block() for 'finishing' requests first, so they can be discarded quickly.
         (If we didn't block for 'finishing' requests at all, we'd be violating the Request 'Callback Timing Guarantee', 
-        which must hold for both Requests and RequestPools.  See Request docs for details.)        
+        which must hold for *both* Requests and RequestPools.  See Request docs for details.)        
         """
-        def _clear_finishing_requests():
-            while self._finishing_requests:
-                try:
-                    req = self._finishing_requests.pop()
-                except KeyError:
-                    break
-                else:
-                    req.block()            
-        
-        if not self._started:
-            self.submit()
-        
-        while self._requests:
-            # First, clear the queue of 'finishing' requests.
-            # We want to discard them as soon as possible.
-            _clear_finishing_requests()
+        try:
+            if not self._started:
+                self.submit()
             
-            # Next, wait for the next non-'finishing' request.
-            try:
-                req = self._requests.pop()
-            except KeyError:
-                # the _requests set was modified in the mean time
-                # we can quit the loop since there are no more requests
-                break
-            else:
-                req.block()
-
-        # Finally, now all the requests are either 'finishing' or totally complete.
-        # DON'T EXIT until all requests are totally complete. 
-        #  (Once their callbacks have completed, they are no longer 'finishing')
-        _clear_finishing_requests()
+            while self._requests:
+                with self._request_completed_condition:
+                    if self._requests:
+                        self._request_completed_condition.wait()
+                    assert self._request_completed_condition._ownership_lock.locked()
+                    self._clear_finishing_requests()
+            
+            # Clear one last time, in case any finished right 
+            #  at the end of the last time through the loop.
+            self._clear_finishing_requests()
+        except:
+            self._failed = True
+            self.clean()
+            raise
 
     def cancel(self):
         """
@@ -1179,19 +1151,88 @@ class RequestPool(object):
         """
         for req in self._requests:
             req.cancel()
+        self.clean()
+    
+    def submit(self):
+        """
+        Submit all the requests in the pool.  The pool must not be submitted yet.  
+        Otherwise, an exception is raised.
+        Since wait() automatically calls submit(), there is usually no advantage to calling submit() yourself.
+        """
+        if self._started:
+            raise RequestPool.RequestPoolError("Can't re-start a RequestPool that was already started.")
+
+        try:        
+            # Use copy here because requests may remove themselves from self._requests as they complete.
+            requests = self._requests.copy()
+            while requests:
+                requests.pop().submit()
+                self._clear_finishing_requests()
+        except:
+            self._failed = True
+            self.clean()
+            raise
+
+    def _transfer_request_to_finishing_queue(self, req, reason, *args):
+        """
+        Called (via a callback) when a request is finished executing, 
+        but not yet done with its callbacks.  We mark the state change by 
+        removing it from _requests and adding it to _finishing_requests.
+        
+        See docstrings in wait() and _clear_finishing_requests() for details.
+        """
+        with self._request_completed_condition:
+            with self._set_lock:
+                if not self._failed:
+                    self._requests.remove(req)
+                    self._finishing_requests.add(req)
+                    self._request_completed_condition.notify()
+
+    def _clear_finishing_requests(self):
+        """
+        Requests execute in two stages: 
+            (1) the main workload, and 
+            (2) the completion callbacks (i.e. the notify_finished handlers)
+        
+        Once a request in the pool has completed stage 1, it is added to the 
+        set of 'finishing_requests', which may still be in the middle of stage 2.
+        
+        In this function, we block() for all requests that have completed stage 1, and then finally discard them.
+        This way, any RAM consumed by their results is immediately discarded (if possible).
+        
+        We must call block() on every request in the Pool, for two reasons:
+            (1) RequestPool.wait() should not return until all requests are 
+                complete (unless some failed), INCLUDING the requests' notify_finished callbacks.
+                (See the 'Callback Timing Guarantee' in the Request docs.)
+            (2) If any requests failed, we want their exception to be raised in our own context.
+                The proper way to do that is to call Request.block() on the failed request.
+                Since we call Request.block() on all of our requests, we'll definitely see the 
+                exception if there was a failed request.
+        """
+        while self._finishing_requests:
+            try:
+                with self._set_lock:
+                    req = self._finishing_requests.pop()
+            except KeyError:
+                break
+            else:
+                req.block()
     
     def request(self, func):
         """
-        **Deprecated method**.  Convenience function to construct a request for the given callable and add it to the pool.
+        **Deprecated method**.
+        Convenience function to construct a request for the given callable and add it to the pool.
         """
         self.add( Request(func) )
     
     def clean(self):
         """
         Release our handles to all requests in the pool, for cleanup purposes.
+        There is no need to call this yourself.
         """
-        self._requests = set()
-
+        with self._set_lock:
+            self._requests = set()
+            self._finishing_requests = set()
 
 class RequestPool_SIMPLE(object):
     # This simplified version doesn't attempt to be efficient with RAM like the standard version (above).
@@ -1241,6 +1282,8 @@ class RequestPool_SIMPLE(object):
 
         for req in self._requests:
             req.block()
+        
+        self._requests = set()
 
     def cancel(self):
         """
