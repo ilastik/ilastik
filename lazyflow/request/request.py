@@ -21,9 +21,9 @@
 ###############################################################################
 # Built-in
 import sys
+import heapq
 import functools
 import itertools
-import collections
 import threading
 import multiprocessing
 import platform
@@ -215,6 +215,10 @@ class Request( object ):
         Request comparison is by priority.
         This allows us to store them in a heap.
         """
+        if other is None:
+            # In RequestLock, we sometimes compare Request objects with None,
+            #  which is permitted.  None is considered less (higher priority)
+            return False
         return self._priority < other._priority
 
     def __str__(self):
@@ -746,6 +750,57 @@ class RequestLock(object):
     
     Implementation detail:  Depends on the ability to call two *private* Request methods: _suspend() and _wake_up().
     """
+    class DEBUG_RequestLockQueue(object):
+        def __init__(self):
+            self._l = []
+
+        def __len__(self):
+            return len(self._l)
+        
+        def push(self, item):
+            self._l.append(item)
+        
+        def pop(self):
+            item = self._l[0]
+            self._l = self._l[1:]
+            return item
+
+        def popNone(self):
+            self._l.remove(None)
+    
+    class RequestLockQueue(object):
+        """
+        This is a pseudo-priority queue.
+        All items pushed consecutively (with no pop()s in between), will be prioritized.
+        But as soon as one call to pop() is made, newly pushed items will 
+        NOT be included in the current set until it is exhausted.
+        This way, if a high-priority item is popped() and then immediately
+        re-pushed, it is not simply replaced at the head of the queue.
+
+        (It has to wait until the next "batch" of pops.) 
+        """
+        def __init__(self):
+            self._pushing_queue = []
+            self._popping_queue = []
+        
+        def push(self, item):
+            heapq.heappush(self._pushing_queue, item)
+        
+        def pop(self):
+            if not self._popping_queue:
+                self._pushing_queue, self._popping_queue = self._popping_queue, self._pushing_queue
+            return heapq.heappop(self._popping_queue)
+        
+        def popNone(self):
+            if self._popping_queue and self._popping_queue[0] is None:
+                self._popping_queue = self._popping_queue[1:]
+            else:
+                assert self._pushing_queue[0] is None
+                self._pushing_queue = self._pushing_queue[1:]
+        
+        def __len__(self):
+            return len(self._pushing_queue) + len(self._popping_queue)
+
     logger = logging.getLogger(__name__ + ".RequestLock")
     def __init__(self):
         if Request.global_thread_pool.num_workers == 0:
@@ -759,7 +814,7 @@ class RequestLock(object):
             
             # This is a list of requests that are currently waiting for the lock.
             # Other waiting threads (i.e. non-request "foreign" threads) are each listed as a single "None" item. 
-            self._pendingRequests = collections.deque()
+            self._pendingRequests = RequestLock.RequestLockQueue()
 
     def _debug_mode_init(self):
         """
@@ -805,7 +860,7 @@ class RequestLock(object):
                 return got_it
             if not got_it:
                 # We have to wait.  Add ourselves to the list of waiters.
-                self._pendingRequests.append(current_request)
+                self._pendingRequests.push(current_request)
 
         if not got_it:
             # Suspend the current request.
@@ -826,7 +881,7 @@ class RequestLock(object):
 
         with self._selfProtectLock:
             # Append "None" to indicate that a real thread is waiting (not a request)
-            self._pendingRequests.append(None)
+            self._pendingRequests.push(None)
 
         # Wait for the internal lock to become free
         got_it = self._modelLock.acquire(blocking)
@@ -834,10 +889,7 @@ class RequestLock(object):
         with self._selfProtectLock:
             # Search for a "None" to pull off the list of pendingRequests.
             # Don't take real requests from the queue
-            r = self._pendingRequests.popleft()
-            while r is not None:
-                self._pendingRequests.append(r)
-                r = self._pendingRequests.popleft()
+            self._pendingRequests.popNone()
 
         return got_it
 
@@ -854,13 +906,13 @@ class RequestLock(object):
             else:
                 # Instead of releasing the modelLock, just wake up a request that was waiting for it.
                 # He assumes that the lock is his when he wakes up.
-                r = self._pendingRequests[0]
+                r = self._pendingRequests.pop()
                 if r is not None:
-                    self._pendingRequests.popleft()
                     r._wake_up()
                 else:
                     # The pending "request" is a real thread.
                     # Release the lock to wake it up (he'll remove the _pendingRequest entry)
+                    self._pendingRequests.push(None)
                     self._modelLock.release()
 
     def __enter__(self):
