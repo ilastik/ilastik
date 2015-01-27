@@ -199,6 +199,9 @@ class ThreadPool(object):
         for w in self.workers:
             w.join()
     
+    def get_states(self):
+        return [w.state for w in self.workers]
+    
     def _start_workers(self, num_workers, queue_type):
         """
         Start a set of workers and return the set.
@@ -255,23 +258,28 @@ class _Worker(threading.Thread):
         self.stopped = False
         self.job_queue_condition = threading.Condition()
         self.job_queue = queue_type()
+        self.state = 'initialized'
         
     def run(self):
         """
         Keep executing available tasks until we're stopped.
         """
         # Try to get some work.
+        self.state = 'waiting'
         next_task = self._get_next_job()
 
         while not self.stopped:
             # Start (or resume) the work by switching to its greenlet
+            self.state = 'running task'
             next_task()
 
             # We're done with this request.
             # Free it immediately for garbage collection.
+            self.state = 'freeing task'
             next_task = None
 
             # Now try to get some work (wait if necessary).
+            self.state = 'waiting'
             next_task = self._get_next_job()
 
     def stop(self):
