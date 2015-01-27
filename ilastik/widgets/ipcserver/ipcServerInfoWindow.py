@@ -11,5 +11,5 @@ class IPCServerInfoWindow(QMainWindow):
         self.ui = ui_class()
         self.ui.setupUi(self)
 
-    def add_server(self, name, widget):
+    def add_widget(self, name, widget):
         self.ui.tabWidget.addTab(widget, name)
