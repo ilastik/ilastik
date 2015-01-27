@@ -27,9 +27,6 @@ from lazyflow.roi import roiToSlice
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.operators.opSlicedBlockedArrayCache import OpSlicedBlockedArrayCache
 
-import lazyflow
-lazyflow.request.Request.reset_thread_pool(0)
-
 class KeyMaker():
     def __getitem__(self, *args):
         return list(*args)
