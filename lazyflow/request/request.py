@@ -246,9 +246,10 @@ class Request( object ):
                 child.parent_request = None
             self.child_requests.clear()
 
-        if self.parent_request is not None:
-            with self.parent_request._lock:
-                self.parent_request.child_requests.discard(self)
+        parent_req = self.parent_request
+        if parent_req is not None:
+            with parent_req._lock:
+                parent_req.child_requests.discard(self)
 
         if _fullClean:
             self._cleaned = True
