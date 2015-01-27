@@ -22,6 +22,9 @@ class ThreadRequest(object):
 
 @fail_after_timeout(10)
 def test_RequestLock():
+    assert Request.global_thread_pool.num_workers > 0, \
+        "This test must be used with the real threadpool."
+    
     lockA = RequestLock()
     lockB = RequestLock()
     
@@ -52,6 +55,7 @@ def test_RequestLock():
     finally:
         log_request_system_status()
         running[0] = False
+        status_thread.join()
 
 def test_ThreadingLock():
     # As a sanity check that our test works properly,
@@ -121,7 +125,7 @@ def _impl_test_lock(lockA, lockB, task_class):
 
     lockA.acquire() # A should be left in released state.
     lockB.release()
-    print "DONE"
+    logger.debug("DONE")
 
 if __name__ == "__main__":
     import sys
