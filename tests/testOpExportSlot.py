@@ -29,6 +29,7 @@ import vigra
 
 from lazyflow.graph import Graph
 from lazyflow.utility import PathComponents
+from lazyflow.roi import roiFromShape
 from lazyflow.operators.operators import OpArrayCache, OpArrayPiper
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators.ioOperators import OpInputDataReader, OpExportSlot, OpStackLoader
@@ -142,7 +143,7 @@ class TestOpExportSlot(object):
                 opRead = OpInputDataReader( graph=graph )
                 opRead.FilePath.setValue( opExport.ExportPath.value )
                 expected_data = data.view(numpy.ndarray)
-                read_data = opRead.Output[:].wait()
+                read_data = opRead.Output( *roiFromShape(data.shape) ).wait()
                 assert (read_data == expected_data).all(), "Read data didn't match exported data!"
             finally:
                 opRead.cleanUp()
