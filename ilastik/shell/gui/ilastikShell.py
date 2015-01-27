@@ -42,7 +42,7 @@ from PyQt4.QtGui import QMainWindow, QWidget, QMenu, QApplication, \
 
 # lazyflow
 from ilastik.widgets.ipcserver.tcpServerInfoWidget import TCPServerInfoWidget
-from ilastik.widgets.ipcserver.zmqPublisherInfoWidget import ZMQPublisherInfoWidget
+from ilastik.widgets.ipcserver.zmqPubSubInfoWidget import ZMQPublisherInfoWidget
 from lazyflow.roi import TinyVector
 from lazyflow.graph import Operator
 import lazyflow.tools.schematic
@@ -74,7 +74,7 @@ from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox
 from ilastik.widgets.filePathButton import FilePathButton
 
 #from ilastik.shell.gui.messageServer import MessageServer
-from ilastik.shell.gui.ipcManager import IPCFacade, TCPServer, TCPClient, ZMQHilitePublisher
+from ilastik.shell.gui.ipcManager import IPCFacade, TCPServer, TCPClient, ZMQPublisher, ZMQSubscriber, ZMQBase
 import os
 
 # Import all known workflows now to make sure they are all registered with getWorkflowFromName()
@@ -269,28 +269,46 @@ class IlastikShell(QMainWindow):
 
         # Server/client for inter process communication for receiving remote commands (e.g. from KNIME)
         # For now, this is a developer-only feature, activated by a debug menu item.
+        if ilastik_config.getboolean("ilastik", "debug"):
+            facade = IPCFacade()
+            facade.register_shell(self)
+            facade.register_widget(TCPServerInfoWidget(), "TCP Connection", "raw tcp")
+            interface = ilastik_config.get("ipc raw tcp", "interface")
+            port = ilastik_config.getint("ipc raw tcp", "port")
+            start = ilastik_config.getboolean("ipc raw tcp", "autostart")
+            facade.register_module(TCPServer(interface, port), "receiver", "raw tcp server", "raw tcp", start=start)
+            facade.register_module(TCPClient(), "sender", "raw tcp client", "raw tcp", "tcp")
 
-        self.message_queue = Queue()
+            if ZMQBase.available("tcp"):
+                facade.register_widget(ZMQPublisherInfoWidget(), "ZeroMQ Pub Sub TCP", "zmq tcp")
+                start = ilastik_config.getboolean("ipc zmq tcp publisher", "autostart")
+                address = ilastik_config.get("ipc zmq tcp publisher", "address")
+                facade.register_module(ZMQPublisher("tcp", address), "sender", "zmq tcp pub", "zmq tcp", start=start)
+                start = ilastik_config.getboolean("ipc zmq tcp subscriber", "autostart")
+                address = ilastik_config.get("ipc zmq tcp subscriber", "address")
+                facade.register_module(ZMQSubscriber("tcp", address), "receiver", "zmq tcp sub", "zmq tcp",
+                                       start=start)
 
-        facade = IPCFacade()
-        facade.register_shell(self)
-        facade.register_widget(TCPServerInfoWidget(), "TCP Connection", "raw tcp")
-        facade.register_module(TCPServer(), "receiver", "raw tcp server", "raw tcp")
-        facade.register_module(TCPClient(), "sender", "raw tcp client", "raw tcp", "tcp")
-
-        if ZMQHilitePublisher.available("tcp"):
-            facade.register_widget(ZMQPublisherInfoWidget(), "ZMQ Pub Sub", "zmq tcp")
-            facade.register_module(ZMQHilitePublisher("tcp://*:9998"), "sender", "zmq tcp pub", "zmq tcp")
-
-            if ZMQHilitePublisher.available("ipc"):
-                try:
-                    os.mkdir("/tmp/ilastik")
-                except OSError:
-                    pass  # no ipc then
-                else:
-                    facade.register_widget(ZMQPublisherInfoWidget(), "ZMQ Pub Sub IPC", "zmq ipc")
-                    facade.register_module(ZMQHilitePublisher("ipc:///tmp/ilastik/0"), "sender", "zmq ipc pub",
-                                           "zmq ipc")
+                if ZMQBase.available("ipc"):
+                    base_dir = ilastik_config.get("ipc zmq ipc", "basedir")
+                    can_start = True
+                    try:
+                        os.mkdir(base_dir)
+                    except OSError as e:
+                        if e.errno != 17:  # exists
+                            can_start = False
+                    if can_start:
+                        facade.register_widget(ZMQPublisherInfoWidget(), "ZeroMQ Pub Sub IPC", "zmq ipc")
+                        start = ilastik_config.getboolean("ipc zmq ipc publisher", "autostart")
+                        filename = ilastik_config.get("ipc zmq ipc publisher", "filename")
+                        path = os.path.join(base_dir, filename)
+                        facade.register_module(ZMQPublisher("ipc", path), "sender", "zmq ipc pub",
+                                               "zmq ipc", start=start)
+                        start = ilastik_config.getboolean("ipc zmq ipc subscriber", "autostart")
+                        filename = ilastik_config.get("ipc zmq ipc subscriber", "filename")
+                        path = os.path.join(base_dir, filename)
+                        facade.register_module(ZMQSubscriber("ipc", path), "receiver", "zmq ipc sub",
+                                               "zmq ipc", start=start)
 
         self.openFileButtons = []
         self.cleanupFunctions = []
