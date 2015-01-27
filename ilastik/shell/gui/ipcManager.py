@@ -6,9 +6,8 @@ import json
 from itertools import chain
 from collections import OrderedDict
 from operator import itemgetter
-
-from ilastik.widgets.ipcserver.tcpServerInfoWidget import TCPServerInfoWidget
-from ilastik.widgets.ipcserver.zmqPublisherInfoWidget import ZMQPublisherInfoWidget
+from PyQt4.QtCore import QObject, pyqtSignal
+from ilastik.utility.commandProcessor import CommandProcessor
 
 try:
     import zmq
@@ -25,6 +24,9 @@ from ilastik.utility.numpyJsonEncoder import NumpyJsonEncoder
 from ilastik.utility.contextSocket import socket, socket_error
 
 logger = logging.getLogger(__name__)
+def p(*x):
+    print x
+logger.info = p
 
 
 class IPCFacade(object):
@@ -34,23 +36,40 @@ class IPCFacade(object):
         self.info = IPCServerInfoWindow()
         self.senders = {}
         self.receivers = {}
+        self.widgets = {}
+        self.protocol_map = {}
+        self.processor = CommandProcessor()
 
-    def add_sender(self, name, sender, protocol=None):
-        if name in self.senders:
-            raise RuntimeError("Sender {} already exists".format(name))
-        self.senders[name] = sender
-        if protocol:
-            self.senders[protocol] = sender
-        self.info.add_server(name, sender.widget)
+    def register_shell(self, shell):
+        self.processor.set_shell(shell)
 
-    def add_receiver(self, name, receiver):
-        if name in self.receivers:
-            raise RuntimeError("Receiver {} already exists".format(name))
-        self.receivers[name] = receiver
-        self.info.add_server(name, receiver.widget)
+    def register_widget(self, widget, title, key):
+        if key in self.widgets:
+            raise RuntimeError("Widget {} already exists".format(key))
+        self.widgets[key] = widget
+        self.info.add_widget(title, widget)
 
-    def sender(self, key):
-        return self.senders[key]
+    def register_module(self, module, type_, key, widget_key=None, protocol=None):
+        if type_ == "receiver":
+            container = self.receivers
+            self.processor.connect_receiver(module)
+        elif type_ == "sender":
+            container = self.senders
+        else:
+            raise RuntimeError("Type {} is invalid".format(type_))
+
+        if key in container:
+            raise RuntimeError("{} {} already exists".format(type_, key))
+        container[key] = module
+        if widget_key is not None:
+            module.connect_widget(self.widgets[widget_key])
+        if protocol is not None:
+            self.protocol_map[protocol] = module
+
+    def handshake(self, protocol, name, address):
+        if protocol not in self.protocol_map:
+            raise RuntimeError("No such protocol {}".format(protocol))
+        self.protocol_map[protocol].add_peer(name, address)
 
     @property
     def sending(self):
@@ -62,11 +81,11 @@ class IPCFacade(object):
 
     def start(self):
         for module in self._all_modules():
-                module.start()
+            module.start()
 
     def stop(self):
         for module in self._all_modules():
-                module.stop()
+            module.stop()
 
     def _all_modules(self):
         return chain(self.senders.itervalues(), self.receivers.itervalues())
@@ -95,6 +114,8 @@ class AddressAlreadyTaken(Exception):
 
 
 class IPCModul(object):
+    def start(self):
+        pass
 
     @property
     def running(self):
@@ -104,8 +125,19 @@ class IPCModul(object):
     def widget(self):
         raise NotImplementedError
 
+    def connect_widget(self, widget):
+        raise NotImplementedError
+
     @staticmethod
     def available(mode=None):
+        raise NotImplementedError
+
+
+class HasPeers(IPCModul):
+    def add_peer(self, name, address):
+        raise NotImplementedError
+
+    def update_peer(self, key, **kvargs):
         raise NotImplementedError
 
 
@@ -121,6 +153,12 @@ class Sending(IPCModul):
             self.widget.add_sent_command(log, 0)
 
     def _broadcast(self, message):
+        raise NotImplementedError
+
+
+class Receiving(IPCModul):
+    @property
+    def signal(self):
         raise NotImplementedError
 
 
@@ -197,24 +235,34 @@ class Handler(BaseRequestHandler):
         except (socket.error, ValueError) as e:
             logger.exception(e)
             return
-        if command["command"] == "handshake":
+        name = command.pop("command")
+        if name == "handshake":
             command.update({"protocol": "tcp"})
         command.update({"host": host})
 
-        self.server.queue.put(command)
+        self.server.signal.emit(name, command)
 
 
-class TCPServer(Binding):
-    def __init__(self, queue):
+class TCPServer(Binding, Receiving, QObject):
+    commandReceived = pyqtSignal(str, dict)
+
+    def __init__(self):
+        super(TCPServer, self).__init__()
         self.port = 9999
-        self.queue = queue
         self.thread = None
         self.server = None
 
-        self.info = TCPServerInfoWidget()
-        self.info.statusToggled.connect(self.toggle)
-        self.info.changePort.connect(self.on_address_change)
-        self.info.notify_server_status_update("port", self.port)
+        self.info = None
+
+    @property
+    def signal(self):
+        return self.commandReceived
+
+    def connect_widget(self, widget):
+        self.info = widget
+        widget.statusToggled.connect(self.toggle)
+        widget.changePort.connect(self.on_address_change)
+        widget.notify_server_status_update("port", self.port)
 
     def on_address_change(self):
         port, ok = self.address_prompt(level="Info")
@@ -242,8 +290,8 @@ class TCPServer(Binding):
             if e.errno in [13, 98]:  # Permission denied or Address already in use
                 raise AddressAlreadyTaken(str(e))
             raise
-        server.queue = self.queue
         self.server = server
+        server.signal = self.signal
 
         thread = threading.Thread(target=self.server.serve_forever)
         thread.daemon = True
@@ -269,14 +317,18 @@ class TCPServer(Binding):
         self.port = address
 
 
-class TCPClient(Sending):
-    def __init__(self, server):
+class TCPClient(Sending, HasPeers):
+    def __init__(self):
         self.peers = OrderedDict()
-        self.server = server
 
-        self.server.widget.connectionChanged.connect(self.change_peer)
+        self.info = None
 
-    def add_peer(self, name, host, port):
+    def connect_widget(self, widget):
+        self.info = widget
+        widget.connectionChanged.connect(self.update_peer)
+
+    def add_peer(self, name, address):
+        host, port = address
         key = (host, name)
         if key not in self.peers:
             self.peers[key] = {
@@ -288,10 +340,11 @@ class TCPClient(Sending):
             self.peers[key]["address"][1] = port
         else:
             return
-        self.server.widget.update_connections(self.peers)
+        self.info.update_connections(self.peers)
 
-    def change_peer(self, index, enabled):
-        self.peers.values()[index]["enabled"] = enabled
+    def update_peer(self, key, **kvargs):
+        enabled = kvargs["enabled"]
+        self.peers.values()[key]["enabled"] = enabled
 
     def _broadcast(self, message):
         count = 0
@@ -310,11 +363,11 @@ class TCPClient(Sending):
 
     @property
     def widget(self):
-        return self.server.widget
+        return self.info
 
     @property
     def running(self):
-        return True
+        return bool(self.peers)
 
     @staticmethod
     def available(mode=None):
@@ -328,11 +381,14 @@ class ZMQHilitePublisher(Binding, Sending):
 
         self.context = zmq.Context()
         self.socket = None
-        self.info = ZMQPublisherInfoWidget()
-        self.info.statusToggled.connect(self.toggle)
-        self.info.notify_server_status_update("address", address)
+        self.info = None
 
         atexit.register(self.stop)
+
+    def connect_widget(self, widget):
+        self.info = widget
+        widget.statusToggled.connect(self.toggle)
+        widget.notify_server_status_update("address", self.address)
 
     def _change_address(self, address):
         self.address = address
@@ -370,6 +426,7 @@ class ZMQHilitePublisher(Binding, Sending):
                 raise AddressAlreadyTaken
             raise
         self.socket = pub
+        logger.info("ZMQ Publisher started on {}".format(self.address))
         self.info.notify_server_status_update("running", True)
 
     def _stop(self, kill=None):
