@@ -49,6 +49,7 @@ class ValueRequest(object):
     """
     def __init__(self, value):
         self.result = value
+        self.started = False
 
     def wait(self):
         return self.result
