@@ -1104,11 +1104,11 @@ class RequestPool(object):
             # If this exception blocks a desirable use case, then change this behavior and provide a unit test.
             raise RequestPool.RequestPoolError("Attempted to add a request to a pool that was already started!")
 
+        with self._set_lock:
+            self._requests.add(req)
         req.notify_finished( functools.partial(self._transfer_request_to_finishing_queue, req, 'finished' ) )
         req.notify_failed( functools.partial(self._transfer_request_to_finishing_queue, req, 'failed' ) )
         req.notify_cancelled( functools.partial(self._transfer_request_to_finishing_queue, req, 'cancelled' ) )
-        with self._set_lock:
-            self._requests.add(req)
 
     def wait(self):
         """
