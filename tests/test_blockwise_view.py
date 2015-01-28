@@ -38,6 +38,10 @@ def test_2d():
     assert (a[0:4, 0:4] == 0).all(), "blockwise_view returned a copy, not a view!"
 
 def test_3d():
+    """
+    Copy a 3D array block-by-block into a 6D array, 
+    and verify that the result matches blockwise_view()
+    """
     orig_data = numpy.random.random( (6, 9, 16) )
     blockshape = (2,3,4)
     final_shape = tuple(numpy.array(orig_data.shape) / blockshape) + blockshape

@@ -21,6 +21,7 @@ def blockwise_view( a, blockshape, require_aligned_blocks=True ):
     """
     assert a.ndim <= 5, "This function supports only up to 5 dimensions."
     assert len(a.shape) == len(blockshape)
+    assert a.flags['C_CONTIGUOUS'], "This function relies on the memory layout of the array."
 
     if require_aligned_blocks:
         assert (numpy.mod(a.shape, blockshape) == 0).all(), \
@@ -59,6 +60,7 @@ def blockwise_view_5d( a, blockshape ):
     http://stackoverflow.com/a/8070716/162094
     """
     assert len(blockshape) == len(a.shape) == 5
+    assert a.flags['C_CONTIGUOUS'], "This function relies on the memory layout of the array."
     blockshape = tuple(blockshape)
 
     # Give each axis a name: 
