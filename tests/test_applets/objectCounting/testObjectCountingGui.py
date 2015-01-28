@@ -335,7 +335,7 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
             # Set the brush size
             # Draw background
             gui.currentGui()._labelControlUi.labelListModel.select(1)
-            gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
+            gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(3)
             
             self.strokeMouseFromCenter( imgView, self.LABEL_START,self.LABEL_STOP)
             
@@ -349,7 +349,7 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
 
             #Now select eraser            
             gui.currentGui()._labelControlUi.eraserToolButton.click()
-            gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
+            gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(3)
             self.strokeMouseFromCenter( imgView, self.LABEL_ERASE_START,self.LABEL_ERASE_STOP)
             
             labelData = opPix.LabelImages[0][:].wait()

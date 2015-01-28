@@ -252,7 +252,7 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
             # Set the brush size
             # Draw background
             gui.currentGui()._labelControlUi.labelListModel.select(1)
-            gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
+            gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(3)
 
             self.strokeMouseFromCenter( imgView, LABEL_START,LABEL_STOP)
 
@@ -266,7 +266,7 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
 
             #Now select eraser
             gui.currentGui()._labelControlUi.eraserToolButton.click()
-            gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
+            gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(3)
             self.strokeMouseFromCenter( imgView, LABEL_ERASE_START,LABEL_ERASE_STOP)
 
             labelData = opPix.LabelImages[imageId][:].wait()
@@ -511,7 +511,7 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
             # Set the brush size
             # Draw background
             gui.currentGui()._labelControlUi.labelListModel.select(1)
-            gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
+            gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(3)
 
             self.strokeMouseFromCenter( imgView, LABEL_START,LABEL_STOP)
 
@@ -521,12 +521,13 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
 
             assert numpy.sum(labelData[labelData==1]) == 2, "Number of foreground dots was {}".format(
                 numpy.sum(labelData[labelData==1]) )
-            assert numpy.sum(labelData[labelData==2]) == 22, "Number of background dots was {}".format(
+            assert numpy.sum(labelData[labelData==2]) > 50, "Number of background dots was {}".format(
                 numpy.sum(labelData[labelData==2]) )
 
 
             #Now select eraser
             gui.currentGui()._labelControlUi.eraserToolButton.click()
+            gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(3)
             self.strokeMouseFromCenter( imgView, LABEL_ERASE_START,LABEL_ERASE_STOP)
 
             labelData = opPix.LabelImages[imageId][:].wait()
