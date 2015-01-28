@@ -22,9 +22,12 @@ from ilastik.utility.singleton import Singleton
 from ilastik.utility.ipcProtocol import Protocol
 from ilastik.utility.numpyJsonEncoder import NumpyJsonEncoder
 from ilastik.utility.contextSocket import socket, socket_error
+from ilastik.config import cfg as ilastik_config
 
 logger = logging.getLogger(__name__)
-def p(*x):
+
+
+def p(*x):  # todo: remove
     print x
 logger.info = p
 
@@ -462,7 +465,7 @@ class TCPClient(Sending, HasPeers):
         key = (host, name)
         if key not in self.peers:
             self.peers[key] = {
-                "enabled": True,
+                "enabled": ilastik_config.getboolean("ipc raw tcp", "autoaccept"),
                 "address": [host, port]
             }
 
@@ -666,4 +669,3 @@ class ZMQSubscriber(QObject, ZMQBase, Receiving):
                 command = self.socket.recv_json()
                 name = command.pop("command")
                 self.signal.emit(name, command)
-

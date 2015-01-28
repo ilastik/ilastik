@@ -43,12 +43,13 @@ total_ram_mb: 0
 
 [ipc raw tcp]
 autostart: false
+autoaccept: true
 port: 9999
-interface: 0.0.0.0
+interface: localhost
 
 [ipc zmq tcp publisher]
 autostart: false
-address: *:9998
+address: 127.0.0.1:9998
 
 [ipc zmq tcp subscriber]
 autostart: false
