@@ -438,15 +438,12 @@ class OpArrayCache(OpCache):
                 blockSet[:] = fastWhere(cond, OpArrayCache.CLEAN, blockSet, numpy.uint8)
                 self._blockQuery[blockKey] = fastWhere(cond, None, self._blockQuery[blockKey], object)
 
-        inProcessPool = RequestPool()
-        #wait for all in process queries
+        # Wait for all in-process queries.
+        # Can't use RequestPool here because these requests have already started.
         for req in inProcessQueries:
             req = req() # get original req object from weakref
             if req is not None:
-                inProcessPool.add(req) 
-
-        inProcessPool.wait()
-        inProcessPool.clean()
+                req.wait()
 
         # finally, store results in result area
         with self._lock:
