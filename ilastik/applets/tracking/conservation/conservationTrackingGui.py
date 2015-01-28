@@ -258,6 +258,7 @@ class ConservationTrackingGui( TrackingBaseGui ):
 
         obj_count = list(objects_per_frame(op.LabelImage))
         track_ids, extra_track_ids, divisions = op.export_track_ids()
+        print extra_track_ids
 
         export_file = ExportFile(settings["file path"])
 
