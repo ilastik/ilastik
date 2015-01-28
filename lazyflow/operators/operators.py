@@ -28,7 +28,7 @@ if psutil.__version__ < '0.6':
 import lazyflow
 from lazyflow.rtype import SubRegion
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.roi import sliceToRoi, roiToSlice, block_view, TinyVector, getBlockBounds
+from lazyflow.roi import sliceToRoi, roiToSlice, TinyVector, getBlockBounds
 from lazyflow import request
 from lazyflow.utility import Tracer
 

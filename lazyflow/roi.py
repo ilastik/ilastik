@@ -30,7 +30,6 @@ if __name__ == "__main__":
     sys.path.pop(0)
 
 import numpy
-from numpy.lib.stride_tricks import as_strided as ast
 from math import ceil, floor, pow, log10
 import collections
 
@@ -337,16 +336,6 @@ def extendSlice(start, stop, shape, sigma, window = 3.5):
     newStop = numpy.minimum(stop + numpy.ceil(window * sigma), sa).astype( ret_type )
     return newStart, newStop
 
-
-def block_view(A, block= (3, 3)):
-    """Provide a 2D block view to 2D array. No error checking made.
-    Therefore meaningful (as implemented) only for blocks strictly
-    compatible with the shape of A."""
-    # simple shape and strides computations may seem at first strange
-    # unless one is able to recognize the 'tuple additions' involved ;-)
-    shape= (A.shape[0]/ block[0], A.shape[1]/ block[1])+ block
-    strides= (block[0]* A.strides[0], block[1]* A.strides[1])+ A.strides
-    return ast(A, shape= shape, strides= strides)
 
 def getIntersectingBlocks( blockshape, roi, asarray=False ):
     """
