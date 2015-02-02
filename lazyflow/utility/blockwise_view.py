@@ -15,6 +15,30 @@ def blockwise_view( a, blockshape, require_aligned_blocks=True ):
                                 If False, "leftover" items that cannot be made into complete blocks 
                                 will be discarded from the output view.
  
+    Here's a 2D example (this function also works for ND):
+    
+    >>> a = numpy.arange(1,21).reshape(4,5)
+    >>> print a
+    [[ 1  2  3  4  5]
+     [ 6  7  8  9 10]
+     [11 12 13 14 15]
+     [16 17 18 19 20]]
+
+    >>> view = blockwise_view(a, (2,2), False)
+    >>> print view
+    [[[[ 1  2]
+       [ 6  7]]
+    <BLANKLINE>
+      [[ 3  4]
+       [ 8  9]]]
+    <BLANKLINE>
+    <BLANKLINE>
+     [[[11 12]
+       [16 17]]
+    <BLANKLINE>
+      [[13 14]
+       [18 19]]]]
+
     Inspired by the 2D example shown here: http://stackoverflow.com/a/8070716/162094
     """
     assert a.flags['C_CONTIGUOUS'], "This function relies on the memory layout of the array."
@@ -50,4 +74,7 @@ def blockwise_view( a, blockshape, require_aligned_blocks=True ):
     # This is where the magic happens.
     # Generate a view with our new strides.
     return numpy.lib.stride_tricks.as_strided(a, shape=view_shape, strides=strides)
-    
+
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod()
