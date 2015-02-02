@@ -344,6 +344,8 @@ def getIntersectingBlocks( blockshape, roi, asarray=False ):
     If asarray=True, then the blocks are returned as an array of shape (D1,D2,D3,...DN,M)
     such that coordinates of spatially adjacent blocks are returned in adjacent entries of the array.
 
+    (SEE ALSO: ``lazyflow.utility.blockwise_view``)
+
     For example:
 
     >>> block_starts = getIntersectingBlocks( (10, 20), [(15, 25),(23, 40)] )
