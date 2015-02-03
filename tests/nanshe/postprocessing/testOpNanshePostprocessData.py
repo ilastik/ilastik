@@ -31,8 +31,9 @@ from lazyflow.operators import OpArrayPiper
 
 import vigra
 
-import synthetic_data
-import synthetic_data.synthetic_data
+import nanshe
+import nanshe.synthetic_data
+import nanshe.synthetic_data.synthetic_data
 
 import ilastik
 import ilastik.applets
@@ -55,8 +56,9 @@ class TestOpNanshePostprocessData(object):
                               [72, 16],
                               [45, 32]])
 
-        masks = synthetic_data.synthetic_data.generate_hypersphere_masks(space, points, radii)
-        images = synthetic_data.synthetic_data.generate_gaussian_images(space, points, radii/3.0, magnitudes) * masks
+        masks = nanshe.synthetic_data.synthetic_data.generate_hypersphere_masks(space, points, radii)
+        images = nanshe.synthetic_data.synthetic_data.generate_gaussian_images(space, points, radii/3.0, magnitudes)
+        images *= masks
 
         bases_indices = [[1,3,4], [0,2], [5]]
 
@@ -111,8 +113,9 @@ class TestOpNanshePostprocessData(object):
                               [72, 16],
                               [45, 32]])
 
-        masks = synthetic_data.synthetic_data.generate_hypersphere_masks(space, points, radii)
-        images = synthetic_data.synthetic_data.generate_gaussian_images(space, points, radii/3.0, magnitudes) * masks
+        masks = nanshe.synthetic_data.synthetic_data.generate_hypersphere_masks(space, points, radii)
+        images = nanshe.synthetic_data.synthetic_data.generate_gaussian_images(space, points, radii/3.0, magnitudes)
+        images *= masks
 
         bases_indices = [[1,3,4], [0,2], [5]]
 
