@@ -67,6 +67,80 @@ class OpMaskArrayIdentity(Operator):
             assert False, "Unknown dirty input slot"
 
 
+class OpMaskArrayBorder(Operator):
+    name = "OpMaskArrayBorder"
+    category = "Pointwise"
+
+
+    Input = InputSlot()
+
+    Border = InputSlot(value=1, stype='int')
+
+    Output = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super( OpMaskArrayBorder, self ).__init__( *args, **kwargs )
+
+    def setupOutputs(self):
+        # Copy the input metadata to both outputs
+        self.Output.meta.assignFrom( self.Input.meta )
+        self.Output.meta.has_mask = True
+
+    def execute(self, slot, subindex, roi, result):
+        key = roi.toSlice()
+
+        # Clean up key to follow certain rules.
+        key = list(key)
+        for i in xrange(len(key)):
+            start = key[i].start
+            stop = key[i].stop
+            step = key[i].step
+
+            if start is None:
+                start = 0
+            elif start < 0:
+                start %= self.Input.meta.shape[i]
+
+            if stop is None:
+                stop = self.Input.meta.shape[i]
+            elif stop < 0:
+                stop %= self.Input.meta.shape[i]
+
+            key[i] = slice(start, stop, step)
+
+        key = tuple(key)
+
+        # Get data
+        data = self.Input[key].wait()
+        border = abs(self.Border.value)
+
+        # Make a masked array
+        data = numpy.ma.masked_array(data, mask=numpy.zeros(data.shape, dtype=bool), shrink=False)
+
+        # Using Input's shape, mask everything on the outside boundaries of Input (may not be on data).
+        left_slicing = (len(self.Input.meta.shape) - 1) * (slice(None),) + (slice(None, border),)
+        right_slicing = (len(self.Input.meta.shape) - 1) * (slice(None),) + (slice(-border, None),)
+        for i in xrange(len(self.Input.meta.shape)):
+            left_slicing = left_slicing[-1:] + left_slicing[:-1]
+            right_slicing = right_slicing[-1:] + right_slicing[:-1]
+
+            if key[i].start == 0:
+                data[left_slicing] = numpy.ma.masked
+            if key[i].stop == self.Input.meta.shape[i]:
+                data[right_slicing] = numpy.ma.masked
+
+        # Copy results
+        if slot.name == 'Output':
+            result[...] = data
+
+    def propagateDirty(self, slot, subindex, roi):
+        if slot.name == "Input":
+            slicing = roi.toSlice()
+            self.Output.setDirty(slicing)
+        else:
+            assert False, "Unknown dirty input slot"
+
+
 class TestOpMaskArrayIdentity(object):
     def setUp(self):
         self.graph = Graph()
