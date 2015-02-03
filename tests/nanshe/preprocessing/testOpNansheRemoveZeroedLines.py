@@ -26,7 +26,9 @@ from lazyflow.operators import OpArrayPiper
 
 import vigra
 
-import nanshe.expanded_numpy
+import nanshe
+import nanshe.nanshe
+import nanshe.nanshe.expanded_numpy
 
 import ilastik
 import ilastik.applets
@@ -46,7 +48,7 @@ class TestOpNansheRemoveZeroedLines(object):
 
         ar = a.copy()
         for each_r in r:
-            nanshe.expanded_numpy.index_axis_at_pos(nanshe.expanded_numpy.index_axis_at_pos(ar, 0, each_r[0]), -2, each_r[-1])[:] = 0
+            nanshe.nanshe.expanded_numpy.index_axis_at_pos(nanshe.nanshe.expanded_numpy.index_axis_at_pos(ar, 0, each_r[0]), -2, each_r[-1])[:] = 0
 
 
         graph = Graph()
@@ -75,7 +77,7 @@ class TestOpNansheRemoveZeroedLines(object):
 
         ar = a.copy()
         for each_r in r:
-            nanshe.expanded_numpy.index_axis_at_pos(nanshe.expanded_numpy.index_axis_at_pos(ar, 0, each_r[0]), -2, each_r[-1])[:] = 0
+            nanshe.nanshe.expanded_numpy.index_axis_at_pos(nanshe.nanshe.expanded_numpy.index_axis_at_pos(ar, 0, each_r[0]), -2, each_r[-1])[:] = 0
 
 
         graph = Graph()
@@ -104,7 +106,7 @@ class TestOpNansheRemoveZeroedLines(object):
 
         ar = a.copy()
         for each_r in r:
-            nanshe.expanded_numpy.index_axis_at_pos(nanshe.expanded_numpy.index_axis_at_pos(ar, 0, each_r[0]), -2, each_r[-1])[:] = 0
+            nanshe.nanshe.expanded_numpy.index_axis_at_pos(nanshe.nanshe.expanded_numpy.index_axis_at_pos(ar, 0, each_r[0]), -2, each_r[-1])[:] = 0
 
 
         graph = Graph()
@@ -133,7 +135,7 @@ class TestOpNansheRemoveZeroedLines(object):
 
         ar = a.copy()
         for each_r in r:
-            nanshe.expanded_numpy.index_axis_at_pos(nanshe.expanded_numpy.index_axis_at_pos(ar, 0, each_r[0]), -2, each_r[-1])[:] = 0
+            nanshe.nanshe.expanded_numpy.index_axis_at_pos(nanshe.nanshe.expanded_numpy.index_axis_at_pos(ar, 0, each_r[0]), -2, each_r[-1])[:] = 0
 
 
         graph = Graph()
