@@ -40,6 +40,9 @@ class MetaDict(defaultdict):
             # are ready
             self._ready = False
 
+        if not 'has_mask' in self:
+            self.has_mask = False
+
         # flag that indicates whether any piece of meta information
         # changed since this flag was reset
         self._dirty = True
@@ -162,7 +165,7 @@ class MetaDict(defaultdict):
         """
         pairs = []
         # For easy comparison, start with these in the same order every time.
-        standard_keys = ['_ready', 'NOTREADY', 'shape', 'axistags', 'dtype', 'drange', '_dirty' ]
+        standard_keys = ['_ready', 'NOTREADY', 'shape', 'axistags', 'dtype', 'drange', 'has_mask', '_dirty' ]
         for key in standard_keys:
             if key in self:
                 pairs.append( key + ' : ' + repr(self[key]) )
