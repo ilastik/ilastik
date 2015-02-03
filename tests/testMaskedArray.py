@@ -264,6 +264,81 @@ class TestOpMaskArrayBorder(object):
         self.operator_border.cleanUp()
 
 
+class TestOpMaskArrayBorderIdentity(object):
+    def setUp(self):
+        self.graph = Graph()
+
+        self.operator_border = OpMaskArrayBorder(graph=self.graph)
+        self.operator_identity = OpMaskArrayIdentity(graph=self.graph)
+
+        self.operator_border.Input.meta.axistags = vigra.AxisTags("txyzc")
+
+        self.operator_identity.Input.connect(self.operator_border.Output)
+
+    def test1(self):
+        # Generate a random dataset and see if it we get the right masking from the operator.
+        data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
+        expected_output = numpy.ma.masked_array(data.copy(),
+                                       mask=numpy.zeros(data.shape, dtype=bool),
+                                       shrink=False
+                 )
+
+        # Mask borders of the expected output.
+        left_slicing = (expected_output.ndim - 1) * (slice(None),) + (slice(None, 1),)
+        right_slicing = (expected_output.ndim - 1) * (slice(None),) + (slice(-1, None),)
+        for i in xrange(expected_output.ndim):
+            left_slicing = left_slicing[-1:] + left_slicing[:-1]
+            right_slicing = right_slicing[-1:] + right_slicing[:-1]
+
+            expected_output[left_slicing] = numpy.ma.masked
+            expected_output[right_slicing] = numpy.ma.masked
+
+        # Provide input read all output.
+        self.operator_border.Input.setValue(data)
+        output = self.operator_identity.Output[None].wait()
+
+        assert((expected_output == output).all())
+        assert(expected_output.mask.shape == output.mask.shape)
+
+    def test2(self):
+        # Generate a dataset and grab chunks of it from the operator. The result should be the same as above.
+        data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
+        expected_output = numpy.ma.masked_array(data.copy(),
+                                       mask=numpy.zeros(data.shape, dtype=bool),
+                                       shrink=False
+                 )
+
+        # Mask borders of the expected output.
+        left_slicing = (expected_output.ndim - 1) * (slice(None),) + (slice(None, 1),)
+        right_slicing = (expected_output.ndim - 1) * (slice(None),) + (slice(-1, None),)
+        for i in xrange(expected_output.ndim):
+            left_slicing = left_slicing[-1:] + left_slicing[:-1]
+            right_slicing = right_slicing[-1:] + right_slicing[:-1]
+
+            expected_output[left_slicing] = numpy.ma.masked
+            expected_output[right_slicing] = numpy.ma.masked
+
+
+        # Create array to store results. Don't keep original data.
+        output = expected_output.copy()
+        output[:] = 0
+        output[:] = numpy.ma.nomask
+
+        # Provide input and grab chunks.
+        self.operator_border.Input.setValue(data)
+        output[:2] = self.operator_identity.Output[:2].wait()
+        output[2:] = self.operator_identity.Output[2:].wait()
+
+        assert((expected_output == output).all())
+        assert(expected_output.mask.shape == output.mask.shape)
+
+    def tearDown(self):
+        # Take down operators
+        self.operator_identity.Input.disconnect()
+        self.operator_identity.Output.disconnect()
+        self.operator_identity.cleanUp()
+
+
 if __name__ == "__main__":
     import sys
     import nose
