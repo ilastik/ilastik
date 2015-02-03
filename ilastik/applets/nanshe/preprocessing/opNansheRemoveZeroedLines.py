@@ -129,8 +129,8 @@ class OpNansheRemoveZeroedLines(Operator):
         dilation_shape = self.DilationShape.value
 
         processed = nanshe.nanshe.advanced_image_processing.remove_zeroed_lines(raw,
-                                                                         erosion_shape=erosion_shape,
-                                                                         dilation_shape=dilation_shape)
+                                                                                erosion_shape=erosion_shape,
+                                                                                dilation_shape=dilation_shape)
         processed = processed[..., None]
 
         if slot.name == 'Output':
