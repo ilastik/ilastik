@@ -55,7 +55,7 @@ class TestOpNansheExtractF0(object):
         op.Bias.setValue(100)
         op.BiasEnabled.setValue(True)
 
-        b = op.Output[...].wait()
+        b = op.dF_F[...].wait()
         b = vigra.taggedView(b, "tyxc")
 
         assert(a.shape == b.shape)
@@ -82,7 +82,7 @@ class TestOpNansheExtractF0(object):
         op.Bias.setValue(100)
         op.BiasEnabled.setValue(True)
 
-        b = op.Output[...].wait()
+        b = op.dF_F[...].wait()
         b = vigra.taggedView(b, "tyxc")
 
         assert(a.shape == b.shape)
