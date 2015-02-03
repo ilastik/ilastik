@@ -75,7 +75,7 @@ class TestOpNanshePostprocessData(object):
         opPrep.Input.setValue(bases_images)
 
         op = OpNanshePostprocessData(graph=graph)
-        op.InputImage.connect(opPrep.Output)
+        op.Input.connect(opPrep.Output)
 
         op.SignificanceThreshold.setValue(3.0)
         op.WaveletTransformScale.setValue(4)
@@ -131,7 +131,7 @@ class TestOpNanshePostprocessData(object):
         opPrep.Input.setValue(bases_images)
 
         op = OpNanshePostprocessDataCached(graph=graph)
-        op.InputImage.connect(opPrep.Output)
+        op.Input.connect(opPrep.Output)
 
         op.SignificanceThreshold.setValue(3.0)
         op.WaveletTransformScale.setValue(4)

@@ -48,7 +48,7 @@ class OpNansheDictionaryLearning(Operator):
     category = "Pointwise"
 
 
-    InputImage = InputSlot()
+    Input = InputSlot()
     CacheInput = InputSlot(optional=True)
 
 
@@ -97,8 +97,8 @@ class OpNansheDictionaryLearning(Operator):
         self.opDictionary.CacheInput.connect(self.CacheInput)
         self.CleanBlocks.connect(self.opDictionary.CleanBlocks)
 
-        self.opNansheNormalizeData.InputImage.connect( self.InputImage )
-        self.opDictionary.InputImage.connect( self.opNansheNormalizeData.Output )
+        self.opNansheNormalizeData.Input.connect( self.Input )
+        self.opDictionary.Input.connect( self.opNansheNormalizeData.Output )
         self.Output.connect( self.opDictionary.Output )
 
     def setInSlot(self, slot, subindex, key, value):

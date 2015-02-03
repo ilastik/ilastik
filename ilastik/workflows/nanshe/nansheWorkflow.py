@@ -73,9 +73,9 @@ class NansheWorkflow(Workflow):
         opDataExport = self.nansheDataExportApplet.topLevelOperator.getLane(laneIndex)
 
         # Connect top-level operators
-        opPreprocessing.InputImage.connect( opDataSelection.Image )
-        opDictionaryLearning.InputImage.connect( opPreprocessing.CacheOutput )
-        opPostprocessing.InputImage.connect( opDictionaryLearning.Output )
+        opPreprocessing.Input.connect( opDataSelection.Image )
+        opDictionaryLearning.Input.connect( opPreprocessing.CacheOutput )
+        opPostprocessing.Input.connect( opDictionaryLearning.Output )
 
         opDataExport.RawData.connect( opDataSelection.Image )
         opDataExport.RawDatasetInfo.connect( opDataSelection.DatasetGroup[0] )

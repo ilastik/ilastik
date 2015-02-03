@@ -48,7 +48,7 @@ class OpNansheGenerateDictionary(Operator):
     category = "Pointwise"
 
 
-    InputImage = InputSlot()
+    Input = InputSlot()
 
     K = InputSlot(value=100, stype="int")
     Gamma1 = InputSlot(value=0.0)
@@ -69,10 +69,10 @@ class OpNansheGenerateDictionary(Operator):
     def __init__(self, *args, **kwargs):
         super( OpNansheGenerateDictionary, self ).__init__( *args, **kwargs )
 
-        self.InputImage.notifyReady( self._checkConstraints )
+        self.Input.notifyReady( self._checkConstraints )
 
     def _checkConstraints(self, *args):
-        slot = self.InputImage
+        slot = self.Input
 
         sh = slot.meta.shape
         ax = slot.meta.axistags
@@ -124,14 +124,14 @@ class OpNansheGenerateDictionary(Operator):
 
     def setupOutputs(self):
         # Copy the input metadata to both outputs
-        self.Output.meta.assignFrom( self.InputImage.meta )
+        self.Output.meta.assignFrom( self.Input.meta )
         self.Output.meta.dtype = numpy.float64
 
         spatial_dims = [_ for _ in self.Output.meta.axistags if _.isSpatial()]
 
         self.Output.meta.axistags = vigra.AxisTags(vigra.AxisInfo.c, *spatial_dims)
 
-        self.Output.meta.shape = (self.K.value,) + self.InputImage.meta.shape[1:-1]
+        self.Output.meta.shape = (self.K.value,) + self.Input.meta.shape[1:-1]
 
     def execute(self, slot, subindex, roi, result):
         output_key = roi.toSlice()
@@ -140,7 +140,7 @@ class OpNansheGenerateDictionary(Operator):
 
         input_key = list(output_key)
 
-        input_key[0] = slice(0, self.InputImage.meta.shape[0], 1)
+        input_key[0] = slice(0, self.Input.meta.shape[0], 1)
         input_key.append(slice(0, 1, 1))
 
         input_key = tuple(input_key)
@@ -153,7 +153,7 @@ class OpNansheGenerateDictionary(Operator):
 
         output_key = tuple(output_key)
 
-        raw = self.InputImage[input_key].wait()
+        raw = self.Input[input_key].wait()
         raw = raw[..., 0]
 
         K = self.K.value
@@ -197,7 +197,7 @@ class OpNansheGenerateDictionary(Operator):
         pass
 
     def propagateDirty(self, slot, subindex, roi):
-        if (slot.name == "InputImage") or (slot.name == "K") or (slot.name == "Gamma1") or (slot.name == "Gamma2") or\
+        if (slot.name == "Input") or (slot.name == "K") or (slot.name == "Gamma1") or (slot.name == "Gamma2") or\
             (slot.name == "NumThreads") or (slot.name == "Batchsize") or (slot.name == "NumIter") or\
             (slot.name == "Lambda1") or (slot.name == "Lambda2") or (slot.name == "PosAlpha") or\
             (slot.name == "PosD") or (slot.name == "Clean") or (slot.name == "Mode") or (slot.name == "ModeD"):
@@ -215,7 +215,7 @@ class OpNansheGenerateDictionaryCached(Operator):
     category = "Pointwise"
 
 
-    InputImage = InputSlot()
+    Input = InputSlot()
     CacheInput = InputSlot(optional=True)
 
     K = InputSlot(value=100, stype="int")
@@ -258,7 +258,7 @@ class OpNansheGenerateDictionaryCached(Operator):
         self.opCache = OpArrayCache(parent=self)
         self.opCache.fixAtCurrent.setValue(False)
 
-        self.opDictionary.InputImage.connect( self.InputImage )
+        self.opDictionary.Input.connect( self.Input )
         self.opCache.Input.connect( self.opDictionary.Output )
         self.CleanBlocks.connect( self.opCache.CleanBlocks )
         self.Output.connect( self.opCache.Output )

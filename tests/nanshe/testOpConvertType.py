@@ -55,7 +55,7 @@ class TestOpConvertType(object):
         opPrep = OpArrayPiper(graph=graph)
         opPrep.Input.setValue(a)
 
-        op.InputImage.connect(opPrep.Output)
+        op.Input.connect(opPrep.Output)
         op.Dtype.setValue(float)
 
         b = op.Output[...].wait()
@@ -81,7 +81,7 @@ class TestOpConvertType(object):
         opPrep = OpArrayPiper(graph=graph)
         opPrep.Input.setValue(a)
 
-        op.InputImage.connect(opPrep.Output)
+        op.Input.connect(opPrep.Output)
         op.Dtype.setValue(float)
 
         b = op.Output[...].wait()

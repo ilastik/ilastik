@@ -60,7 +60,7 @@ class TestOpNansheGenerateDictionary(object):
         opPrep = OpArrayPiper(graph=graph)
         opPrep.Input.setValue(gv)
 
-        op.InputImage.connect(opPrep.Output)
+        op.Input.connect(opPrep.Output)
 
         op.K.setValue(len(g))
         op.Gamma1.setValue(0)
@@ -118,7 +118,7 @@ class TestOpNansheGenerateDictionary(object):
         opPrep = OpArrayPiper(graph=graph)
         opPrep.Input.setValue(gv)
 
-        op.InputImage.connect(opPrep.Output)
+        op.Input.connect(opPrep.Output)
 
         op.K.setValue(len(g))
         op.Gamma1.setValue(0)

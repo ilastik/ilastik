@@ -50,7 +50,7 @@ class OpNanshePostprocessData(Operator):
     category = "Pointwise"
 
 
-    InputImage = InputSlot()
+    Input = InputSlot()
 
     SignificanceThreshold = InputSlot(value=3.0, stype="float")
     WaveletTransformScale = InputSlot(value=4, stype="int")
@@ -85,11 +85,11 @@ class OpNanshePostprocessData(Operator):
         super( OpNanshePostprocessData, self ).__init__( *args, **kwargs )
 
         self.opColorizeLabelImage = OpColorizeLabelImage(parent=self)
-        self.opColorizeLabelImage.InputImage.connect(self.Output)
+        self.opColorizeLabelImage.Input.connect(self.Output)
         self.ColorizedOutput.connect(self.opColorizeLabelImage.Output)
 
     def _checkConstraints(self, *args):
-        slot = self.InputImage
+        slot = self.Input
 
         sh = slot.meta.shape
         ax = slot.meta.axistags
@@ -129,7 +129,7 @@ class OpNanshePostprocessData(Operator):
 
     def setupOutputs(self):
         # Copy the input metadata to both outputs
-        self.Output.meta.assignFrom( self.InputImage.meta )
+        self.Output.meta.assignFrom( self.Input.meta )
         self.Output.meta.shape = self.Output.meta.shape[1:] + (1,)
         self.Output.meta.dtype = numpy.uint64
 
@@ -145,7 +145,7 @@ class OpNanshePostprocessData(Operator):
         key = [slice(None)] + key
         key = tuple(key)
 
-        raw = self.InputImage[key].wait()
+        raw = self.Input[key].wait()
 
 
         accepted_region_shape_constraints = {}
@@ -239,7 +239,7 @@ class OpNanshePostprocessData(Operator):
         pass
 
     def propagateDirty(self, slot, subindex, roi):
-        if (slot.name == "InputImage") or (slot.name == "SignificanceThreshold") or\
+        if (slot.name == "Input") or (slot.name == "SignificanceThreshold") or\
             (slot.name == "WaveletTransformScale") or (slot.name == "NoiseThreshold") or\
             (slot.name == "AcceptedRegionShapeConstraints_MajorAxisLength_Min") or\
             (slot.name == "AcceptedRegionShapeConstraints_MajorAxisLength_Min_Enabled") or\
@@ -270,7 +270,7 @@ class OpNanshePostprocessDataCached(Operator):
     category = "Pointwise"
 
 
-    InputImage = InputSlot()
+    Input = InputSlot()
     CacheInput = InputSlot(optional=True)
 
     SignificanceThreshold = InputSlot(value=3.0, stype="float")
@@ -334,12 +334,12 @@ class OpNanshePostprocessDataCached(Operator):
         self.opCache.fixAtCurrent.setValue(False)
         self.CleanBlocks.connect( self.opCache.CleanBlocks )
 
-        self.opPostprocessing.InputImage.connect( self.InputImage )
+        self.opPostprocessing.Input.connect( self.Input )
         self.opCache.Input.connect( self.opPostprocessing.Output )
         self.Output.connect( self.opCache.Output )
 
         self.opColorizeLabelImage = OpColorizeLabelImage(parent=self)
-        self.opColorizeLabelImage.InputImage.connect(self.Output)
+        self.opColorizeLabelImage.Input.connect(self.Output)
         self.ColorizedOutput.connect(self.opColorizeLabelImage.Output)
 
     def setupOutputs(self):

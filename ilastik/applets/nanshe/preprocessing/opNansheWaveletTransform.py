@@ -49,7 +49,7 @@ class OpNansheWaveletTransform(Operator):
     category = "Pointwise"
 
 
-    InputImage = InputSlot()
+    Input = InputSlot()
 
     Scale = InputSlot(value=4, stype="int")
     
@@ -60,10 +60,10 @@ class OpNansheWaveletTransform(Operator):
 
         self._generation = {self.name : 0}
 
-        self.InputImage.notifyReady( self._checkConstraints )
+        self.Input.notifyReady( self._checkConstraints )
 
     def _checkConstraints(self, *args):
-        slot = self.InputImage
+        slot = self.Input
 
         sh = slot.meta.shape
         ax = slot.meta.axistags
@@ -115,7 +115,7 @@ class OpNansheWaveletTransform(Operator):
     
     def setupOutputs(self):
         # Copy the input metadata to both outputs
-        self.Output.meta.assignFrom( self.InputImage.meta )
+        self.Output.meta.assignFrom( self.Input.meta )
         self.Output.meta.dtype = numpy.float32
 
         self.Output.meta.generation = self._generation
@@ -165,12 +165,12 @@ class OpNansheWaveletTransform(Operator):
         scale = self.Scale.value
         # include_lower_scales = self.IncludeLowerScales.value
 
-        image_shape = self.InputImage.meta.shape
+        image_shape = self.Input.meta.shape
 
         key = roi.toSlice()
         halo_key, within_halo_key = OpNansheWaveletTransform.compute_halo(key, image_shape, scale)
 
-        raw = self.InputImage[halo_key].wait()
+        raw = self.Input[halo_key].wait()
         raw = raw[..., 0]
 
         processed = nanshe.nanshe.wavelet_transform.wavelet_transform(raw,
@@ -186,10 +186,10 @@ class OpNansheWaveletTransform(Operator):
         pass
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot.name == "InputImage":
+        if slot.name == "Input":
             self._generation[self.name] += 1
             self.Output.setDirty(OpNansheWaveletTransform.compute_halo(roi.toSlice(),
-                                                                       self.InputImage.meta.shape,
+                                                                       self.Input.meta.shape,
                                                                        self.Scale.value)[0])
         elif slot.name == "Scale":
             self._generation[self.name] += 1
@@ -207,7 +207,7 @@ class OpNansheWaveletTransformCached(Operator):
     category = "Pointwise"
 
 
-    InputImage = InputSlot()
+    Input = InputSlot()
 
     Scale = InputSlot(value=4, stype="int")
 
@@ -224,7 +224,7 @@ class OpNansheWaveletTransformCached(Operator):
         self.opCache = OpBlockedArrayCache(parent=self)
         self.opCache.fixAtCurrent.setValue(False)
 
-        self.opWaveletTransform.InputImage.connect( self.InputImage )
+        self.opWaveletTransform.Input.connect( self.Input )
         self.opCache.Input.connect( self.opWaveletTransform.Output )
         self.Output.connect( self.opCache.Output )
 
@@ -249,7 +249,7 @@ class OpNansheWaveletTransformCached(Operator):
         halo_center_slicing = tuple(halo_center_slicing)
 
         halo_slicing = self.opWaveletTransform.compute_halo(halo_center_slicing,
-                                                            self.InputImage.meta.shape,
+                                                            self.Input.meta.shape,
                                                             self.Scale.value)[0]
 
 

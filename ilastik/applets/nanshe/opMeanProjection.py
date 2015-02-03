@@ -43,7 +43,7 @@ class OpMeanProjection(Operator):
     category = "Pointwise"
 
 
-    InputImage = InputSlot()
+    Input = InputSlot()
 
     Axis = InputSlot(value=0, stype="int")
 
@@ -56,7 +56,7 @@ class OpMeanProjection(Operator):
 
     def setupOutputs(self):
         # Copy the input metadata to both outputs
-        self.Output.meta.assignFrom( self.InputImage.meta )
+        self.Output.meta.assignFrom( self.Input.meta )
 
         self.Output.meta.axistags = vigra.AxisTags(
             *list(nanshe.nanshe.additional_generators.iter_with_skip_indices( self.Output.meta.axistags, self.Axis.value))
@@ -70,15 +70,15 @@ class OpMeanProjection(Operator):
     def execute(self, slot, subindex, roi, result):
         axis = self.Axis.value
 
-        assert(axis < len(self.InputImage.meta.shape))
+        assert(axis < len(self.Input.meta.shape))
 
         key = roi.toSlice()
         key = list(key)
         key = key[:axis] + [slice(None)] + key[axis:]
-        key[axis] = nanshe.nanshe.additional_generators.reformat_slice(key[axis], self.InputImage.meta.shape[axis])
+        key[axis] = nanshe.nanshe.additional_generators.reformat_slice(key[axis], self.Input.meta.shape[axis])
         key = tuple(key)
 
-        raw = self.InputImage[key].wait()
+        raw = self.Input[key].wait()
 
         processed = raw.mean(axis=self.Axis.value)
 
@@ -89,7 +89,7 @@ class OpMeanProjection(Operator):
         pass
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot.name == "InputImage":
+        if slot.name == "Input":
             self._generation[self.name] += 1
 
             axis = self.Axis.value
@@ -116,7 +116,7 @@ class OpMeanProjectionCached(Operator):
     category = "Pointwise"
 
 
-    InputImage = InputSlot()
+    Input = InputSlot()
 
     Axis = InputSlot(value=0, stype="int")
 
@@ -133,7 +133,7 @@ class OpMeanProjectionCached(Operator):
         self.opCache = OpBlockedArrayCache(parent=self)
         self.opCache.fixAtCurrent.setValue(False)
 
-        self.opMeanProjection.InputImage.connect( self.InputImage )
+        self.opMeanProjection.Input.connect( self.Input )
         self.opCache.Input.connect( self.opMeanProjection.Output )
         self.Output.connect( self.opCache.Output )
 

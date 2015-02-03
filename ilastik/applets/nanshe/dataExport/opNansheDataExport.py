@@ -47,11 +47,11 @@ class OpNansheDataExport( OpDataExport ):
         super(OpNansheDataExport, self).__init__(*args, **kwargs)
 
         self._opImageOnDiskColorized = OpColorizeLabelImage( parent=self )
-        self._opImageOnDiskColorized.InputImage.connect( self.ImageOnDisk )
+        self._opImageOnDiskColorized.Input.connect( self.ImageOnDisk )
         self.ImageOnDiskColorized.connect( self._opImageOnDiskColorized.Output )
 
         self._opImageToExportColorized = OpColorizeLabelImage( parent=self )
-        self._opImageToExportColorized.InputImage.connect( self.ImageToExport )
+        self._opImageToExportColorized.Input.connect( self.ImageToExport )
         self.ImageToExportColorized.connect( self._opImageToExportColorized.Output )
 
         # We don't export the max projection, but we connect it to it's own op
@@ -59,7 +59,7 @@ class OpNansheDataExport( OpDataExport ):
         # This keeps axis order, shape, etc. in sync with the displayed export data.
         # Note that we must not modify the channels of the raw data, so it gets passed through a helper.
         self._opMax = OpMaxProjectionCached( parent=self )
-        self._opMax.InputImage.connect( self.RawData )
+        self._opMax.Input.connect( self.RawData )
         self._opMax.Axis.setValue( 0 )
 
         self._opMaxHelper = OpRawSubRegionHelper( parent=self )
@@ -88,7 +88,7 @@ class OpNansheDataExport( OpDataExport ):
         # This keeps axis order, shape, etc. in sync with the displayed export data.
         # Note that we must not modify the channels of the raw data, so it gets passed through a helper.
         self._opMean = OpMeanProjectionCached( parent=self )
-        self._opMean.InputImage.connect( self.RawData )
+        self._opMean.Input.connect( self.RawData )
         self._opMean.Axis.setValue( 0 )
 
         self._opMeanHelper = OpRawSubRegionHelper( parent=self )

@@ -52,7 +52,7 @@ class TestOpColorizeLabelImage(object):
         opPrep = OpArrayPiper(graph=graph)
         opPrep.Input.setValue(a)
 
-        op.InputImage.connect(opPrep.Output)
+        op.Input.connect(opPrep.Output)
 
         b = op.Output[...].wait()
 
@@ -72,7 +72,7 @@ class TestOpColorizeLabelImage(object):
         opPrep = OpArrayPiper(graph=graph)
         opPrep.Input.setValue(a)
 
-        op.InputImage.connect(opPrep.Output)
+        op.Input.connect(opPrep.Output)
 
         b = op.Output[...].wait()
 

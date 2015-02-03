@@ -119,7 +119,7 @@ class NansheDictionaryLearningGui(LayerViewerGui):
         self.topLevelOperatorView.ModeD.unregisterDirty(self.apply_dirty_operator_settings_to_gui)
 
     def apply_operator_settings_to_gui(self):
-        self.ndim = len(self.topLevelOperatorView.InputImage.meta.shape)
+        self.ndim = len(self.topLevelOperatorView.Input.meta.shape)
 
         self.topLevelOperatorView.Ord.setValue(float(self.topLevelOperatorView.Ord.value))
 
@@ -198,9 +198,9 @@ class NansheDictionaryLearningGui(LayerViewerGui):
             layers.append(outputLayer)
 
         # Show the input data
-        inputImageSlot = self.topLevelOperatorView.InputImage
-        if inputImageSlot.ready():
-            inputLayer = self.createStandardLayerFromSlot( inputImageSlot )
+        inputSlot = self.topLevelOperatorView.Input
+        if inputSlot.ready():
+            inputLayer = self.createStandardLayerFromSlot( inputSlot )
             inputLayer.name = "Input"
             inputLayer.visible = True
             inputLayer.opacity = 1.0

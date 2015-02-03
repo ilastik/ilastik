@@ -54,7 +54,7 @@ class TestOpNansheWaveletTransform(object):
         opPrep.Input.setValue(a)
 
         op = OpNansheWaveletTransform(graph=graph)
-        op.InputImage.connect(opPrep.Output)
+        op.Input.connect(opPrep.Output)
 
         op.Scale.setValue((0, 1, 1))
 
@@ -82,7 +82,7 @@ class TestOpNansheWaveletTransform(object):
         opPrep.Input.setValue(a)
 
         op = OpNansheWaveletTransform(graph=graph)
-        op.InputImage.connect(opPrep.Output)
+        op.Input.connect(opPrep.Output)
 
         op.Scale.setValue((0, 1, 1))
 

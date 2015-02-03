@@ -152,7 +152,7 @@ class NanshePreprocessingGui(LayerViewerGui):
         self._drawer.ScaleValue_X.setEnabled(checked)
 
     def apply_operator_settings_to_gui(self):
-        self.ndim = len(self.topLevelOperatorView.InputImage.meta.shape)
+        self.ndim = len(self.topLevelOperatorView.Input.meta.shape)
 
         self._unregister_notify_dirty()
 
@@ -390,9 +390,9 @@ class NanshePreprocessingGui(LayerViewerGui):
             layers.append(outputLayer)
 
         # Show the raw input data
-        inputImageSlot = self.topLevelOperatorView.InputImage
-        if inputImageSlot.ready():
-            inputLayer = self.createStandardLayerFromSlot( inputImageSlot )
+        inputSlot = self.topLevelOperatorView.Input
+        if inputSlot.ready():
+            inputLayer = self.createStandardLayerFromSlot( inputSlot )
             inputLayer.name = "Raw Input"
             inputLayer.visible = True
             inputLayer.opacity = 1.0

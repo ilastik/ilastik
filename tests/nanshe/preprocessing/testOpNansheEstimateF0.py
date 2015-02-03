@@ -52,7 +52,7 @@ class TestOpNansheEstimateF0(object):
         opPrep.Input.setValue(a)
 
         op = OpNansheEstimateF0(graph=graph)
-        op.InputImage.connect(opPrep.Output)
+        op.Input.connect(opPrep.Output)
 
         op.HalfWindowSize.setValue(20)
         op.WhichQuantile.setValue(0.5)
@@ -77,7 +77,7 @@ class TestOpNansheEstimateF0(object):
         opPrep.Input.setValue(a)
 
         op = OpNansheEstimateF0Cached(graph=graph)
-        op.InputImage.connect(opPrep.Output)
+        op.Input.connect(opPrep.Output)
 
         op.HalfWindowSize.setValue(20)
         op.WhichQuantile.setValue(0.5)

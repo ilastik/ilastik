@@ -52,7 +52,7 @@ class OpColorizeLabelImage(Operator):
     category = "Pointwise"
 
 
-    InputImage = InputSlot()
+    Input = InputSlot()
     NumColors = InputSlot(value=256, stype='int')
 
     Output = OutputSlot()
@@ -83,10 +83,10 @@ class OpColorizeLabelImage(Operator):
 
         self.colors = numpy.zeros((0,4), dtype=numpy.uint8)
 
-        self.InputImage.notifyReady( self._checkConstraints )
+        self.Input.notifyReady( self._checkConstraints )
 
     def _checkConstraints(self, *args):
-        slot = self.InputImage
+        slot = self.Input
 
         sh = slot.meta.shape
         ndim = len(sh)
@@ -109,7 +109,7 @@ class OpColorizeLabelImage(Operator):
 
     def setupOutputs(self):
         # Copy the input metadata to both outputs
-        self.Output.meta.assignFrom( self.InputImage.meta )
+        self.Output.meta.assignFrom( self.Input.meta )
         self.Output.meta.shape = self.Output.meta.shape[:-1] + (4,)
         self.Output.meta.dtype = numpy.uint8
 
@@ -124,7 +124,7 @@ class OpColorizeLabelImage(Operator):
         input_key = input_key[:-1] + [slice(None)]
         input_key = tuple(input_key)
 
-        raw = self.InputImage[input_key].wait()
+        raw = self.Input[input_key].wait()
 
         if not self.colors.size:
             self.colors = OpColorizeLabelImage.colorTableList(self.NumColors.value)
@@ -139,7 +139,7 @@ class OpColorizeLabelImage(Operator):
             result[...] = processed
 
     def propagateDirty(self, slot, subindex, roi):
-        if (slot.name == "InputImage"):
+        if (slot.name == "Input"):
             key = roi.toSlice()
 
             key = list(key)
@@ -160,7 +160,7 @@ class OpColorizeLabelImageCached(Operator):
     category = "Pointwise"
 
 
-    InputImage = InputSlot()
+    Input = InputSlot()
     NumColors = InputSlot(value=256, stype='int')
 
     Output = OutputSlot()
@@ -174,7 +174,7 @@ class OpColorizeLabelImageCached(Operator):
         self.opCache = OpBlockedArrayCache(parent=self)
         self.opCache.fixAtCurrent.setValue(False)
 
-        self.opColorizeLabelImage.InputImage.connect( self.InputImage )
+        self.opColorizeLabelImage.Input.connect( self.Input )
         self.opCache.Input.connect( self.opColorizeLabelImage.Output )
         self.Output.connect( self.opCache.Output )
 

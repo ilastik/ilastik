@@ -49,7 +49,7 @@ class OpNansheExtractF0(Operator):
     name = "OpNansheExtractF0"
     category = "Pointwise"
 
-    InputImage = InputSlot()
+    Input = InputSlot()
 
     HalfWindowSize = InputSlot(value=400, stype='int')
     WhichQuantile = InputSlot(value=0.15, stype='float')
@@ -79,15 +79,15 @@ class OpNansheExtractF0(Operator):
         self.opEstimateF0.SpatialSmoothingGaussianFilterStdev.connect(self.SpatialSmoothingGaussianFilterStdev)
         self.opEstimateF0.SpatialSmoothingGaussianFilterWindowSize.connect(self.SpatialSmoothingGaussianFilterWindowSize)
 
-        self.opEstimateF0.InputImage.connect( self.InputImage )
+        self.opEstimateF0.Input.connect( self.Input )
         self.F0.connect( self.opEstimateF0.Output )
 
         self.dF_F.notifyDirty(self._f0BecameDirty)
 
-        self.InputImage.notifyReady( self._checkConstraints )
+        self.Input.notifyReady( self._checkConstraints )
 
     def _checkConstraints(self, *args):
-        slot = self.InputImage
+        slot = self.Input
 
         sh = slot.meta.shape
         ax = slot.meta.axistags
@@ -139,7 +139,7 @@ class OpNansheExtractF0(Operator):
 
     def setupOutputs(self):
         # Copy the input metadata to dF_F. F0 will be set by OpNansheEstimateF0.
-        self.dF_F.meta.assignFrom( self.InputImage.meta )
+        self.dF_F.meta.assignFrom( self.Input.meta )
         self.dF_F.meta.dtype = numpy.float32
 
         self.dF_F.meta.generation = self._generation
@@ -147,7 +147,7 @@ class OpNansheExtractF0(Operator):
     def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
 
-        raw = self.InputImage[key].wait()
+        raw = self.Input[key].wait()
         f0 = self.F0[key].wait()
 
         bias = None
@@ -169,7 +169,7 @@ class OpNansheExtractF0(Operator):
         self.dF_F.setDirty(roi.toSlice())
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot.name == "InputImage" or \
+        if slot.name == "Input" or \
            slot.name == "HalfWindowSize" or slot.name == "WhichQuantile" or \
            slot.name == "TemporalSmoothingGaussianFilterStdev" or \
            slot.name == "TemporalSmoothingGaussianFilterWindowSize" or \
@@ -196,7 +196,7 @@ class OpNansheExtractF0Cached(Operator):
     category = "Pointwise"
 
 
-    InputImage = InputSlot()
+    Input = InputSlot()
 
     HalfWindowSize = InputSlot(value=400, stype='int')
     WhichQuantile = InputSlot(value=0.15, stype='float')
@@ -231,7 +231,7 @@ class OpNansheExtractF0Cached(Operator):
         self.opCache_F0 = OpBlockedArrayCache(parent=self)
         self.opCache_F0.fixAtCurrent.setValue(False)
 
-        self.opExtractF0.InputImage.connect( self.InputImage )
+        self.opExtractF0.Input.connect( self.Input )
         self.opCache_F0.Input.connect( self.opExtractF0.F0 )
         self.opCache_dF_F.Input.connect( self.opExtractF0.dF_F)
 

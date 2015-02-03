@@ -57,7 +57,7 @@ class TestOpNansheNormalizeData(object):
         opPrep = OpArrayPiper(graph=graph)
         opPrep.Input.setValue(a)
 
-        op.InputImage.connect(opPrep.Output)
+        op.Input.connect(opPrep.Output)
 
         op.Ord.setValue(2)
 

@@ -44,7 +44,7 @@ class OpNanshePreprocessData(Operator):
     category = "Pointwise"
 
     
-    InputImage = InputSlot()
+    Input = InputSlot()
 
 
     ToRemoveZeroedLines = InputSlot(value=True)
@@ -102,25 +102,25 @@ class OpNanshePreprocessData(Operator):
         self.OpNansheWaveletTransformOutput.connect(self.opNansheWaveletTransform.Output)
     
     def setupOutputs(self):
-        self.opNansheRemoveZeroedLines.InputImage.disconnect()
-        self.opNansheExtractF0.InputImage.disconnect()
-        self.opNansheWaveletTransform.InputImage.disconnect()
+        self.opNansheRemoveZeroedLines.Input.disconnect()
+        self.opNansheExtractF0.Input.disconnect()
+        self.opNansheWaveletTransform.Input.disconnect()
 
-        next_output = self.InputImage
+        next_output = self.Input
 
-        self.opConvertType.InputImage.connect(next_output)
+        self.opConvertType.Input.connect(next_output)
         next_output = self.opConvertType.Output
 
         if self.ToRemoveZeroedLines.value:
-            self.opNansheRemoveZeroedLines.InputImage.connect(next_output)
+            self.opNansheRemoveZeroedLines.Input.connect(next_output)
             next_output = self.opNansheRemoveZeroedLines.Output
 
         if self.ToExtractF0.value:
-            self.opNansheExtractF0.InputImage.connect(next_output)
+            self.opNansheExtractF0.Input.connect(next_output)
             next_output = self.opNansheExtractF0.dF_F
 
         if self.ToWaveletTransform.value:
-            self.opNansheWaveletTransform.InputImage.connect(next_output)
+            self.opNansheWaveletTransform.Input.connect(next_output)
             next_output = self.opNansheWaveletTransform.Output
 
         self.Output.connect(next_output)
@@ -136,9 +136,9 @@ class OpNanshePreprocessData(Operator):
                 self.opNansheRemoveZeroedLines.Output.setDirty( slice(None) )
             else:
                 if self.ToExtractF0.value:
-                    self.opNansheExtractF0.InputImage.setDirty( slice(None) )
+                    self.opNansheExtractF0.Input.setDirty( slice(None) )
                 elif self.ToWaveletTransform.value:
-                    self.opNansheWaveletTransform.InputImage.setDirty( slice(None) )
+                    self.opNansheWaveletTransform.Input.setDirty( slice(None) )
                 else:
                     self.Output.setDirty( slice(None) )
         elif slot.name == "ToExtractF0":
@@ -146,7 +146,7 @@ class OpNanshePreprocessData(Operator):
                 self.opNansheExtractF0.Output.setDirty( slice(None) )
             else:
                 if self.ToWaveletTransform.value:
-                    self.opNansheWaveletTransform.InputImage.setDirty( slice(None) )
+                    self.opNansheWaveletTransform.Input.setDirty( slice(None) )
                 else:
                     self.Output.setDirty( slice(None) )
         elif slot.name == "ToWaveletTransform":
@@ -165,7 +165,7 @@ class OpNanshePreprocessDataCached(Operator):
     category = "Pointwise"
 
 
-    InputImage = InputSlot()
+    Input = InputSlot()
     CacheInput = InputSlot(optional=True)
 
 
@@ -232,26 +232,26 @@ class OpNanshePreprocessDataCached(Operator):
         self.CacheOutput.connect(self.opCache.Output)
 
     def setupOutputs(self):
-        self.opNansheRemoveZeroedLines.InputImage.disconnect()
-        self.opNansheExtractF0.InputImage.disconnect()
-        self.opNansheWaveletTransform.InputImage.disconnect()
+        self.opNansheRemoveZeroedLines.Input.disconnect()
+        self.opNansheExtractF0.Input.disconnect()
+        self.opNansheWaveletTransform.Input.disconnect()
         self.opCache.Input.disconnect()
 
-        next_output = self.InputImage
+        next_output = self.Input
 
-        self.opConvertType.InputImage.connect(next_output)
+        self.opConvertType.Input.connect(next_output)
         next_output = self.opConvertType.Output
 
         if self.ToRemoveZeroedLines.value:
-            self.opNansheRemoveZeroedLines.InputImage.connect(next_output)
+            self.opNansheRemoveZeroedLines.Input.connect(next_output)
             next_output = self.opNansheRemoveZeroedLines.Output
 
         if self.ToExtractF0.value:
-            self.opNansheExtractF0.InputImage.connect(next_output)
+            self.opNansheExtractF0.Input.connect(next_output)
             next_output = self.opNansheExtractF0.dF_F
 
         if self.ToWaveletTransform.value:
-            self.opNansheWaveletTransform.InputImage.connect(next_output)
+            self.opNansheWaveletTransform.Input.connect(next_output)
             next_output = self.opNansheWaveletTransform.Output
 
         self.Output.connect(next_output)
@@ -272,9 +272,9 @@ class OpNanshePreprocessDataCached(Operator):
                 self.opNansheRemoveZeroedLines.Output.setDirty( slice(None) )
             else:
                 if self.ToExtractF0.value:
-                    self.opNansheExtractF0.InputImage.setDirty( slice(None) )
+                    self.opNansheExtractF0.Input.setDirty( slice(None) )
                 elif self.ToWaveletTransform.value:
-                    self.opNansheWaveletTransform.InputImage.setDirty( slice(None) )
+                    self.opNansheWaveletTransform.Input.setDirty( slice(None) )
                 else:
                     self.opCache.Input.setDirty( slice(None) )
         elif slot.name == "ToExtractF0":
@@ -283,7 +283,7 @@ class OpNanshePreprocessDataCached(Operator):
                 self.opNansheExtractF0.F0.setDirty( slice(None) )
             else:
                 if self.ToWaveletTransform.value:
-                    self.opNansheWaveletTransform.InputImage.setDirty( slice(None) )
+                    self.opNansheWaveletTransform.Input.setDirty( slice(None) )
                 else:
                     self.opCache.Input.setDirty( slice(None) )
         elif slot.name == "ToWaveletTransform":

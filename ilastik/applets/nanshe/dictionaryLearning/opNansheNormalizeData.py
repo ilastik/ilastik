@@ -41,7 +41,7 @@ class OpNansheNormalizeData(Operator):
     name = "OpNansheNormalizeData"
     category = "Pointwise"
     
-    InputImage = InputSlot()
+    Input = InputSlot()
 
     Ord = InputSlot(value=2.0, stype="int")
     
@@ -52,12 +52,12 @@ class OpNansheNormalizeData(Operator):
 
     def setupOutputs(self):
         # Copy the input metadata to both outputs
-        self.Output.meta.assignFrom( self.InputImage.meta )
+        self.Output.meta.assignFrom( self.Input.meta )
         self.Output.meta.dtype = numpy.float64
     
     def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
-        raw = self.InputImage[key].wait()
+        raw = self.Input[key].wait()
         raw = raw[..., 0]
 
         ord = self.Ord.value
@@ -76,7 +76,7 @@ class OpNansheNormalizeData(Operator):
         pass
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot.name == "InputImage":
+        if slot.name == "Input":
             self.Output.setDirty(roi)
         elif slot.name == "Ord":
             self.Output.setDirty( slice(None) )

@@ -49,7 +49,7 @@ class OpNansheEstimateF0(Operator):
     name = "OpNansheEstimateF0"
     category = "Pointwise"
 
-    InputImage = InputSlot()
+    Input = InputSlot()
 
     HalfWindowSize = InputSlot(value=400, stype='int')
     WhichQuantile = InputSlot(value=0.15, stype='float')
@@ -65,10 +65,10 @@ class OpNansheEstimateF0(Operator):
 
         self._generation = {self.name : 0}
 
-        self.InputImage.notifyReady( self._checkConstraints )
+        self.Input.notifyReady( self._checkConstraints )
 
     def _checkConstraints(self, *args):
-        slot = self.InputImage
+        slot = self.Input
 
         sh = slot.meta.shape
         ax = slot.meta.axistags
@@ -120,7 +120,7 @@ class OpNansheEstimateF0(Operator):
 
     def setupOutputs(self):
         # Copy the input metadata to both outputs
-        self.Output.meta.assignFrom( self.InputImage.meta )
+        self.Output.meta.assignFrom( self.Input.meta )
         self.Output.meta.dtype = numpy.float32
 
         self.Output.meta.generation = self._generation
@@ -177,7 +177,7 @@ class OpNansheEstimateF0(Operator):
         spatial_smoothing_gaussian_filter_window_size = self.SpatialSmoothingGaussianFilterWindowSize.value
 
 
-        image_shape = self.InputImage.meta.shape
+        image_shape = self.Input.meta.shape
 
         key = roi.toSlice()
         halo_key, within_halo_key = OpNansheEstimateF0.compute_halo(key,
@@ -188,7 +188,7 @@ class OpNansheEstimateF0(Operator):
                                                                    spatial_smoothing_gaussian_filter_stdev,
                                                                    spatial_smoothing_gaussian_filter_window_size)
 
-        raw = self.InputImage[halo_key].wait()
+        raw = self.Input[halo_key].wait()
         raw = raw[..., 0]
 
         f0 = nanshe.nanshe.advanced_image_processing.estimate_f0(
@@ -210,12 +210,12 @@ class OpNansheEstimateF0(Operator):
         pass
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot.name == "InputImage":
+        if slot.name == "Input":
             self._generation[self.name] += 1
 
             roi_slice = roi.toSlice()
             roi_halo = OpNansheEstimateF0.compute_halo(roi_slice,
-                                                       self.InputImage.meta.shape,
+                                                       self.Input.meta.shape,
                                                        self.HalfWindowSize.value,
                                                        self.TemporalSmoothingGaussianFilterStdev.value,
                                                        self.TemporalSmoothingGaussianFilterWindowSize.value,
@@ -243,7 +243,7 @@ class OpNansheEstimateF0Cached(Operator):
     category = "Pointwise"
 
 
-    InputImage = InputSlot()
+    Input = InputSlot()
 
     HalfWindowSize = InputSlot(value=400, stype='int')
     WhichQuantile = InputSlot(value=0.15, stype='float')
@@ -269,7 +269,7 @@ class OpNansheEstimateF0Cached(Operator):
         self.opCache_F0 = OpBlockedArrayCache(parent=self)
         self.opCache_F0.fixAtCurrent.setValue(False)
 
-        self.opEstimateF0.InputImage.connect( self.InputImage )
+        self.opEstimateF0.Input.connect( self.Input )
         self.opCache_F0.Input.connect( self.opEstimateF0.Output )
 
         self.Output.connect( self.opCache_F0.Output )
@@ -294,7 +294,7 @@ class OpNansheEstimateF0Cached(Operator):
         halo_center_slicing = tuple(halo_center_slicing)
 
         halo_slicing = self.opEstimateF0.compute_halo(halo_center_slicing,
-                                                     self.InputImage.meta.shape,
+                                                     self.Input.meta.shape,
                                                      self.HalfWindowSize.value,
                                                      self.TemporalSmoothingGaussianFilterStdev.value,
                                                      self.TemporalSmoothingGaussianFilterWindowSize.value,

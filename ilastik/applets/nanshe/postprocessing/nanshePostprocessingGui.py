@@ -226,7 +226,7 @@ class NanshePostprocessingGui(LayerViewerGui):
         self._drawer.AcceptedNeuronShapeConstraints_Eccentricity_MaxValue.setEnabled(checked)
 
     def apply_operator_settings_to_gui(self):
-        self.ndim = len(self.topLevelOperatorView.InputImage.meta.shape) - 1
+        self.ndim = len(self.topLevelOperatorView.Input.meta.shape) - 1
 
         self._unregister_notify_dirty()
 
@@ -437,9 +437,9 @@ class NanshePostprocessingGui(LayerViewerGui):
             layers.append(outputLayer)
 
         # Show the input data
-        inputImageSlot = self.topLevelOperatorView.InputImage
-        if inputImageSlot.ready():
-            inputLayer = self.createStandardLayerFromSlot( inputImageSlot )
+        inputSlot = self.topLevelOperatorView.Input
+        if inputSlot.ready():
+            inputLayer = self.createStandardLayerFromSlot( inputSlot )
             inputLayer.name = "Input"
             inputLayer.visible = True
             inputLayer.opacity = 1.0

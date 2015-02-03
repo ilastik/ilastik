@@ -46,7 +46,7 @@ class OpNansheRemoveZeroedLines(Operator):
     name = "OpNansheRemoveZeroedLines"
     category = "Pointwise"
 
-    InputImage = InputSlot()
+    Input = InputSlot()
 
     ErosionShape = InputSlot(value=[21, 1])
     DilationShape = InputSlot(value=[1, 3])
@@ -58,10 +58,10 @@ class OpNansheRemoveZeroedLines(Operator):
 
         self._generation = {self.name : 0}
 
-        self.InputImage.notifyReady( self._checkConstraints )
+        self.Input.notifyReady( self._checkConstraints )
 
     def _checkConstraints(self, *args):
-        slot = self.InputImage
+        slot = self.Input
 
         sh = slot.meta.shape
         ax = slot.meta.axistags
@@ -113,14 +113,15 @@ class OpNansheRemoveZeroedLines(Operator):
 
     def setupOutputs(self):
         # Copy the input metadata to both outputs
-        self.Output.meta.assignFrom( self.InputImage.meta )
+        self.Output.meta.assignFrom( self.Input.meta )
         self.Output.meta.dtype = numpy.float32
+        self.Output.meta.has_mask = True
 
         self.Output.meta.generation = self._generation
 
     def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
-        raw = self.InputImage[key].wait()
+        raw = self.Input[key].wait()
         raw = raw[..., 0]
         raw = raw.astype(numpy.float32, copy=False)
 
@@ -139,7 +140,7 @@ class OpNansheRemoveZeroedLines(Operator):
         pass
 
     def propagateDirty(self, slot, subindex, roi):
-        if (slot.name == "InputImage") or (slot.name == "ErosionShape") or (slot.name == "DilationShape"):
+        if (slot.name == "Input") or (slot.name == "ErosionShape") or (slot.name == "DilationShape"):
             self._generation[self.name] += 1
             self.Output.setDirty( slice(None) )
         else:
@@ -155,7 +156,7 @@ class OpNansheRemoveZeroedLinesCached(Operator):
     category = "Pointwise"
 
 
-    InputImage = InputSlot()
+    Input = InputSlot()
 
     ErosionShape = InputSlot(value=[21, 1])
     DilationShape = InputSlot(value=[1, 3])
@@ -174,7 +175,7 @@ class OpNansheRemoveZeroedLinesCached(Operator):
         self.opCache = OpBlockedArrayCache(parent=self)
         self.opCache.fixAtCurrent.setValue(False)
 
-        self.opRemoveZeroedLines.InputImage.connect( self.InputImage )
+        self.opRemoveZeroedLines.Input.connect( self.Input )
         self.opCache.Input.connect( self.opRemoveZeroedLines.Output )
         self.Output.connect( self.opCache.Output )
 

@@ -58,7 +58,7 @@ class TestOpNanshePreprocessing(object):
         opPrep.Input.setValue(image_stack)
 
         op = OpNanshePreprocessing(graph=graph)
-        op.InputImage.connect(opPrep.Output)
+        op.Input.connect(opPrep.Output)
 
 
         op.ToRemoveZeroedLines.setValue(True)

@@ -46,7 +46,7 @@ class TestOpNansheExtractF0(object):
         opPrep.Input.setValue(a)
 
         op = OpNansheExtractF0(graph=graph)
-        op.InputImage.connect(opPrep.Output)
+        op.Input.connect(opPrep.Output)
 
         op.HalfWindowSize.setValue(20)
         op.WhichQuantile.setValue(0.5)
@@ -73,7 +73,7 @@ class TestOpNansheExtractF0(object):
         opPrep.Input.setValue(a)
 
         op = OpNansheExtractF0Cached(graph=graph)
-        op.InputImage.connect(opPrep.Output)
+        op.Input.connect(opPrep.Output)
 
         op.HalfWindowSize.setValue(20)
         op.WhichQuantile.setValue(0.5)

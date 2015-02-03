@@ -38,7 +38,7 @@ class OpConvertType(Operator):
     category = "Pointwise"
 
 
-    InputImage = InputSlot()
+    Input = InputSlot()
 
     Dtype = InputSlot()
 
@@ -49,7 +49,7 @@ class OpConvertType(Operator):
 
     def setupOutputs(self):
         # Copy the input metadata to both outputs
-        self.Output.meta.assignFrom( self.InputImage.meta )
+        self.Output.meta.assignFrom( self.Input.meta )
 
         self.Output.meta.dtype = numpy.dtype(self.Dtype.value).type
 
@@ -58,7 +58,7 @@ class OpConvertType(Operator):
 
         key = roi.toSlice()
 
-        raw = self.InputImage[key].wait()
+        raw = self.Input[key].wait()
 
         processed = raw.astype(dtype, copy=False)
 
@@ -69,7 +69,7 @@ class OpConvertType(Operator):
         pass
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot.name == "InputImage":
+        if slot.name == "Input":
             slicing = roi.toSlice()
 
             self.Output.setDirty(slicing)
@@ -88,7 +88,7 @@ class OpConvertTypeCached(Operator):
     category = "Pointwise"
 
 
-    InputImage = InputSlot()
+    Input = InputSlot()
 
     Dtype = InputSlot()
 
@@ -105,7 +105,7 @@ class OpConvertTypeCached(Operator):
         self.opCache = OpBlockedArrayCache(parent=self)
         self.opCache.fixAtCurrent.setValue(False)
 
-        self.opConvertType.InputImage.connect( self.InputImage )
+        self.opConvertType.Input.connect( self.Input )
         self.opCache.Input.connect( self.opConvertType.Output )
         self.Output.connect( self.opCache.Output )
 

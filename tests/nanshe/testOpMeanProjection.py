@@ -55,7 +55,7 @@ class TestOpMeanProjection(object):
         opPrep = OpArrayPiper(graph=graph)
         opPrep.Input.setValue(a)
 
-        op.InputImage.connect(opPrep.Output)
+        op.Input.connect(opPrep.Output)
         op.Axis.setValue(0)
 
         b = op.Output[...].wait()
@@ -81,7 +81,7 @@ class TestOpMeanProjection(object):
         opPrep = OpArrayPiper(graph=graph)
         opPrep.Input.setValue(a)
 
-        op.InputImage.connect(opPrep.Output)
+        op.Input.connect(opPrep.Output)
         op.Axis.setValue(0)
 
         b = op.Output[...].wait()

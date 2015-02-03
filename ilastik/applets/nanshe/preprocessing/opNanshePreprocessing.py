@@ -38,7 +38,7 @@ class OpNanshePreprocessing(Operator):
     category = "Pointwise"
 
 
-    InputImage = InputSlot()
+    Input = InputSlot()
     CacheInput = InputSlot(optional=True)
 
 
@@ -93,7 +93,7 @@ class OpNanshePreprocessing(Operator):
         self.opPreprocessData.Scale.connect(self.Scale)
 
 
-        self.opPreprocessData.InputImage.connect( self.InputImage )
+        self.opPreprocessData.Input.connect( self.Input )
         self.opPreprocessData.CacheInput.connect( self.CacheInput )
 
         self.OpNansheRemoveZeroedLinesOutput.connect(self.opPreprocessData.OpNansheRemoveZeroedLinesOutput)

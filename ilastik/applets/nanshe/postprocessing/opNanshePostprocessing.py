@@ -47,7 +47,7 @@ class OpNanshePostprocessing(Operator):
     category = "Pointwise"
 
 
-    InputImage = InputSlot()
+    Input = InputSlot()
     CacheInput = InputSlot(optional=True)
 
     SignificanceThreshold = InputSlot(value=3.0, stype="float")
@@ -108,7 +108,7 @@ class OpNanshePostprocessing(Operator):
         self.opPostprocess.Fuse_FractionMeanNeuronMaxThreshold.connect(self.Fuse_FractionMeanNeuronMaxThreshold)
 
 
-        self.opPostprocess.InputImage.connect( self.InputImage )
+        self.opPostprocess.Input.connect( self.Input )
         self.opPostprocess.CacheInput.connect( self.CacheInput )
 
 

@@ -55,7 +55,7 @@ class TestOpNansheRemoveZeroedLines(object):
         opPrep.Input.setValue(ar)
 
         op = OpNansheRemoveZeroedLines(graph=graph)
-        op.InputImage.connect(opPrep.Output)
+        op.Input.connect(opPrep.Output)
 
         op.ErosionShape.setValue([21, 1])
         op.DilationShape.setValue([1, 3])
@@ -84,7 +84,7 @@ class TestOpNansheRemoveZeroedLines(object):
         opPrep.Input.setValue(ar)
 
         op = OpNansheRemoveZeroedLines(graph=graph)
-        op.InputImage.connect(opPrep.Output)
+        op.Input.connect(opPrep.Output)
 
         op.ErosionShape.setValue([21, 1])
         op.DilationShape.setValue([1, 3])
@@ -113,7 +113,7 @@ class TestOpNansheRemoveZeroedLines(object):
         opPrep.Input.setValue(ar)
 
         op = OpNansheRemoveZeroedLinesCached(graph=graph)
-        op.InputImage.connect(opPrep.Output)
+        op.Input.connect(opPrep.Output)
 
         op.ErosionShape.setValue([21, 1])
         op.DilationShape.setValue([1, 3])
@@ -142,7 +142,7 @@ class TestOpNansheRemoveZeroedLines(object):
         opPrep.Input.setValue(ar)
 
         op = OpNansheRemoveZeroedLinesCached(graph=graph)
-        op.InputImage.connect(opPrep.Output)
+        op.Input.connect(opPrep.Output)
 
         op.ErosionShape.setValue([21, 1])
         op.DilationShape.setValue([1, 3])
