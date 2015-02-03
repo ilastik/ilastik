@@ -103,6 +103,7 @@ class ArrayLike( SlotType ):
         #     storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(s))elf.axistags))
         #     #storage = storage.view(vigra.VigraArray)
         #     #storage.axistags = copy.copy(self.axistags)
+
         return storage
 
     def writeIntoDestination( self, destination, value, roi ):
