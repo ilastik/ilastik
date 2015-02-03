@@ -65,3 +65,55 @@ class OpMaskArrayIdentity(Operator):
             self.Output.setDirty(slicing)
         else:
             assert False, "Unknown dirty input slot"
+
+
+class TestOpMaskArrayIdentity(object):
+    def setUp(self):
+        self.graph = Graph()
+
+        self.operator_identity = OpMaskArrayIdentity(graph=self.graph)
+
+        self.operator_identity.Input.meta.axistags = vigra.AxisTags("txyzc")
+        self.operator_identity.Input.meta.has_mask = True
+
+    def test1(self):
+        # Generate a random dataset and see if it we get the right masking from the operator.
+        data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
+        expected_output = numpy.ma.masked_array(data.copy(),
+                                                mask=numpy.zeros(data.shape, dtype=bool),
+                                                shrink=False
+                          )
+
+        # Provide input read all output.
+        self.operator_identity.Input.setValue(data)
+        output = self.operator_identity.Output[None].wait()
+
+        assert((expected_output == output).all())
+        assert(expected_output.mask.shape == output.mask.shape)
+
+    def test2(self):
+        # Generate a dataset and grab chunks of it from the operator. The result should be the same as above.
+        data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
+        expected_output = numpy.ma.masked_array(data.copy(),
+                                                mask=numpy.zeros(data.shape, dtype=bool),
+                                                shrink=False
+                          )
+
+        # Create array to store results. Don't keep original data.
+        output = expected_output.copy()
+        output[:] = 0
+        output[:] = numpy.ma.nomask
+
+        # Provide input and grab chunks.
+        self.operator_identity.Input.setValue(data)
+        output[:2] = self.operator_identity.Output[:2].wait()
+        output[2:] = self.operator_identity.Output[2:].wait()
+
+        assert((expected_output == output).all())
+        assert(expected_output.mask.shape == output.mask.shape)
+
+    def tearDown(self):
+        # Take down operators
+        self.operator_identity.Input.disconnect()
+        self.operator_identity.Output.disconnect()
+        self.operator_identity.cleanUp()
