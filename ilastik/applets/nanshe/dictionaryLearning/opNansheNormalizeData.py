@@ -53,7 +53,6 @@ class OpNansheNormalizeData(Operator):
     def setupOutputs(self):
         # Copy the input metadata to both outputs
         self.Output.meta.assignFrom( self.Input.meta )
-        self.Output.meta.dtype = numpy.float64
     
     def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
@@ -62,7 +61,7 @@ class OpNansheNormalizeData(Operator):
 
         ord = self.Ord.value
 
-        processed = nanshe.nanshe.advanced_image_processing.normalize_data(raw.astype(numpy.float64),
+        processed = nanshe.nanshe.advanced_image_processing.normalize_data(raw,
                                                                     **{"simple_image_processing.renormalized_images" : {
                                                                         "ord" : ord
                                                                        }
