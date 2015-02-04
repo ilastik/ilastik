@@ -174,9 +174,9 @@ class OpNansheWaveletTransform(Operator):
         raw = raw[..., 0]
 
         processed = nanshe.nanshe.wavelet_transform.wavelet_transform(raw,
-                                                               scale=scale,
-                                                               include_intermediates = False,
-                                                               include_lower_scales = False)
+                                                                      scale=scale,
+                                                                      include_intermediates = False,
+                                                                      include_lower_scales = False)
         processed = processed[..., None]
         
         if slot.name == 'Output':
