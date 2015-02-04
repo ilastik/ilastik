@@ -6,3 +6,5 @@ from sklearnLazyflowClassifier import SklearnLazyflowClassifier, SklearnLazyflow
 # Testing
 from vigraRfPixelwiseClassifier import VigraRfPixelwiseClassifier, VigraRfPixelwiseClassifierFactory
 
+# IIBoost
+from iiboostLazyflowClassifier import IIBoostLazyflowClassifier, IIBoostLazyflowClassifierFactory
