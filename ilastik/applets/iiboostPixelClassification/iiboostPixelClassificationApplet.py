@@ -19,16 +19,16 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
-from opIiboostPixelClassification import OpIiboostPixelClassification
-from pixelClassificationSerializer import PixelClassificationSerializer
+from ilastik.applets.pixelClassification.pixelClassificationSerializer import PixelClassificationSerializer
+from opIIBoostPixelClassification import OpIIBoostPixelClassification
 
-class IiBoostPixelClassificationApplet( StandardApplet ):
+class IIBoostPixelClassificationApplet( StandardApplet ):
     """
     Implements the pixel classification "applet", 
     which allows the ilastik shell to use it.
     """
     def __init__( self, workflow, projectFileGroupName ):
-        self._topLevelOperator = OpIiboostPixelClassification( parent=workflow )
+        self._topLevelOperator = OpIIBoostPixelClassification( parent=workflow )
         
         def on_classifier_changed(slot, roi):
             if self._topLevelOperator.classifier_cache.Output.ready() and \
@@ -39,7 +39,7 @@ class IiBoostPixelClassificationApplet( StandardApplet ):
                 self.appletStateUpdateRequested.emit()
         self._topLevelOperator.classifier_cache.Output.notifyDirty( on_classifier_changed )
         
-        super(IiBoostPixelClassificationApplet, self).__init__( "Synapse Detection" )
+        super(IIBoostPixelClassificationApplet, self).__init__( "Synapse Detection" )
 
         # We can use the ordinary pixel classification serializer class.
         self._serializableItems = [PixelClassificationSerializer(self._topLevelOperator, projectFileGroupName)]
@@ -64,5 +64,5 @@ class IiBoostPixelClassificationApplet( StandardApplet ):
 
     @property
     def singleLaneGuiClass(self):
-        from iiboostPixelClassificationGui import IiboostPixelClassificationGui
-        return IiboostPixelClassificationGui
+        from iiboostPixelClassificationGui import IIBoostPixelClassificationGui
+        return IIBoostPixelClassificationGui

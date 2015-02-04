@@ -1,9 +1,9 @@
-from ilastik.applets.pixelClassification import PixelClassificationGui
+from ilastik.applets.pixelClassification.pixelClassificationGui import PixelClassificationGui
 
-class IiBoostPixelClassificationGui( PixelClassificationGui ):
+class IIBoostPixelClassificationGui( PixelClassificationGui ):
     
     def __init__(self, *args, **kwargs):
-        super(IiBoostPixelClassificationGui, self).__init__(*args, **kwargs)
+        super(IIBoostPixelClassificationGui, self).__init__(*args, **kwargs)
 
         # Init special base class members
         # (See LabelingGui base class)

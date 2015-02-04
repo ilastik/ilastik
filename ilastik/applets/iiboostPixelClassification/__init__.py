@@ -18,6 +18,6 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from opIiboostPixelClassification import *
+from opIIBoostPixelClassification import *
 from iiboostPixelClassificationApplet import *
 

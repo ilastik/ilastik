@@ -116,7 +116,7 @@ class PixelClassificationWorkflow(Workflow):
 
         self.featureSelectionApplet = FeatureSelectionApplet(self, "Feature Selection", "FeatureSelections", self.filter_implementation)
 
-        self.pcApplet = PixelClassificationApplet( self, "PixelClassification" )
+        self.pcApplet = self.createPixelClassificationApplet()
         opClassify = self.pcApplet.topLevelOperator
 
         self.dataExportApplet = PixelClassificationDataExportApplet(self, "Prediction Export")
@@ -157,6 +157,14 @@ class PixelClassificationWorkflow(Workflow):
     
         if unused_args:
             logger.warn("Unused command-line args: {}".format( unused_args ))
+
+    def createPixelClassificationApplet(self):
+        """
+        Can be overridden by subclasses, if they want to return their own type of PixelClassificationApplet.
+        NOTE: The applet returned here must have the same interface as the regular PixelClassificationApplet.
+              (If it looks like a duck...)
+        """
+        return PixelClassificationApplet( self, "PixelClassification" )
 
     def connectLane(self, laneIndex):
         # Get a handle to each operator

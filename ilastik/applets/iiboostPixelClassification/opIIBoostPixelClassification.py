@@ -1,10 +1,10 @@
 from ilastik.applets.pixelClassification import OpPixelClassification
 from lazyflow.classifiers import IIBoostLazyflowClassifierFactory
 
-class OpIiboostPixelClassification(OpPixelClassification):
+class OpIIBoostPixelClassification(OpPixelClassification):
     
     def __init__(self, *args, **kwargs):
-        super( OpIiboostPixelClassification, self ).__init__( *args, **kwargs )
+        super( OpIIBoostPixelClassification, self ).__init__( *args, **kwargs )
         
         # Manually override the default classifier type
         self.ClassifierFactory._defaultValue = IIBoostLazyflowClassifierFactory(numStumps=2, debugOutput=True)

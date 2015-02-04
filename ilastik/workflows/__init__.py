@@ -54,6 +54,12 @@ except ImportError as e:
     logger.warn( "Failed to import automatic tracking workflow (conservation tracking). For this workflow, see the installation"\
              "instructions on our website ilastik.org; check dependencies: " + str(e) )
 
+import iiboostPixelClassification
+try:
+    import iiboostPixelClassification
+except ImportError as e:
+    logger.warn( "Failed to import the IIBoost Synapse detection workflow.  Check IIBoost dependency." )
+
 
 # Examples
 import ilastik.config
