@@ -6,6 +6,11 @@ def blockwise_view( a, blockshape, require_aligned_blocks=True ):
     of the original array is indexed by its block address using the first N 
     indexes of the output array.
     
+    Note: This function is nearly identical to ``skimage.util.view_as_blocks()``, except:
+          - "imperfect" block shapes are permitted (via require_aligned_blocks=False)
+          - only contiguous arrays are accepted.  (This function will NOT silently copy your array.)
+            As a result, the return value is *always* a view of the input.
+    
     Args:
         a: The ND array
         blockshape: The tile shape
@@ -50,30 +55,17 @@ def blockwise_view( a, blockshape, require_aligned_blocks=True ):
             "blockshape {} must divide evenly into array shape {}"\
             .format( blockshape, a.shape )
 
-    # The code below is for the ND case.
-    # For example, in 4D, given shape=(t,z,y,x) and blockshape=(bt,bz,by,bx),
-    # we could have written this:
-    #
-    # intra_block_strides = a.itemsize * numpy.array([z*y*x,    y*x,    x,     1])
-    # inter_block_strides = a.itemsize * numpy.array([z*y*x*bt, y*x*bz, x*by, bx])
+    # inner strides: strides within each block (same as original array)
+    intra_block_strides = a.strides
 
-    # strides within each block
-    intra_block_strides = [1]
-    for s in a.shape[-1:0:-1]:
-        intra_block_strides.append( s*intra_block_strides[-1] )
-    intra_block_strides = numpy.array(intra_block_strides[::-1])
-    
-    # strides from one block to another
-    inter_block_strides = numpy.array(intra_block_strides) * blockshape
-    
-    intra_block_strides *= a.itemsize
-    inter_block_strides *= a.itemsize
-
-    strides = tuple(inter_block_strides) + tuple(intra_block_strides)
+    # outer strides: strides from one block to another
+    inter_block_strides = tuple(a.strides * numpy.array(blockshape))
 
     # This is where the magic happens.
-    # Generate a view with our new strides.
-    return numpy.lib.stride_tricks.as_strided(a, shape=view_shape, strides=strides)
+    # Generate a view with our new strides (outer+inner).
+    return numpy.lib.stride_tricks.as_strided(a, 
+                                              shape=view_shape, 
+                                              strides=(inter_block_strides+intra_block_strides))
 
 if __name__ == "__main__":
     import doctest
