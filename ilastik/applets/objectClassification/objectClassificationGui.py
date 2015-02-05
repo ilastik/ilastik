@@ -26,9 +26,7 @@ from ilastik.shell.gui.ipcManager import IPCFacade, Protocol
 
 from ilastik.widgets.featureTableWidget import FeatureEntry
 from ilastik.widgets.featureDlg import FeatureDlg
-from ilastik.widgets.exportToKnimeDialog_old import ExportToKnimeDialog
 from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog
-from ilastik.widgets.multiProgressDialog import MultiProgressDialog
 from ilastik.applets.objectExtraction.opObjectExtraction import OpRegionFeatures3d
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 from lazyflow.operators.ioOperators.opExportObjectInfo import OpExportObjectInfo

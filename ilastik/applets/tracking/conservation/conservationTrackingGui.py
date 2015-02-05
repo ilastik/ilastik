@@ -240,15 +240,16 @@ class ConservationTrackingGui( TrackingBaseGui ):
         return [m]
                 
     def export_tracking_info(self):
-        from ilastik.utility.exportFile import ExportFile, Mode, objects_per_frame, ilastik_ids, ProgressPrinter
+        from ilastik.utility.exportFile import objects_per_frame
+        from ilastik.widgets.progressDialog import ProgressDialog
+        from functools import partial
         from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog
+        from threading import Thread
 
         op = self.topLevelOperatorView
         dimensions = op.RawImage.meta.shape
         computed_features = op.ObjectFeatures
-
-        feature_names = {}
-        #feature_names = op.ComputedFeatureNames([]).wait()
+        feature_names = op.ComputedFeatureNames([]).wait()
 
         dialog = ExportObjectInfoDialog(dimensions, feature_names)
         if not dialog.exec_():
@@ -258,14 +259,27 @@ class ConservationTrackingGui( TrackingBaseGui ):
 
         obj_count = list(objects_per_frame(op.LabelImage))
         track_ids, extra_track_ids, divisions = op.export_track_ids()
-        print extra_track_ids
+
+        progress = ProgressDialog(["Tracking Data", "Feature Data", "Division Data", "Exporting"])
+        progress.show()
+
+        export = partial(self.do_export, settings, obj_count, track_ids, extra_track_ids, computed_features,
+                         selected_features, divisions, op, progress)
+        Thread(target=export).run()
+
+    @staticmethod
+    def do_export(settings, obj_count, track_ids, extra_track_ids, computed_features, selected_features,
+                  divisions, op, dialog):
+        from ilastik.utility.exportFile import ExportFile, ProgressPrinter, ilastik_ids, Mode
 
         export_file = ExportFile(settings["file path"])
 
-        ip = ProgressPrinter("InsertionProgress", range(100, -1, -5))
-        ep = ProgressPrinter("ExportProgress", range(100, -1, -5))
-        export_file.ExportProgress.subscribe(ep)
-        export_file.InsertionProgress.subscribe(ip)
+        #ip = ProgressPrinter("InsertionProgress", range(100, -1, -5))
+        #ep = ProgressPrinter("ExportProgress", range(100, -1, -5))
+        #export_file.ExportProgress.subscribe(ep)
+        #export_file.InsertionProgress.subscribe(ip)
+        export_file.ExportProgress.subscribe(dialog.update_step)
+        export_file.InsertionProgress.subscribe(dialog.update_step)
         #multi_move_max = op.Parameters["maxObj"] if op.Parameters.ready() else 2
         multi_move_max = 2
 
@@ -289,3 +303,8 @@ class ConservationTrackingGui( TrackingBaseGui ):
                 export_file.add_rois("/images/{}/raw", op.RawImage, "table", settings["margin"])
 
         export_file.write_all(settings["file type"], settings["compression"])
+
+        #export_file.ExportProgress.unsubscribe(ep)
+        #export_file.InsertionProgress.unsubscribe(ip)
+        export_file.ExportProgress.unsubscribe(dialog.update_step)
+        export_file.InsertionProgress.unsubscribe(dialog.update_step)

@@ -10,7 +10,7 @@ FILE_TYPES = ["h5", "csv"]
 REQ_MSG = " (REQUIRED)"
 RAW_LAYER_SIZE_LIMIT = 1000000
 ALLOWED_EXTENSIONS = ["hdf5", "hd5", "h5", "csv"]
-DEFAULT_REQUIRED_FEATURES = ["Count", "Coord", "RegionCenter", ]
+DEFAULT_REQUIRED_FEATURES = ["Count", "Coord<Minimum>", "Coord<Maximum>", "RegionCenter", ]
 
 
 class ExportObjectInfoDialog(QDialog):
@@ -37,7 +37,7 @@ class ExportObjectInfoDialog(QDialog):
 
         if req_features is None:
             req_features = []
-        req_features.extend(["Coord<Minimum>", "Coord<Maximum>"])
+        req_features.extend(DEFAULT_REQUIRED_FEATURES)
 
         self._setup_features(feature_table, req_features)
         self.ui.featureView.setHeaderLabels(("Select Features",))

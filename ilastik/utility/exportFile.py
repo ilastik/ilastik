@@ -73,7 +73,7 @@ def flatten_ilastik_feature_table(table, selection, signal):
         else:
             dtype_names.append(name)
             dtype_types.append(feature_types[i].name)
-            dtype_to_key[dtype_names[i]] = (feature_cats[i], name, 0)
+            dtype_to_key[dtype_names[-1]] = (feature_cats[i], name, 0)
 
     feature_table = np.zeros((sum(obj_count),), dtype=",".join(dtype_types))
     feature_table.dtype.names = map(str, dtype_names)
@@ -154,6 +154,7 @@ def create_slicing(axistags, dimensions, margin, feature_table):
     for i in xrange(table_shape):
         if time[i] != time[i-1]:
             oid = 1
+        # noinspection PyTypeChecker
         slicing = [
             slice(time[i], time[i]+1),
             slice(max(0, minx[i] - margin),
@@ -162,7 +163,7 @@ def create_slicing(axistags, dimensions, margin, feature_table):
                   min(maxy[i] + margin, dimensions[2])),
             slice(max(0, minz[i] - margin),
                   min(maxz[i] + margin, dimensions[3])),
-            slice(0, 1)
+            slice(None)
         ]
         yield map(slicing.__getitem__, indices)[:5-excludes], oid
         oid += 1
@@ -245,14 +246,14 @@ class ExportFile(object):
         else:
             vec = lambda _: lambda y: y
         for i, (slicing, oid) in enumerate(slicings):
-            roi = image_slot(slicing).wait().squeeze()
+            roi = image_slot(slicing).wait()
             roi = vec(oid)(roi)
             roi_path = table_path.format(i)
-            self.table_dict[roi_path] = roi
             self.meta_dict[roi_path] = {
                 "type": type_,
                 "axistags": actual_axistags(image_slot.meta.axistags, roi.shape).toJSON()
             }
+            self.table_dict[roi_path] = roi.squeeze()
             self.InsertionProgress(100 * i / self.table_dict[feature_table_name].shape[0])
         self.InsertionProgress(100)
 
@@ -300,7 +301,7 @@ class ExportFile(object):
         if mode in ("h5", "hd5", "hdf5"):
             with h5py.File(self.file_name, "w") as fout:
                 for table_name, table in self.table_dict.iteritems():
-                    self._make_h5_dataset(fout, table_name, table,
+                    self._make_h5_dataset(fout, table_name, table, self.meta_dict.get(table_name, {}),
                                           compression if compression is not None else {})
                     count += 1
                     self.ExportProgress(count * 100 / len(self.table_dict))
@@ -326,8 +327,7 @@ class ExportFile(object):
         self.table_dict[table_name] = columns
 
     @staticmethod
-    def _make_h5_dataset(fout, table_name, table, compression):
-        meta = {}
+    def _make_h5_dataset(fout, table_name, table, meta, compression):
         try:
             dset = fout.create_dataset(table_name, table.shape, data=table, **compression)
         except TypeError:
