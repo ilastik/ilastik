@@ -45,6 +45,7 @@ class OpTrackingBase(Operator):
 
     LabelImage = InputSlot()
     ObjectFeatures = InputSlot(stype=Opaque, rtype=List)
+    ComputedFeatureNames = InputSlot(rtype=List, stype=Opaque)
     EventsVector = InputSlot(value={})    
     FilteredLabels = InputSlot(value={})
     RawImage = InputSlot()
