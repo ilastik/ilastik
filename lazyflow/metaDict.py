@@ -40,9 +40,6 @@ class MetaDict(defaultdict):
             # are ready
             self._ready = False
 
-        if not 'has_mask' in self:
-            self.has_mask = False
-
         # flag that indicates whether any piece of meta information
         # changed since this flag was reset
         self._dirty = True
