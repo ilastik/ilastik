@@ -101,8 +101,8 @@ class ClassifierSelectionDlg(QDialog):
         classifiers["Parallel Random Forest (VIGRA)"] = ParallelVigraRfLazyflowClassifierFactory(100)
         
         try:
-            from iiboostLazyflowClassifier import IIBoostLazyflowClassifierFactory
-            classifiers["IIBoost"] = IIBoostLazyflowClassifierFactory(numStumps=2, debugOutput=True)
+            from lazyflow.classifiers.iiboostLazyflowClassifier import IIBoostLazyflowClassifierFactory
+            classifiers["IIBoost"] = IIBoostLazyflowClassifierFactory(numStumps=100, debugOutput=True)
             assert issubclass( type(classifiers["IIBoost"]), LazyflowPixelwiseClassifierFactoryABC )
         except ImportError:
             import warnings
