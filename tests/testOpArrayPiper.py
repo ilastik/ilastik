@@ -33,7 +33,7 @@ from lazyflow.graph import Graph
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 
 
-class TestOpArrayPiper(object):
+class TestOpArrayPiper2(object):
     def setUp(self):
         self.graph = Graph()
 
