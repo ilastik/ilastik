@@ -164,6 +164,7 @@ class TestOpMaskArrayIdentity(object):
 
         assert((expected_output == output).all())
         assert(expected_output.mask.shape == output.mask.shape)
+        assert((expected_output.mask == output.mask).all())
 
     def test2(self):
         # Generate a dataset and grab chunks of it from the operator. The result should be the same as above.
@@ -185,6 +186,7 @@ class TestOpMaskArrayIdentity(object):
 
         assert((expected_output == output).all())
         assert(expected_output.mask.shape == output.mask.shape)
+        assert((expected_output.mask == output.mask).all())
 
     def tearDown(self):
         # Take down operators
@@ -224,6 +226,7 @@ class TestOpMaskArrayBorder(object):
 
         assert((expected_output == output).all())
         assert(expected_output.mask.shape == output.mask.shape)
+        assert((expected_output.mask == output.mask).all())
 
     def test2(self):
         # Generate a dataset and grab chunks of it from the operator. The result should be the same as above.
@@ -256,6 +259,7 @@ class TestOpMaskArrayBorder(object):
 
         assert((expected_output == output).all())
         assert(expected_output.mask.shape == output.mask.shape)
+        assert((expected_output.mask == output.mask).all())
 
     def tearDown(self):
         # Take down operators
@@ -299,6 +303,7 @@ class TestOpMaskArrayBorderIdentity(object):
 
         assert((expected_output == output).all())
         assert(expected_output.mask.shape == output.mask.shape)
+        assert((expected_output.mask == output.mask).all())
 
     def test2(self):
         # Generate a dataset and grab chunks of it from the operator. The result should be the same as above.
@@ -331,6 +336,7 @@ class TestOpMaskArrayBorderIdentity(object):
 
         assert((expected_output == output).all())
         assert(expected_output.mask.shape == output.mask.shape)
+        assert((expected_output.mask == output.mask).all())
 
     def tearDown(self):
         # Take down operators
