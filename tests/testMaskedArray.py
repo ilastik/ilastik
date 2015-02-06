@@ -153,6 +153,69 @@ class TestOpMaskArray(object):
         self.operator_border.cleanUp()
 
 
+class TestOpMaskArray2(object):
+    def setUp(self):
+        self.graph = Graph()
+
+        self.operator_border = OpMaskArray(graph=self.graph)
+        self.operator_border.InputArray.meta.has_mask = True
+        self.operator_border.InputArray.meta.axistags = vigra.AxisTags("txyzc")
+
+    def test1(self):
+        # Generate a random dataset and see if it we get the right masking from the operator.
+        data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
+        mask = (data > 0.5)
+
+        data = numpy.ma.masked_array(data, mask=(data <= 0.5), shrink=False)
+
+        expected_output = numpy.ma.masked_array(data,
+                                                mask=numpy.ones(data.shape, dtype=bool),
+                                                shrink=False
+                          )
+
+        # Provide input read all output.
+        self.operator_border.InputArray.setValue(data)
+        self.operator_border.InputMask.setValue(mask)
+        output = self.operator_border.Output[None].wait()
+
+        assert((expected_output.data == output.data).all())
+        assert(expected_output.mask.shape == output.mask.shape)
+        assert((expected_output.mask == output.mask).all())
+
+    def test2(self):
+        # Generate a dataset and grab chunks of it from the operator. The result should be the same as above.
+        data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
+        mask = (data > 0.5)
+
+        data = numpy.ma.masked_array(data, mask=(data <= 0.5), shrink=False)
+
+        expected_output = numpy.ma.masked_array(data,
+                                                mask=numpy.ones(data.shape, dtype=bool),
+                                                shrink=False
+                          )
+
+        # Create array to store results. Don't keep original data.
+        output = expected_output.copy()
+        output[:] = 0
+        output[:] = numpy.ma.nomask
+
+        # Provide input and grab chunks.
+        self.operator_border.InputArray.setValue(data)
+        self.operator_border.InputMask.setValue(mask)
+        output[:2] = self.operator_border.Output[:2].wait()
+        output[2:] = self.operator_border.Output[2:].wait()
+
+        assert((expected_output.data == output.data).all())
+        assert(expected_output.mask.shape == output.mask.shape)
+        assert((expected_output.mask == output.mask).all())
+
+    def tearDown(self):
+        # Take down operators
+        self.operator_border.InputArray.disconnect()
+        self.operator_border.Output.disconnect()
+        self.operator_border.cleanUp()
+
+
 class TestOpMaskArray3(object):
     def setUp(self):
         self.graph = Graph()
