@@ -99,10 +99,15 @@ class ArrayLike( SlotType ):
     def allocateDestination( self, roi ):
         shape = roi.stop - roi.start if roi else self.slot.meta.shape
         storage = numpy.ndarray(shape, dtype=self.slot.meta.dtype)
+
+        if self.slot.meta.has_mask:
+            storage_mask = numpy.zeros(storage.shape, dtype=bool)
+            storage = numpy.ma.masked_array(storage, mask=storage_mask, shrink=False)
         # if axistags is True:
         #     storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(s))elf.axistags))
         #     #storage = storage.view(vigra.VigraArray)
         #     #storage.axistags = copy.copy(self.axistags)
+
         return storage
 
     def writeIntoDestination( self, destination, value, roi ):
