@@ -153,7 +153,7 @@ class TestOpMaskArray(object):
         self.operator_border.cleanUp()
 
 
-class TestOpMaskArray2(object):
+class TestOpMaskArray3(object):
     def setUp(self):
         self.graph = Graph()
 
