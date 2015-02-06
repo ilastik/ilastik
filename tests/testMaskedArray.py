@@ -30,10 +30,8 @@ import numpy
 import vigra
 
 from lazyflow.graph import Graph
-from lazyflow.operator import Operator
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.operators.opMaskArray import OpMaskArray
-from lazyflow.slot import InputSlot, OutputSlot
 
 
 class TestOpMaskArray(object):
