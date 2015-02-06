@@ -153,7 +153,7 @@ class TestOpMaskArrayIdentity(object):
     def test1(self):
         # Generate a random dataset and see if it we get the right masking from the operator.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
-        expected_output = numpy.ma.masked_array(data.copy(),
+        expected_output = numpy.ma.masked_array(data,
                                                 mask=numpy.zeros(data.shape, dtype=bool),
                                                 shrink=False
                           )
@@ -168,7 +168,7 @@ class TestOpMaskArrayIdentity(object):
     def test2(self):
         # Generate a dataset and grab chunks of it from the operator. The result should be the same as above.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
-        expected_output = numpy.ma.masked_array(data.copy(),
+        expected_output = numpy.ma.masked_array(data,
                                                 mask=numpy.zeros(data.shape, dtype=bool),
                                                 shrink=False
                           )
@@ -203,7 +203,7 @@ class TestOpMaskArrayBorder(object):
     def test1(self):
         # Generate a random dataset and see if it we get the right masking from the operator.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
-        expected_output = numpy.ma.masked_array(data.copy(),
+        expected_output = numpy.ma.masked_array(data,
                                                 mask=numpy.zeros(data.shape, dtype=bool),
                                                 shrink=False
                           )
@@ -228,7 +228,7 @@ class TestOpMaskArrayBorder(object):
     def test2(self):
         # Generate a dataset and grab chunks of it from the operator. The result should be the same as above.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
-        expected_output = numpy.ma.masked_array(data.copy(),
+        expected_output = numpy.ma.masked_array(data,
                                                 mask=numpy.zeros(data.shape, dtype=bool),
                                                 shrink=False
                           )
@@ -278,7 +278,7 @@ class TestOpMaskArrayBorderIdentity(object):
     def test1(self):
         # Generate a random dataset and see if it we get the right masking from the operator.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
-        expected_output = numpy.ma.masked_array(data.copy(),
+        expected_output = numpy.ma.masked_array(data,
                                        mask=numpy.zeros(data.shape, dtype=bool),
                                        shrink=False
                  )
@@ -303,7 +303,7 @@ class TestOpMaskArrayBorderIdentity(object):
     def test2(self):
         # Generate a dataset and grab chunks of it from the operator. The result should be the same as above.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
-        expected_output = numpy.ma.masked_array(data.copy(),
+        expected_output = numpy.ma.masked_array(data,
                                        mask=numpy.zeros(data.shape, dtype=bool),
                                        shrink=False
                  )
