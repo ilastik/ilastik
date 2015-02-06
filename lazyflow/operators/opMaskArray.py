@@ -25,3 +25,47 @@ __date__ = "$Feb 06, 2015 13:14:23 EST$"
 
 
 
+import numpy
+
+from lazyflow.operator import Operator
+from lazyflow.slot import InputSlot, OutputSlot
+
+
+class OpMaskArray(Operator):
+    name = "OpMaskArray"
+    category = "Pointwise"
+
+
+    InputArray = InputSlot()
+    InputMask = InputSlot()
+
+    Output = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super( OpMaskArray, self ).__init__( *args, **kwargs )
+
+    def setupOutputs(self):
+        # Copy the input metadata to both outputs
+        self.Output.meta.assignFrom( self.InputArray.meta )
+        self.Output.meta.has_mask = True
+
+    def execute(self, slot, subindex, roi, result):
+        key = roi.toSlice()
+
+        # Get data
+        data = self.InputArray[key].wait()
+        mask = self.InputMask[key].wait()
+
+        # Make a masked array
+        data_masked = numpy.ma.masked_array(data, mask=mask, shrink=False)
+
+        # Copy results
+        if slot.name == 'Output':
+            result[...] = data_masked
+
+    def propagateDirty(self, slot, subindex, roi):
+        if (slot.name == "InputArray") or (slot.name == "InputMask"):
+            slicing = roi.toSlice()
+            self.Output.setDirty(slicing)
+        else:
+            assert False, "Unknown dirty input slot"
