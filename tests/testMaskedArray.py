@@ -35,19 +35,18 @@ from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.slot import InputSlot, OutputSlot
 
 
-class OpMaskArrayBorder(Operator):
-    name = "OpMaskArrayBorder"
+class OpMaskArray(Operator):
+    name = "OpMaskArray"
     category = "Pointwise"
 
 
     InputArray = InputSlot()
-
-    Border = InputSlot(value=1, stype='int')
+    InputMask = InputSlot()
 
     Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
-        super( OpMaskArrayBorder, self ).__init__( *args, **kwargs )
+        super( OpMaskArray, self ).__init__( *args, **kwargs )
 
     def setupOutputs(self):
         # Copy the input metadata to both outputs
@@ -57,52 +56,19 @@ class OpMaskArrayBorder(Operator):
     def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
 
-        # Clean up key to follow certain rules.
-        key = list(key)
-        for i in xrange(len(key)):
-            start = key[i].start
-            stop = key[i].stop
-            step = key[i].step
-
-            if start is None:
-                start = 0
-            elif start < 0:
-                start %= self.InputArray.meta.shape[i]
-
-            if stop is None:
-                stop = self.InputArray.meta.shape[i]
-            elif stop < 0:
-                stop %= self.InputArray.meta.shape[i]
-
-            key[i] = slice(start, stop, step)
-
-        key = tuple(key)
-
         # Get data
         data = self.InputArray[key].wait()
-        border = abs(self.Border.value)
+        mask = self.InputMask[key].wait()
 
         # Make a masked array
-        data = numpy.ma.masked_array(data, mask=numpy.zeros(data.shape, dtype=bool), shrink=False)
-
-        # Using InputArray's shape, mask everything on the outside boundaries of InputArray (may not be on data).
-        left_slicing = (len(self.InputArray.meta.shape) - 1) * (slice(None),) + (slice(None, border),)
-        right_slicing = (len(self.InputArray.meta.shape) - 1) * (slice(None),) + (slice(-border, None),)
-        for i in xrange(len(self.InputArray.meta.shape)):
-            left_slicing = left_slicing[-1:] + left_slicing[:-1]
-            right_slicing = right_slicing[-1:] + right_slicing[:-1]
-
-            if key[i].start == 0:
-                data[left_slicing] = numpy.ma.masked
-            if key[i].stop == self.InputArray.meta.shape[i]:
-                data[right_slicing] = numpy.ma.masked
+        data_masked = numpy.ma.masked_array(data, mask=mask, shrink=False)
 
         # Copy results
         if slot.name == 'Output':
-            result[...] = data
+            result[...] = data_masked
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot.name == "InputArray":
+        if (slot.name == "InputArray") or (slot.name == "InputMask"):
             slicing = roi.toSlice()
             self.Output.setDirty(slicing)
         else:
@@ -163,33 +129,36 @@ class TestOpMaskArrayIdentity(object):
         self.operator_identity.cleanUp()
 
 
-class TestOpMaskArrayBorder(object):
+class TestOpMaskArray(object):
     def setUp(self):
         self.graph = Graph()
 
-        self.operator_border = OpMaskArrayBorder(graph=self.graph)
+        self.operator_border = OpMaskArray(graph=self.graph)
         self.operator_border.InputArray.meta.axistags = vigra.AxisTags("txyzc")
 
     def test1(self):
         # Generate a random dataset and see if it we get the right masking from the operator.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
-        expected_output = numpy.ma.masked_array(data,
-                                                mask=numpy.zeros(data.shape, dtype=bool),
-                                                shrink=False
-                          )
+        mask = numpy.zeros(data.shape, dtype=bool)
 
         # Mask borders of the expected output.
-        left_slicing = (expected_output.ndim - 1) * (slice(None),) + (slice(None, 1),)
-        right_slicing = (expected_output.ndim - 1) * (slice(None),) + (slice(-1, None),)
-        for i in xrange(expected_output.ndim):
+        left_slicing = (mask.ndim - 1) * (slice(None),) + (slice(None, 1),)
+        right_slicing = (mask.ndim - 1) * (slice(None),) + (slice(-1, None),)
+        for i in xrange(mask.ndim):
             left_slicing = left_slicing[-1:] + left_slicing[:-1]
             right_slicing = right_slicing[-1:] + right_slicing[:-1]
 
-            expected_output[left_slicing] = numpy.ma.masked
-            expected_output[right_slicing] = numpy.ma.masked
+            mask[left_slicing] = True
+            mask[right_slicing] = True
+
+        expected_output = numpy.ma.masked_array(data,
+                                                mask=mask,
+                                                shrink=False
+                          )
 
         # Provide input read all output.
         self.operator_border.InputArray.setValue(data)
+        self.operator_border.InputMask.setValue(mask)
         output = self.operator_border.Output[None].wait()
 
         assert((expected_output == output).all())
@@ -199,21 +168,22 @@ class TestOpMaskArrayBorder(object):
     def test2(self):
         # Generate a dataset and grab chunks of it from the operator. The result should be the same as above.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
-        expected_output = numpy.ma.masked_array(data,
-                                                mask=numpy.zeros(data.shape, dtype=bool),
-                                                shrink=False
-                          )
+        mask = numpy.zeros(data.shape, dtype=bool)
 
         # Mask borders of the expected output.
-        left_slicing = (expected_output.ndim - 1) * (slice(None),) + (slice(None, 1),)
-        right_slicing = (expected_output.ndim - 1) * (slice(None),) + (slice(-1, None),)
-        for i in xrange(expected_output.ndim):
+        left_slicing = (mask.ndim - 1) * (slice(None),) + (slice(None, 1),)
+        right_slicing = (mask.ndim - 1) * (slice(None),) + (slice(-1, None),)
+        for i in xrange(mask.ndim):
             left_slicing = left_slicing[-1:] + left_slicing[:-1]
             right_slicing = right_slicing[-1:] + right_slicing[:-1]
 
-            expected_output[left_slicing] = numpy.ma.masked
-            expected_output[right_slicing] = numpy.ma.masked
+            mask[left_slicing] = True
+            mask[right_slicing] = True
 
+        expected_output = numpy.ma.masked_array(data,
+                                                mask=mask,
+                                                shrink=False
+                          )
 
         # Create array to store results. Don't keep original data.
         output = expected_output.copy()
@@ -222,6 +192,7 @@ class TestOpMaskArrayBorder(object):
 
         # Provide input and grab chunks.
         self.operator_border.InputArray.setValue(data)
+        self.operator_border.InputMask.setValue(mask)
         output[:2] = self.operator_border.Output[:2].wait()
         output[2:] = self.operator_border.Output[2:].wait()
 
@@ -236,11 +207,11 @@ class TestOpMaskArrayBorder(object):
         self.operator_border.cleanUp()
 
 
-class TestOpMaskArrayBorderIdentity(object):
+class TestOpMaskArray2(object):
     def setUp(self):
         self.graph = Graph()
 
-        self.operator_border = OpMaskArrayBorder(graph=self.graph)
+        self.operator_border = OpMaskArray(graph=self.graph)
         self.operator_identity = OpArrayPiper(graph=self.graph)
 
         self.operator_border.InputArray.meta.axistags = vigra.AxisTags("txyzc")
@@ -250,23 +221,26 @@ class TestOpMaskArrayBorderIdentity(object):
     def test1(self):
         # Generate a random dataset and see if it we get the right masking from the operator.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
-        expected_output = numpy.ma.masked_array(data,
-                                       mask=numpy.zeros(data.shape, dtype=bool),
-                                       shrink=False
-                 )
+        mask = numpy.zeros(data.shape, dtype=bool)
 
         # Mask borders of the expected output.
-        left_slicing = (expected_output.ndim - 1) * (slice(None),) + (slice(None, 1),)
-        right_slicing = (expected_output.ndim - 1) * (slice(None),) + (slice(-1, None),)
-        for i in xrange(expected_output.ndim):
+        left_slicing = (mask.ndim - 1) * (slice(None),) + (slice(None, 1),)
+        right_slicing = (mask.ndim - 1) * (slice(None),) + (slice(-1, None),)
+        for i in xrange(mask.ndim):
             left_slicing = left_slicing[-1:] + left_slicing[:-1]
             right_slicing = right_slicing[-1:] + right_slicing[:-1]
 
-            expected_output[left_slicing] = numpy.ma.masked
-            expected_output[right_slicing] = numpy.ma.masked
+            mask[left_slicing] = True
+            mask[right_slicing] = True
+
+        expected_output = numpy.ma.masked_array(data,
+                                                mask=mask,
+                                                shrink=False
+                          )
 
         # Provide input read all output.
         self.operator_border.InputArray.setValue(data)
+        self.operator_border.InputMask.setValue(mask)
         output = self.operator_identity.Output[None].wait()
 
         assert((expected_output == output).all())
@@ -276,21 +250,22 @@ class TestOpMaskArrayBorderIdentity(object):
     def test2(self):
         # Generate a dataset and grab chunks of it from the operator. The result should be the same as above.
         data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
-        expected_output = numpy.ma.masked_array(data,
-                                       mask=numpy.zeros(data.shape, dtype=bool),
-                                       shrink=False
-                 )
+        mask = numpy.zeros(data.shape, dtype=bool)
 
         # Mask borders of the expected output.
-        left_slicing = (expected_output.ndim - 1) * (slice(None),) + (slice(None, 1),)
-        right_slicing = (expected_output.ndim - 1) * (slice(None),) + (slice(-1, None),)
-        for i in xrange(expected_output.ndim):
+        left_slicing = (mask.ndim - 1) * (slice(None),) + (slice(None, 1),)
+        right_slicing = (mask.ndim - 1) * (slice(None),) + (slice(-1, None),)
+        for i in xrange(mask.ndim):
             left_slicing = left_slicing[-1:] + left_slicing[:-1]
             right_slicing = right_slicing[-1:] + right_slicing[:-1]
 
-            expected_output[left_slicing] = numpy.ma.masked
-            expected_output[right_slicing] = numpy.ma.masked
+            mask[left_slicing] = True
+            mask[right_slicing] = True
 
+        expected_output = numpy.ma.masked_array(data,
+                                                mask=mask,
+                                                shrink=False
+                          )
 
         # Create array to store results. Don't keep original data.
         output = expected_output.copy()
@@ -299,6 +274,7 @@ class TestOpMaskArrayBorderIdentity(object):
 
         # Provide input and grab chunks.
         self.operator_border.InputArray.setValue(data)
+        self.operator_border.InputMask.setValue(mask)
         output[:2] = self.operator_identity.Output[:2].wait()
         output[2:] = self.operator_identity.Output[2:].wait()
 
