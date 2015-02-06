@@ -35,39 +35,6 @@ from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.slot import InputSlot, OutputSlot
 
 
-class OpMaskArrayIdentity(Operator):
-    name = "OpMaskArrayIdentity"
-    category = "Pointwise"
-
-
-    Input = InputSlot()
-    Output = OutputSlot()
-
-    def __init__(self, *args, **kwargs):
-        super( OpMaskArrayIdentity, self ).__init__( *args, **kwargs )
-
-    def setupOutputs(self):
-        # Copy the input metadata to both outputs
-        self.Output.meta.assignFrom( self.Input.meta )
-
-    def execute(self, slot, subindex, roi, result):
-        key = roi.toSlice()
-
-        # Get data
-        data = self.Input[key].wait()
-
-        # Copy results
-        if slot.name == 'Output':
-            result[...] = data
-
-    def propagateDirty(self, slot, subindex, roi):
-        if slot.name == "Input":
-            slicing = roi.toSlice()
-            self.Output.setDirty(slicing)
-        else:
-            assert False, "Unknown dirty input slot"
-
-
 class OpMaskArrayBorder(Operator):
     name = "OpMaskArrayBorder"
     category = "Pointwise"
