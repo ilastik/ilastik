@@ -31,6 +31,7 @@ import vigra
 
 from lazyflow.graph import Graph
 from lazyflow.operator import Operator
+from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.slot import InputSlot, OutputSlot
 
 
@@ -145,7 +146,7 @@ class TestOpMaskArrayIdentity(object):
     def setUp(self):
         self.graph = Graph()
 
-        self.operator_identity = OpMaskArrayIdentity(graph=self.graph)
+        self.operator_identity = OpArrayPiper(graph=self.graph)
 
         self.operator_identity.Input.meta.axistags = vigra.AxisTags("txyzc")
         self.operator_identity.Input.meta.has_mask = True
@@ -273,7 +274,7 @@ class TestOpMaskArrayBorderIdentity(object):
         self.graph = Graph()
 
         self.operator_border = OpMaskArrayBorder(graph=self.graph)
-        self.operator_identity = OpMaskArrayIdentity(graph=self.graph)
+        self.operator_identity = OpArrayPiper(graph=self.graph)
 
         self.operator_border.Input.meta.axistags = vigra.AxisTags("txyzc")
 
