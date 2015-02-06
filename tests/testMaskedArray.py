@@ -75,7 +75,7 @@ class OpMaskArray(Operator):
             assert False, "Unknown dirty input slot"
 
 
-class TestOpMaskArrayIdentity(object):
+class TestOpArrayPiper(object):
     def setUp(self):
         self.graph = Graph()
 
