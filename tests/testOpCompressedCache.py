@@ -68,6 +68,38 @@ class TestOpCompressedCache( object ):
         #logger.debug("Checking data...")    
         assert (readData == expectedData).all(), "Incorrect output!"
 
+    def testBasic5d_masked(self):
+        logger.info("Generating sample data...")
+        sampleData = numpy.indices((3, 100, 200, 150, 2), dtype=numpy.float32).sum(0)
+        sampleData = sampleData.view( numpy.ma.masked_array )
+        sampleData.set_fill_value(sampleData.dtype.type(sampleData.fill_value))
+        sampleData[0] = numpy.ma.masked
+
+        graph = Graph()
+        opData = OpArrayPiper( graph=graph )
+        opData.Input.meta.has_mask = True
+        opData.Input.meta.axistags = vigra.defaultAxistags('txyzc')
+        opData.Input.setValue( sampleData )
+
+        op = OpCompressedCache( parent=None, graph=graph )
+        #logger.debug("Setting block shape...")
+        op.BlockShape.setValue( [1, 100, 75, 50, 2] )
+        op.Input.connect( opData.Output )
+
+        assert op.Output.ready()
+
+        slicing = numpy.s_[ 0:2, 0:100, 50:150, 75:150, 0:1 ]
+        expectedData = sampleData[slicing]
+
+        #logger.debug("Requesting data...")
+        readData = op.Output[slicing].wait()
+
+        #logger.debug("Checking data...")
+        assert (readData == expectedData).all() and \
+               (readData.mask == expectedData.mask).all() and \
+               (readData.fill_value == expectedData.fill_value).all(),\
+            "Incorrect output!"
+
     def testBasic3d(self):
         logger.info("Generating sample data...")
         sampleData = numpy.indices((100, 200, 150), dtype=numpy.float32).sum(0)
@@ -93,6 +125,38 @@ class TestOpCompressedCache( object ):
         
         #logger.debug("Checking data...")    
         assert (readData == expectedData).all(), "Incorrect output!"
+
+    def testBasic3d_masked(self):
+        logger.info("Generating sample data...")
+        sampleData = numpy.indices((100, 200, 150), dtype=numpy.float32).sum(0)
+        sampleData = sampleData.view( numpy.ma.masked_array )
+        sampleData.set_fill_value(sampleData.dtype.type(sampleData.fill_value))
+        sampleData[0] = numpy.ma.masked
+
+        graph = Graph()
+        opData = OpArrayPiper( graph=graph )
+        opData.Input.meta.has_mask = True
+        opData.Input.meta.axistags = vigra.defaultAxistags('xyz')
+        opData.Input.setValue( sampleData )
+
+        op = OpCompressedCache( parent=None, graph=graph )
+        #logger.debug("Setting block shape...")
+        op.BlockShape.setValue( [100, 75, 50] )
+        op.Input.connect( opData.Output )
+
+        assert op.Output.ready()
+
+        slicing = numpy.s_[ 0:100, 50:150, 75:150 ]
+        expectedData = sampleData[slicing]
+
+        #logger.debug("Requesting data...")
+        readData = op.Output[slicing].wait()
+
+        #logger.debug("Checking data...")
+        assert (readData == expectedData).all() and \
+               (readData.mask == expectedData.mask).all() and \
+               (readData.fill_value == expectedData.fill_value).all(),\
+            "Incorrect output!"
 
     def testBasic4d_txyc(self):
         logger.info("Generating sample data...")
@@ -120,6 +184,38 @@ class TestOpCompressedCache( object ):
         #logger.debug("Checking data...")    
         assert (readData == expectedData).all(), "Incorrect output!"
 
+    def testBasic4d_txyc_masked(self):
+        logger.info("Generating sample data...")
+        sampleData = numpy.indices((3, 200, 150, 2), dtype=numpy.float32).sum(0)
+        sampleData = sampleData.view( numpy.ma.masked_array )
+        sampleData.set_fill_value(sampleData.dtype.type(sampleData.fill_value))
+        sampleData[0] = numpy.ma.masked
+
+        graph = Graph()
+        opData = OpArrayPiper( graph=graph )
+        opData.Input.meta.has_mask = True
+        opData.Input.meta.axistags = vigra.defaultAxistags('txyc')
+        opData.Input.setValue( sampleData )
+
+        op = OpCompressedCache( parent=None, graph=graph )
+        #logger.debug("Setting block shape...")
+        op.BlockShape.setValue( [1, 75, 50, 2] )
+        op.Input.connect( opData.Output )
+
+        assert op.Output.ready()
+
+        slicing = numpy.s_[ 1:3, 50:150, 75:150, 0:1 ]
+        expectedData = sampleData[slicing]
+
+        #logger.debug("Requesting data...")
+        readData = op.Output[slicing].wait()
+
+        #logger.debug("Checking data...")
+        assert (readData == expectedData).all() and \
+               (readData.mask == expectedData.mask).all() and \
+               (readData.fill_value == expectedData.fill_value).all(),\
+            "Incorrect output!"
+
     def testBasic2d(self):
         logger.info("Generating sample data...")
         sampleData = numpy.indices((200, 150), dtype=numpy.float32).sum(0)
@@ -146,6 +242,38 @@ class TestOpCompressedCache( object ):
         #logger.debug("Checking data...")    
         assert (readData == expectedData).all(), "Incorrect output!"
 
+    def testBasic2d_masked(self):
+        logger.info("Generating sample data...")
+        sampleData = numpy.indices((200, 150), dtype=numpy.float32).sum(0)
+        sampleData = sampleData.view( numpy.ma.masked_array )
+        sampleData.set_fill_value(sampleData.dtype.type(sampleData.fill_value))
+        sampleData[0] = numpy.ma.masked
+
+        graph = Graph()
+        opData = OpArrayPiper( graph=graph )
+        opData.Input.meta.has_mask = True
+        opData.Input.meta.axistags = vigra.defaultAxistags('txyc')
+        opData.Input.setValue( sampleData )
+
+        op = OpCompressedCache( parent=None, graph=graph )
+        #logger.debug("Setting block shape...")
+        op.BlockShape.setValue( [75, 50] )
+        op.Input.connect( opData.Output )
+
+        assert op.Output.ready()
+
+        slicing = numpy.s_[ 50:150, 75:150 ]
+        expectedData = sampleData[slicing]
+
+        #logger.debug("Requesting data...")
+        readData = op.Output[slicing].wait()
+
+        #logger.debug("Checking data...")
+        assert (readData == expectedData).all() and \
+               (readData.mask == expectedData.mask).all() and \
+               (readData.fill_value == expectedData.fill_value).all(),\
+            "Incorrect output!"
+
     def testBasicOneBlock(self):
         logger.info("Generating sample data...")
         sampleData = numpy.indices((3, 100, 200, 150, 2), dtype=numpy.float32).sum(0)
@@ -171,6 +299,38 @@ class TestOpCompressedCache( object ):
         
         #logger.debug("Checking data...")    
         assert (readData == expectedData).all(), "Incorrect output!"
+
+    def testBasicOneBlock_masked(self):
+        logger.info("Generating sample data...")
+        sampleData = numpy.indices((3, 100, 200, 150, 2), dtype=numpy.float32).sum(0)
+        sampleData = sampleData.view( numpy.ma.masked_array )
+        sampleData.set_fill_value(sampleData.dtype.type(sampleData.fill_value))
+        sampleData[0] = numpy.ma.masked
+
+        graph = Graph()
+        opData = OpArrayPiper( graph=graph )
+        opData.Input.meta.has_mask = True
+        opData.Input.meta.axistags = vigra.defaultAxistags('txyzc')
+        opData.Input.setValue( sampleData )
+
+        op = OpCompressedCache( parent=None, graph=graph )
+        # NO Block shape for this test.
+        #op.BlockShape.setValue( [1, 100, 75, 50, 2] )
+        op.Input.connect( opData.Output )
+
+        assert op.Output.ready()
+
+        slicing = numpy.s_[ 0:2, 0:100, 50:150, 75:150, 0:1 ]
+        expectedData = sampleData[slicing]
+
+        #logger.debug("Requesting data...")
+        readData = op.Output[slicing].wait()
+
+        #logger.debug("Checking data...")
+        assert (readData == expectedData).all() and \
+               (readData.mask == expectedData.mask).all() and \
+               (readData.fill_value == expectedData.fill_value).all(),\
+            "Incorrect output!"
 
     def testMultiThread(self):
         logger.info("Generating sample data...")
@@ -212,6 +372,52 @@ class TestOpCompressedCache( object ):
         for i, data in results.items():
             assert (data == expectedData).all(), "Incorrect output for index {}".format( i )
 
+    def testMultiThread_masked(self):
+        logger.info("Generating sample data...")
+        sampleData = numpy.indices((3, 100, 200, 150, 2), dtype=numpy.float32).sum(0)
+        sampleData = sampleData.view( numpy.ma.masked_array )
+        sampleData.set_fill_value(sampleData.dtype.type(sampleData.fill_value))
+        sampleData[0] = numpy.ma.masked
+
+        graph = Graph()
+        opData = OpArrayPiper( graph=graph )
+        opData.Input.meta.has_mask = True
+        opData.Input.meta.axistags = vigra.defaultAxistags('txyzc')
+        opData.Input.setValue( sampleData )
+
+        op = OpCompressedCache( parent=None, graph=graph )
+        #logger.debug("Setting block shape...")
+        op.BlockShape.setValue( [1, 100, 75, 50, 2] )
+        op.Input.connect( opData.Output )
+
+        assert op.Output.ready()
+
+        slicing = numpy.s_[ 0:2, 0:100, 50:150, 75:150, 0:1 ]
+        expectedData = sampleData[slicing]
+
+        results = {}
+        def readData(resultIndex):
+            results[resultIndex] = op.Output[slicing].wait()
+
+        threads = []
+        for i in range( 10 ):
+            threads.append( threading.Thread( target=functools.partial( readData, i ) ) )
+
+        for th in threads:
+            th.start()
+
+        for th in threads:
+            th.join()
+
+        assert len( results ) == len( threads ), "Didn't get all results."
+
+        #logger.debug("Checking data...")
+        for i, data in results.items():
+            assert (data == expectedData).all() and \
+                   (data.mask == expectedData.mask).all() and \
+                   (data.fill_value == expectedData.fill_value).all(),\
+                "Incorrect output for index {}".format( i )
+
     def testSetInSlot(self):
         logger.info("Generating sample data...")
         sampleData = numpy.indices((100, 200, 150), dtype=numpy.float32).sum(0)
@@ -242,6 +448,44 @@ class TestOpCompressedCache( object ):
         #logger.debug("Checking data...")    
         assert (readData == expectedData).all(), "Incorrect output!"
 
+    def testSetInSlot_masked(self):
+        logger.info("Generating sample data...")
+        sampleData = numpy.indices((100, 200, 150), dtype=numpy.float32).sum(0)
+        sampleData = sampleData.view( numpy.ma.masked_array )
+        sampleData.set_fill_value(sampleData.dtype.type(sampleData.fill_value))
+        sampleData[0] = numpy.ma.masked
+
+        graph = Graph()
+        opData = OpArrayPiper( graph=graph )
+        opData.Input.meta.has_mask = True
+        opData.Input.meta.axistags = vigra.defaultAxistags('xyz')
+        opData.Input.setValue( sampleData )
+
+        op = OpCompressedCache( parent=None, graph=graph )
+        #logger.debug("Setting block shape...")
+        op.BlockShape.setValue( [100, 75, 50] )
+        op.Input.connect( opData.Output )
+
+        assert op.Output.ready()
+
+        slicing = numpy.s_[ 0:100, 0:75, 0:50 ]
+        expectedData = numpy.ma.ones( slicing2shape(slicing), dtype=int )
+        expectedData.set_fill_value(expectedData.dtype.type(expectedData.fill_value))
+        expectedData[0] = numpy.ma.masked
+
+        # This is what we're testing.
+        #logger.debug("Forcing external data...")
+        op.Input[slicing] = expectedData
+
+        #logger.debug("Requesting data...")
+        readData = op.Output[slicing].wait()
+
+        #logger.debug("Checking data...")
+        assert (readData == expectedData).all() and \
+               (readData.mask == expectedData.mask).all() and \
+               (readData.fill_value == expectedData.fill_value).all(),\
+            "Incorrect output!"
+
     def testReconnectWithoutRequest(self):
         vol = numpy.zeros((200, 100, 50), dtype=numpy.float32)
         vol1 = vigra.taggedView(vol, axistags='xyz')
@@ -266,6 +510,41 @@ class TestOpCompressedCache( object ):
         out = op.Output[...].wait()
 
         assert (out == vol).all(), "Incorrect output!"
+
+    def testReconnectWithoutRequest_masked(self):
+        vol = numpy.ma.zeros((200, 100, 50), dtype=numpy.float32)
+        vol.set_fill_value(vol.dtype.type(vol.fill_value))
+        vol[0] = numpy.ma.masked
+        vol1 = vol
+        vol2 = vol1.T
+        graph = Graph()
+
+        opData1 = OpArrayPiper(graph=graph)
+        opData1.Input.meta.has_mask = True
+        opData1.Input.meta.axistags = vigra.defaultAxistags('xyz')
+        opData1.Input.setValue(vol1)
+
+        op = OpCompressedCache(graph=graph)
+        op.Input.connect(opData1.Output)
+        op.BlockShape.setValue((200, 100, 10))
+        out = op.Output[...].wait()
+
+        assert (out == vol).all() and \
+               (out.mask == vol.mask).all() and \
+               (out.fill_value == vol.fill_value).all(),\
+            "Incorrect output!"
+
+        op.BlockShape.setValue((50, 100, 10))
+
+        # Older versions of OpCompressedCache threw an exception here because
+        #  we tried to access the cache after changing the blockshape.
+        # But in the current version, we claim that's okay.
+        out = op.Output[...].wait()
+
+        assert (out == vol).all() and \
+               (out.mask == vol.mask).all() and \
+               (out.fill_value == vol.fill_value).all(),\
+            "Incorrect output!"
 
     def testChangeBlockshape(self):
         logger.info("Generating sample data...")
@@ -308,6 +587,59 @@ class TestOpCompressedCache( object ):
         
         #logger.debug("Checking data...")    
         assert (readData == expectedData).all(), "Incorrect output!"
+
+    def testChangeBlockshape_masked(self):
+        logger.info("Generating sample data...")
+        sampleData = numpy.indices((100, 200, 150), dtype=numpy.float32).sum(0)
+        sampleData = sampleData.view( numpy.ma.masked_array )
+        sampleData.set_fill_value(sampleData.dtype.type(sampleData.fill_value))
+        sampleData[0] = numpy.ma.masked
+
+        graph = Graph()
+        opData = OpArrayPiper( graph=graph )
+        opData.Input.meta.has_mask = True
+        opData.Input.meta.axistags = vigra.defaultAxistags('xyz')
+        opData.Input.setValue( sampleData )
+
+        op = OpCompressedCache( parent=None, graph=graph )
+        #logger.debug("Setting block shape...")
+        op.BlockShape.setValue( [100, 75, 50] )
+        op.Input.connect( opData.Output )
+
+        assert op.Output.ready()
+
+        slicing = numpy.s_[ 0:100, 50:150, 75:150 ]
+        expectedData = sampleData[slicing]
+
+        #logger.debug("Requesting data...")
+        readData = op.Output[slicing].wait()
+
+        #logger.debug("Checking data...")
+        assert (readData == expectedData).all() and \
+               (readData.mask == expectedData.mask).all() and \
+               (readData.fill_value == expectedData.fill_value).all(),\
+            "Incorrect output!"
+
+        # Now change the blockshape and the input and try again...
+        sampleDataWithChannel = sampleData[..., None]
+        opData.Input.meta.axistags = vigra.defaultAxistags('xyzc')
+        opData.Input.setValue( sampleDataWithChannel )
+        op.BlockShape.setValue( [45, 33, 40, 1] )
+
+        assert op.Output.ready()
+
+        slicing = numpy.s_[ 60:70, 50:110, 60:120, 0:1 ]
+        expectedData = sampleDataWithChannel[slicing]
+
+        #logger.debug("Requesting data...")
+        readData = op.Output[slicing].wait()
+
+        #logger.debug("Checking data...")
+        assert (readData == expectedData).all() and \
+               (readData.mask == expectedData.mask).all() and \
+               (readData.fill_value == expectedData.fill_value).all(),\
+            "Incorrect output!"
+
 
     def testCleanup(self):
         sampleData = numpy.indices((100, 200, 150), dtype=numpy.float32).sum(0)
@@ -380,6 +712,74 @@ class TestOpCompressedCache( object ):
                 result = op.Output[slicing_2].wait()
 
                 assert (result == expectedData_2).all(), "Incorrect output!"
+        finally:
+            shutil.rmtree(tempdir)
+
+    def testHDF5_masked(self):
+        logger.info("Generating sample data...")
+        sampleData = numpy.indices((150, 250, 150), dtype=numpy.float32).sum(0)
+        sampleData = sampleData.view( numpy.ma.masked_array )
+        sampleData.set_fill_value(sampleData.dtype.type(sampleData.fill_value))
+        sampleData[0] = numpy.ma.masked
+
+        graph = Graph()
+        opData = OpArrayPiper( graph=graph )
+        opData.Input.meta.axistags = vigra.defaultAxistags('xyz')
+        opData.Input.meta.has_mask = True
+        opData.Input.setValue( sampleData )
+
+        op = OpCompressedCache( parent=None, graph=graph )
+        #logger.debug("Setting block shape...")
+        op.BlockShape.setValue( [75, 125, 150] )
+        op.Input.connect( opData.Output )
+
+        assert op.OutputHdf5.ready()
+
+        slicing = numpy.s_[ 0:75, 125:250, 0:150 ]
+        slicing_str = str([list(_) for _ in zip(*[[_.start, _.stop]  for _ in slicing])])
+        expectedData = sampleData[slicing]
+
+        slicing_2 = numpy.s_[ 0:75, 0:125, 0:150 ]
+        expectedData_2 = expectedData[slicing_2]
+
+        #logger.debug("Requesting data...")
+        tempdir = tempfile.mkdtemp()
+
+        try:
+            with h5py.File(os.path.join(tempdir, "data.h5"), "w") as h5_file:
+                op.OutputHdf5[slicing].writeInto(h5_file).wait()
+
+                assert slicing_str in h5_file, "Missing dataset!"
+
+                assert (h5_file[slicing_str]["data"][()] == expectedData).all() and \
+                       (h5_file[slicing_str]["mask"][()] == expectedData.mask).all() and \
+                       (h5_file[slicing_str]["fill_value"][()] == expectedData.fill_value).all(),\
+                    "Incorrect output!"
+
+            with h5py.File(os.path.join(tempdir, "data.h5"), "r") as h5_file:
+                graph = Graph()
+
+                opData = OpArrayPiper( graph=graph )
+                opData.Input.meta.axistags = vigra.AxisTags('xyz')
+                opData.Input.meta.has_mask = True
+                opData.Input.setValue( numpy.empty_like(expectedData_2) )
+
+                op = OpCompressedCache( parent=None, graph=graph )
+                op.InputHdf5.meta.axistags = vigra.AxisTags('xyz')
+                op.InputHdf5.meta.has_mask = True
+                op.InputHdf5.meta.shape = (75, 125, 150)
+                #logger.debug("Setting block shape...")
+                op.BlockShape.setValue( [75, 125, 150] )
+                op.Input.connect( opData.Output )
+
+                op.InputHdf5[slicing_2] = h5_file[slicing_str]
+
+                result = op.Output[slicing_2].wait()
+
+                assert (result == expectedData).all() and \
+                       (result.mask == expectedData.mask).all() and \
+                       (result.fill_value == expectedData.fill_value).all(),\
+                    "Incorrect output!"
         finally:
             shutil.rmtree(tempdir)
 
