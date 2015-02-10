@@ -151,10 +151,12 @@ class OpCompressedCache(OpCache):
             # Compute slicing within destination array and slicing within this block
             destination_relative_intersection = numpy.subtract(intersecting_roi, roi.start)
             block_relative_intersection = numpy.subtract(intersecting_roi, block_start)
+            destination_relative_intersection_slicing = roiToSlice(*destination_relative_intersection)
+            block_relative_intersection_slicing = roiToSlice( *block_relative_intersection )
             
             # Copy from block to destination
             dataset = self._getBlockDataset( entire_block_roi )
-            destination[ roiToSlice(*destination_relative_intersection) ] = dataset[ roiToSlice( *block_relative_intersection ) ]
+            destination[ destination_relative_intersection_slicing ] = dataset[ block_relative_intersection_slicing ]
 
     def _executeCleanBlocks(self, destination):
         """
