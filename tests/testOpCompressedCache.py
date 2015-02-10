@@ -359,8 +359,8 @@ class TestOpCompressedCache( object ):
             with h5py.File(os.path.join(tempdir, "data.h5"), "w") as h5_file:
                 op.OutputHdf5[slicing].writeInto(h5_file).wait()
 
-                assert slicing_str in h5_file
-                assert (h5_file[slicing_str][()] == expectedData).all()
+                assert slicing_str in h5_file, "Missing dataset!"
+                assert (h5_file[slicing_str][()] == expectedData).all(), "Incorrect output!"
 
             with h5py.File(os.path.join(tempdir, "data.h5"), "r") as h5_file:
                 graph = Graph()
@@ -379,7 +379,7 @@ class TestOpCompressedCache( object ):
 
                 result = op.Output[slicing_2].wait()
 
-                assert (result == expectedData_2).all()
+                assert (result == expectedData_2).all(), "Incorrect output!"
         finally:
             shutil.rmtree(tempdir)
 
