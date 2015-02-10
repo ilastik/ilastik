@@ -447,7 +447,8 @@ class OpCompressedCache(OpCache):
             # This hdf5 data does not correspond to exactly one block.
             # We must uncompress it and write it the "normal" way (the slow way)
             # FIXME: This would use less memory if we uncompressed the data block-by-block
-            self.Input[roiToSlice(roi.start, roi.stop)] = value[:]
+            data = value[:]
+            self.Input[roiToSlice(roi.start, roi.stop)] = data
 
 #        self.Output._sig_value_changed()
 #        self.OutputHdf5._sig_value_changed()
