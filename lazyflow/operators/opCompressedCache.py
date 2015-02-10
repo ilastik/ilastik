@@ -392,8 +392,10 @@ class OpCompressedCache(OpCache):
             # Compute slicing within source array and slicing within this block
             source_relative_intersection = numpy.subtract(intersecting_roi, roi.start)
             block_relative_intersection = numpy.subtract(intersecting_roi, block_start)
+            source_relative_intersection_slicing = roiToSlice( *source_relative_intersection )
+            block_relative_intersection_slicing = roiToSlice( *block_relative_intersection )
             
-            new_block_data = value[ roiToSlice(*source_relative_intersection) ]
+            new_block_data = value[ source_relative_intersection_slicing ]
             new_block_sum = new_block_data.sum()
             if not store_zero_blocks and new_block_sum == 0 and block_start not in self._cacheFiles:
                 # Special fast-path: If this block doesn't exist yet, 
@@ -403,7 +405,7 @@ class OpCompressedCache(OpCache):
             else:
                 # Copy from source to block
                 dataset = self._getBlockDataset( entire_block_roi )
-                dataset[ roiToSlice( *block_relative_intersection ) ] = new_block_data
+                dataset[ block_relative_intersection_slicing ] = new_block_data
 
                 # If we can, remove this block entirely.
                 if not store_zero_blocks and new_block_sum == 0 and dataset[:].sum() == 0:
