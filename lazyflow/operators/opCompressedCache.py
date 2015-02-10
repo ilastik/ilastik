@@ -312,7 +312,7 @@ class OpCompressedCache(OpCache):
                                         shape=datashape,
                                         dtype=self.Output.meta.dtype,
                                         chunks=chunkshape,
-                                        compression='lzf' ) # lzf should be faster than gzip, 
+                                        compression='lzf' ) # lzf should be faster than gzip,
                                                             # with a slightly worse compression ratio
 
                 self._blockLocks[block_start] = RequestLock()
