@@ -161,6 +161,8 @@ class ArrayLike( SlotType ):
             self.slot.meta.dtype = value.dtype.type
             if hasattr(value,"axistags"):
                 self.slot.meta.axistags = value.axistags
+            if isinstance(value, numpy.ma.masked_array):
+                self.slot.meta.has_mask = True
         else:
             self.slot.meta.shape = (1,)
             if isinstance(value, int) or \
