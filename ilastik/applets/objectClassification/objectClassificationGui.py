@@ -257,29 +257,8 @@ class ObjectClassificationGui(LabelingGui):
                 export_file.add_rois("/images/{}/raw", op.RawImages, "table", settings["margin"])
 
         export_file.write_all(settings["file type"], settings["compression"])
-
-    def exportObjectInfo_old(self):
-        main_operator = self.topLevelOperatorView
-        features = main_operator.ComputedFeatureNames([]).wait()
-        dimensions = main_operator.RawImages.meta.shape
-        dialog = ExportObjectInfoDialog(dimensions, features)
-        if dialog.exec_() == 1:
-
-            feature_selection = list(dialog.checked_features())
-            settings = dialog.settings()
-            settings.update({"dimensions": dimensions})
-
-            self.progress_bar = MultiProgressDialog(["Computing Features...", "Exporting..."])
-            self.progress_bar.show()
-
-            op = OpExportObjectInfo(settings, self.progress_bar, parent=main_operator.viewed_operator())
-            op.ObjectFeatures.connect(main_operator.opPredict.Features)
-            op.SelectedFeatures.setValue(feature_selection)
-            op.RawImage.connect(main_operator.RawImages)
-            op.LabelImage.connect(main_operator.SegmentationImages)
-
-            op.WriteData([]).submit()
-            #logger.debug("Export Object Info exited with status: '%s'" % "succes" if result[0] else "failure")
+        export_file.ExportProgress.unsubscribe(ep)
+        export_file.InsertionProgress.unsubscribe(ip)
 
     def exportObjectInfo_very_old(self):
         if not self.layerstack or len(self.layerstack)==0:
