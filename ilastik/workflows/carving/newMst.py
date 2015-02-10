@@ -7,6 +7,16 @@ import numpy
 class NewSegmentor(object):
     def __init__(self, labels = None, volume_feat = None, edgeWeightFunctor = None, progressCallback = None,
                  h5file = None):
+        self.object_names = dict()
+        self.objects = dict()
+        self.object_seeds_fg = dict()
+        self.object_seeds_bg = dict()
+        self.object_seeds_fg_voxels = dict()
+        self.object_seeds_bg_voxels = dict()
+        self.bg_priority =dict()
+        self.no_bias_below = dict()
+        self.object_lut = dict()
+        self.hasSeg = False
 
         if h5file is None:
             self.supervoxelUint32 = labels
@@ -47,6 +57,8 @@ class NewSegmentor(object):
     def run(self, unaries, prios = None, uncertainty="exchangeCount",
             moving_average = False, noBiasBelow = 0, **kwargs):
         self.gridSegmentor.run(float(prios[1]),float(noBiasBelow))
+        seg = self.gridSegmentor.getSuperVoxelSeg()
+        print seg
         self.hasSeg = True
 
 
@@ -61,6 +73,15 @@ class NewSegmentor(object):
     def getVoxelSegmentation(self, roi, out = None):
         return self.gridSegmentor.getSegmentation(roiBegin=roi.start[1:4],roiEnd=roi.stop[1:4], out=out)
 
+
+    def setSeeds(self,fgSeeds, bgSeeds):
+        self.gridSegmentor.setSeeds(fgSeeds, bgSeeds)
+
+    def getSuperVoxelSeg(self):
+        return  self.gridSegmentor.getSuperVoxelSeg()
+
+    def getSuperVoxelSeeds(self):
+        return  self.gridSegmentor.getSuperVoxelSeeds()
 
     def saveH5(self, filename, groupname, mode="w"):
         print "saving segmentor to %r[%r] ..." % (filename, groupname)
