@@ -19,14 +19,18 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
+import os
 import sys
 import logging
 import threading
 import functools
 import weakref
 import gc
+import tempfile
+import shutil
 
 import numpy
+import h5py
 import vigra
 
 from lazyflow.graph import Graph
@@ -320,6 +324,60 @@ class TestOpCompressedCache( object ):
         gc.collect()
         assert r() is None, "OpBlockedArrayCache was not cleaned up correctly"
         
+    def testHDF5(self):
+        logger.info("Generating sample data...")
+        sampleData = numpy.indices((150, 250, 150), dtype=numpy.float32).sum(0)
+        sampleData = sampleData.view( vigra.VigraArray )
+        sampleData.axistags = vigra.defaultAxistags('xyz')
+
+        graph = Graph()
+        opData = OpArrayPiper( graph=graph )
+        opData.Input.setValue( sampleData )
+
+        op = OpCompressedCache( parent=None, graph=graph )
+        #logger.debug("Setting block shape...")
+        op.BlockShape.setValue( [75, 125, 150] )
+        op.Input.connect( opData.Output )
+
+        assert op.OutputHdf5.ready()
+
+        slicing = numpy.s_[ 0:75, 125:250, 0:150 ]
+        slicing_str = str([list(_) for _ in zip(*[[_.start, _.stop]  for _ in slicing])])
+        expectedData = sampleData[slicing].view(numpy.ndarray)
+
+        slicing_2 = numpy.s_[ 0:75, 0:125, 0:150 ]
+        expectedData_2 = expectedData[slicing_2].view(numpy.ndarray)
+
+        #logger.debug("Requesting data...")
+        tempdir = tempfile.mkdtemp()
+
+        try:
+            with h5py.File(os.path.join(tempdir, "data.h5"), "w") as h5_file:
+                op.OutputHdf5[slicing].writeInto(h5_file).wait()
+
+                assert slicing_str in h5_file
+                assert (h5_file[slicing_str][()] == expectedData).all()
+
+            with h5py.File(os.path.join(tempdir, "data.h5"), "r") as h5_file:
+                graph = Graph()
+                opData = OpArrayPiper( graph=graph )
+                opData.Input.meta.axistags = vigra.AxisTags('xyz')
+                opData.Input.setValue( numpy.empty_like(expectedData_2) )
+
+                op = OpCompressedCache( parent=None, graph=graph )
+                op.InputHdf5.meta.axistags = vigra.AxisTags('xyz')
+                op.InputHdf5.meta.shape = (75, 125, 150)
+                #logger.debug("Setting block shape...")
+                op.BlockShape.setValue( [75, 125, 150] )
+                op.Input.connect( opData.Output )
+
+                op.InputHdf5[slicing_2] = h5_file[slicing_str]
+
+                result = op.Output[slicing_2].wait()
+
+                assert (result == expectedData_2).all()
+        finally:
+            shutil.rmtree(tempdir)
 
 if __name__ == "__main__":
     # Set up logging for debug
