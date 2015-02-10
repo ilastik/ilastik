@@ -311,7 +311,6 @@ class TestOpCompressedUserLabelArray(object):
         summed_projection = numpy.sum(full_data, axis=3, keepdims=True)
         assert ((summed_projection != 0) == (projected_data != 0)).all()
 
-        
 
 if __name__ == "__main__":
     import sys
