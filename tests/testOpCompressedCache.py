@@ -254,7 +254,9 @@ class TestOpCompressedCache( object ):
         op = OpCompressedCache(graph=graph)
         op.Input.connect(opData1.Output)
         op.BlockShape.setValue((200, 100, 10))
-        out = op.Output[...].wait()
+        out = op.Output[...].wait().view(numpy.ndarray)
+
+        assert (out == vol).all(), "Incorrect output!"
 
         op.BlockShape.setValue((50, 100, 10))
 
@@ -262,6 +264,8 @@ class TestOpCompressedCache( object ):
         #  we tried to access the cache after changing the blockshape.
         # But in the current version, we claim that's okay.
         out = op.Output[...].wait()
+
+        assert (out == vol).all(), "Incorrect output!"
 
     def testChangeBlockshape(self):
         logger.info("Generating sample data...")
