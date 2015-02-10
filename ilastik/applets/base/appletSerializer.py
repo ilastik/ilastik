@@ -441,8 +441,20 @@ class SerialBlockSlot(SerialSlot):
                         slicing = roiToSlice(*bounding_box_roi)
                         block = block[block_slicing]
 
-                subgroup.create_dataset(blockName, data=block)
-                subgroup[blockName].attrs['blockSlice'] = slicingToString(slicing)
+                # If we have a masked array, convert it to a structured array so that h5py can handle it.
+                if slot[index].meta.has_mask:
+                    mygroup.attrs["meta.has_mask"] = True
+
+                    block_group = subgroup.create_group(blockName)
+
+                    block_group.create_dataset("data", data=block.data)
+                    block_group.create_dataset("mask", data=block.mask)
+                    block_group.create_dataset("fill_value", data=block.fill_value)
+
+                    block_group.attrs['blockSlice'] = slicingToString(slicing)
+                else:
+                    subgroup.create_dataset(blockName, data=block)
+                    subgroup[blockName].attrs['blockSlice'] = slicingToString(slicing)
 
     @timeLogged(logger, logging.DEBUG)
     def _deserialize(self, mygroup, slot):
@@ -460,7 +472,28 @@ class SerialBlockSlot(SerialSlot):
             groupName, labelGroup = t
             for blockData in labelGroup.values():
                 slicing = stringToSlicing(blockData.attrs['blockSlice'])
-                self.inslot[index][slicing] = blockData[...]
+
+                # If it is suppose to be a masked array,
+                # deserialize the pieces and rebuild the masked array.
+                assert slot[index].meta.has_mask == mygroup.attrs.get("meta.has_mask"), \
+                       "The slot and stored data have different values for" + \
+                       " `has_mask`. They are" + \
+                       " `bool(slot[index].meta.has_mask)`=" + \
+                       repr(bool(slot[index].meta.has_mask)) + " and" + \
+                       " `mygroup.attrs.get(\"meta.has_mask\", False)`=" + \
+                       repr(mygroup.attrs.get("meta.has_mask", False)) + \
+                       ". Please fix this to proceed with deserialization."
+                if slot[index].meta.has_mask:
+                    blockArray = numpy.ma.masked_array(
+                        blockData["data"][()],
+                        mask=blockData["mask"][()],
+                        fill_value=blockData["fill_value"][()],
+                        shrink=False
+                    )
+                else:
+                    blockArray = blockData[...]
+
+                self.inslot[index][slicing] = blockArray
 
 class SerialHdf5BlockSlot(SerialBlockSlot):
 
