@@ -100,10 +100,10 @@ class ArrayLike( SlotType ):
         shape = roi.stop - roi.start if roi else self.slot.meta.shape
         storage = numpy.ndarray(shape, dtype=self.slot.meta.dtype)
 
-        # if axistags is True:
-        #     storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(s))elf.axistags))
+        # if self.slot.meta.axistags is True:
+        #     storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(self.slot.meta.axistags))))
         #     #storage = storage.view(vigra.VigraArray)
-        #     #storage.axistags = copy.copy(self.axistags)
+        #     #storage.axistags = copy.copy(self.slot.meta.axistags)
         if self.slot.meta.has_mask:
             storage_mask = numpy.zeros(storage.shape, dtype=bool)
             storage_fill_value = None
