@@ -154,7 +154,7 @@ class OpCompressedUserLabelArray(OpCompressedCache):
             # Change the data
             block[matching_label_coords] = 0
             if decrement_remaining:
-                block = numpy.where( coords_to_decrement, block-1, block )
+                block[coords_to_decrement] -= 1
             
             # Update cache with the new data (only if something really changed)
             if len(matching_label_coords[0]) > 0 or (decrement_remaining and coords_to_decrement.sum() > 0):
@@ -256,12 +256,14 @@ class OpCompressedUserLabelArray(OpCompressedCache):
             # Compute slicing within the deep array and slicing within this block
             deep_relative_intersection = numpy.subtract(intersecting_roi, input_roi.start)
             block_relative_intersection = numpy.subtract(intersecting_roi, block_start)
-                        
-            deep_data = self._getBlockDataset( entire_block_roi )[roiToSlice(*block_relative_intersection)]
+            block_relative_intersection_slicing = roiToSlice(*block_relative_intersection)
 
-            # make binary and convert to float
-            deep_data_float = numpy.where( deep_data, numpy.float32(1.0), numpy.float32(0.0) )
-            
+            deep_data = block[block_relative_intersection_slicing]
+
+            # make binary and convert to float (must copy)
+            deep_data_float = deep_data.astype(numpy.float32)
+            deep_data_float[deep_data_float.nonzero()] = 1
+
             # multiply by slice-index
             deep_data_view = numpy.rollaxis(deep_data_float, projection_axis_index, 0)
 
@@ -287,19 +289,22 @@ class OpCompressedUserLabelArray(OpCompressedCache):
                               [ (slice(None),) + (None,)*(deep_data_view.ndim-1) ]
 
             # Take the max projection of this block's data.
-            block_max_projection = numpy.amax(deep_data_float, axis=projection_axis_index, keepdims=True)
+            block_max_projection = deep_data_float.max(axis=projection_axis_index)
+            block_max_projection = numpy.ma.expand_dims(block_max_projection, axis=projection_axis_index)
 
             # Merge this block's projection into the overall projection.
             destination_relative_intersection = numpy.array(deep_relative_intersection)
-            destination_relative_intersection[:, projection_axis_index] = (0,1)            
-            destination_subview = destination[roiToSlice(*destination_relative_intersection)]            
+            destination_relative_intersection[:, projection_axis_index] = (0,1)
+            destination_relative_intersection_slicing = roiToSlice(*destination_relative_intersection)
+
+            destination_subview = destination[destination_relative_intersection_slicing]
             numpy.maximum(block_max_projection, destination_subview, out=destination_subview)
             
             # Invert the nonzero pixels so increasing colors correspond to increasing slices.
             # See comment in calc_color_value(), above.
-            destination_subview[:] = numpy.where(destination_subview, 
-                                                 numpy.float32(1.0) - destination_subview, 
-                                                 numpy.float32(0.0))
+            destination_subview[destination_subview.nonzero()] -= 1
+            destination_subview[()] = -destination_subview
+
         return
 
     def _copyData(self, roi, destination, block_starts):
@@ -318,14 +323,17 @@ class OpCompressedUserLabelArray(OpCompressedCache):
             # Compute slicing within destination array and slicing within this block
             destination_relative_intersection = numpy.subtract(intersecting_roi, roi.start)
             block_relative_intersection = numpy.subtract(intersecting_roi, block_start)
-            
+            destination_relative_intersection_slicing = roiToSlice(*destination_relative_intersection)
+            block_relative_intersection_slicing = roiToSlice(*block_relative_intersection)
+
             if block_start in self._cacheFiles:
                 # Copy from block to destination
                 dataset = self._getBlockDataset( entire_block_roi )
-                destination[ roiToSlice(*destination_relative_intersection) ] = dataset[ roiToSlice( *block_relative_intersection ) ]
+
+                destination[ destination_relative_intersection_slicing ] = dataset[ block_relative_intersection_slicing ]
             else:
                 # Not stored yet.  Overwrite with zeros.
-                destination[ roiToSlice(*destination_relative_intersection) ] = 0
+                destination[ destination_relative_intersection_slicing ] = 0
 
     def propagateDirty(self, slot, subindex, roi):
         # There should be no way to make the output dirty except via setInSlot()
@@ -363,7 +371,8 @@ class OpCompressedUserLabelArray(OpCompressedCache):
         original_data |= new_pixels
 
         # Replace 'eraser' values with zeros.
-        cleaned_data = numpy.where(original_data == self._eraser_magic_value, 0, original_data[:])
+        cleaned_data = original_data.copy()
+        cleaned_data[original_data == self._eraser_magic_value] = 0
 
         # Set in the cache (our superclass).
         super( OpCompressedUserLabelArray, self )._setInSlotInput( slot, subindex, roi, cleaned_data, store_zero_blocks=False )
