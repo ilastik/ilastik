@@ -145,6 +145,21 @@ class OpCompressedUserLabelArray(OpCompressedCache):
             # Get data
             block_shape = numpy.subtract( block_roi[1], block_roi[0] )
             block = numpy.ndarray( shape=block_shape, dtype=self.Output.meta.dtype )
+
+            if self.Output.meta.has_mask:
+                block_fill_value = None
+                if issubclass(block.dtype.type, numpy.integer):
+                    block_fill_value = block.dtype.type(numpy.iinfo(block.dtype.type).max)
+                elif issubclass(block.dtype.type, numpy.floating):
+                    block_fill_value = block.dtype.type(numpy.nan)
+
+                block = numpy.ma.masked_array(
+                    block,
+                    mask=numpy.ma.getmaskarray(block),
+                    fill_value=block_fill_value,
+                    shrink=False
+                )
+
             self.execute(self.Output, (), SubRegion( self.Output, *block_roi ), block)
 
             # Locate pixels to change
@@ -258,7 +273,17 @@ class OpCompressedUserLabelArray(OpCompressedCache):
             block_relative_intersection = numpy.subtract(intersecting_roi, block_start)
             block_relative_intersection_slicing = roiToSlice(*block_relative_intersection)
 
-            deep_data = block[block_relative_intersection_slicing]
+            block = self._getBlockDataset( entire_block_roi )
+            deep_data = None
+            if self.Output.meta.has_mask:
+                deep_data = numpy.ma.masked_array(
+                    block["data"][block_relative_intersection_slicing],
+                    mask=block["mask"][block_relative_intersection_slicing],
+                    fill_value=block["fill_value"][()],
+                    shrink=False
+                )
+            else:
+                deep_data = block[block_relative_intersection_slicing]
 
             # make binary and convert to float (must copy)
             deep_data_float = deep_data.astype(numpy.float32)
@@ -330,7 +355,12 @@ class OpCompressedUserLabelArray(OpCompressedCache):
                 # Copy from block to destination
                 dataset = self._getBlockDataset( entire_block_roi )
 
-                destination[ destination_relative_intersection_slicing ] = dataset[ block_relative_intersection_slicing ]
+                if self.Output.meta.has_mask:
+                    destination[ destination_relative_intersection_slicing ] = dataset["data"][ block_relative_intersection_slicing ]
+                    destination.mask[ destination_relative_intersection_slicing ] = dataset["mask"][ block_relative_intersection_slicing ]
+                    destination.fill_value = dataset["fill_value"][()]
+                else:
+                    destination[ destination_relative_intersection_slicing ] = dataset[ block_relative_intersection_slicing ]
             else:
                 # Not stored yet.  Overwrite with zeros.
                 destination[ destination_relative_intersection_slicing ] = 0
@@ -362,6 +392,21 @@ class OpCompressedUserLabelArray(OpCompressedCache):
 
         # Extract the data to modify
         original_data = numpy.ndarray( shape=new_pixels.shape, dtype=self.Output.meta.dtype )
+        # Use masked array if that is what Output expects.
+        if self.Output.meta.has_mask:
+            original_data_fill_value = None
+            if issubclass(original_data.dtype.type, numpy.integer):
+                original_data_fill_value = original_data.dtype.type(numpy.iinfo(original_data.dtype.type).max)
+            elif issubclass(original_data.dtype.type, numpy.floating):
+                original_data_fill_value = original_data.dtype.type(numpy.nan)
+
+            original_data = numpy.ma.masked_array(
+                original_data,
+                mask=numpy.ma.getmaskarray(original_data),
+                fill_value=original_data_fill_value,
+                shrink=False
+            )
+
         self.execute(self.Output, (), roi, original_data)
         
         # Reset the pixels we need to change (so we can use |= below)
