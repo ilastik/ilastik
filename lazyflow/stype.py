@@ -102,7 +102,12 @@ class ArrayLike( SlotType ):
 
         if self.slot.meta.has_mask:
             storage_mask = numpy.zeros(storage.shape, dtype=bool)
-            storage = numpy.ma.masked_array(storage, mask=storage_mask, shrink=False)
+            storage_fill_value = None
+            if issubclass(storage.dtype.type, numpy.integer):
+                storage_fill_value = storage.dtype.type(numpy.iinfo(storage.dtype.type).max)
+            elif issubclass(storage.dtype.type, numpy.floating):
+                storage_fill_value = storage.dtype.type(numpy.nan)
+            storage = numpy.ma.masked_array(storage, mask=storage_mask, fill_value=storage_fill_value, shrink=False)
         # if axistags is True:
         #     storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(s))elf.axistags))
         #     #storage = storage.view(vigra.VigraArray)
