@@ -344,16 +344,20 @@ class OpCarving(Operator):
         #lut_seeds[:] = 0
 
         # set foreground and background seeds
-        fgVoxels = self._mst.object_seeds_fg_voxels[name]
-        bgVoxels = self._mst.object_seeds_bg_voxels[name]
+        fgVoxelsSeedPos = self._mst.object_seeds_fg_voxels[name]
+        bgVoxelsSeedPos = self._mst.object_seeds_bg_voxels[name]
+        fgArraySeedPos = numpy.array(fgVoxelsSeedPos)
+        bgArraySeedPos = numpy.array(bgVoxelsSeedPos)
+        self._mst.setSeeds(fgArraySeedPos, bgArraySeedPos);
 
-        #user-drawn seeds:
-        #self._mst.seeds[fgVoxels] = 2
-        #self._mst.seeds[bgVoxels] = 1
-        print "JAJEARW$ER\n\n\n\n\werwr"
-        print fgVoxels[0].shape, fgVoxels[0].dtype
-        
-        self._mst.setSeeds(fgVoxels[0].astype("uint8"), bgVoxels[0].astype("uint8"));
+
+        # load the actual segmentation
+        fgNodes = self._mst.object_lut[name] 
+
+        print len(fgNodes)
+        print fgNodes[0].dtype
+
+        self._mst.setResulFgObj(fgNodes[0])
 
         #newSegmentation = numpy.ones(len(lut_objects), dtype=numpy.int32)
         #newSegmentation[ self._mst.object_lut[name] ] = 2
@@ -364,7 +368,7 @@ class OpCarving(Operator):
 
         #now that 'name' is no longer part of the set of finished objects, rebuild the done overlay
         self._buildDone()
-        return (fgVoxels, bgVoxels)
+        return (fgVoxelsSeedPos, bgVoxelsSeedPos)
     
     def loadObject(self, name):
         logger.info( "want to load object with name = %s" % name )
@@ -437,9 +441,9 @@ class OpCarving(Operator):
         """
         Deletes an object called name.
         """
-        lut_seeds = self._mst.seeds.lut[:]
+        #lut_seeds = self._mst.seeds.lut[:]
         # clean seeds
-        lut_seeds[:] = 0
+        #lut_seeds[:] = 0
 
         del self._mst.object_lut[name]
         del self._mst.object_seeds_fg_voxels[name]
@@ -612,9 +616,7 @@ class OpCarving(Operator):
 
         fgVoxels, bgVoxels = self.get_label_voxels()
         
-        print fgVoxels, bgVoxels
-        print "FG VOX", fgVoxels.dtype, fgVoxels.shape
-        print "FB VOX", bgVoxels.dtype, bgVoxels.shape
+
 
         self.attachVoxelLabelsToObject(name, fgVoxels=fgVoxels, bgVoxels=bgVoxels)
        

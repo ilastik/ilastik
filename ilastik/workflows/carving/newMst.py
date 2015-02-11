@@ -1,6 +1,6 @@
 import vigra
 from vigra import graphs as vgraph
-from vigra import ilastiktools as ilastiktools
+import ilastiktools
 import numpy
 
 
@@ -166,3 +166,7 @@ class NewSegmentor(object):
         g.create_dataset("resultSegmentation", data = gridSeg.getResultSegmentation())
         
         g.file.flush()
+
+
+    def setResulFgObj(self, fgNodes):
+        self.gridSegmentor.setResulFgObj(fgNodes)
