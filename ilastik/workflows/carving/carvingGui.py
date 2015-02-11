@@ -520,7 +520,7 @@ class CarvingGui(LabelingGui):
         #  but that won't be correct for overlapping objects.
         mst = self.topLevelOperatorView.MST.value
         object_supervoxels = mst.object_lut[object_name]
-        object_lut = numpy.zeros(mst.nodeNum, dtype=numpy.int32)
+        object_lut = numpy.zeros(mst.nodeNum+1, dtype=numpy.int32)
         object_lut[object_supervoxels] = 1
         supervoxel_volume = mst.supervoxelUint32
         object_volume = object_lut[supervoxel_volume]

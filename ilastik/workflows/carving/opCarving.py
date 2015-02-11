@@ -703,7 +703,8 @@ class OpCarving(Operator):
             params["prios"] = [1.0, bgPrio, 1.0]
             params["uncertainty"] = self.UncertaintyType.value
             params["noBiasBelow"] = noBiasBelow
-            unaries =  numpy.zeros((self._mst.numNodes,labelCount+1), dtype=numpy.float32)
+            
+            unaries =  numpy.zeros((self._mst.numNodes+1,labelCount+1), dtype=numpy.float32)
             self._mst.run(unaries, **params)
             logger.info( " ... carving took %f sec." % (time.time()-t1) )
 
