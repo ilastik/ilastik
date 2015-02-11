@@ -360,11 +360,6 @@ class OpCompressedCache(OpCache):
                     data = self.Input(*entire_block_roi).wait()
                     block_file['data'][...] = data
                     if self.Output.meta.has_mask:
-                        # Clean up data just in case.
-                        data = data.view(numpy.ma.masked_array)
-                        data.mask = numpy.ma.getmaskarray(data)
-                        data.fill_value = data.dtype.type(data.fill_value)
-
                         block_file['mask'][...] = data.mask
                         block_file['fill_value'][...] = data.fill_value
                     
