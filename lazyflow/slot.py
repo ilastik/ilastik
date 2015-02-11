@@ -73,7 +73,7 @@ class ValueRequest(object):
         self.result = None
 
     def writeInto(self, destination):
-        destination[:] = self.result
+        destination[...] = self.result[...]
         return self
 
 def is_setup_fn(func):
