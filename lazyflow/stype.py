@@ -101,9 +101,10 @@ class ArrayLike( SlotType ):
         storage = numpy.ndarray(shape, dtype=self.slot.meta.dtype)
 
         # if self.slot.meta.axistags is True:
-        #     storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(self.slot.meta.axistags))))
-        #     #storage = storage.view(vigra.VigraArray)
-        #     #storage.axistags = copy.copy(self.slot.meta.axistags)
+        #     storage = vigra.taggedView(storage, self.slot.meta.axistags)
+        #     #storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(self.slot.meta.axistags))))
+        #     ##storage = storage.view(vigra.VigraArray)
+        #     ##storage.axistags = copy.copy(self.slot.meta.axistags)
         if self.slot.meta.has_mask:
             storage_mask = numpy.zeros(storage.shape, dtype=bool)
             storage_fill_value = None
