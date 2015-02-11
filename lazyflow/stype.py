@@ -139,7 +139,7 @@ class ArrayLike( SlotType ):
                 #warn_deprecated("old style slot encountered: non array-like value set -> change SlotType from ArrayLike to proper SlotType")
                 destination = [value]
 
-            if type(destination) == numpy.ndarray and destination.shape == ():
+            if isinstance(destination, numpy.ndarray) and destination.shape == ():
                 # This is necessary because numpy types will not be caught in the except statement above.
                 # They don't throw when used with __getitem__
                 # e.g. try this:
