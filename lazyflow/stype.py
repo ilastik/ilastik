@@ -198,7 +198,7 @@ class ArrayLike( SlotType ):
                     "check_result_valid: result has wrong shape.  Got {}, expected {}".format( result.shape, roi.stop - roi.start )
         elif isinstance(result, list):
             s = roi.stop[0] - roi.start[0]
-            assert len(result) == s, "check_result_valid: result has wrong shape (%d instead of %d) for dimension %d" % (result.shape[d], s, d)
+            assert len(result) == s, "check_result_valid: result has wrong shape (%d instead of %d)" % (len(result), s)
         elif isinstance(result, h5py.Group):
             # FIXME: this is a hack. the slot
             # OpCompressedCache.OutputHdf5 is not really array-like,
