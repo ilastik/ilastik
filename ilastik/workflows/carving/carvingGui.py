@@ -520,9 +520,9 @@ class CarvingGui(LabelingGui):
         #  but that won't be correct for overlapping objects.
         mst = self.topLevelOperatorView.MST.value
         object_supervoxels = mst.object_lut[object_name]
-        object_lut = numpy.zeros(len(mst.objects.lut), dtype=numpy.int32)
+        object_lut = numpy.zeros(mst.nodeNum, dtype=numpy.int32)
         object_lut[object_supervoxels] = 1
-        supervoxel_volume = mst.regionVol
+        supervoxel_volume = mst.supervoxelUint32
         object_volume = object_lut[supervoxel_volume]
 
         # Run the mesh extractor
@@ -601,16 +601,16 @@ class CarvingGui(LabelingGui):
         self._shownObjects3D = dict((k, v) for k, v in self._shownObjects3D.iteritems()
                                     if k in op.MST.value.object_lut.keys())
 
-        lut = numpy.zeros(len(op.MST.value.objects.lut), dtype=numpy.int32)
+        lut = numpy.zeros(op.MST.value.nodeNum+1, dtype=numpy.int32)
         for name, label in self._shownObjects3D.iteritems():
-            objectSupervoxels = op.MST.value.object_lut[name]
+            objectSupervoxels = op.MST.value.objects[name]
             lut[objectSupervoxels] = label
 
         if self._showSegmentationIn3D:
             # Add segmentation as label, which is green
-            lut[:] = numpy.where( op.MST.value.segmentation.lut == 2, self._segmentation_3d_label, lut )
+            lut[:] = numpy.where( op.MST.value.getSuperVoxelSeg() == 2, self._segmentation_3d_label, lut )
                     
-        self._renderMgr.volume = lut[op.MST.value.regionVol] # (Advanced indexing)
+        self._renderMgr.volume = lut[op.MST.value.supervoxelUint32] # (Advanced indexing)
         self._update_colors()
         self._renderMgr.update()
 
@@ -619,7 +619,7 @@ class CarvingGui(LabelingGui):
         ctable = self._doneSegmentationLayer.colorTable
 
         for name, label in self._shownObjects3D.iteritems():
-            color = QColor(ctable[op.MST.value.object_names[name]])
+            color = QColor(ctable[op.MST.value.objects[name]])
             color = (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0)
             self._renderMgr.setColor(label, color)
 
@@ -687,7 +687,7 @@ class CarvingGui(LabelingGui):
         seg = self.topLevelOperatorView.Segmentation
         
         #seg = self.topLevelOperatorView.MST.value.segmentation
-        #temp = self._done_lut[self.MST.value.regionVol[sl[1:4]]]
+        #temp = self._done_lut[self.MST.value.supervoxelUint32[sl[1:4]]]
         if seg.ready():
             #source = RelabelingArraySource(seg)
             #source.setRelabeling(numpy.arange(256, dtype=numpy.uint8))

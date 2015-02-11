@@ -203,16 +203,15 @@ class OpCarving(Operator):
         if self._mst is None:
             return
         with Timer() as timer:
-            if False:
-                self._done_lut = numpy.zeros(len(self._mst.objects.lut), dtype=numpy.int32)
-                self._done_seg_lut = numpy.zeros(len(self._mst.objects.lut), dtype=numpy.int32)
-                logger.info( "building 'done' luts" )
-                for name, objectSupervoxels in self._mst.object_lut.iteritems():
-                    if name == self._currObjectName:
-                        continue
-                    self._done_lut[objectSupervoxels] += 1
-                    assert name in self._mst.object_names, "%s not in self._mst.object_names, keys are %r" % (name, self._mst.object_names.keys())
-                    self._done_seg_lut[objectSupervoxels] = self._mst.object_names[name]
+            self._done_lut = numpy.zeros(self._mst.numNodes+1, dtype=numpy.int32)
+            self._done_seg_lut = numpy.zeros(self._mst.numNodes+1, dtype=numpy.int32)
+            logger.info( "building 'done' luts" )
+            for name, objectSupervoxels in self._mst.object_lut.iteritems():
+                if name == self._currObjectName:
+                    continue
+                self._done_lut[objectSupervoxels] += 1
+                assert name in self._mst.object_names, "%s not in self._mst.object_names, keys are %r" % (name, self._mst.object_names.keys())
+                self._done_seg_lut[objectSupervoxels] = self._mst.object_names[name]
         logger.info( "building the 'done' luts took {} seconds".format( timer.seconds() ) )
     
     def dataIsStorable(self):
@@ -292,7 +291,7 @@ class OpCarving(Operator):
         assert len(position3d) == 3
 
         #find the supervoxel that was clicked
-        sv = self._mst.regionVol[position3d]
+        sv = self._mst.supervoxelUint32[position3d]
         names = []
         for name, objectSupervoxels in self._mst.object_lut.iteritems():
             if numpy.sum(sv == objectSupervoxels) > 0:
@@ -653,7 +652,7 @@ class OpCarving(Operator):
             
         elif slot == self.Supervoxels:
             #avoid data being copied
-            temp = self._mst.regionVol[sl[1:4]]
+            temp = self._mst.supervoxelUint32[sl[1:4]]
             temp.shape = (1,) + temp.shape + (1,)
         elif slot  == self.DoneObjects:
             #avoid data being copied
@@ -661,7 +660,7 @@ class OpCarving(Operator):
                 result[0,:,:,:,0] = 0
                 return result
             else:
-                temp = self._done_lut[self._mst.regionVol[sl[1:4]]]
+                temp = self._done_lut[self._mst.supervoxelUint32[sl[1:4]]]
                 temp.shape = (1,) + temp.shape + (1,)
         elif slot  == self.DoneSegmentation:
             #avoid data being copied
@@ -669,7 +668,7 @@ class OpCarving(Operator):
                 result[0,:,:,:,0] = 0
                 return result
             else:
-                temp = self._done_seg_lut[self._mst.regionVol[sl[1:4]]]
+                temp = self._done_seg_lut[self._mst.supervoxelUint32[sl[1:4]]]
                 temp.shape = (1,) + temp.shape + (1,)
         elif slot == self.HintOverlay:
             if self._hints is None:
