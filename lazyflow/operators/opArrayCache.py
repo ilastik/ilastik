@@ -196,6 +196,20 @@ class OpArrayCache(OpCache):
 
             if self._cache is None or (self._cache.shape != self.Output.meta.shape):
                 mem = numpy.zeros(self.Output.meta.shape, dtype = self.Output.meta.dtype)
+                if self.Output.meta.has_mask:
+                    mem_fill_value = None
+
+                    if issubclass(mem.dtype.type, numpy.integer):
+                        mem_fill_value = mem.dtype.type(numpy.iinfo(mem.dtype.type).max)
+                    elif issubclass(mem.dtype.type, numpy.floating):
+                        mem_fill_value = mem.dtype.type(numpy.nan)
+
+                    mem = numpy.ma.masked_array(
+                        mem,
+                        mask=numpy.ma.getmaskarray(mem),
+                        fill_value=mem_fill_value,
+                        shrink=False
+                    )
                 self.logger.debug("OpArrayCache: Allocating cache (size: %dbytes)" % mem.nbytes)
                 if self._blockState is None:
                     self._allocateManagementStructures()
