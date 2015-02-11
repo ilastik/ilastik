@@ -191,7 +191,14 @@ class ArrayLike( SlotType ):
 
 
     def copy_data(self, dst, src):
-        dst[...] = src[...]
+        # Unfortunately, there appears to be a bug when copying masked arrays
+        # ( https://github.com/numpy/numpy/issues/5558 ).
+        # So, this must be used in the interim.
+        if isinstance(dst, numpy.ma.masked_array):
+            dst.data[...] = numpy.ma.getdata(src[...])
+            dst.mask[...] = numpy.ma.getmaskarray(src[...])
+        else:
+            dst[...] = src[...]
 
     def check_result_valid(self, roi, result):
         if isinstance(result, numpy.ndarray):
