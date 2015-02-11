@@ -73,7 +73,15 @@ class ValueRequest(object):
         self.result = None
 
     def writeInto(self, destination):
-        destination[...] = self.result[...]
+        # Unfortunately, there appears to be a bug when copying masked arrays
+        # ( https://github.com/numpy/numpy/issues/5558 ).
+        # So, this must be used in the interim.
+        if isinstance(destination, numpy.ma.masked_array):
+            destination.data[...] = numpy.ma.getdata(self.result)
+            destination.mask[...] = numpy.ma.getmaskarray(self.result)
+        else:
+            destination[...] = self.result[...]
+
         return self
 
 def is_setup_fn(func):
