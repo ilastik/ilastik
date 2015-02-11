@@ -112,6 +112,8 @@ class ArrayLike( SlotType ):
                 storage_fill_value = storage.dtype.type(numpy.iinfo(storage.dtype.type).max)
             elif issubclass(storage.dtype.type, numpy.floating):
                 storage_fill_value = storage.dtype.type(numpy.nan)
+            elif issubclass(storage.dtype.type, numpy.complexfloating):
+                storage_fill_value = storage.dtype.type(numpy.nan)
             storage = numpy.ma.masked_array(storage, mask=storage_mask, fill_value=storage_fill_value, shrink=False)
 
         return storage
