@@ -52,15 +52,15 @@ class OpMaskArray(Operator):
     def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
 
-        # Get data
-        data = self.InputArray[key].wait()
-        mask = self.InputMask[key].wait()
-
-        # Make a masked array
-        data_masked = numpy.ma.masked_array(data, mask=mask, shrink=False)
-
-        # Copy results
         if slot.name == 'Output':
+            # Get data
+            data = self.InputArray[key].wait()
+            mask = self.InputMask[key].wait()
+
+            # Make a masked array
+            data_masked = numpy.ma.masked_array(data, mask=mask, shrink=False)
+
+            # Copy results
             result[...] = data_masked
 
     def propagateDirty(self, slot, subindex, roi):
