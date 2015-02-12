@@ -178,6 +178,14 @@ class Mode(object):
     NumpyStructArray = 4
 
 
+class Default(object):
+    DivisionNames = {"names": ("time", "parent", "track", "child1", "child_track1", "child2", "child_track2")}
+    KnimeId = {"names": ("object_id",)}
+    IlastikId = {"names": ("time", "ilastik_id")}
+    LabelRoiPath = "/images/{}/labeling"
+    RawRoiPath = "/images/{}/raw"
+    RawPath = "/images/raw"
+
 class ExportFile(object):
     ExportProgress = OrderedSignal()
     InsertionProgress = OrderedSignal()

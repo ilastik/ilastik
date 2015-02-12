@@ -588,7 +588,7 @@ class OpObjectClassification(Operator, ExportingOperator,MultiLaneOperatorABC):
         self.export_progress_dialog = dialog
 
     def do_export(self, settings, selected_features, progress_slot):
-        from ilastik.utility.exportFile import objects_per_frame, ExportFile, ilastik_ids, Mode
+        from ilastik.utility.exportFile import objects_per_frame, ExportFile, ilastik_ids, Mode, Default
 
         label_image = self.SegmentationImages[0]
         obj_count = list(objects_per_frame(label_image))
@@ -598,17 +598,17 @@ class OpObjectClassification(Operator, ExportingOperator,MultiLaneOperatorABC):
         export_file.ExportProgress.subscribe(progress_slot)
         export_file.InsertionProgress.subscribe(progress_slot)
 
-        export_file.add_columns("table", range(sum(obj_count)), Mode.List, {"names": ("object_id",)})
-        export_file.add_columns("table", list(ids), Mode.List, {"names": ("time", "ilastik_id")})
+        export_file.add_columns("table", range(sum(obj_count)), Mode.List, Default.KnimeId)
+        export_file.add_columns("table", list(ids), Mode.List, Default.IlastikId)
         export_file.add_columns("table", self.ObjectFeatures[0], Mode.IlastikFeatureTable,
                                 {"selection": selected_features})
 
         if settings["file type"] == "h5":
-            export_file.add_rois("/images/{}/labeling", label_image, "table", settings["margin"], "labeling")
+            export_file.add_rois(Default.LabelRoiPath, label_image, "table", settings["margin"], "labeling")
             if settings["include raw"]:
-                export_file.add_image("/images/raw", self.RawImages[0])
+                export_file.add_image(Default.RawPath, self.RawImages[0])
             else:
-                export_file.add_rois("/images/{}/raw", self.RawImages[0], "table", settings["margin"])
+                export_file.add_rois(Default.RawRoiPath, self.RawImages[0], "table", settings["margin"])
         export_file.write_all(settings["file type"], settings["compression"])
 
         export_file.ExportProgress.unsubscribe(progress_slot)
