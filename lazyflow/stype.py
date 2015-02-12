@@ -124,13 +124,13 @@ class ArrayLike( SlotType ):
                 assert(roi.dim == destination.ndim), "%r ndim=%r, shape=%r" % (roi.toSlice(), destination.ndim, destination.shape)
             sl = roiToSlice(roi.start, roi.stop)
             try:
-                destination[:] = value[sl]
+                self.copy_data(destination, value[sl])
             except TypeError:
                 # FIXME: This warning used to be triggered by a corner case that could be encountered by "value slots".
                 #        The behavior here isn't truly deprecated.  But we need a better solution for lazyflow 2.0.
                 # See ilastik/ilastik#704
                 #warn_deprecated("old style slot encountered: non array-like value set -> change SlotType from ArrayLike to proper SlotType")
-                destination[:] = value
+                self.copy_data(destination, value)
         else:
             sl = roiToSlice(roi.start, roi.stop)
             try:
