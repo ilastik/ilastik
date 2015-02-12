@@ -27,6 +27,8 @@ import shutil
 import tempfile
 from lazyflow.graph import Graph, Operator, InputSlot, Slot, OperatorWrapper
 from lazyflow.operators import OpCompressedUserLabelArray
+from lazyflow.operators.opArrayCache import OpArrayCache
+from lazyflow.operators.opArrayPiper import OpArrayPiper
 
 from ilastik.applets.base.appletSerializer import \
     getOrCreateGroup, deleteIfPresent, \
@@ -482,6 +484,296 @@ class TestSerialBlockSlot(unittest.TestCase):
         # Verify that we get the same data back.
         assert ( opLabelArrays.Output[0][10:11, 10:20, 10:20, 0:1].wait() == 1 ).all()
         assert ( opLabelArrays.Output[0][30:31, 30:40, 30:40, 0:1].wait() == 2 ).all()
+
+        os.remove(h5_filepath)
+        shutil.rmtree(tmp_dir)
+
+
+class TestSerialBlockSlot2(unittest.TestCase):
+
+    def _init_objects(self):
+        raw_data = numpy.zeros((100,100,100,1), dtype=numpy.uint32)
+
+        raw_data[0:15, 0:15, 0:15, 0:1] = numpy.ma.masked
+
+        opLabelArrays = OperatorWrapper( OpCompressedUserLabelArray, graph=Graph() )
+        opLabelArrays.Input.resize(1)
+        opLabelArrays.Input[0].meta.has_mask = True
+        opLabelArrays.Input[0].meta.axistags = vigra.AxisTags('zyxc')
+        opLabelArrays.Input[0].setValue( raw_data )
+        opLabelArrays.shape.setValue( raw_data.shape )
+        opLabelArrays.eraser.setValue( 255 )
+        opLabelArrays.deleteLabel.setValue( -1 )
+        opLabelArrays.blockShape.setValue( (10,10,10,1) )
+
+        # This will serialize/deserialize data to the h5 file.
+        slotSerializer = SerialBlockSlot( opLabelArrays.Output, opLabelArrays.Input, opLabelArrays.nonzeroBlocks )
+        return opLabelArrays, slotSerializer
+
+    def testBasic1(self):
+        tmp_dir = tempfile.mkdtemp()
+        h5_filepath = os.path.join(tmp_dir , 'serial_blockslot_test.h5' )
+
+        # Create an operator and a serializer to write the data.
+        opLabelArrays, slotSerializer = self._init_objects()
+
+        # Pick some slicings
+        slicing_1 = numpy.s_[10:11, 10:20, 10:20, 0:1]
+        slicing_2 = numpy.s_[11:12, 10:20, 10:20, 0:1]
+
+        # Give it some data.
+        opLabelArrays.Input[0][slicing_1] = 1*numpy.ones((1,10,10,1), dtype=numpy.uint8)
+        opLabelArrays.Input[0][slicing_2] = 2*numpy.ones((1,10,10,1), dtype=numpy.uint8)
+
+        with h5py.File(h5_filepath, 'w') as f:
+            label_group = f.create_group('label_data')
+            slotSerializer.serialize( label_group )
+
+        # Now start again with fresh objects.
+        # This time we'll read the data.
+        opLabelArrays, slotSerializer = self._init_objects()
+
+        with h5py.File(h5_filepath, 'r') as f:
+            label_group = f['label_data']
+            slotSerializer.deserialize( label_group )
+
+        # Verify that we get the same data back.
+        result_1 = opLabelArrays.Output[0][slicing_1].wait()
+        result_2 = opLabelArrays.Output[0][slicing_2].wait()
+
+        assert ( result_1 == 1 ).all()
+        assert ( result_2 == 2 ).all()
+
+        expected_mask = numpy.zeros(
+            opLabelArrays.Input[0].meta.shape,
+            dtype=bool
+        )
+        expected_mask[0:15, 0:15, 0:15, 0:1] = True
+        expected_mask[slicing_1] = False
+        expected_mask[slicing_2] = False
+
+        assert ( result_1.mask == expected_mask[slicing_1] ).all()
+        assert ( result_2.mask == expected_mask[slicing_2] ).all()
+
+        os.remove(h5_filepath)
+        shutil.rmtree(tmp_dir)
+
+    def testBasic2(self):
+        tmp_dir = tempfile.mkdtemp()
+        h5_filepath = os.path.join(tmp_dir , 'serial_blockslot_test.h5' )
+
+        # Create an operator and a serializer to write the data.
+        opLabelArrays, slotSerializer = self._init_objects()
+
+        # Pick some slicings
+        slicing_1 = numpy.s_[10:11, 10:20, 10:20, 0:1]
+        slicing_2 = numpy.s_[11:12, 10:20, 10:20, 0:1]
+
+        # Give it some data.
+        opLabelArrays.Input[0][slicing_1] = 1*numpy.ones((1,10,10,1), dtype=numpy.uint8)
+        opLabelArrays.Input[0][slicing_2] = 2*numpy.ones((1,10,10,1), dtype=numpy.uint8)
+
+        with h5py.File(h5_filepath, 'w') as f:
+            label_group = f.create_group('label_data')
+            slotSerializer.serialize( label_group )
+
+            # Try smashing the data that was saved
+            for each_item in label_group:
+                del label_group[each_item]
+
+            # See if it will write again anyways.
+            slotSerializer.serialize( label_group )
+
+        # Now start again with fresh objects.
+        # This time we'll read the data.
+        opLabelArrays, slotSerializer = self._init_objects()
+
+        with h5py.File(h5_filepath, 'r') as f:
+            label_group = f['label_data']
+            slotSerializer.deserialize( label_group )
+
+        # Verify that we get the same data back.
+        result_1 = opLabelArrays.Output[0][slicing_1].wait()
+        result_2 = opLabelArrays.Output[0][slicing_2].wait()
+
+        assert ( result_1 == 1 ).all()
+        assert ( result_2 == 2 ).all()
+
+        expected_mask = numpy.zeros(
+            opLabelArrays.Input[0].meta.shape,
+            dtype=bool
+        )
+        expected_mask[0:15, 0:15, 0:15, 0:1] = True
+        expected_mask[slicing_1] = False
+        expected_mask[slicing_2] = False
+
+        assert ( result_1.mask == expected_mask[slicing_1] ).all()
+        assert ( result_2.mask == expected_mask[slicing_2] ).all()
+
+        os.remove(h5_filepath)
+        shutil.rmtree(tmp_dir)
+
+    def testBasic3(self):
+        tmp_dir = tempfile.mkdtemp()
+        h5_filepath = os.path.join(tmp_dir , 'serial_blockslot_test.h5' )
+
+        # Create an operator and a serializer to write the data.
+        opLabelArrays, slotSerializer = self._init_objects()
+
+        # Pick some slicings
+        slicing_1 = numpy.s_[10:11, 10:20, 10:20, 0:1]
+        slicing_2 = numpy.s_[30:31, 30:40, 30:40, 0:1]
+
+        # Give it some data.
+        opLabelArrays.Input[0][slicing_1] = 1*numpy.ones((1,10,10,1), dtype=numpy.uint8)
+        opLabelArrays.Input[0][slicing_2] = 2*numpy.ones((1,10,10,1), dtype=numpy.uint8)
+
+        with h5py.File(h5_filepath, 'w') as f:
+            label_group = f.create_group('label_data')
+            slotSerializer.serialize( label_group )
+
+        # Now start again with fresh objects.
+        # This time we'll read the data.
+        opLabelArrays, slotSerializer = self._init_objects()
+
+        with h5py.File(h5_filepath, 'r') as f:
+            label_group = f['label_data']
+            slotSerializer.deserialize( label_group )
+
+        # Verify that we get the same data back.
+        result_1 = opLabelArrays.Output[0][slicing_1].wait()
+        result_2 = opLabelArrays.Output[0][slicing_2].wait()
+
+        assert ( result_1 == 1 ).all()
+        assert ( result_2 == 2 ).all()
+
+        expected_mask = numpy.zeros(
+            opLabelArrays.Input[0].meta.shape,
+            dtype=bool
+        )
+        expected_mask[0:15, 0:15, 0:15, 0:1] = True
+        expected_mask[slicing_1] = False
+        expected_mask[slicing_2] = False
+
+        assert ( result_1.mask == expected_mask[slicing_1] ).all()
+        assert ( result_2.mask == expected_mask[slicing_2] ).all()
+
+        os.remove(h5_filepath)
+        shutil.rmtree(tmp_dir)
+
+    def testBasic4(self):
+        tmp_dir = tempfile.mkdtemp()
+        h5_filepath = os.path.join(tmp_dir , 'serial_blockslot_test.h5' )
+
+        # Create an operator and a serializer to write the data.
+        opLabelArrays, slotSerializer = self._init_objects()
+
+        # Pick some slicings
+        slicing_1 = numpy.s_[0:20, 0:20, 0:20, 0:1]
+        slicing_2 = numpy.s_[30:31, 30:40, 30:40, 0:1]
+
+        # Give it some data.
+        opLabelArrays.Input[0][slicing_1] = 1*numpy.ones((20,20,20,1), dtype=numpy.uint8)
+        opLabelArrays.Input[0][slicing_2] = 2*numpy.ones((1,10,10,1), dtype=numpy.uint8)
+
+        with h5py.File(h5_filepath, 'w') as f:
+            label_group = f.create_group('label_data')
+            slotSerializer.serialize( label_group )
+
+        # Now start again with fresh objects.
+        # This time we'll read the data.
+        opLabelArrays, slotSerializer = self._init_objects()
+
+        with h5py.File(h5_filepath, 'r') as f:
+            label_group = f['label_data']
+            slotSerializer.deserialize( label_group )
+
+        # Verify that we get the same data back.
+        result_1 = opLabelArrays.Output[0][slicing_1].wait()
+        result_2 = opLabelArrays.Output[0][slicing_2].wait()
+
+        assert ( result_1 == 1 ).all()
+        assert ( result_2 == 2 ).all()
+
+        expected_mask = numpy.zeros(
+            opLabelArrays.Input[0].meta.shape,
+            dtype=bool
+        )
+        expected_mask[0:15, 0:15, 0:15, 0:1] = True
+
+        assert ( result_1.mask == False ).all()
+        assert ( result_2.mask == expected_mask[slicing_2] ).all()
+
+        os.remove(h5_filepath)
+        shutil.rmtree(tmp_dir)
+
+    def testBasic5(self):
+        tmp_dir = tempfile.mkdtemp()
+        h5_filepath = os.path.join(tmp_dir , 'serial_blockslot_test.h5' )
+
+        # Create an operator and a serializer to write the data.
+        opLabelArrays, slotSerializer = self._init_objects()
+
+        # Give it some data.
+        data_1 = numpy.ones((1,10,10,1), dtype=numpy.uint8)
+        data_2 = 2*data_1
+
+        data_1 = numpy.ma.masked_array(
+            data_1,
+            mask=numpy.zeros(data_1.shape, dtype=bool),
+            shrink=False
+        )
+        data_2 = numpy.ma.masked_array(
+            data_2,
+            mask=numpy.zeros(data_1.shape, dtype=bool),
+            shrink=False
+        )
+
+        data_1[0:1, 0:1, 0:1, 0:1] = numpy.ma.masked
+        data_2[0:1, 9:10, 9:10, 0:1] = numpy.ma.masked
+
+        # Pick some slicings
+        slicing_1 = numpy.s_[10:11, 10:20, 10:20, 0:1]
+        slicing_2 = numpy.s_[30:31, 30:40, 30:40, 0:1]
+
+        # Give it some data.
+        opLabelArrays.Input[0][slicing_1] = data_1
+        opLabelArrays.Input[0][slicing_2] = data_2
+
+        with h5py.File(h5_filepath, 'w') as f:
+            label_group = f.create_group('label_data')
+            slotSerializer.serialize( label_group )
+
+            # Get all dataset names
+            def iter_dataset_names(name):
+                if isinstance(label_group[name], h5py.Dataset):
+                    yield(name)
+
+            # Then delete them
+            for each_dataset_name in label_group.visit(iter_dataset_names):
+                del label_group[each_dataset_name]
+
+            # See if it will write again anyways.
+            slotSerializer.serialize( label_group )
+
+        # Now start again with fresh objects.
+        # This time we'll read the data.
+        opLabelArrays, slotSerializer = self._init_objects()
+
+        with h5py.File(h5_filepath, 'r') as f:
+            label_group = f['label_data']
+            slotSerializer.deserialize( label_group )
+
+        # Verify that we get the same data back.
+        result_1 = opLabelArrays.Output[0][slicing_1].wait()
+        result_2 = opLabelArrays.Output[0][slicing_2].wait()
+
+
+        assert ( result_1.filled(1) == 1 ).all()
+        assert ( result_2.filled(2) == 2 ).all()
+
+        assert ( result_1.mask == data_1.mask ).all()
+        assert ( result_2.mask == data_2.mask ).all()
 
         os.remove(h5_filepath)
         shutil.rmtree(tmp_dir)
