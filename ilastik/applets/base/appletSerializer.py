@@ -448,7 +448,12 @@ class SerialBlockSlot(SerialSlot):
                     block_group = subgroup.create_group(blockName)
 
                     block_group.create_dataset("data", data=block.data)
-                    block_group.create_dataset("mask", data=block.mask)
+                    block_group.create_dataset(
+                        "mask",
+                        data=block.mask,
+                        compression="gzip",
+                        compression_opts=2
+                    )
                     block_group.create_dataset("fill_value", data=block.fill_value)
 
                     block_group.attrs['blockSlice'] = slicingToString(slicing)
