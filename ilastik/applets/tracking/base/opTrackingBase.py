@@ -554,7 +554,7 @@ class OpTrackingBase(Operator, ExportingOperator):
         self.export_progress_dialog = dialog
 
     def do_export(self, settings, selected_features, progress_slot):
-        from ilastik.utility.exportFile import objects_per_frame, ExportFile, ilastik_ids, Mode
+        from ilastik.utility.exportFile import objects_per_frame, ExportFile, ilastik_ids, Mode, Default
 
         obj_count = list(objects_per_frame(self.LabelImage))
         track_ids, extra_track_ids, divisions = self.export_track_ids()
@@ -565,21 +565,20 @@ class OpTrackingBase(Operator, ExportingOperator):
         export_file.ExportProgress.subscribe(progress_slot)
         export_file.InsertionProgress.subscribe(progress_slot)
 
-        export_file.add_columns("table", range(sum(obj_count)), Mode.List, {"names": ("object_id",)})
-        export_file.add_columns("table", list(ids), Mode.List, {"names": ("time", "ilastik_id")})
+        export_file.add_columns("table", range(sum(obj_count)), Mode.List, Default.KnimeId)
+        export_file.add_columns("table", list(ids), Mode.List, Default.IlastikId)
         export_file.add_columns("table", track_ids, Mode.IlastikTrackingTable,
                                 {"max": multi_move_max, "counts": obj_count, "extra ids": extra_track_ids})
         export_file.add_columns("table", self.ObjectFeatures, Mode.IlastikFeatureTable,
                                 {"selection": selected_features})
-        export_file.add_columns("divisions", divisions, Mode.List, {
-            "names": ("time", "parent", "track", "child1", "child_track1", "child2", "child_track2")})
+        export_file.add_columns("divisions", divisions, Mode.List, Default.DivisionNames)
 
         if settings["file type"] == "h5":
-            export_file.add_rois("/images/{}/labeling", self.LabelImage, "table", settings["margin"], "labeling")
+            export_file.add_rois(Default.LabelRoiPath, self.LabelImage, "table", settings["margin"], "labeling")
             if settings["include raw"]:
-                export_file.add_image("/images/raw", self.RawImage)
+                export_file.add_image(Default.RawPath, self.RawImage)
             else:
-                export_file.add_rois("/images/{}/raw", self.RawImage, "table", settings["margin"])
+                export_file.add_rois(Default.RawRoiPath, self.RawImage, "table", settings["margin"])
         export_file.write_all(settings["file type"], settings["compression"])
 
         export_file.ExportProgress.unsubscribe(progress_slot)
