@@ -1,9 +1,14 @@
 from PyQt4 import uic
-from PyQt4.QtGui import QDialog
+from PyQt4.QtCore import pyqtSignal
+from PyQt4.QtGui import QDialog, QMessageBox
 from os.path import split as split_path
 
 
 class ProgressDialog(QDialog):
+    cancel = pyqtSignal()
+    trigger_popup = pyqtSignal(str, str, object, tuple)
+    trigger_update = pyqtSignal(int)
+
     def __init__(self, steps, parent=None):
         super(ProgressDialog, self).__init__(parent)
 
@@ -16,7 +21,21 @@ class ProgressDialog(QDialog):
 
         self._add_pending()
 
+        self.ui.cancel.clicked.connect(self.cancel)
+        self.trigger_popup.connect(self.popup)
+        self.trigger_update.connect(self.update_step)
+
+    def __call__(self, progress):
+        self.safe_update_step(progress)
+
+    def set_busy(self, busy):
+        self.ui.progress.setMaximum(0 if busy else 100)
+
+    def safe_update_step(self, progress):
+        self.trigger_update.emit(progress)
+
     def update_step(self, progress):
+        self.set_busy(False)
         if self.is_finished:
             return
 
@@ -44,7 +63,18 @@ class ProgressDialog(QDialog):
             self.ui.progress.setValue(0)
             self._add_pending()
 
+    def popup(self, level, title, description, args):
+        assert level in ("information", "warning", "critical")
+        if args is not None:
+            description = [description]
+            for arg in args:
+                if isinstance(arg, Exception):
+                    description.append(str(arg))
+            description = "\n".join(description)
+        getattr(QMessageBox, str(level))(self, title, description)
 
+    def safe_popup(self, level, title, description, *args):
+        self.trigger_popup.emit(level, title, description, args)
 
 if __name__ == '__main__':
     from PyQt4.QtGui import QApplication
@@ -57,7 +87,7 @@ if __name__ == '__main__':
 
     for j in range(3):
         for i in range(11):
-            p.update_step(i*10)
-            sleep(.1)
-
+            p.safe_update_step(i*10)
+            sleep(.01)
+    p.safe_popup("information", "lol", "rofl")
     app.exec_()

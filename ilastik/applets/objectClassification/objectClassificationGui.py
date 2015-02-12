@@ -20,9 +20,10 @@
 ###############################################################################
 from PyQt4.QtGui import *
 from PyQt4 import uic
-from PyQt4.QtCore import pyqtSignal, pyqtSlot, Qt, QObject
+from PyQt4.QtCore import pyqtSignal, pyqtSlot, Qt, QObject, pyqtBoundSignal
 from PyQt4.QtGui import QFileDialog
 from ilastik.shell.gui.ipcManager import IPCFacade, Protocol
+from ilastik.utility.exportingOperator import ExportingGui
 
 from ilastik.widgets.featureTableWidget import FeatureEntry
 from ilastik.widgets.featureDlg import FeatureDlg
@@ -82,7 +83,7 @@ class FeatureSubSelectionDialog(FeatureSelectionDialog):
         self.ui.label_2.setVisible(False)
         self.ui.label_z.setVisible(False)
 
-class ObjectClassificationGui(LabelingGui):
+class ObjectClassificationGui(LabelingGui, ExportingGui):
     """A subclass of LabelingGui for labeling objects.
 
     Handles labeling objects, viewing the predicted results, and
@@ -210,9 +211,6 @@ class ObjectClassificationGui(LabelingGui):
 
         self.checkEnableButtons()
 
-        # exportObjectInfo Progress Dialog
-        self.progress_bar = None
-
     def menus(self):
         if not ilastik_config.getboolean("ilastik", "debug"):
             return []
@@ -222,85 +220,12 @@ class ObjectClassificationGui(LabelingGui):
         m.addAction("Import New Label Info").triggered.connect( self.importLabelInfo )
         mlist = [m]
         m = QMenu("&Export", self.volumeEditorWidget)
-        m.addAction("Export Object Information").triggered.connect(self.exportObjectInfo)
+        m.addAction("Export Object Information").triggered.connect(self.show_export_dialog)
         mlist.append(m=)
         return mlist
 
         return [m]
 
-    def exportObjectInfo(self):
-        from ilastik.utility.exportFile import ExportFile, objects_per_frame, ProgressPrinter, Mode, ilastik_ids
-        op = self.topLevelOperatorView
-        feature_names = op.ComputedFeatureNames([]).wait()
-        dimensions = op.RawImages.meta.shape
-
-        dialog = ExportObjectInfoDialog(dimensions, feature_names)
-        if not dialog.exec_():
-            return
-
-        selected_features = dialog.checked_features()
-        settings = dialog.settings()
-
-        obj_count = list(objects_per_frame(op.SegmentationImages))
-
-        export_file = ExportFile(settings["file path"])
-
-        ip = ProgressPrinter("InsertionProgress", range(100, -1, -5))
-        ep = ProgressPrinter("ExportProgress", range(100, -1, -5))
-
-        export_file.ExportProgress.subscribe(ep)
-        export_file.InsertionProgress.subscribe(ip)
-
-        export_file.add_columns("table", range(sum(obj_count)), Mode.List, {"names": ("object_id",)})
-        ids = ilastik_ids(obj_count)
-        export_file.add_columns("table", list(ids), Mode.List, {"names": ("time", "ilastik_id")})
-        export_file.add_columns("table", op.opPredict.Features, Mode.IlastikFeatureTable,
-                                {"selection": selected_features})
-
-        if settings["file type"] == "h5":
-            export_file.add_rois("/images/{}/labeling", op.SegmentationImages, "table", settings["margin"], "labeling")
-            if settings["include raw"]:
-                export_file.add_image("/images/raw", op.RawImages)
-            else:
-                export_file.add_rois("/images/{}/raw", op.RawImages, "table", settings["margin"])
-
-        export_file.write_all(settings["file type"], settings["compression"])
-        export_file.ExportProgress.unsubscribe(ep)
-        export_file.InsertionProgress.unsubscribe(ip)
-
-    def exportObjectInfo_very_old(self):
-        if not self.layerstack or len(self.layerstack)==0:
-            print "Wait, nothing defined yet"
-            
-        else:
-            rawIndex = self.layerstack.findMatchingIndex(lambda x: x.name=="Raw data")
-            objIndex = self.layerstack.findMatchingIndex(lambda x: x.name=="Objects")
-            rawLayer = self.layerstack[rawIndex]
-            objLayer = self.layerstack[objIndex]
-            mainOperator = self.topLevelOperatorView
-            computedFeatures = mainOperator.ComputedFeatureNames([]).wait()
-
-
-            dlg = ExportToKnimeDialog(rawLayer, objLayer, computedFeatures)
-            if dlg.exec_() == QDialog.Accepted:
-                if self._knime_exporter is None:
-                    #topLevelOp = self.topLevelOperatorView.viewed_operator()
-                    #imageIndex = topLevelOp.LabelInputs.index( self.topLevelOperatorView.LabelInputs )
-                    self._knime_exporter = OpExportObjectInfo(parent=mainOperator.viewed_operator())
-                    
-                    
-                    
-                    self._knime_exporter.RawImage.connect(mainOperator.RawImages)
-                    self._knime_exporter.CCImage.connect(mainOperator.SegmentationImages)
-                    #FIXME: pass the time region here, read it from the GUI somehow?
-                    feature_table = mainOperator.createExportTable(0, [])
-                    if feature_table is None:
-                        return
-                    self._knime_exporter.ObjectFeatures.setValue(feature_table)
-                    self._knime_exporter.ImagePerObject.setValue(True)
-                    self._knime_exporter.ImagePerTime.setValue(False)
-                
-                success = self._knime_exporter.WriteData([]).wait()
 
     def exportLabelInfo(self):
         file_path = QFileDialog.getSaveFileName(parent=self, caption="Export Label Info as JSON", filter="*.json")
@@ -782,7 +707,7 @@ class ObjectClassificationGui(LabelingGui):
                 for mode in Protocol.ValidHiliteModes[:-1]:
                     where = Protocol.simple("and", time=time, ilastik_id=obj)
                     cmd = Protocol.cmd(mode, where)
-                    sub.addAction(mode, IPCFacade().broadcast(cmd))
+                    sub.addAction(mode.capitalize(), IPCFacade().broadcast(cmd))
                 menu.addAction("Clear Hilite", IPCFacade().broadcast(Protocol.cmd("clear")))
             else:
                 menu.addAction("Open IPC Server Window", IPCFacade().show_info)
@@ -969,3 +894,9 @@ class ObjectClassificationGui(LabelingGui):
         # => remove the 'close' callback
         button.clicked.disconnect()
         button.clicked.connect(printToLog)
+
+    def get_raw_shape(self):
+        return self.op.RawImages.meta.shape
+
+    def get_feature_names(self):
+        return self.op.ComputedFeatureNames([]).wait()
