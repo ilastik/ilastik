@@ -479,7 +479,10 @@ class OpArrayCache(OpCache):
             with self._lock:
                 if self._cache is None:
                     self._allocateCache()
-                self._cache[key2] = value[roiToSlice(start2-start,stop2-start)]
+                self.Output.stype.copy_data(
+                    self._cache[key2],
+                    value[roiToSlice(start2-start,stop2-start)]
+                )
                 self._blockState[blockKey] = self._dirtyState
                 self._blockQuery[blockKey] = None
 
