@@ -198,6 +198,8 @@ class ArrayLike( SlotType ):
             src_val = src[...]
             dst.data[...] = numpy.ma.getdata(src_val)
             dst.mask[...] = numpy.ma.getmaskarray(src_val)
+            if isinstance(src_val, numpy.ma.masked_array):
+                dst.fill_value = src_val.fill_value
         else:
             dst[...] = src[...]
 
