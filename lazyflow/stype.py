@@ -195,8 +195,9 @@ class ArrayLike( SlotType ):
         # ( https://github.com/numpy/numpy/issues/5558 ).
         # So, this must be used in the interim.
         if isinstance(dst, numpy.ma.masked_array):
-            dst.data[...] = numpy.ma.getdata(src[...])
-            dst.mask[...] = numpy.ma.getmaskarray(src[...])
+            src_val = src[...]
+            dst.data[...] = numpy.ma.getdata(src_val)
+            dst.mask[...] = numpy.ma.getmaskarray(src_val)
         else:
             dst[...] = src[...]
 
