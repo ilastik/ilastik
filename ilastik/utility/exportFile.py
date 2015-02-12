@@ -39,8 +39,6 @@ def flatten_ilastik_feature_table(table, selection, signal):
         computed_feature = table([]).wait()
     signal(100)
 
-    print "features ready"
-
     feature_names = []
     feature_cats = []
     feature_channels = []
@@ -347,16 +345,17 @@ class ExportFile(object):
 
 
 class ProgressPrinter(object):
-    def __init__(self, name, range_):
+    def __init__(self, name, range_, max_=0):
         self.first = True
         self.range_ = range_
         self.steps = []
         self.name = name
         self.count = 1
+        self.max_ = max_
 
     def __call__(self, p):
         if p == 0 and self.first:
-            stdout.write("%s [%i]\n" % (self.name, self.count))
+            stdout.write("%s [%i%s]\n" % (self.name, self.count, ("/%i" % self.max_) if self.max_ > 0 else ""))
             self.steps = list(self.range_)
             self.count += 1
             self.first = False
@@ -367,7 +366,7 @@ class ProgressPrinter(object):
             self.__call__(p)
         if p == 100 and not self.first:
             self.first = True
-            stdout.write("\n%s finished\n" % self.name)
+            print
 
 
 if __name__ == "__main__":

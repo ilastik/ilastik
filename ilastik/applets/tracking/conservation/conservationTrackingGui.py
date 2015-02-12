@@ -1,10 +1,13 @@
 from PyQt4 import uic, QtGui
+from PyQt4.QtGui import *
 import os
 import logging
 import sys
 import re
 import traceback
+from PyQt4.QtCore import pyqtSignal
 from ilastik.applets.tracking.base.trackingBaseGui import TrackingBaseGui
+from ilastik.utility.exportingOperator import ExportingGui
 from ilastik.utility.gui.threadRouter import threadRouted
 from ilastik.config import cfg as ilastik_config
 
@@ -13,10 +16,9 @@ from lazyflow.request.request import Request
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
-class ConservationTrackingGui( TrackingBaseGui ):     
+class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
     
     withMergers = True
-    
     @threadRouted
     def _setMergerLegend(self, labels, selection):   
         for i in range(1,len(labels)+1):
@@ -235,76 +237,12 @@ class ConservationTrackingGui( TrackingBaseGui ):
             return []
 
         m = QtGui.QMenu("&Export", self.volumeEditorWidget)
-        m.addAction("Export Tracking Information").triggered.connect(self.export_tracking_info)
+        m.addAction("Export Tracking Information").triggered.connect(self.show_export_dialog)
 
         return [m]
-                
-    def export_tracking_info(self):
-        from ilastik.utility.exportFile import objects_per_frame
-        from ilastik.widgets.progressDialog import ProgressDialog
-        from functools import partial
-        from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog
-        from threading import Thread
 
-        op = self.topLevelOperatorView
-        dimensions = op.RawImage.meta.shape
-        computed_features = op.ObjectFeatures
-        feature_names = op.ComputedFeatureNames([]).wait()
+    def get_raw_shape(self):
+        return self.topLevelOperatorView.RawImage.meta.shape
 
-        dialog = ExportObjectInfoDialog(dimensions, feature_names)
-        if not dialog.exec_():
-            return
-        settings = dialog.settings()
-        selected_features = dialog.checked_features()
-
-        obj_count = list(objects_per_frame(op.LabelImage))
-        track_ids, extra_track_ids, divisions = op.export_track_ids()
-
-        progress = ProgressDialog(["Tracking Data", "Feature Data", "Division Data", "Exporting"])
-        progress.show()
-
-        export = partial(self.do_export, settings, obj_count, track_ids, extra_track_ids, computed_features,
-                         selected_features, divisions, op, progress)
-        Thread(target=export).run()
-
-    @staticmethod
-    def do_export(settings, obj_count, track_ids, extra_track_ids, computed_features, selected_features,
-                  divisions, op, dialog):
-        from ilastik.utility.exportFile import ExportFile, ProgressPrinter, ilastik_ids, Mode
-
-        export_file = ExportFile(settings["file path"])
-
-        #ip = ProgressPrinter("InsertionProgress", range(100, -1, -5))
-        #ep = ProgressPrinter("ExportProgress", range(100, -1, -5))
-        #export_file.ExportProgress.subscribe(ep)
-        #export_file.InsertionProgress.subscribe(ip)
-        export_file.ExportProgress.subscribe(dialog.update_step)
-        export_file.InsertionProgress.subscribe(dialog.update_step)
-        #multi_move_max = op.Parameters["maxObj"] if op.Parameters.ready() else 2
-        multi_move_max = 2
-
-        export_file.add_columns("table", range(sum(obj_count)), Mode.List, {"names": ("object_id",)})
-        ids = ilastik_ids(obj_count)
-        export_file.add_columns("table", list(ids), Mode.List, {"names": ("time", "ilastik_id")})
-        export_file.add_columns("table", track_ids, Mode.IlastikTrackingTable,
-                                {"max": multi_move_max, "counts": obj_count, "extra ids": extra_track_ids})
-        export_file.add_columns("table", computed_features, Mode.IlastikFeatureTable,
-                                {"selection": selected_features})
-        export_file.add_columns("divisions", divisions, Mode.List,
-                                {"names": (
-                                    "time", "parent", "track", "child1", "child_track1", "child2", "child_track2"
-                                )})
-
-        if settings["file type"] == "h5":
-            export_file.add_rois("/images/{}/labeling", op.LabelImage, "table", settings["margin"], "labeling")
-            if settings["include raw"]:
-                export_file.add_image("/images/raw", op.RawImage)
-            else:
-                export_file.add_rois("/images/{}/raw", op.RawImage, "table", settings["margin"])
-
-        export_file.write_all(settings["file type"], settings["compression"])
-
-        #export_file.ExportProgress.unsubscribe(ep)
-        #export_file.InsertionProgress.unsubscribe(ip)
-        export_file.ExportProgress.unsubscribe(dialog.update_step)
-        export_file.InsertionProgress.unsubscribe(dialog.update_step)
+    def get_feature_names(self):
+        return self.topLevelOperatorView.ComputedFeatureNames([]).wait()

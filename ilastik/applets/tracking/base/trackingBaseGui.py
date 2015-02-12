@@ -479,7 +479,7 @@ class TrackingBaseGui( LayerViewerGui ):
         obj, time = self.get_object(position5d)
         if obj == 0:
             menu = TitledMenu(["Background"])
-            menu.addAction("Clear Hilite")
+            menu.addAction("Clear Hilite", IPCFacade().broadcast(Protocol.cmd("clear")))
             menu.exec_(win_coord)
             return
 
@@ -499,18 +499,18 @@ class TrackingBaseGui( LayerViewerGui ):
 
         if any(IPCFacade().sending):
 
-            osubmenu = menu.addMenu("Hilite Object")
+            obj_sub_menu = menu.addMenu("Hilite Object")
             for mode in Protocol.ValidHiliteModes:
                 where = Protocol.simple("and", ilastik_id=obj, time=time)
                 cmd = Protocol.cmd(mode, where)
-                osubmenu.addAction(mode, IPCFacade().broadcast(cmd))
+                obj_sub_menu.addAction(mode.capitalize(), IPCFacade().broadcast(cmd))
 
-            submenus = [
+            sub_menus = [
                 ("Tracks", Protocol.simple_in, tracks),
                 ("Parents", Protocol.simple_in, parents),
                 ("Children", Protocol.simple_in, children)
             ]
-            for name, protocol, args in submenus:
+            for name, protocol, args in sub_menus:
                 if args:
                     sub = menu.addMenu("Hilite {}".format(name))
                     for mode in Protocol.ValidHiliteModes[:-1]:

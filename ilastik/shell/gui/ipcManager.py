@@ -422,7 +422,7 @@ class TCPServer(Binding, Receiving, QObject):
         self.server = server
         server.signal = self.signal
 
-        thread = threading.Thread(target=self.server.serve_forever)
+        thread = threading.Thread(target=self.server.serve_forever, name="TCPServer Thread")
         thread.daemon = True
         thread.start()
         logger.info("IPC Server started on port %d" % self.server.socket.getsockname()[1])
@@ -551,7 +551,7 @@ class ZMQPublisher(ZMQBase, Sending):
         self.socket = None
         self.info = None
 
-        atexit.register(self.stop)
+        #atexit.register(self.stop)
 
     def connect_widget(self, widget):
         self.info = widget
@@ -644,7 +644,7 @@ class ZMQSubscriber(QObject, ZMQBase, Receiving):
         self.socket = s
 
         self.stop_event.clear()
-        thread = threading.Thread(target=self.serve)
+        thread = threading.Thread(target=self.serve, name="ZMQ Sub {} Thread".format(self.protocol))
         thread.daemon = True
         thread.start()
         self.thread = thread

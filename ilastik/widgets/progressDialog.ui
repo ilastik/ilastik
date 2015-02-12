@@ -11,9 +11,16 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Dialog</string>
+   <string>Progress</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
+   <item row="2" column="1">
+    <widget class="QPushButton" name="hide">
+     <property name="text">
+      <string>Hide</string>
+     </property>
+    </widget>
+   </item>
    <item row="1" column="0">
     <widget class="QLabel" name="info">
      <property name="text">
@@ -34,17 +41,17 @@
      </property>
     </spacer>
    </item>
-   <item row="0" column="0" colspan="2">
-    <widget class="QProgressBar" name="progress">
-     <property name="value">
-      <number>24</number>
+   <item row="2" column="2">
+    <widget class="QPushButton" name="cancel">
+     <property name="text">
+      <string>Cancel</string>
      </property>
     </widget>
    </item>
-   <item row="2" column="1">
-    <widget class="QPushButton" name="hide">
-     <property name="text">
-      <string>Hide</string>
+   <item row="0" column="0" colspan="3">
+    <widget class="QProgressBar" name="progress">
+     <property name="value">
+      <number>24</number>
      </property>
     </widget>
    </item>
