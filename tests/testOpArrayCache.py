@@ -620,16 +620,38 @@ class TestOpArrayCache_setInSlot_masked(object):
         Test use-case from https://github.com/ilastik/lazyflow/issues/111
         """
         data = numpy.zeros((20,20))
-        data = numpy.ma.masked_array(data, mask=numpy.ma.getmaskarray(data), shrink=False)
+        data = numpy.ma.masked_array(data,
+                                     mask=numpy.ma.getmaskarray(data),
+                                     fill_value=numpy.nan,
+                                     shrink=False
+        )
+        data[...] = numpy.ma.masked
         op = OpArrayCache(graph=Graph())
         op.Input.meta.axistags = vigra.defaultAxistags('xy')
         op.Input.meta.has_mask = True
         op.Input.setValue(data)
 
+        result_before = op.Output[0:20,0:20].wait()
+
+        assert result_before.astype(bool).filled(True).all()
+        assert (result_before.mask == True).all()
+        assert numpy.isnan(result_before.fill_value)
+
+
         # Should not crash...
         new_data = numpy.ones((20,20))
-        new_data = numpy.ma.masked_array(new_data, mask=numpy.ma.getmaskarray(new_data), shrink=False)
+        new_data = numpy.ma.masked_array(
+            new_data, mask=numpy.ma.getmaskarray(new_data),
+            fill_value=0,
+            shrink=False
+        )
         op.Input[0:20,0:20] = new_data
+
+        result_after = op.Output[0:20,0:20].wait()
+
+        assert (result_after == 1).all()
+        assert (result_after.mask == False).all()
+        assert (result_after.fill_value == 0).all()
 
 if __name__ == "__main__":
     import sys
