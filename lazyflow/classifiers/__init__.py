@@ -7,4 +7,9 @@ from sklearnLazyflowClassifier import SklearnLazyflowClassifier, SklearnLazyflow
 from vigraRfPixelwiseClassifier import VigraRfPixelwiseClassifier, VigraRfPixelwiseClassifierFactory
 
 # IIBoost
-from iiboostLazyflowClassifier import IIBoostLazyflowClassifier, IIBoostLazyflowClassifierFactory
+try:
+    from iiboostLazyflowClassifier import IIBoostLazyflowClassifier, IIBoostLazyflowClassifierFactory
+except ImportError:
+    import warnings
+    warnings.warn("Couldn't import IIBoost classifier.")
+    
