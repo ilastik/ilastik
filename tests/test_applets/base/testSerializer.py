@@ -486,5 +486,6 @@ class TestSerialBlockSlot(unittest.TestCase):
         os.remove(h5_filepath)
         shutil.rmtree(tmp_dir)
 
+
 if __name__ == "__main__":
     unittest.main()
