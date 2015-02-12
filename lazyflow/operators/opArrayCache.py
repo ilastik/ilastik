@@ -362,7 +362,16 @@ class OpArrayCache(OpCache):
             # many lines of python code when all data is
             # is already in the cache:
             if numpy.logical_or(blockSet == OpArrayCache.CLEAN, blockSet == OpArrayCache.FIXED_DIRTY).all():
-                result[:] = self._cache[roiToSlice(start, stop)]
+                # Unfortunately, there appears to be a bug when copying masked arrays
+                # ( https://github.com/numpy/numpy/issues/5558 ).
+                # So, this must be used in the interim.
+                cache_result = self._cache[roiToSlice(start, stop)]
+                if isinstance(result, numpy.ma.masked_array):
+                    result.data[:] = numpy.ma.getdata(cache_result)
+                    result.mask[:] = numpy.ma.getmaskarray(cache_result)
+                else:
+                    result[:] = cache_result
+
                 self._running -= 1
                 self._updatePriority()
                 cacheView = None
@@ -462,7 +471,15 @@ class OpArrayCache(OpCache):
         # finally, store results in result area
         with self._lock:
             if self._cache is not None:
-                result[:] = self._cache[roiToSlice(start, stop)]
+                # Unfortunately, there appears to be a bug when copying masked arrays
+                # ( https://github.com/numpy/numpy/issues/5558 ).
+                # So, this must be used in the interim.
+                cache_result = self._cache[roiToSlice(start, stop)]
+                if isinstance(result, numpy.ma.masked_array):
+                    result.data[:] = numpy.ma.getdata(cache_result)
+                    result.mask[:] = numpy.ma.getmaskarray(cache_result)
+                else:
+                    result[:] = cache_result
             else:
                 self.inputs["Input"][roiToSlice(start, stop)].writeInto(result).wait()
             self._running -= 1
