@@ -81,6 +81,8 @@ class ValueRequest(object):
             destination.mask[...] = numpy.ma.getmaskarray(self.result)
             if isinstance(self.result, numpy.ma.masked_array):
                 destination.fill_value = self.result.fill_value
+        elif isinstance(destination, (list, tuple)) or isinstance(self.result, (list, tuple)):
+            destination[:] = self.result[:]
         else:
             destination[...] = self.result[...]
 
