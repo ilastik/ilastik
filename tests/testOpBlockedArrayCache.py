@@ -321,6 +321,7 @@ class TestOpBlockedArrayCache(object):
         finally:
             ArrayCacheMemoryMgr.instance.unpause()
 
+
 if __name__ == "__main__":
     import sys
     import nose
