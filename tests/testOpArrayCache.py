@@ -324,9 +324,13 @@ class TestOpArrayCache_setInSlot(object):
         data = vigra.taggedView(data, 'xy')
         op = OpArrayCache(graph=Graph())
         op.Input.setValue(data)
+
+        assert (op.Output[0:20,0:20].wait() == 0).all()
         
         # Should not crash...
         op.Input[0:20,0:20] = numpy.ones((20,20))
+
+        assert (op.Output[0:20,0:20].wait() == 1).all()
 
 class TestOpArrayCache_masked(object):
 
