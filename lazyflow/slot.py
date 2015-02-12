@@ -956,7 +956,7 @@ class Slot(object):
 
 
     def __setitem__(self, key, value):
-        """This method provied access to the subslots of a
+        """This method provides access to the subslots of a
         MultiSlot.
 
         """
