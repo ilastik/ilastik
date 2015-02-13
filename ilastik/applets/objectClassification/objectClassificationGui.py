@@ -212,18 +212,11 @@ class ObjectClassificationGui(LabelingGui, ExportingGui):
         self.checkEnableButtons()
 
     def menus(self):
-        m = QMenu("KNIME", self.volumeEditorWidget)
-        m.addAction( "Export to KNIME" ).triggered.connect(self.exportObjectInfo)
-        m.addAction("Export All Label Info").triggered.connect( self.exportLabelInfo )
-        m.addAction("Import New Label Info").triggered.connect( self.importLabelInfo )
-        mlist = [m]
         m = QMenu("&Export", self.volumeEditorWidget)
         m.addAction("Export Object Information").triggered.connect(self.show_export_dialog)
-        mlist.append(m=)
-        return mlist
-
+        m.addAction("Export All Label Info").triggered.connect( self.exportLabelInfo )
+        m.addAction("Import New Label Info").triggered.connect( self.importLabelInfo )
         return [m]
-
 
     def exportLabelInfo(self):
         file_path = QFileDialog.getSaveFileName(parent=self, caption="Export Label Info as JSON", filter="*.json")
