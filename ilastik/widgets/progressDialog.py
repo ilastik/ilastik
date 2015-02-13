@@ -6,7 +6,7 @@ from os.path import split as split_path
 
 class ProgressDialog(QDialog):
     cancel = pyqtSignal()
-    trigger_popup = pyqtSignal(str, str, object, tuple)
+    trigger_popup = pyqtSignal(str, str, object, tuple, bool)
     trigger_update = pyqtSignal(int)
 
     def __init__(self, steps, parent=None):
@@ -63,7 +63,7 @@ class ProgressDialog(QDialog):
             self.ui.progress.setValue(0)
             self._add_pending()
 
-    def popup(self, level, title, description, args):
+    def popup(self, level, title, description, args, close):
         assert level in ("information", "warning", "critical")
         if args is not None:
             description = [description]
@@ -72,10 +72,14 @@ class ProgressDialog(QDialog):
                     description.append(str(arg))
             description = "\n".join(description)
         getattr(QMessageBox, str(level))(self, title, description)
-        self.close()
+        if close:
+            self.close()
 
     def safe_popup(self, level, title, description, *args):
-        self.trigger_popup.emit(level, title, description, args)
+        self.trigger_popup.emit(level, title, description, args, True)
+
+    def safe_popup_noclose(self, level, title, description, *args):
+        self.trigger_popup.emit(level, title, description, args, False)
 
 if __name__ == '__main__':
     from PyQt4.QtGui import QApplication

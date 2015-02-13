@@ -7,18 +7,19 @@ from sys import stdout
 from zipfile import ZipFile
 
 
-def flatten_tracking_table(table, extra_table, obj_counts, max_tracks):
+def flatten_tracking_table(table, extra_table, obj_counts, max_tracks, t_range):
     array = np.zeros(sum(obj_counts), ",".join(["i"] * max_tracks))
-    array.dtype.names = ["track%i" % i for i in xrange(1, max_tracks+1)]
+    array.dtype.names = ["track%i" % i for i in xrange(1, max_tracks + 1)]
     row = 0
     for i, count in enumerate(obj_counts):
         for o in xrange(1, count + 1):
             track = []
-            if o in table[i]:
-                track.append(table[i][o])
-                if i in extra_table and o in extra_table[i]:
-                    track.extend(extra_table[i][o])
-            track = list(set(track))
+            if t_range[0] <= i <= t_range[1]:
+                if o in table[i]:
+                    track.append(table[i][o])
+                    if i in extra_table and o in extra_table[i]:
+                        track.extend(extra_table[i][o])
+                track = list(set(track))
             while len(track) < max_tracks:
                 track.append(0)
             array[row] = tuple(track)
@@ -48,8 +49,8 @@ def flatten_ilastik_feature_table(table, selection, signal):
     for cat_name, category in computed_feature[0].iteritems():
         for feat_name, feat_array in category.iteritems():
             if cat_name == "Default features" or \
-                    feat_name not in feature_names and \
-                    feat_name in selection:
+                                    feat_name not in feature_names and \
+                                    feat_name in selection:
                 feature_names.append(feat_name)
                 feature_cats.append(cat_name)
                 feature_channels.append((feat_array.shape[1]))
@@ -204,8 +205,8 @@ class Mode(object):
 
 
 class Default(object):
-    DivisionNames = {"names": ("timestep", "parent_oid", "track_id", "child1_oid", "child_track1_id", "child2_oid",
-                               "child_track2_id")}
+    DivisionNames = {"names": ("timestep", "lineage", "parent_oid", "track_id", "child1_oid", "child_track1_id",
+                               "child2_oid", "child_track2_id")}
     KnimeId = {"names": ("object_id",)}
     IlastikId = {"names": ("timestep", "labelimage_oid")}
     Lineage = {"names": ("lineage_id",)}
@@ -240,7 +241,8 @@ class ExportFile(object):
         if mode == Mode.IlastikTrackingTable:
             if not "counts" in extra or not "max" in extra:
                 raise AttributeError("Tracking need 'counts', 'max' extra")
-            columns = flatten_tracking_table(col_data, extra["extra ids"], extra["counts"], extra["max"])
+            columns = flatten_tracking_table(col_data, extra["extra ids"], extra["counts"], extra["max"],
+                                             extra["range"])
         elif mode == Mode.List:
             if not "names" in extra:
                 raise AttributeError("[Tuple]List needs a tuple for the column name (extra 'names')")
