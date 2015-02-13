@@ -589,16 +589,19 @@ class OpTrackingBase(Operator, ExportingOperator):
                                  "range": t_range})
         export_file.add_columns("table", self.ObjectFeatures, Mode.IlastikFeatureTable,
                                 {"selection": selected_features})
-        try:
-            div_lineage = division_flatten_dict(divisions, self.label2color)
-            zips = zip(*divisions)
-            divisions = zip(zips[0], div_lineage, *zips[1:])
-            export_file.add_columns("divisions", divisions, Mode.List, Default.DivisionNames)
-        except Exception as e:
-            if hasattr(progress_slot, "safe_popup"):
-                progress_slot.safe_popup_noclose("warning", "Warning", "Cannot export divisions.\nContinuing ...", e)
-            else:
-                print "\nWarning, Cannot export divisions"
+
+        if self.Parameters.value["withDivisions"] if self.Parameters.ready() else False:
+            try:
+                div_lineage = division_flatten_dict(divisions, self.label2color)
+                zips = zip(*divisions)
+                divisions = zip(zips[0], div_lineage, *zips[1:])
+                export_file.add_columns("divisions", divisions, Mode.List, Default.DivisionNames)
+            except Exception as e:
+                if hasattr(progress_slot, "safe_popup"):
+                    progress_slot.safe_popup_noclose("warning", "Warning", "Cannot export divisions.\nContinuing ...",
+                                                     e)
+                else:
+                    print "\nWarning, Cannot export divisions"
 
         if settings["file type"] == "h5":
             export_file.add_rois(Default.LabelRoiPath, self.LabelImage, "table", settings["margin"], "labeling")
