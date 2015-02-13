@@ -1,8 +1,13 @@
+import logging
 from ilastik.utility.exportFile import ProgressPrinter
+from ilastik.utility import log_exception
 from lazyflow.request import Request
 from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog
 from functools import partial
 from ilastik.widgets.progressDialog import ProgressDialog
+
+
+logger = logging.getLogger(__name__)
 
 
 class ExportingOperator(object):
@@ -26,9 +31,10 @@ class ExportingOperator(object):
             progress_display = gui["dialog"]
             self.save_export_progress_dialog(progress_display)
 
-        export = partial(self.do_export, settings, selected_features, progress_display)
+        export = partial(self.do_export, settings, selected_features, progress_display)  # ();return
         request = Request(export)
         request.notify_failed(gui["fail"] if gui is not None and "fail" in gui else self.export_failed)
+        request.notify_failed(self.export_failed)
         request.notify_finished(gui["ok"] if gui is not None and "ok" in gui else self.export_finished)
         request.notify_cancelled(gui["cancel"] if gui is not None and "cancel" in gui else self.export_cancelled)
         request.submit()
@@ -37,25 +43,25 @@ class ExportingOperator(object):
             progress_display.cancel.connect(request.cancel)
 
     @staticmethod
-    def export_failed(exception, traceback):
+    def export_failed(_, exc_info):
         """
         Default callback for Request failure
         """
-        print "Export Failed:", exception, traceback
+        log_exception(logger, "Export failed", exc_info)
 
     @staticmethod
     def export_finished(status):
         """
         Default callback for Request success
         """
-        print "Export Finished", status
+        logger.info("Export finished. {}".format(status))
 
     @staticmethod
     def export_cancelled():
         """
         Default callback for Request cancellation
         """
-        print "Export Cancelled"
+        logger.info("Export cancelled")
 
     def do_export(self, settings, selected_features, progress_slot):
         """

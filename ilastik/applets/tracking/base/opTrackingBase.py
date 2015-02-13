@@ -574,6 +574,7 @@ class OpTrackingBase(Operator, ExportingOperator):
         self._setLabel2Color()
         lineage = flatten_dict(self.label2color, obj_count)
         multi_move_max = self.Parameters.value["maxObj"] if self.Parameters.ready() else 2
+        multi_move_max = max(2, multi_move_max)
         t_range = self.Parameters.value["time_range"] if self.Parameters.ready() else (0, 0)
         ids = ilastik_ids(obj_count)
 
