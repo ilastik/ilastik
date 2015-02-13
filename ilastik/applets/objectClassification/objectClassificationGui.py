@@ -20,6 +20,8 @@
 ###############################################################################
 from PyQt4.QtGui import *
 from PyQt4 import uic
+from PyQt4.QtCore import pyqtSignal, pyqtSlot, Qt, QObject
+from PyQt4.QtGui import QFileDialog
 from PyQt4.QtCore import pyqtSignal, pyqtSlot, Qt, QObject, pyqtBoundSignal
 from ilastik.shell.gui.ipcManager import IPCFacade, Protocol
 from ilastik.utility.exportingOperator import ExportingGui
@@ -30,6 +32,8 @@ from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog
 from ilastik.applets.objectExtraction.opObjectExtraction import OpRegionFeatures3d
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 from lazyflow.operators.ioOperators.opExportObjectInfo import OpExportObjectInfo
+
+from ilastik.applets.objectClassification.opObjectClassification import OpObjectClassification
 
 import os
 import numpy
@@ -212,8 +216,24 @@ class ObjectClassificationGui(LabelingGui, ExportingGui):
     def menus(self):
         m = QMenu("&Export", self.volumeEditorWidget)
         m.addAction("Export Object Information").triggered.connect(self.show_export_dialog)
+        ms = [m]
+        if ilastik_config.getboolean('ilastik', 'debug'):
+            m2 = QMenu("Special Stuff", self.volumeEditorWidget)
+        
+            m2.addAction("Export All Label Info").triggered.connect( self.exportLabelInfo )
+            m2.addAction("Import New Label Info").triggered.connect( self.importLabelInfo )
+            ms.append(m2)
+        return ms
 
-        return [m]
+    def exportLabelInfo(self):
+        file_path = QFileDialog.getSaveFileName(parent=self, caption="Export Label Info as JSON", filter="*.json")
+        topLevelOp = self.topLevelOperatorView.viewed_operator()
+        topLevelOp.exportLabelInfo(file_path)
+
+    def importLabelInfo(self):
+        file_path = QFileDialog.getOpenFileName(parent=self, caption="Export Label Info as JSON", filter="*.json")        
+        topLevelOp = self.topLevelOperatorView.viewed_operator()
+        topLevelOp.importLabelInfo(file_path)
 
     @property
     def labelMode(self):
@@ -737,13 +757,12 @@ class ObjectClassificationGui(LabelingGui, ExportingGui):
                     ft = numpy.asarray(value.squeeze())[obj]
                     print( "{}: {}".format(featname, ft) )
 
-            if len(selected)>0 and label!='none':
+            if len(selected)>0:
+                pred = 'none'
                 if self.op.Predictions.ready():
                     preds = self.op.Predictions([t]).wait()[t]
                     if len(preds) >= obj:
                         pred = int(preds[obj])
-                else:
-                    pred = 'none'
                 
                 prob = 'none'
                 if self.op.Probabilities.ready():
@@ -760,8 +779,7 @@ class ObjectClassificationGui(LabelingGui, ExportingGui):
             topLevelOp = self.topLevelOperatorView.viewed_operator()
             imageIndex = topLevelOp.LabelInputs.index( self.topLevelOperatorView.LabelInputs )
             self.topLevelOperatorView.assignObjectLabel(imageIndex, position5d, 0)
-
-        #todo: remove old
+            
         elif self.applet.connected_to_knime: 
             if action.text()==knime_hilite:
                 data = {'command': 0, 'objectid': 'Row'+str(obj)}

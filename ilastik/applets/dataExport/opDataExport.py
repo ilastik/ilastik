@@ -174,6 +174,7 @@ class OpDataExport(Operator):
         # Not permitted to make this connection because we can't connect our own output to a child operator.
         # Instead, dirty state is copied manually into the child op whenever we change it.
         #self._opImageOnDiskProvider.Dirty.connect( self.Dirty )
+        self._opImageOnDiskProvider.Dirty.setValue( False )
         
         self.ImageOnDisk.connect( self._opImageOnDiskProvider.Output )
         
@@ -368,7 +369,9 @@ class OpImageOnDiskProvider(Operator):
                 self._opReader = None
                 self.Output.meta.NOTREADY = True
 
-        except OpInputDataReader.DatasetReadError:
+        #except OpInputDataReader.DatasetReadError:
+        except Exception as ex:
+            #logger.debug( "On-disk image can't be read: {}".format(ex) )
             # Note: If the data is exported as a 'sequence', then this will always be NOTREADY
             #       because the 'path' (e.g. 'myfile_{slice_index}.png' will be nonexistent.
             #       That's okay because a stack is probably too slow to be of use for a preview anyway.

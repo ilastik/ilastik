@@ -357,6 +357,58 @@ class SerialBlockSlot(SerialSlot):
         self._bind(slot)
         self._shrink_to_bb = shrink_to_bb
 
+    def shouldSerialize(self, group):
+        # Should this be a docstring?
+        #
+        # Must be overloaded as SerialBlockSlot does not serialize itself in the simple way that other SerialSlot do
+        # as a consequence of the nesting of groups required. Follows the same logic as _serialize and checks to see
+        # if each relevant subgroup has been created and if any are missing or their data is missing it should be
+        # serialized. Otherwise, if everything is intact, it doesn't suggest serialization unless the state has changed.
+
+        logger.debug("Checking whether to serialize BlockSlot: {}".format( self.name ))
+
+        if self.dirty:
+            logger.debug("BlockSlot \"" + self.name + "\" appears to be dirty. Should serialize.")
+            return True
+
+        # SerialSlot interchanges self.name and name when they frequently are the same thing. It is not clear if using
+        # self.name would be acceptable here or whether name should be an input to shouldSerialize or if there should be
+        # a _shouldSerialize method, which takes the name.
+        if self.name not in group:
+            logger.debug("Missing \"" + self.name + "\" in group \"" + repr(group) + "\" belonging to BlockSlot \"" + self.name + "\". Should serialize.")
+            return True
+        else:
+            logger.debug("Found \"" + self.name + "\" in group \"" + repr(group) + "\" belonging to BlockSlot \"" + self.name + "\".")
+
+        # Just because the group was serialized doesn't mean that the relevant data was.
+        mygroup = group[self.name]
+        num = len(self.blockslot)
+        for index in range(num):
+            subname = self.subname.format(index)
+
+            # Check to se if each subname has been created as a group
+            if subname not in mygroup:
+                logger.debug("Missing \"" + subname + "\" from \"" + repr(mygroup) + "\" belonging to BlockSlot \"" + self.name + "\". Should serialize.")
+                return True
+            else:
+                logger.debug("Found \"" + subname + "\" from \"" + repr(mygroup) + "\" belonging to BlockSlot \"" + self.name + "\".")
+
+            subgroup = mygroup[subname]
+
+            nonZeroBlocks = self.blockslot[index].value
+            for blockIndex in xrange(len(nonZeroBlocks)):
+                blockName = 'block{:04d}'.format(blockIndex)
+
+                if blockName not in subgroup:
+                    logger.debug("Missing \"" + blockName + "\" from \"" + repr(subgroup) + "\". Should serialize.")
+                    return True
+                else:
+                    logger.debug("Found \"" + blockName + "\" from \"" + repr(subgroup) + "\" belonging to BlockSlot \"" + self.name + "\".")
+
+        logger.debug("Everything belonging to BlockSlot \"" + self.name + "\" appears to be in order. Should not serialize.")
+
+        return False
+
     @timeLogged(logger, logging.DEBUG)
     def _serialize(self, group, name, slot):
         logger.debug("Serializing BlockSlot: {}".format( self.name ))
@@ -437,6 +489,7 @@ class SerialHdf5BlockSlot(SerialBlockSlot):
             return int(index_capture.match(s).groups()[0])
         for index, t in enumerate(sorted(mygroup.items(), key=lambda (k,v): extract_index(k))):
             groupName, labelGroup = t
+            assert extract_index(groupName) == index, "subgroup extraction order should be numerical order!"
             for blockRoiString, blockDataset in labelGroup.items():
                 blockRoi = eval(blockRoiString)
                 roiShape = TinyVector(blockRoi[1]) - TinyVector(blockRoi[0])
@@ -737,6 +790,20 @@ class AppletSerializer(object):
         """
         return any(list(ss.dirty for ss in self.serialSlots))
 
+    def shouldSerialize(self, hdf5File):
+        """Whether to serialize or not."""
+
+        if self.isDirty():
+            return True
+
+        # Need to check if slots should be serialized. First must verify that self.topGroupName is not an empty string
+        # (as this seems to happen sometimes).
+        if self.topGroupName:
+            topGroup = getOrCreateGroup(hdf5File, self.topGroupName)
+            return any([ss.shouldSerialize(topGroup) for ss in self.serialSlots])
+
+        return False
+
     @property
     def ignoreDirty(self):
         return self._ignoreDirty
@@ -850,6 +917,7 @@ class AppletSerializer(object):
         from volumina.utility import encode_from_qstring
         
         text = "The file at {} could not be found any more. Do you want to search for it at another directory?".format(path)
+        logger.info(text)
         c = QMessageBox.critical(None, "update external data",text, QMessageBox.Ok | QMessageBox.Cancel)
         
         if c == QMessageBox.Cancel:

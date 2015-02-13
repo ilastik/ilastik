@@ -124,6 +124,7 @@ class TestOpObjectTrain(unittest.TestCase):
         
         labels = {0 : np.array([0, 1, 2]),
                   1 : np.array([0, 1, 1, 2])}
+        self.op.LabelsCount.setValue(2)
         self.op.Labels.resize(1)
         self.op.Labels.setValue(labels)
        
@@ -151,6 +152,7 @@ class TestOpObjectTrain(unittest.TestCase):
         labels = {0: np.array([0, 0]),
                   1: np.array([0, 1, 1, 2])}
         
+        self.op.LabelsCount.setValue(2)
         self.op.Labels.resize(1)
         self.op.Labels.setValue(labels)
         
@@ -191,6 +193,7 @@ class TestOpObjectPredict(unittest.TestCase):
         self.trainop.Features.resize(1)
         self.trainop.Features[0].connect(self._opRegFeatsAdaptOutput.Output)
         self.trainop.SelectedFeatures.setValue(features)
+        self.trainop.LabelsCount.setValue(2)
         self.trainop.Labels.resize(1)
         self.trainop.Labels.setValues([labels])
         self.trainop.FixClassifier.setValue(False)
@@ -201,7 +204,7 @@ class TestOpObjectPredict(unittest.TestCase):
         self.op.Classifier.connect(self.trainop.Classifier)
         self.op.Features.connect(self._opRegFeatsAdaptOutput.Output)
         self.op.SelectedFeatures.setValue(features)
-        self.op.LabelsCount.setValue(2)
+        self.op.LabelsCount.connect( self.trainop.LabelsCount )
         self.assertTrue(self.op.Predictions.ready(), "The output of operator {} was not ready after connections took place.".format(self.op))
 
     def test_predict(self):
@@ -266,6 +269,7 @@ class TestFeatureSelection(unittest.TestCase):
         self.trainop.Features.resize(1)
         self.trainop.Features.connect(self.extrOp.RegionFeatures)
         self.trainop.SelectedFeatures.setValue(sel_features)
+        self.trainop.LabelsCount.setValue(2)
         self.trainop.Labels.resize(1)
         self.trainop.Labels.setValues([labels])
         self.trainop.FixClassifier.setValue(False)

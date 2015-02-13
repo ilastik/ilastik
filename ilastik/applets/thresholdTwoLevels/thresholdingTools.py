@@ -369,9 +369,12 @@ class OpSelectLabels(Operator):
         del smallNonZero
 
         # get labels that passed the masking
-        passed = numpy.unique(prod)
+        #passed = numpy.unique(prod)
+        passed = numpy.bincount(prod.flat).nonzero()[0] # Much faster than unique(), which copies and sorts
+        
         # 0 is not a valid label
-        passed = numpy.setdiff1d(passed, (0,))
+        if passed[0] == 0:
+            passed = passed[1:]
 
         logMemoryIncrease("After taking product")
         del prod

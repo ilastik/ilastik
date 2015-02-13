@@ -287,6 +287,7 @@ class OpTrainCounter(Operator):
                 logger.error("ERROR: could not learn regressor")
                 logger.error("fullFeatMatrix shape = {}, dtype = {}".format(fullFeatMatrix.shape, fullFeatMatrix.dtype) )
                 logger.error("fullLabelsMatrix shape = {}, dtype = {}".format(fullLabelsMatrix.shape, fullLabelsMatrix.dtype) )
+                raise
             finally:
                 self.progressSignal(100) 
 

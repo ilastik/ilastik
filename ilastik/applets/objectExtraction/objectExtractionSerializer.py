@@ -53,7 +53,7 @@ class SerialObjectFeaturesSlot(SerialSlot):
         mainOperator = self.slot.getRealOperator()
 
         for i in range(len(mainOperator)):
-            subgroup = getOrCreateGroup(group, str(i))
+            subgroup = getOrCreateGroup(group, "{:04}".format(i))
 
             cleanBlockRois = self.blockslot[i].value
             for roi in cleanBlockRois:
@@ -73,7 +73,9 @@ class SerialObjectFeaturesSlot(SerialSlot):
         if not self.name in group:
             return
         opgroup = group[self.name]
-        for i, (_, subgroup) in enumerate( sorted(opgroup.items() ) ):
+        # Note: We sort by NUMERICAL VALUE here.
+        for i, (group_name, subgroup) in enumerate( sorted(opgroup.items(), key=lambda (k,v): int(k) ) ):
+            assert int(group_name) == i, "subgroup extraction order should be numerical order!"
             for roiString, roi_grp in subgroup.iteritems():
                 logger.debug('Loading region features from dataset: "{}"'.format( roi_grp.name ))
                 roi = eval(roiString)

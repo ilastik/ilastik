@@ -344,7 +344,8 @@ class PixelClassificationWorkflow(Workflow):
             return self.opBatchPredictionPipeline.HeadlessUint8PredictionProbabilities
         
         raise Exception("Unknown headless output slot")
-    
+
+
     def onProjectLoaded(self, projectManager):
         """
         Overridden from Workflow base class.  Called by the Project Manager.

@@ -306,10 +306,10 @@ class _OpThresholdOneLevel(Operator):
         self._opLabeler.Method.setValue(_labeling_impl)
         self._opLabeler.Input.connect(self._opThresholder.Output)
 
-        self.BeforeSizeFilter.connect( self._opLabeler.CachedOutput )
+        self.BeforeSizeFilter.connect( self._opLabeler.Output )
 
         self._opFilter = OpFilterLabels( parent=self )
-        self._opFilter.Input.connect(self._opLabeler.CachedOutput )
+        self._opFilter.Input.connect(self._opLabeler.Output )
         self._opFilter.MinLabelSize.connect( self.MinSize )
         self._opFilter.MaxLabelSize.connect( self.MaxSize )
         self._opFilter.BinaryOut.setValue(False)
@@ -408,14 +408,14 @@ class _OpThresholdTwoLevels(Operator):
         self._opHighLabeler.Input.connect(self._opHighThresholder.Output)
 
         self._opHighLabelSizeFilter = OpFilterLabels(parent=self)
-        self._opHighLabelSizeFilter.Input.connect(self._opHighLabeler.CachedOutput)
+        self._opHighLabelSizeFilter.Input.connect(self._opHighLabeler.Output)
         self._opHighLabelSizeFilter.MinLabelSize.connect(self.MinSize)
         self._opHighLabelSizeFilter.MaxLabelSize.connect(self.MaxSize)
         self._opHighLabelSizeFilter.BinaryOut.setValue(False)  # we do the binarization in opSelectLabels
                                                                # this way, we get to display pretty colors
 
         self._opSelectLabels = OpSelectLabels( parent=self )        
-        self._opSelectLabels.BigLabels.connect( self._opLowLabeler.CachedOutput )
+        self._opSelectLabels.BigLabels.connect( self._opLowLabeler.Output )
         self._opSelectLabels.SmallLabels.connect( self._opHighLabelSizeFilter.Output )
 
         # remove the remaining very large objects -
