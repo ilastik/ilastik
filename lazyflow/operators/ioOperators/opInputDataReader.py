@@ -166,7 +166,7 @@ class OpInputDataReader(Operator):
         self.Output.connect( self.opInjector.Output )
     
     def _attemptOpenAsStack(self, filePath):
-        if '*' in filePath:
+        if '*' in filePath or os.path.pathsep in filePath:
             stackReader = OpStackLoader(parent=self)
             stackReader.globstring.setValue(filePath)
             return (stackReader, stackReader.stack)
