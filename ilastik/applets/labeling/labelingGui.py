@@ -43,16 +43,8 @@ from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThunkEventHandler, threadRouted
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
-from volumina.widgets.importHelper import get_settings_and_import_layer
+from ilastik.applets.labeling.labelingImport import import_labeling_layer
 
-###
-### lazyflow input
-###
-try:
-    import lazyflow
-    _has_lazyflow = True
-except ImportError as e:
-    _has_lazyflow = False
 
 # Loggers
 logger = logging.getLogger(__name__)
@@ -813,10 +805,7 @@ class LabelingGui(LayerViewerGui):
             labellayer.name = "Labels"
             labellayer.ref_object = None
 
-            global _has_lazyflow
-            if _has_lazyflow:
-                labellayer.contexts.append(("Import...", partial( get_settings_and_import_layer, labellayer, self )))
-
+            labellayer.contexts.append(("Import...", partial( import_labeling_layer, labellayer, self )))
 
             return labellayer, labelsrc
 
