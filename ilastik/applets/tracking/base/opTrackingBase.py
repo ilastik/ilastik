@@ -573,11 +573,8 @@ class OpTrackingBase(Operator, ExportingOperator):
         track_ids, extra_track_ids, divisions = self.export_track_ids()
         self._setLabel2Color()
         lineage = flatten_dict(self.label2color, obj_count)
-        div_lineage = division_flatten_dict(divisions, self.label2color)
         multi_move_max = self.Parameters.value["maxObj"] if self.Parameters.ready() else 2
         t_range = self.Parameters.value["time_range"] if self.Parameters.ready() else (0, 0)
-        if t_range[0] != 0 or t_range[1] != len(obj_count) -1:
-            raise RuntimeError("Please track the whole data before exporting!")
         ids = ilastik_ids(obj_count)
 
         export_file = ExportFile(settings["file path"])
@@ -593,10 +590,16 @@ class OpTrackingBase(Operator, ExportingOperator):
         export_file.add_columns("table", self.ObjectFeatures, Mode.IlastikFeatureTable,
                                 {"selection": selected_features})
         try:
+            div_lineage = division_flatten_dict(divisions, self.label2color)
+            zips = zip(*divisions)
+            divisions = zip(zips[0], div_lineage, *zips[1:])
             export_file.add_columns("divisions", divisions, Mode.List, Default.DivisionNames)
             export_file.add_columns("divisions", div_lineage, Mode.List, extra={"names": ("lineage_id",)})
-        except:
-            pass
+        except Exception as e:
+            if hasattr(progress_slot, "safe_popup"):
+                progress_slot.safe_popup_noclose("warning", "Warning", "Cannot export divisions.\nContinuing ...", e)
+            else:
+                print "\nWarning, Cannot export divisions"
 
         if settings["file type"] == "h5":
             export_file.add_rois(Default.LabelRoiPath, self.LabelImage, "table", settings["margin"], "labeling")
