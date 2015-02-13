@@ -7,7 +7,7 @@ from sys import stdout
 from zipfile import ZipFile
 
 
-def flatten_tracking_tablet(table, extra_table, obj_counts, max_tracks):
+def flatten_tracking_table(table, extra_table, obj_counts, max_tracks):
     array = np.zeros(sum(obj_counts), ",".join(["i"] * max_tracks))
     array.dtype.names = ["track%i" % i for i in xrange(1, max_tracks+1)]
     row = 0
@@ -33,9 +33,9 @@ def flatten_ilastik_feature_table(table, selection, signal):
     if frames > 1:
         computed_feature = {}
         for t in xrange(frames - 1):
-            request = table([t, t+1])
+            request = table([t, t + 1])
             computed_feature.update(request.wait())
-            signal(100*t/frames)
+            signal(100 * t / frames)
     else:
         computed_feature = table([]).wait()
     signal(100)
@@ -104,6 +104,30 @@ def objects_per_frame(labeling_image):
         yield data[t].max()
 
 
+def division_flatten_dict(divisions, dict_):
+    list_ = []
+    for t, o, _, _, _, _, _ in divisions:
+        try:
+            list_.append(dict_[t][o])
+        except (IndexError, TypeError, KeyError):
+            list_.append(0)
+    return list_
+
+
+def flatten_dict(dict_, object_count):
+    list_ = [0] * sum(object_count)
+    i = 0
+    for t, count in enumerate(object_count):
+        for o in xrange(1, count + 1):
+            try:
+                item = dict_[t][o]
+            except (IndexError, TypeError, KeyError):
+                item = 0
+            list_[i] = item
+            i += 1
+    return list_
+
+
 def prepare_list(list_, names, dtypes=None):
     shape = (len(list_),)
     if dtypes is None:
@@ -125,7 +149,7 @@ def prepare_list(list_, names, dtypes=None):
 
 def ilastik_ids(obj_counts):
     for t, count in enumerate(obj_counts):
-        for o in xrange(1, count+1):
+        for o in xrange(1, count + 1):
             yield (t, o)
 
 
@@ -135,7 +159,7 @@ def create_slicing(axistags, dimensions, margin, feature_table):
         yields also the actual object id
     """
     assert margin >= 0, "Margin muss be greater than or equal to 0"
-    time = feature_table["time"].astype(np.int32)
+    time = feature_table["timestep"].astype(np.int32)
     minx = feature_table["Coord<Minimum>_0"].astype(np.int32)
     maxx = feature_table["Coord<Maximum>_0"].astype(np.int32)
     miny = feature_table["Coord<Minimum>_1"].astype(np.int32)
@@ -151,11 +175,11 @@ def create_slicing(axistags, dimensions, margin, feature_table):
     excludes = indices.count(-1)
     oid = 1
     for i in xrange(table_shape):
-        if time[i] != time[i-1]:
+        if time[i] != time[i - 1]:
             oid = 1
         # noinspection PyTypeChecker
         slicing = [
-            slice(time[i], time[i]+1),
+            slice(time[i], time[i] + 1),
             slice(max(0, minx[i] - margin),
                   min(maxx[i] + margin, dimensions[1])),
             slice(max(0, miny[i] - margin),
@@ -164,7 +188,7 @@ def create_slicing(axistags, dimensions, margin, feature_table):
                   min(maxz[i] + margin, dimensions[3])),
             slice(None)
         ]
-        yield map(slicing.__getitem__, indices)[:5-excludes], oid
+        yield map(slicing.__getitem__, indices)[:5 - excludes], oid
         oid += 1
 
 
@@ -180,12 +204,15 @@ class Mode(object):
 
 
 class Default(object):
-    DivisionNames = {"names": ("time", "parent", "track", "child1", "child_track1", "child2", "child_track2")}
+    DivisionNames = {"names": ("timestep", "parent_oid", "track_id", "child1_oid", "child_track1_id", "child2_oid",
+                               "child_track2_id")}
     KnimeId = {"names": ("object_id",)}
-    IlastikId = {"names": ("time", "ilastik_id")}
+    IlastikId = {"names": ("timestep", "labelimage_oid")}
+    Lineage = {"names": ("lineage_id",)}
     LabelRoiPath = "/images/{}/labeling"
     RawRoiPath = "/images/{}/raw"
     RawPath = "/images/raw"
+
 
 class ExportFile(object):
     ExportProgress = OrderedSignal()
@@ -212,8 +239,8 @@ class ExportFile(object):
             extra = {}
         if mode == Mode.IlastikTrackingTable:
             if not "counts" in extra or not "max" in extra:
-                raise AttributeError("Tracking need 'counts' and 'max' extra")
-            columns = flatten_tracking_tablet(col_data, extra["extra ids"], extra["counts"], extra["max"])
+                raise AttributeError("Tracking need 'counts', 'max' extra")
+            columns = flatten_tracking_table(col_data, extra["extra ids"], extra["counts"], extra["max"])
         elif mode == Mode.List:
             if not "names" in extra:
                 raise AttributeError("[Tuple]List needs a tuple for the column name (extra 'names')")
@@ -268,6 +295,7 @@ class ExportFile(object):
     def _normalize(oid):
         def f(pixel_value):
             return 1 if pixel_value == oid else 0
+
         return np.vectorize(f)
 
     def add_image(self, table, image_slot):

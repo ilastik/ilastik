@@ -18,14 +18,15 @@
 # on the ilastik web site at:
 # http://ilastik.org/license.html
 # ##############################################################################
+from functools import partial
+import logging
+
+import numpy as np
+
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.request import Request
 from ilastik.utility.exportingOperator import ExportingOperator
 from lazyflow.rtype import List
 from lazyflow.stype import Opaque
-
-import numpy as np
-from functools import partial
 import pgmlink
 from ilastik.applets.tracking.base.trackingUtilities import relabel, \
     get_dict_value
@@ -34,10 +35,8 @@ from ilastik.applets.objectExtraction import config
 from ilastik.applets.base.applet import DatasetConstraintError
 from lazyflow.operators.opCompressedCache import OpCompressedCache
 from lazyflow.operators.valueProviders import OpZeroDefault
-
 from lazyflow.roi import sliceToRoi
 
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -567,11 +566,18 @@ class OpTrackingBase(Operator, ExportingOperator):
         :param progress_slot:
         :return:
         """
-        from ilastik.utility.exportFile import objects_per_frame, ExportFile, ilastik_ids, Mode, Default
+        from ilastik.utility.exportFile import objects_per_frame, ExportFile, ilastik_ids, Mode, Default, \
+            flatten_dict, division_flatten_dict
 
         obj_count = list(objects_per_frame(self.LabelImage))
         track_ids, extra_track_ids, divisions = self.export_track_ids()
+        self._setLabel2Color()
+        lineage = flatten_dict(self.label2color, obj_count)
+        div_lineage = division_flatten_dict(divisions, self.label2color)
         multi_move_max = self.Parameters.value["maxObj"] if self.Parameters.ready() else 2
+        t_range = self.Parameters.value["time_range"] if self.Parameters.ready() else (0, 0)
+        if t_range[0] != 0 or t_range[1] != len(obj_count) -1:
+            raise RuntimeError("Please track the whole data before exporting!")
         ids = ilastik_ids(obj_count)
 
         export_file = ExportFile(settings["file path"])
@@ -580,11 +586,17 @@ class OpTrackingBase(Operator, ExportingOperator):
 
         export_file.add_columns("table", range(sum(obj_count)), Mode.List, Default.KnimeId)
         export_file.add_columns("table", list(ids), Mode.List, Default.IlastikId)
+        export_file.add_columns("table", lineage, Mode.List, Default.Lineage)
         export_file.add_columns("table", track_ids, Mode.IlastikTrackingTable,
-                                {"max": multi_move_max, "counts": obj_count, "extra ids": extra_track_ids})
+                                {"max": multi_move_max, "counts": obj_count, "extra ids": extra_track_ids,
+                                 "range": t_range})
         export_file.add_columns("table", self.ObjectFeatures, Mode.IlastikFeatureTable,
                                 {"selection": selected_features})
-        export_file.add_columns("divisions", divisions, Mode.List, Default.DivisionNames)
+        try:
+            export_file.add_columns("divisions", divisions, Mode.List, Default.DivisionNames)
+            export_file.add_columns("divisions", div_lineage, Mode.List, extra={"names": ("lineage_id",)})
+        except:
+            pass
 
         if settings["file type"] == "h5":
             export_file.add_rois(Default.LabelRoiPath, self.LabelImage, "table", settings["margin"], "labeling")

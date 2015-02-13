@@ -72,6 +72,7 @@ class ProgressDialog(QDialog):
                     description.append(str(arg))
             description = "\n".join(description)
         getattr(QMessageBox, str(level))(self, title, description)
+        self.close()
 
     def safe_popup(self, level, title, description, *args):
         self.trigger_popup.emit(level, title, description, args)

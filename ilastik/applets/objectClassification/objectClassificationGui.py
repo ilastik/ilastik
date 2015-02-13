@@ -212,8 +212,6 @@ class ObjectClassificationGui(LabelingGui, ExportingGui):
         self.checkEnableButtons()
 
     def menus(self):
-        if not ilastik_config.getboolean("ilastik", "debug"):
-            return []
         m = QMenu("KNIME", self.volumeEditorWidget)
         m.addAction( "Export to KNIME" ).triggered.connect(self.exportObjectInfo)
         m.addAction("Export All Label Info").triggered.connect( self.exportLabelInfo )
@@ -698,6 +696,7 @@ class ObjectClassificationGui(LabelingGui, ExportingGui):
         text = "Print info for object {} in the terminal".format(obj)
         menu.addAction(text)
 
+        # IPC stuff
         if ilastik_config.getboolean("ilastik", "debug"):
             menu.addSeparator()
             if any(IPCFacade().sending):
