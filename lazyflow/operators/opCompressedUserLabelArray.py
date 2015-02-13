@@ -144,21 +144,7 @@ class OpCompressedUserLabelArray(OpCompressedCache):
         for block_roi in stored_block_rois:
             # Get data
             block_shape = numpy.subtract( block_roi[1], block_roi[0] )
-            block = numpy.ndarray( shape=block_shape, dtype=self.Output.meta.dtype )
-
-            if self.Output.meta.has_mask:
-                block_fill_value = None
-                if issubclass(block.dtype.type, numpy.integer):
-                    block_fill_value = block.dtype.type(numpy.iinfo(block.dtype.type).max)
-                elif issubclass(block.dtype.type, numpy.floating):
-                    block_fill_value = block.dtype.type(numpy.nan)
-
-                block = numpy.ma.masked_array(
-                    block,
-                    mask=numpy.ma.getmaskarray(block),
-                    fill_value=block_fill_value,
-                    shrink=False
-                )
+            block = self.Output.stype.allocateDestination(SubRegion(self.Output, *roiFromShape(block_shape)))
 
             self.execute(self.Output, (), SubRegion( self.Output, *block_roi ), block)
 
@@ -391,21 +377,7 @@ class OpCompressedUserLabelArray(OpCompressedCache):
         """
 
         # Extract the data to modify
-        original_data = numpy.ndarray( shape=new_pixels.shape, dtype=self.Output.meta.dtype )
-        # Use masked array if that is what Output expects.
-        if self.Output.meta.has_mask:
-            original_data_fill_value = None
-            if issubclass(original_data.dtype.type, numpy.integer):
-                original_data_fill_value = original_data.dtype.type(numpy.iinfo(original_data.dtype.type).max)
-            elif issubclass(original_data.dtype.type, numpy.floating):
-                original_data_fill_value = original_data.dtype.type(numpy.nan)
-
-            original_data = numpy.ma.masked_array(
-                original_data,
-                mask=numpy.ma.getmaskarray(original_data),
-                fill_value=original_data_fill_value,
-                shrink=False
-            )
+        original_data = self.Output.stype.allocateDestination(SubRegion(self.Output, *roiFromShape(new_pixels.shape)))
 
         self.execute(self.Output, (), roi, original_data)
         
