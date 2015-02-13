@@ -4,6 +4,7 @@ import h5py
 from vigra import AxisTags
 from lazyflow.utility import OrderedSignal
 from sys import stdout
+from zipfile import ZipFile
 
 
 def flatten_tracking_tablet(table, extra_table, obj_counts, max_tracks):
@@ -317,11 +318,16 @@ class ExportFile(object):
                 base, ext = f_name, ""
             else:
                 base, ext = f_name
+            file_names = []
             for table_name, table in self.table_dict.iteritems():
-                with open("%s_%s.%s" % (base, table_name, ext), "w") as fout:
+                file_names.append("{name}_{table}.{ext}".format(name=base, table=table_name, ext=ext))
+                with open(file_names[-1], "w") as fout:
                     self._make_csv_table(fout, table)
                     count += 1
                     self.ExportProgress(count * 100 / len(self.table_dict))
+            with ZipFile("{name}.zip".format(name=base), "w") as zip_file:
+                for file_name in file_names:
+                    zip_file.write(file_name)
         self.ExportProgress(100)
         print "exported %i tables" % count
 
