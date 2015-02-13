@@ -36,7 +36,7 @@ from lazyflow.request import Request, RequestPool, RequestLock
 from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory, ParallelVigraRfLazyflowClassifier
 
 from ilastik.utility import OperatorSubView, MultiLaneOperatorABC, OpMultiLaneWrapper
-from ilastik.utility.mode import mode
+from ilastik.utility.exportingOperator import ExportingOperator
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
 
@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 
 MISSING_VALUE = 0
 
-class OpObjectClassification(Operator, MultiLaneOperatorABC):
+class OpObjectClassification(Operator, ExportingOperator,MultiLaneOperatorABC):
     """The top-level operator for object classification.
 
     Most functionality is handled by specialized operators such as
@@ -127,6 +127,8 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
     def __init__(self, *args, **kwargs):
         super(OpObjectClassification, self).__init__(*args, **kwargs)
+
+        self.export_progress_dialog = None
 
         # internal operators
         opkwargs = dict(parent=self)
@@ -705,6 +707,49 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
     def getLane(self, laneIndex):
         return OperatorSubView(self, laneIndex)
+
+    def save_export_progress_dialog(self, dialog):
+        """
+        Implements ExportOperator.save_export_progress_dialog
+        Without this the progress dialog would be hidden after the export
+        :param dialog: the ProgressDialog to save
+        """
+        self.export_progress_dialog = dialog
+
+    def do_export(self, settings, selected_features, progress_slot):
+        """
+        Implements ExportOperator.do_export(settings, selected_features, progress_slot
+        Most likely called from ExportOperator.export_object_data
+        :param settings: the settings for the exporter, see
+        :param selected_features:
+        :param progress_slot:
+        :return:
+        """
+        from ilastik.utility.exportFile import objects_per_frame, ExportFile, ilastik_ids, Mode, Default
+
+        label_image = self.SegmentationImages[0]
+        obj_count = list(objects_per_frame(label_image))
+        ids = ilastik_ids(obj_count)
+
+        export_file = ExportFile(settings["file path"])
+        export_file.ExportProgress.subscribe(progress_slot)
+        export_file.InsertionProgress.subscribe(progress_slot)
+
+        export_file.add_columns("table", range(sum(obj_count)), Mode.List, Default.KnimeId)
+        export_file.add_columns("table", list(ids), Mode.List, Default.IlastikId)
+        export_file.add_columns("table", self.ObjectFeatures[0], Mode.IlastikFeatureTable,
+                                {"selection": selected_features})
+
+        if settings["file type"] == "h5":
+            export_file.add_rois(Default.LabelRoiPath, label_image, "table", settings["margin"], "labeling")
+            if settings["include raw"]:
+                export_file.add_image(Default.RawPath, self.RawImages[0])
+            else:
+                export_file.add_rois(Default.RawRoiPath, self.RawImages[0], "table", settings["margin"])
+        export_file.write_all(settings["file type"], settings["compression"])
+
+        export_file.ExportProgress.unsubscribe(progress_slot)
+        export_file.InsertionProgress.unsubscribe(progress_slot)
 
 
 def _atleast_nd(a, ndim):

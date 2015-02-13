@@ -18,23 +18,48 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ###############################################################################
-from ilastik.utility.commands import *
+
+
+def handshake(_, protocol, name, **address):
+    from ilastik.shell.gui.ipcManager import IPCFacade
+    if "host" in address and "port" in address:
+        address = (address["host"], address["port"])
+    IPCFacade().handshake(protocol, name, address)
+
+
+def set_position(shell, t=0, x=0, y=0, z=0, c=0, **_):
+    try:
+        shell.setAllViewersPosition([t, x, y, z, c])
+    except IndexError:
+        pass  # No project loaded
+
+
+commands = {
+    "handshake": handshake,
+    "setviewerposition": set_position
+}
+
 
 class CommandProcessor(object):
-    """
-    This class handles incoming commands from inter-process communication (currently
-    implemented as a TCP server in ilastik.shell.gui.messageServer). The list of
-    allowed commands as well as their implementation can be found in 
-    ilastik.utility.commands and extended as needed.
-    """
-    def __init__(self, shell):
+    def __init__(self):
+        self.shell = None
+
+    def set_shell(self, shell):
         self.shell = shell
-    
-    def execute(self, cmd, data):
-        if cmd not in allowedCommands:
-            raise Exception("Command '%s' not supported" % cmd)
-        # if command is implemented, try to execute it with the received data
-        try:            
-            allowedCommands[cmd](self.shell, data)
-        except Exception, e:
-            raise Exception("Executing command '%s' failed: %s" % (cmd, e))
+
+    def connect_receiver(self, receiver):
+        receiver.signal.connect(self.execute)
+
+    def disconnect_receiver(self, receiver):
+        receiver.signal.disconnect(self.execute)
+
+    def execute(self, command, data):
+        command = str(command)
+        handler = commands.get(command)
+        if not handler:
+            raise RuntimeError("Command '{}' is not available".format(command))
+        handler(self.shell, **data)
+
+
+
+

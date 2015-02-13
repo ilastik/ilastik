@@ -26,8 +26,28 @@ import socket
 import logging
 import json
 import atexit
+from choosePortDialog import Ui_ChoosePortDialog
+from PyQt4 import QtGui
 
 logger = logging.getLogger(__name__)
+
+class ChoosePortDialog(QtGui.QDialog):
+    def __init__(self, defaultPort):
+        QtGui.QDialog.__init__(self)
+        self.ui = Ui_ChoosePortDialog()
+        self.ui.setupUi(self)
+        validator = QtGui.QIntValidator(0, 65535)
+        self.ui.port.setValidator(validator)
+        self.ui.port.setText(str(defaultPort))
+
+    def getPort(self):
+        text = self.ui.port.text()
+        port = None
+        try:
+            port = int(text)
+        except ValueError as e:
+            return None
+        return port
 
 class TCPServerBoundToShell(SocketServer.TCPServer):
     """
@@ -52,7 +72,8 @@ class MessageServer(object):
     def __init__(self, parent, host=None, port=None, startListening=True):
         self.parent = parent
         self.running = False
-        
+        self.host = host
+        self.port = port
         if not host is None and not port is None:
             self.setupServer(host, port, startListening)
             
@@ -60,12 +81,21 @@ class MessageServer(object):
         try:
             self.host = host
             self.port = port
-            self._setupServer()
+            try:
+                self._setupServer()
+            except RuntimeError as e:
+                logger.warn(str(e))
+                return
             if startListening:
                 self._startListening()
             self.running = True
+            logger.info("Server setup")
+            logger.info("Connection to test client on Port 9999")
+            #self.connect("localhost", 9999, "Test Client")
         except Exception, e:
-            logger.error('Failed to set up MessageServer: %s' % e)    
+            logger.error('Failed to set up MessageServer: %s' % e)
+            import traceback
+            print traceback.format_exc()
             self.running = False
     
     def connect(self, host, port, name):
@@ -105,7 +135,21 @@ class MessageServer(object):
             sock.close()
             
     def _setupServer(self):
-        self.server = TCPServerBoundToShell((self.host, self.port), TCPRequestHandler, shell=self.parent)
+        dialog = ChoosePortDialog(self.port)
+        self.server = None
+        invalidPort = True
+        while invalidPort:
+            try:
+                self.server = TCPServerBoundToShell((self.host, self.port), TCPRequestHandler, shell=self.parent)
+                invalidPort = False
+            except socket.error as error:
+                if error.errno == 98: # Address already in use
+                    if dialog.exec_() == 0: #cancel
+                        raise RuntimeError("MessageServer won't be started. (User aborted)")
+                    self.port = dialog.getPort()
+                    print "Port: %d" % self.port
+                else:
+                    raise RuntimeError("MessageServer won't be started. (%s)" % error)
         self.thread = threading.Thread(name="IlastikTCPServer", target=self.server.serve_forever)
         self.thread.daemon = True
         
@@ -147,7 +191,7 @@ class TCPRequestHandler(SocketServer.StreamRequestHandler):
     
     def handle(self):
         data = json.loads(self.rfile.readline().strip())
-        logger.info("Received message from %s: %s" % (self.client_address, data))
+        logger.info("Received message qfrom %s: %s" % (self.client_address, data))
         try:
             self.parse(data)
         except Exception, e:
