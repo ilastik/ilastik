@@ -5,6 +5,9 @@ from vigra import AxisTags
 from lazyflow.utility import OrderedSignal
 from sys import stdout
 from zipfile import ZipFile
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def flatten_tracking_table(table, extra_table, obj_counts, max_tracks, t_range):
@@ -50,8 +53,8 @@ def flatten_ilastik_feature_table(table, selection, signal):
     for cat_name, category in computed_feature[0].iteritems():
         for feat_name, feat_array in category.iteritems():
             if cat_name == "Default features" or \
-                                    feat_name not in feature_names and \
-                                    feat_name in selection:
+                    feat_name not in feature_names and \
+                    feat_name in selection:
                 feature_names.append(feat_name)
                 feature_cats.append(cat_name)
                 feature_channels.append((feat_array.shape[1]))
@@ -361,7 +364,7 @@ class ExportFile(object):
                     for file_name in file_names:
                         zip_file.write(file_name)
         self.ExportProgress(100)
-        print "exported %i tables" % count
+        logger.info("exported %i tables" % count)
 
     def _add_columns(self, table_name, columns):
         if table_name in self.table_dict.iterkeys():
@@ -412,7 +415,7 @@ class ProgressPrinter(object):
             self.__call__(p)
         if p == 100 and not self.first:
             self.first = True
-            print
+            stdout.write("\n")
 
 
 if __name__ == "__main__":

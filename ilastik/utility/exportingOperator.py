@@ -11,6 +11,7 @@ class ExportingOperator(object):
     """
     A Mixin for the Operators that can export h5/csv data
     """
+
     def export_object_data(self, settings, selected_features, gui=None):
         """
         Initialize progress displays and start the actual export in a new thread using the lazyflow.request framework
@@ -30,10 +31,15 @@ class ExportingOperator(object):
 
         export = partial(self.do_export, settings, selected_features, progress_display)  # ();return
         request = Request(export)
-        request.notify_failed(gui["fail"] if gui is not None and "fail" in gui else self.export_failed)
+        if "fail" in gui:
+            request.notify_failed(gui["fail"])
+        if "ok" in gui:
+            request.notify_finished(gui["ok"])
+        if "cancel" in gui:
+            request.notify_cancelled(gui["cancel"])
         request.notify_failed(self.export_failed)
-        request.notify_finished(gui["ok"] if gui is not None and "ok" in gui else self.export_finished)
-        request.notify_cancelled(gui["cancel"] if gui is not None and "cancel" in gui else self.export_cancelled)
+        request.notify_finished(self.export_finished)
+        request.notify_cancelled(self.export_cancelled)
         request.submit()
 
         if gui is not None and "dialog" in gui:
@@ -89,6 +95,7 @@ class ExportingGui(object):
     """
     A Mixin for the GUI that can export h5/csv data
     """
+
     def show_export_dialog(self):
         """
         Shows the ExportObjectInfoDialog and calls the operators export_object_data method

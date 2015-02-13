@@ -602,7 +602,7 @@ class OpTrackingBase(Operator, ExportingOperator):
                     progress_slot.safe_popup_noclose("warning", "Warning", "Cannot export divisions.\nContinuing ...",
                                                      e)
                 else:
-                    print "\nWarning, Cannot export divisions"
+                    logger.warn("\nWarning, Cannot export divisions")
 
         if settings["file type"] == "h5":
             export_file.add_rois(Default.LabelRoiPath, self.LabelImage, "table", settings["margin"], "labeling")
