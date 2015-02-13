@@ -24,6 +24,7 @@ import gc
 import os
 import time
 import threading
+import weakref
 import platform
 import logging
 logger = logging.getLogger(__name__)
@@ -84,7 +85,7 @@ class ArrayCacheMemoryMgr(threading.Thread):
         self.daemon = True
 
         self.caches = self._new_list()
-        self.namedCaches = []
+        self.namedCaches = weakref.WeakSet()
 
         self._max_usage = 85
         self._target_usage = 70
@@ -104,7 +105,7 @@ class ArrayCacheMemoryMgr(threading.Thread):
            named caches are the top-level items and the user can then drill down into the caches
            that are children of the top-level caches.
         """
-        self.namedCaches.append(array_cache)
+        self.namedCaches.add(array_cache)
 
     def add(self, array_cache):
         with self._lock:
