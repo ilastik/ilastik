@@ -551,9 +551,22 @@ class OpTrackingBase(Operator, ExportingOperator):
         return ts, empty_frame
 
     def save_export_progress_dialog(self, dialog):
+        """
+        Implements ExportOperator.save_export_progress_dialog
+        Without this the progress dialog would be hidden after the export
+        :param dialog: the ProgressDialog to save
+        """
         self.export_progress_dialog = dialog
 
     def do_export(self, settings, selected_features, progress_slot):
+        """
+        Implements ExportOperator.do_export(settings, selected_features, progress_slot
+        Most likely called from ExportOperator.export_object_data
+        :param settings: the settings for the exporter, see
+        :param selected_features:
+        :param progress_slot:
+        :return:
+        """
         from ilastik.utility.exportFile import objects_per_frame, ExportFile, ilastik_ids, Mode, Default
 
         obj_count = list(objects_per_frame(self.LabelImage))
