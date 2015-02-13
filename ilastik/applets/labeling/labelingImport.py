@@ -31,17 +31,15 @@ import vigra
 #Qt
 from PyQt4 import uic
 from PyQt4.QtCore import pyqtSignal, Qt, QEvent, QObject
-from PyQt4.QtGui import QDialog, QFileDialog, QMessageBox
+from PyQt4.QtGui import QDialog, QFileDialog, QMessageBox, QSpinBox, QTableWidget, QLabel
 
 #volumina
 from volumina.widgets.multiStepProgressDialog import MultiStepProgressDialog
-from volumina.widgets.subregionRoiWidget import RoiSpinBox
 
 import logging
 logger = logging.getLogger(__name__)
 from volumina.utility import log_exception, PreferencesManager
 
-from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget
 from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui
 
 #lazyflow
@@ -328,6 +326,7 @@ class LabelImportOptionsDlg(QDialog):
 
         self._okay_conditions = {}
         self._boxes = collections.OrderedDict()
+        self.img_offset = [0] * len(axisRanges)
 
         # Init child widgets
         self._initMetaInfoWidgets()
@@ -399,18 +398,20 @@ class LabelImportOptionsDlg(QDialog):
             default_insert = tagged_insert[axis_key] or 0
             default_max = tagged_max[axis_key] or extent
 
-            insertBox = RoiSpinBox(self, 0, extent, 0 )
-            maxBox = RoiSpinBox(self, extent, extent, extent )
+            insertBox = QSpinBox(self)
+            maxBox = QLabel(str(default_max), self)
 
-            insertBox.setPartner( maxBox )
-            maxBox.setPartner( insertBox )
-
+            insertBox.setValue(0)
+            insertBox.setMinimum(0)
+            insertBox.setMaximum(extent)
             insertBox.setEnabled( tagged_insert[axis_key] is not None )
-            maxBox.setEnabled( True )
-
             if insertBox.isEnabled():
                 insertBox.setValue( default_insert )
-            maxBox.setValue( default_max )
+
+            # TODO: maxBox shouldn't be in tab list (but it still is)
+            maxBox.setTextInteractionFlags(Qt.NoTextInteraction)
+            maxBox.setFocusPolicy(Qt.NoFocus)
+            maxBox.setEnabled(False)
 
             insertBox.valueChanged.connect( self._updatePosition )
 
@@ -423,8 +424,7 @@ class LabelImportOptionsDlg(QDialog):
 
     def _updatePosition(self):
         insert_boxes, max_boxes = zip( *self._boxes.values() )
-        box_inserts = map( RoiSpinBox.value, insert_boxes )
-        box_maxes = map( RoiSpinBox.value, max_boxes )
+        box_inserts = map( QSpinBox.value, insert_boxes )
 
         self.img_offset = box_inserts
 
