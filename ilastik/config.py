@@ -38,8 +38,33 @@ debug: false
 plugin_directories: ~/.ilastik/plugins,
 
 [lazyflow]
-threads: 0
+threads: -1
 total_ram_mb: 0
+
+[ipc raw tcp]
+autostart: false
+autoaccept: true
+port: 9999
+interface: localhost
+
+[ipc zmq tcp publisher]
+autostart: false
+address: 127.0.0.1:9998
+
+[ipc zmq tcp subscriber]
+autostart: false
+address: localhost:9997
+
+[ipc zmq tcp]
+basedir: /tmp/ilastik
+
+[ipc zmq ipc publisher]
+autostart: false
+filename: out
+
+[ipc zmq ipc subscriber]
+autostart: false
+filename: in
 """
 
 cfg = ConfigParser.SafeConfigParser()

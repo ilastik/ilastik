@@ -60,9 +60,6 @@ def main():
         _clean_paths( ilastik_dir )
 
     import ilastik_main
-    # Special command-line control over default tmp dir
-    import ilastik.monkey_patches
-    ilastik.monkey_patches.extend_arg_parser(ilastik_main.parser)
     parsed_args, workflow_cmdline_args = ilastik_main.parser.parse_known_args()
     
     # allow to start-up by double-clicking an '.ilp' file
@@ -75,6 +72,7 @@ def main():
     # DEBUG EXAMPLES
     #parsed_args.project='/Users/bergs/MyProject.ilp'
     #parsed_args.headless = True
+    #os.environ["LAZYFLOW_THREADS"] = "0"
 
     ilastik_main.main(parsed_args, workflow_cmdline_args)
 
