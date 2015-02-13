@@ -19,9 +19,9 @@ class ExportObjectInfoDialog(QDialog):
     the exportObjectInfo operator
     :param dimensions: the dimensions of the raw image [t, x, y, z, c]
     :type dimensions: list
-    :param feature_table: nested dict of the computed features
+    :param feature_table: nested dict of the computed feature names
     :type feature_table: dict
-    :param req_features: list of the features that must be exported. None for empty list
+    :param req_features: list of the features that must be exported. None for default
     :type req_features: list or None
     :param parent: the parent QWidget for this dialog
     :type parent: QWidget or None
@@ -47,11 +47,11 @@ class ExportObjectInfoDialog(QDialog):
         self.ui.exportPath.dropEvent = self._drop_event
         #self.ui.forceUniqueIds.setEnabled(dimensions[0] > 1)
 
-    """
-    :returns: iterator for all features to export
-    :rtype: generator object
-    """
     def checked_features(self):
+        """
+        :returns: iterator for all features (names) to export
+        :rtype: generator object
+        """
         flags = QTreeWidgetItemIterator.Checked
         it = QTreeWidgetItemIterator(self.ui.featureView, flags)
         while it.value():
@@ -61,14 +61,17 @@ class ExportObjectInfoDialog(QDialog):
             yield text
             it += 1
 
-    """
-    margin: the margin that should be added around the rois
-    compression: dict that contains compression information for h5py
-    include raw: if True include the whole raw image instead of separate rois
-    :returns: all settings that can be changed inside the dialog
-    :rtype: dict
-    """
     def settings(self):
+        """
+        file type: the export format (h5 or csv)
+        file path: location of the exported file
+        compression: dict that contains compression information for h5py
+        normalize: make the labeling rois binary
+        margin: the margin that should be added around the rois
+        include raw: if True include the whole raw image instead of separate rois
+        :returns: all settings that can be changed inside the dialog
+        :rtype: dict
+        """
         s = {
             "file type": unicode(FILE_TYPES[self.ui.fileFormat.currentIndex()]),
             "file path": unicode(self.ui.exportPath.text()),

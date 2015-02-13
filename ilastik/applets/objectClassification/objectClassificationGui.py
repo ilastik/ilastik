@@ -896,7 +896,16 @@ class ObjectClassificationGui(LabelingGui, ExportingGui):
         button.clicked.connect(printToLog)
 
     def get_raw_shape(self):
+        """
+        Implements the ExportingGUI.get_raw_shape
+        :return: the raw shape
+        """
         return self.op.RawImages.meta.shape
 
     def get_feature_names(self):
+        """
+        Implements the ExportingGUI.get_feature_names
+        :return: the feature names
+        :rtype: dict
+        """
         return self.op.ComputedFeatureNames([]).wait()
