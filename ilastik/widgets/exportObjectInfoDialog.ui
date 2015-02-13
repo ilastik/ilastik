@@ -213,7 +213,7 @@
           <string>Extend the roi of each object</string>
          </property>
          <property name="text">
-          <string>Add margin around rois</string>
+          <string>Add margin around ROIs</string>
          </property>
         </widget>
        </item>
@@ -223,7 +223,7 @@
           <string>When checked the whole raw image will be exported. Otherwise the roi for each object will be exported</string>
          </property>
          <property name="text">
-          <string>Include whole raw image instead of rois</string>
+          <string>Include whole raw image instead of regions of interest (ROIs)</string>
          </property>
         </widget>
        </item>
