@@ -205,7 +205,7 @@ class Mode(object):
 
 
 class Default(object):
-    DivisionNames = {"names": ("timestep", "lineage", "parent_oid", "track_id", "child1_oid", "child_track1_id",
+    DivisionNames = {"names": ("timestep", "lineage_id", "parent_oid", "track_id", "child1_oid", "child_track1_id",
                                "child2_oid", "child_track2_id")}
     KnimeId = {"names": ("object_id",)}
     IlastikId = {"names": ("timestep", "labelimage_oid")}
@@ -355,9 +355,10 @@ class ExportFile(object):
                     self._make_csv_table(fout, table)
                     count += 1
                     self.ExportProgress(count * 100 / len(self.table_dict))
-            with ZipFile("{name}.zip".format(name=base), "w") as zip_file:
-                for file_name in file_names:
-                    zip_file.write(file_name)
+            if False:
+                with ZipFile("{name}.zip".format(name=base), "w") as zip_file:
+                    for file_name in file_names:
+                        zip_file.write(file_name)
         self.ExportProgress(100)
         print "exported %i tables" % count
 

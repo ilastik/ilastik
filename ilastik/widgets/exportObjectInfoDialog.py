@@ -198,6 +198,9 @@ class ExportObjectInfoDialog(QDialog):
         path = "%s.%s" % (match[0], FILE_TYPES[index])
         self.ui.exportPath.setText(path)
 
+        for widget in (self.ui.includeRaw, self.ui.marginLabel, self.ui.addMargin):
+            widget.setEnabled(FILE_TYPES[index] != "csv")
+
     def _compression_settings(self):
         settings = {}
         if self.ui.enableCompression.checkState() == Qt.Checked:

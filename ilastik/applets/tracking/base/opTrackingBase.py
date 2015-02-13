@@ -594,7 +594,6 @@ class OpTrackingBase(Operator, ExportingOperator):
             zips = zip(*divisions)
             divisions = zip(zips[0], div_lineage, *zips[1:])
             export_file.add_columns("divisions", divisions, Mode.List, Default.DivisionNames)
-            export_file.add_columns("divisions", div_lineage, Mode.List, extra={"names": ("lineage_id",)})
         except Exception as e:
             if hasattr(progress_slot, "safe_popup"):
                 progress_slot.safe_popup_noclose("warning", "Warning", "Cannot export divisions.\nContinuing ...", e)
