@@ -205,14 +205,18 @@ class custom_py2app(py2app.build_app.py2app):
         py2app.build_app.py2app.run(self)
 
         if include_meta_repo:
-            # Save drtile.so first!
-            shutil.move( self.__destination_libpython_dir + '/lazyflow/drtile/drtile.so', self.__dist_dir )
+            drtile_path = self.__destination_libpython_dir + '/lazyflow/drtile/drtile.so'
+            keep_drtile = os.path.exists(drtile_path)
+            if keep_drtile:
+                # Save drtile.so first!
+                shutil.move( drtile_path, self.__dist_dir )
             
             # Copy repos and create symlinks to modules
             self.install_repos()
-            
-            # Replace drtile.so
-            shutil.move( self.__dist_dir + '/drtile.so', self.__destination_libpython_dir + '/ilastik-meta/lazyflow/lazyflow/drtile/drtile.so' )
+
+            if keep_drtile:            
+                # Replace drtile.so
+                shutil.move( self.__dist_dir + '/drtile.so', self.__destination_libpython_dir + '/ilastik-meta/lazyflow/lazyflow/drtile/drtile.so' )
 
         # Remove excluded dylibs.
         # (The py2app exclude_dylib feature doesn't work if macholib can't find the dylib.)
