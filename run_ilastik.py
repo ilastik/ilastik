@@ -21,8 +21,14 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 
+import h5py
+import vigra
+import lazyflow
 import sys
 import os
+import vtk
+import volumina
+print "got this far..."
 
 def _clean_paths( ilastik_dir ):
     # remove undesired paths from PYTHONPATH and add ilastik's submodules
@@ -59,8 +65,8 @@ def main():
         ilastik_dir = os.path.abspath(os.path.join(this_path, "..%s.." % os.path.sep))
         _clean_paths( ilastik_dir )
 
-    import ilastik_main
-    parsed_args, workflow_cmdline_args = ilastik_main.parser.parse_known_args()
+    import ilastik.ilastik_main
+    parsed_args, workflow_cmdline_args = ilastik.ilastik_main.parser.parse_known_args()
     
     # allow to start-up by double-clicking an '.ilp' file
     if len(workflow_cmdline_args) == 1 and \
@@ -74,7 +80,7 @@ def main():
     #parsed_args.headless = True
     #os.environ["LAZYFLOW_THREADS"] = "0"
 
-    ilastik_main.main(parsed_args, workflow_cmdline_args)
+    ilastik.ilastik_main.main(parsed_args, workflow_cmdline_args)
 
 if __name__ == "__main__":
     # Examples:

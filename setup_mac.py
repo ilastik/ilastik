@@ -24,11 +24,11 @@ import sys
 from setuptools import setup, find_packages
 from ilastik import __version__
 
-APP = ['ilastik.py']
+APP = ['run_ilastik.py']
 DATA_FILES = []
 
 includes = [\
-                'h5py', 'h5py.defs', 'h5py.utils', 'h5py._proxy', 'h5py._errors',
+                'h5py', 'h5py.defs', 'h5py.utils', 'h5py._proxy', 'h5py._errors', 'h5py.h5ac',
                 'PyQt4.pyqtconfig', 'PyQt4.uic','PyQt4.QtCore','PyQt4.QtGui',
                 'site', 'os',
                 'vtk',
@@ -117,6 +117,17 @@ class sklearn_recipe(object):
             packages=['sklearn']
         )
 
+class h5py_recipe(object):
+    def check(self, dist, mf):
+        m = mf.findNode('h5py_recipe')
+        if m is None:
+            return None
+
+        # Don't put h5py_recipe in the site-packages.zip file
+        return dict(
+            packages=['h5py_recipe']
+        )
+
 class jsonschema_recipe(object):
     def check(self, dist, mf):
         m = mf.findNode('jsonschema')
@@ -134,6 +145,7 @@ py2app.recipes.volumina = volumina_recipe()
 py2app.recipes.lazyflow = lazyflow_recipe()
 py2app.recipes.vtk = vtk_recipe()
 py2app.recipes.sklearn = sklearn_recipe()
+py2app.recipes.h5py = h5py_recipe()
 py2app.recipes.jsonschema = jsonschema_recipe()
 
 
