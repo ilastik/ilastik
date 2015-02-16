@@ -18,6 +18,8 @@ def hessian_eigenvectors( a, sigma, sort=True ):
         sort: If True, sort the results in descending order by eigenvalue 
               (i.e. from largest to smallest eigenvalue)     
     """
+    assert numpy.__version__ >= '1.8.0', \
+        "This function requires broadcasting support in `numpy.linalg.eigh()`, so you need at least numpy v1.8.0"
     assert a.shape[-1] != 1, \
         "This function is designed to work on single-channel images without a channel dimension.  "\
         "Drop any singleton dimensions before calling this function."
@@ -33,7 +35,7 @@ def hessian_eigenvectors( a, sigma, sort=True ):
     # Convert it to a full tensor (upper half only)
     hessian_full = convert_symmetric_tensor_vector_to_full_tensor_matrix(hessian_upper, a.ndim, upper_only=True)
 
-    # Solve eigensystem at each pixel
+    # Solve eigensystem at each pixel (where each pixel is an NxN matrix)
     eig_vals, eig_vects = numpy.linalg.eigh(hessian_full, UPLO='U')
     
     if sort:
@@ -48,8 +50,9 @@ def hessian_eigenvectors( a, sigma, sort=True ):
         # sort the combined values, and then split the results back into the value/vector images.
         # Believe it or not, this is WAY faster than using numpy.argsort() + fancy indexing.
         assert eig_vals.dtype == eig_vects.dtype
+        
         combined = numpy.concatenate((eig_vals[...,None], eig_vects), axis=-1)
-        combined_dtypes = [eig_vals.dtype.descr]*(1+eig_vects.shape[-1])
+        combined_dtypes = [eig_vals.dtype.str]*(1+eig_vects.shape[-1])
         combined_names = map(str, range(1+eig_vects.shape[-1]))
         
         combined_view = combined.view( dtype={'names':combined_names, 'formats':combined_dtypes } )
@@ -77,6 +80,14 @@ def convert_symmetric_tensor_vector_to_full_tensor_matrix(tensor_vector_image, t
     """
     image_shape = tensor_vector_image.shape[:-1] # Shape WITHOUT tensor dimensions
     assert tensor_vector_image.shape[-1] == tensor_ndim*(tensor_ndim+1)/2
+
+    # 2D: Use a stride trick to return a view
+    if tensor_ndim == 2:
+        img = numpy.ascontiguousarray(tensor_vector_image)    
+        new_shape = img.shape[:-1] + (2,2)
+        new_strides = img.strides[:-1] + 2*(img.strides[-1],)
+        img_view = numpy.lib.stride_tricks.as_strided(img, new_shape, new_strides)
+        return img_view    
     
     # Convert the vigra form into the full tensor form
     # Create a the full tensor array and copy the vigra data into each half
@@ -99,7 +110,6 @@ if __name__ == "__main__":
     #
     # FIXME: This quick little test only verifies the eigenVALUES, not eigenVECTORS.
     #
-    
     import time
     from sklearn.externals import joblib
     #img = joblib.load("testData/img.jlb").astype(numpy.float32)
