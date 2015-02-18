@@ -107,7 +107,8 @@ class ManualTrackingWorkflow( Workflow ):
         opTracking.RawImage.connect( op5Raw.Output )
         opTracking.BinaryImage.connect( op5Binary.Output )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
-        opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeatures )        
+        opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeatures )
+        opTracking.ComputedFeatureNames.connect(opObjExtraction.ComputedFeatureNames)
 
         opDataExport.Inputs.resize(2)
         opDataExport.Inputs[0].connect( opTracking.TrackImage )

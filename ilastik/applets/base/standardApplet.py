@@ -1,4 +1,4 @@
-###############################################################################
+ ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
 #       Copyright (C) 2011-2014, the ilastik developers
@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+#		   http://ilastiapk.org/license.html
 ###############################################################################
 from ilastik.utility import MultiLaneOperatorABC, OpMultiLaneWrapper
 from ilastik.applets.base.applet import Applet

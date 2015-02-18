@@ -10,16 +10,34 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+class Default(object):
+    DivisionNames = {"names": ("timestep", "lineage_id", "parent_oid", "track_id", "child1_oid", "child_track1_id",
+                               "child2_oid", "child_track2_id")}
+    ManualDivMap = [1, 0, 1, 1, 1, 1, 1, 1]
+    KnimeId = {"names": ("object_id",)}
+    IlastikId = {"names": ("timestep", "labelimage_oid")}
+    Lineage = {"names": ("lineage_id",)}
+    LabelRoiPath = "/images/{}/labeling"
+    RawRoiPath = "/images/{}/raw"
+    RawPath = "/images/raw"
+    TrackColumnName = "track_id{}"
+    TimeColumnName = "timestep"
+
+
 def flatten_tracking_table(table, extra_table, obj_counts, max_tracks, t_range):
-    array = np.zeros(sum(obj_counts), ",".join(["i"] * max_tracks))
-    array.dtype.names = ["track%i" % i for i in xrange(1, max_tracks + 1)]
+    #array = np.zeros(sum(obj_counts), ",".join(["i"] * max_tracks))
+    #array.dtype.names = ["track%i" % i for i in xrange(1, max_tracks + 1)]
+    array = np.zeros(sum(obj_counts), [(Default.TrackColumnName.format(i), "i") for i in xrange(1, max_tracks + 1)])
     row = 0
     for i, count in enumerate(obj_counts):
         for o in xrange(1, count + 1):
             track = []
             if t_range[0] <= i <= t_range[1]:
                 if o in table[i]:
-                    track.append(table[i][o])
+                    if hasattr(table[i][o], "__iter__"):
+                        track.extend(table[i][o])
+                    else:
+                        track.append(table[i][o])
                     if i in extra_table and o in extra_table[i]:
                         track.extend(extra_table[i][o])
                 track = list(set(track))
@@ -164,7 +182,7 @@ def create_slicing(axistags, dimensions, margin, feature_table):
         yields also the actual object id
     """
     assert margin >= 0, "Margin muss be greater than or equal to 0"
-    time = feature_table["timestep"].astype(np.int32)
+    time = feature_table[Default.TimeColumnName].astype(np.int32)
     minx = feature_table["Coord<Minimum>_0"].astype(np.int32)
     maxx = feature_table["Coord<Maximum>_0"].astype(np.int32)
     miny = feature_table["Coord<Minimum>_1"].astype(np.int32)
@@ -206,17 +224,6 @@ class Mode(object):
     IlastikFeatureTable = 2
     List = 3
     NumpyStructArray = 4
-
-
-class Default(object):
-    DivisionNames = {"names": ("timestep", "lineage_id", "parent_oid", "track_id", "child1_oid", "child_track1_id",
-                               "child2_oid", "child_track2_id")}
-    KnimeId = {"names": ("object_id",)}
-    IlastikId = {"names": ("timestep", "labelimage_oid")}
-    Lineage = {"names": ("lineage_id",)}
-    LabelRoiPath = "/images/{}/labeling"
-    RawRoiPath = "/images/{}/raw"
-    RawPath = "/images/raw"
 
 
 class ExportFile(object):

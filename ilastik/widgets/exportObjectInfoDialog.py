@@ -31,12 +31,14 @@ class ExportObjectInfoDialog(QDialog):
     :param parent: the parent QWidget for this dialog
     :type parent: QWidget or None
     """
-    def __init__(self, dimensions, feature_table, req_features=None, parent=None):
+    def __init__(self, dimensions, feature_table, req_features=None, title=None, parent=None):
         super(ExportObjectInfoDialog, self).__init__(parent)
 
         ui_class, widget_class = uic.loadUiType(os.path.split(__file__)[0] + "/exportObjectInfoDialog.ui")
         self.ui = ui_class()
         self.ui.setupUi(self)
+
+        self.setWindowTitle(title)
 
         self.raw_size = reduce(mul, dimensions)
 
@@ -105,6 +107,12 @@ class ExportObjectInfoDialog(QDialog):
             self.ui.exportPath.setText(text)
 
     def _setup_features(self, features, reqs, max_depth=2, parent=None):
+        if max_depth == 2 and not features:
+            item = QTreeWidgetItem(parent)
+            item.setText(0, "All Default Features will be exported.")
+            self.ui.selectAllFeatures.setEnabled(False)
+            self.ui.selectNoFeatures.setEnabled(False)
+            return
         if max_depth == 0:
             return
         if parent is None:

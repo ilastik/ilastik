@@ -38,13 +38,14 @@ from ilastik.utility import log_exception
 import volumina.colortables as colortables
 from volumina.api import LazyflowSource, GrayscaleLayer, ColortableLayer
 from volumina.utility import ShortcutManager
+from ilastik.utility.exportingOperator import ExportingGui
 
 from ilastik.config import cfg as ilastik_config
 
 from volumina.utility import encode_from_qstring
     
 
-class ManualTrackingGui(LayerViewerGui):
+class ManualTrackingGui(LayerViewerGui, ExportingGui):
 
     def appletDrawer( self ):
         return self._drawer
@@ -1259,4 +1260,26 @@ class ManualTrackingGui(LayerViewerGui):
         for b in buttons:
             if exceptButtons is None or b not in exceptButtons:
                 b.setEnabled(enable)
-        
+
+    def menus(self):
+        m = QtGui.QMenu("&Export", self.volumeEditorWidget)
+        m.addAction("Export Tracking Information").triggered.connect(self.show_export_dialog)
+
+        return [m]
+
+    def get_raw_shape(self):
+        return self.topLevelOperatorView.RawImage.meta.shape
+
+    def get_feature_names(self):
+        return self.topLevelOperatorView.ComputedFeatureNames([]).wait()
+
+    def get_export_dialog_title(self):
+        return "Export Tracking Information"
+
+    def lock_gui(self):
+        self.applet.busy = True
+        self.applet.appletStateUpdateRequested.emit()
+
+    def unlock_gui(self, *_):
+        self.applet.busy = False
+        self.applet.appletStateUpdateRequested.emit()

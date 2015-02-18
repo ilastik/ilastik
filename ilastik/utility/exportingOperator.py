@@ -29,7 +29,7 @@ class ExportingOperator(object):
             progress_display = gui["dialog"]
             self.save_export_progress_dialog(progress_display)
 
-        export = partial(self.do_export, settings, selected_features, progress_display)  # ();return
+        export = partial(self.do_export, settings, selected_features, progress_display)();return
         request = Request(export)
         if "fail" in gui:
             request.notify_failed(gui["fail"])
@@ -37,6 +37,13 @@ class ExportingOperator(object):
             request.notify_finished(gui["ok"])
         if "cancel" in gui:
             request.notify_cancelled(gui["cancel"])
+        if "unlock" in gui:
+            request.notify_cancelled(gui["unlock"])
+            request.notify_failed(gui["unlock"])
+            request.notify_finished(gui["unlock"])
+        if "lock" in gui:
+            lock = gui["lock"]
+            lock()
         request.notify_failed(self.export_failed)
         request.notify_finished(self.export_finished)
         request.notify_cancelled(self.export_cancelled)
@@ -107,7 +114,7 @@ class ExportingGui(object):
         dimensions = self.get_raw_shape()
         feature_names = self.get_feature_names()
 
-        dialog = ExportObjectInfoDialog(dimensions, feature_names)
+        dialog = ExportObjectInfoDialog(dimensions, feature_names, title=self.get_export_dialog_title())
         if not dialog.exec_():
             return
 
@@ -122,7 +129,9 @@ class ExportingGui(object):
             "dialog": progress,
             "ok": partial(progress.safe_popup, "information", "Information", "Export successful!"),
             "cancel": partial(progress.safe_popup, "information", "Information", "Export cancelled!"),
-            "fail": partial(progress.safe_popup, "critical", "Critical", "Export failed!")
+            "fail": partial(progress.safe_popup, "critical", "Critical", "Export failed!"),
+            "unlock": self.unlock_gui,
+            "lock": self.lock_gui
         }
         self.topLevelOperatorView.export_object_data(settings, selected_features, gui)
 
@@ -143,4 +152,13 @@ class ExportingGui(object):
 
         e.g. return self.topLevelOperatorView.ComputedFeatureNames([]).wait()
         """
+        raise NotImplementedError
+
+    def unlock_gui(self):
+        raise NotImplementedError
+
+    def lock_gui(self):
+        raise NotImplementedError
+
+    def get_export_dialog_title(self):
         raise NotImplementedError
