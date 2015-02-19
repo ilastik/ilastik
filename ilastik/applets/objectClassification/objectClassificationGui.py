@@ -30,7 +30,6 @@ from ilastik.widgets.featureDlg import FeatureDlg
 from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog
 from ilastik.applets.objectExtraction.opObjectExtraction import OpRegionFeatures3d
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
-from lazyflow.operators.ioOperators.opExportObjectInfo import OpExportObjectInfo
 from ilastik.applets.objectClassification.opObjectClassification import OpObjectClassification
 
 import os
@@ -41,7 +40,6 @@ from functools import partial
 from ilastik.config import cfg as ilastik_config
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
-from lazyflow.operators.ioOperators import OpExportObjectInfo
 
 import logging
 logger = logging.getLogger(__name__)
