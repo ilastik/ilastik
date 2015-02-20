@@ -298,6 +298,25 @@ class TestOpCompressedCache( object ):
         
         #logger.debug("Checking data...")    
         assert (readData == expectedData).all(), "Incorrect output!"
+
+    def testReportGeneration(self):
+        graph = Graph()
+        sampleData = numpy.random.randint(0, 256, size=(50, 50, 50))
+        sampleData = sampleData.astype(numpy.uint8)
+        sampleData = vigra.taggedView(sampleData, axistags='xyz')
+        
+        opData = OpArrayPiper(graph=graph)
+        opData.Input.setValue(sampleData)
+        
+        op = OpCompressedCache(parent=None, graph=graph)
+        op.Input.connect(opData.Output)
+        
+        assert op.Output.ready()
+        assert op.usedMemory() == 0.0,\
+            "cache must not be filled at this point"
+        op.Output[...].wait()
+        assert op.usedMemory() > 0.0,\
+            "cache must contain data at this point"
         
 
 if __name__ == "__main__":
