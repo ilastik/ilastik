@@ -269,7 +269,8 @@ class OpCompressedCache(OpCache):
     def usedMemory(self):
         #FIXME
         tot = 0.0
-        for b in self._cacheFiles:
+        for key in self._cacheFiles:
+            b = self._cacheFiles[key]
             if "data" in b:
                 tot += b["data"].size * self._getDtypeBytes(b["data"].dtype)
         return tot
