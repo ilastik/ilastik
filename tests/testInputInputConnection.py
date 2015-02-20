@@ -111,6 +111,25 @@ class TestInputInputConnection(object):
         assert caught_exception
         assert not self.op.Input.ready()
 
+    def test_value_none_value(self):
+        self.op.Input.setValue(True)
+        result = self.op.Output[:].wait()[0]
+        assert result == True, "result = %r" % result
+
+        self.op.Input.setValue(None)
+        # Should not crash.
+        caught_exception = False
+        try:
+            result = self.op.Output[:].wait()[0]
+        except Slot.SlotNotReadyError:
+            caught_exception = True
+        assert caught_exception
+        assert not self.op.Input.ready()
+
+        self.op.Input.setValue(True)
+        result = self.op.Output[:].wait()[0]
+        assert result == True, "result = %r" % result
+
     def test_disconnect(self):
         self.op.internalOp.Input.disconnect()
         self.op.internalOp.Input.connect(self.op.Input)
