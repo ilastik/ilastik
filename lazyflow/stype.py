@@ -20,6 +20,7 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 import numpy, vigra
+import collections
 import warnings
 
 from roi import roiToSlice
@@ -200,7 +201,8 @@ class ArrayLike( SlotType ):
             dst.mask[...] = numpy.ma.getmaskarray(src_val)
             if isinstance(src_val, numpy.ma.masked_array):
                 dst.fill_value = src_val.fill_value
-        elif isinstance(dst, (list, tuple)) or isinstance(src, (list, tuple)):
+        elif isinstance(dst, collections.MutableSequence) or \
+                isinstance(src, collections.MutableSequence):
             dst[:] = src[:]
         else:
             dst[...] = src[...]
