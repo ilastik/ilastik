@@ -51,7 +51,8 @@ class TestOpBlockedArrayCache(object):
 
     def setUp(self):
         self.dataShape = (1,100,100,10,1)
-        self.data = (numpy.random.random(self.dataShape) * 100).astype(int)
+        self.data = numpy.random.randint(0, 256, size=self.dataShape)
+        self.data = self.data.astype(numpy.uint32)
         self.data = self.data.view(vigra.VigraArray)
         self.data.axistags = vigra.defaultAxistags('txyzc')
 
@@ -321,10 +322,11 @@ class TestOpBlockedArrayCache(object):
 
         r = MemInfoNode()
         opCache.generateReport(r)
-        # we are expecting exactly one block being reserved, with 20^3*4 byte
-        usedMemory = 20**3*4
-        assert abs(usedMemory - r.usedMemory) < 1e-3
-        
+        # we are expecting one inner block to be reserved, inner block
+        # size is 20x20x10, uint32 is 4 bytes
+        usedMemory = 20*20*10*4
+        numpy.testing.assert_equal(r.usedMemory, usedMemory)
+
 
 if __name__ == "__main__":
     import sys
