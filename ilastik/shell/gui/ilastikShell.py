@@ -564,6 +564,12 @@ class IlastikShell( QMainWindow ):
         server_action = menu.addAction("Start message server")
         server_action.triggered.connect(start_message_server)
 
+        def hideApplets(hideThem):
+            self.mainSplitter.setVisible(not hideThem)
+        hide = menu.addAction("Hide applets")
+        hide.setCheckable(True)
+        hide.toggled.connect(hideApplets)
+
         return menu
 
     def _createProfilingSubmenu(self):
