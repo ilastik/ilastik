@@ -306,14 +306,14 @@ class TestOpCompressedCache( object ):
         sampleData = numpy.random.randint(0, 256, size=(50, 50, 50))
         sampleData = sampleData.astype(numpy.uint8)
         sampleData = vigra.taggedView(sampleData, axistags='xyz')
-        
+
         opData = OpArrayPiper(graph=graph)
         opData.Input.setValue(sampleData)
-        
+
         op = OpCompressedCache(parent=None, graph=graph)
         op.BlockShape.setValue((25, 25, 25))
         op.Input.connect(opData.Output)
-        
+
         before = time.time()
         assert op.Output.ready()
         assert op.usedMemory() == 0.0,\
@@ -340,6 +340,27 @@ class TestOpCompressedCache( object ):
 
         opData.Input.setDirty(slice(None))
         assert op.fractionOfUsedMemoryDirty() == 1.0
+
+    def testReasonableCompression(self):
+        # compression should be *way* better than this
+        expected_factor = 4.0
+        graph = Graph()
+        sampleData = numpy.zeros((10000, 1000), dtype=numpy.uint8)
+        sampleData = vigra.taggedView(sampleData, axistags='xy')
+
+        opData = OpArrayPiper(graph=graph)
+        opData.Input.setValue(sampleData)
+
+        op = OpCompressedCache(parent=None, graph=graph)
+        op.Input.connect(opData.Output)
+
+        assert op.Output.ready()
+        assert op.usedMemory() == 0.0,\
+            "cache must not be filled at this point"
+        op.Output[...].wait()
+        assert op.usedMemory() <= sampleData.nbytes/expected_factor,\
+            "Compression of all-zeroes should be better than factor "\
+            "{}".format(expected_factor)
 
 
 if __name__ == "__main__":

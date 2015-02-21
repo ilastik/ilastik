@@ -38,6 +38,15 @@ from lazyflow.operators.opCache import OpCache
 
 logger = logging.getLogger(__name__)
 
+
+def get_storage_size(h5dataset):
+    '''
+    get the storage size allocated for this hdf5 dataset in bytes
+
+    (shorthand for the hidden h5py functionality)
+    '''
+    return h5py.h5d.DatasetID.get_storage_size(h5dataset.id)
+
 class OpCompressedCache(OpCache):
     """
     A blockwise cache that stores each block as a separate in-memory hdf5 file with a compressed dataset.
@@ -274,7 +283,10 @@ class OpCompressedCache(OpCache):
             group = self._cacheFiles[key]
             if "data" in group:
                 ds = group["data"]
-                tot += ds.size * self._getDtypeBytes(ds.dtype)
+                # use actual size, not number of bytes in
+                # *uncompressed* array
+                tot += get_storage_size(ds)
+                # tot += ds.size * self._getDtypeBytes(ds.dtype)
         return tot
     
     def fractionOfUsedMemoryDirty(self):
@@ -284,7 +296,9 @@ class OpCompressedCache(OpCache):
             group = self._cacheFiles[key]
             if "data" in group:
                 ds = group["data"]
-                mem = ds.size * self._getDtypeBytes(ds.dtype)
+                # use actual size, not number of bytes in
+                # *uncompressed* array
+                mem = get_storage_size(ds)
                 tot += mem
                 if key in self._dirtyBlocks:
                     dirty += mem
