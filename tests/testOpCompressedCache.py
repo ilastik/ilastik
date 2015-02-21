@@ -23,6 +23,7 @@ import sys
 import logging
 import threading
 import functools
+import time
 
 import numpy
 import vigra
@@ -30,6 +31,7 @@ import vigra
 from lazyflow.graph import Graph
 from lazyflow.operators import OpCompressedCache, OpArrayPiper
 from lazyflow.utility.slicingtools import slicing2shape
+from lazyflow.operators.arrayCacheMemoryMgr import MemInfoNode
 
 logger = logging.getLogger("tests.testOpCompressedCache")
 cacheLogger = logging.getLogger("lazyflow.operators.opCompressedCache")
@@ -309,15 +311,36 @@ class TestOpCompressedCache( object ):
         opData.Input.setValue(sampleData)
         
         op = OpCompressedCache(parent=None, graph=graph)
+        op.BlockShape.setValue((25, 25, 25))
         op.Input.connect(opData.Output)
         
+        before = time.time()
         assert op.Output.ready()
         assert op.usedMemory() == 0.0,\
             "cache must not be filled at this point"
         op.Output[...].wait()
         assert op.usedMemory() > 0.0,\
             "cache must contain data at this point"
-        
+        after = time.time()
+
+        r = MemInfoNode()
+        op.generateReport(r)
+        # not sure how good this can be compressed, but the cache
+        # should hold memory by now
+        assert r.usedMemory > 0
+        # check sanity of last access time
+        assert r.lastAccessTime >= before, str(r.lastAccessTime)
+        assert r.lastAccessTime <= after, str(r.lastAccessTime)
+        assert r.fractionOfUsedMemoryDirty == 0.0
+
+        opData.Input.setDirty(
+            (slice(0, 25), slice(0, 25), slice(0, 25)))
+        assert op.fractionOfUsedMemoryDirty() < 1.0
+        assert op.fractionOfUsedMemoryDirty() > 0
+
+        opData.Input.setDirty(slice(None))
+        assert op.fractionOfUsedMemoryDirty() == 1.0
+
 
 if __name__ == "__main__":
     # Set up logging for debug

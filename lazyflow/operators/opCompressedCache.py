@@ -65,6 +65,7 @@ class OpCompressedCache(OpCache):
             self._dirtyBlocks = set()
             self._blockLocks = {}
             self._chunkshape = self._chooseChunkshape(self._blockshape)
+            self._lastAccessTime = 0
 
     def cleanUp(self):
         logger.debug( "Cleaning up" )
@@ -122,6 +123,7 @@ class OpCompressedCache(OpCache):
         # Ensure all block cache files are up-to-date
         self._waitForBlocks(block_starts)
         self._copyData(roi, destination, block_starts)
+        self._lastAccessTime = time.time()
         return destination
 
     def _waitForBlocks(self, block_starts):
@@ -267,13 +269,33 @@ class OpCompressedCache(OpCache):
         return dtype().nbytes
     
     def usedMemory(self):
-        #FIXME
         tot = 0.0
         for key in self._cacheFiles:
-            b = self._cacheFiles[key]
-            if "data" in b:
-                tot += b["data"].size * self._getDtypeBytes(b["data"].dtype)
+            group = self._cacheFiles[key]
+            if "data" in group:
+                ds = group["data"]
+                tot += ds.size * self._getDtypeBytes(ds.dtype)
         return tot
+    
+    def fractionOfUsedMemoryDirty(self):
+        tot = 0.0
+        dirty = 0.0
+        for key in self._cacheFiles:
+            group = self._cacheFiles[key]
+            if "data" in group:
+                ds = group["data"]
+                mem = ds.size * self._getDtypeBytes(ds.dtype)
+                tot += mem
+                if key in self._dirtyBlocks:
+                    dirty += mem
+        if tot > 0:
+            return dirty / tot
+        else:
+            return 0.0
+
+    def lastAccessTime(self):
+        """timestamp of last access (time.time())"""
+        return self._lastAccessTime
     
     def generateReport(self, report):
         report.name = self.name
