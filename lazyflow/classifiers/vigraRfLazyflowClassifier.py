@@ -69,7 +69,7 @@ class VigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
 
     @property
     def feature_count(self):
-        return self.vigra_rf.featureCount()
+        return self._vigra_rf.featureCount()
 
     def serialize_hdf5(self, h5py_group):
         # Due to non-shared hdf5 dlls, vigra can't write directly to
