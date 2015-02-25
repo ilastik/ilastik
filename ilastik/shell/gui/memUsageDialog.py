@@ -56,6 +56,7 @@ class MemUsageDialog(QDialog):
             ["cache", "memory", "roi", "dtype", "type", "id"])
         self._idIndex = self.tree.columnCount() - 1
         self.tree.setColumnHidden(self._idIndex, True)
+        self.tree.setSortingEnabled(True)
         self.tree.clear()
 
     def _updateReport(self):
@@ -67,7 +68,8 @@ class MemUsageDialog(QDialog):
             try:
                 c.generateReport(r)
             except NotImplementedError:
-                warnings.warn('cache operator {} does not implement generateReport()'.format(c))
+                warnings.warn('cache operator {} does'
+                              'not implement generateReport()'.format(c))
             else:
                 reports.append(r)
         self._updateBranch(self.tree.invisibleRootItem(), reports)
@@ -145,32 +147,30 @@ class MemUsageDialog(QDialog):
         l.append(t)
         l.append(report.id)
         return l
-            
+
     def hideEvent(self, event):
         self.timer.stop()
-        
+
     def showEvent(self, show):
         # update once so we don't have to wait for initial report
         self._updateReport()
-        self.timer.start(5*1000) #update every 5 sec.
- 
-#===----------------------------------------------------------------------------------------------------------------===
-#=== if __name__ == "__main__"                                                                                      ===
-#===----------------------------------------------------------------------------------------------------------------===
-    
+        # update every 5 sec.
+        self.timer.start(5*1000)
+
+
 if __name__ == "__main__":
     from PyQt4.QtGui import QApplication
     import pickle
-    
+
     app = QApplication([])
-    
+
     f = open("/tmp/reports.pickle", 'r')
     reports = pickle.load(f)
-    
+
     dlg = MemUsageDialog(update=False)
-    
+
     print reports
-    
+
     dlg._showReports(reports)
     dlg.show()
     app.exec_()
