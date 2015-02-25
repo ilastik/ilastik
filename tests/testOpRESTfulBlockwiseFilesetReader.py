@@ -69,8 +69,8 @@ class TestOpBlockwiseFilesetReader(object):
             "origin_offset" : [2917, 0, 0],
             "bounds" : [4150, 135424, 119808],
             "dtype" : "numpy.uint8",
-            "url_format" : "http://openconnecto.me/emca/bock11/hdf5/0/{x_start},{x_stop}/{y_start},{y_stop}/{z_start},{z_stop}/",
-            "hdf5_dataset" : "cube"
+            "url_format" : "http://openconnecto.me/ocp/ca/bock11/hdf5/0/{x_start},{x_stop}/{y_start},{y_stop}/{z_start},{z_stop}/",
+            "hdf5_dataset" : "CUTOUT"
         }
         """
 
@@ -86,7 +86,7 @@ class TestOpBlockwiseFilesetReader(object):
             "shape" : [40,40,40],
             "dtype" : "numpy.uint8",
             "block_shape" : [20, 20, 20],
-            "block_file_name_format" : "block-{roiString}.h5/cube"
+            "block_file_name_format" : "block-{roiString}.h5/CUTOUT"
         }
         """
         
