@@ -1085,6 +1085,12 @@ class Slot(object):
                 if isinstance(value, numpy.ndarray) or isinstance(self._value, numpy.ndarray):
                     if type(value) != type(self._value) or value.shape != self._value.shape:
                         changed = True
+                if isinstance(value, numpy.ma.masked_array) and isinstance(self._value, numpy.ma.masked_array):
+                    # Type comparison already checked as all masked arrays are subclasses of ndarrays.
+                    # NAN does not compare equal so we need a way to check that separately.
+                    if (value.fill_value != self._value.fill_value) and \
+                        not (numpy.isnan(value.fill_value) and numpy.isnan(self._value.fill_value)):
+                        changed = True
                 if isinstance(value, vigra.VigraArray) or isinstance(self._value, vigra.VigraArray):
                     if type(value) != type(self._value) or value.axistags != self._value.axistags:
                         changed = True
