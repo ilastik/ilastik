@@ -458,7 +458,7 @@ class TestOpBlockedArrayCache_masked(object):
         # but fixAtCurrent is True so the cache gives us zeros
         assert (data == 0).all()
         assert (data.mask == False).all()
-        assert (data.fill_value == numpy.iinfo(numpy.int_).max).all()
+        assert (data.fill_value == 0).all()
 
         opCache.fixAtCurrent.setValue(False)
 
