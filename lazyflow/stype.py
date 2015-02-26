@@ -110,7 +110,7 @@ class ArrayLike( SlotType ):
             storage_mask = numpy.zeros(storage.shape, dtype=bool)
             storage_fill_value = None
             if issubclass(storage.dtype.type, numpy.integer):
-                storage_fill_value = storage.dtype.type(numpy.iinfo(storage.dtype.type).max)
+                storage_fill_value = storage.dtype.type(0)
             elif issubclass(storage.dtype.type, numpy.floating):
                 storage_fill_value = storage.dtype.type(numpy.nan)
             elif issubclass(storage.dtype.type, numpy.complexfloating):
