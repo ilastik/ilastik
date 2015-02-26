@@ -35,6 +35,7 @@ from lazyflow.request import Request, RequestPool, RequestLock
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import TinyVector, getIntersectingBlocks, getBlockBounds, roiToSlice, getIntersection
 from lazyflow.operators.opCache import OpCache
+from lazyflow.utility.chunkHelpers import chooseChunkShape
 
 logger = logging.getLogger(__name__)
 
@@ -228,47 +229,25 @@ class OpCompressedCache(OpCache):
 
         # Start with a copy of blockshape
         axes = self.Output.meta.getTaggedShape().keys()
-        taggedBlockshape = collections.OrderedDict( zip(axes, self._blockshape) )
-        taggedChunkshape = copy.copy( taggedBlockshape )
+        taggedBlockShape = collections.OrderedDict(zip(axes, self._blockshape))
 
         dtypeBytes = self._getDtypeBytes(self.Output.meta.dtype)
 
         # How much xyz space can a chunk occupy and still fit within 100k?
         desiredSpace = 100000.0 / dtypeBytes
         for key in 'tc':
-            if key in taggedChunkshape:
-                desiredSpace /= taggedChunkshape[key] 
+            if key in taggedBlockShape:
+                desiredSpace /= taggedBlockShape[key] 
         logger.debug("desired space: {}".format( desiredSpace ))
 
-        # How big is the blockshape?
-        blockshapeSpace = 1.0
-        numSpaceAxes = 0.0
-        for key in 'xyz':
-            if key in taggedBlockshape:
-                numSpaceAxes += 1.0
-                blockshapeSpace *= taggedBlockshape[key]
-        logger.debug("blockshape space: {}".format( blockshapeSpace ))
-        
-        # Determine factor to shrink each spatial dimension
-        factor = blockshapeSpace / float(desiredSpace)
-        factor = factor**(1/numSpaceAxes)
-        logger.debug("factor: {}".format(factor))
-        
-        # Adjust by factor
-        for key in 'xyz':
-            if key in taggedChunkshape:
-                taggedChunkshape[key] /= factor
-                taggedChunkshape[key] = max(1, taggedChunkshape[key])
-                taggedChunkshape[key] = int(taggedChunkshape[key])
-
-        chunkshape = taggedChunkshape.values()
-        
-        # h5py will crash if the chunkshape is larger than the dataset shape.
-        chunkshape = numpy.minimum(self._blockshape, chunkshape )
-
-        chunkshape = tuple( chunkshape )
-        logger.debug("Using chunk shape: {}".format( chunkshape ))
-        return chunkshape
+        spatialKeys = [k for k in taggedBlockShape.keys() if k in 'xyz']
+        spatialShape = [taggedBlockShape[k] for k in spatialKeys]
+        newSpatialShape = chooseChunkShape(spatialShape, desiredSpace)
+        for k, v in zip(spatialKeys, newSpatialShape):
+            taggedBlockShape[k] = v
+        chunkShape = tuple(taggedBlockShape.values())
+        logger.debug("Using chunk shape: {}".format( chunkShape ))
+        return chunkShape
 
     def _getDtypeBytes(self, dtype):
         if type(dtype) is numpy.dtype:
