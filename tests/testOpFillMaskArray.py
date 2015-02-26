@@ -59,6 +59,7 @@ class TestOpFillMaskArray(object):
         data = numpy.ma.masked_array(
             data,
             mask=mask,
+            fill_value=data.dtype.type(numpy.nan),
             shrink=False
         )
 
@@ -93,6 +94,7 @@ class TestOpFillMaskArray(object):
         data = numpy.ma.masked_array(
             data,
             mask=mask,
+            fill_value=data.dtype.type(numpy.nan),
             shrink=False
         )
 
@@ -105,6 +107,79 @@ class TestOpFillMaskArray(object):
         # Provide input and grab chunks.
         self.operator_fill.InputArray.setValue(data)
         self.operator_fill.InputFillValue.setValue(numpy.nan)
+        output[:2] = self.operator_fill.Output[:2].wait()
+        output[2:] = self.operator_fill.Output[2:].wait()
+
+        assert not isinstance(output, numpy.ma.masked_array)
+        assert (
+            (expected_output == output) |
+            (numpy.isnan(expected_output) & numpy.isnan(output))
+        ).all()
+
+    def test3(self):
+        # Generate a random dataset and see if it we get the right masking from the operator.
+        data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
+        mask = numpy.zeros(data.shape, dtype=bool)
+
+        # Mask borders of the expected output.
+        left_slicing = (mask.ndim - 1) * (slice(None),) + (slice(None, 1),)
+        right_slicing = (mask.ndim - 1) * (slice(None),) + (slice(-1, None),)
+        for i in xrange(mask.ndim):
+            left_slicing = left_slicing[-1:] + left_slicing[:-1]
+            right_slicing = right_slicing[-1:] + right_slicing[:-1]
+
+            mask[left_slicing] = True
+            mask[right_slicing] = True
+
+        data = numpy.ma.masked_array(
+            data,
+            mask=mask,
+            fill_value=data.dtype.type(numpy.nan),
+            shrink=False
+        )
+
+        expected_output = data.filled(numpy.nan)
+
+        # Provide input read all output.
+        self.operator_fill.InputArray.setValue(data)
+        output = self.operator_fill.Output[None].wait()
+
+        assert not isinstance(output, numpy.ma.masked_array)
+        assert (
+            (expected_output == output) |
+            (numpy.isnan(expected_output) & numpy.isnan(output))
+        ).all()
+
+    def test4(self):
+        # Generate a dataset and grab chunks of it from the operator. The result should be the same as above.
+        data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
+        mask = numpy.zeros(data.shape, dtype=bool)
+
+        # Mask borders of the expected output.
+        left_slicing = (mask.ndim - 1) * (slice(None),) + (slice(None, 1),)
+        right_slicing = (mask.ndim - 1) * (slice(None),) + (slice(-1, None),)
+        for i in xrange(mask.ndim):
+            left_slicing = left_slicing[-1:] + left_slicing[:-1]
+            right_slicing = right_slicing[-1:] + right_slicing[:-1]
+
+            mask[left_slicing] = True
+            mask[right_slicing] = True
+
+        data = numpy.ma.masked_array(
+            data,
+            mask=mask,
+            fill_value=data.dtype.type(numpy.nan),
+            shrink=False
+        )
+
+        expected_output = data.filled(numpy.nan)
+
+        # Create array to store results. Don't keep original data.
+        output = expected_output.copy()
+        output[:] = 0
+
+        # Provide input and grab chunks.
+        self.operator_fill.InputArray.setValue(data)
         output[:2] = self.operator_fill.Output[:2].wait()
         output[2:] = self.operator_fill.Output[2:].wait()
 
@@ -149,6 +224,7 @@ class TestOpFillMaskArray2(object):
 
         data = numpy.ma.masked_array(data,
                                      mask=mask,
+                                     fill_value=data.dtype.type(numpy.nan),
                                      shrink=False
         )
 
@@ -182,6 +258,7 @@ class TestOpFillMaskArray2(object):
 
         data = numpy.ma.masked_array(data,
                                      mask=mask,
+                                     fill_value=data.dtype.type(numpy.nan),
                                      shrink=False
         )
 
@@ -194,6 +271,77 @@ class TestOpFillMaskArray2(object):
         # Provide input and grab chunks.
         self.operator_fill.InputArray.setValue(data)
         self.operator_fill.InputFillValue.setValue(numpy.nan)
+        output[:2] = self.operator_identity.Output[:2].wait()
+        output[2:] = self.operator_identity.Output[2:].wait()
+
+        assert not isinstance(output, numpy.ma.masked_array)
+        assert (
+            (expected_output == output) |
+            (numpy.isnan(expected_output) & numpy.isnan(output))
+        ).all()
+
+    def test3(self):
+        # Generate a random dataset and see if it we get the right masking from the operator.
+        data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
+        mask = numpy.zeros(data.shape, dtype=bool)
+
+        # Mask borders of the expected output.
+        left_slicing = (mask.ndim - 1) * (slice(None),) + (slice(None, 1),)
+        right_slicing = (mask.ndim - 1) * (slice(None),) + (slice(-1, None),)
+        for i in xrange(mask.ndim):
+            left_slicing = left_slicing[-1:] + left_slicing[:-1]
+            right_slicing = right_slicing[-1:] + right_slicing[:-1]
+
+            mask[left_slicing] = True
+            mask[right_slicing] = True
+
+        data = numpy.ma.masked_array(data,
+                                     mask=mask,
+                                     fill_value=data.dtype.type(numpy.nan),
+                                     shrink=False
+        )
+
+        expected_output = data.filled(numpy.nan)
+
+        # Provide input read all output.
+        self.operator_fill.InputArray.setValue(data)
+        output = self.operator_identity.Output[None].wait()
+
+        assert not isinstance(output, numpy.ma.masked_array)
+        assert (
+            (expected_output == output) |
+            (numpy.isnan(expected_output) & numpy.isnan(output))
+        ).all()
+
+    def test4(self):
+        # Generate a dataset and grab chunks of it from the operator. The result should be the same as above.
+        data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
+        mask = numpy.zeros(data.shape, dtype=bool)
+
+        # Mask borders of the expected output.
+        left_slicing = (mask.ndim - 1) * (slice(None),) + (slice(None, 1),)
+        right_slicing = (mask.ndim - 1) * (slice(None),) + (slice(-1, None),)
+        for i in xrange(mask.ndim):
+            left_slicing = left_slicing[-1:] + left_slicing[:-1]
+            right_slicing = right_slicing[-1:] + right_slicing[:-1]
+
+            mask[left_slicing] = True
+            mask[right_slicing] = True
+
+        data = numpy.ma.masked_array(data,
+                                     mask=mask,
+                                     fill_value=data.dtype.type(numpy.nan),
+                                     shrink=False
+        )
+
+        expected_output = data.filled(numpy.nan)
+
+        # Create array to store results. Don't keep original data.
+        output = expected_output.copy()
+        output[:] = 0
+
+        # Provide input and grab chunks.
+        self.operator_fill.InputArray.setValue(data)
         output[:2] = self.operator_identity.Output[:2].wait()
         output[2:] = self.operator_identity.Output[2:].wait()
 
