@@ -1076,7 +1076,7 @@ class Slot(object):
                         changed = True
 
                 if not changed:
-                    # Slow-patth checks
+                    # Slow path checks
                     same = (value is self._value)
                     if not same:
                         try:
