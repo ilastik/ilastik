@@ -37,7 +37,7 @@ class OpFillMaskArray(Operator):
 
 
     InputArray = InputSlot()
-    InputFillValue = InputSlot()
+    InputFillValue = InputSlot(optional=True)
 
     Output = OutputSlot()
 
@@ -54,14 +54,15 @@ class OpFillMaskArray(Operator):
 
         # Get data
         data = self.InputArray[key].wait()
-        value = self.InputFillValue.value
 
         # Copy results
         if slot.name == 'Output':
             if not isinstance(data, numpy.ma.masked_array):
                 result[...] = data
+            elif self.InputFillValue.ready():
+                result[...] = data.filled(self.InputFillValue.value)
             else:
-                result[...] = data.filled(value)
+                result[...] = data.filled()
 
     def propagateDirty(self, slot, subindex, roi):
         if (slot.name == "InputArray"):
