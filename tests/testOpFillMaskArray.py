@@ -101,7 +101,6 @@ class TestOpFillMaskArray(object):
         # Create array to store results. Don't keep original data.
         output = expected_output.copy()
         output[:] = 0
-        output[:] = numpy.ma.nomask
 
         # Provide input and grab chunks.
         self.operator_fill.InputArray.setValue(data)
@@ -191,7 +190,6 @@ class TestOpFillMaskArray2(object):
         # Create array to store results. Don't keep original data.
         output = expected_output.copy()
         output[:] = 0
-        output[:] = numpy.ma.nomask
 
         # Provide input and grab chunks.
         self.operator_fill.InputArray.setValue(data)
