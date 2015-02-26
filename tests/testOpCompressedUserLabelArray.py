@@ -326,16 +326,16 @@ class TestOpCompressedUserLabelArray_masked(object):
         op.Input.meta.axistags = vigra.defaultAxistags('txyzc')
         op.Input.meta.has_mask = True
         dummyData = numpy.zeros(arrayshape, dtype=numpy.uint8)
-        dummyData = numpy.ma.masked_array(dummyData, mask=numpy.ma.getmaskarray(dummyData), fill_value=numpy.uint8(255), shrink=False)
+        dummyData = numpy.ma.masked_array(dummyData, mask=numpy.ma.getmaskarray(dummyData), fill_value=numpy.uint8(0), shrink=False)
         op.Input.setValue( dummyData )
 
         slicing = sl[0:1, 1:15, 2:36, 3:7, 0:1]
         inDataShape = slicing2shape(slicing)
         inputData = ( 3*numpy.random.random(inDataShape) ).astype(numpy.uint8)
-        inputData = numpy.ma.masked_array(inputData, mask=numpy.ma.getmaskarray(inputData), fill_value=numpy.uint8(255), shrink=False)
+        inputData = numpy.ma.masked_array(inputData, mask=numpy.ma.getmaskarray(inputData), fill_value=numpy.uint8(0), shrink=False)
         inputData[:, 0] = numpy.ma.masked
         op.Input[slicing] = inputData
-        data = numpy.ma.zeros(arrayshape, dtype=numpy.uint8, fill_value=numpy.uint8(255))
+        data = numpy.ma.zeros(arrayshape, dtype=numpy.uint8, fill_value=numpy.uint8(0))
         data[slicing] = inputData
 
         self.op = op
