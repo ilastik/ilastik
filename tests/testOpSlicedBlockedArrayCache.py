@@ -652,7 +652,7 @@ class TestOpSlicedBlockedArrayCache_masked(object):
             #  but fixAtCurrent is True so the cache gives us zeros
             assert (data == 0).all()
             assert (data.mask == False).all()
-            assert (data.fill_value == numpy.iinfo(data.dtype).max).all()
+            assert (data.fill_value == 0).all()
 
             dirty_notifications_received_before = len(gotDirtyKeys)
             opCache.fixAtCurrent.setValue(False)
