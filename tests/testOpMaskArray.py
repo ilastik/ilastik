@@ -255,6 +255,10 @@ class TestOpMaskArray3(object):
         self.operator_identity.Input.disconnect()
         self.operator_identity.Output.disconnect()
         self.operator_identity.cleanUp()
+        self.operator_border.InputArray.disconnect()
+        self.operator_border.InputMask.disconnect()
+        self.operator_border.Output.disconnect()
+        self.operator_border.cleanUp()
 
 
 if __name__ == "__main__":
