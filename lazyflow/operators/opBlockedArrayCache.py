@@ -45,14 +45,14 @@ class OpBlockedArrayCache(OpCache):
     description = ""
 
     #Input
-    Input = InputSlot()
+    Input = InputSlot(allow_mask=True)
     innerBlockShape = InputSlot()
     outerBlockShape = InputSlot()
     fixAtCurrent = InputSlot()
     forward_dirty = InputSlot(value = True)
    
     #Output
-    Output = OutputSlot("Output")
+    Output = OutputSlot("Output", allow_mask=True)
 
     loggerName = __name__ + ".OpBlockedArrayCache"
     logger = logging.getLogger(loggerName)
