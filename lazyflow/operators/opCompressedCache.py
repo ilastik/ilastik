@@ -261,8 +261,12 @@ class OpCompressedCache(OpCache):
     
     def usedMemory(self):
         tot = 0.0
-        for key in self._cacheFiles:
-            group = self._cacheFiles[key]
+        for key in self._cacheFiles.keys():
+            try:
+                group = self._cacheFiles[key]
+            except KeyError:
+                # entry was removed, ignore it
+                continue
             if "data" in group:
                 ds = group["data"]
                 # use actual size, not number of bytes in
