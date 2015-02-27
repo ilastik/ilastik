@@ -134,7 +134,7 @@ class Slot(object):
     
     def __init__(self, name="", operator=None, stype=ArrayLike,
                  rtype=rtype.SubRegion, value=None, optional=False,
-                 level=0, nonlane=False):
+                 level=0, nonlane=False, allow_mask=False):
         """Constructor of the Slot class.
 
         :param name: user readable name of the slot, is normally
@@ -176,6 +176,7 @@ class Slot(object):
         self.name = name
         self._optional = optional
         self.operator = operator
+        self.allow_mask = allow_mask
         self._real_operator = None # Memoized in getRealOperator()
 
         # in the case of an InputSlot this is the slot to which it is
