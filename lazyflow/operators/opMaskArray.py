@@ -36,10 +36,10 @@ class OpMaskArray(Operator):
     category = "Pointwise"
 
 
-    InputArray = InputSlot()
+    InputArray = InputSlot(allow_mask=True)
     InputMask = InputSlot()
 
-    Output = OutputSlot()
+    Output = OutputSlot(allow_mask=True)
 
     def __init__(self, *args, **kwargs):
         super( OpMaskArray, self ).__init__( *args, **kwargs )
