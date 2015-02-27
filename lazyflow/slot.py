@@ -643,7 +643,7 @@ class Slot(object):
     @is_setup_fn    
     def insertSlot(self, position, finalsize, propagate=True):
         """
-        Insert a new slot at the specififed position
+        Insert a new slot at the specified position
         finalsize indicates the final destination size
         """
         if len(self) >= finalsize:
