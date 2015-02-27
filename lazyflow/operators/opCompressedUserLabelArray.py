@@ -54,17 +54,17 @@ class OpCompressedUserLabelArray(OpCompressedCache):
     nonzeroBlocks = OutputSlot()
     #maxLabel = OutputSlot()
     
-    Projection2D = OutputSlot() # A somewhat magic output that returns a projection of all 
-                                # label data underneath a given roi, from all slices.
-                                # If, for example, a 256x1x256 tile is requested from this slot,
-                                # It will return a projection of ALL labels that fall within the 256 x ... x 256 tile.
-                                # (The projection axis is *inferred* from the shape of the requested data).
-                                # The projection data is float32 between 0.0 and 1.0, where:
-                                # - Exactly 0.0 means "no labels under this pixel"
-                                # - 1/256.0 means "labels in the first slice"
-                                # - ...
-                                # - 1.0 means "last slice"
-                                # The output is suitable for display in a colortable.
+    Projection2D = OutputSlot(allow_mask=True) # A somewhat magic output that returns a projection of all
+                                               # label data underneath a given roi, from all slices.
+                                               # If, for example, a 256x1x256 tile is requested from this slot,
+                                               # It will return a projection of ALL labels that fall within the 256 x ... x 256 tile.
+                                               # (The projection axis is *inferred* from the shape of the requested data).
+                                               # The projection data is float32 between 0.0 and 1.0, where:
+                                               # - Exactly 0.0 means "no labels under this pixel"
+                                               # - 1/256.0 means "labels in the first slice"
+                                               # - ...
+                                               # - 1.0 means "last slice"
+                                               # The output is suitable for display in a colortable.
     
     def __init__(self, *args, **kwargs):
         super(OpCompressedUserLabelArray, self).__init__( *args, **kwargs )
