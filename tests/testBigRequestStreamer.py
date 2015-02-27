@@ -21,8 +21,10 @@
 ###############################################################################
 import gc
 import sys
+import time
 import numpy
 import psutil
+import weakref  
 import threading
 from lazyflow.graph import Graph, Operator, OutputSlot
 from lazyflow.roi import roiToSlice
@@ -37,6 +39,37 @@ logger.addHandler(logging.StreamHandler(sys.stdout))
 
 logger.setLevel(logging.INFO)
 #logger.setLevel(logging.DEBUG)
+
+class OpNonsense( Operator ):
+    """
+    Provide nonsense data of the correct shape for each request.
+    """
+    Output = OutputSlot()
+
+    def setupOutputs(self):
+        self.Output.meta.dtype = numpy.float32
+        self.Output.meta.shape = (2000, 2000, 2000)
+
+    def execute(self, slot, subindex, roi, result):
+        """
+        Simulate a cascade of requests, to make sure that the entire cascade is properly freed.
+        """
+        roiShape = roi.stop - roi.start
+        def getResults1():
+            return numpy.indices(roiShape, self.Output.meta.dtype).sum()
+        def getResults2():
+            req = Request( getResults1 )
+            req.submit()
+            result[:] = req.wait()
+            return result
+
+        req = Request( getResults2 )
+        req.submit()
+        result[:] = req.wait()
+        return result
+
+    def propagateDirty(self, slot, subindex, roi):
+        pass
 
 class TestBigRequestStreamer(object):
 
@@ -84,39 +117,11 @@ class TestBigRequestStreamer(object):
     def testForMemoryLeaks(self):
         """
         If the BigRequestStreamer doesn't clean requests as they complete, they'll take up too much memory.
+        
+        Edit: This test attempts to find memory issues indirectly, via psutil.virtual_memory().
+              That doesn't really work very well.  The new test below, test_results_discarded() is a better check.
         """
         
-        class OpNonsense( Operator ):
-            """
-            Provide nonsense data of the correct shape for each request.
-            """
-            Output = OutputSlot()
-
-            def setupOutputs(self):
-                self.Output.meta.dtype = numpy.float32
-                self.Output.meta.shape = (2000, 2000, 2000)
-    
-            def execute(self, slot, subindex, roi, result):
-                """
-                Simulate a cascade of requests, to make sure that the entire cascade is properly freed.
-                """
-                roiShape = roi.stop - roi.start
-                def getResults1():
-                    return numpy.indices(roiShape, self.Output.meta.dtype).sum()
-                def getResults2():
-                    req = Request( getResults1 )
-                    req.submit()
-                    result[:] = req.wait()
-                    return result
-
-                req = Request( getResults2 )
-                req.submit()
-                result[:] = req.wait()
-                return result
-        
-            def propagateDirty(self, slot, subindex, roi):
-                pass
-
         gc.collect()
 
         vmem = psutil.virtual_memory()
@@ -153,6 +158,43 @@ class TestBigRequestStreamer(object):
         difference_mb = finished_mem_usage_mb - start_mem_usage_mb
         logger.debug( "Finished test with memory usage at: {} MB ({} MB increase)".format( finished_mem_usage_mb, difference_mb ) )
         assert difference_mb < 200, "BigRequestStreamer seems to have memory leaks.  After executing, RAM usage increased by {}".format( difference_mb )
+
+def test_pool_results_discarded():
+    """
+    This test checks to make sure that result arrays are discarded in turn as the BigRequestStreamer executes.
+    (If they weren't discarded in real time, then it's possible to end up consuming a lot of RAM until the streamer finally finishes.)
+    """
+    result_refs = []
+    def handle_result(roi, result):
+        result_refs.append( weakref.ref(result) )
+
+        # In this test, all results are discarded immediately after the 
+        #  request exits.  Therefore, AT NO POINT IN TIME, should more than N requests be alive.
+        live_result_refs = filter(lambda w:w() is not None, result_refs)
+        assert len(live_result_refs) <= Request.global_thread_pool.num_workers, \
+            "There should not be more than {} result references alive at one time!"\
+            .format( Request.global_thread_pool.num_workers )
+
+    def handle_progress( progress ):
+        logger.debug("test_pool_results_discarded: progress: {}".format(progress))
+          
+    op = OpNonsense( graph=Graph() )
+    batch = BigRequestStreamer(op.Output, [(0,0,0), (100,1000,1000)], (100,100,100) )
+    batch.resultSignal.subscribe( handle_result )
+    batch.progressSignal.subscribe( handle_progress )
+    batch.execute()
+  
+    # This test verifies that
+    #  (1) references to all child requests have been discarded once the pool is complete, and
+    #  (2) therefore, all references to the RESULTS in those child requests are also discarded.
+    # There is a tiny window of time between a request being 'complete' (for all intents and purposes),
+    #  but before its main execute function has exited back to the main ThreadPool._Worker loop.
+    #  The request is not finally discarded until that loop discards it, so let's wait a tiny extra bit of time.
+    time.sleep(0.01)
+      
+    # Now check that ALL results are truly lost.
+    for ref in result_refs:
+        assert ref() is None, "Some data was not discarded."
 
 if __name__ == "__main__":
     import sys

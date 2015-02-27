@@ -25,9 +25,11 @@ import collections
 import heapq
 import threading
 import platform
-import psutil
 import time
 import os
+import ctypes
+
+import psutil
 
 
 # This module's code needs to be sanitized if you're not using CPython.
@@ -197,6 +199,9 @@ class ThreadPool(object):
         for w in self.workers:
             w.join()
     
+    def get_states(self):
+        return [w.state for w in self.workers]
+    
     def _start_workers(self, num_workers, queue_type):
         """
         Start a set of workers and return the set.
@@ -253,23 +258,28 @@ class _Worker(threading.Thread):
         self.stopped = False
         self.job_queue_condition = threading.Condition()
         self.job_queue = queue_type()
+        self.state = 'initialized'
         
     def run(self):
         """
         Keep executing available tasks until we're stopped.
         """
         # Try to get some work.
+        self.state = 'waiting'
         next_task = self._get_next_job()
 
         while not self.stopped:
             # Start (or resume) the work by switching to its greenlet
+            self.state = 'running task'
             next_task()
 
             # We're done with this request.
             # Free it immediately for garbage collection.
+            self.state = 'freeing task'
             next_task = None
 
             # Now try to get some work (wait if necessary).
+            self.state = 'waiting'
             next_task = self._get_next_job()
 
     def stop(self):
@@ -336,3 +346,32 @@ class _Worker(threading.Thread):
                                         #  members (e.g. .assigned_worker) to be "monkey-patched" onto it.  You may have to wrap it in a custom class first.
             return task
     
+    def raise_exc(self, excobj):
+        """
+        I HAVEN'T TESTED THIS YET.  (But it looks useful.)
+        http://code.activestate.com/recipes/496960-thread2-killable-threads
+
+        Debugging method.
+        Asynchronously raise an exception in this thread.
+        See docstring for _async_raise() for more details.
+        """
+        assert self.isAlive(), "thread must be started"
+        for tid, tobj in threading._active.items():
+            if tobj is self:
+                _Worker._async_raise(tid, excobj)
+                return
+
+    @staticmethod
+    def _async_raise(tid, excobj):
+        """
+        Raise an exception in the thread with the given id.
+        http://code.activestate.com/recipes/496960-thread2-killable-threads
+        """
+        res = ctypes.pythonapi.PyThreadState_SetAsyncExc(tid, ctypes.py_object(excobj))
+        if res == 0:
+            raise ValueError("nonexistent thread id")
+        elif res > 1:
+            # """if it returns a number greater than one, you're in trouble, 
+            # and you should call it again with exc=NULL to revert the effect"""
+            ctypes.pythonapi.PyThreadState_SetAsyncExc(tid, 0)
+            raise SystemError("PyThreadState_SetAsyncExc failed")

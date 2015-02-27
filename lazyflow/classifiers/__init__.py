@@ -6,3 +6,10 @@ from sklearnLazyflowClassifier import SklearnLazyflowClassifier, SklearnLazyflow
 # Testing
 from vigraRfPixelwiseClassifier import VigraRfPixelwiseClassifier, VigraRfPixelwiseClassifierFactory
 
+# IIBoost
+try:
+    from iiboostLazyflowClassifier import IIBoostLazyflowClassifier, IIBoostLazyflowClassifierFactory
+except ImportError:
+    import warnings
+    warnings.warn("Couldn't import IIBoost classifier.")
+    

@@ -49,6 +49,7 @@ class ValueRequest(object):
     """
     def __init__(self, value):
         self.result = value
+        self.started = False
 
     def wait(self):
         return self.result
@@ -1075,7 +1076,7 @@ class Slot(object):
                         changed = True
 
                 if not changed:
-                    # Slow-patth checks
+                    # Slow path checks
                     same = (value is self._value)
                     if not same:
                         try:
@@ -1098,12 +1099,15 @@ class Slot(object):
                 for s in self._subSlots:
                     s.setValue(self._value)
     
-                notify = (self.meta._ready == False)
-    
-                # a slot with a value is always ready
-                self.meta._ready = True
-                if notify:
-                    self._sig_ready(self)
+                # a slot with a value is ready unless the value is None.
+                if self._value is not None:
+                    if self.meta._ready != True:
+                        self.meta._ready = True
+                        self._sig_ready(self)
+                else:
+                    if self.meta._ready != False:
+                        self.meta._ready = False
+                        self._sig_unready(self)
     
                 # call connect callbacks
                 self._sig_connect(self)

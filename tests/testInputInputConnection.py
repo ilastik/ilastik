@@ -20,7 +20,8 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 import nose
-from lazyflow.graph import Graph, Operator, InputSlot, OutputSlot, OperatorWrapper
+from lazyflow.graph import Graph, Operator, Slot, InputSlot, OutputSlot, \
+    OperatorWrapper
 from lazyflow import stype
 from lazyflow import operators
 
@@ -83,6 +84,51 @@ class TestInputInputConnection(object):
         self.op.Input.setValue(False)
         result = self.op.Output[:].wait()[0]
         assert result == False, "result = %r" % result
+
+    def test_none(self):
+        self.op.Input.setValue(None)
+        # Should not crash.
+        caught_exception = False
+        try:
+            result = self.op.Output[:].wait()[0]
+        except Slot.SlotNotReadyError:
+            caught_exception = True
+        assert caught_exception
+        assert not self.op.Input.ready()
+
+    def test_value_none(self):
+        self.op.Input.setValue(True)
+        result = self.op.Output[:].wait()[0]
+        assert result == True, "result = %r" % result
+
+        self.op.Input.setValue(None)
+        # Should not crash.
+        caught_exception = False
+        try:
+            result = self.op.Output[:].wait()[0]
+        except Slot.SlotNotReadyError:
+            caught_exception = True
+        assert caught_exception
+        assert not self.op.Input.ready()
+
+    def test_value_none_value(self):
+        self.op.Input.setValue(True)
+        result = self.op.Output[:].wait()[0]
+        assert result == True, "result = %r" % result
+
+        self.op.Input.setValue(None)
+        # Should not crash.
+        caught_exception = False
+        try:
+            result = self.op.Output[:].wait()[0]
+        except Slot.SlotNotReadyError:
+            caught_exception = True
+        assert caught_exception
+        assert not self.op.Input.ready()
+
+        self.op.Input.setValue(True)
+        result = self.op.Output[:].wait()[0]
+        assert result == True, "result = %r" % result
 
     def test_disconnect(self):
         self.op.internalOp.Input.disconnect()

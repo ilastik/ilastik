@@ -189,8 +189,6 @@ class TestRequest(object):
         if Request.global_thread_pool.num_workers == 0:
             raise nose.SkipTest
         
-        counter_lock = threading.RLock()
- 
         def workload():
             time.sleep(0.1)
             return 1
@@ -211,6 +209,10 @@ class TestRequest(object):
                     assert not r.cancelled
             except Request.CancellationException:
                 got_cancel[0] = True
+            except Exception as ex:
+                import traceback
+                traceback.print_exc()
+                raise
          
         completed = [False]
         def handle_complete( result ):
@@ -221,7 +223,7 @@ class TestRequest(object):
         req.submit()
  
         while workcounter[0] == 0:
-            time.sleep(0.5)
+            time.sleep(0.001)
              
         req.cancel()
         time.sleep(1)
@@ -565,93 +567,39 @@ class TestRequest(object):
                         #print "***** Appending {}".format(n)
                         l.append(n)
                         return
- 
+  
         # Create 50 requests
         N = 50
         reqs = []
         for i in range(1,2*N,2):
             req = Request( partial(append_n, i) )
             reqs.append(req)
- 
+  
         # Create 49 threads
         thrds = []
         for i in range(2,2*N,2):
             thrd = threading.Thread( target=partial(append_n, i) )
             thrds.append(thrd)
-         
+          
         # Submit in reverse order to ensure that no request finishes until they have all been started.
         # This proves that the requests really are being suspended.        
         for req in reversed(reqs):
             req.submit()
- 
+  
         # Start all the threads
         for thrd in reversed(thrds):
             thrd.start()
-         
+          
         # All requests must finish
         for req in reqs:
             req.wait()
- 
+  
         # All threads should finish
         for thrd in thrds:
             thrd.join()
- 
+  
         assert l == list(range(100)), "Requests and/or threads finished in the wrong order!"
- 
-    def testSimpleRequestCondition(self):
-        """
-        Test the SimpleRequestCondition, which is like threading.Condition, but with a subset of the functionality.
-        (See the docs for details.)
-        """
-        num_workers = Request.global_thread_pool.num_workers
-        Request.reset_thread_pool(num_workers=1)
-        N_ELEMENTS = 10
- 
-        # It's tempting to simply use threading.Condition here,
-        #  but that doesn't quite work if the thread calling wait() is also a worker thread.
-        # (threading.Condition uses threading.Lock() as it's 'waiter' lock, which blocks the entire worker.)
-        # cond = threading.Condition( RequestLock() )
-        cond = SimpleRequestCondition()
-         
-        produced = []
-        consumed = []
-        def wait_for_all():
-            def f(i):
-                time.sleep(0.2*random.random())
-                with cond:
-                    produced.append(i)
-                    cond.notify()
-             
-            reqs = []
-            for i in range(N_ELEMENTS):
-                req = Request( partial(f, i) )
-                reqs.append( req )
-     
-            for req in reqs:
-                req.submit()
- 
-            _consumed = consumed
-            with cond:
-                while len(_consumed) < N_ELEMENTS:
-                    while len(_consumed) == len(produced):
-                        cond.wait()
-                    logger.debug( "copying {} elements".format( len(produced) - len(consumed) ) )
-                    _consumed += produced[len(_consumed):]
- 
-        # Force the request to run in a worker thread.
-        # This should catch failures that can occur if the Condition's "waiter" lock isn't a request lock.
-        req = Request( wait_for_all )
-        req.submit()
-         
-        # Now block for completion
-        req.wait()
- 
-        logger.debug( "produced: {}".format(produced) )
-        logger.debug( "consumed: {}".format(consumed) )
-        assert set(consumed) == set( range(N_ELEMENTS) ), "Expected set(range(N_ELEMENTS)), got {}".format( consumed )
-
-        Request.reset_thread_pool(num_workers)
- 
+  
     def testRequestLockSemantics(self):
         """
         To be used with threading.Condition, RequestLock objects MUST NOT have RLock semantics.
@@ -727,22 +675,24 @@ class TestRequest(object):
     def testThreadPoolReset(self):
         num_workers = Request.global_thread_pool.num_workers
         Request.reset_thread_pool(num_workers=1)
-         
-        lock = threading.Lock()
-        def check_for_contention():
-            assert lock.acquire(False), "Should not be contention for this lock!"
-            time.sleep(0.1)
-            lock.release()
-         
-        reqs = map( lambda x: Request( check_for_contention ), range(10) )
-        for req in reqs:
-            req.submit()
-        for req in reqs:
-            req.wait()
-         
-        # Set it back to what it was
-        Request.reset_thread_pool(num_workers)
- 
+
+        try:
+            lock = threading.Lock()
+            def check_for_contention():
+                assert lock.acquire(False), "Should not be contention for this lock!"
+                time.sleep(0.1)
+                lock.release()
+             
+            reqs = map( lambda x: Request( check_for_contention ), range(10) )
+            for req in reqs:
+                req.submit()
+            for req in reqs:
+                req.wait()
+
+        finally:         
+            # Set it back to what it was
+            Request.reset_thread_pool(num_workers)
+            print 'done'
  
 class TestRequestExceptions(object):
     """
@@ -850,9 +800,33 @@ class TestRequestExceptions(object):
         req2.notify_failed( failure_handler )
         assert len(signaled_exceptions) == 3
 
-    
-class TestRequestPool(object):
+    def test_result_discarded(self):
+        """
+        After a request is deleted, its result should be discarded.
+        """
+        import weakref
+        from functools import partial
         
+        def f():
+            return numpy.zeros( (10,), dtype=numpy.uint8 ) + 1
+        
+        w = [None]
+        def onfinish(r, result):
+            w[0] = weakref.ref(result)
+            
+        req = Request(f)
+        req.notify_finished( partial(onfinish, req) )
+        
+        req.submit()
+        req.wait()
+        del req
+        assert w[0]() is None
+    
+     
+class TestRequestPool(object):
+    """
+    See also: There's a separate file for other RequestPool tests...
+    """
     def testBasic(self):
         def work():
             time.sleep(0.2)

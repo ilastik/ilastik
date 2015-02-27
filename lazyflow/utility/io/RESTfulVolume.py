@@ -176,8 +176,8 @@ if __name__ == "__main__":
     "###shape" : [1239, 135424, 119808],
     "shape" : [1239, 10000, 10000],
     "dtype" : "numpy.uint8",
-    "url_format" : "http://openconnecto.me/emca/bock11/hdf5/0/{x_start},{x_stop}/{y_start},{y_stop}/{z_start},{z_stop}/",
-    "hdf5_dataset" : "/cube"
+    "url_format" : "http://openconnecto.me/ocp/ca/bock11/hdf5/0/{x_start},{x_stop}/{y_start},{y_stop}/{z_start},{z_stop}/",
+    "hdf5_dataset" : "CUTOUT"
 }
 """
     import os

@@ -30,6 +30,7 @@ import numpy
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal, OperatorWrapper
 from lazyflow.roi import sliceToRoi, roiToSlice, getIntersection, roiFromShape
+from lazyflow.utility import Timer
 from lazyflow.classifiers import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC, \
                                  LazyflowPixelwiseClassifierABC, LazyflowPixelwiseClassifierFactoryABC
 
@@ -531,12 +532,18 @@ class OpVectorwiseClassifierPredict(Operator):
         newKey = key[:-1]
         newKey += (slice(0,self.Image.meta.shape[-1],None),)
 
-        input_data = self.Image[newKey].wait()
+        with Timer() as features_timer:
+            input_data = self.Image[newKey].wait()
+        
         shape=input_data.shape
         prod = numpy.prod(shape[:-1])
         features = input_data.reshape((prod, shape[-1]))
 
-        probabilities = classifier.predict_probabilities( features )
+        with Timer() as prediction_timer:
+            probabilities = classifier.predict_probabilities( features )
+
+        logger.debug( "Features took {} seconds, Prediction took {} seconds for roi: {} : {}"\
+                      .format( features_timer.seconds(), prediction_timer.seconds(), roi.start, roi.stop ) )
 
         assert probabilities.shape[1] <= self.PMaps.meta.shape[-1], \
             "Error: Somehow the classifier has more label classes than expected:"\

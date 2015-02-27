@@ -54,8 +54,8 @@ class TestRESTfulVolume(object):
             "origin_offset" : [2917, 50000, 50000],
             "bounds" : [4156, 135424, 119808],
             "dtype" : "numpy.uint8",
-            "url_format" : "http://openconnecto.me/emca/bock11/hdf5/0/{x_start},{x_stop}/{y_start},{y_stop}/{z_start},{z_stop}/",
-            "hdf5_dataset" : "cube"
+            "url_format" : "http://openconnecto.me/ocp/ca/bock11/hdf5/0/{x_start},{x_stop}/{y_start},{y_stop}/{z_start},{z_stop}/",
+            "hdf5_dataset" : "CUTOUT"
         }
         """
     
@@ -71,8 +71,8 @@ class TestRESTfulVolume(object):
             "origin_offset" : [2917, 0, 0],
             "bounds" : [4156, 8704, 7680],
             "dtype" : "numpy.uint8",
-            "url_format" : "http://openconnecto.me/emca/bock11/hdf5/4/{x_start},{x_stop}/{y_start},{y_stop}/{z_start},{z_stop}/",
-            "hdf5_dataset" : "cube"
+            "url_format" : "http://openconnecto.me/ocp/ca/bock11/hdf5/4/{x_start},{x_stop}/{y_start},{y_stop}/{z_start},{z_stop}/",
+            "hdf5_dataset" : "CUTOUT"
         }
         """
         descriptionFilePath = os.path.join(tempfile.mkdtemp(), 'desc.json')

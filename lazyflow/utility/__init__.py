@@ -36,3 +36,4 @@ from timer import Timer, timeLogged
 import testing
 from ramMeasurementContext import RamMeasurementContext
 from export_to_tiles import export_to_tiles
+from blockwise_view import blockwise_view

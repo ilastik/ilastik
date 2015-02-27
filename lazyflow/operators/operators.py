@@ -23,16 +23,12 @@
 import psutil
 if psutil.__version__ < '0.6':
     raise RuntimeError("lazyflow requires psutil 0.6.  Please upgrade your version of psutil (e.g. easy_install -U psutil)")
-try:
-    from  lazyflow.drtile import drtile
-except Exception, e:
-    raise RuntimeError("Error importing drtile, please use cmake to compile lazyflow.drtile !\n" + str(e))
 
 #lazyflow
 import lazyflow
 from lazyflow.rtype import SubRegion
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.roi import sliceToRoi, roiToSlice, block_view, TinyVector, getBlockBounds
+from lazyflow.roi import sliceToRoi, roiToSlice, TinyVector, getBlockBounds
 from lazyflow import request
 from lazyflow.utility import Tracer
 

@@ -55,7 +55,7 @@ class TestOpDvidVolume(unittest.TestCase):
         cls.test_filepath = os.path.join( cls._tmp_dir, "test_data.h5" )
         cls._generate_empty_h5(cls.test_filepath)
         cls.server_proc, cls.shutdown_event = H5MockServer.create_and_start( cls.test_filepath, "localhost", 8000, 
-                                                                             same_process=False, disable_server_logging=True )
+                                                                             same_process=True, disable_server_logging=True )
 
     @classmethod
     def teardownClass(cls):

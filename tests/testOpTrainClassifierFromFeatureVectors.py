@@ -35,12 +35,13 @@ class TestOpTrainClassifierFromFeatureVectors(object):
         opTrain.MaxLabel.setValue(2)
         opTrain.LabelAndFeatureMatrix.connect( opFeatureMatrixCache.LabelAndFeatureMatrix )
         
+        assert opTrain.Classifier.ready()
+        
         trained_classifer = opTrain.Classifier.value
         
         # This isn't much of a test at the moment...
-        assert isinstance( trained_classifer, ParallelVigraRfLazyflowClassifier )
-
-
+        assert isinstance( trained_classifer, ParallelVigraRfLazyflowClassifier ), \
+            "classifier is of the wrong type: {}".format(type(trained_classifer))
 
 if __name__ == "__main__":
     import sys
