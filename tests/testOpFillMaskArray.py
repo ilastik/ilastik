@@ -69,7 +69,7 @@ class TestOpFillMaskArray(object):
         self.operator_fill.InputFillValue.setValue(numpy.nan)
         output = self.operator_fill.Output[None].wait()
 
-        assert not isinstance(expected_output, numpy.ma.masked_array)
+        assert not isinstance(output, numpy.ma.masked_array)
         assert (
             (expected_output == output) |
             (numpy.isnan(expected_output) & numpy.isnan(output))
@@ -108,7 +108,7 @@ class TestOpFillMaskArray(object):
         output[:2] = self.operator_fill.Output[:2].wait()
         output[2:] = self.operator_fill.Output[2:].wait()
 
-        assert not isinstance(expected_output, numpy.ma.masked_array)
+        assert not isinstance(output, numpy.ma.masked_array)
         assert (
             (expected_output == output) |
             (numpy.isnan(expected_output) & numpy.isnan(output))
@@ -159,7 +159,7 @@ class TestOpFillMaskArray2(object):
         self.operator_fill.InputFillValue.setValue(numpy.nan)
         output = self.operator_identity.Output[None].wait()
 
-        assert not isinstance(expected_output, numpy.ma.masked_array)
+        assert not isinstance(output, numpy.ma.masked_array)
         assert (
             (expected_output == output) |
             (numpy.isnan(expected_output) & numpy.isnan(output))
@@ -197,7 +197,7 @@ class TestOpFillMaskArray2(object):
         output[:2] = self.operator_identity.Output[:2].wait()
         output[2:] = self.operator_identity.Output[2:].wait()
 
-        assert not isinstance(expected_output, numpy.ma.masked_array)
+        assert not isinstance(output, numpy.ma.masked_array)
         assert (
             (expected_output == output) |
             (numpy.isnan(expected_output) & numpy.isnan(output))
