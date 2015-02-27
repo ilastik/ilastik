@@ -1298,6 +1298,7 @@ class Slot(object):
         init_kwargs['value'] = self._defaultValue
         init_kwargs['level'] = self.level
         init_kwargs['nonlane'] = self.nonlane
+        init_kwargs['allow_mask'] = self.allow_mask
         if self._type == "input":
             init_kwargs['optional'] = self._optional
         
