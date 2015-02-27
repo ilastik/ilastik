@@ -39,14 +39,14 @@ class OpSlicedBlockedArrayCache(OpCache):
     description = ""
 
     #Inputs
-    Input = InputSlot()
+    Input = InputSlot(allow_mask=True)
     innerBlockShape = InputSlot()
     outerBlockShape = InputSlot()
     fixAtCurrent = InputSlot(value = False)
    
     #Outputs
-    Output = OutputSlot()
-    InnerOutputs = OutputSlot(level=1)
+    Output = OutputSlot(allow_mask=True)
+    InnerOutputs = OutputSlot(level=1, allow_mask=True)
 
     loggerName = __name__ + ".OpSlicedBlockedArrayCache"
     logger = logging.getLogger(loggerName)
