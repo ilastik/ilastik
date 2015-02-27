@@ -36,7 +36,7 @@ class OpFillMaskArray(Operator):
     category = "Pointwise"
 
 
-    InputArray = InputSlot()
+    InputArray = InputSlot(allow_mask=True)
     InputFillValue = InputSlot(optional=True)
 
     Output = OutputSlot()
