@@ -44,14 +44,14 @@ class OpCompressedCache(OpCache):
     
     Note: It is not safe to call execute() change the blockshape simultaneously.
     """
-    Input = InputSlot() # Also used to asynchronously force data into the cache via __setitem__ (see setInSlot(), below()
+    Input = InputSlot(allow_mask=True) # Also used to asynchronously force data into the cache via __setitem__ (see setInSlot(), below()
     BlockShape = InputSlot(optional=True) # If not provided, the entire input is treated as one block
     
-    Output = OutputSlot() # Output as numpy arrays
+    Output = OutputSlot(allow_mask=True) # Output as numpy arrays
 
-    InputHdf5 = InputSlot(optional=True)
+    InputHdf5 = InputSlot(optional=True, allow_mask=True)
     CleanBlocks = OutputSlot() # A list of rois (tuples) of the blocks that are currently stored in the cache
-    OutputHdf5 = OutputSlot() # Provides data as hdf5 datasets.  Only allowed for rois that exactly match a block.
+    OutputHdf5 = OutputSlot(allow_mask=True) # Provides data as hdf5 datasets.  Only allowed for rois that exactly match a block.
     
     def __init__(self, *args, **kwargs):
         super( OpCompressedCache, self ).__init__( *args, **kwargs )
