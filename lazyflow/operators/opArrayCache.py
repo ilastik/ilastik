@@ -63,13 +63,13 @@ class OpArrayCache(OpCache):
     DefaultBlockSize = 64
 
     #Input
-    Input = InputSlot()
+    Input = InputSlot(allow_mask=True)
     blockShape = InputSlot(value = DefaultBlockSize)
     fixAtCurrent = InputSlot(value = False)
    
     #Output
     CleanBlocks = OutputSlot()
-    Output = OutputSlot()
+    Output = OutputSlot(allow_mask=True)
 
     loggingName = __name__ + ".OpArrayCache"
     logger = logging.getLogger(loggingName)
