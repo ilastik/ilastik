@@ -35,7 +35,7 @@ class OpSplitMaskArray(Operator):
     name = "OpSplitMaskArray"
     category = "Pointwise"
 
-    Input = InputSlot()
+    Input = InputSlot(allow_mask=True)
 
     OutputArray = OutputSlot()
     OutputMask = OutputSlot()
