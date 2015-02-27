@@ -356,6 +356,10 @@ class TestOpFillMaskArray2(object):
         self.operator_identity.Input.disconnect()
         self.operator_identity.Output.disconnect()
         self.operator_identity.cleanUp()
+        self.operator_fill.InputArray.disconnect()
+        self.operator_fill.InputFillValue.disconnect()
+        self.operator_fill.Output.disconnect()
+        self.operator_fill.cleanUp()
 
 
 if __name__ == "__main__":
