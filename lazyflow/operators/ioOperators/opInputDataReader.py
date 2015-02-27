@@ -121,10 +121,10 @@ class OpInputDataReader(Operator):
         if self._file is not None:
             self._file.close()
 
-        openFuncs = [ self._attemptOpenAsStack,
+        openFuncs = [ self._attemptOpenAsDvidVolume,
+                      self._attemptOpenAsStack,
                       self._attemptOpenAsHdf5,
                       self._attemptOpenAsNpy,
-                      self._attemptOpenAsDvidVolume,
                       self._attemptOpenAsBlockwiseFileset,
                       self._attemptOpenAsRESTfulBlockwiseFileset,
                       self._attemptOpenAsTiledVolume,
