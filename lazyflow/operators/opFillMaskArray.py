@@ -56,12 +56,12 @@ class OpFillMaskArray(Operator):
         data = self.InputArray[key].wait()
         value = self.InputFillValue.value
 
-        # Make a masked array
-        data = data.view(numpy.ma.masked_array)
-
         # Copy results
         if slot.name == 'Output':
-            result[...] = data.filled(value)
+            if not isinstance(data, numpy.ma.masked_array):
+                result[...] = data
+            else:
+                result[...] = data.filled(value)
 
     def propagateDirty(self, slot, subindex, roi):
         if (slot.name == "InputArray"):
