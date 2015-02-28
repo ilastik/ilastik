@@ -1087,6 +1087,12 @@ class Slot(object):
             # passing slots as values, then this assertion can be refined.
             assert not isinstance(value, Slot), \
                 "When using setValue, value cannot be a slot.  Use connect instead."
+
+            # If we do not support masked arrays, ensure that we are not being passed one.
+            assert self.allow_mask or not (self.meta.has_mask or isinstance(value, numpy.ma.masked_array)), \
+                "The operator, \"%s\", is being setup to receive a masked array as input to slot, \"%s\"." \
+                " This is currently not supported." \
+                % (self.operator.name, self.name)
     
             if not self.backpropagate_values:
                 assert self.partner is None, \
