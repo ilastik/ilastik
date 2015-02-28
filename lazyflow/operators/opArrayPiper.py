@@ -26,7 +26,7 @@ class OpArrayPiper(Operator):
     description = "simple piping operator"
 
     #Inputs
-    Input = InputSlot() 
+    Input = InputSlot()
    
     #Outputs
     Output = OutputSlot()
