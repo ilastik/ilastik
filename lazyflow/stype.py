@@ -98,6 +98,13 @@ class SlotType( object ):
 
 class ArrayLike( SlotType ):
     def allocateDestination( self, roi ):
+        # If we do not support masked arrays, ensure that we are not allocating one.
+        assert self.slot.allow_mask or (not self.slot.meta.has_mask), \
+            "Allocation of a masked array is expected by the slot, \"%s\", of operator, " "\"%s\"," \
+            " even though it is not supported. If you believe this message to be incorrect, " \
+            "please pass the keyword argument `allow_mask=True` to the slot constructor." \
+            % (self.slot.operator.name, self.slot.name)
+
         shape = roi.stop - roi.start if roi else self.slot.meta.shape
         storage = numpy.ndarray(shape, dtype=self.slot.meta.dtype)
 
