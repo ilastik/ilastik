@@ -986,6 +986,11 @@ class Slot(object):
             "cannot do __setitem__ on Slot '{}' -> no operator !!"
         assert slicingtools.is_bounded(key), \
             "Can't use Slot.__setitem__ with keys that include : or ..."
+        # If we do not support masked arrays, ensure that we are not being passed one.
+        assert self.allow_mask or not (self.meta.has_mask or isinstance(value, numpy.ma.masked_array)), \
+            "The operator, \"%s\", is being setup to receive a masked array as input to slot, \"%s\"." \
+            " This is currently not supported." \
+            % (self.operator.name, self.name)
         roi = self.rtype(self, pslice=key)
         if self._value is not None:
             self._value[key] = value
