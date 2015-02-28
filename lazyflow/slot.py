@@ -1015,6 +1015,11 @@ class Slot(object):
         this setInSlot() method.
 
         """
+        # If we do not support masked arrays, ensure that we are not being passed one.
+        assert self.allow_mask or not (self.meta.has_mask or isinstance(value, numpy.ma.masked_array)), \
+            "The operator, \"%s\", is being setup to receive a masked array as input to slot, \"%s\"." \
+            " This is currently not supported." \
+            % (self.operator.name, self.name)
         # Determine which subslot this is and prepend it to the totalIndex
         totalIndex = (self._subSlots.index(slot),) + subindex
         # Forward the call to our operator
