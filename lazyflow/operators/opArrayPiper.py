@@ -58,4 +58,3 @@ class OpArrayPiper(Operator):
         assert slot == self.Input
         key = roi.toSlice()
         self.outputs["Output"][key] = value
-    
