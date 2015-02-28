@@ -127,6 +127,14 @@ class ArrayLike( SlotType ):
         return storage
 
     def writeIntoDestination( self, destination, value, roi ):
+        # If we do not support masked arrays, ensure that we are not being passed one.
+        assert self.slot.allow_mask or (not self.slot.meta.has_mask), \
+            "A masked array was provided as a destination. However," \
+            " the slot, \"%s\", of operator, " "\"%s\", does not support masked arrays." \
+            " If you believe this message to be incorrect, " \
+            "please pass the keyword argument `allow_mask=True` to the slot constructor." \
+            % (self.slot.operator.name, self.slot.name)
+
         if destination is not None:
             if not isinstance(destination, list):
                 assert(roi.dim == destination.ndim), "%r ndim=%r, shape=%r" % (roi.toSlice(), destination.ndim, destination.shape)
