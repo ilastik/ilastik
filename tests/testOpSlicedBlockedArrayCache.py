@@ -366,6 +366,7 @@ class TestOpSlicedBlockedArrayCache_masked(object):
             fill_value=self.data.dtype.type(0),
             shrink=False
         )
+        self.data[0, :1, :1, 0, 0] = numpy.ma.masked
 
         graph = Graph()
         opProvider = OpArrayPiperWithAccessCount(graph=graph)
