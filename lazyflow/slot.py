@@ -163,6 +163,12 @@ class Slot(object):
         # This assertion is here for a reason: default values do NOT work on OutputSlots.
         # (We should probably change that at some point...)
         assert value is None or isinstance(self, InputSlot), "Only InputSlots can have default values.  OutputSlots cannot."
+
+        # If we do not support masked arrays, ensure that we are not being passed one.
+        assert allow_mask or not isinstance(value, numpy.ma.masked_array), \
+            "The operator, \"%s\", is being setup to receive a masked array as input to slot, \"%s\"." \
+            " This is currently not supported." \
+            % (self.operator.name, self.name)
         
         # Check for simple mistakes in parameter order...
         assert isinstance(name, str)
