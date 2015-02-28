@@ -389,7 +389,6 @@ class TestOpSlicedBlockedArrayCache_masked(object):
         slicing = make_key[0:1, 0:10, 10:20, 0:10, 0:1]
         oldAccessCount = opProvider.accessCount
         data = opCache.Output( slicing ).wait()
-        data.axistags = opCache.Output.meta.axistags
         assert (data == self.data[slicing]).all()
         assert (data.mask == self.data.mask[slicing]).all()
         assert (data.fill_value == self.data.fill_value).all()
@@ -409,7 +408,6 @@ class TestOpSlicedBlockedArrayCache_masked(object):
         slicing = make_key[0:1, 45:65, 10:20, 0:10, 0:1]
         data = opCache.Output( slicing ).wait()
 
-        data.axistags = opCache.Output.meta.axistags
         assert (data == self.data[slicing]).all()
         assert (data.mask == self.data.mask[slicing]).all()
         assert (data.fill_value == self.data.fill_value).all()
@@ -435,7 +433,6 @@ class TestOpSlicedBlockedArrayCache_masked(object):
         # Request
         slicing = make_key[:, 0:50, 15:45, 0:10, :]
         data = opCache.Output( slicing ).wait()
-        data.axistags = opCache.Output.meta.axistags
         assert (data == self.data[slicing]).all()
         assert (data.mask == self.data.mask[slicing]).all()
         assert (data.fill_value == self.data.fill_value).all()
@@ -462,7 +459,6 @@ class TestOpSlicedBlockedArrayCache_masked(object):
 
         # Same request, but should need to access the data again due to dirtiness
         data = opCache.Output( slicing ).wait()
-        data.axistags = opCache.Output.meta.axistags
         assert (data == self.data[slicing]).all()
         assert (data.mask == self.data.mask[slicing]).all()
         assert (data.fill_value == self.data.fill_value).all()
@@ -503,7 +499,6 @@ class TestOpSlicedBlockedArrayCache_masked(object):
         # Request again.  Data should match this time.
         oldAccessCount = opProvider.accessCount
         data = opCache.Output( slicing ).wait()
-        data.axistags = opCache.Output.meta.axistags
         assert (data == self.data[slicing]).all()
         assert (data.mask == self.data.mask[slicing]).all()
         assert (data.fill_value == self.data.fill_value).all()
@@ -518,7 +513,6 @@ class TestOpSlicedBlockedArrayCache_masked(object):
 
         # Request again.  Data should match WITHOUT requesting from the source.
         data = opCache.Output( slicing ).wait()
-        data.axistags = opCache.Output.meta.axistags
         assert (data == self.data[slicing]).all()
         assert (data.mask == self.data.mask[slicing]).all()
         assert (data.fill_value == self.data.fill_value).all()
@@ -540,7 +534,6 @@ class TestOpSlicedBlockedArrayCache_masked(object):
 
         # Same request.  Data should still match the previous data (not yet refreshed)
         data2 = opCache.Output( slicing ).wait()
-        data2.axistags = opCache.Output.meta.axistags
         assert opProvider.accessCount == oldAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, oldAccessCount)
         assert (data2 == data).all()
         assert (data2.mask == data.mask).all()
@@ -554,7 +547,6 @@ class TestOpSlicedBlockedArrayCache_masked(object):
 
         # Same request.  Data should be updated now that we're unfrozen.
         data = opCache.Output( slicing ).wait()
-        data.axistags = opCache.Output.meta.axistags
         assert (data == self.data[slicing]).all()
         assert (data.mask == self.data.mask[slicing]).all()
         assert (data.fill_value == self.data.fill_value).all()
@@ -580,7 +572,6 @@ class TestOpSlicedBlockedArrayCache_masked(object):
 
         # Same request.  Data should still match the previous data (not yet refreshed)
         data2 = opCache.Output( slicing ).wait()
-        data2.axistags = opCache.Output.meta.axistags
         assert opProvider.accessCount == oldAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, oldAccessCount)
         assert (data2 == data).all()
         assert (data2.mask == data.mask).all()
@@ -592,7 +583,6 @@ class TestOpSlicedBlockedArrayCache_masked(object):
 
         # Same request.  Data should be updated now that we're unfrozen.
         data = opCache.Output( slicing ).wait()
-        data.axistags = opCache.Output.meta.axistags
         assert (data == self.data[slicing]).all()
         assert (data.mask == self.data.mask[slicing]).all()
         assert (data.fill_value == self.data.fill_value).all()
@@ -664,7 +654,6 @@ class TestOpSlicedBlockedArrayCache_masked(object):
 
             # Request again.  Data should match this time.
             data = opCache.Output( slicing ).wait()
-            data.axistags = opCache.Output.meta.axistags
             assert (data == self.data[slicing]).all()
             assert (data.mask == self.data.mask[slicing]).all()
             assert (data.fill_value == self.data.fill_value).all()
