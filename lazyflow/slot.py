@@ -534,7 +534,7 @@ class Slot(object):
                     pass
                 except:
                     # Well, this is bad.  We caused an exception while handling an exception.
-                    # We're more interested in the FIRST excpetion, so print this one out and
+                    # We're more interested in the FIRST exception, so print this one out and
                     #  continue unwinding the stack with the first one.
                     self.logger.error("Error: Caught a secondary exception while handling a different exception.")                
                     import traceback
