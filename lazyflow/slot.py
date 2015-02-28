@@ -1355,6 +1355,10 @@ class Slot(object):
 
         wasdirty = self.meta._dirty
         if self.meta._dirty:
+            assert self.allow_mask or (not self.meta.has_mask), \
+                "The operator, \"%s\", is being setup to receive a masked array as input to slot, \"%s\"." \
+                " This is currently not supported." \
+                % (self.operator.name, self.name)
             for c in self.partners:
                 c._changed()
             self.meta._dirty = False
