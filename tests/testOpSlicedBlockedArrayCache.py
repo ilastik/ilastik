@@ -363,7 +363,7 @@ class TestOpSlicedBlockedArrayCache_masked(object):
         self.data = numpy.ma.masked_array(
             self.data,
             mask=numpy.ma.getmaskarray(self.data),
-            fill_value=numpy.iinfo(self.data.dtype).max,
+            fill_value=self.data.dtype.type(0),
             shrink=False
         )
 
