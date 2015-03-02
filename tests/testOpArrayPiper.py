@@ -34,6 +34,7 @@ from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.roi import roiFromShape, roiToSlice
 
 
+
 class TestOpArrayPiper(object):
     def setUp(self):
         self.graph = Graph()
