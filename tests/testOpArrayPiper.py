@@ -463,3 +463,64 @@ class TestOpArrayPiper6(object):
         self.operator_identity_1.Input.disconnect()
         self.operator_identity_1.Output.disconnect()
         self.operator_identity_1.cleanUp()
+
+
+class TestOpArrayPiper7(object):
+    def setUp(self):
+        self.graph = Graph()
+
+        self.operator_identity_1 = OpArrayPiper(graph=self.graph)
+        self.operator_identity_2 = OpArrayPiper(graph=self.graph)
+
+        self.operator_identity_1.Input.meta.axistags = vigra.AxisTags("txyzc")
+        self.operator_identity_2.Input.meta.axistags = vigra.AxisTags("txyzc")
+
+    def test1(self):
+        # Explicitly set has_mask for the input
+        self.operator_identity_1.Input.meta.has_mask = True
+        self.operator_identity_1.Output.meta.has_mask = True
+
+        # Generate a dataset and grab chunks of it from the operator. The result should be the same as above.
+        data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
+        data = numpy.ma.masked_array(
+            data,
+            mask=numpy.zeros(data.shape, dtype=bool),
+            shrink=False
+        )
+
+        # Try to connect the compatible operators.
+        self.operator_identity_2.Input.connect(self.operator_identity_1.Output)
+        self.operator_identity_1.Input.setValue(data)
+        output = self.operator_identity_2.Output[None].wait()
+
+        assert((data == output).all())
+        assert(data.mask.shape == output.mask.shape)
+        assert((data.mask == output.mask).all())
+
+
+    def test2(self):
+        # Generate a dataset and grab chunks of it from the operator. The result should be the same as above.
+        data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
+        data = numpy.ma.masked_array(
+            data,
+            mask=numpy.zeros(data.shape, dtype=bool),
+            shrink=False
+        )
+
+        # Try to connect the compatible operators.
+        self.operator_identity_1.Input.setValue(data)
+        self.operator_identity_2.Input.connect(self.operator_identity_1.Output)
+        output = self.operator_identity_2.Output[None].wait()
+
+        assert((data == output).all())
+        assert(data.mask.shape == output.mask.shape)
+        assert((data.mask == output.mask).all())
+
+    def tearDown(self):
+        # Take down operators
+        self.operator_identity_2.Input.disconnect()
+        self.operator_identity_2.Output.disconnect()
+        self.operator_identity_2.cleanUp()
+        self.operator_identity_1.Input.disconnect()
+        self.operator_identity_1.Output.disconnect()
+        self.operator_identity_1.cleanUp()
