@@ -418,8 +418,6 @@ class TestOpArrayPiper6(object):
 
         self.operator_identity_1 = OpArrayPiper(graph=self.graph)
         self.operator_identity_2 = OpArrayPiper(graph=self.graph)
-        self.operator_identity_1.Input.allow_mask = True
-        self.operator_identity_1.Output.allow_mask = True
         self.operator_identity_2.Input.allow_mask = False
         self.operator_identity_2.Output.allow_mask = False
 
