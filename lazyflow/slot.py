@@ -452,7 +452,7 @@ class Slot(object):
             assert self.allow_mask or (not partner.meta.has_mask), \
                         "The operator, \"%s\", is being setup to receive a masked array as input to slot, \"%s\"," \
                         " from the output slot, \"%s\", on operator, \"%s\". This is currently not supported." \
-                        % (self.operator.name, self.name, self.partner.name, self.partner.operator.name)
+                        % (self.operator.name, self.name, partner.name, partner.operator.name)
 
             my_op = self.getRealOperator()
             partner_op = partner.getRealOperator()
