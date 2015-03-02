@@ -410,3 +410,58 @@ class TestOpArrayPiper5(object):
         self.operator_identity.Input.disconnect()
         self.operator_identity.Output.disconnect()
         self.operator_identity.cleanUp()
+
+
+class TestOpArrayPiper6(object):
+    def setUp(self):
+        self.graph = Graph()
+
+        self.operator_identity_1 = OpArrayPiper(graph=self.graph)
+        self.operator_identity_2 = OpArrayPiper(graph=self.graph)
+        self.operator_identity_1.Input.allow_mask = True
+        self.operator_identity_1.Output.allow_mask = True
+        self.operator_identity_2.Input.allow_mask = False
+        self.operator_identity_2.Output.allow_mask = False
+
+        self.operator_identity_1.Input.meta.axistags = vigra.AxisTags("txyzc")
+        self.operator_identity_2.Input.meta.axistags = vigra.AxisTags("txyzc")
+
+    @nose.tools.raises(AllowMaskException)
+    def test1(self):
+        # Explicitly set has_mask for the input
+        self.operator_identity_1.Input.meta.has_mask = True
+        self.operator_identity_1.Output.meta.has_mask = True
+
+        # Try to connect the incompatible operators.
+        try:
+            self.operator_identity_2.Input.connect(self.operator_identity_1.Output)
+        except AssertionError as e:
+            raise AllowMaskException(str(e))
+
+    @nose.tools.raises(AllowMaskException)
+    def test2(self):
+        # Generate a dataset and grab chunks of it from the operator. The result should be the same as above.
+        data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
+        data = numpy.ma.masked_array(
+            data,
+            mask=numpy.zeros(data.shape, dtype=bool),
+            shrink=False
+        )
+
+        # Implicitly set has_mask for the input by setting the value.
+        self.operator_identity_1.Input.setValue(data)
+
+        # Try to connect the incompatible operators.
+        try:
+            self.operator_identity_2.Input.connect(self.operator_identity_1.Output)
+        except AssertionError as e:
+            raise AllowMaskException(str(e))
+
+    def tearDown(self):
+        # Take down operators
+        self.operator_identity_2.Input.disconnect()
+        self.operator_identity_2.Output.disconnect()
+        self.operator_identity_2.cleanUp()
+        self.operator_identity_1.Input.disconnect()
+        self.operator_identity_1.Output.disconnect()
+        self.operator_identity_1.cleanUp()
