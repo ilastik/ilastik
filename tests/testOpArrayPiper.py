@@ -31,6 +31,7 @@ import vigra
 
 from lazyflow.graph import Graph
 from lazyflow.operators.opArrayPiper import OpArrayPiper
+from lazyflow.roi import roiFromShape, roiToSlice
 
 
 class TestOpArrayPiper(object):
@@ -63,6 +64,24 @@ class TestOpArrayPiper(object):
         self.operator_identity.Input.setValue(data)
         output[:2] = self.operator_identity.Output[:2].wait()
         output[2:] = self.operator_identity.Output[2:].wait()
+
+        assert((data == output).all())
+
+    def test3(self):
+        # Generate a random dataset and see if it we get the right masking from the operator.
+        data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
+
+        # Provide input read all output.
+        self.operator_identity.Input.setValue(numpy.zeros_like(data))
+        output = self.operator_identity.Output[None].wait()
+
+        assert((output == 0).all())
+
+        # Try setInSlot
+        data_shape_roi = roiFromShape(data.shape)
+        data_shape_slice = roiToSlice(*data_shape_roi)
+        self.operator_identity.Input[data_shape_slice] = data
+        output = self.operator_identity.Output[None].wait()
 
         assert((data == output).all())
 
@@ -122,6 +141,33 @@ class TestOpArrayPiper2(object):
         assert(data.mask.shape == output.mask.shape)
         assert((data.mask == output.mask).all())
 
+    def test3(self):
+        # Generate a random dataset and see if it we get the right masking from the operator.
+        data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
+        data = numpy.ma.masked_array(
+            data,
+            mask=numpy.zeros(data.shape, dtype=bool),
+            shrink=False
+        )
+
+        # Provide input read all output.
+        self.operator_identity.Input.setValue(numpy.zeros_like(data))
+        output = self.operator_identity.Output[None].wait()
+
+        assert((output == 0).all())
+        assert(data.mask.shape == output.mask.shape)
+        assert((output.mask == False).all())
+
+        # Try setInSlot
+        data_shape_roi = roiFromShape(data.shape)
+        data_shape_slice = roiToSlice(*data_shape_roi)
+        self.operator_identity.Input[data_shape_slice] = data
+        output = self.operator_identity.Output[None].wait()
+
+        assert((data == output).all())
+        assert(data.mask.shape == output.mask.shape)
+        assert((data.mask == output.mask).all())
+
     def tearDown(self):
         # Take down operators
         self.operator_identity.Input.disconnect()
@@ -176,6 +222,35 @@ class TestOpArrayPiper3(object):
         assert(self.operator_identity.Output.meta.has_mask)
         output[:2] = self.operator_identity.Output[:2].wait()
         output[2:] = self.operator_identity.Output[2:].wait()
+
+        assert((data == output).all())
+        assert(data.mask.shape == output.mask.shape)
+        assert((data.mask == output.mask).all())
+
+    def test3(self):
+        # Generate a random dataset and see if it we get the right masking from the operator.
+        data = numpy.random.random((4, 5, 6, 7, 3)).astype(numpy.float32)
+        data = numpy.ma.masked_array(
+            data,
+            mask=numpy.zeros(data.shape, dtype=bool),
+            shrink=False
+        )
+
+        # Provide input read all output.
+        self.operator_identity.Input.setValue(numpy.zeros_like(data))
+        assert(self.operator_identity.Input.meta.has_mask)
+        assert(self.operator_identity.Output.meta.has_mask)
+        output = self.operator_identity.Output[None].wait()
+
+        assert((output == 0).all())
+        assert(data.mask.shape == output.mask.shape)
+        assert((output.mask == False).all())
+
+        # Try setInSlot
+        data_shape_roi = roiFromShape(data.shape)
+        data_shape_slice = roiToSlice(*data_shape_roi)
+        self.operator_identity.Input[data_shape_slice] = data
+        output = self.operator_identity.Output[None].wait()
 
         assert((data == output).all())
         assert(data.mask.shape == output.mask.shape)
