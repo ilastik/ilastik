@@ -136,7 +136,6 @@ class TestOpArrayPiper3(object):
         self.operator_identity = OpArrayPiper(graph=self.graph)
 
         self.operator_identity.Input.meta.axistags = vigra.AxisTags("txyzc")
-        self.operator_identity.Input.meta.has_mask = True
 
     def test1(self):
         # Generate a random dataset and see if it we get the right masking from the operator.
