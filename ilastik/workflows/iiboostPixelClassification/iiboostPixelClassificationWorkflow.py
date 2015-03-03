@@ -22,10 +22,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow 
+from ilastik.applets.iiboostFeatureSelection import IIBoostFeatureSelectionApplet
 from ilastik.applets.iiboostPixelClassification import IIBoostPixelClassificationApplet
 
-class IIBoostPixelClassificationWorkflow(PixelClassificationWorkflow):
-    
+class IIBoostPixelClassificationWorkflow(PixelClassificationWorkflow):    
     workflowName = "IIBoost Synapse Detection"
     workflowDescription = "Find synapses in EM volumes with the IIBoost classifier"
     workflowDisplayName = "IIBoost Synapse Detection"
@@ -34,11 +34,14 @@ class IIBoostPixelClassificationWorkflow(PixelClassificationWorkflow):
     def __init__(self, *args, **kwargs):
         super( IIBoostPixelClassificationWorkflow, self ).__init__( *args, **kwargs )
 
+    def createFeatureSelectionApplet(self):
+        """
+        Overridden from the base PixelClassificationWorkflow
+        """
+        return IIBoostFeatureSelectionApplet(self, "Feature Selection", "FeatureSelections", self.filter_implementation)
+
     def createPixelClassificationApplet(self):
         """
-        Can be overridden by subclasses, if they want to return their own type of PixelClassificationApplet.
-        NOTE: The applet returned here must have the same interface as the regular PixelClassificationApplet,
-              so that members like connectLane(), _initBatchWorkflow(), onProjectLoaded() etc. will still work properly.
-              (If it looks like a duck...)
+        Overridden from the base PixelClassificationWorkflow
         """
         return IIBoostPixelClassificationApplet( self, "PixelClassification" )
