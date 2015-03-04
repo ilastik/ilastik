@@ -19,32 +19,23 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
-import threading
+
+import gc
+import weakref
+
 import numpy
 import vigra
 from lazyflow.graph import Graph
 from lazyflow.roi import sliceToRoi, roiToSlice
-from lazyflow.operators import OpArrayPiper, OpArrayCache
+from lazyflow.operators import OpArrayCache
 from lazyflow.operators.opArrayCache import has_drtile
+
+from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 
 class KeyMaker():
     def __getitem__(self, *args):
         return list(*args)
 make_key = KeyMaker()
-
-class OpArrayPiperWithAccessCount(OpArrayPiper):
-    """
-    A simple array piper that counts how many times its execute function has been called.
-    """
-    def __init__(self, *args, **kwargs):
-        super(OpArrayPiperWithAccessCount, self).__init__(*args, **kwargs)
-        self.accessCount = 0
-        self._lock = threading.Lock()
-     
-    def execute(self, slot, subindex, roi, result):
-        with self._lock:
-            self.accessCount += 1        
-        super(OpArrayPiperWithAccessCount, self).execute(slot, subindex, roi, result)
          
  
 class TestOpArrayCache(object):
@@ -275,6 +266,17 @@ class TestOpArrayCache(object):
         clean_block_rois = opCache.CleanBlocks.value
         assert [[0, 0, 10, 0, 0], [1, 10, 20, 10, 1]] in clean_block_rois
         assert [[0, 10, 10, 0, 0], [1, 20, 20, 10, 1]] in clean_block_rois
+
+    def testCleanup(self):
+        op = OpArrayCache(graph=self.opProvider.graph)
+        op.Input.connect(self.opProvider.Output)
+        x = op.Output[...].wait()
+        op.Input.disconnect()
+        r = weakref.ref(op)
+        del op
+        gc.collect()
+        assert r() is None, "OpArrayCache was not cleaned up correctly"
+        
          
  
 class TestOpArrayCacheWithObjectDtype(object):
