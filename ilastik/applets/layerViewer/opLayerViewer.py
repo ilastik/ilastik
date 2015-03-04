@@ -44,21 +44,22 @@ class OpLayerViewer(Operator):
         """
         Example of how to check input data constraints.
         """
-        if self.RawInput.ready():
-            numChannels = self.RawInput.meta.getTaggedShape()['c']
-            if numChannels != 1:
-                raise DatasetConstraintError(
-                    "Layer Viewer",
-                    "Raw data must have exactly one channel.  " +
-                    "You attempted to add a dataset with {} channels".format( numChannels ) )
-
         if self.OtherInput.ready() and self.RawInput.ready():
             rawTaggedShape = self.RawInput.meta.getTaggedShape()
             otherTaggedShape = self.OtherInput.meta.getTaggedShape()
+            raw_time_size = rawTaggedShape.get('t', 1)
+            other_time_size = otherTaggedShape.get('t', 1)
+            if raw_time_size != other_time_size and raw_time_size != 1 and other_time_size != 1:
+                msg = "Your 'raw' and 'other' datasets appear to have differing sizes in the time dimension.\n"\
+                      "Your datasets have shapes: {} and {}".format( self.RawInput.meta.shape, self.OtherInput.meta.shape )
+                raise DatasetConstraintError( "Layer Viewer", msg )
+                
             rawTaggedShape['c'] = None
             otherTaggedShape['c'] = None
+            rawTaggedShape['t'] = None
+            otherTaggedShape['t'] = None
             if dict(rawTaggedShape) != dict(otherTaggedShape):
-                msg = "Raw data and other data must have equal dimensions (different channels are okay).\n"\
+                msg = "Raw data and other data must have equal spatial dimensions (different channels are okay).\n"\
                       "Your datasets have shapes: {} and {}".format( self.RawInput.meta.shape, self.OtherInput.meta.shape )
                 raise DatasetConstraintError( "Layer Viewer", msg )
         
