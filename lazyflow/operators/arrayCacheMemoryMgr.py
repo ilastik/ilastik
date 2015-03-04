@@ -95,7 +95,8 @@ class ArrayCacheMemoryMgr(threading.Thread):
     def _new_list(self):
         def getPrio(array_cache):
             return array_cache._cache_priority
-        return blist.sortedlist((), getPrio)
+        # return blist.sortedlist((), getPrio)
+        return weakref.WeakSet()
 
     def addNamedCache(self, array_cache):
         """add a cache to a special list of named caches

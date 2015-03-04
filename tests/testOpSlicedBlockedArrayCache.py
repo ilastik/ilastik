@@ -19,12 +19,15 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
-import threading
+
+import weakref
+import gc
+
 import numpy
 import vigra
 from lazyflow.graph import Graph
 from lazyflow.roi import roiToSlice
-from lazyflow.operators.opArrayPiper import OpArrayPiper
+from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 from lazyflow.operators.opSlicedBlockedArrayCache import OpSlicedBlockedArrayCache
 
 class KeyMaker():
@@ -32,22 +35,6 @@ class KeyMaker():
         return list(*args)
 make_key = KeyMaker()
 
-class OpArrayPiperWithAccessCount(OpArrayPiper):
-    """
-    A simple array piper that counts how many times its execute function has been called.
-    """
-    def __init__(self, *args, **kwargs):
-        super(OpArrayPiperWithAccessCount, self).__init__(*args, **kwargs)
-        self.accessCount = 0
-        self._lock = threading.Lock()
-        self.printRoi = False
-    
-    def execute(self, slot, subindex, roi, result):
-        with self._lock:
-            self.accessCount += 1
-        if self.printRoi:
-            print "Access: {}".format(roi)
-        super(OpArrayPiperWithAccessCount, self).execute(slot, subindex, roi, result)
 
 class TestOpSlicedBlockedArrayCache(object):
 
@@ -345,6 +332,19 @@ class TestOpSlicedBlockedArrayCache(object):
  
         _requestFrozenAndUnfrozen(make_key[:, 0:50, 15:45, 0:1, :])
         _requestFrozenAndUnfrozen(make_key[:, 80:100, 80:100, 0:1, :])
+
+    def testCleanup(self):
+        op = OpSlicedBlockedArrayCache(graph=self.opProvider.graph)
+        op.Input.connect(self.opProvider.Output)
+        op.innerBlockShape.setValue(self.opCache.innerBlockShape.value)
+        op.outerBlockShape.setValue(self.opCache.outerBlockShape.value)
+        op.fixAtCurrent.setValue(False)
+        x = op.Output[...].wait()
+        op.Input.disconnect()
+        r = weakref.ref(op)
+        del op
+        gc.collect()
+        assert r() is None, "OpBlockedArrayCache was not cleaned up correctly"
 
 
 if __name__ == "__main__":
