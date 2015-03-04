@@ -10,3 +10,4 @@ class IIBoostPixelClassificationGui( PixelClassificationGui ):
         self.minLabelNumber = 2
         self.maxLabelNumber = 2
 
+        self._labelControlUi.labelListModel.allowRemove(False)
