@@ -23,6 +23,8 @@ import sys
 import logging
 import threading
 import functools
+import weakref
+import gc
 
 import numpy
 import vigra
@@ -298,6 +300,25 @@ class TestOpCompressedCache( object ):
         
         #logger.debug("Checking data...")    
         assert (readData == expectedData).all(), "Incorrect output!"
+
+    def testCleanup(self):
+        sampleData = numpy.indices((100, 200, 150), dtype=numpy.float32).sum(0)
+        sampleData = vigra.taggedView(sampleData, axistags='xyz')
+        
+        graph = Graph()
+        opData = OpArrayPiper(graph=graph)
+        opData.Input.setValue( sampleData )
+        
+        op = OpCompressedCache(graph=graph)
+        #logger.debug("Setting block shape...")
+        op.BlockShape.setValue([100, 75, 50])
+        op.Input.connect(opData.Output)
+        x = op.Output[...].wait()
+        op.Input.disconnect()
+        r = weakref.ref(op)
+        del op
+        gc.collect()
+        assert r() is None, "OpBlockedArrayCache was not cleaned up correctly"
         
 
 if __name__ == "__main__":
