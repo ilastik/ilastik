@@ -244,8 +244,8 @@ class OpConvertEigenvectorsToChannels(Operator):
             result[:] = input_data[:]
         
     def propagateDirty(self, slot, subindex, roi):
-        dirty_start = tuple(roi.start[:-2]) + (0)
-        dirty_stop = tuple(roi.stop[:-2]) + (9)
+        dirty_start = tuple(roi.start[:-2]) + (0,)
+        dirty_stop = tuple(roi.stop[:-2]) + (9,)
         self.Output.setDirty(dirty_start, dirty_stop)
             
 
