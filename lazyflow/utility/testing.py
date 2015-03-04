@@ -20,7 +20,10 @@
 #          http://ilastik.org/license/
 ###############################################################################
 
+import threading
+
 import numpy as np
+from lazyflow.operator import Operator, InputSlot, OutputSlot
 
 
 # Some tools to aid automated testing
@@ -67,3 +70,29 @@ def assertEquivalentLabeling(labelImage, referenceImage):
         assert m == n, "There are more pixels with (reference-)label {} than pixels with label {}.".format(refblock[0], label)
 
     assert len(labels) == len(set(y.flat)), "The number of labels does not agree, perhaps some region was missed"
+
+
+class OpArrayPiperWithAccessCount(Operator):
+    """
+    array piper that counts how many times its execute function has been called
+    """
+    Input = InputSlot()
+    Output = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super(OpArrayPiperWithAccessCount, self).__init__(*args, **kwargs)
+        self.accessCount = 0
+        self._lock = threading.Lock()
+
+    def setupOutputs(self):
+        self.Output.meta.assignFrom(self.Input.meta)
+
+    def execute(self, slot, subindex, roi, result):
+        with self._lock:
+            self.accessCount += 1
+        req = self.Input.get(roi)
+        req.writeInto(result)
+        req.block()
+
+    def propagateDirty(self, slot, subindex, roi):
+        self.Output.setDirty(roi)
