@@ -155,6 +155,7 @@ class IIBoostLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         # This is a debug class.  
         # As such, we recalculate the integral images every time...
         image_channels = list( numpy.rollaxis(filter_image, -1, 0) )
+        image_channels = numpy.ascontiguousarray(image_channels)
         integral_channels = map( self._model.computeIntegralImage, image_channels )
         
         print "FIXME: anisotropy"
