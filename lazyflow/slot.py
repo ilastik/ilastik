@@ -558,6 +558,8 @@ class Slot(object):
         had_partner = False
         if self.partner is not None:
             had_partner = True
+            # safe to unsubscribe, even if not subscribed
+            self.partner._sig_unready.unsubscribe(self._handleUpstreamUnready)
             try:
                 self.partner.partners.remove(self)
             except ValueError:
