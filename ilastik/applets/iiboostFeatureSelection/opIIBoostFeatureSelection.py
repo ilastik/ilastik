@@ -8,6 +8,9 @@ from lazyflow.operators.operators import OpSlicedBlockedArrayCache
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
 from iiboost import computeEigenVectorsOfHessianImage
 
+from ilastik.applets.base.applet import DatasetConstraintError
+
+
 class OpIIBoostFeatureSelection(Operator):
     """
     This operator produces an output image with the following channels
@@ -64,6 +67,20 @@ class OpIIBoostFeatureSelection(Operator):
         self.opHessianEigenvectorCache.name = "opHessianEigenvectorCache"
         self.opHessianEigenvectorCache.Input.connect(self.opConvertToChannels.Output)
         self.opHessianEigenvectorCache.fixAtCurrent.setValue(False)
+
+        self.InputImage.notifyReady(self.checkConstraints)
+    
+    def checkConstraints(self, *args):
+        tagged_shape = self.InputImage.meta.getTaggedShape()
+        if 't' in tagged_shape:
+            raise DatasetConstraintError(
+                 "IIBoost Pixel Classification: Feature Selection",
+                 "This classifier handles only 3D data. Your input data has a time dimension, which is not allowed.")
+
+        if not set('xyz').issubset(tagged_shape.keys()):
+            raise DatasetConstraintError(
+                 "IIBoost Pixel Classification: Feature Selection",
+                 "This classifier handles only 3D data. Your input data does not have all three spatial dimensions (xyz).")
 
     def setupOutputs(self):
         # Output shape is the same as the inner operator, 
