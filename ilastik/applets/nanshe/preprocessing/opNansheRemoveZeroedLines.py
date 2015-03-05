@@ -115,7 +115,6 @@ class OpNansheRemoveZeroedLines(Operator):
         # Copy the input metadata to both outputs
         self.Output.meta.assignFrom( self.Input.meta )
         self.Output.meta.dtype = numpy.float32
-        self.Output.meta.has_mask = True
 
         self.Output.meta.generation = self._generation
 
