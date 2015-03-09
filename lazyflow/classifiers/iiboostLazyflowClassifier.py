@@ -83,15 +83,7 @@ class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
                 integral_channels.append( integral_channel )
             integral_images.append( integral_channels )
 
-        # Finally, train!
-        print "Training with {} raw images, {} converted labels, {} integral images with {} channels each"\
-              .format( len(raw_images), len(converted_labels), len(integral_images), len(integral_images[0]) )
               
-        print "FIXME: anisotropy!!"
-        for name, l in zip( ('raw_images', 'hev_images', 'converted_labels', 'integral_images'),
-                      (raw_images, hev_images, converted_labels, integral_images) ):
-            assert len(l) == 1
-            numpy.save('/tmp/' + name + '.npy', l[0])
         model.trainWithChannels( raw_images, hev_images, converted_labels, integral_images, 1.0, *self._args, **self._kwargs )
 
         # Save for future reference
@@ -158,7 +150,6 @@ class IIBoostLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         image_channels = numpy.ascontiguousarray(image_channels)
         integral_channels = map( iiboost.computeIntegralImage, image_channels )
         
-        print "FIXME: anisotropy"
         prediction_img = self._model.predictWithChannels( raw, hev_image, integral_channels, 1.0 )
         assert prediction_img.dtype == numpy.float32
         print "prediction_img range: {}, {}".format( prediction_img.min(), prediction_img.max() )
