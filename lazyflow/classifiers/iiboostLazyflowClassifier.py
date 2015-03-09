@@ -36,7 +36,13 @@ class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         self._args = args
         self._kwargs = kwargs
     
-    def create_and_train_pixelwise(self, feature_images, label_images):
+    def create_and_train_pixelwise(self, feature_images, label_images, axistags=None):
+        """
+        feature_images: A sequence of ND images.  See note above regarding required structure.  
+                        Last axis must be channel.
+        label_images: A sequence of ND label images.  Last axis must be channel (size=1).
+        axistags: Optional.  A vigra.AxisTags object describing ALL feature_images.
+        """
         logger.debug( 'training with IIBoost' )
 
         # Instantiate the classifier
@@ -83,8 +89,15 @@ class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
                 integral_channels.append( integral_channel )
             integral_images.append( integral_channels )
 
+        # Calculate anisotropy factor.
+        z_anisotropy_factor = 1.0
+        if axistags:
+            x_tag = axistags['x']
+            z_tag = axistags['z']
+            if z_tag.resolution != 0.0 and x_tag.resolution != 0.0:
+                z_anisotropy_factor = z_tag.resolution / x_tag.resolution
               
-        model.trainWithChannels( raw_images, hev_images, converted_labels, integral_images, 1.0, *self._args, **self._kwargs )
+        model.trainWithChannels( raw_images, hev_images, converted_labels, integral_images, z_anisotropy_factor, *self._args, **self._kwargs )
 
         # Save for future reference
         flattened_labels = map( numpy.ndarray.flatten, converted_labels )
@@ -127,8 +140,11 @@ class IIBoostLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         self._model = model
         self._feature_count = feature_count
     
-    def predict_probabilities_pixelwise(self, input_image):
+    def predict_probabilities_pixelwise(self, input_image, axistags=None):
         """
+        feature_image: An ND image.  Last axis must be channel.
+        axistags: Optional.  A vigra.AxisTags object describing the feature_image.
+        
         NOTE: See note in factory class above concerning the expected structure of the input image.
         """
         logger.debug( 'predicting with IIBoost' )
@@ -149,8 +165,16 @@ class IIBoostLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         image_channels = list( numpy.rollaxis(filter_image, -1, 0) )
         image_channels = numpy.ascontiguousarray(image_channels)
         integral_channels = map( iiboost.computeIntegralImage, image_channels )
+
+        # Calculate anisotropy factor.
+        z_anisotropy_factor = 1.0
+        if axistags:
+            x_tag = axistags['x']
+            z_tag = axistags['z']
+            if z_tag.resolution != 0.0 and x_tag.resolution != 0.0:
+                z_anisotropy_factor = z_tag.resolution / x_tag.resolution
         
-        prediction_img = self._model.predictWithChannels( raw, hev_image, integral_channels, 1.0 )
+        prediction_img = self._model.predictWithChannels( raw, hev_image, integral_channels, z_anisotropy_factor )
         assert prediction_img.dtype == numpy.float32
         print "prediction_img range: {}, {}".format( prediction_img.min(), prediction_img.max() )
         
