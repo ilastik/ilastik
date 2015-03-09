@@ -10,6 +10,8 @@ from iiboost import computeEigenVectorsOfHessianImage
 
 from ilastik.applets.base.applet import DatasetConstraintError
 
+import logging
+logger = logging.getLogger(__file__)
 
 class OpIIBoostFeatureSelection(Operator):
     """
@@ -69,6 +71,9 @@ class OpIIBoostFeatureSelection(Operator):
         self.opHessianEigenvectorCache.fixAtCurrent.setValue(False)
 
         self.InputImage.notifyReady(self.checkConstraints)
+        
+        self.input_axistags = None
+        self.InputImage.notifyMetaChanged(self._handleMetaChanged)
     
     def checkConstraints(self, *args):
         tagged_shape = self.InputImage.meta.getTaggedShape()
@@ -81,6 +86,10 @@ class OpIIBoostFeatureSelection(Operator):
             raise DatasetConstraintError(
                  "IIBoost Pixel Classification: Feature Selection",
                  "This classifier handles only 3D data. Your input data does not have all three spatial dimensions (xyz).")
+
+    def _handleMetaChanged(self, slot):
+        if self.input_axistags != self.InputImage.meta.axistags:
+            self.InputImage.setDirty( slice(None) )
 
     def setupOutputs(self):
         # Output shape is the same as the inner operator, 
@@ -178,7 +187,7 @@ class OpHessianEigenvectors( Operator ):
         self.z_anisotropy_factor = 1.0
         if z_tag.resolution != 0.0 and x_tag.resolution != 0.0:
             self.z_anisotropy_factor = z_tag.resolution / x_tag.resolution
-
+            logger.debug( "Anisotropy factor: {}/{} = {}".format( z_tag.resolution, x_tag.resolution, self.z_anisotropy_factor ) )
     
     def execute(self, slot, subindex, roi, result):
         # Remove i,j slices from roi, append channel slice to roi.
