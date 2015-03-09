@@ -120,7 +120,7 @@ class LazyflowPixelwiseClassifierFactoryABC(object):
         return obj
 
     @abc.abstractmethod
-    def create_and_train_pixelwise(self, feature_images, label_images):
+    def create_and_train_pixelwise(self, feature_images, label_images, axistags=None):
         """
         Create a new classifier and train it with the given list of feature images and the given list of label images.
         Generally, it is assumed that the channel dimension is the LAST axis for each image.  
@@ -189,10 +189,13 @@ class LazyflowPixelwiseClassifierABC(object):
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
-    def predict_probabilities_pixelwise(self, feature_image):
+    def predict_probabilities_pixelwise(self, feature_image, axistags=None):
         """
-        For each pixel in the given feature image, predict the probabilities that the
+        For each pixel in the given feature_image, predict the probabilities that the
         pixel belongs to each label class the classifier was trained with.
+        
+        feature_image: An ND image.  Last axis must be channel.
+        axistags: Optional.  A vigra.AxisTags object describing the feature_image.
         
         Returns: A multi-channel image (each channel corresponds to a different label class).
         """
