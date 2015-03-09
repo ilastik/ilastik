@@ -79,7 +79,7 @@ class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         for image in filter_images:
             integral_channels = []
             for channel_image in numpy.rollaxis(image, -1, 0):
-                integral_channel = model.computeIntegralImage( numpy.ascontiguousarray(channel_image) )
+                integral_channel = iiboost.computeIntegralImage( numpy.ascontiguousarray(channel_image) )
                 integral_channels.append( integral_channel )
             integral_images.append( integral_channels )
 
@@ -156,7 +156,7 @@ class IIBoostLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         # As such, we recalculate the integral images every time...
         image_channels = list( numpy.rollaxis(filter_image, -1, 0) )
         image_channels = numpy.ascontiguousarray(image_channels)
-        integral_channels = map( self._model.computeIntegralImage, image_channels )
+        integral_channels = map( iiboost.computeIntegralImage, image_channels )
         
         print "FIXME: anisotropy"
         prediction_img = self._model.predictWithChannels( raw, hev_image, integral_channels, 1.0 )
