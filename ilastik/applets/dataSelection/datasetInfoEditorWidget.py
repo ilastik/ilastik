@@ -116,6 +116,7 @@ class DatasetInfoEditorWidget(QDialog):
         self._setUpEventFilters()
 
         self.axesEdit.setEnabled( self._shouldEnableAxesEdit() )
+        self.axistagsEditorWidget.axistagsUpdated.connect( self._applyAxesToTempOps )
         
         self._initNormalizeDisplayCombo()
         self.normalizeDisplayComboBox.currentIndexChanged.connect( self._applyNormalizeDisplayToTempOps )
