@@ -1,5 +1,5 @@
 import numpy
-from lazyflow.roi import determineBlockShape, getIntersection
+from lazyflow.roi import determineBlockShape, getIntersection, enlargeRoiForHalo, TinyVector
 
 class Test_determineBlockShape(object):
     
@@ -55,6 +55,38 @@ class Test_getIntersection(object):
         roiB = [(15,26,27), (16,30,30)]
         intersection = getIntersection( roiA, roiB , assertIntersect=False)
         assert intersection is None, "Expected None because {} doesn't intersect with {}".format(  )
+
+class test_enlargeRoiForHalo(object):
+    
+    def testBasic(self):
+        start = TinyVector([10, 100, 200, 300, 1])
+        stop = TinyVector([11, 150, 300, 500, 3])
+        image_shape = [20, 152, 500, 500, 10]
+        
+        sigma = 3.1
+        window = 2
+        enlarge_axes = (False, True, True, True, False)
+        
+        enlarged_start, enlarged_stop = enlargeRoiForHalo(start, stop, image_shape, sigma, window, enlarge_axes )
+        
+        full_halo_width = numpy.ceil(sigma*window)
+        
+        # Non-enlarged axes should remain the same
+        assert (enlarged_start[[0,4]] == (start[0], start[4])).all(), \
+            "{} == {}".format( enlarged_start[[0,4]], (start[0], start[4]) )
+        assert (enlarged_stop[[0,4]] == (stop[0], stop[4])).all(), \
+            "{} == {}".format( enlarged_stop[[0,4]], (stop[0], stop[4]) )
+        
+        # The start coord isn't close to the image border, so the halo should be full-sized on the start side
+        assert (enlarged_start[1:4] == numpy.array(start)[1:4] - full_halo_width).all()
+
+        # The stop coord is close to the image border in some dimensions, 
+        #  so some axes couldn't be expanded by the full halo width.
+        assert enlarged_stop[1] == 152
+        assert enlarged_stop[2] == stop[2] + full_halo_width
+        assert enlarged_stop[3] == 500
+
+        print enlarged_start, enlarged_stop
 
 if __name__ == "__main__":
     # Run nose
