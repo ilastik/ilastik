@@ -11,6 +11,11 @@ REQ_MSG = " (REQUIRED)"
 RAW_LAYER_SIZE_LIMIT = 1000000
 ALLOWED_EXTENSIONS = ["hdf5", "hd5", "h5", "csv"]
 DEFAULT_REQUIRED_FEATURES = ["Count", "Coord<Minimum>", "Coord<Maximum>", "RegionCenter", ]
+DIALOG_FILTERS = {
+    "h5": "HDF 5 (*.h5 *.hd5 *.hdf5)",
+    "csv": "CSV (*.csv)",
+    "any": "Any (*.*)",
+}
 
 
 class ExportObjectInfoDialog(QDialog):
@@ -164,13 +169,16 @@ class ExportObjectInfoDialog(QDialog):
 
     # slot is called from button.click
     def choose_path(self):
-        extensions = "HDF 5 (*.h5 *.hd5 *.hdf5);;CSV (*.csv);;Both (*.h5 *.hd5 *.hdf5 *.csv);;Any (*.*)"
-        path = QFileDialog.getSaveFileName(self.parent(), "Save File", self.ui.exportPath.text(), extensions)
+        filters = ";;".join(DIALOG_FILTERS.values())
+        current_extension = FILE_TYPES[self.ui.fileFormat.currentIndex()]
+        current_filter = DIALOG_FILTERS[current_extension]
+        path = QFileDialog.getSaveFileName(self.parent(), "Save File", self.ui.exportPath.text(), filters,
+                                           current_filter)
         path = unicode(path)
         if path != "":
             match = path.rsplit(".", 1)
             if len(match) == 1:
-                path = "%s.%s" % (path, FILE_TYPES[self.ui.fileFormat.currentIndex()])
+                path = "%s.%s" % (path, current_extension)
             self.ui.exportPath.setText(path)
 
     # slot is called from checkBox.change
