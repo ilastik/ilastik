@@ -416,11 +416,11 @@ class OpPixelFeaturesPresmoothed(Operator):
             
             # The region of the smoothed image we need to give to the feature filter (in terms of INPUT coordinates)
             # 0.7, because the features receive a pre-smoothed array and don't need much of a neighborhood 
-            vigOpSourceStart, vigOpSourceStop = roi.extendSlice(start, stop, subshape, 0.7, self.WINDOW_SIZE)
+            vigOpSourceStart, vigOpSourceStop = roi.enlargeRoiForHalo(start, stop, subshape, 0.7, self.WINDOW_SIZE)
             
             
             # The region of the input that we need to give to the smoothing operator (in terms of INPUT coordinates)
-            newStart, newStop = roi.extendSlice(vigOpSourceStart, vigOpSourceStop, subshape, maxSigma, self.WINDOW_SIZE)
+            newStart, newStop = roi.enlargeRoiForHalo(vigOpSourceStart, vigOpSourceStop, subshape, maxSigma, self.WINDOW_SIZE)
             
             newStartSmoother = roi.TinyVector(start - vigOpSourceStart)
             newStopSmoother = roi.TinyVector(stop - vigOpSourceStart)
@@ -909,10 +909,10 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
             interp_start[zaxis] = scaleZ*interp_start[zaxis]
             interp_stop[zaxis] = scaleZ*interp_stop[zaxis]-1
             
-            vigOpSourceStart, vigOpSourceStop = roi.extendSlice(interp_start, interp_stop, interpShape, 0.7, window = self.WINDOW_SIZE)
+            vigOpSourceStart, vigOpSourceStop = roi.enlargeRoiForHalo(interp_start, interp_stop, interpShape, 0.7, window = self.WINDOW_SIZE)
             
             # The region of the input that we need to give to the smoothing operator (in terms of INPUT coordinates)
-            newStart, newStop = roi.extendSlice(vigOpSourceStart, vigOpSourceStop, interpShape, maxSigma, window = self.WINDOW_SIZE)
+            newStart, newStop = roi.enlargeRoiForHalo(vigOpSourceStart, vigOpSourceStop, interpShape, maxSigma, window = self.WINDOW_SIZE)
             
             vigOpOffset = start - vigOpSourceStart
             newStartSmoother = roi.TinyVector(interp_start - vigOpSourceStart)
@@ -1082,7 +1082,7 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                                     newRoi = SubRegion(None, pslice=newRoi)
                                     #print "roi smoother:", roiSmoother
                                     
-                                    zStart, zStop = roi.extendSlice(z, z+1, sourceArraysForSigmas[j].shape[zaxis], 0.7, self.WINDOW_SIZE)
+                                    zStart, zStop = roi.enlargeRoiForHalo(z, z+1, sourceArraysForSigmas[j].shape[zaxis], 0.7, self.WINDOW_SIZE)
                                     
                                     sourceKey = []
                                     sourceKey.insert(axistags.index('x'), slice(None, None, None))
@@ -1206,7 +1206,7 @@ class OpBaseVigraFilter(OpArrayPiper):
             else:
                 subshape[at2.index('z')-1]=sourceArray.shape[zAxis]
         
-        newStart, newStop = roi.extendSlice(start, stop, subshape, 0.7, window = windowSize)
+        newStart, newStop = roi.enlargeRoiForHalo(start, stop, subshape, 0.7, window = windowSize)
         
         readKey = roi.roiToSlice(newStart, newStop)
 

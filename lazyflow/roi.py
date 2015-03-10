@@ -322,8 +322,20 @@ def roiToSlice(start, stop, hardBind=False):
         return tuple(map(rTsl1,start,stop))
 
 
-def extendSlice(start, stop, shape, sigma, window = 3.5):
-    # TODO: Rename this function, since it doesn't use slice() objects.
+def enlargeRoiForHalo(start, stop, shape, sigma, window = 3.5):
+    """
+    Enlarge the given roi (start,stop) with a halo according to the given 
+    sigma and window size, without exceeding the given total image shape given.
+    
+    Except for clipping near the image borders, the halo on all sides of the 
+    image will have width = sigma*window
+    
+    start: ROI start coordinate
+    stop: ROI stop coordinate
+    shape: Total shape of the image (not to be exceeded)
+    sigma: The sigma of the filter.
+    window: The window size, expressed in units of sigma.
+    """
     zeros = start - start
     if isinstance( sigma, collections.Iterable ):
         sigma = TinyVector(sigma)
