@@ -1,4 +1,4 @@
-###############################################################################
+# ##############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
 #       Copyright (C) 2011-2014, the ilastik developers
@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 # Standard
+from Queue import Queue
 import re
 import os
 import time
@@ -34,12 +35,14 @@ import numpy
 # PyQt
 from PyQt4 import uic
 from PyQt4.QtCore import pyqtSignal, QObject, Qt, QUrl
-from PyQt4.QtGui import QMainWindow, QWidget, QMenu, QApplication,\
-                        QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
-                        QProgressBar, QInputDialog, QIcon, QFont, QToolButton, \
-                        QHBoxLayout, QSizePolicy, QDesktopServices, QLabel
+from PyQt4.QtGui import QMainWindow, QWidget, QMenu, QApplication, \
+    QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
+    QProgressBar, QInputDialog, QIcon, QFont, QToolButton, \
+    QHBoxLayout, QSizePolicy, QDesktopServices, QLabel
 
 # lazyflow
+from ilastik.widgets.ipcserver.tcpServerInfoWidget import TCPServerInfoWidget
+from ilastik.widgets.ipcserver.zmqPubSubInfoWidget import ZMQPublisherInfoWidget
 from lazyflow.roi import TinyVector
 from lazyflow.graph import Operator
 import lazyflow.tools.schematic
@@ -47,7 +50,8 @@ from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoN
 from lazyflow.utility import timeLogged
 
 # volumina
-from volumina.utility import PreferencesManager, ShortcutManagerDlg, ShortcutManager, decode_to_qstring, encode_from_qstring
+from volumina.utility import PreferencesManager, ShortcutManagerDlg, ShortcutManager, decode_to_qstring, \
+    encode_from_qstring
 
 # ilastik
 from ilastik.workflow import getAvailableWorkflows, getWorkflowFromName
@@ -69,12 +73,14 @@ from ilastik.shell.gui.licenseDialog import LicenseDialog
 from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox
 from ilastik.widgets.filePathButton import FilePathButton
 
-from ilastik.shell.gui.messageServer import MessageServer
+#from ilastik.shell.gui.messageServer import MessageServer
+from ilastik.shell.gui.ipcManager import IPCFacade, TCPServer, TCPClient, ZMQPublisher, ZMQSubscriber, ZMQBase
+import os
 
 # Import all known workflows now to make sure they are all registered with getWorkflowFromName()
 import ilastik.workflows
 
-ILASTIKFont = QFont("Helvetica",12,QFont.Bold)
+ILASTIKFont = QFont("Helvetica", 12, QFont.Bold)
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +93,7 @@ class ShellActions(object):
     The shell provides the applet constructors with access to his GUI actions.
     They are provided in this class.
     """
+
     def __init__(self):
         self.openProjectAction = None
         self.saveProjectAction = None
@@ -96,6 +103,7 @@ class ShellActions(object):
         self.closeAction = None
         self.quitAction = None
 
+
 #===----------------------------------------------------------------------------------------------------------------===
 #=== MemoryWidget                                                                                                   ===
 #===----------------------------------------------------------------------------------------------------------------===
@@ -104,11 +112,12 @@ class MemoryWidget(QWidget):
     """Displays the current memory consumption and a button to open
        a detailed memory consumption / usage dialog.
     """
+
     def __init__(self, parent=None):
         super(MemoryWidget, self).__init__(parent)
         self.label = QLabel()
         h = QHBoxLayout()
-        h.setContentsMargins(0,0,0,0)
+        h.setContentsMargins(0, 0, 0, 0)
         w = QWidget()
         h.addWidget(self.label)
         self.showDialogButton = QToolButton()
@@ -116,10 +125,13 @@ class MemoryWidget(QWidget):
         h.addWidget(self.showDialogButton)
         self.cleanUp()
         self.setLayout(h)
+
     def cleanUp(self):
         self.setMemoryBytes(0)
+
     def setMemoryBytes(self, bytes):
-        self.label.setText("cached: %1.1f MB" % (bytes/(1024.0**2.0)))
+        self.label.setText("cached: %1.1f MB" % (bytes / (1024.0 ** 2.0)))
+
 
 #===----------------------------------------------------------------------------------------------------------------===
 #=== ProgressDisplayManager                                                                                         ===
@@ -138,9 +150,9 @@ class ProgressDisplayManager(QObject):
     def __init__(self, statusBar):
         """
         """
-        super(ProgressDisplayManager, self).__init__( parent=statusBar.parent() )
+        super(ProgressDisplayManager, self).__init__(parent=statusBar.parent())
         self.statusBar = statusBar
-        self.appletPercentages = {} # applet_index : percent_progress
+        self.appletPercentages = {}  # applet_index : percent_progress
         self.workflow = None
 
         self.progressBar = QProgressBar()
@@ -152,8 +164,10 @@ class ProgressDisplayManager(QObject):
         self.statusBar.addPermanentWidget(self.memoryWidget)
 
         mgr = ArrayCacheMemoryMgr.instance
+
         def printIt(msg):
             self.memoryWidget.setMemoryBytes(msg)
+
         mgr.totalCacheMemory.subscribe(printIt)
 
         # Route all signals we get through a queued connection, 
@@ -186,16 +200,16 @@ class ProgressDisplayManager(QObject):
     def _addApplet(self, index, app):
         # Subscribe to progress updates from this applet,
         # and include the applet index in the signal parameters.
-        app.progressSignal.connect( bind(self.handleAppletProgress, index) )
+        app.progressSignal.connect(bind(self.handleAppletProgress, index))
 
         # Also subscribe to this applet's serializer progress updates.
         # (Progress will always come from either the serializer or the applet itself; not both at once.)
         for serializer in app.dataSerializers:
-            serializer.progressSignal.connect( bind( self.handleAppletProgress, index ) )
+            serializer.progressSignal.connect(bind(self.handleAppletProgress, index))
 
     def handleAppletProgress(self, index, percentage, cancelled=False):
         # Forward the signal to the handler via our qt signal, which provides a queued connection.
-        self.dispatchSignal.emit( index, percentage, cancelled )
+        self.dispatchSignal.emit(index, percentage, cancelled)
 
     def handleAppletProgressImpl(self, index, percentage, cancelled):
         # No need for locking; this function is always run from the GUI thread
@@ -229,6 +243,7 @@ class ProgressDisplayManager(QObject):
             self.progressBar.setHidden(False)
             self.progressBar.setValue(totalPercentage)
 
+
 #===----------------------------------------------------------------------------------------------------------------===
 #=== IlastikShell                                                                                                   ===
 #===----------------------------------------------------------------------------------------------------------------===
@@ -238,23 +253,63 @@ def styleStartScreenButton(button, icon):
     button.setAutoRaise(True)
     button.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Fixed)
     button.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-    button.setIcon( QIcon(icon) )
+    button.setIcon(QIcon(icon))
 
-class IlastikShell( QMainWindow ):
+
+class IlastikShell(QMainWindow):
     """
     The GUI's main window.  Simply a standard 'container' GUI for one or more applets.
     """
 
-    def __init__( self, parent = None, workflow_cmdline_args=None, flags = Qt.WindowFlags(0) ):
-        QMainWindow.__init__(self, parent = parent, flags = flags)
+    def __init__(self, parent=None, workflow_cmdline_args=None, flags=Qt.WindowFlags(0)):
+        QMainWindow.__init__(self, parent=parent, flags=flags)
         #self.setFixedSize(1680,1050) #ilastik manuscript resolution
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
-        
+
         # Server/client for inter process communication for receiving remote commands (e.g. from KNIME)
         # For now, this is a developer-only feature, activated by a debug menu item.
-        self.socketServer = None
-        
+        if ilastik_config.getboolean("ilastik", "debug"):
+            facade = IPCFacade()
+            facade.register_shell(self)
+            facade.register_widget(TCPServerInfoWidget(), "TCP Connection", "raw tcp")
+            interface = ilastik_config.get("ipc raw tcp", "interface")
+            port = ilastik_config.getint("ipc raw tcp", "port")
+            start = ilastik_config.getboolean("ipc raw tcp", "autostart")
+            facade.register_module(TCPServer(interface, port), "receiver", "raw tcp server", "raw tcp", start=start)
+            facade.register_module(TCPClient(), "sender", "raw tcp client", "raw tcp", "tcp")
+
+            if ZMQBase.available("tcp"):
+                facade.register_widget(ZMQPublisherInfoWidget(), "ZeroMQ Pub Sub TCP", "zmq tcp")
+                start = ilastik_config.getboolean("ipc zmq tcp publisher", "autostart")
+                address = ilastik_config.get("ipc zmq tcp publisher", "address")
+                facade.register_module(ZMQPublisher("tcp", address), "sender", "zmq tcp pub", "zmq tcp", start=start)
+                start = ilastik_config.getboolean("ipc zmq tcp subscriber", "autostart")
+                address = ilastik_config.get("ipc zmq tcp subscriber", "address")
+                facade.register_module(ZMQSubscriber("tcp", address), "receiver", "zmq tcp sub", "zmq tcp",
+                                       start=start)
+
+                if ZMQBase.available("ipc"):
+                    base_dir = ilastik_config.get("ipc zmq ipc", "basedir")
+                    can_start = True
+                    try:
+                        os.mkdir(base_dir)
+                    except OSError as e:
+                        if e.errno != 17:  # exists
+                            can_start = False
+                    if can_start:
+                        facade.register_widget(ZMQPublisherInfoWidget(), "ZeroMQ Pub Sub IPC", "zmq ipc")
+                        start = ilastik_config.getboolean("ipc zmq ipc publisher", "autostart")
+                        filename = ilastik_config.get("ipc zmq ipc publisher", "filename")
+                        path = os.path.join(base_dir, filename)
+                        facade.register_module(ZMQPublisher("ipc", path), "sender", "zmq ipc pub",
+                                               "zmq ipc", start=start)
+                        start = ilastik_config.getboolean("ipc zmq ipc subscriber", "autostart")
+                        filename = ilastik_config.get("ipc zmq ipc subscriber", "filename")
+                        path = os.path.join(base_dir, filename)
+                        facade.register_module(ZMQSubscriber("ipc", path), "receiver", "zmq ipc sub",
+                                               "zmq ipc", start=start)
+
         self.openFileButtons = []
         self.cleanupFunctions = []
 
@@ -264,7 +319,7 @@ class IlastikShell( QMainWindow ):
         self.projectDisplayManager = None
 
         self._loaduifile()
-        
+
         assert isinstance(self.appletBar, AppletDrawerToolBox)
 
         # show a nice window icon
@@ -275,7 +330,7 @@ class IlastikShell( QMainWindow ):
         #self.appletBar.setExpandsOnDoubleClick(False) #bug 193.
         #self.appletBar.setSelectionMode(QAbstractItemView.NoSelection)
 
-        self._memDlg = None #this will hold the memory usage dialog once created
+        self._memDlg = None  #this will hold the memory usage dialog once created
 
         self.imageSelectionGroup.setHidden(True)
 
@@ -291,12 +346,12 @@ class IlastikShell( QMainWindow ):
         if ilastik_config.getboolean("ilastik", "debug"):
             self._debugMenu = self._createDebugMenu()
         self._helpMenu = self._createHelpMenu()
-        self.menuBar().addMenu( self._projectMenu  )
+        self.menuBar().addMenu(self._projectMenu)
         if self._settingsMenu is not None:
-            self.menuBar().addMenu( self._settingsMenu )
+            self.menuBar().addMenu(self._settingsMenu)
         if ilastik_config.getboolean("ilastik", "debug"):
-            self.menuBar().addMenu( self._debugMenu )
-        self.menuBar().addMenu( self._helpMenu    )
+            self.menuBar().addMenu(self._debugMenu)
+        self.menuBar().addMenu(self._helpMenu)
 
         assert self.thread() == QApplication.instance().thread()
         assert self.menuBar().thread() == self.thread()
@@ -311,37 +366,37 @@ class IlastikShell( QMainWindow ):
 
         self.currentImageIndex = -1
         self.populatingImageSelectionCombo = False
-        self.imageSelectionCombo.currentIndexChanged.connect( self.changeCurrentInputImageIndex )
+        self.imageSelectionCombo.currentIndexChanged.connect(self.changeCurrentInputImageIndex)
 
-        self.enableWorkflow = False # Global mask applied to all applets
-        self._controlCmds = []      # Track the control commands that have been issued by each applet so they can be popped.
-        self._disableCounts = []    # Controls for each applet can be disabled by his peers.
-                                    # No applet can be enabled unless his disableCount == 0
+        self.enableWorkflow = False  # Global mask applied to all applets
+        self._controlCmds = []  # Track the control commands that have been issued by each applet so they can be popped.
+        self._disableCounts = []  # Controls for each applet can be disabled by his peers.
+        # No applet can be enabled unless his disableCount == 0
 
         self._refreshDrawerRecursionGuard = False
 
         self.setupOpenFileButtons()
         self.updateShellProjectDisplay()
 
-        self.threadRouter = ThreadRouter(self) # Enable @threadRouted
+        self.threadRouter = ThreadRouter(self)  # Enable @threadRouted
 
         self.errorMessageFilter = ErrorMessageFilter(self)
 
-        frame_geometry = PreferencesManager().get("shell","startscreenGeometry")
+        frame_geometry = PreferencesManager().get("shell", "startscreenGeometry")
         if frame_geometry is not None:
-            x,y,w,h = frame_geometry
-            self.move( x, y )
+            x, y, w, h = frame_geometry
+            self.move(x, y)
 
             # The frameGeometry() function doesn't actually include the
             #  window frame padding until the window has been shown at least once.
             # Hence, show it now before doing our calculations.
             self.show()
-            
+
             # Qt offers no function for setting the size of the entire frame, 
             # so instead we have to calculate the target size of the internal geometry.            
             frame_padding_width = self.frameGeometry().width() - self.geometry().size().width()
             frame_padding_height = self.frameGeometry().height() - self.geometry().size().height()
-            self.resize( w - frame_padding_width, h - frame_padding_height )
+            self.resize(w - frame_padding_width, h - frame_padding_height)
 
         self._initShortcuts()
 
@@ -350,26 +405,26 @@ class IlastikShell( QMainWindow ):
         ActionInfo = ShortcutManager.ActionInfo
         shortcutGroupName = "Ilastik Shell"
 
-        mgr.register( "PgDown", ActionInfo( shortcutGroupName,
-                                            "shell next image",
-                                            "Switch to next image",
-                                            self._nextImage,
-                                            self,
-                                            self.imageSelectionCombo ) )
-
-        mgr.register( "PgUp", ActionInfo( shortcutGroupName,
-                                          "shell previous image",
-                                          "Switch to previous image",
-                                          self._prevImage,
+        mgr.register("PgDown", ActionInfo(shortcutGroupName,
+                                          "shell next image",
+                                          "Switch to next image",
+                                          self._nextImage,
                                           self,
-                                          None ) )
+                                          self.imageSelectionCombo))
+
+        mgr.register("PgUp", ActionInfo(shortcutGroupName,
+                                        "shell previous image",
+                                        "Switch to previous image",
+                                        self._prevImage,
+                                        self,
+                                        None))
 
     def _nextImage(self):
-        newIndex = min(self.imageSelectionCombo.count()-1,self.imageSelectionCombo.currentIndex()+1)
+        newIndex = min(self.imageSelectionCombo.count() - 1, self.imageSelectionCombo.currentIndex() + 1)
         self.imageSelectionCombo.setCurrentIndex(newIndex)
 
     def _prevImage(self):
-        newIndex = max(0,self.imageSelectionCombo.currentIndex()-1)
+        newIndex = max(0, self.imageSelectionCombo.currentIndex() - 1)
         self.imageSelectionCombo.setCurrentIndex(newIndex)
 
     @property
@@ -386,20 +441,20 @@ class IlastikShell( QMainWindow ):
     def loadWorkflow(self, workflow_class):
         self.onNewProjectActionTriggered(workflow_class)
 
-    def getWorkflow(self,w = None):
+    def getWorkflow(self, w=None):
 
-        listOfItems = [workflowDisplayName for _,__, workflowDisplayName in getAvailableWorkflows()]
+        listOfItems = [workflowDisplayName for _, __, workflowDisplayName in getAvailableWorkflows()]
         if w is not None and w in listOfItems:
             cur = listOfItems.index(w)
         else:
             cur = 0
 
-        res,ok = QInputDialog.getItem(self,
-                        "Workflow Selection",
-                        "Select a workflow which should open the file.",
-                        listOfItems,
-                        cur,
-                        False)
+        res, ok = QInputDialog.getItem(self,
+                                       "Workflow Selection",
+                                       "Select a workflow which should open the file.",
+                                       listOfItems,
+                                       cur,
+                                       False)
 
         if ok:
             return getWorkflowFromName(str(res))
@@ -424,44 +479,44 @@ class IlastikShell( QMainWindow ):
 
         # Menu item: Open Project
         shellActions.openProjectAction = menu.addAction("&Open Project...")
-        shellActions.openProjectAction.setIcon( QIcon(ilastikIcons.Open) )
-        shellActions.openProjectAction.setShortcuts( QKeySequence.Open )
+        shellActions.openProjectAction.setIcon(QIcon(ilastikIcons.Open))
+        shellActions.openProjectAction.setShortcuts(QKeySequence.Open)
         shellActions.openProjectAction.triggered.connect(self.onOpenProjectActionTriggered)
 
         # Menu item: Save Project
         shellActions.saveProjectAction = menu.addAction("&Save Project")
-        shellActions.saveProjectAction.setIcon( QIcon(ilastikIcons.Save) )
-        shellActions.saveProjectAction.setShortcuts( QKeySequence.Save )
+        shellActions.saveProjectAction.setIcon(QIcon(ilastikIcons.Save))
+        shellActions.saveProjectAction.setShortcuts(QKeySequence.Save)
         shellActions.saveProjectAction.triggered.connect(self.onSaveProjectActionTriggered)
 
         # Menu item: Save Project As
         shellActions.saveProjectAsAction = menu.addAction("&Save Project As...")
-        shellActions.saveProjectAsAction.setIcon( QIcon(ilastikIcons.SaveAs) )
-        shellActions.saveProjectAsAction.setShortcuts( QKeySequence.SaveAs )
+        shellActions.saveProjectAsAction.setIcon(QIcon(ilastikIcons.SaveAs))
+        shellActions.saveProjectAsAction.setShortcuts(QKeySequence.SaveAs)
         shellActions.saveProjectAsAction.triggered.connect(self.onSaveProjectAsActionTriggered)
 
         # Menu item: Save Project Snapshot
         shellActions.saveProjectSnapshotAction = menu.addAction("Save Copy as...")
-        shellActions.saveProjectSnapshotAction.setIcon( QIcon(ilastikIcons.SaveAs) )
+        shellActions.saveProjectSnapshotAction.setIcon(QIcon(ilastikIcons.SaveAs))
         shellActions.saveProjectSnapshotAction.triggered.connect(self.onSaveProjectSnapshotActionTriggered)
 
         # Menu item: Import Project
         shellActions.importProjectAction = menu.addAction("&Import Project...")
-        shellActions.importProjectAction.setIcon( QIcon(ilastikIcons.Open) )
+        shellActions.importProjectAction.setIcon(QIcon(ilastikIcons.Open))
         shellActions.importProjectAction.triggered.connect(self.onImportProjectActionTriggered)
 
         if ilastik_config.getboolean("ilastik", "debug"):
             shellActions.closeAction = menu.addAction("&Close")
-            shellActions.closeAction.setIcon( QIcon(ilastikIcons.ProcessStop) )
-            shellActions.closeAction.setShortcuts( QKeySequence.Close )
+            shellActions.closeAction.setIcon(QIcon(ilastikIcons.ProcessStop))
+            shellActions.closeAction.setShortcuts(QKeySequence.Close)
             shellActions.closeAction.triggered.connect(self.onCloseActionTriggered)
 
         # Menu item: Quit
         shellActions.quitAction = menu.addAction("&Quit")
-        shellActions.quitAction.setShortcuts( QKeySequence.Quit )
-        shellActions.quitAction.setIcon( QIcon(ilastikIcons.ProcessStop) )
+        shellActions.quitAction.setShortcuts(QKeySequence.Quit)
+        shellActions.quitAction.setIcon(QIcon(ilastikIcons.ProcessStop))
         shellActions.quitAction.triggered.connect(self.onQuitActionTriggered)
-        shellActions.quitAction.setShortcut( QKeySequence.Quit )
+        shellActions.quitAction.setShortcut(QKeySequence.Quit)
 
         return (menu, shellActions)
 
@@ -472,29 +527,29 @@ class IlastikShell( QMainWindow ):
             b.deleteLater()
         self.openFileButtons = []
 
-        projects = PreferencesManager().get("shell","recently opened list")
+        projects = PreferencesManager().get("shell", "recently opened list")
 
         if projects is not None:
             # (projects is already sorted from most-recent to least-recent.)
-            for path,workflow in projects:
+            for path, workflow in projects:
                 if not os.path.exists(path):
                     continue
-                b = FilePathButton(path, " ({})".format( workflow ), parent=self.startscreen)
+                b = FilePathButton(path, " ({})".format(workflow), parent=self.startscreen)
                 styleStartScreenButton(b, ilastikIcons.Open)
 
-                b.clicked.connect(partial(self.openFileAndCloseStartscreen,path))
-                
+                b.clicked.connect(partial(self.openFileAndCloseStartscreen, path))
+
                 # Insert the new button after all the other controls, 
                 #  but before the vertical spacer at the end of the list.
-                insertion_index = self.startscreen.VL1.count()-1
+                insertion_index = self.startscreen.VL1.count() - 1
                 self.startscreen.VL1.insertWidget(insertion_index, b)
                 self.openFileButtons.append(b)
 
     def _loaduifile(self):
         localDir = os.path.split(__file__)[0]
-        if localDir == "":localDir = os.getcwd()
+        if localDir == "": localDir = os.getcwd()
 
-        self.startscreen = uic.loadUi( localDir + "/ui/ilastikShell.ui", self )
+        self.startscreen = uic.loadUi(localDir + "/ui/ilastikShell.ui", self)
 
         self.startscreen.CreateList.setWidget(self.startscreen.VL1.widget())
         self.startscreen.CreateList.setWidgetResizable(True)
@@ -509,15 +564,15 @@ class IlastikShell( QMainWindow ):
         self.startscreen.browseFilesButton.clicked.connect(self.onOpenProjectActionTriggered)
 
         pos = 1
-        for workflow,_name, displayName in getAvailableWorkflows():
-            b = QToolButton(self.startscreen, objectName="NewProjectButton_"+workflow.__name__)
+        for workflow, _name, displayName in getAvailableWorkflows():
+            b = QToolButton(self.startscreen, objectName="NewProjectButton_" + workflow.__name__)
             styleStartScreenButton(b, ilastikIcons.GoNext)
             b.setText(displayName)
-            b.clicked.connect(partial(self.loadWorkflow,workflow))
-            self.startscreen.VL1.insertWidget(pos,b)
+            b.clicked.connect(partial(self.loadWorkflow, workflow))
+            self.startscreen.VL1.insertWidget(pos, b)
             pos += 1
 
-    def openFileAndCloseStartscreen(self,path):
+    def openFileAndCloseStartscreen(self, path):
         if self.projectManager is not None:
             # If the user double-clicked a "recent project" button,
             #  then this handler function might get called twice.
@@ -540,46 +595,51 @@ class IlastikShell( QMainWindow ):
         menu = QMenu("&Debug", self)
         menu.setObjectName("debug_menu")
 
-        detail_levels = [ ('Lowest', 0), ('Some', 1), ('More', 2), ('Even More', 3), ('Unlimited', 100) ]
+        detail_levels = [('Lowest', 0), ('Some', 1), ('More', 2), ('Even More', 3), ('Unlimited', 100)]
         exportDebugSubmenu = menu.addMenu("Export Operator Diagram")
         exportWorkflowSubmenu = menu.addMenu("Export Workflow Diagram")
         for name, level in detail_levels:
-            exportDebugSubmenu.addAction(name).triggered.connect( partial(self.exportCurrentOperatorDiagram, level) )
-            exportWorkflowSubmenu.addAction(name).triggered.connect( partial(self.exportWorkflowDiagram, level) )
+            exportDebugSubmenu.addAction(name).triggered.connect(partial(self.exportCurrentOperatorDiagram, level))
+            exportWorkflowSubmenu.addAction(name).triggered.connect(partial(self.exportWorkflowDiagram, level))
 
         menu.addAction("&Memory usage").triggered.connect(self.showMemUsageDialog)
-        menu.addMenu( self._createProfilingSubmenu() )
+        menu.addMenu(self._createProfilingSubmenu())
 
         # Start message server for receiving remote commands (e.g. from KNIME)
         # For now, this is a developer-only feature, activated by a menu item.
         def start_message_server():
             self.socketServer = MessageServer(self, 'localhost', 9997)
-            if self.socketServer.running:
+            if self.socketServer.sending:
                 server_action.setText("<Message server is running>")
                 server_action.setEnabled(False)
             else:
-                QMessageBox.critical( self, 
-                                      "Failed to start server", 
-                                      "Couldn't start message server.  See error log for details." )
-        server_action = menu.addAction("Start message server")
-        server_action.triggered.connect(start_message_server)
+                QMessageBox.critical(self,
+                                     "Failed to start server",
+                                     "Couldn't start message server.  See error log for details.")
+
+        #server_action = menu.addAction("Start message server")
+        #server_action.triggered.connect(start_message_server)
+
+
+        menu.addAction("Show IPC Server Info", IPCFacade().show_info)
 
         return menu
 
     def _createProfilingSubmenu(self):
         try:
             import yappi
+
             has_yappi = True
         except ImportError:
             has_yappi = False
-        
+
         def _updateMenuStatus():
-            startAction.setEnabled( not yappi.is_running() )
-            stopAction.setEnabled( yappi.is_running() )
+            startAction.setEnabled(not yappi.is_running())
+            stopAction.setEnabled(yappi.is_running())
             for action in sortedExportSubmenu.actions():
-                action.setEnabled( not yappi.is_running() and not yappi.get_func_stats().empty() )
+                action.setEnabled(not yappi.is_running() and not yappi.get_func_stats().empty())
             for action in sortedThreadExportSubmenu.actions():
-                action.setEnabled( not yappi.is_running() and not yappi.get_func_stats().empty() )
+                action.setEnabled(not yappi.is_running() and not yappi.get_func_stats().empty())
 
         def _startProfiling():
             logger.info("Activating new profiler")
@@ -595,54 +655,55 @@ class IlastikShell( QMainWindow ):
 
         def _exportSortedStats(sortby):
             assert not yappi.is_running()
-            
+
             filename = 'ilastik_profile_sortedby_{}.txt'.format(sortby)
-            
-            recentPath = PreferencesManager().get( 'shell', 'recent sorted profile stats' )
+
+            recentPath = PreferencesManager().get('shell', 'recent sorted profile stats')
             if recentPath is None:
                 defaultPath = os.path.join(os.path.expanduser('~'), filename)
             else:
                 defaultPath = os.path.join(os.path.split(recentPath)[0], filename)
             statsPath = QFileDialog.getSaveFileName(
-               self, "Export sorted stats text", defaultPath, "Text files (*.txt)",
-               options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
+                self, "Export sorted stats text", defaultPath, "Text files (*.txt)",
+                options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
 
             if not statsPath.isNull():
-                stats_path = encode_from_qstring( statsPath )
+                stats_path = encode_from_qstring(statsPath)
                 pstats_path = os.path.splitext(stats_path)[0] + '.pstats'
-                PreferencesManager().set( 'shell', 'recent sorted profile stats', stats_path )
-                
+                PreferencesManager().set('shell', 'recent sorted profile stats', stats_path)
+
                 # Export the yappi stats to builtin pstats format, 
                 #  since pstats provides nicer printing IMHO
                 stats = yappi.get_func_stats()
                 stats.save(pstats_path, type='pstat')
                 with open(stats_path, 'w') as f:
                     import pstats
+
                     ps = pstats.Stats(pstats_path, stream=f)
                     ps.sort_stats(sortby)
                     ps.print_stats()
                 logger.info("Printed stats to file: {}".format(stats_path))
                 # As a convenience, go ahead and open it.
-                QDesktopServices.openUrl( QUrl.fromLocalFile(stats_path) )
+                QDesktopServices.openUrl(QUrl.fromLocalFile(stats_path))
 
         def _exportSortedThreadStats(sortby):
             assert not yappi.is_running()
-            
+
             filename = 'ilastik_threadstats_sortedby_{}.txt'.format(sortby)
-            
-            recentPath = PreferencesManager().get( 'shell', 'recent sorted profile stats' )
+
+            recentPath = PreferencesManager().get('shell', 'recent sorted profile stats')
             if recentPath is None:
                 defaultPath = os.path.join(os.path.expanduser('~'), filename)
             else:
                 defaultPath = os.path.join(os.path.split(recentPath)[0], filename)
             statsPath = QFileDialog.getSaveFileName(
-               self, "Export sorted stats text", defaultPath, "Text files (*.txt)",
-               options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
+                self, "Export sorted stats text", defaultPath, "Text files (*.txt)",
+                options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
 
             if not statsPath.isNull():
-                stats_path = encode_from_qstring( statsPath )
-                PreferencesManager().set( 'shell', 'recent sorted profile stats', stats_path )
-                
+                stats_path = encode_from_qstring(statsPath)
+                PreferencesManager().set('shell', 'recent sorted profile stats', stats_path)
+
                 # Export the yappi stats to builtin pstats format, 
                 #  since pstats provides nicer printing IMHO
                 stats = yappi.get_thread_stats()
@@ -651,7 +712,7 @@ class IlastikShell( QMainWindow ):
                     stats.print_all(f)
                 logger.info("Printed thread stats to file: {}".format(stats_path))
                 # As a convenience, go ahead and open it.
-                QDesktopServices.openUrl( QUrl.fromLocalFile(stats_path) )
+                QDesktopServices.openUrl(QUrl.fromLocalFile(stats_path))
 
         profilingSubmenu = QMenu("Profiling")
         if not has_yappi:
@@ -659,22 +720,22 @@ class IlastikShell( QMainWindow ):
             errorMsgAction = self._profilingSubmenu.addAction("<yappi module not installed>")
             errorMsgAction.setEnabled(False)
             return self._profilingSubmenu
-        
+
         startAction = profilingSubmenu.addAction("Start (reset)")
-        startAction.triggered.connect( _startProfiling )
+        startAction.triggered.connect(_startProfiling)
 
         stopAction = profilingSubmenu.addAction("Stop")
-        stopAction.triggered.connect( _stopProfiling )
-        
+        stopAction.triggered.connect(_stopProfiling)
+
         sortedExportSubmenu = profilingSubmenu.addMenu("Save Sorted Stats...")
         for sortby in ['calls', 'cumulative', 'filename', 'pcalls', 'line', 'name', 'nfl', 'stdname', 'time']:
             action = sortedExportSubmenu.addAction(sortby)
-            action.triggered.connect( partial( _exportSortedStats, sortby ) )
+            action.triggered.connect(partial(_exportSortedStats, sortby))
 
         sortedThreadExportSubmenu = profilingSubmenu.addMenu("Save Sorted Thread Stats...")
         for sortby in ['name', 'id', 'totaltime', 'schedcount']:
             action = sortedThreadExportSubmenu.addAction(sortby)
-            action.triggered.connect( partial( _exportSortedThreadStats, sortby ) )
+            action.triggered.connect(partial(_exportSortedThreadStats, sortby))
 
         _updateMenuStatus()
 
@@ -698,6 +759,7 @@ class IlastikShell( QMainWindow ):
 
         def editShortcuts():
             mgrDlg = ShortcutManagerDlg(self)
+
         menu.addAction("&Keyboard Shortcuts").triggered.connect(editShortcuts)
 
         return menu
@@ -706,36 +768,39 @@ class IlastikShell( QMainWindow ):
         if len(self._applets) == 0:
             QMessageBox.critical(self, "Export Error", "There are no operators to export.")
             return
-        elif len(self._applets)<=self.currentAppletIndex:
+        elif len(self._applets) <= self.currentAppletIndex:
             QMessageBox.critical(self, "Export Error", "The current applet does not exist.")
             return
         op = self._applets[self.currentAppletIndex].topLevelOperator
-        assert isinstance(op, Operator), "Top-level operator of your applet must be a lazyflow.Operator if you want to export it!"
+        assert isinstance(op,
+                          Operator), "Top-level operator of your applet must be a lazyflow.Operator if you want to export it!"
         self.exportOperatorDiagram(op, detail)
 
     def exportWorkflowDiagram(self, detail):
         if self.projectManager is None:
-            QMessageBox.critical(self, "Export Error", "You have to start a project before you can export workflow diagrams.")
+            QMessageBox.critical(self, "Export Error",
+                                 "You have to start a project before you can export workflow diagrams.")
             return
-        assert isinstance(self.projectManager.workflow, Operator), "Workflow must be an operator if you want to export it!"
+        assert isinstance(self.projectManager.workflow,
+                          Operator), "Workflow must be an operator if you want to export it!"
         self.exportOperatorDiagram(self.projectManager.workflow, detail)
 
     def exportOperatorDiagram(self, op, detail):
-        recentPath = PreferencesManager().get( 'shell', 'recent debug diagram' )
+        recentPath = PreferencesManager().get('shell', 'recent debug diagram')
         if recentPath is None:
             defaultPath = os.path.join(os.path.expanduser('~'), op.name + '.svg')
         else:
             defaultPath = os.path.join(os.path.split(recentPath)[0], op.name + '.svg')
 
         svgPath = QFileDialog.getSaveFileName(
-           self, "Save operator diagram", defaultPath, "Inkscape Files (*.svg)",
-           options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
+            self, "Save operator diagram", defaultPath, "Inkscape Files (*.svg)",
+            options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
 
         if not svgPath.isNull():
-            svgPath = encode_from_qstring( svgPath )
-            PreferencesManager().set( 'shell', 'recent debug diagram', svgPath )
+            svgPath = encode_from_qstring(svgPath)
+            PreferencesManager().set('shell', 'recent debug diagram', svgPath)
             lazyflow.tools.schematic.generateSvgFileForOperator(svgPath, op, detail)
-            QDesktopServices.openUrl( QUrl.fromLocalFile(svgPath) )
+            QDesktopServices.openUrl(QUrl.fromLocalFile(svgPath))
 
     def show(self):
         """
@@ -746,7 +811,7 @@ class IlastikShell( QMainWindow ):
         self.updateShellProjectDisplay()
         # Default to a 50-50 split
         totalSplitterHeight = sum(self.sideSplitter.sizes())
-        self.sideSplitter.setSizes([totalSplitterHeight/2, totalSplitterHeight/2])
+        self.sideSplitter.setSizes([totalSplitterHeight / 2, totalSplitterHeight / 2])
 
     def updateShellProjectDisplay(self):
         """
@@ -766,11 +831,12 @@ class IlastikShell( QMainWindow ):
             if readOnly:
                 windowTitle += " [Read Only]"
 
-        self.setWindowTitle( decode_to_qstring(windowTitle) )
+        self.setWindowTitle(decode_to_qstring(windowTitle))
 
         # Enable/Disable menu items
         projectIsOpen = self.projectManager is not None and not self.projectManager.closed
-        self._shellActions.saveProjectAction.setEnabled(projectIsOpen and not readOnly) # Can't save a read-only project
+        self._shellActions.saveProjectAction.setEnabled(
+            projectIsOpen and not readOnly)  # Can't save a read-only project
         self._shellActions.saveProjectAsAction.setEnabled(projectIsOpen)
         self._shellActions.saveProjectSnapshotAction.setEnabled(projectIsOpen)
         if self._shellActions.closeAction is not None:
@@ -782,12 +848,12 @@ class IlastikShell( QMainWindow ):
         self.cleanupFunctions = []
 
         insertedCallback = bind(self.handleImageNameSlotInsertion)
-        self.cleanupFunctions.append( partial( multiSlot.unregisterInserted, insertedCallback ) )
-        multiSlot.notifyInserted( insertedCallback )
+        self.cleanupFunctions.append(partial(multiSlot.unregisterInserted, insertedCallback))
+        multiSlot.notifyInserted(insertedCallback)
 
         removeCallback = bind(self.handleImageNameSlotRemoval)
-        self.cleanupFunctions.append( partial( multiSlot.unregisterRemove, removeCallback ) )
-        multiSlot.notifyRemove( bind(self.handleImageNameSlotRemoval) )
+        self.cleanupFunctions.append(partial(multiSlot.unregisterRemove, removeCallback))
+        multiSlot.notifyRemove(bind(self.handleImageNameSlotRemoval))
 
         # Update for the slots that already exist
         for index, slot in enumerate(multiSlot):
@@ -795,10 +861,10 @@ class IlastikShell( QMainWindow ):
             self.insertImageName(index, slot)
 
     @threadRouted
-    def insertImageName(self, index, slot ):
+    def insertImageName(self, index, slot):
         assert threading.current_thread().name == "MainThread"
         if slot.ready():
-            self.imageSelectionCombo.setItemText( index, slot.value )
+            self.imageSelectionCombo.setItemText(index, slot.value)
             if self.currentImageIndex == -1:
                 self.changeCurrentInputImageIndex(index)
 
@@ -809,7 +875,7 @@ class IlastikShell( QMainWindow ):
         self.populatingImageSelectionCombo = True
         self.imageSelectionCombo.insertItem(index, "uninitialized")
         self.populatingImageSelectionCombo = False
-        multislot[index].notifyDirty( bind( self.insertImageName, index) )
+        multislot[index].notifyDirty(bind(self.insertImageName, index))
 
     @threadRouted
     def handleImageNameSlotRemoval(self, multislot, index):
@@ -819,10 +885,10 @@ class IlastikShell( QMainWindow ):
         if len(multislot) == 0:
             self.changeCurrentInputImageIndex(-1)
 
-    @timeLogged( logger, logging.DEBUG )
+    @timeLogged(logger, logging.DEBUG)
     def changeCurrentInputImageIndex(self, newImageIndex):
         if newImageIndex != self.currentImageIndex \
-        and self.populatingImageSelectionCombo == False:
+                and self.populatingImageSelectionCombo == False:
             if newImageIndex != -1:
                 try:
                     # Accessing the image name value will throw if it isn't properly initialized
@@ -835,7 +901,7 @@ class IlastikShell( QMainWindow ):
                     return
 
             # Alert each central widget and viewer control widget that the image selection changed
-            for i in range( len(self._applets) ):
+            for i in range(len(self._applets)):
                 if newImageIndex == -1:
                     self._applets[i].getMultiLaneGui().setImageIndex(None)
                 else:
@@ -850,7 +916,7 @@ class IlastikShell( QMainWindow ):
                 # Update all other applet drawer titles
                 for applet_index, app in enumerate(self._applets):
                     updatedDrawerTitle = app.name
-                    self.appletBar.setItemText( applet_index, updatedDrawerTitle )
+                    self.appletBar.setItemText(applet_index, updatedDrawerTitle)
 
     def handleAppletBarItemExpanded(self, modelIndex):
         """
@@ -872,56 +938,59 @@ class IlastikShell( QMainWindow ):
             # ...except for the newly selected item.
             drawerModelIndex = self.getModelIndexFromDrawerIndex(applet_index)
             #self.appletBar.expand( drawerModelIndex )
-            self.appletBar.setCurrentIndex( drawerModelIndex )
+            self.appletBar.setCurrentIndex(drawerModelIndex)
 
             # Select the appropriate central widget, menu widget, and viewer control widget for this applet
             self.showCentralWidget(applet_index)
             self.showViewerControlWidget(applet_index)
             self.showMenus(applet_index)
-            self.refreshAppletDrawer( applet_index )
+            self.refreshAppletDrawer(applet_index)
 
             self._refreshDrawerRecursionGuard = False
 
             applet = self._applets[applet_index]
             # Only show the combo if the applet is lane-aware and there is more than one lane loaded.
-            self.imageSelectionGroup.setVisible( applet.syncWithImageIndex and self.imageSelectionCombo.count() > 1 )
+            self.imageSelectionGroup.setVisible(applet.syncWithImageIndex and self.imageSelectionCombo.count() > 1)
 
     def showCentralWidget(self, applet_index):
         if applet_index < len(self._applets):
             centralWidget = self._applets[applet_index].getMultiLaneGui().centralWidget()
             # Replace the placeholder widget, if possible
             if centralWidget is not None:
-                if self.appletStack.indexOf( centralWidget ) == -1:
-                    self.appletStack.removeWidget( self.appletStack.widget( applet_index ) )
-                    self.appletStack.insertWidget( applet_index, centralWidget )
+                if self.appletStack.indexOf(centralWidget) == -1:
+                    self.appletStack.removeWidget(self.appletStack.widget(applet_index))
+                    self.appletStack.insertWidget(applet_index, centralWidget)
                     # For test recording purposes, every gui we add MUST have a unique name
-                    centralWidget.setObjectName("centralWidget_applet_{}_lane_{}".format(applet_index, self.currentImageIndex))
+                    centralWidget.setObjectName(
+                        "centralWidget_applet_{}_lane_{}".format(applet_index, self.currentImageIndex))
 
             self.appletStack.setCurrentIndex(applet_index)
 
-    def showViewerControlWidget(self, applet_index ):
+    def showViewerControlWidget(self, applet_index):
         if applet_index < len(self._applets):
             viewerControlWidget = self._applets[applet_index].getMultiLaneGui().viewerControlWidget()
             # Replace the placeholder widget, if possible
             if viewerControlWidget is not None:
-                if self.viewerControlStack.indexOf( viewerControlWidget ) == -1:
-                    self.viewerControlStack.addWidget( viewerControlWidget )
+                if self.viewerControlStack.indexOf(viewerControlWidget) == -1:
+                    self.viewerControlStack.addWidget(viewerControlWidget)
                 self.viewerControlStack.setCurrentWidget(viewerControlWidget)
                 # For test recording purposes, every gui we add MUST have a unique name
-                viewerControlWidget.setObjectName( "viewerControls_applet_{}_lane_{}".format( applet_index, self.currentImageIndex ) )
+                viewerControlWidget.setObjectName(
+                    "viewerControls_applet_{}_lane_{}".format(applet_index, self.currentImageIndex))
 
     def refreshAppletDrawer(self, applet_index):
         if applet_index < len(self._applets) and applet_index < self.appletBar.count():
             updatedDrawerTitle = self._applets[applet_index].name
             updatedDrawerWidget = self._applets[applet_index].getMultiLaneGui().appletDrawer()
-            self.appletBar.setItemText( applet_index , updatedDrawerTitle )
+            self.appletBar.setItemText(applet_index, updatedDrawerTitle)
             appletDrawerStackedWidget = self.appletBar.widget(applet_index)
             if appletDrawerStackedWidget.indexOf(updatedDrawerWidget) == -1:
-                appletDrawerStackedWidget.addWidget( updatedDrawerWidget )
+                appletDrawerStackedWidget.addWidget(updatedDrawerWidget)
                 # For test recording purposes, every gui we add MUST have a unique name
-                appletDrawerStackedWidget.setObjectName( "appletDrawer_applet_{}_lane_{}".format( applet_index, self.currentImageIndex ) )
+                appletDrawerStackedWidget.setObjectName(
+                    "appletDrawer_applet_{}_lane_{}".format(applet_index, self.currentImageIndex))
 
-            appletDrawerStackedWidget.setCurrentWidget( updatedDrawerWidget )
+            appletDrawerStackedWidget.setCurrentWidget(updatedDrawerWidget)
 
     def onCloseActionTriggered(self):
         if not self.ensureNoCurrentProject():
@@ -942,6 +1011,12 @@ class IlastikShell( QMainWindow ):
         self.menuBar().addMenu(self._projectMenu)
         if self._settingsMenu is not None:
             self.menuBar().addMenu(self._settingsMenu)
+
+        workflowMenus = self.workflow.menus()
+        if workflowMenus is not None:
+            for m in workflowMenus:
+                self.menuBar().addMenu(m)
+
         if applet_index < len(self._applets):
             appletMenus = self._applets[applet_index].getMultiLaneGui().menus()
             if appletMenus is not None:
@@ -955,18 +1030,18 @@ class IlastikShell( QMainWindow ):
         drawerTitleItem = self.appletBar.widget(drawerIndex)
         return self.appletBar.indexOf(drawerTitleItem)
 
-    def addApplet( self, applet_index, app ):
-        assert isinstance( app, Applet ), "Applets must inherit from Applet base class."
+    def addApplet(self, applet_index, app):
+        assert isinstance(app, Applet), "Applets must inherit from Applet base class."
         assert app.base_initialized, "Applets must call Applet.__init__ upon construction."
 
-        assert isinstance( app.getMultiLaneGui(), AppletGuiInterface ), \
+        assert isinstance(app.getMultiLaneGui(), AppletGuiInterface), \
             "Applet GUIs must conform to the Applet GUI interface."
 
         # Add placeholder widget, since the applet's central widget may not exist yet.
-        self.appletStack.addWidget( QWidget(parent=self) )
+        self.appletStack.addWidget(QWidget(parent=self))
 
         # Add a placeholder widget
-        self.viewerControlStack.addWidget( QWidget(parent=self) )
+        self.viewerControlStack.addWidget(QWidget(parent=self))
 
         # Add rows to the applet bar model
 
@@ -975,20 +1050,20 @@ class IlastikShell( QMainWindow ):
         controlGuiWidget = app.getMultiLaneGui().appletDrawer()
 
         stackedWidget = QStackedWidget()
-        stackedWidget.addWidget( controlGuiWidget )
+        stackedWidget.addWidget(controlGuiWidget)
 
-        self.appletBar.addItem( stackedWidget, controlName )
+        self.appletBar.addItem(stackedWidget, controlName)
         if not app.interactive:
             # Some applets don't really need a GUI, but they still have a top-level operator and serializer.
             # In that case, we don't show it in the applet drawer
-            self.appletBar.hideIndexItem( applet_index )
+            self.appletBar.hideIndexItem(applet_index)
 
         # Set up handling of GUI commands from this applet
         self._disableCounts.append(0)
-        self._controlCmds.append( [] )
+        self._controlCmds.append([])
 
         # Set up handling of shell requests from this applet
-        app.shellRequestSignal.connect( partial(self.handleShellRequest, applet_index) )
+        app.shellRequestSignal.connect(partial(self.handleShellRequest, applet_index))
 
         return applet_index
 
@@ -1008,7 +1083,7 @@ class IlastikShell( QMainWindow ):
             self.appletBar.removeItem(i)
 
     def _clearStackedWidget(self, stackedWidget):
-        for i in reversed( range( stackedWidget.count() ) ):
+        for i in reversed(range(stackedWidget.count())):
             lastWidget = stackedWidget.widget(i)
             stackedWidget.removeWidget(lastWidget)
 
@@ -1020,10 +1095,10 @@ class IlastikShell( QMainWindow ):
             # Call the handler directly to ensure this is a synchronous call (not queued to the GUI thread)
             self.projectManager.saveProject()
 
-    def __len__( self ):
+    def __len__(self):
         return self.appletBar.count()
 
-    def __getitem__( self, index ):
+    def __getitem__(self, index):
         return self._applets[index]
 
     def onNewProjectActionTriggered(self, workflow_class=None):
@@ -1036,7 +1111,7 @@ class IlastikShell( QMainWindow ):
 
             self.createAndLoadNewProject(newProjectFilePath, workflow_class)
 
-    def createAndLoadNewProject(self, newProjectFilePath, workflow_class, h5_file_kwargs={} ):
+    def createAndLoadNewProject(self, newProjectFilePath, workflow_class, h5_file_kwargs={}):
         '''Create a new project file for the given workflow and open the workflow in the shell.
 
         To create an in-memory project file call it as follows (the filename is irrelevant in this case):
@@ -1045,7 +1120,8 @@ class IlastikShell( QMainWindow ):
         :param h5_file_kwargs: Passed directly to h5py.File.__init__() of the project file; all standard params except 'mode' are allowed.
         '''
 
-        newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath, workflow_class, self._workflow_cmdline_args, h5_file_kwargs)
+        newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath, workflow_class,
+                                                               self._workflow_cmdline_args, h5_file_kwargs)
         self._loadProject(newProjectFile, newProjectFilePath, workflow_class, readOnly=False)
         self.projectManager.saveProject()
 
@@ -1065,11 +1141,11 @@ class IlastikShell( QMainWindow ):
                 options |= QFileDialog.DontConfirmOverwrite
 
             projectFilePath = QFileDialog.getSaveFileName(self, caption, defaultPath,
-                                          "Ilastik project files (*.ilp)", options=options)
+                                                          "Ilastik project files (*.ilp)", options=options)
             # If the user cancelled, stop now
             if projectFilePath.isEmpty():
                 return None
-            projectFilePath = encode_from_qstring( projectFilePath )
+            projectFilePath = encode_from_qstring(projectFilePath)
             fileSelected = True
 
             # Add extension if necessary
@@ -1081,7 +1157,8 @@ class IlastikShell( QMainWindow ):
                     message = "A file named '" + projectFilePath + "' already exists in this location.\n"
                     message += "Are you sure you want to overwrite it?"
                     buttons = QMessageBox.Yes | QMessageBox.Cancel
-                    response = QMessageBox.warning(self, "Overwrite existing project?", message, buttons, defaultButton=QMessageBox.Cancel)
+                    response = QMessageBox.warning(self, "Overwrite existing project?", message, buttons,
+                                                   defaultButton=QMessageBox.Cancel)
                     if response == QMessageBox.Cancel:
                         # Try again...
                         fileSelected = False
@@ -1096,7 +1173,7 @@ class IlastikShell( QMainWindow ):
         logger.debug("Import Project Action")
 
         # Find the directory of the most recently *imported* project
-        mostRecentImportPath = PreferencesManager().get( 'shell', 'recently imported' )
+        mostRecentImportPath = PreferencesManager().get('shell', 'recently imported')
         if mostRecentImportPath is not None:
             defaultDirectory = os.path.split(mostRecentImportPath)[0]
         else:
@@ -1116,7 +1193,8 @@ class IlastikShell( QMainWindow ):
             if not self.ensureNoCurrentProject():
                 return
             newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath)
-            self._loadProject(newProjectFile, newProjectFilePath, workflow_class=None, readOnly=False, importFromPath=importedFilePath)
+            self._loadProject(newProjectFile, newProjectFilePath, workflow_class=None, readOnly=False,
+                              importFromPath=importedFilePath)
 
     def getProjectPathToOpen(self, defaultDirectory):
         """
@@ -1127,19 +1205,19 @@ class IlastikShell( QMainWindow ):
             options = QFileDialog.Options(QFileDialog.DontUseNativeDialog)
 
         projectFilePath = QFileDialog.getOpenFileName(
-           self, "Open Ilastik Project", defaultDirectory, "Ilastik project files (*.ilp)", options=options)
+            self, "Open Ilastik Project", defaultDirectory, "Ilastik project files (*.ilp)", options=options)
 
         # If the user canceled, stop now
         if projectFilePath.isNull():
             return None
 
-        return encode_from_qstring( projectFilePath )
+        return encode_from_qstring(projectFilePath)
 
     def onOpenProjectActionTriggered(self):
         logger.debug("Open Project action triggered")
 
         # Find the directory of the most recently opened project
-        mostRecentProjectPath = PreferencesManager().get( 'shell', 'recently opened' )
+        mostRecentProjectPath = PreferencesManager().get('shell', 'recently opened')
         if mostRecentProjectPath:
             defaultDirectory = os.path.split(mostRecentProjectPath)[0]
         else:
@@ -1156,13 +1234,14 @@ class IlastikShell( QMainWindow ):
     def openProjectFile(self, projectFilePath):
         try:
             hdf5File, workflow_class, readOnly = ProjectManager.openProjectFile(projectFilePath)
-        except ProjectManager.ProjectVersionError,e:
-            QMessageBox.warning(self, "Old Project", "Could not load old project file: " + projectFilePath + ".\nPlease try 'Import Project' instead.")
+        except ProjectManager.ProjectVersionError, e:
+            QMessageBox.warning(self, "Old Project",
+                                "Could not load old project file: " + projectFilePath + ".\nPlease try 'Import Project' instead.")
         except ProjectManager.FileMissingError:
             QMessageBox.warning(self, "Missing File", "Could not find project file: " + projectFilePath)
         except:
             msg = "Corrupted Project", "Unable to open project file: " + projectFilePath
-            log_exception( logger, msg )
+            log_exception(logger, msg)
             QMessageBox.warning(self, msg)
         else:
             #as load project can take a while, show a wait cursor
@@ -1196,15 +1275,15 @@ class IlastikShell( QMainWindow ):
 
         try:
             assert self.projectManager is None, "Expected projectManager to be None."
-            self.projectManager = ProjectManager( self,
-                                                  workflow_class,
-                                                  workflow_cmdline_args=self._workflow_cmdline_args,
-                                                  project_creation_args=project_creation_args)
+            self.projectManager = ProjectManager(self,
+                                                 workflow_class,
+                                                 workflow_cmdline_args=self._workflow_cmdline_args,
+                                                 project_creation_args=project_creation_args)
 
         except Exception, e:
             msg = "Could not load project file.\n" + str(e)
-            log_exception( logger, msg )
-            QMessageBox.warning(self, "Failed to Load",  msg)
+            log_exception(logger, msg)
+            QMessageBox.warning(self, "Failed to Load", msg)
 
             # no project will be loaded, free the file resource
             hdf5File.close()
@@ -1224,7 +1303,7 @@ class IlastikShell( QMainWindow ):
                     assert not readOnly, "Can't import into a read-only file."
                     self.projectManager._importProject(importFromPath, hdf5File, projectFilePath)
             except Exception as ex:
-                log_exception( logger )
+                log_exception(logger)
                 self.closeCurrentProject()
 
                 # _loadProject failed, so we cannot expect it to clean up
@@ -1238,7 +1317,7 @@ class IlastikShell( QMainWindow ):
 
             else:
                 stop = time.time()
-                logger.debug( "Loading the project took {:.2f} sec.".format(stop-start) )
+                logger.debug("Loading the project took {:.2f} sec.".format(stop - start))
 
                 #add file and workflow to users preferences
                 mostRecentProjectPaths = PreferencesManager().get('shell', 'recently opened list')
@@ -1248,11 +1327,11 @@ class IlastikShell( QMainWindow ):
                 workflowName = self.projectManager.workflow.workflowName
                 workflowDisplayName = self.projectManager.workflow.workflowDisplayName
 
-                for proj,work in mostRecentProjectPaths[:]:
-                    if proj==projectFilePath and (proj,work) in mostRecentProjectPaths:
-                        mostRecentProjectPaths.remove((proj,work))
+                for proj, work in mostRecentProjectPaths[:]:
+                    if proj == projectFilePath and (proj, work) in mostRecentProjectPaths:
+                        mostRecentProjectPaths.remove((proj, work))
 
-                mostRecentProjectPaths.insert(0,(projectFilePath,workflowDisplayName))
+                mostRecentProjectPaths.insert(0, (projectFilePath, workflowDisplayName))
 
                 #cut list of stored files at randomly chosen number of 5
                 if len(mostRecentProjectPaths) > 5:
@@ -1263,17 +1342,17 @@ class IlastikShell( QMainWindow ):
 
                 #be friendly to user: if this file has not specified a default workflow, do it now
                 if not "workflowName" in hdf5File.keys() and not readOnly:
-                    hdf5File.create_dataset("workflowName",data = workflowName)
+                    hdf5File.create_dataset("workflowName", data=workflowName)
 
                 #switch away from the startup screen to show the loaded project
                 self.mainStackedWidget.setCurrentIndex(1)
                 # By default, make the splitter control expose a reasonable width of the applet bar
-                self.mainSplitter.setSizes([300,1])
+                self.mainSplitter.setSizes([300, 1])
 
                 self.progressDisplayManager.cleanUp()
                 self.progressDisplayManager.initializeForWorkflow(self.projectManager.workflow)
 
-                self.setImageNameListSlot( self.projectManager.workflow.imageNameListSlot )
+                self.setImageNameListSlot(self.projectManager.workflow.imageNameListSlot)
                 self.updateShellProjectDisplay()
 
                 # Enable all the applet controls
@@ -1296,7 +1375,7 @@ class IlastikShell( QMainWindow ):
             if not self.projectManager.closed and projectFile is not None and not self.projectManager.currentProjectIsReadOnly:
                 if "currentApplet" in projectFile.keys():
                     del projectFile["currentApplet"]
-                self.projectManager.currentProjectFile.create_dataset("currentApplet",data = self.currentAppletIndex)
+                self.projectManager.currentProjectFile.create_dataset("currentApplet", data=self.currentAppletIndex)
 
             self.removeAllAppletWidgets()
             for f in self.cleanupFunctions:
@@ -1308,12 +1387,12 @@ class IlastikShell( QMainWindow ):
             if self.projectDisplayManager is not None:
                 old = weakref.ref(self.projectDisplayManager)
                 self.projectDisplayManager.cleanUp()
-                self.projectDisplayManager = None # Destroy display manager
+                self.projectDisplayManager = None  # Destroy display manager
                 # Ensure that it was really destroyed
                 assert old() is None, "There shouldn't be extraneous references to the project display manager!"
 
             self.projectManager.cleanUp()
-            self.projectManager = None # Destroy project manager
+            self.projectManager = None  # Destroy project manager
 
         self.enableWorkflow = False
         self._controlCmds = []
@@ -1335,11 +1414,11 @@ class IlastikShell( QMainWindow ):
 
                 message = "Your current project is about to be closed, but it has unsaved changes which will be lost.\n"
                 message += "Are you sure you want to proceed?\n"
-                message += "(Unsaved changes in: {})".format( ', '.join(dirtyApplets) )
+                message += "(Unsaved changes in: {})".format(', '.join(dirtyApplets))
                 buttons = QMessageBox.Yes | QMessageBox.Cancel
-                response = QMessageBox.warning(self, "Discard unsaved changes?", message, buttons, defaultButton=QMessageBox.Cancel)
+                response = QMessageBox.warning(self, "Discard unsaved changes?", message, buttons,
+                                               defaultButton=QMessageBox.Cancel)
                 closeProject = (response == QMessageBox.Yes)
-
 
         if closeProject:
             self.closeCurrentProject()
@@ -1348,12 +1427,13 @@ class IlastikShell( QMainWindow ):
 
     def onSaveProjectActionTriggered(self):
         logger.debug("Save Project action triggered")
+
         def save():
             self.setAllAppletsEnabled(False)
             try:
                 self.projectManager.saveProject()
             except ProjectManager.SaveError, err:
-                self.thunkEventHandler.post( partial( QMessageBox.warning, self, "Error Attempting Save", str(err) ) )
+                self.thunkEventHandler.post(partial(QMessageBox.warning, self, "Error Attempting Save", str(err)))
 
             # First, re-enable all applets
             # (If the workflow doesn't provide a handleAppletStateUpdateRequested implementation,
@@ -1362,10 +1442,10 @@ class IlastikShell( QMainWindow ):
             # Next, tell the workflow to re-disable any applets that aren't really ready.
             self.workflow.handleAppletStateUpdateRequested()
 
-        saveThread = threading.Thread( target=save )
+        saveThread = threading.Thread(target=save)
         saveThread.start()
 
-        return saveThread # Return the thread so non-gui users (e.g. unit tests) can join it if they want to.
+        return saveThread  # Return the thread so non-gui users (e.g. unit tests) can join it if they want to.
 
     def onSaveProjectAsActionTriggered(self):
         logger.debug("SaveAs Project action triggered")
@@ -1391,9 +1471,9 @@ class IlastikShell( QMainWindow ):
                 self.setAllAppletsEnabled(False)
 
                 try:
-                    self.projectManager.saveProjectAs( newPath )
+                    self.projectManager.saveProjectAs(newPath)
                 except ProjectManager.SaveError, err:
-                    self.thunkEventHandler.post( partial( QMessageBox.warning, self, "Error Attempting Save", str(err) ) )
+                    self.thunkEventHandler.post(partial(QMessageBox.warning, self, "Error Attempting Save", str(err)))
                 self.updateShellProjectDisplay()
 
                 # First, re-enable all applets
@@ -1403,7 +1483,7 @@ class IlastikShell( QMainWindow ):
                 # Next, tell the workflow to re-disable any applets that aren't really ready.
                 self.workflow.handleAppletStateUpdateRequested()
 
-            saveThread = threading.Thread( target=saveAs )
+            saveThread = threading.Thread(target=saveAs)
             saveThread.start()
 
     def onSaveProjectSnapshotActionTriggered(self):
@@ -1416,7 +1496,7 @@ class IlastikShell( QMainWindow ):
             try:
                 self.projectManager.saveProjectSnapshot(snapshotPath)
             except ProjectManager.SaveError, err:
-                QMessageBox.warning( self, "Error Attempting Save Snapshot", str(err) )
+                QMessageBox.warning(self, "Error Attempting Save Snapshot", str(err))
 
     def closeEvent(self, closeEvent):
         """
@@ -1451,16 +1531,18 @@ class IlastikShell( QMainWindow ):
             dirtyApplets = self.projectManager.getDirtyAppletNames()
             if len(dirtyApplets) > 0:
                 message = "Your project has unsaved data.  Are you sure you want to discard your changes and quit?\n"
-                message += "(Unsaved changes in: {})".format( ', '.join(dirtyApplets) )
+                message += "(Unsaved changes in: {})".format(', '.join(dirtyApplets))
                 buttons = QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel
-                response = QMessageBox.warning(self, "Discard unsaved changes?", message, buttons, defaultButton=QMessageBox.Save)
+                response = QMessageBox.warning(self, "Discard unsaved changes?", message, buttons,
+                                               defaultButton=QMessageBox.Save)
                 if response == QMessageBox.Cancel:
                     return False
                 elif response == QMessageBox.Save:
                     self.onSaveProjectActionTriggered()
         try:
             from eventcapture.eventRecordingApp import EventRecordingApp
-            if isinstance( QApplication.instance(), EventRecordingApp ):
+
+            if isinstance(QApplication.instance(), EventRecordingApp):
                 return QApplication.instance().recorder_control_window.confirmQuit()
         except ImportError:
             pass
@@ -1469,7 +1551,7 @@ class IlastikShell( QMainWindow ):
     def closeAndQuit(self, quitApp=True):
         geom = self.frameGeometry()
         x, y, width, height = geom.x(), geom.y(), geom.width(), geom.height()
-        PreferencesManager().set( 'shell', 'startscreenGeometry', ( x, y, width, height ))
+        PreferencesManager().set('shell', 'startscreenGeometry', ( x, y, width, height ))
 
         if self.projectManager is not None:
             self.closeCurrentProject()
@@ -1486,28 +1568,28 @@ class IlastikShell( QMainWindow ):
 
     def setAllAppletsEnabled(self, enabled):
         for applet in self._applets:
-            self.setAppletEnabled( applet, enabled )
+            self.setAppletEnabled(applet, enabled)
 
     def setAppletEnabled(self, applet, enabled):
         # Post this to the gui thread
         self.thunkEventHandler.post(self._setAppletEnabled, applet, enabled)
-    
+
     def newServerConnected(self, name):
         # iterate over all other applets and inform about new connection if relevant
         for applet in self._applets:
             if name == "knime":
                 if hasattr(applet, "connected_to_knime"):
                     applet.connected_to_knime = True
-    
+
     def setAllViewersPosition(self, pos):
         # operate on currently displayed applet first
-        self._setViewerPosition(self._applets[self.currentAppletIndex], pos) 
-        
+        self._setViewerPosition(self._applets[self.currentAppletIndex], pos)
+
         # now iterate over all other applets and change the viewer focus
         for applet in self._applets:
             if not applet is self._applets[self.currentAppletIndex]:
                 self._setViewerPosition(applet, pos)
-        
+
     @threadRouted
     def _setViewerPosition(self, applet, pos):
         gui = applet.getMultiLaneGui()
@@ -1527,11 +1609,11 @@ class IlastikShell( QMainWindow ):
         Enable or disable the shell actions that could affect the project state.
         (Basically anything that would cause the project to be closed.)
         """
-        self._shellActions.openProjectAction.setEnabled( enabled )
-        self._shellActions.importProjectAction.setEnabled( enabled )
-        self._shellActions.quitAction.setEnabled( enabled )
+        self._shellActions.openProjectAction.setEnabled(enabled)
+        self._shellActions.importProjectAction.setEnabled(enabled)
+        self._shellActions.quitAction.setEnabled(enabled)
         if self._shellActions.closeAction is not None:
-            self._shellActions.closeAction.setEnabled( enabled )
+            self._shellActions.closeAction.setEnabled(enabled)
 
     def _setAppletEnabled(self, applet, enabled):
         try:
@@ -1540,7 +1622,7 @@ class IlastikShell( QMainWindow ):
         except ValueError:
             pass
         else:
-            applet.getMultiLaneGui().setEnabled( enabled )
+            applet.getMultiLaneGui().setEnabled(enabled)
 
             # Apply to the applet bar drawer heading, too.
             if applet_index < self.appletBar.count():
@@ -1552,4 +1634,5 @@ class IlastikShell( QMainWindow ):
                 if self.appletBar.currentIndex() != applet_index:
                     self.appletBar.setItemEnabled(applet_index, enabled)
 
-assert issubclass( IlastikShell, ShellABC ), "IlastikShell does not satisfy the generic shell interface!"
+
+assert issubclass(IlastikShell, ShellABC), "IlastikShell does not satisfy the generic shell interface!"

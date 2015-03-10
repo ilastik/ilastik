@@ -399,20 +399,24 @@ class PixelClassificationGui(LabelingGui):
         ActionInfo = ShortcutManager.ActionInfo
 
         if ilastik_config.getboolean('ilastik', 'debug'):
-            # This colortable requires matplotlib
-            from volumina.colortables import jet
 
             # Add the label projection layer.
             labelProjectionSlot = self.topLevelOperatorView.opLabelPipeline.opLabelArray.Projection2D
             if labelProjectionSlot.ready():
                 projectionSrc = LazyflowSource(labelProjectionSlot)
-                projectionLayer = ColortableLayer( projectionSrc, 
-                                                   colorTable=[QColor(0,0,0,128).rgba()]+jet(N=255), 
-                                                   normalize=(0.0, 1.0) )
-                projectionLayer.name = "Label Projection"
-                projectionLayer.visible = False
-                projectionLayer.opacity = 1.0
-                layers.append(projectionLayer)
+                try:
+                    # This colortable requires matplotlib
+                    from volumina.colortables import jet
+                    projectionLayer = ColortableLayer( projectionSrc, 
+                                                       colorTable=[QColor(0,0,0,128).rgba()]+jet(N=255), 
+                                                       normalize=(0.0, 1.0) )
+                except (ImportError, RuntimeError):
+                    pass
+                else:
+                    projectionLayer.name = "Label Projection"
+                    projectionLayer.visible = False
+                    projectionLayer.opacity = 1.0
+                    layers.append(projectionLayer)
 
         # Add the uncertainty estimate layer
         uncertaintySlot = self.topLevelOperatorView.UncertaintyEstimate
