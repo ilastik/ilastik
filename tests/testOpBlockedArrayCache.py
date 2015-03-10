@@ -19,32 +19,23 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
-import threading
+
+import weakref
+import gc
+
 import numpy
 import vigra
 from lazyflow.graph import Graph
 from lazyflow.roi import sliceToRoi, roiToSlice
-from lazyflow.operators import OpArrayPiper, OpBlockedArrayCache
+from lazyflow.operators import OpBlockedArrayCache
+from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 
 class KeyMaker():
     def __getitem__(self, *args):
         return list(*args)
 make_key = KeyMaker()
 
-class OpArrayPiperWithAccessCount(OpArrayPiper):
-    """
-    A simple array piper that counts how many times its execute function has been called.
-    """
-    def __init__(self, *args, **kwargs):
-        super(OpArrayPiperWithAccessCount, self).__init__(*args, **kwargs)
-        self.accessCount = 0
-        self._lock = threading.Lock()
-    
-    def execute(self, slot, subindex, roi, result):
-        with self._lock:
-            self.accessCount += 1        
-        super(OpArrayPiperWithAccessCount, self).execute(slot, subindex, roi, result)
-        
+       
 
 class TestOpBlockedArrayCache(object):
 
@@ -302,6 +293,20 @@ class TestOpBlockedArrayCache(object):
         assert opProvider.accessCount >= minAccess
         assert opProvider.accessCount <= maxAccess
         oldAccessCount = opProvider.accessCount
+
+    def testCleanup(self):
+        op = OpBlockedArrayCache(graph=self.opProvider.graph)
+        op.Input.connect(self.opProvider.Output)
+        s = self.opProvider.Output.meta.shape
+        op.innerBlockShape.setValue(s)
+        op.outerBlockShape.setValue(s)
+        op.fixAtCurrent.setValue(False)
+        x = op.Output[...].wait()
+        op.Input.disconnect()
+        r = weakref.ref(op)
+        del op
+        gc.collect()
+        assert r() is None, "OpBlockedArrayCache was not cleaned up correctly"
 
 if __name__ == "__main__":
     import sys

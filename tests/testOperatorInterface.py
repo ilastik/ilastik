@@ -20,6 +20,9 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 
+import weakref
+import gc
+
 import nose
 from lazyflow import graph
 from lazyflow import stype
@@ -622,7 +625,39 @@ class TestSlotStates(object):
         a = numpy.zeros( 4*(10,) + (1,), dtype=int)
         op.Input.setValue(a)
         assert dirty_flag[0] is True
-        
+
+
+class OpSimple(graph.Operator):
+    Input = graph.InputSlot()
+    Output = graph.OutputSlot()
+
+    def setupOutputs(self):
+        pass
+
+
+class TestOperatorCleanup(object):
+    def testSimpleCleanup(self):
+        g = graph.Graph()
+        op = OpSimple(graph=g)
+        r = weakref.ref(op)
+        del op
+        gc.collect()
+        assert r() is None, "cleanup failed"
+
+    def testConnectedCleanup(self):
+        g = graph.Graph()
+        op1 = OpSimple(graph=g)
+        op2 = OpSimple(graph=g)
+
+        op2.Input.connect(op1.Output)
+        op2.Input.disconnect()
+        # op2.cleanUp()
+
+        r = weakref.ref(op2)
+        del op2
+        gc.collect()
+        assert r() is None, "cleanup failed"
+
 
 if __name__ == "__main__":
     import sys
