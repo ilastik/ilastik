@@ -38,6 +38,9 @@ def hessian_eigenvectors( a, sigma, sort=True ):
     # Solve eigensystem at each pixel (where each pixel is an NxN matrix)
     eig_vals, eig_vects = numpy.linalg.eigh(hessian_full, UPLO='U')
     
+    # eig_vects contains COLUMN vectors, but we want ROW vectors
+    eig_vects = eig_vects.transpose( tuple(range(len(eig_vects.shape)))[:-2] + (-1,-2)  )
+    
     if sort:
         # We need to sort the eigenvalues and then re-order the eigen vectors in the same way.
         # You would think the following code would do the trick, but this is horribly slow for some reason.
@@ -52,6 +55,7 @@ def hessian_eigenvectors( a, sigma, sort=True ):
         assert eig_vals.dtype == eig_vects.dtype
         
         combined = numpy.concatenate((eig_vals[...,None], eig_vects), axis=-1)
+        combined = numpy.ascontiguousarray(combined)
         combined_dtypes = [eig_vals.dtype.str]*(1+eig_vects.shape[-1])
         combined_names = map(str, range(1+eig_vects.shape[-1]))
         
