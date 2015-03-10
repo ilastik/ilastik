@@ -322,7 +322,7 @@ def roiToSlice(start, stop, hardBind=False):
         return tuple(map(rTsl1,start,stop))
 
 
-def enlargeRoiForHalo(start, stop, shape, sigma, window=3.5, enlarge_axes=None):
+def enlargeRoiForHalo(start, stop, shape, sigma, window=3.5, enlarge_axes=None, return_result_roi=False):
     """
     Enlarge the given roi (start,stop) with a halo according to the given 
     sigma and window size, without exceeding the given total image shape given.
@@ -338,6 +338,14 @@ def enlargeRoiForHalo(start, stop, shape, sigma, window=3.5, enlarge_axes=None):
     halo_axes: If provided, indicates which axes to expand with the halo.
                Should be a list of bools (or 1/0 values). 
                For example, halo_axes=(0,1,1,1,0) means: "enlarge roi for axes 1,2,3 but not axes 0,4"
+    return_result_roi: If True, also return the "result roi".  
+                       That is, the roi which you can use to extract the inner data 
+                       from an array retrieved using the enlarged roi.
+                       For example:
+                           roi_with_halo, result_roi = enlargeRoiForHalo(start, stop, sigma, return_result_roi=True)
+                           outer_data = myfilter(roi_with_halo)
+                           data_without_halo = outer_data[roiToSlice(result_roi)]
+                           assert data_without_halo.shape == stop - start
     """
     assert len(start) == len(stop) == len(shape)
     shape = TinyVector(shape)
@@ -352,13 +360,14 @@ def enlargeRoiForHalo(start, stop, shape, sigma, window=3.5, enlarge_axes=None):
     spatial_start = enlarge_axes*start
     spatial_stop = enlarge_axes*stop
 
-    zeros = start - start
     if isinstance( sigma, collections.Iterable ):
         sigma = TinyVector(sigma)
     if isinstance( start, collections.Iterable ):
         ret_type = type(start[0])
     else:
         ret_type = type(start)
+
+    zeros = TinyVector(start) - start
 
     enlarged_start = numpy.maximum(spatial_start - numpy.ceil(window * sigma), zeros).astype( ret_type )
     enlarged_stop = numpy.minimum(spatial_stop + numpy.ceil(window * sigma), max_spatial_shape).astype( ret_type )
@@ -367,8 +376,13 @@ def enlargeRoiForHalo(start, stop, shape, sigma, window=3.5, enlarge_axes=None):
     enlarged_start += (enlarge_axes == 0) * start
     enlarged_stop += (enlarge_axes == 0) * stop
     
-    return numpy.array((enlarged_start, enlarged_stop))
-
+    enlarged_roi = numpy.array((enlarged_start, enlarged_stop))
+    if return_result_roi:
+        inner_roi = numpy.asarray( (start, stop) )
+        result_roi = inner_roi - enlarged_roi[0]
+        return enlarged_roi, result_roi
+    else:
+        return enlarged_roi 
 
 def getIntersectingBlocks( blockshape, roi, asarray=False ):
     """
