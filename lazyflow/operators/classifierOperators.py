@@ -169,14 +169,16 @@ class OpTrainPixelwiseClassifierBlocked(Operator):
                 label_data_blocks.append( block_label_data )
                 image_data_blocks.append( block_image_data )
 
-        axistags = self.Images[0].meta.axistags
-        logger.debug("Training new classifier: {}".format( classifier_factory.description ))
-        classifier = classifier_factory.create_and_train_pixelwise( image_data_blocks, label_data_blocks, axistags )
-        assert issubclass(type(classifier), LazyflowPixelwiseClassifierABC), \
-            "Classifier is of type {}, which does not satisfy the LazyflowPixelwiseClassifierABC interface."\
-            "".format( type(classifier) )
-        result[0] = classifier
-        return result
+        if len(image_data_blocks) == 0:
+            result[0] = None
+        else:
+            axistags = self.Images[0].meta.axistags
+            logger.debug("Training new classifier: {}".format( classifier_factory.description ))
+            classifier = classifier_factory.create_and_train_pixelwise( image_data_blocks, label_data_blocks, axistags )
+            assert issubclass(type(classifier), LazyflowPixelwiseClassifierABC), \
+                "Classifier is of type {}, which does not satisfy the LazyflowPixelwiseClassifierABC interface."\
+                "".format( type(classifier) )
+            result[0] = classifier
 
     def propagateDirty(self, slot, subindex, roi):
         self.Classifier.setDirty()
