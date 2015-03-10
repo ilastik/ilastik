@@ -4,6 +4,7 @@ import vigra
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators.operators import OpSlicedBlockedArrayCache
+from lazyflow.roi import enlargeRoiForHalo, roiToSlice
 
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
 from iiboost import computeEigenVectorsOfHessianImage
@@ -191,12 +192,13 @@ class OpHessianEigenvectors( Operator ):
     
     def execute(self, slot, subindex, roi, result):
         # Remove i,j slices from roi, append channel slice to roi.
-        # FIXME: Add halo?
         input_roi = ( tuple(roi.start[:-2]) + (0,),
                       tuple(roi.stop[:-2]) + (1,) )
 
+        enlarged_roi, result_roi = self._enlarge_roi_for_halo(*input_roi)
+        
         # Request input
-        input_data = self.Input(*input_roi).wait()
+        input_data = self.Input(*enlarged_roi).wait()
         
         # Drop singleton channel axis
         input_data = input_data[...,0]
@@ -210,18 +212,42 @@ class OpHessianEigenvectors( Operator ):
                                                          sigma=self.Sigma.value)
         
         # sanity checks...
-        assert (eigenvectors.shape[:-2] == (numpy.array(input_roi[1]) - input_roi[0])[:-1]).all(), \
+        assert (eigenvectors.shape[:-2] == (numpy.array(enlarged_roi[1]) - enlarged_roi[0])[:-1]).all(), \
             "eigenvector image has unexpected shape: {}".format( eigenvectors.shape )
         assert eigenvectors.shape[-2:] == (3,3)
 
-        # Copy to output.        
-        result[:] = eigenvectors[..., slice(roi.start[-1], roi.stop[-1])]
+        # Copy to output.
+        
+        result[:] = eigenvectors[roiToSlice(*result_roi)][..., slice(roi.start[-1], roi.stop[-1])]
 
     def propagateDirty(self, slot, subindex, roi):
-        dirty_start = tuple(roi.start[:-1]) + (0,0)
-        dirty_stop = tuple(roi.stop[:-1]) + (3,3)
+        enlarged_roi, _ = self._enlarge_roi_for_halo(roi.start, roi.stop)
+
+        dirty_start = tuple(enlarged_roi[0, :-1]) + (0,0)
+        dirty_stop = tuple(enlarged_roi[1, :-1]) + (3,3)
         self.Output.setDirty(dirty_start, dirty_stop)
 
+    def _enlarge_roi_for_halo(self, start, stop):
+        """
+        Given a roi of INPUT coordinates (3D+c, not 3D+ij),
+          enlarge it with an appropriate halo.  Also return the "result roi".
+        (See enlargeRoiForHalo() docs for details.)
+        """
+        assert len(self.Input.meta.shape) == 4, "Data must be exactly 3D+c (no time axis)"
+        assert self.Input.meta.getAxisKeys()[-1] == 'c'
+
+        spatial_axes = (True, True, True, False) # don't enlarge channel roi
+
+        # FIXME: What is the 'window size' of the iiboost hessian eigenvalue function?
+        #        It isn't obvious from the source code...
+        enlarged_roi, result_roi = enlargeRoiForHalo( start, 
+                                                      stop, 
+                                                      self.Input.meta.shape, 
+                                                      self.Sigma.value, 
+                                                      window=2.0, 
+                                                      enlarge_axes=spatial_axes,
+                                                      return_result_roi=True )
+        return enlarged_roi, result_roi
 
 class OpConvertEigenvectorsToChannels(Operator):
     """
@@ -230,6 +256,8 @@ class OpConvertEigenvectorsToChannels(Operator):
     
     This is only useful because most operators in lazyflow expect a channel axis, 
     and don't know how to handle (i,j) pixels.
+    
+    (This operator doesn't do any real 'work', it just reshapes the input.)
     """
     Input = InputSlot()
     Output = OutputSlot()
