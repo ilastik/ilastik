@@ -125,6 +125,7 @@ def objects_per_frame(labeling_image):
 
     for t in xrange(frames):
         yield data[t].max()
+        #yield len(np.unique(data[t]))
 
 
 def division_flatten_dict(divisions, dict_):

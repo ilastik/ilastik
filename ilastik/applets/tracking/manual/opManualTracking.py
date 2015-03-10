@@ -202,7 +202,7 @@ class OpManualTracking(Operator, ExportingOperator):
         for oid, tids in mapping.iteritems():
             if tid in tids:
                 return oid
-        raise ValueError("TID not found!")
+        raise ValueError("TID {} at t={} not found!".format(tid, t))
 
     def do_export(self, settings, selected_features, progress_slot):
         """
