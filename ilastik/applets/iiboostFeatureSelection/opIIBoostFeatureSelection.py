@@ -1,13 +1,15 @@
 import copy
 import numpy
 import vigra
+from functools import partial
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators.operators import OpSlicedBlockedArrayCache
 from lazyflow.roi import enlargeRoiForHalo, roiToSlice
+from lazyflow.request import Request, RequestPool
 
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
-from iiboost import computeEigenVectorsOfHessianImage
+from iiboost import computeEigenVectorsOfHessianImage, computeIntegralImage
 
 from ilastik.applets.base.applet import DatasetConstraintError
 
@@ -16,11 +18,11 @@ logger = logging.getLogger(__file__)
 
 class OpIIBoostFeatureSelection(Operator):
     """
-    This operator produces an output image with the following channels
+    This operator produces an output image with the following channels:
     
-    0: Raw Input (the input is just duplicated as an output channel)
-    1-10: The 9 elements of the hessian eigenvector matrix (a 3x3 matrix flattened into 9 channels)
-    11-11+N: Any features provided by the standard OpFeatureSelection operator.
+    channel  0:       Raw Input (the input is just duplicated as an output channel)
+    channels 1-10:    The 9 elements of the hessian eigenvector matrix (a 3x3 matrix flattened into 9 channels)
+    channels 11-11+N: The 'integral images' of any features provided by the standard OpFeatureSelection operator.
     
     This operator owns an instance of the standard OpFeatureSelection operator, and 
     exposes the same slot interface so the GUI can configure that inner operator transparently. 
@@ -33,7 +35,8 @@ class OpIIBoostFeatureSelection(Operator):
     SelectionMatrix = InputSlot()
     FeatureListFilename = InputSlot(stype="str", optional=True)
 
-    # This output is only for the GUI.  It's taken directly from OpFeatureSelection
+    # This output is only for the GUI.  It's taken directly from OpFeatureSelection.
+    # Unlike the OutputImage slot, it provides the raw features, NOT the integral images.
     FeatureLayers = OutputSlot(level=1)
 
     # These outputs are taken from OpFeatureSelection, but we add to them.
@@ -53,7 +56,14 @@ class OpIIBoostFeatureSelection(Operator):
         self.FeatureLayers.connect( self.opFeatureSelection.FeatureLayers )
 
         self.WINDOW_SIZE = self.opFeatureSelection.WINDOW_SIZE
-        
+
+        # The "normal" pixel features are integrated.
+        self.opIntegralImage = OpIntegralImage( parent=self )
+        self.opIntegralImage.Input.connect( self.opFeatureSelection.OutputImage )
+
+        self.opIntegralImage_from_cache = OpIntegralImage( parent=self )
+        self.opIntegralImage_from_cache.Input.connect( self.opFeatureSelection.CachedOutputImage )
+                
         # Note: OutputImage and CachedOutputImage are not directly connected.
         #       Their data is obtained in execute(), below.
         
@@ -95,11 +105,11 @@ class OpIIBoostFeatureSelection(Operator):
     def setupOutputs(self):
         # Output shape is the same as the inner operator, 
         #  except with 10 extra channels (1 raw + 9 hessian eigenvector elements)
-        output_shape = self.opFeatureSelection.OutputImage.meta.shape
+        output_shape = self.opIntegralImage.Output.meta.shape
         output_shape = output_shape[:-1] + ( output_shape[-1] + 10, )
 
-        self.OutputImage.meta.assignFrom( self.opFeatureSelection.OutputImage.meta )
-        self.CachedOutputImage.meta.assignFrom( self.opFeatureSelection.CachedOutputImage.meta )
+        self.OutputImage.meta.assignFrom( self.opIntegralImage.Output.meta )
+        self.CachedOutputImage.meta.assignFrom( self.opIntegralImage_from_cache.Output.meta )
         self.OutputImage.meta.shape = output_shape
         self.CachedOutputImage.meta.shape = output_shape
 
@@ -141,10 +151,10 @@ class OpIIBoostFeatureSelection(Operator):
         # Pull the rest of the channels from different sources, depending on cached/uncached slot.        
         if slot == self.OutputImage:
             hev_req = self.opConvertToChannels.Output(*hess_ev_roi).writeInto(result[...,1:10])
-            feat_req = self.opFeatureSelection.OutputImage(*features_roi).writeInto(result[...,10:])
+            feat_req = self.opIntegralImage.Output(*features_roi).writeInto(result[...,10:])
         elif slot == self.CachedOutputImage:
             hev_req = self.opHessianEigenvectorCache.Output(*hess_ev_roi).writeInto(result[...,1:10])
-            feat_req = self.opFeatureSelection.CachedOutputImage(*features_roi).writeInto(result[...,10:])
+            feat_req = self.opIntegralImage_from_cache.Output(*features_roi).writeInto(result[...,10:])
         
         hev_req.submit()
         feat_req.submit()
@@ -302,10 +312,53 @@ class OpConvertEigenvectorsToChannels(Operator):
         dirty_stop = tuple(roi.stop[:-2]) + (9,)
         self.Output.setDirty(dirty_start, dirty_stop)
             
+class OpIntegralImage(Operator):
+    """
+    Computes the integral image of the input volume.
+    For multi-channel volumes, the integral image for each channel is computed independently.
+    
+    The integral image operation is equivalent to:
 
+    output = input_image.copy()
+    for i in range(a.ndim):
+        np.add.accumulate(output, axis=i, out=output)
 
+    (That is, simply integrate over all axes of the volume.)
+    
+    But here, we use iiboost.computeIntegralImage() because 
+      it seems to be faster than the above numpy code.
+    """ 
+    Input = InputSlot()
+    Output = OutputSlot()
 
+    def setupOutputs(self):
+        assert len(self.Input.meta.shape) == 4, "Data must be exactly 3D+c (no time axis)"
+        assert self.Input.meta.getAxisKeys()[-1] == 'c'
 
+        self.Output.meta.assignFrom( self.Input.meta )
+        self.Output.meta.dtype = numpy.float32
 
+    def execute(self, slot, subindex, roi, result):
 
+        def compute_for_channel(output_channel, input_channel):
+            input_roi = numpy.array( (roi.start, roi.stop) )
+            input_roi[:,-1] = (input_channel, input_channel+1)
+            input_req = self.Input(*input_roi)
+
+            # If possible, use the result array itself as a scratch area
+            if self.Input.meta.dtype == result.dtype:
+                input_req.writeInto( result[...,output_channel:output_channel+1] )        
+
+            input_data = input_req.wait()
+            input_data = input_data.astype(numpy.float32, order='C', copy=False)
+            input_data = input_data[...,0] # drop channel axis
+            result[..., output_channel] = computeIntegralImage(input_data)
+
+        pool = RequestPool()
+        for output_channel, input_channel in enumerate(range(roi.start[-1], roi.stop[-1])):
+            pool.add( Request( partial( compute_for_channel, output_channel, input_channel ) ) )
+        pool.wait()
+    
+    def propagateDirty(self, slot, subindex, roi):
+        self.Output.setDirty(roi.start, roi.stop)
 
