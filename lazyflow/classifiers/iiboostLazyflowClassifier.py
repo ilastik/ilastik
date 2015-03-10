@@ -9,6 +9,8 @@ import iiboost
 
 from lazyflow.classifiers import LazyflowPixelwiseClassifierFactoryABC, LazyflowPixelwiseClassifierABC
 
+from lazyflow.utility.timer import Timer
+
 class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     """
     This class adheres to the LazyflowPixelwiseClassifierFactoryABC interface, 
@@ -20,7 +22,7 @@ class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     NOTE: IIBoost needs three different (multi-channel) images:
           - raw data
           - hessian eigenvalues
-          - feature channels
+          - feature channel integral images
           
           To allow us to treat this classifier like a "normal" pixelwise classifier in ilastik/lazyflow,
           all three of images are passed in via the same numpy array.
@@ -28,7 +30,7 @@ class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
           channel 0: the raw grayscale data
           channel 1-9: the hessian eigenvectors, flattened into 9 channels
           channel 10-N: the remaining feature channels, (as selected by the user), 
-                        which will be used below to compute integral images. 
+                        which must be integral images of the underlying features.
     """
     VERSION = 1
     
@@ -42,6 +44,7 @@ class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
                         Last axis must be channel.
         label_images: A sequence of ND label images.  Last axis must be channel (size=1).
         axistags: Optional.  A vigra.AxisTags object describing ALL feature_images.
+                  (Used to compute the anisotropy of the data.)
         """
         logger.debug( 'training with IIBoost' )
 
@@ -56,49 +59,6 @@ class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
             converted = numpy.array( numpy.asarray(label_image[...,0], dtype=numpy.uint8) )
             converted_labels.append( converted )
 
-        # IIBoost requires raw images to be uint8, 3D only
-        # NOTE: we assume that the raw data can be found in channel 0.
-        raw_images = []
-        for image in feature_images:
-            assert len(image.shape) == 4, "IIBoost expects 4D data (including channel)."
-            raw = image[...,0].astype(dtype=numpy.uint8, order='C')
-            raw_images.append( raw )
-
-        # Extract the hessian eigenvector (hev) images
-        hev_images = []
-        for image in feature_images:
-            hev_image = image[...,1:10]
-            hev_image = hev_image.astype(dtype=numpy.float32, order='C')
-            hev_image = hev_image.reshape( hev_image.shape[:-1] + (3,3) )
-            hev_images.append( hev_image )
-
-        # IIBoost requires filter images to be float32, 3D+c only
-        filter_images = []
-        for image in feature_images:
-            assert len(image.shape) == 4, "IIBoost expects 4D data (including channel dimension)."
-            filter_image = image[...,10:].astype(dtype=numpy.float32, copy=False)
-            filter_images.append( filter_image )
-
-        # Caching the integral images upstream would be difficult.
-        # For now, we re-compute the integral images every time we train.
-        integral_images = []
-        for image in filter_images:
-            integral_channels = []
-            for channel_image in numpy.rollaxis(image, -1, 0):
-                integral_channel = iiboost.computeIntegralImage( numpy.ascontiguousarray(channel_image) )
-                integral_channels.append( integral_channel )
-            integral_images.append( integral_channels )
-
-        # Calculate anisotropy factor.
-        z_anisotropy_factor = 1.0
-        if axistags:
-            x_tag = axistags['x']
-            z_tag = axistags['z']
-            if z_tag.resolution != 0.0 and x_tag.resolution != 0.0:
-                z_anisotropy_factor = z_tag.resolution / x_tag.resolution
-              
-        model.trainWithChannels( raw_images, hev_images, converted_labels, integral_images, z_anisotropy_factor, *self._args, **self._kwargs )
-
         # Save for future reference
         flattened_labels = map( numpy.ndarray.flatten, converted_labels )
         all_labels = numpy.concatenate(flattened_labels)
@@ -107,6 +67,48 @@ class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
             known_labels = known_labels[1:]
             
         assert set([1,2]).issuperset(known_labels), "IIBoost only accepts two label values: 1 and 2"
+
+        # IIBoost requires raw images to be uint8, 3D only
+        # NOTE: we assume that the raw data can be found in channel 0.
+        raw_images = []
+        for image in feature_images:
+            assert len(image.shape) == 4, "IIBoost expects 4D data (including channel)."
+            # (Even though copy=False here, we'll probably get a copy anyway. That's fine. Same for cases below, too.)
+            raw = image[...,0].astype(dtype=numpy.uint8, order='C', copy=False)
+            raw_images.append( raw )
+
+        # Extract the hessian eigenvector (hev) images
+        hev_images = []
+        for image in feature_images:
+            hev_image = image[...,1:10]
+            hev_image = hev_image.astype(dtype=numpy.float32, order='C', copy=False)
+            hev_image = hev_image.reshape( hev_image.shape[:-1] + (3,3) )
+            hev_images.append( hev_image )
+
+        integral_images = []
+        for image in feature_images:
+            assert len(image.shape) == 4, "IIBoost expects 4D data (including channel dimension)."
+
+            # Select integral channels (see note above about input data)
+            integral_image = image[...,10:]
+            
+            # Put channel first
+            integral_image = integral_image.transpose(3,0,1,2)
+
+            # IIBoost requires filter images to be float32, in C-order
+            integral_image = integral_image.astype(dtype=numpy.float32, copy=False, order='C')
+
+            integral_images.append( integral_image )
+        
+        # Calculate anisotropy factor.
+        z_anisotropy_factor = 1.0
+        if axistags:
+            x_tag = axistags['x']
+            z_tag = axistags['z']
+            if z_tag.resolution != 0.0 and x_tag.resolution != 0.0:
+                z_anisotropy_factor = z_tag.resolution / x_tag.resolution
+
+        model.trainWithChannels( raw_images, hev_images, converted_labels, integral_images, z_anisotropy_factor, *self._args, **self._kwargs )
 
         return IIBoostLazyflowClassifier( model, known_labels, feature_count=len(integral_images[0]) )
 
@@ -144,6 +146,7 @@ class IIBoostLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         """
         feature_image: An ND image.  Last axis must be channel.
         axistags: Optional.  A vigra.AxisTags object describing the feature_image.
+                  (Used to compute the anisotropy of the data.)
         
         NOTE: See note in factory class above concerning the expected structure of the input image.
         """
@@ -151,20 +154,22 @@ class IIBoostLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         assert len(input_image.shape) == 4, "IIBoost expects 3D data."
 
         # IIBoost requires raw images to be uint8
-        raw = input_image[...,0].astype(dtype=numpy.uint8, order='C')
+        # (Even though copy=False here, we'll probably get a copy anyway.  That's fine.  Same for below.)
+        raw = input_image[...,0].astype(dtype=numpy.uint8, order='C', copy=False)
 
         # Extract hessian eigenvalue channels
-        hev_image = input_image[...,1:10].astype(dtype=numpy.float32, order='C')
+        hev_image = input_image[...,1:10].astype(dtype=numpy.float32, order='C', copy=False)
         hev_image = hev_image.reshape( hev_image.shape[:-1] + (3,3) )
         
-        # IIBoost requires filter images to be float32
-        filter_image = input_image[...,10:].astype(dtype=numpy.float32, copy=False)
+        # Select integral feature channels 
+        #  (see note above about expected input data channels)
+        integral_filter_channels = input_image[...,10:]
 
-        # This is a debug class.  
-        # As such, we recalculate the integral images every time...
-        image_channels = list( numpy.rollaxis(filter_image, -1, 0) )
-        image_channels = numpy.ascontiguousarray(image_channels)
-        integral_channels = map( iiboost.computeIntegralImage, image_channels )
+        # Put channel axis first, so this array looks like a channel-wise list of images
+        integral_filter_channels = integral_filter_channels.transpose(3,0,1,2)
+        
+        # iiboost needs C-contiguous float32 arrays
+        integral_filter_channels = integral_filter_channels.astype(dtype=numpy.float32, copy=False, order='C')
 
         # Calculate anisotropy factor.
         z_anisotropy_factor = 1.0
@@ -174,7 +179,7 @@ class IIBoostLazyflowClassifier(LazyflowPixelwiseClassifierABC):
             if z_tag.resolution != 0.0 and x_tag.resolution != 0.0:
                 z_anisotropy_factor = z_tag.resolution / x_tag.resolution
         
-        prediction_img = self._model.predictWithChannels( raw, hev_image, integral_channels, z_anisotropy_factor )
+        prediction_img = self._model.predictWithChannels( raw, hev_image, integral_filter_channels, z_anisotropy_factor )
         assert prediction_img.dtype == numpy.float32
         print "prediction_img range: {}, {}".format( prediction_img.min(), prediction_img.max() )
         
