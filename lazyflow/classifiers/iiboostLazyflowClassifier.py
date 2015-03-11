@@ -181,14 +181,17 @@ class IIBoostLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         
         prediction_img = self._model.predictWithChannels( raw, hev_image, integral_filter_channels, z_anisotropy_factor )
         assert prediction_img.dtype == numpy.float32
-        print "prediction_img range: {}, {}".format( prediction_img.min(), prediction_img.max() )
         
-        # Apparently the prediction image returned is NOT between 0.0 and 1.0
-        prediction_img[:] -= prediction_img.min()
-        prediction_img[:] /= prediction_img.max()
+        # Convert prediction output to a probability: prob = 1/(1 + exp(-prediction))
+        # Optimize: Here we use in-place operations to avoid temporaries. 
+        #           For medium-to-large arrays, this is 25-40% faster than using the above formula directly.
+        prediction_img *= -1
+        numpy.exp(prediction_img, out=prediction_img)
+        prediction_img += 1
+        numpy.reciprocal(prediction_img, out=prediction_img)
         
-        assert prediction_img.min() == 0.0
-        assert prediction_img.max() == 1.0
+        assert prediction_img.min() >= 0.0
+        assert prediction_img.max() <= 1.0
         
         # Image from model prediction has no channels,
         #  but lazyflow expects classifiers to produce one channel for each 
