@@ -2,19 +2,19 @@ import numpy as np
 import vigra
 
 import unittest
+import weakref
+import gc
 
 from lazyflow.graph import Graph
-from lazyflow.operators import OpLabelVolume
+from lazyflow.operators import OpLabelVolume, OpArrayPiper
 from lazyflow.operator import Operator
 from lazyflow.slot import InputSlot, OutputSlot
 from lazyflow.rtype import SubRegion
 from lazyflow.utility.testing import assertEquivalentLabeling
 
-from numpy.testing import assert_array_equal, assert_array_almost_equal
+from numpy.testing import assert_array_equal
 
 from lazyflow.operators.opLabelVolume import haveBlocked
-
-from multiprocessing import Process
 
 
 class TestVigra(unittest.TestCase):
@@ -289,6 +289,24 @@ class TestVigra(unittest.TestCase):
                     assertEquivalentLabeling(1-vol[..., c, t], out.squeeze())
                 else:
                     assertEquivalentLabeling(vol[..., c, t], out.squeeze())
+
+    def testCleanup(self):
+        sampleData = np.random.randint(0, 256, size=(50, 30, 10))
+        sampleData = sampleData.astype(np.uint8)
+        sampleData = vigra.taggedView(sampleData, axistags='xyz')
+
+        graph = Graph()
+        opData = OpArrayPiper(graph=graph)
+        opData.Input.setValue(sampleData)
+
+        op = OpLabelVolume(graph=graph)
+        op.Input.connect(opData.Output)
+        x = op.Output[...].wait()
+        op.Input.disconnect()
+        r = weakref.ref(op)
+        del op
+        gc.collect()
+        assert r() is None, "OpBlockedArrayCache was not cleaned up correctly"
 
 
 if haveBlocked():

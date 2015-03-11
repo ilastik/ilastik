@@ -322,20 +322,67 @@ def roiToSlice(start, stop, hardBind=False):
         return tuple(map(rTsl1,start,stop))
 
 
-def extendSlice(start, stop, shape, sigma, window = 3.5):
-    # TODO: Rename this function, since it doesn't use slice() objects.
-    zeros = start - start
+def enlargeRoiForHalo(start, stop, shape, sigma, window=3.5, enlarge_axes=None, return_result_roi=False):
+    """
+    Enlarge the given roi (start,stop) with a halo according to the given 
+    sigma and window size, without exceeding the given total image shape given.
+    
+    Except for clipping near the image borders, the halo on all sides of the 
+    image will have width = sigma*window
+    
+    start: ROI start coordinate
+    stop: ROI stop coordinate
+    shape: Total shape of the image (not to be exceeded)
+    sigma: The sigma of the filter.
+    window: The window size, expressed in units of sigma.
+    halo_axes: If provided, indicates which axes to expand with the halo.
+               Should be a list of bools (or 1/0 values). 
+               For example, halo_axes=(0,1,1,1,0) means: "enlarge roi for axes 1,2,3 but not axes 0,4"
+    return_result_roi: If True, also return the "result roi".  
+                       That is, the roi which you can use to extract the inner data 
+                       from an array retrieved using the enlarged roi.
+                       For example:
+                           roi_with_halo, result_roi = enlargeRoiForHalo(start, stop, sigma, return_result_roi=True)
+                           outer_data = myfilter(roi_with_halo)
+                           data_without_halo = outer_data[roiToSlice(result_roi)]
+                           assert data_without_halo.shape == stop - start
+    """
+    assert len(start) == len(stop) == len(shape)
+    shape = TinyVector(shape)
+    if enlarge_axes is None:
+        enlarge_axes = TinyVector((1,)*len(start))
+    else:
+        enlarge_axes = TinyVector(enlarge_axes)*1
+    
+    # non-enlarged axes are zero'd out while we enlarge the rest.
+    assert len(enlarge_axes) == len(shape)
+    max_spatial_shape = enlarge_axes*shape
+    spatial_start = enlarge_axes*start
+    spatial_stop = enlarge_axes*stop
+
     if isinstance( sigma, collections.Iterable ):
         sigma = TinyVector(sigma)
     if isinstance( start, collections.Iterable ):
         ret_type = type(start[0])
     else:
         ret_type = type(start)
-    newStart = numpy.maximum(start - numpy.ceil(window * sigma), zeros).astype( ret_type )
-    sa = numpy.array(shape)
-    newStop = numpy.minimum(stop + numpy.ceil(window * sigma), sa).astype( ret_type )
-    return newStart, newStop
 
+    zeros = TinyVector(start) - start
+
+    enlarged_start = numpy.maximum(spatial_start - numpy.ceil(window * sigma), zeros).astype( ret_type )
+    enlarged_stop = numpy.minimum(spatial_stop + numpy.ceil(window * sigma), max_spatial_shape).astype( ret_type )
+    
+    # Restore non-halo elements exactly as they were
+    enlarged_start += (enlarge_axes == 0) * start
+    enlarged_stop += (enlarge_axes == 0) * stop
+    
+    enlarged_roi = numpy.array((enlarged_start, enlarged_stop))
+    if return_result_roi:
+        inner_roi = numpy.asarray( (start, stop) )
+        result_roi = inner_roi - enlarged_roi[0]
+        return enlarged_roi, result_roi
+    else:
+        return enlarged_roi 
 
 def getIntersectingBlocks( blockshape, roi, asarray=False ):
     """

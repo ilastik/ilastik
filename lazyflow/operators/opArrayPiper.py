@@ -26,7 +26,7 @@ class OpArrayPiper(Operator):
     description = "simple piping operator"
 
     #Inputs
-    Input = InputSlot() 
+    Input = InputSlot()
    
     #Outputs
     Output = OutputSlot()
@@ -58,4 +58,3 @@ class OpArrayPiper(Operator):
         assert slot == self.Input
         key = roi.toSlice()
         self.outputs["Output"][key] = value
-    

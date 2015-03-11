@@ -534,7 +534,7 @@ class Slot(object):
                     pass
                 except:
                     # Well, this is bad.  We caused an exception while handling an exception.
-                    # We're more interested in the FIRST excpetion, so print this one out and
+                    # We're more interested in the FIRST exception, so print this one out and
                     #  continue unwinding the stack with the first one.
                     self.logger.error("Error: Caught a secondary exception while handling a different exception.")                
                     import traceback
@@ -558,6 +558,8 @@ class Slot(object):
         had_partner = False
         if self.partner is not None:
             had_partner = True
+            # safe to unsubscribe, even if not subscribed
+            self.partner._sig_unready.unsubscribe(self._handleUpstreamUnready)
             try:
                 self.partner.partners.remove(self)
             except ValueError:
@@ -643,7 +645,7 @@ class Slot(object):
     @is_setup_fn    
     def insertSlot(self, position, finalsize, propagate=True):
         """
-        Insert a new slot at the specififed position
+        Insert a new slot at the specified position
         finalsize indicates the final destination size
         """
         if len(self) >= finalsize:
