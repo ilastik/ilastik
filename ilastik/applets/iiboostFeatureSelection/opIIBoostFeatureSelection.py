@@ -171,6 +171,8 @@ class OpHessianEigenvectors( Operator ):
     Sigma = InputSlot(value=3.5) # FIXME: What is the right sigma to use?
     Output = OutputSlot()
     
+    WINDOW_SIZE = 2.0 # Used to calculate halo
+    
     def __init__(self, *args, **kwargs):
         super( OpHessianEigenvectors, self ).__init__(*args, **kwargs)
         self.z_anisotropy_factor = 1.0
@@ -247,14 +249,11 @@ class OpHessianEigenvectors( Operator ):
         assert self.Input.meta.getAxisKeys()[-1] == 'c'
 
         spatial_axes = (True, True, True, False) # don't enlarge channel roi
-
-        # FIXME: What is the 'window size' of the iiboost hessian eigenvalue function?
-        #        It isn't obvious from the source code...
         enlarged_roi, result_roi = enlargeRoiForHalo( start, 
                                                       stop, 
                                                       self.Input.meta.shape, 
                                                       self.Sigma.value, 
-                                                      window=2.0, 
+                                                      window=self.WINDOW_SIZE, 
                                                       enlarge_axes=spatial_axes,
                                                       return_result_roi=True )
         return enlarged_roi, result_roi
