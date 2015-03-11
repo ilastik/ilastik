@@ -580,8 +580,9 @@ class PixelClassificationGui(LabelingGui):
                 self.labelingDrawerUi.labelListView.allowDelete = False
                 self.labelingDrawerUi.AddLabelButton.setEnabled( False )
             else:
-                self.labelingDrawerUi.labelListView.allowDelete = True
-                self.labelingDrawerUi.AddLabelButton.setEnabled( True )
+                num_label_classes = self._labelControlUi.labelListModel.rowCount()
+                self.labelingDrawerUi.labelListView.allowDelete = ( num_label_classes > self.minLabelNumber )
+                self.labelingDrawerUi.AddLabelButton.setEnabled( ( num_label_classes < self.maxLabelNumber ) )
         self.interactiveModeActive = checked
 
         self.topLevelOperatorView.FreezePredictions.setValue( not checked )
