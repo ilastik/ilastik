@@ -113,8 +113,8 @@ class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         return IIBoostLazyflowClassifier( model, known_labels, feature_count=len(integral_images[0]) )
 
     def get_halo_shape(self, data_axes):
-        # FIXME: What halo does IIBoost require?
-        halo_shape = (100,) * (len(data_axes)-1)
+        # Carlos says a hard-coded halo of 50 voxels should suffice.
+        halo_shape = (50,) * (len(data_axes)-1)
         halo_shape += (0,) # no halo for channel
         return halo_shape
 
@@ -214,8 +214,8 @@ class IIBoostLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         return self._feature_count
 
     def get_halo_shape(self, data_axes):
-        # FIXME: What halo does IIBoost require?
-        halo_shape = (100,) * (len(data_axes)-1)
+        # Carlos says a hard-coded halo of 50 voxels should suffice.
+        halo_shape = (50,) * (len(data_axes)-1)
         halo_shape += (0,) # no halo for channel
         return halo_shape
 
