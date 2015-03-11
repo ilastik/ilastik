@@ -84,7 +84,7 @@ class LabelingGui(LayerViewerGui):
         return self._minLabelNumber
     @minLabelNumber.setter
     def minLabelNumber(self, n):
-        self._minLabelNumer = n
+        self._minLabelNumber = n
         while self._labelControlUi.labelListModel.rowCount() < n:
             self._addNewLabel()
     @property
