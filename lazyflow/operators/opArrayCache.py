@@ -108,8 +108,16 @@ class OpArrayCache(OpCache):
     def _blockShapeForIndex(self, index):
         if self._cache is None:
             return None
-        # BUG this does not do what is expected!
-        return self._blockShape
+        index = numpy.asarray(index)
+
+        cacheShape = numpy.array(self._cache.shape)
+        blockShape = numpy.array(self._blockShape)
+        start = blockShape * index
+        stop = blockShape * (index + 1)
+        start = numpy.maximum(start, (0,)*len(start))
+        stop = numpy.minimum(stop, cacheShape)
+        ret = tuple(map(int, stop - start))
+        return ret
 
     def fractionOfUsedMemoryDirty(self):
         if self.Output.meta.shape is None:
@@ -119,8 +127,11 @@ class OpArrayCache(OpCache):
         totDirty = 0
         if self._blockState is None:
             return 0
-        for i, v in enumerate(self._blockState.ravel()):
-            sh = self._blockShapeForIndex(i)
+        it = numpy.nditer(self._blockState, flags=['multi_index'])
+        while not it.finished:
+            v = it[0]
+            sh = self._blockShapeForIndex(it.multi_index)
+            it.iternext()
             if sh is None:
                 continue
             if v == self.DIRTY or v == self.FIXED_DIRTY:
@@ -174,7 +185,7 @@ class OpArrayCache(OpCache):
         shape = self.Output.meta.shape
         self._blockShape = self._get_full_blockshape(self._origBlockShape)    
         self._dirtyShape = numpy.ceil(1.0 * numpy.array(shape) / numpy.array(self._blockShape)).astype(numpy.int)
-    
+
         self.logger.debug("Configured OpArrayCache with shape={}, blockShape={}, dirtyShape={}, origBlockShape={}".format(shape, self._blockShape, self._dirtyShape, self._origBlockShape))
     
         #if a request has been submitted to get a block, the request object
@@ -199,7 +210,6 @@ class OpArrayCache(OpCache):
                 if self._blockState is None:
                     self._allocateManagementStructures()
                 self._cache = mem
-        self._memory_manager.add(self)
 
     def setupOutputs(self):
         self.CleanBlocks.meta.shape = (1,)
@@ -215,7 +225,7 @@ class OpArrayCache(OpCache):
                 reconfigure = True
             self._origBlockShape = newBShape
             self._blockShape = newBShape
-            
+
             inputSlot = self.inputs["Input"]
             self.Output.meta.assignFrom(inputSlot.meta)
 
@@ -331,7 +341,8 @@ class OpArrayCache(OpCache):
     
             self._running += 1
     
-            if self._cache is None:
+            if (self._cache is None or 
+                    self._cache.shape != self.Output.meta.shape):
                 self._allocateCache()
     
             cacheView = self._cache[:] #prevent freeing of cache during running this function
