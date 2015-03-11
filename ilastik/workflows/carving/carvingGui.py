@@ -206,6 +206,7 @@ class CarvingGui(LabelingGui):
         def labelObject():
             self.selectLabel(1)
 
+        self.labelingDrawerUi.labelListView.allowDelete = False
         self._labelControlUi.labelListModel.allowRemove(False)
 
         bgToolTipObject = LabelListModel.EntryToolTipAdapter(self._labelControlUi.labelListModel, 0)
