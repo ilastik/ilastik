@@ -71,6 +71,13 @@ class OpCompressedUserLabelArray(OpCompressedCache):
         self._blockshape = None
         self._label_to_purge = 0
     
+    def clearLabel(self, label_value):
+        """
+        Clear (reset to 0) all pixels of the given label value.
+        Unlike using the deleteLabel slot, this function does not "shift down" all labels above this label value.
+        """
+        self._purge_label( label_value, False )
+    
     def setupOutputs(self):
         # Due to a temporary naming clash, pass our subclass blockshape to the superclass
         # TODO: Fix this by renaming the BlockShape slots to be consistent.
@@ -119,13 +126,14 @@ class OpCompressedUserLabelArray(OpCompressedCache):
             if self._label_to_purge != new_purge_label:
                 self._label_to_purge = new_purge_label
                 if self._label_to_purge > 0:
-                    self._purge_label( self._label_to_purge )
+                    self._purge_label( self._label_to_purge, True )
     
-    def _purge_label(self, label_to_purge):
+    def _purge_label(self, label_to_purge, decrement_remaining):
         """
         Scan through all labeled pixels.
         (1) Clear all pixels of the given value (set to 0)
-        (2) Decrement all labels above that value so the set of stored labels is consecutive
+        (2) if decrement_remaining=True, decrement all labels above that 
+            value so the set of stored labels remains consecutive
         """
         changed_block_rois = []
         #stored_block_rois = self.CleanBlocks.value
@@ -145,10 +153,11 @@ class OpCompressedUserLabelArray(OpCompressedCache):
 
             # Change the data
             block[matching_label_coords] = 0
-            block = numpy.where( coords_to_decrement, block-1, block )
+            if decrement_remaining:
+                block = numpy.where( coords_to_decrement, block-1, block )
             
             # Update cache with the new data (only if something really changed)
-            if len(matching_label_coords[0]) > 0 or len(coords_to_decrement[0]) > 0:
+            if len(matching_label_coords[0]) > 0 or (decrement_remaining and coords_to_decrement.sum() > 0):
                 super( OpCompressedUserLabelArray, self )._setInSlotInput( self.Input, (), SubRegion( self.Output, *block_roi ), block, store_zero_blocks=False )
                 changed_block_rois.append( block_roi )
 
