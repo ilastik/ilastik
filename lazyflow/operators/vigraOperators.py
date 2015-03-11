@@ -1082,7 +1082,7 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
                                     newRoi = SubRegion(None, pslice=newRoi)
                                     #print "roi smoother:", roiSmoother
                                     
-                                    zStart, zStop = roi.enlargeRoiForHalo(z, z+1, sourceArraysForSigmas[j].shape[zaxis], 0.7, self.WINDOW_SIZE)
+                                    zStart, zStop = roi.enlargeRoiForHalo((z,), (z+1,), (sourceArraysForSigmas[j].shape[zaxis],), 0.7, self.WINDOW_SIZE)
                                     
                                     sourceKey = []
                                     sourceKey.insert(axistags.index('x'), slice(None, None, None))
