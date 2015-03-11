@@ -251,9 +251,9 @@ class OpArrayCache(OpCache):
         self.Output.meta.ideal_blockshape = self._get_full_blockshape(self._origBlockShape)
 
     def propagateDirty(self, slot, subindex, roi):
-        shape = self.Output.meta.shape
-        
+        shape = self.Input.meta.shape
         key = roi.toSlice()
+
         if slot == self.inputs["Input"]:
             start, stop = sliceToRoi(key, shape)
 
