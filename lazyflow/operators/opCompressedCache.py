@@ -24,7 +24,7 @@ import copy
 import logging
 from functools import partial
 import collections
-import time
+import itertools
 
 # Third-party
 import numpy
@@ -32,7 +32,7 @@ import h5py
 
 # Lazyflow
 from lazyflow.request import Request, RequestPool, RequestLock
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.roi import TinyVector, getIntersectingBlocks, getBlockBounds, roiToSlice, getIntersection
 from lazyflow.operators.opCache import OpCache
 
@@ -57,6 +57,7 @@ class OpCompressedCache(OpCache):
         super( OpCompressedCache, self ).__init__( *args, **kwargs )
         self._lock = RequestLock()
         self._init_cache(None)
+        self._block_id_counter = itertools.count() # Used to ensure unique in-memory file names
 
     def _init_cache(self, new_blockshape):
         with self._lock:
@@ -293,10 +294,11 @@ class OpCompressedCache(OpCache):
             return self._cacheFiles[block_start]
         with self._lock:
             if block_start not in self._cacheFiles:
-                # Create an in-memory hdf5 file with a unique name
+                # Create an in-memory hdf5 file with a unique name 
+                # (the counter ensures that even blocks that have been deleted previously get a unique name when they are re-created).
                 logger.debug("Creating a cache file for block: {}".format( list(block_start) ))
-                filename = str(id(self)) + str(id(self._cacheFiles)) + str(block_start)
-                mem_file = h5py.File(filename, driver='core', backing_store=False, mode='w')                
+                filename = str(id(self)) + str(id(self._cacheFiles)) + str(block_start) + str(self._block_id_counter.next())
+                mem_file = h5py.File(filename, driver='core', backing_store=False, mode='w')
 
                 # h5py will crash if the chunkshape is larger than the dataset shape.
                 datashape = tuple( entire_block_roi[1] - entire_block_roi[0] )
@@ -390,11 +392,15 @@ class OpCompressedCache(OpCache):
             block_relative_intersection = numpy.subtract(intersecting_roi, block_start)
             
             new_block_data = value[ roiToSlice(*source_relative_intersection) ]
-            if not store_zero_blocks and new_block_data.sum() == 0 and block_start not in self._cacheFiles:
+            new_block_sum = new_block_data.sum()
+            if not store_zero_blocks and new_block_sum == 0:
                 # Special fast-path: If this block doesn't exist yet, 
-                #  don't bother creating if we're just going to fill it with zeros
-                # (Used by the OpCompressedUserLabelArray)
-                pass
+                #  don't bother creating if we're just going to fill it with zeros.
+                # In fact, remove the block entirely.
+                # (This feature is used by the OpCompressedUserLabelArray)
+                if block_start in self._cacheFiles:
+                    del self._cacheFiles[block_start]
+                    del self._blockLocks[block_start]
             else:
                 # Copy from source to block
                 dataset = self._getBlockDataset( entire_block_roi )
@@ -456,54 +462,3 @@ class OpCompressedCache(OpCache):
         with self._lock:
             self._blockLocks = {}
             self._cacheFiles = {}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
