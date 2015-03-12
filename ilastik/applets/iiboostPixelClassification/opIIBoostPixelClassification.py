@@ -5,7 +5,7 @@ from ilastik.applets.base.applet import DatasetConstraintError
 
 class OpIIBoostPixelClassification(OpPixelClassification):
 
-    DEFAULT_NUM_STUMPS = 100
+    DEFAULT_NUM_STUMPS = 200
     
     def __init__(self, *args, **kwargs):
         super( OpIIBoostPixelClassification, self ).__init__( *args, **kwargs )
