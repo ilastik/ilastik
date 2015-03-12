@@ -133,10 +133,10 @@ class OpPixelFeaturesPresmoothed(Operator):
     # Specify a default set & order for the features we compute
     DefaultFeatureIds = [ 'GaussianSmoothing',
                           'LaplacianOfGaussian',
-                          'StructureTensorEigenvalues',
-                          'HessianOfGaussianEigenvalues',
                           'GaussianGradientMagnitude',
-                          'DifferenceOfGaussians' ]
+                          'DifferenceOfGaussians',
+                          'StructureTensorEigenvalues',
+                          'HessianOfGaussianEigenvalues' ]
 
     WINDOW_SIZE = 3.5
     
