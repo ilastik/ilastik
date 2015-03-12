@@ -158,7 +158,7 @@ class ArrayCacheMemoryMgr(threading.Thread):
                     self.traceLogger.debug("Target mem usage: {}".format(self._target_usage))
                     while mem_usage > self._target_usage and len(self.caches) > 0:
                         self.traceLogger.debug("Mem usage: {}".format(mem_usage))
-                        last_cache = self.caches.pop(-1)
+                        last_cache = self.caches.pop()
                             
                         freed = last_cache._freeMemory(refcheck = True)
                         self.traceLogger.debug("Freed: {}".format(freed))

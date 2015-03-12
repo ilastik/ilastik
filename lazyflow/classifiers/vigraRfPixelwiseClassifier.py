@@ -25,7 +25,7 @@ class VigraRfPixelwiseClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         self._args = args
         self._kwargs = kwargs
     
-    def create_and_train_pixelwise(self, feature_images, label_images):
+    def create_and_train_pixelwise(self, feature_images, label_images, axistags=None):
         logger.debug( 'training pixel-wise vigra RF' )
         
         all_features = numpy.ndarray( shape=(0, feature_images[0].shape[-1]), dtype=numpy.float32 )
@@ -75,7 +75,7 @@ class VigraRfPixelwiseClassifier(LazyflowPixelwiseClassifierABC):
         self._known_labels = known_labels
         self._vigra_rf = vigra_rf
     
-    def predict_probabilities_pixelwise(self, X):
+    def predict_probabilities_pixelwise(self, X, axistags=None):
         logger.debug( 'predicting PIXELWISE vigra RF' )
         
         # reshape the image into a 2D feature matrix
