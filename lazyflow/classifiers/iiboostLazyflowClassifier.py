@@ -32,7 +32,8 @@ class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     """
     VERSION = 1
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, num_stumps, *args, **kwargs):
+        self.num_stumps = num_stumps
         self._args = args
         self._kwargs = kwargs
     
@@ -106,7 +107,7 @@ class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
             if z_tag.resolution != 0.0 and x_tag.resolution != 0.0:
                 z_anisotropy_factor = z_tag.resolution / x_tag.resolution
 
-        model.trainWithChannels( raw_images, hev_images, converted_labels, integral_images, z_anisotropy_factor, *self._args, **self._kwargs )
+        model.trainWithChannels( raw_images, hev_images, converted_labels, integral_images, z_anisotropy_factor, self.num_stumps, *self._args, **self._kwargs )
 
         return IIBoostLazyflowClassifier( model, known_labels, feature_count=len(integral_images[0]) )
 
@@ -122,6 +123,7 @@ class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
 
     def __eq__(self, other):
         return (    isinstance(other, type(self))
+                and self.num_stumps == other.num_stumps
                 and self._args == other._args
                 and self._kwargs == other._kwargs )
     def __ne__(self, other):
