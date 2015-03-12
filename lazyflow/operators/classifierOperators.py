@@ -175,10 +175,11 @@ class OpTrainPixelwiseClassifierBlocked(Operator):
             axistags = self.Images[0].meta.axistags
             logger.debug("Training new classifier: {}".format( classifier_factory.description ))
             classifier = classifier_factory.create_and_train_pixelwise( image_data_blocks, label_data_blocks, axistags )
-            assert issubclass(type(classifier), LazyflowPixelwiseClassifierABC), \
-                "Classifier is of type {}, which does not satisfy the LazyflowPixelwiseClassifierABC interface."\
-                "".format( type(classifier) )
             result[0] = classifier
+            if classifier is not None:
+                assert issubclass(type(classifier), LazyflowPixelwiseClassifierABC), \
+                    "Classifier is of type {}, which does not satisfy the LazyflowPixelwiseClassifierABC interface."\
+                    "".format( type(classifier) )
 
     def propagateDirty(self, slot, subindex, roi):
         self.Classifier.setDirty()
@@ -280,12 +281,12 @@ class OpTrainClassifierFromFeatureVectors(Operator):
 
         logger.debug("Training new classifier: {}".format( classifier_factory.description ))
         classifier = classifier_factory.create_and_train( featMatrix, labelsMatrix[:,0] )
-        assert issubclass(type(classifier), LazyflowVectorwiseClassifierABC), \
-            "Classifier is of type {}, which does not satisfy the LazyflowVectorwiseClassifierABC interface."\
-            "".format( type(classifier) )
-
         result[0] = classifier
-        
+        if classifier is not None:
+            assert issubclass(type(classifier), LazyflowVectorwiseClassifierABC), \
+                "Classifier is of type {}, which does not satisfy the LazyflowVectorwiseClassifierABC interface."\
+                "".format( type(classifier) )        
+
         self.trainingCompleteSignal()
         return result
 
