@@ -67,6 +67,10 @@ class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
             
         assert set([1,2]).issuperset(known_labels), "IIBoost only accepts two label values: 1 and 2"
 
+        # We can't train if there not labels from both classes.
+        if set(known_labels) != set([1,2]):
+            return None
+
         # IIBoost requires raw images to be uint8, 3D only
         # NOTE: we assume that the raw data can be found in channel 0.
         raw_images = []
