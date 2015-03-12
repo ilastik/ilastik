@@ -16,6 +16,25 @@ from ilastik.applets.base.applet import DatasetConstraintError
 import logging
 logger = logging.getLogger(__file__)
 
+# By default, we pre-select the features listed in the IIBoost paper.
+# (GGM from 1.0 - 5.0 and ST EVs from 1.0 - 5.0)
+# The user can override these settings in the GUI.
+ScalesList = [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
+FeatureIds = [ 'GaussianSmoothing',
+               'LaplacianOfGaussian',
+               'GaussianGradientMagnitude',
+               'DifferenceOfGaussians',
+               'StructureTensorEigenvalues',
+               'HessianOfGaussianEigenvalues' ]
+
+#                                sigma:   0.3    0.7    1.0    1.6    3.5    5.0   10.0
+default_feature_matrix = numpy.array( [[False, False, False, False, False, False, False],   # Gaussian
+                                       [False, False, False, False, False, False, False],   # L of G
+                                       [False, False,  True,  True,  True,  True, False],   # GGM
+                                       [False, False, False, False, False, False, False],   # Diff of G
+                                       [False, False,  True,  True,  True,  True, False],   # ST EVs
+                                       [False, False, False, False, False, False, False]] ) # H of G EVs
+
 class OpIIBoostFeatureSelection(Operator):
     """
     This operator produces an output image with the following channels:
@@ -30,9 +49,9 @@ class OpIIBoostFeatureSelection(Operator):
     
     # All inputs are directly passed to internal OpFeatureSelection
     InputImage = InputSlot()
-    Scales = InputSlot()
-    FeatureIds = InputSlot()
-    SelectionMatrix = InputSlot()
+    Scales = InputSlot(value=ScalesList)
+    FeatureIds = InputSlot(value=FeatureIds)
+    SelectionMatrix = InputSlot(value=default_feature_matrix)
     FeatureListFilename = InputSlot(stype="str", optional=True)
 
     # This output is only for the GUI.  It's taken directly from OpFeatureSelection.
@@ -51,8 +70,7 @@ class OpIIBoostFeatureSelection(Operator):
         self.opFeatureSelection.Scales.connect( self.Scales )
         self.opFeatureSelection.FeatureIds.connect( self.FeatureIds )
         self.opFeatureSelection.SelectionMatrix.connect( self.SelectionMatrix )
-        self.opFeatureSelection.FeatureListFilename.connect( self.FeatureListFilename )
-        
+        self.opFeatureSelection.FeatureListFilename.connect( self.FeatureListFilename )        
         self.FeatureLayers.connect( self.opFeatureSelection.FeatureLayers )
 
         self.WINDOW_SIZE = self.opFeatureSelection.WINDOW_SIZE
