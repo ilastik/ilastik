@@ -803,6 +803,7 @@ class DataSelectionGui(QWidget):
     def editDatasetInfo(self, roleIndex, laneIndexes):
         editorDlg = DatasetInfoEditorWidget(self, self.topLevelOperator, roleIndex, laneIndexes, show_axis_details=self.show_axis_details)
         editorDlg.exec_()
+        self.parentApplet.appletStateUpdateRequested.emit()
 
     def updateInternalPathVisiblity(self):
         for view in self._detailViewerWidgets:
