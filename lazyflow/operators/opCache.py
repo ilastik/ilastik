@@ -19,39 +19,155 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
+
+from abc import abstractmethod, ABCMeta
+
 #lazyflow
 from lazyflow.graph import Operator
-from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr
+#from lazyflow.operators.cacheMemoryMgr import CacheMemoryManager
+
+
+class CacheMemoryManager(object):
+    #FIXME remove
+    def addFirstClassCache(self, cache):
+        pass
+
+    def addCache(self, cache):
+        pass
+
 
 class OpCache(Operator):
-    """Implements the interface for a caching operator
     """
-    
-    def __init__(self, parent=None, graph=None):
-        super(OpCache, self).__init__(parent=parent, graph=graph)
-            
-    def generateReport(self, report):
-        raise NotImplementedError()
-        
-    def usedMemory(self):
-        """used memory in bytes"""
-        return 0 #overwrite me
-    
-    def fractionOfUsedMemoryDirty(self):
-        """fraction of the currently used memory that is marked as dirty"""
-        return 0 #overwrite me
+    Interface for operators that act as caches
 
-    def lastAccessTime(self):
-        """timestamp of last access (time.time())"""
-        return 0 #overwrite me
-    
+    This interface is designed for operators that hold values but can neither
+    be queried for their memory usage nor be cleaned up. All operators that
+    have non-negligible amounts of memory allocated internally *must* implement
+    this interface. However, most operators that need to implement this
+    interface *should* probably implement an extended interface (see below).
+
+    Caches are automatically added to the CacheMemoryManager instance.
+    """
+
+    __metaclass__ = ABCMeta
+
+    def generateReport(self, memInfoNode):
+        rs = []
+        for child in self.children:
+            r = MemInfoNode()
+            child.generateReport(r)
+            rs.append(r)
+        memInfoNode.children = rs
+        memInfoNode.type = type(self)
+        memInfoNode.id = id(self)
+        memInfoNode.name = self.name
+
     def _after_init(self):
         """
-        Overridden from Operator
+        Overridden from Operator to add us to the cache management
         """
-        super( OpCache, self )._after_init()
+        super(OpCache, self)._after_init()
 
         # Register with the manager here, AFTER we're fully initialized
         # Otherwise it isn't safe for the manager to poll our stats.
+        manager = CacheMemoryManager()
         if self.parent is None or not isinstance(self.parent, OpCache):
-            ArrayCacheMemoryMgr.instance.addNamedCache(self)
+            manager.addFirstClassCache(self)
+        else:
+            manager.addCache(self)
+
+
+class OpObservableCache(OpCache):
+    """
+    Interface for caches that can report their usage
+    """
+
+    @abstractmethod
+    def usedMemory(self):
+        """
+        get used memory in bytes of this cache and all observable children
+        """
+        total = 0
+        for child in self.children:
+            if isinstance(child, OpObservableCache):
+                total += child.usedMemory()
+        return 0
+
+    @abstractmethod
+    def fractionOfUsedMemoryDirty(self):
+        """
+        get fraction of used memory that is in a dirty state
+
+        Dirty memory is memory that has been allocated, but cannot be used
+        anymore.
+        """
+        return 0.0
+
+    def generateReport(self, memInfoNode):
+        super(OpObservableCache, self).generateReport(memInfoNode)
+        memInfoNode.usedMemory = self.usedMemory()
+        memInfoNode.fractionOfUsedMemoryDirty =\
+            self.fractionofUsedMemoryDirty()
+
+
+class OpManagedCache(OpObservableCache):
+    """
+    Interface for caches that can report their usage and can be cleaned up
+    """
+
+    _last_access_time = 0.0
+
+    @abstractmethod
+    def lastAccessTime(self):
+        """
+        get the timestamp of the last access (python timestamp)
+
+        In general, time.time() should be used here. Don't be afraid to use the
+        default implementation, i.e. fill the attribute _last_access_time.
+        """
+        return self._last_access_time
+
+    @abstractmethod
+    def freeMemory(self):
+        """
+        free all memory cached by this operator and its children
+        
+        @return amount of bytes freed (if applicable)
+        """
+        raise NotImplementedError("No default implementation for freeMemory()")
+
+
+class MemInfoNode:
+    """
+    aggregation of cache status indicators
+    """
+    # type
+    type = None
+
+    # object id
+    id = None
+
+    # used memory in bytes
+    usedMemory = None
+
+    # data type of single cache elements (if applicable)
+    dtype = None
+
+    #FIXME what is this?
+    roi = None
+
+    # fraction of used memory that is dirty
+    fractionOfUsedMemoryDirty = None
+
+    # python timestamp of last access
+    lastAccessTime = None
+
+    # operator name
+    name = None
+
+    # additional info set by cache implementation
+    info = None
+
+    # reports for all of this operators children that are of type
+    # OpObservableCache
+    children = []
