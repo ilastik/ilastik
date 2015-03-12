@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>360</height>
+    <height>277</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -35,7 +35,7 @@
    <item>
     <widget class="LabelListView" name="labelListView">
      <property name="sizePolicy">
-      <sizepolicy hsizetype="Minimum" vsizetype="Maximum">
+      <sizepolicy hsizetype="Minimum" vsizetype="MinimumExpanding">
        <horstretch>0</horstretch>
        <verstretch>0</verstretch>
       </sizepolicy>
@@ -43,7 +43,7 @@
      <property name="minimumSize">
       <size>
        <width>0</width>
-       <height>192</height>
+       <height>65</height>
       </size>
      </property>
     </widget>
