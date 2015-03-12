@@ -32,9 +32,9 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.roi import sliceToRoi
 from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
-from lazyflow.operators.opCache import OpCache
+from lazyflow.operators.opCache import OpObservableCache
 
-class OpSlicedBlockedArrayCache(OpCache):
+class OpSlicedBlockedArrayCache(OpObservableCache):
     name = "OpSlicedBlockedArrayCache"
     description = ""
 
@@ -55,30 +55,41 @@ class OpSlicedBlockedArrayCache(OpCache):
     def __init__(self, *args, **kwargs):
         super(OpSlicedBlockedArrayCache, self).__init__(*args, **kwargs)
         self._innerOps = []
-        
+
     def generateReport(self, report):
         report.name = self.name
         report.fractionOfUsedMemoryDirty = self.fractionOfUsedMemoryDirty()
         report.usedMemory = self.usedMemory()
-        report.lastAccessTime = self.lastAccessTime()
         report.dtype = self.Output.meta.dtype
         report.type = type(self)
         report.id = id(self)
         sh = self.Output.meta.shape
         if sh is not None:
             report.roi = ([0]*len(sh), sh)
-        
+
         for i, iOp in enumerate(self._innerOps):
             n = MemInfoNode()
             report.children.append(n)
             iOp.generateReport(n)
-            
+
     def usedMemory(self):
         tot = 0.0
         for iOp in self._innerOps:
             tot += iOp.usedMemory()
         return tot
-    
+
+    def fractionOfUsedMemoryDirty(self):
+        tot = 0.0
+        dirty = 0.0
+        for iOp in self._innerOps:
+            mem = iOp.usedMemory()
+            tot += mem
+            dirty += iOp.fractionOfUsedMemoryDirty()*mem
+        if dirty > 0:
+            return tot/float(dirty)
+        else:
+            return 0.0
+
     def setupOutputs(self):
         self.shape = self.inputs["Input"].meta.shape
         self._outerShapes = self.inputs["outerBlockShape"].value

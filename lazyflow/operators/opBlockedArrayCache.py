@@ -33,15 +33,15 @@ import numpy
 #lazyflow
 from lazyflow.roi import roiToSlice
 from lazyflow.utility import RamMeasurementContext
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.rtype import SubRegion
 from lazyflow.request import RequestPool
-from lazyflow.operators.opCache import OpCache
+from lazyflow.operators.opCache import OpObservableCache
 from lazyflow.operators.opArrayCache import OpArrayCache
 from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
 
 
-class OpBlockedArrayCache(OpCache):
+class OpBlockedArrayCache(OpObservableCache):
     name = "OpBlockedArrayCache"
     description = ""
 
@@ -198,7 +198,6 @@ class OpBlockedArrayCache(OpCache):
         report.name = self.name
         report.fractionOfUsedMemoryDirty = self.fractionOfUsedMemoryDirty()
         report.usedMemory = self.usedMemory()
-        report.lastAccessTime = self.lastAccessTime()
         report.type = type(self)
         report.id = id(self)
 
@@ -217,6 +216,19 @@ class OpBlockedArrayCache(OpCache):
         for block in self._cache_list.values():
             tot += block.usedMemory()
         return tot
+
+    def fractionOfUsedMemoryDirty(self):
+        tot = 0.0
+        dirty = 0.0
+        for block in self._cache_list.values():
+            mem = block.usedMemory()
+            tot += mem
+            dirty += block.fractionOfUsedMemoryDirty()*mem
+        if dirty > 0:
+            return tot/float(dirty)
+        else:
+            return 0.0
+        
 
     def execute(self, slot, subindex, roi, result):
         assert (roi.start >= 0).all(), \

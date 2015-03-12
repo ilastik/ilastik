@@ -38,9 +38,8 @@ from lazyflow.request import RequestPool
 from lazyflow.roi import sliceToRoi, roiToSlice, getBlockBounds, TinyVector
 from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.utility import fastWhere
-from lazyflow.operators.opCache import OpCache
-from lazyflow.operators.opArrayPiper import OpArrayPiper
-from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
+from lazyflow.operators.opCache import OpManagedCache
+from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr
 
 try:
     from lazyflow.drtile import drtile
@@ -49,7 +48,7 @@ except ImportError:
     has_drtile = False
 
 
-class OpArrayCache(OpCache):
+class OpArrayCache(OpManagedCache):
     """ Allocates a block of memory as large as Input.meta.shape (==Output.meta.shape)
         with the same dtype in order to be able to cache results.
         
@@ -84,7 +83,6 @@ class OpArrayCache(OpCache):
     def __init__(self, *args, **kwargs):
         super( OpArrayCache, self ).__init__(*args, **kwargs)
         self._origBlockShape = self.DefaultBlockSize
-        self._last_access = None
         self._blockShape = None
         self._dirtyShape = None
         self._blockState = None
@@ -98,26 +96,14 @@ class OpArrayCache(OpCache):
         self._has_fixed_dirty_blocks = False
         self._memory_manager = ArrayCacheMemoryMgr.instance
         self._running = 0
-       
+
+    # ========== CACHE API ==========
+
     def usedMemory(self):
         if self._cache is not None:
             return self._cache.nbytes
         else:
             return 0
-
-    def _blockShapeForIndex(self, index):
-        if self._cache is None:
-            return None
-        index = numpy.asarray(index)
-
-        cacheShape = numpy.array(self._cache.shape)
-        blockShape = numpy.array(self._blockShape)
-        start = blockShape * index
-        stop = blockShape * (index + 1)
-        start = numpy.maximum(start, (0,)*len(start))
-        stop = numpy.minimum(stop, cacheShape)
-        ret = tuple(map(int, stop - start))
-        return ret
 
     def fractionOfUsedMemoryDirty(self):
         if self.Output.meta.shape is None:
@@ -139,16 +125,26 @@ class OpArrayCache(OpCache):
         return totDirty/float(totAll)
     
     def lastAccessTime(self):
-        return self._last_access
-        
-    def generateReport(self, report):
-        report.name = self.name
-        report.fractionOfUsedMemoryDirty = self.fractionOfUsedMemoryDirty()
-        report.usedMemory = self.usedMemory()
-        report.lastAccessTime = self.lastAccessTime()
-        report.dtype = self.Output.meta.dtype
-        report.type = type(self)
-        report.id = id(self)
+        return super(OpArrayCache, self).lastAccessTime()
+
+    def freeMemory(self):
+        return self._freeMemory()
+
+    # ========== END CACHE API ==========
+
+    def _blockShapeForIndex(self, index):
+        if self._cache is None:
+            return None
+        index = numpy.asarray(index)
+
+        cacheShape = numpy.array(self._cache.shape)
+        blockShape = numpy.array(self._blockShape)
+        start = blockShape * index
+        stop = blockShape * (index + 1)
+        start = numpy.maximum(start, (0,)*len(start))
+        stop = numpy.minimum(stop, cacheShape)
+        ret = tuple(map(int, stop - start))
+        return ret
 
     def _freeMemory(self, refcheck = True):
         with self._cacheLock:
@@ -200,7 +196,7 @@ class OpArrayCache(OpCache):
     
     def _allocateCache(self):
         with self._cacheLock:
-            self._last_access = None
+            self._last_access_time = None
             self._cache_priority = 0
             self._running = 0
 
@@ -312,12 +308,12 @@ class OpArrayCache(OpCache):
                         self.Output.setDirty( dirtyStart, dirtyStop )
 
     def _updatePriority(self, new_access = None):
-        if self._last_access is None:
-            self._last_access = new_access or time.time()
+        if self._last_access_time is None:
+            self._last_access_time = new_access or time.time()
         cur_time = time.time()
-        delta = cur_time - self._last_access + 1e-9
+        delta = cur_time - self._last_access_time + 1e-9
 
-        self._last_access = cur_time
+        self._last_access_time = cur_time
         new_prio = 0.5 * self._cache_priority + delta
         self._cache_priority = new_prio
 

@@ -107,7 +107,7 @@ class OpObservableCache(OpCache):
         super(OpObservableCache, self).generateReport(memInfoNode)
         memInfoNode.usedMemory = self.usedMemory()
         memInfoNode.fractionOfUsedMemoryDirty =\
-            self.fractionofUsedMemoryDirty()
+            self.fractionOfUsedMemoryDirty()
 
 
 class OpManagedCache(OpObservableCache):
@@ -135,6 +135,10 @@ class OpManagedCache(OpObservableCache):
         @return amount of bytes freed (if applicable)
         """
         raise NotImplementedError("No default implementation for freeMemory()")
+
+    def generateReport(self, memInfoNode):
+        super(OpManagedCache, self).generateReport(memInfoNode)
+        memInfoNode.lastAccessTime = self.lastAccessTime()
 
 
 class MemInfoNode:
