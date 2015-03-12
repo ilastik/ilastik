@@ -30,3 +30,20 @@ class IIBoostPixelClassificationGui( PixelClassificationGui ):
                 self.topLevelOperatorView.opLabelPipeline.opLabelArray.clearLabel(2)
         
         self.labelingDrawerUi.ClearAllLabelsButton.clicked.connect( clear_all_labels )
+
+        self.labelingDrawerUi.numStumpsBox.setRange(1, 1000)
+
+        num_stumps = self.topLevelOperatorView.get_num_stumps()
+        self.labelingDrawerUi.numStumpsBox.setValue( num_stumps )
+        def update_num_stumps(num_stumps):
+            self.topLevelOperatorView.set_num_stumps( num_stumps )
+        self.labelingDrawerUi.numStumpsBox.valueChanged.connect( update_num_stumps )
+        
+    def toggleInteractive(self, checked):
+        """
+        Overridden from the base class.  Called when entering/leaving "live update" mode.
+        """
+        super( IIBoostPixelClassificationGui, self ).toggleInteractive(checked)
+        
+        # Don't allow changing the classifier factory during "live update" mode.
+        self.labelingDrawerUi.numStumpsBox.setEnabled( not checked )
