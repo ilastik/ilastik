@@ -9,8 +9,6 @@ import iiboost
 
 from lazyflow.classifiers import LazyflowPixelwiseClassifierFactoryABC, LazyflowPixelwiseClassifierABC
 
-from lazyflow.utility.timer import Timer
-
 class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     """
     This class adheres to the LazyflowPixelwiseClassifierFactoryABC interface, 
