@@ -256,11 +256,16 @@ class OpHessianEigenvectors( Operator ):
         result[:] = eigenvectors[roiToSlice(*result_roi)][..., slice(roi.start[-1], roi.stop[-1])]
 
     def propagateDirty(self, slot, subindex, roi):
-        enlarged_roi, _ = self._enlarge_roi_for_halo(roi.start, roi.stop)
-
-        dirty_start = tuple(enlarged_roi[0, :-1]) + (0,0)
-        dirty_stop = tuple(enlarged_roi[1, :-1]) + (3,3)
-        self.Output.setDirty(dirty_start, dirty_stop)
+        if slot is self.Sigma:
+            self.Output.setDirty( slice(None) )
+        elif slot is self.Input:
+            enlarged_roi, _ = self._enlarge_roi_for_halo(roi.start, roi.stop)
+    
+            dirty_start = tuple(enlarged_roi[0, :-1]) + (0,0)
+            dirty_stop = tuple(enlarged_roi[1, :-1]) + (3,3)
+            self.Output.setDirty(dirty_start, dirty_stop)
+        else:
+            assert False, 'Unhandled dirty slot: {}'.format( slot )
 
     def _enlarge_roi_for_halo(self, start, stop):
         """
