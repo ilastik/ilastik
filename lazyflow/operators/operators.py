@@ -39,6 +39,7 @@ from lazyflow.operators.opArrayCache import OpArrayCache
 from lazyflow.operators.opArrayPiper import OpArrayPiper
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.operators.opSlicedBlockedArrayCache import OpSlicedBlockedArrayCache
+from lazyflow.operators.opUnblockedArrayCache import OpUnblockedArrayCache
 
 # Don't import these obsolete label operators by default.
 #from lazyflow.operators.opSparseLabelArray import OpSparseLabelArray
@@ -50,42 +51,3 @@ if not hasattr(ArrayCacheMemoryMgr, "instance"):
     mgr = ArrayCacheMemoryMgr() 
     setattr(ArrayCacheMemoryMgr, "instance" ,mgr)
     mgr.start()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
