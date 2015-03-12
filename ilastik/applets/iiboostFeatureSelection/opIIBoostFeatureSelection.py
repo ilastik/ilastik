@@ -4,7 +4,7 @@ import vigra
 from functools import partial
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators.operators import OpSlicedBlockedArrayCache
+from lazyflow.operators.operators import OpSlicedBlockedArrayCache, OpUnblockedArrayCache
 from lazyflow.roi import enlargeRoiForHalo, roiToSlice
 from lazyflow.request import Request, RequestPool
 
@@ -63,6 +63,11 @@ class OpIIBoostFeatureSelection(Operator):
 
         self.opIntegralImage_from_cache = OpIntegralImage( parent=self )
         self.opIntegralImage_from_cache.Input.connect( self.opFeatureSelection.CachedOutputImage )
+
+        # We use an UNBLOCKED cache to store integral features, because a blocked cache would service 
+        #  requests by concatenating neighboring blocks.  That is not a valid operation for integral images. 
+        self.opIntegralImageCache = OpUnblockedArrayCache( parent=self )
+        self.opIntegralImageCache.Input.connect( self.opIntegralImage_from_cache.Output )
                 
         # Note: OutputImage and CachedOutputImage are not directly connected.
         #       Their data is obtained in execute(), below.
@@ -109,7 +114,7 @@ class OpIIBoostFeatureSelection(Operator):
         output_shape = output_shape[:-1] + ( output_shape[-1] + 10, )
 
         self.OutputImage.meta.assignFrom( self.opIntegralImage.Output.meta )
-        self.CachedOutputImage.meta.assignFrom( self.opIntegralImage_from_cache.Output.meta )
+        self.CachedOutputImage.meta.assignFrom( self.opIntegralImageCache.Output.meta )
         self.OutputImage.meta.shape = output_shape
         self.CachedOutputImage.meta.shape = output_shape
 
@@ -154,7 +159,7 @@ class OpIIBoostFeatureSelection(Operator):
             feat_req = self.opIntegralImage.Output(*features_roi).writeInto(result[...,10:])
         elif slot == self.CachedOutputImage:
             hev_req = self.opHessianEigenvectorCache.Output(*hess_ev_roi).writeInto(result[...,1:10])
-            feat_req = self.opIntegralImage_from_cache.Output(*features_roi).writeInto(result[...,10:])
+            feat_req = self.opIntegralImageCache.Output(*features_roi).writeInto(result[...,10:])
         
         hev_req.submit()
         feat_req.submit()
