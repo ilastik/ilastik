@@ -136,6 +136,15 @@ class OpIIBoostFeatureSelection(Operator):
         self.OutputImage.meta.shape = output_shape
         self.CachedOutputImage.meta.shape = output_shape
 
+        # If we know the data resolution, fine-tune the hessian eigenvalue sigma
+        x_tag = self.InputImage.meta.axistags['x']
+        if x_tag.resolution != 0.0:
+            # This formula comes from Carlos Becker (email from 2015-03-11)
+            hessian_ev_sigma = 3.5 / 6.8 * x_tag.resolution
+        else:
+            hessian_ev_sigma = 3.5
+        self.opHessianEigenvectors.Sigma.setValue( hessian_ev_sigma )
+
         # Copy the cache block settings from the standard pixel feature operator.
         self.opHessianEigenvectorCache.innerBlockShape.setValue( self.opFeatureSelection.opPixelFeatureCache.innerBlockShape.value )
         self.opHessianEigenvectorCache.outerBlockShape.setValue( self.opFeatureSelection.opPixelFeatureCache.outerBlockShape.value )
