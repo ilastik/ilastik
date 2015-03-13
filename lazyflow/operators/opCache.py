@@ -54,6 +54,8 @@ class OpCache(Operator):
     def generateReport(self, memInfoNode):
         rs = []
         for child in self.children:
+            if not isinstance(child, OpCache):
+                continue
             r = MemInfoNode()
             child.generateReport(r)
             rs.append(r)
