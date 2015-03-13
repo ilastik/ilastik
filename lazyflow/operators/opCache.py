@@ -24,16 +24,7 @@ from abc import abstractmethod, ABCMeta
 
 #lazyflow
 from lazyflow.graph import Operator
-#from lazyflow.operators.cacheMemoryMgr import CacheMemoryManager
-
-
-class CacheMemoryManager(object):
-    #FIXME remove
-    def addFirstClassCache(self, cache):
-        pass
-
-    def addCache(self, cache):
-        pass
+from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
 
 
 class OpCache(Operator):
