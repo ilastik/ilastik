@@ -33,7 +33,7 @@ import h5py
 from lazyflow.request import Request, RequestPool, RequestLock
 from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.roi import TinyVector, getIntersectingBlocks, getBlockBounds, roiToSlice, getIntersection
-from lazyflow.operators.opCache import OpCache
+from lazyflow.operators.opCache import OpManagedCache
 from lazyflow.utility.chunkHelpers import chooseChunkShape
 
 logger = logging.getLogger(__name__)
@@ -47,7 +47,7 @@ def get_storage_size(h5dataset):
     '''
     return h5py.h5d.DatasetID.get_storage_size(h5dataset.id)
 
-class OpCompressedCache(OpCache):
+class OpCompressedCache(OpManagedCache):
     """
     A blockwise cache that stores each block as a separate in-memory hdf5 file with a compressed dataset.
     
@@ -77,7 +77,7 @@ class OpCompressedCache(OpCache):
             self._dirtyBlocks = set()
             self._blockLocks = {}
             self._chunkshape = self._chooseChunkshape(self._blockshape)
-            self._lastAccessTime = 0
+            self._last_access_time = 0
 
     def cleanUp(self):
         logger.debug( "Cleaning up" )
@@ -135,7 +135,7 @@ class OpCompressedCache(OpCache):
         # Ensure all block cache files are up-to-date
         self._waitForBlocks(block_starts)
         self._copyData(roi, destination, block_starts)
-        self._lastAccessTime = time.time()
+        self._last_access_time = time.time()
         return destination
 
     def _waitForBlocks(self, block_starts):
@@ -294,17 +294,19 @@ class OpCompressedCache(OpCache):
             return 0.0
 
     def lastAccessTime(self):
-        """timestamp of last access (time.time())"""
-        return self._lastAccessTime
+        return super(OpCompressedCache, self).lastAccessTime()
     
     def generateReport(self, report):
-        report.name = self.name
-        report.fractionOfUsedMemoryDirty = self.fractionOfUsedMemoryDirty()
-        report.usedMemory = self.usedMemory()
-        report.lastAccessTime = self.lastAccessTime()
+        super(OpCompressedCache, self).generateReport(report)
         report.dtype = self.Output.meta.dtype
-        report.type = type(self)
-        report.id = id(self)
+
+    def freeMemory(self):
+        mem = self.usedMemory()
+        self._closeAllCacheFiles()
+        with self._lock:
+            self._cacheFiles = {}
+            self._dirtyBlocks = set()
+        return mem
 
     def _getCacheFile(self, entire_block_roi):
         """
