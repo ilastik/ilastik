@@ -30,6 +30,12 @@ from lazyflow.operators.opCache import OpManagedCache
 from lazyflow.operators.opCache import MemInfoNode
 
 
+def iterSubclasses(cls):
+    for subcls in cls.__subclasses__():
+        for more in iterSubclasses(subcls):
+            yield more
+    yield cls
+
 def ClassFactory(name, Model, TestClass):
     '''
     construct a new test case for 'TestClass' with tests from 'Model'
@@ -54,7 +60,7 @@ class GeneralTestOpCache(object):
 
 
 # automagically test all implementations of OpCache
-for subtype in OpCache.__subclasses__():
+for subtype in iterSubclasses(OpCache):
     if subtype in [OpCache, OpObservableCache, OpManagedCache]:
         # skip known abstract implementations
         continue
@@ -84,7 +90,7 @@ class GeneralTestOpObservableCache(object):
 
 
 # automagically test all implementations of OpObservableCache
-for subtype in OpObservableCache.__subclasses__():
+for subtype in iterSubclasses(OpObservableCache):
     if subtype in [OpObservableCache, OpManagedCache]:
         # skip known abstract implementations
         continue
@@ -107,12 +113,14 @@ class GeneralTestOpManagedCache(object):
         assert t >= 0.0
         assert t == r.lastAccessTime
 
-        op.freeMemory()
+        memFreed = op.freeMemory()
         assert op.usedMemory() == 0
+        assert memFreed is not None
+        assert memFreed >= 0
 
 
 # automagically test all implementations of OpManagedCache
-for subtype in OpManagedCache.__subclasses__():
+for subtype in iterSubclasses(OpManagedCache):
     if subtype in [OpManagedCache]:
         # skip known abstract implementations
         continue
