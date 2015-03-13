@@ -28,7 +28,7 @@ FeatureIds = [ 'GaussianSmoothing',
                'HessianOfGaussianEigenvalues' ]
 
 #                                sigma:   0.3    0.7    1.0    1.6    3.5    5.0   10.0
-default_feature_matrix = numpy.array( [[False, False, False, False, False, False, False],   # Gaussian
+default_feature_matrix = numpy.array( [[ True, False, False, False, False, False, False],   # Gaussian
                                        [False, False, False, False, False, False, False],   # L of G
                                        [False, False,  True,  True,  True,  True, False],   # GGM
                                        [False, False, False, False, False, False, False],   # Diff of G
