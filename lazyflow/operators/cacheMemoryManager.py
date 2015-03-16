@@ -80,7 +80,7 @@ def getAvailableRamBytes():
     return ram
 
 
-default_refresh_interval = .1
+default_refresh_interval = 5
 
 
 class CacheMemoryManager(threading.Thread):
@@ -133,16 +133,37 @@ class CacheMemoryManager(threading.Thread):
         self.start()
 
     def addFirstClassCache(self, cache):
-        from lazyflow.operators.opCache import OpObservableCache
-        if isinstance(cache, OpObservableCache):
+        """
+        add a first class cache (root cache) to the manager
+        
+        First class caches are handled differently so we are able to
+        show a tree view of the caches (e.g. in ilastik). This method
+        calls addCache() automatically.
+        """
+        # late import to prevent import loop
+        from lazyflow.operators.opCache import OpCache
+        if isinstance(cache, OpCache):
             self._first_class_caches.add(cache)
+        self.addCache(cache)
+
+    def getFirstClassCaches(self):
+        """
+        get a list of first class caches
+        """
+        return list(self._first_class_caches)
+
+    def getCaches(self):
+        """
+        get a list of all caches (including first class caches)
+        """
+        return list(self._caches)
 
     def addCache(self, cache):
         """
         add a cache to be managed
 
-        Caches are kept with weak references, so there is no need to remove
-        them.
+        Caches are kept with weak references, so there is no need to
+        remove them from the manager.
         """
         # late import to prevent import loop
         from lazyflow.operators.opCache import OpCache
@@ -161,6 +182,7 @@ class CacheMemoryManager(threading.Thread):
         main loop
         """
         while True:
+            self._wait()
             try:
                 # notify subscribed functions about current cache memory
                 total = 0
@@ -171,20 +193,21 @@ class CacheMemoryManager(threading.Thread):
                 # check current memory state
                 current_usage_percentage = memoryUsagePercentage()
                 if current_usage_percentage <= self._max_usage:
-                    self._wait()
                     continue
 
                 # we need a cache cleanup
-                caches = list(ravel(self))
+                caches = list(self._managed_caches)
+                caches.sort(key=lambda x: x.lastAccessTime())
                 while current_usage_percentage > self._target_usage and caches:
                     c = caches.pop(0)
                     self.logger.debug("Cleaning up cache '{}'".format(c.name))
                     c.freeMemory()
+                    current_usage_percentage = memoryUsagePercentage()
+                self.logger.debug(
+                    "Done cleaning up, memory usage is now at "
+                    "{}%".format(100*current_usage_percentage))
             except Exception as e:
                 self.logger.error(str(e))
-
-            # done cleaning up
-            self._wait()
 
     def _wait(self):
         """
@@ -198,26 +221,9 @@ class CacheMemoryManager(threading.Thread):
             self._condition.release()
 
     def setRefreshInterval(self, t):
+        """
+        set the clean up period and wake up the cleaning thread
+        """
         with self._condition:
             self._refresh_interval = t
             self._condition.notifyAll()
-        
-    
-def ravel(cache, sort_key=lambda c: c.lastAccessTime(), postfix=True):
-    """
-    iterate over the tree starting at node 'cache'
-    
-    The 'sort_key' callable, if present, is used to sort the list of children
-    in ascending order.
-    If 'postfix' is True, parents will be appended after their children,
-    otherwise they will be prepended.
-    The combined defaults result in the iterator being totally ordered by
-    lastAccessTime().
-    """
-    if not postfix:
-        yield cache
-    for c in sorted(cache.getChildren(), key=sort_key):
-        for k in ravel(c, sort_key=sort_key, postfix=postfix):
-            yield k
-    if postfix:
-        yield cache
