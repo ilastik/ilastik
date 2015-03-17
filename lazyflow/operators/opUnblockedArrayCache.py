@@ -1,12 +1,36 @@
+###############################################################################
+#   lazyflow: data flow based lazy parallel computation framework
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the Lesser GNU General Public License
+# as published by the Free Software Foundation; either version 2.1
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Lesser General Public License for more details.
+#
+# See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
+# GNU Lesser General Public License version 2.1 and 3 respectively.
+# This information is also available on the ilastik web site at:
+#		   http://ilastik.org/license/
+###############################################################################
+
+import time
+
 from lazyflow.graph import InputSlot, OutputSlot
-from lazyflow.operators.opCache import OpCache
+from lazyflow.operators.opCache import OpManagedCache
 from lazyflow.request import RequestLock
 from lazyflow.roi import getIntersection, roiFromShape
 
 import logging
 logger = logging.getLogger(__name__)
 
-class OpUnblockedArrayCache(OpCache):
+class OpUnblockedArrayCache(OpManagedCache):
     """
     This cache operator stores the results of all requests that pass through 
     it, in exactly the same blocks that were requested.
@@ -64,6 +88,7 @@ class OpUnblockedArrayCache(OpCache):
                     # (Could have happened via propagateDirty() or eventually the arrayCacheMemoryMgr)
                     if block_roi in self._block_locks:
                         self._block_data[block_roi] = block
+            self._last_access_time = time.time()
 
     def propagateDirty(self, slot, subindex, roi):
         dirty_roi = self._standardize_roi( roi.start, roi.stop )
@@ -87,19 +112,34 @@ class OpUnblockedArrayCache(OpCache):
         self.Output.setDirty( roi.start, roi.stop )
 
     ##
-    ## OpCache interface implementation
+    ## OpManagedCache interface implementation
     ##
-    def generateReport(self, report):
-        raise NotImplementedError()
-        
     def usedMemory(self):
-        """used memory in bytes"""
-        return 0 #overwrite me
+        total = 0.0
+        for k in self._block_data.keys():
+            try:
+                block = self._block_data[k]
+                bytes_per_pixel = block.dtype.itemsize
+                portion = block.size * bytes_per_pixel
+            except (KeyError, AttributeError):
+                # what could have happened and why it's fine
+                #  * block was deleted (then it does not occupy memory)
+                #  * block is not array data (then we don't know how
+                #    much memory it ouccupies)
+                portion = 0.0
+            total += portion
+        return total
     
     def fractionOfUsedMemoryDirty(self):
-        """fraction of the currently used memory that is marked as dirty"""
-        return 0 #overwrite me
+        # dirty memory is discarded immediately
+        return 0.0
 
     def lastAccessTime(self):
-        """timestamp of last access (time.time())"""
-        return 0 #overwrite me
+        return super(OpUnblockedArrayCache, self).lastAccessTime()
+
+    def freeMemory(self):
+        used = self.usedMemory()
+        with self._lock:
+            self._block_data = {}
+            self._block_locks = {}
+        return used

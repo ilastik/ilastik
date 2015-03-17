@@ -24,6 +24,7 @@ import logging
 from functools import partial
 import collections
 import itertools
+import time
 
 # Third-party
 import numpy
