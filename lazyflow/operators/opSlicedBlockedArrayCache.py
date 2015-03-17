@@ -31,7 +31,7 @@ import numpy
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.roi import sliceToRoi
-from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
+from lazyflow.operators.opCache import MemInfoNode
 from lazyflow.operators.opCache import OpObservableCache
 
 class OpSlicedBlockedArrayCache(OpObservableCache):

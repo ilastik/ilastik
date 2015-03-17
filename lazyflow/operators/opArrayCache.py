@@ -39,7 +39,6 @@ from lazyflow.roi import sliceToRoi, roiToSlice, getBlockBounds, TinyVector
 from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.utility import fastWhere
 from lazyflow.operators.opCache import OpManagedCache
-from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr
 
 try:
     from lazyflow.drtile import drtile
@@ -94,7 +93,6 @@ class OpArrayCache(OpManagedCache):
         self._lazyAlloc = True
         self._cacheHits = 0
         self._has_fixed_dirty_blocks = False
-        self._memory_manager = ArrayCacheMemoryMgr.instance
         self._running = 0
 
     # ========== CACHE API ==========

@@ -32,8 +32,6 @@ from lazyflow.roi import sliceToRoi, roiToSlice, TinyVector, getBlockBounds
 from lazyflow import request
 from lazyflow.utility import Tracer
 
-from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr
-
 #various cache operators
 from lazyflow.operators.opArrayCache import OpArrayCache
 from lazyflow.operators.opArrayPiper import OpArrayPiper
@@ -44,12 +42,6 @@ from lazyflow.operators.opSlicedBlockedArrayCache import OpSlicedBlockedArrayCac
 #from lazyflow.operators.opSparseLabelArray import OpSparseLabelArray
 #from lazyflow.operators.opBlockedSparseLabelArray import OpBlockedSparseLabelArray
 
-
-# create global Memory Manager instance
-if not hasattr(ArrayCacheMemoryMgr, "instance"):
-    mgr = ArrayCacheMemoryMgr() 
-    setattr(ArrayCacheMemoryMgr, "instance" ,mgr)
-    mgr.start()
 
 
 

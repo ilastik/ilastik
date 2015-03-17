@@ -33,7 +33,7 @@ import vigra
 from lazyflow.graph import Graph
 from lazyflow.operators import OpCompressedCache, OpArrayPiper
 from lazyflow.utility.slicingtools import slicing2shape
-from lazyflow.operators.arrayCacheMemoryMgr import MemInfoNode
+from lazyflow.operators.opCache import MemInfoNode
 
 logger = logging.getLogger("tests.testOpCompressedCache")
 cacheLogger = logging.getLogger("lazyflow.operators.opCompressedCache")

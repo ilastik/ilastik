@@ -39,7 +39,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import sliceToRoi, roiToSlice
 from lazyflow.operators.opSparseLabelArray import OpSparseLabelArray
 from lazyflow.operators.opCache import OpCache
-from lazyflow.operators.arrayCacheMemoryMgr import MemInfoNode
+from lazyflow.operators.opCache import MemInfoNode
 
 class OpBlockedSparseLabelArray(OpCache):
     """

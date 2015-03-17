@@ -49,12 +49,15 @@ assert issubclass(NonRegisteredCache, OpCache)
 
 class TestCacheMemoryManager(unittest.TestCase):
     def setUp(self):
+        self._old_ram_mb = lazyflow.AVAILABLE_RAM_MB
         pass
 
     def tearDown(self):
         # reset cleanup frequency to sane value
         mgr = CacheMemoryManager()
         mgr.setRefreshInterval(default_refresh_interval)
+        # reset max memory
+        lazyflow.AVAILABLE_RAM_MB = self._old_ram_mb
 
     def testAPIConformity(self):
         c = NonRegisteredCache("c")

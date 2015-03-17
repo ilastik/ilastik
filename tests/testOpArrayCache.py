@@ -29,7 +29,7 @@ from lazyflow.graph import Graph
 from lazyflow.roi import sliceToRoi, roiToSlice
 from lazyflow.operators import OpArrayCache
 from lazyflow.operators.opArrayCache import has_drtile
-from lazyflow.operators.arrayCacheMemoryMgr import MemInfoNode
+from lazyflow.operators.opCache import MemInfoNode
 
 from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 

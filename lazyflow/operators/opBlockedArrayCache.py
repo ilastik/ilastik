@@ -38,7 +38,7 @@ from lazyflow.rtype import SubRegion
 from lazyflow.request import RequestPool
 from lazyflow.operators.opCache import OpObservableCache
 from lazyflow.operators.opArrayCache import OpArrayCache
-from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
+from lazyflow.operators.opCache import MemInfoNode
 
 
 class OpBlockedArrayCache(OpObservableCache):

@@ -109,7 +109,7 @@ class CacheMemoryManager(threading.Thread):
 
     totalCacheMemory = OrderedSignal()
 
-    loggingName = __name__ + ".ArrayCacheMemoryMgr"
+    loggingName = __name__ + ".CacheMemoryManager"
     logger = logging.getLogger(loggingName)
     traceLogger = logging.getLogger("TRACE." + loggingName)
 

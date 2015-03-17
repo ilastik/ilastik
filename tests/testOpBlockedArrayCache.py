@@ -28,7 +28,7 @@ import vigra
 from lazyflow.graph import Graph
 from lazyflow.roi import roiToSlice
 from lazyflow.operators import OpBlockedArrayCache
-from lazyflow.operators.arrayCacheMemoryMgr import MemInfoNode
+from lazyflow.operators.opCache import MemInfoNode
 from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 
 
