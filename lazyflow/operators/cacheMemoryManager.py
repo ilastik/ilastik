@@ -181,14 +181,16 @@ class CacheMemoryManager(threading.Thread):
         """
         main loop
         """
+        from lazyflow.operators.opCache import OpObservableCache
         while True:
             self._wait()
             try:
                 # notify subscribed functions about current cache memory
                 total = 0
                 for cache in self._first_class_caches:
-                    total += cache.usedMemory()
-                self.totalCacheMemory.emit(total)
+                    if isinstance(cache, OpObservableCache):
+                        total += cache.usedMemory()
+                self.totalCacheMemory(total)
 
                 # check current memory state
                 current_usage_percentage = memoryUsagePercentage()
