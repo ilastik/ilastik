@@ -9,8 +9,6 @@ import iiboost
 
 from lazyflow.classifiers import LazyflowPixelwiseClassifierFactoryABC, LazyflowPixelwiseClassifierABC
 
-from lazyflow.utility.timer import Timer
-
 class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     """
     This class adheres to the LazyflowPixelwiseClassifierFactoryABC interface, 
@@ -34,7 +32,8 @@ class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     """
     VERSION = 1
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, num_stumps, *args, **kwargs):
+        self.num_stumps = num_stumps
         self._args = args
         self._kwargs = kwargs
     
@@ -67,6 +66,10 @@ class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
             known_labels = known_labels[1:]
             
         assert set([1,2]).issuperset(known_labels), "IIBoost only accepts two label values: 1 and 2"
+
+        # We can't train if there not labels from both classes.
+        if set(known_labels) != set([1,2]):
+            return None
 
         # IIBoost requires raw images to be uint8, 3D only
         # NOTE: we assume that the raw data can be found in channel 0.
@@ -108,7 +111,7 @@ class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
             if z_tag.resolution != 0.0 and x_tag.resolution != 0.0:
                 z_anisotropy_factor = z_tag.resolution / x_tag.resolution
 
-        model.trainWithChannels( raw_images, hev_images, converted_labels, integral_images, z_anisotropy_factor, *self._args, **self._kwargs )
+        model.trainWithChannels( raw_images, hev_images, converted_labels, integral_images, z_anisotropy_factor, self.num_stumps, *self._args, **self._kwargs )
 
         return IIBoostLazyflowClassifier( model, known_labels, feature_count=len(integral_images[0]) )
 
@@ -124,6 +127,7 @@ class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
 
     def __eq__(self, other):
         return (    isinstance(other, type(self))
+                and self.num_stumps == other.num_stumps
                 and self._args == other._args
                 and self._kwargs == other._kwargs )
     def __ne__(self, other):
