@@ -192,7 +192,7 @@ class CountingWorkflow(Workflow):
         # Use OpTranspose to allow connection.
         opTransposeBatchInputs = OpTransposeSlots( parent=self )
         opTransposeBatchInputs.OutputLength.setValue(0)
-        opTransposeBatchInputs.Inputs.resize(2)
+        opTransposeBatchInputs.Inputs.resize(1)
         opTransposeBatchInputs.Inputs[0].connect( opBatchPredictionPipeline.HeadlessPredictionProbabilities ) # selection 0
         
         # Now opTransposeBatchInputs.Outputs is level-2 indexed by [lane][selection]

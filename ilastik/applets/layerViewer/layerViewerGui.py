@@ -568,6 +568,17 @@ class LayerViewerGui(QWidget):
         for view in self.editor.imageViews:
             view.doScaleTo(1)
 
+        # Should we default to 2D?
+        prefer_2d = False
+        for multislot in self.observedSlots:
+            for slot in multislot:
+                if slot.ready() and slot.meta.prefer_2d:
+                    prefer_2d = True
+                    break
+        if prefer_2d:
+            # Default to Z (axis 2 in the editor)
+            self.volumeEditorWidget.quadview.ensureMaximized(2)
+
     def _convertPositionToDataSpace(self, voluminaPosition):
         taggedPosition = {k:p for k,p in zip('txyzc', voluminaPosition)}
 

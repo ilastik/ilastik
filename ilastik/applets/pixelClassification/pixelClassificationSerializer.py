@@ -19,7 +19,10 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 import numpy
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialClassifierSlot, SerialBlockSlot, SerialListSlot, SerialPickledSlot
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialClassifierSlot, SerialBlockSlot, SerialListSlot, SerialClassifierFactorySlot
+
+import logging
+logger = logging.getLogger(__name__) 
 
 class PixelClassificationSerializer(AppletSerializer):
     """Encapsulate the serialization scheme for pixel classification
@@ -41,10 +44,11 @@ class PixelClassificationSerializer(AppletSerializer):
                                  subname='labels{:03d}',
                                  selfdepends=False,
                                  shrink_to_bb=True),
-                 SerialPickledSlot(operator.ClassifierFactory),
+                 SerialClassifierFactorySlot(operator.ClassifierFactory),
                  self._serialClassifierSlot ]
 
         super(PixelClassificationSerializer, self).__init__(projectFileGroupName, slots, operator)
+        
     
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath):
         """
@@ -66,7 +70,10 @@ class PixelClassificationSerializer(AppletSerializer):
                     data = block[:]
                     all_labels.update( numpy.unique(data) )
 
-            max_label = max(all_labels)
+            if all_labels:
+                max_label = max(all_labels)
+            else:
+                max_label = 0
             
             label_names = []
             for i in range(max_label):
@@ -93,7 +100,20 @@ class PixelClassificationSerializer(AppletSerializer):
             # Now RE-deserialize the classifier, so it isn't marked dirty
             self._serialClassifierSlot.deserialize(topGroup)
 
-
+        # SPECIAL CLEANUP for backwards compatibility:
+        # Due to a bug, it was possible for a project to be saved with a classifier that was 
+        #  trained with more label classes than the project file saved in the end.
+        # That can cause a crash.  So here, we inspect the restored classifier and remove it if necessary.
+        if not self.operator.classifier_cache._dirty:
+            restored_classifier = self.operator.classifier_cache._value
+            if hasattr(restored_classifier, 'known_classes'):
+                num_classifier_classes = len(restored_classifier.known_classes)
+                num_saved_label_classes = len(self.operator.LabelNames.value)
+                if num_classifier_classes > num_saved_label_classes:
+                    # Delete the classifier from the operator
+                    logger.info( "Resetting classifier... will be forced to retrain" )
+                    self.operator.classifier_cache.resetValue()
+        
 class Ilastik05ImportDeserializer(AppletSerializer):
     """
     Special (de)serializer for importing ilastik 0.5 projects.

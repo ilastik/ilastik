@@ -148,6 +148,10 @@ class TestPixelClassificationHeadless(object):
         labels2 = 2 * numpy.ones(slicing2shape(slicing2), dtype=numpy.uint8)
         opPixelClass.LabelInputs[0][slicing2] = labels2
 
+        # Train the classifier
+        opPixelClass.FreezePredictions.setValue(False)
+        _ = opPixelClass.Classifier.value
+
         # Save and close
         shell.projectManager.saveProject()
         del shell
@@ -159,6 +163,7 @@ class TestPixelClassificationHeadless(object):
         #       See if __name__ == __main__ section, below.
         args = "--project=" + self.PROJECT_FILE
         args += " --headless"
+        
         #args += " --sys_tmp_dir=/tmp"
 
         # Batch export options
@@ -238,16 +243,12 @@ class TestPixelClassificationHeadless(object):
         opReader.cleanUp()
 
 if __name__ == "__main__":
-    print 'hola'
     #make the program quit on Ctrl+C
     import signal
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     import sys
     import nose
-    print 'yep...'
-#     sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-#     sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    print 'okay...'
-    print "__file__ is", __file__
+    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
     nose.run(defaultTest=__file__)

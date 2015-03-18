@@ -105,6 +105,9 @@ class Workflow( Operator ):
         except Exception, e:
             logger.error("Failed sending message to server '%s': %s" % (name, e))
 
+    def postprocessClusterSubResult(self, roi, result, blockwise_fileset):
+        pass
+
     ##################
     # Public methods #
     ##################
@@ -133,6 +136,9 @@ class Workflow( Operator ):
         self._shell = shell
         self._headless = headless
         
+    @property
+    def shell(self):
+        return self._shell
 
     def cleanUp(self):
         """
@@ -146,6 +152,16 @@ class Workflow( Operator ):
         
         # Clean up the graph as usual.
         super(Workflow, self).cleanUp()
+
+    def menus(self):
+        """
+            Returns an iterable of QMenus to be added to the GUI
+
+            Returns:
+                iterable:       QMenus to be added to the GUI
+        """
+
+        return []
 
     @classmethod
     def getSubclass(cls, name):

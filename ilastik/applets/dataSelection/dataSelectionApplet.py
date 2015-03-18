@@ -212,6 +212,19 @@ class DataSelectionApplet( Applet ):
             for lane_index, info in enumerate(input_infos):
                 opDataSelection.DatasetGroup[lane_index][role_index].setValue( info )
             
+            need_warning = False
+            for lane_index in range(len(input_infos)):
+                output_slot = opDataSelection.ImageGroup[lane_index][role_index]
+                if output_slot.meta.prefer_2d:
+                    need_warning = True
+                    break
+
+            if need_warning:
+                logger.warn("*******************************************************************************************")
+                logger.warn("Some of your input data is stored in a format that is not efficient for 3D access patterns.")
+                logger.warn("Performance may suffer as a result.  For best performance, use a chunked HDF5 volume.")                
+                logger.warn("*******************************************************************************************")
+
     @classmethod
     def convertStacksToH5(cls, filePaths, stackVolumeCacheDir):
         """

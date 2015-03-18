@@ -33,7 +33,11 @@ class OpPixelClassificationDataExport( OpDataExport ):
         super(OpPixelClassificationDataExport, self).__init__(*args, **kwargs)
         self.ConstraintDataset.notifyReady(self._checkDataConstraint)
         self.RawData.notifyReady(self._checkDataConstraint)
-        
+    
+    def propagateDirty(self, slot, subindex, roi):
+        if slot is not self.PmapColors and slot is not self.LabelNames:
+            super( OpPixelClassificationDataExport, self ).propagateDirty(slot, subindex, roi)
+    
     def _checkDataConstraint(self, *args):
         """
         The batch workflow uses the same classifier as the training workflow,

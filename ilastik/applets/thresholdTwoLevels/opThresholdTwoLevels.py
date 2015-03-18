@@ -22,6 +22,7 @@
 import warnings
 import logging
 from functools import partial
+from ConfigParser import NoOptionError
 
 # numerics
 import numpy
@@ -29,6 +30,7 @@ import vigra
 
 # ilastik
 from ilastik.applets.base.applet import DatasetConstraintError
+import ilastik.config
 
 # Lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -52,6 +54,14 @@ if haveGraphCut():
 
 
 logger = logging.getLogger(__name__)
+
+# determine labeling implementation
+try:
+    _labeling_impl = ilastik.config.cfg.get("ilastik", "labeling")
+except NoOptionError:
+    _labeling_impl = "vigra"
+#FIXME check validity of implementation
+logger.info("Using '{}' labeling implemetation".format(_labeling_impl))
 
 
 ## High level operator for one/two level threshold
@@ -292,13 +302,14 @@ class _OpThresholdOneLevel(Operator):
         self._opThresholder = OpPixelOperator(parent=self )
         self._opThresholder.Input.connect( self.InputImage )
 
-        self._opLabeler = OpLabelVolume( parent=self )
+        self._opLabeler = OpLabelVolume(parent=self)
+        self._opLabeler.Method.setValue(_labeling_impl)
         self._opLabeler.Input.connect(self._opThresholder.Output)
 
-        self.BeforeSizeFilter.connect( self._opLabeler.CachedOutput )
+        self.BeforeSizeFilter.connect( self._opLabeler.Output )
 
         self._opFilter = OpFilterLabels( parent=self )
-        self._opFilter.Input.connect(self._opLabeler.CachedOutput )
+        self._opFilter.Input.connect(self._opLabeler.Output )
         self._opFilter.MinLabelSize.connect( self.MinSize )
         self._opFilter.MaxLabelSize.connect( self.MaxSize )
         self._opFilter.BinaryOut.setValue(False)
@@ -322,9 +333,8 @@ class _OpThresholdOneLevel(Operator):
 
         self._opThresholder.Function.setValue(
             partial(thresholdToUint8, self.Threshold.value))
-        # Copy the input metadata to the output
-        self.Output.meta.assignFrom(self.InputImage.meta)
-        self.Output.meta.dtype=numpy.uint32
+
+        # self.Output already has metadata: it is directly connected to self._opFilter.Output
 
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here..."
@@ -390,20 +400,22 @@ class _OpThresholdTwoLevels(Operator):
         self._opHighThresholder.Input.connect(self.InputImage)
 
         self._opLowLabeler = OpLabelVolume(parent=self)
+        self._opLowLabeler.Method.setValue(_labeling_impl)
         self._opLowLabeler.Input.connect(self._opLowThresholder.Output)
 
         self._opHighLabeler = OpLabelVolume(parent=self)
+        self._opHighLabeler.Method.setValue(_labeling_impl)
         self._opHighLabeler.Input.connect(self._opHighThresholder.Output)
 
         self._opHighLabelSizeFilter = OpFilterLabels(parent=self)
-        self._opHighLabelSizeFilter.Input.connect(self._opHighLabeler.CachedOutput)
+        self._opHighLabelSizeFilter.Input.connect(self._opHighLabeler.Output)
         self._opHighLabelSizeFilter.MinLabelSize.connect(self.MinSize)
         self._opHighLabelSizeFilter.MaxLabelSize.connect(self.MaxSize)
         self._opHighLabelSizeFilter.BinaryOut.setValue(False)  # we do the binarization in opSelectLabels
                                                                # this way, we get to display pretty colors
 
         self._opSelectLabels = OpSelectLabels( parent=self )        
-        self._opSelectLabels.BigLabels.connect( self._opLowLabeler.CachedOutput )
+        self._opSelectLabels.BigLabels.connect( self._opLowLabeler.Output )
         self._opSelectLabels.SmallLabels.connect( self._opHighLabelSizeFilter.Output )
 
         # remove the remaining very large objects -
@@ -468,9 +480,8 @@ class _OpThresholdTwoLevels(Operator):
         self._opHighThresholder.Function.setValue(
             partial(thresholdToUint8, self.HighThreshold.value))
 
-        # Copy the input metadata to the output
-        self.Output.meta.assignFrom(self.InputImage.meta)
-        self.Output.meta.dtype = numpy.uint8
+        # Output is already connected internally -- don't reassign new metadata
+        # self.Output.meta.assignFrom(self.InputImage.meta)
 
         # Blockshape is the entire spatial volume (hysteresis thresholding is
         # a global operation)
@@ -549,7 +560,13 @@ class _OpCacheWrapper(Operator):
         tagged_shape = self._op1.Output.meta.getTaggedShape()
         tagged_shape['t'] = 1
         tagged_shape['c'] = 1
-        blockshape = map(lambda k: tagged_shape[k], 'xyzct')
+        cacheshape = map(lambda k: tagged_shape[k], 'xyzct')
+        if _labeling_impl == "lazy":
+            #HACK hardcoded block shape
+            blockshape = numpy.minimum(cacheshape, 256)
+        else:
+            # use full spatial volume if not lazy
+            blockshape = cacheshape
         cache.BlockShape.setValue(tuple(blockshape))
 
         self._cache = cache
