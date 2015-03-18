@@ -22,103 +22,136 @@
 import numpy
 
 #PyQt
-from PyQt4.QtCore import QTimer
+from PyQt4.QtCore import QTimer, Qt
 from PyQt4.QtGui import QDialog, QVBoxLayout, QTreeWidget, QTreeWidgetItem
 
 #lazyflow
-from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
+from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr
+from lazyflow.operators.arrayCacheMemoryMgr import MemInfoNode
 
 import warnings
 
-#===----------------------------------------------------------------------------------------------------------------===
-#=== MemUsageDialog                                                                                                 ===
-#===----------------------------------------------------------------------------------------------------------------===
+#===------------------------------------------------------------------------===
+#=== MemUsageDialog                                                         ===
+#===------------------------------------------------------------------------===
+
 
 class MemUsageDialog(QDialog):
     def __init__(self, parent=None, update=True):
         QDialog.__init__(self, parent=parent)
         layout = QVBoxLayout()
         self.tree = QTreeWidget()
-        self.tree.setHeaderLabels(["cache", "memory", "roi", "dtype", "type"])
         layout.addWidget(self.tree)
         self.setLayout(layout)
-        
+
         self.memMgr = ArrayCacheMemoryMgr.instance
-        
+
         self.timer = QTimer(self)
         if update:
             self.timer.timeout.connect(self._updateReport)
             self._updateReport()
-       
+
+        # tree setup code
+        self.tree.setHeaderLabels(
+            ["cache", "memory", "roi", "dtype", "type", "id"])
+        self._idIndex = self.tree.columnCount() - 1
+        self.tree.setColumnHidden(self._idIndex, True)
+        self.tree.clear()
+
     def _updateReport(self):
+        # we keep track of dirty reports so we just have to update the tree
+        # instead of reconstructing it
         reports = []
         for c in self.memMgr.namedCaches:
             r = MemInfoNode()
             try:
                 c.generateReport(r)
-                reports.append(r)
             except NotImplementedError:
                 warnings.warn('cache operator {} does not implement generateReport()'.format(c))
-        self._showReports(reports)
-        
-        '''
-        import pickle
-        f = open("/tmp/reports.pickle",'w')
-        pickle.dump(reports, f)
-        f.close()
-        print "... saved MEM reports to file ..."
-        '''
-        
-    def _showReports(self, reports):
-        self.tree.clear()
-        root = self.tree.invisibleRootItem()
-        for r in reports:
-            self._showReportsImpl(r, root, 0)
-       
-    def _makeTreeWidgetItem(self, node):
+            else:
+                reports.append(r)
+        self._updateBranch(self.tree.invisibleRootItem(), reports)
+
+    def _updateBranch(self, branch, reports):
+        # use dict for fast access
+        d = dict((r.id, r) for r in reports)
+
+        # check what can be reused
+        toRemove = []
+        toUpdate = set()
+        for i in range(branch.childCount()):
+            child = branch.child(i)
+            childId = child.data(self._idIndex, Qt.DisplayRole)
+            if childId not in d:
+                toRemove.append(child)
+            else:
+                toUpdate.add(i)
+
+        # update existent children
+        for i in toUpdate:
+            child = branch.child(i)
+            childId = child.data(self._idIndex)
+            r = d[childId]
+            del d[childId]
+            self._updateBranch(child, r.children)
+            self._updateNode(child, r)
+
+        # remove children if not in reports
+        for child in reversed(toRemove):
+            # delete from back to front to avoid index trouble
+            branch.removeChild(child)
+
+        # handle new reports (all remaining entries in d)
+        for childId in d:
+            self._addNode(branch, d[childId])
+
+    def _updateNode(self, node, report):
+        l = self._makeTreeWidgetItemData(report)
+        for i, v in enumerate(l):
+            node.setData(i, Qt.DisplayRole, v)
+
+    def _addNode(self, branch, report):
+        node = QTreeWidgetItem(branch)
+        self._updateNode(node, report)
+        for child in report.children:
+            self._addNode(node, child)
+
+    def _makeTreeWidgetItemData(self, report):
         l = []
-        l.append("%r" % node.name)
-        l.append("%1.1f MB" % (node.usedMemory/1024**2.0))
-        if node.roi is not None:
-            l.append("%r\n%r" % (list(node.roi[0]), list(node.roi[1])))
+        l.append("%r" % report.name)
+        l.append("%1.1f MB" % (report.usedMemory/1024**2.0))
+        if report.roi is not None:
+            l.append("%r\n%r" % (list(report.roi[0]), list(report.roi[1])))
         else:
             l.append("")
-        if node.dtype is not None:
-            if node.dtype == numpy.float32:
+        if report.dtype is not None:
+            if report.dtype == numpy.float32:
                 l.append("float32")
-            elif node.dtype == numpy.uint8:
+            elif report.dtype == numpy.uint8:
                 l.append("uint8")
-            elif node.dtype == numpy.uint32:
+            elif report.dtype == numpy.uint32:
                 l.append("uint32")
-            elif node.dtype == numpy.float64:
+            elif report.dtype == numpy.float64:
                 l.append("float64")
             else:
-                l.append(str(node.dtype))
-                
+                l.append(str(report.dtype))
+
         else:
             l.append("")
-        
-        t = str(node.type)
+
+        t = str(report.type)
         t = t[len("<type '")+1:-len("'>")]
         t = t.split(".")[-1]
         l.append(t)
-        return QTreeWidgetItem(l)
-    
-    def _showReportsImpl(self, node, itm, level):
-        #print "  "*level,
-        #print "node", node.name
-        
-        root = self._makeTreeWidgetItem(node)
-        itm.addChild(root)
-        root.setExpanded(True)
-        
-        for c in node.children:
-            self._showReportsImpl(c, root, level+1)
+        l.append(report.id)
+        return l
             
     def hideEvent(self, event):
         self.timer.stop()
         
     def showEvent(self, show):
+        # update once so we don't have to wait for initial report
+        self._updateReport()
         self.timer.start(5*1000) #update every 5 sec.
  
 #===----------------------------------------------------------------------------------------------------------------===
