@@ -222,7 +222,8 @@ class OpConservationTracking(OpTrackingBase):
                                                 withTracklets,
                                                 ndim,
                                                 transition_parameter,
-                                                True) # with_constraints
+                                                True, # with_constraints
+                                                True) # with_multi_frame_moves
         except Exception as e:
             raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
         
