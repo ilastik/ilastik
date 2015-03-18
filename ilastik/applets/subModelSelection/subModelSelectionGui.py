@@ -51,6 +51,7 @@ class SubModelSelectionGui(LayerViewerGui):
         print " ..... SLT .....> in __init__ SubModelSelectionGui"
         self.topLevelOperatorView = topLevelOperatorView
         super(SubModelSelectionGui, self).__init__(parentApplet, self.topLevelOperatorView)
+        self.subModels = []
 
     def initAppletDrawerUi(self):
         #print " ..... SLT .....> in initAppletDrawerUi SubModelSelectionGui"
@@ -78,7 +79,6 @@ class SubModelSelectionGui(LayerViewerGui):
 
         self.subModelSelectionWidget.ApplyButton.clicked.connect( self.apply_gui_settings_to_operator )
         self.subModelSelectionWidget.ApplyButton.clicked.connect( self.apply_gui_settings_to_operator )
-        self.numSubModels = 0
 
         self.topLevelOperatorView.MinValueT.notifyDirty(self.apply_operator_settings_to_gui)
         self.topLevelOperatorView.MaxValueT.notifyDirty(self.apply_operator_settings_to_gui)
@@ -128,6 +128,26 @@ class SubModelSelectionGui(LayerViewerGui):
         self.subModelSelectionWidget._minSliderZ.valueChanged.connect(self._onMinSliderZMoved)
         self.subModelSelectionWidget._maxSliderZ.valueChanged.connect(self._onMaxSliderZMoved)
 
+    def createSubModel(self):
+
+        try:
+            # add a model
+            print "0"
+            newSubModel = ["Sub Model "+str(self.numSubModels() +1),self.get_roi_4d()]
+            print "1"
+            self.subModels += newSubModel
+            self.subModelSelectionWidget._modelListView.
+            print ">>>> Sub Model Created", newSubModel
+
+        except:
+            print " ERROR: Structured Learning: Failed to create sub model!"
+
+    def numSubModels(self):
+        return len(self.subModels)
+
+    def get_roi_4d(self):
+        return [(self.topLevelOperatorView.MinValueT,self.topLevelOperatorView.MinValueX,self.topLevelOperatorView.MinValueY,self.topLevelOperatorView.MinValueZ),
+                (self.topLevelOperatorView.MaxValueT,self.topLevelOperatorView.MaxValueX,self.topLevelOperatorView.MaxValueY,self.topLevelOperatorView.MaxValueZ)]
 
     def changeTime(self):
         delta = self.subModelSelectionWidget._minSliderT.value() - self.editor.posModel.time
@@ -247,6 +267,10 @@ class SubModelSelectionGui(LayerViewerGui):
 
         self.topLevelOperatorView.MinValueZ.setValue(minValueZ)
         self.topLevelOperatorView.MaxValueZ.setValue(maxValueZ+1)
+
+        print "before createSubModel"
+        self.createSubModel()
+        print "after createSubModel"
 
         #self.updateAllLayers()
 
