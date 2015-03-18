@@ -53,13 +53,13 @@ class SubModelSelectionGui(LayerViewerGui):
         super(SubModelSelectionGui, self).__init__(parentApplet, self.topLevelOperatorView)
 
     def initAppletDrawerUi(self):
-        print " ..... SLT .....> in initAppletDrawerUi SubModelSelectionGui"
+        #print " ..... SLT .....> in initAppletDrawerUi SubModelSelectionGui"
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
 
         # Init sub-model selection widget
-        print "/////////////////////////////// >",
+        #print "/////////////////////////////// >",
         self.subModelSelectionWidget = SubModelSelectionWidget(self)
         data_has_z_axis = True
         if self.topLevelOperatorView.InputImage.ready():
@@ -78,6 +78,7 @@ class SubModelSelectionGui(LayerViewerGui):
 
         self.subModelSelectionWidget.ApplyButton.clicked.connect( self.apply_gui_settings_to_operator )
         self.subModelSelectionWidget.ApplyButton.clicked.connect( self.apply_gui_settings_to_operator )
+        self.numSubModels = 0
 
         self.topLevelOperatorView.MinValueT.notifyDirty(self.apply_operator_settings_to_gui)
         self.topLevelOperatorView.MaxValueT.notifyDirty(self.apply_operator_settings_to_gui)
@@ -108,6 +109,7 @@ class SubModelSelectionGui(LayerViewerGui):
 
         self.editor.showCropLines(True)
         self.editor.cropModel.changed.connect(self.onCropModelChanged)
+        self.editor.posModel.timeChanged.connect(self.changeTime)
 
         #self.imageView2D = ImageView2D() #parent, cropModel, imagescene2d
         #viewportRect()
@@ -117,7 +119,8 @@ class SubModelSelectionGui(LayerViewerGui):
 
         #self.topLevelOperatorView.MinValueX.valueChanged.connect(self.onMinXChanged)
 
-
+        self.subModelSelectionWidget._minSliderT.valueChanged.connect(self._onMinSliderTMoved)
+        self.subModelSelectionWidget._maxSliderT.valueChanged.connect(self._onMaxSliderTMoved)
         self.subModelSelectionWidget._minSliderX.valueChanged.connect(self._onMinSliderXMoved)
         self.subModelSelectionWidget._maxSliderX.valueChanged.connect(self._onMaxSliderXMoved)
         self.subModelSelectionWidget._minSliderY.valueChanged.connect(self._onMinSliderYMoved)
@@ -125,13 +128,35 @@ class SubModelSelectionGui(LayerViewerGui):
         self.subModelSelectionWidget._minSliderZ.valueChanged.connect(self._onMinSliderZMoved)
         self.subModelSelectionWidget._maxSliderZ.valueChanged.connect(self._onMaxSliderZMoved)
 
+
+    def changeTime(self):
+        delta = self.subModelSelectionWidget._minSliderT.value() - self.editor.posModel.time
+        if delta > 0:
+            self.editor.navCtrl.changeTimeRelative(delta)
+        else:
+            delta = self.subModelSelectionWidget._maxSliderT.value() - self.editor.posModel.time
+            if delta < 0:
+                self.editor.navCtrl.changeTimeRelative(delta)
+
+    def _onMinSliderTMoved(self):
+        delta = self.subModelSelectionWidget._minSliderT.value() - self.editor.posModel.time
+        if delta > 0:
+            self.editor.navCtrl.changeTimeRelative(delta)
+        self.topLevelOperatorView.MinValueT.setValue(self.subModelSelectionWidget._minSliderT.value())
+
+    def _onMaxSliderTMoved(self):
+        delta = self.subModelSelectionWidget._maxSliderT.value() - self.editor.posModel.time
+        if delta < 0:
+            self.editor.navCtrl.changeTimeRelative(delta)
+        self.topLevelOperatorView.MaxValueT.setValue(self.subModelSelectionWidget._maxSliderT.value())
+
     def _onMinSliderXMoved(self):
         [(minValueX,minValueY,minValueZ),(maxValueX,maxValueY,maxValueZ)] = self.editor.cropModel.get_roi_3d()
         self.editor.cropModel.set_roi_3d([(self.subModelSelectionWidget._minSliderX.value(),minValueY,minValueZ),(maxValueX,maxValueY,maxValueZ)])
 
     def _onMaxSliderXMoved(self):
         [(minValueX,minValueY,minValueZ),(maxValueX,maxValueY,maxValueZ)] = self.editor.cropModel.get_roi_3d()
-        self.editor.cropModel.set_roi_3d([(minValueX,minValueY,minValueZ),(self.subModelSelectionWidget._maxSliderX.value(),maxValueY,maxValueZ)])
+        self.editor.cropModel.set_roi_3d([(minValueX,minValueY,minValueZ),(self.subModelSelectionWidget._maxSliderX.value()+1,maxValueY,maxValueZ)])
 
     def _onMinSliderYMoved(self):
         [(minValueX,minValueY,minValueZ),(maxValueX,maxValueY,maxValueZ)] = self.editor.cropModel.get_roi_3d()
@@ -139,7 +164,7 @@ class SubModelSelectionGui(LayerViewerGui):
 
     def _onMaxSliderYMoved(self):
         [(minValueX,minValueY,minValueZ),(maxValueX,maxValueY,maxValueZ)] = self.editor.cropModel.get_roi_3d()
-        self.editor.cropModel.set_roi_3d([(minValueX,minValueY,minValueZ),(maxValueX,self.subModelSelectionWidget._maxSliderY.value(),maxValueZ)])
+        self.editor.cropModel.set_roi_3d([(minValueX,minValueY,minValueZ),(maxValueX,self.subModelSelectionWidget._maxSliderY.value()+1,maxValueZ)])
 
     def _onMinSliderZMoved(self):
         [(minValueX,minValueY,minValueZ),(maxValueX,maxValueY,maxValueZ)] = self.editor.cropModel.get_roi_3d()
@@ -147,7 +172,7 @@ class SubModelSelectionGui(LayerViewerGui):
 
     def _onMaxSliderZMoved(self):
         [(minValueX,minValueY,minValueZ),(maxValueX,maxValueY,maxValueZ)] = self.editor.cropModel.get_roi_3d()
-        self.editor.cropModel.set_roi_3d([(minValueX,minValueY,minValueZ),(maxValueX,maxValueY,self.subModelSelectionWidget._maxSliderZ.value())])
+        self.editor.cropModel.set_roi_3d([(minValueX,minValueY,minValueZ),(maxValueX,maxValueY,self.subModelSelectionWidget._maxSliderZ.value()+1)])
 
     def onCropModelChanged(self):
         starts, stops = self.editor.cropModel.get_roi_3d()
@@ -199,10 +224,13 @@ class SubModelSelectionGui(LayerViewerGui):
         if self.topLevelOperatorView.MaxValueZ.ready():
             maxValueZ = self.topLevelOperatorView.MaxValueZ.value
 
-        self.subModelSelectionWidget.setValue(minValueT, maxValueT, minValueX, maxValueX, minValueY, maxValueY, minValueZ, maxValueZ)
+        print " TIME=",minValueT, maxValueT
+        self.subModelSelectionWidget.setValue(minValueT, maxValueT, minValueX, maxValueX-1, minValueY, maxValueY-1, minValueZ, maxValueZ-1)
         print "............> roi   =",self.editor.cropModel.get_roi_3d()#[[minValueX,minValueY,minValueZ],[maxValueX,maxValueY,maxValueZ]])
         print "............> values=",[[minValueX,minValueY,minValueZ],[maxValueX,maxValueY,maxValueZ]]
         self.editor.cropModel.set_roi_3d([(minValueX,minValueY,minValueZ),(maxValueX,maxValueY,maxValueZ)])
+        #self.topLevelOperatorView.MinValueT.setValue(minValueT)
+        #self.topLevelOperatorView.MaxValueT.setValue(maxValueT)
 
     def apply_gui_settings_to_operator(self, ):
         print " ..... SLT .....> in apply_gui_settings_to_operator SubModelSelectionGui"
@@ -212,13 +240,13 @@ class SubModelSelectionGui(LayerViewerGui):
         self.topLevelOperatorView.MaxValueT.setValue(maxValueT)
 
         self.topLevelOperatorView.MinValueX.setValue(minValueX)
-        self.topLevelOperatorView.MaxValueX.setValue(maxValueX)
+        self.topLevelOperatorView.MaxValueX.setValue(maxValueX+1)
 
         self.topLevelOperatorView.MinValueY.setValue(minValueY)
-        self.topLevelOperatorView.MaxValueY.setValue(maxValueY)
+        self.topLevelOperatorView.MaxValueY.setValue(maxValueY+1)
 
         self.topLevelOperatorView.MinValueZ.setValue(minValueZ)
-        self.topLevelOperatorView.MaxValueZ.setValue(maxValueZ)
+        self.topLevelOperatorView.MaxValueZ.setValue(maxValueZ+1)
 
         #self.updateAllLayers()
 
@@ -248,7 +276,7 @@ class SubModelSelectionGui(LayerViewerGui):
             inputPredictionLayer = self.createStandardLayerFromSlot( predictionImageSlot ) ###xxx there are also other methods:greyScaleLayer or colorTableLayer... in Volumina
             #from volumina.layer import ColortableLayer, GrayscaleLayer, RGBALayer, ClickableColortableLayer
             inputPredictionLayer.name = "Prediction Input"
-            inputPredictionLayer.visible = True
+            inputPredictionLayer.visible = False
             inputPredictionLayer.opacity = 0.75
             layers.append(inputPredictionLayer)
         
@@ -256,19 +284,19 @@ class SubModelSelectionGui(LayerViewerGui):
         cropImageSlot = self.topLevelOperatorView.CropImage
         if cropImageSlot.ready():
             cropImageLayer = self.createStandardLayerFromSlot( cropImageSlot )
-            cropImageLayer.name = "Cropped Raw Input"
+            cropImageLayer.name = "Sub-Model"
             cropImageLayer.visible = False #True
             cropImageLayer.opacity = 0.25
             layers.append(cropImageLayer)
 
         # Show the cropped prediction
-        cropPredictionSlot = self.topLevelOperatorView.CropPrediction
-        if cropPredictionSlot.ready():
-            cropPredictionLayer = self.createStandardLayerFromSlot( cropPredictionSlot )
-            cropPredictionLayer.name = "Cropped Prediction Input"
-            cropPredictionLayer.visible = False #True
-            cropPredictionLayer.opacity = 0.25
-            layers.append(cropPredictionLayer)
+        #cropPredictionSlot = self.topLevelOperatorView.CropPrediction
+        #if cropPredictionSlot.ready():
+        #    cropPredictionLayer = self.createStandardLayerFromSlot( cropPredictionSlot )
+        #    cropPredictionLayer.name = "Cropped Prediction Input"
+        #    cropPredictionLayer.visible = False #True
+        #    cropPredictionLayer.opacity = 0.25
+        #    layers.append(cropPredictionLayer)
 
 
 
