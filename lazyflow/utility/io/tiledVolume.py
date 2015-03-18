@@ -332,7 +332,9 @@ class TiledVolume(object):
             tries = 0
             while not success:
                 try:
-                    r = self._session.get(tile_url)
+                    # Note: We give timeout as a tuple, which requires a recent version of requests.
+                    #       If you get an exception about that, upgrade your requests module.
+                    r = self._session.get(tile_url, timeout=(3.0, 20.0))
                     success = True
                 except requests.ConnectionError:
                     # This special 'pass' is here because we keep running into exceptions like this: 
@@ -350,7 +352,7 @@ class TiledVolume(object):
             if self.TEST_MODE:
                 import time
                 time.sleep(0.01)
-                r = self._session.get(tile_url)
+                r = self._session.get(tile_url, timeout=(3.0, 20.0))
             else:
                 raise
                 
