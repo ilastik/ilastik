@@ -29,6 +29,7 @@ from lazyflow.graph import Graph
 from lazyflow.roi import sliceToRoi, roiToSlice
 from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.utility.testing import OpArrayPiperWithAccessCount
+from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr
 
 class KeyMaker():
     def __getitem__(self, *args):
@@ -295,18 +296,30 @@ class TestOpBlockedArrayCache(object):
         oldAccessCount = opProvider.accessCount
 
     def testCleanup(self):
-        op = OpBlockedArrayCache(graph=self.opProvider.graph)
-        op.Input.connect(self.opProvider.Output)
-        s = self.opProvider.Output.meta.shape
-        op.innerBlockShape.setValue(s)
-        op.outerBlockShape.setValue(s)
-        op.fixAtCurrent.setValue(False)
-        x = op.Output[...].wait()
-        op.Input.disconnect()
-        r = weakref.ref(op)
-        del op
-        gc.collect()
-        assert r() is None, "OpBlockedArrayCache was not cleaned up correctly"
+        try:
+            ArrayCacheMemoryMgr.instance.pause()
+
+            op = OpBlockedArrayCache(graph=self.opProvider.graph)
+            op.Input.connect(self.opProvider.Output)
+            s = self.opProvider.Output.meta.shape
+            op.innerBlockShape.setValue(s)
+            op.outerBlockShape.setValue(s)
+            op.fixAtCurrent.setValue(False)
+            x = op.Output[...].wait()
+            op.Input.disconnect()
+            op.cleanUp()
+
+            r = weakref.ref(op)
+            del op
+            gc.collect()
+            ref = r()
+            if ref is not None:
+                for i, o in enumerate(gc.get_referrers(ref)):
+                    print "Object", i, ":", type(o), ":", o
+                
+            assert r() is None, "OpBlockedArrayCache was not cleaned up correctly"
+        finally:
+            ArrayCacheMemoryMgr.instance.unpause()
 
 if __name__ == "__main__":
     import sys
@@ -314,15 +327,4 @@ if __name__ == "__main__":
     sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
     sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
     ret = nose.run(defaultTest=__file__)
-
-
-
-
-
-
-
-
-
-
-
     if not ret: sys.exit(1)

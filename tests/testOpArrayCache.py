@@ -29,6 +29,7 @@ from lazyflow.graph import Graph
 from lazyflow.roi import sliceToRoi, roiToSlice
 from lazyflow.operators import OpArrayCache
 from lazyflow.operators.opArrayCache import has_drtile
+from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr
 
 from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 
@@ -268,15 +269,21 @@ class TestOpArrayCache(object):
         assert [[0, 10, 10, 0, 0], [1, 20, 20, 10, 1]] in clean_block_rois
 
     def testCleanup(self):
-        op = OpArrayCache(graph=self.opProvider.graph)
-        op.Input.connect(self.opProvider.Output)
-        x = op.Output[...].wait()
-        op.Input.disconnect()
-        r = weakref.ref(op)
-        del op
-        gc.collect()
-        assert r() is None, "OpArrayCache was not cleaned up correctly"
-        
+        try:
+            ArrayCacheMemoryMgr.instance.pause()
+            op = OpArrayCache(graph=self.opProvider.graph)
+            op.Input.connect(self.opProvider.Output)
+            x = op.Output[...].wait()
+            op.Input.disconnect()
+            op.cleanUp()
+
+            r = weakref.ref(op)
+            del op
+            gc.collect()
+            assert r() is None, "OpArrayCache was not cleaned up correctly"
+        finally:
+            ArrayCacheMemoryMgr.instance.unpause()
+                    
          
  
 class TestOpArrayCacheWithObjectDtype(object):

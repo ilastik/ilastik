@@ -91,6 +91,8 @@ class ArrayCacheMemoryMgr(threading.Thread):
         self._target_usage = 70
         self._lock = threading.Lock()
         self._last_usage = memoryUsagePercentage()
+        self.paused = False
+        self.running = False
 
     def _new_list(self):
         def getPrio(array_cache):
@@ -119,8 +121,24 @@ class ArrayCacheMemoryMgr(threading.Thread):
             except ValueError:
                 pass
 
+    def pause(self):
+        self.paused = True
+        while self.running:
+            time.sleep(0.1)
+
+    def unpause(self):
+        self.paused = False
+
     def run(self):
+        self.running = True
         while True:
+            
+            # For testing purposes, we refrain from doing anything while 'paused'
+            while self.paused:
+                self.running = False
+                time.sleep(1)
+            self.running = True
+
             mem_usage = memoryUsagePercentage()
             mem_usage_gb = memoryUsageGB()
             delta = abs(self._last_usage - mem_usage)
@@ -138,6 +156,7 @@ class ArrayCacheMemoryMgr(threading.Thread):
                     continue
                 else:
                     tot += c.usedMemory()
+                del c
             self.totalCacheMemory(tot)
                 
             time.sleep(10)
@@ -153,6 +172,7 @@ class ArrayCacheMemoryMgr(threading.Thread):
                     for c in iter(self.caches):
                         c._updatePriority(c._last_access)
                         new_caches.add(c)
+                        del c
                     self.caches = new_caches
                     gc.collect()
                     self.traceLogger.debug("Target mem usage: {}".format(self._target_usage))
@@ -167,6 +187,7 @@ class ArrayCacheMemoryMgr(threading.Thread):
                         if freed == 0:
                             # store the caches which could not be freed
                             not_freed.append(last_cache)
+                        del last_cache
 
                 gc.collect()
 
@@ -175,3 +196,5 @@ class ArrayCacheMemoryMgr(threading.Thread):
                 for c in not_freed:
                     # add the caches which could not be freed
                     self.add(c)
+        
+        self.running = False

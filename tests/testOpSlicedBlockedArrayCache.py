@@ -29,6 +29,7 @@ from lazyflow.graph import Graph
 from lazyflow.roi import roiToSlice
 from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 from lazyflow.operators.opSlicedBlockedArrayCache import OpSlicedBlockedArrayCache
+from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr
 
 class KeyMaker():
     def __getitem__(self, *args):
@@ -334,17 +335,24 @@ class TestOpSlicedBlockedArrayCache(object):
         _requestFrozenAndUnfrozen(make_key[:, 80:100, 80:100, 0:1, :])
 
     def testCleanup(self):
-        op = OpSlicedBlockedArrayCache(graph=self.opProvider.graph)
-        op.Input.connect(self.opProvider.Output)
-        op.innerBlockShape.setValue(self.opCache.innerBlockShape.value)
-        op.outerBlockShape.setValue(self.opCache.outerBlockShape.value)
-        op.fixAtCurrent.setValue(False)
-        x = op.Output[...].wait()
-        op.Input.disconnect()
-        r = weakref.ref(op)
-        del op
-        gc.collect()
-        assert r() is None, "OpBlockedArrayCache was not cleaned up correctly"
+        try:
+            ArrayCacheMemoryMgr.instance.pause()
+            
+            op = OpSlicedBlockedArrayCache(graph=self.opProvider.graph)
+            op.Input.connect(self.opProvider.Output)
+            op.innerBlockShape.setValue(self.opCache.innerBlockShape.value)
+            op.outerBlockShape.setValue(self.opCache.outerBlockShape.value)
+            op.fixAtCurrent.setValue(False)
+            x = op.Output[...].wait()
+            op.Input.disconnect()
+            op.cleanUp()
+
+            r = weakref.ref(op)
+            del op
+            gc.collect()
+            assert r() is None, "OpBlockedArrayCache was not cleaned up correctly"
+        finally:
+            ArrayCacheMemoryMgr.instance.unpause()
 
 
 if __name__ == "__main__":
