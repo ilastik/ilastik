@@ -45,9 +45,13 @@ class TestOpCompressedUserLabelArray(object):
         inDataShape = slicing2shape(slicing)
         inputData = ( 3*numpy.random.random(inDataShape) ).astype(numpy.uint8)
         op.Input[slicing] = inputData
+        
         data = numpy.zeros(arrayshape, dtype=numpy.uint8)
         data[slicing] = inputData
-        
+
+        # Sanity check...
+        assert (op.Output[:].wait()[slicing] == data[slicing]).all()
+
         self.op = op
         self.slicing = slicing
         self.inData = inputData
@@ -164,7 +168,7 @@ class TestOpCompressedUserLabelArray(object):
         erasedSlicing = list(slicing)
         erasedSlicing[1] = slice(1,2)
 
-        outputWithEraser = data
+        outputWithEraser = data.copy()
         outputWithEraser[erasedSlicing] = 100
         
         op.Input[erasedSlicing] = outputWithEraser[erasedSlicing]
@@ -173,7 +177,7 @@ class TestOpCompressedUserLabelArray(object):
         expectedOutput[erasedSlicing] = 0
         
         outputData = op.Output[...].wait()
-        assert (outputData[...] == expectedOutput[...]).all()
+        assert (outputData == expectedOutput).all()
         
         assert expectedOutput.max() == 2
         #assert op.maxLabel.value == 2
@@ -195,8 +199,8 @@ class TestOpCompressedUserLabelArray(object):
         # Add some new labels for a class that hasn't been seen yet (3)        
         threeData = numpy.ndarray(slicing2shape(newSlicing), dtype=numpy.uint8)
         threeData[...] = 3
-        op.Input[newSlicing] = threeData        
-        expectedData = data[...]
+        op.Input[newSlicing] = threeData
+        expectedData = data.copy()
         expectedData[newSlicing] = 3
         
         # Sanity check: Are the new labels in the data?
@@ -207,19 +211,56 @@ class TestOpCompressedUserLabelArray(object):
         # Now erase all the 3s
         eraserData = numpy.ones(slicing2shape(newSlicing), dtype=numpy.uint8) * 100
         op.Input[newSlicing] = eraserData        
-        expectedData = data[...]
+        expectedData = data.copy()
         expectedData[newSlicing] = 0
         
         # The data we erased should be zeros
-        assert (op.Output[...].wait() == expectedData).all()
+        output_data = op.Output[...].wait()
+        assert (expectedData[newSlicing] == 0).all()
+        assert (output_data[newSlicing] == 0).all()
+        assert (output_data == expectedData).all()
         
         # The maximum label should be reduced, because all the 3s were removed.
         assert expectedData.max() == 2
         #assert op.maxLabel.value == 2
 
+    def testEraseBlock(self):
+        """
+        If we use the eraser to remove all labels from a block,
+        it should be removed from the CleanBlocks slot.
+        """
+        op = self.op
+        slicing = self.slicing
+        inData = self.inData
+        data = self.data
+
+        # BEFORE (convert to tuple)
+        clean_blocks_before = [ (tuple(a),tuple(b)) for (a,b) in op.CleanBlocks.value ]
+        
+        block_slicing = sl[0:1, 10:20, 10:20, 0:10, 0:1]
+        block_roi = ((0,10,10,0,0), (1,20,20,10,1))
+        
+        eraser_data = 100 * numpy.ones( slicing2shape(block_slicing), dtype=numpy.uint8 )
+        op.Input[block_slicing] = eraser_data
+        
+        expected_data = data.copy()
+        expected_data[block_slicing] = 0
+        
+        # quick sanity check: the data was actually cleared by the eraser
+        assert (op.Output[:].wait() == expected_data).all()
+
+        # AFTER (convert to tuple)
+        clean_blocks_after = [ (tuple(a),tuple(b)) for (a,b) in op.CleanBlocks.value ]
+        
+        before_set = set(map(tuple, clean_blocks_before))
+        after_set = set(map(tuple, clean_blocks_after))
+        
+        assert before_set - set([block_roi]) == after_set
+    
     def testDimensionalityChange(self):
         """
-        What happens if we configure the operator, use it a bit, then reconfigure it with a different input shape and dimensionality?
+        What happens if we configure the operator, use it a bit, 
+        then reconfigure it with a different input shape and dimensionality?
         """
         op = self.op
         slicing = self.slicing

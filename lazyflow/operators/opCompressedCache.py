@@ -393,18 +393,23 @@ class OpCompressedCache(OpCache):
             
             new_block_data = value[ roiToSlice(*source_relative_intersection) ]
             new_block_sum = new_block_data.sum()
-            if not store_zero_blocks and new_block_sum == 0:
+            if not store_zero_blocks and new_block_sum == 0 and block_start not in self._cacheFiles:
                 # Special fast-path: If this block doesn't exist yet, 
                 #  don't bother creating if we're just going to fill it with zeros.
-                # In fact, remove the block entirely.
                 # (This feature is used by the OpCompressedUserLabelArray)
-                if block_start in self._cacheFiles:
-                    del self._cacheFiles[block_start]
-                    del self._blockLocks[block_start]
+                pass
             else:
                 # Copy from source to block
                 dataset = self._getBlockDataset( entire_block_roi )
                 dataset[ roiToSlice( *block_relative_intersection ) ] = new_block_data
+
+                # If we can, remove this block entirely.
+                if not store_zero_blocks and new_block_sum == 0 and dataset[:].sum() == 0:
+                    with self._lock:
+                        with self._blockLocks[block_start]:
+                            self._cacheFiles[block_start].close()
+                            del self._cacheFiles[block_start]
+                        del self._blockLocks[block_start]
     
             # Here, we assume that if this function is used to update ANY PART of a 
             #  block, he is responsible for updating the ENTIRE block.
