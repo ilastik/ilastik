@@ -121,9 +121,9 @@ if __name__ == "__main__":
     op = OpDeviationFromMean(graph=Graph())
 
     shape = (5,5)
-    zeros = numpy.zeros( shape, dtype=numpy.float )
-    ones = numpy.ones( shape, dtype=numpy.float )
-    twos = 2*numpy.ones( shape, dtype=numpy.float )
+    zeros = numpy.zeros( shape, dtype=numpy.float32 )
+    ones = numpy.ones( shape, dtype=numpy.float32 )
+    twos = 2*numpy.ones( shape, dtype=numpy.float32 )
 
     scalingFactor = 5
     offset = 10

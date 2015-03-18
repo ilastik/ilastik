@@ -27,8 +27,8 @@ from ilastik.config import cfg as ilastik_config
 from ilastik.utility.simpleSignal import SimpleSignal
 from ilastik.utility.maybe import maybe
 import os
+import re
 import tempfile
-import vigra
 import h5py
 import numpy
 import warnings
@@ -36,6 +36,7 @@ import cPickle as pickle
 
 from lazyflow.roi import TinyVector, roiToSlice, sliceToRoi
 from lazyflow.utility import timeLogged
+from lazyflow.slot import OutputSlot
 
 #######################
 # Convenience methods #
@@ -46,14 +47,16 @@ def getOrCreateGroup(parentGroup, groupName):
     necessary.
 
     """
-    if groupName in parentGroup:
-        return parentGroup[groupName]
-    return parentGroup.create_group(groupName)
+
+    return parentGroup.require_group(groupName)
 
 def deleteIfPresent(parentGroup, name):
     """Deletes parentGroup[name], if it exists."""
-    if name in parentGroup:
+
+    try:
         del parentGroup[name]
+    except KeyError:
+        pass
 
 def slicingToString(slicing):
     """Convert the given slicing into a string of the form
@@ -348,12 +351,65 @@ class SerialBlockSlot(SerialSlot):
                              its nonzero bounding box before feeding saving it.
 
         """
+        assert isinstance(slot, OutputSlot), "slot is of wrong type: '{}' is not an OutputSlot".format( slot.name )
         super(SerialBlockSlot, self).__init__(
             slot, inslot, name, subname, default, depends, selfdepends
         )
         self.blockslot = blockslot
         self._bind(slot)
         self._shrink_to_bb = shrink_to_bb
+
+    def shouldSerialize(self, group):
+        # Should this be a docstring?
+        #
+        # Must be overloaded as SerialBlockSlot does not serialize itself in the simple way that other SerialSlot do
+        # as a consequence of the nesting of groups required. Follows the same logic as _serialize and checks to see
+        # if each relevant subgroup has been created and if any are missing or their data is missing it should be
+        # serialized. Otherwise, if everything is intact, it doesn't suggest serialization unless the state has changed.
+
+        logger.debug("Checking whether to serialize BlockSlot: {}".format( self.name ))
+
+        if self.dirty:
+            logger.debug("BlockSlot \"" + self.name + "\" appears to be dirty. Should serialize.")
+            return True
+
+        # SerialSlot interchanges self.name and name when they frequently are the same thing. It is not clear if using
+        # self.name would be acceptable here or whether name should be an input to shouldSerialize or if there should be
+        # a _shouldSerialize method, which takes the name.
+        if self.name not in group:
+            logger.debug("Missing \"" + self.name + "\" in group \"" + repr(group) + "\" belonging to BlockSlot \"" + self.name + "\". Should serialize.")
+            return True
+        else:
+            logger.debug("Found \"" + self.name + "\" in group \"" + repr(group) + "\" belonging to BlockSlot \"" + self.name + "\".")
+
+        # Just because the group was serialized doesn't mean that the relevant data was.
+        mygroup = group[self.name]
+        num = len(self.blockslot)
+        for index in range(num):
+            subname = self.subname.format(index)
+
+            # Check to se if each subname has been created as a group
+            if subname not in mygroup:
+                logger.debug("Missing \"" + subname + "\" from \"" + repr(mygroup) + "\" belonging to BlockSlot \"" + self.name + "\". Should serialize.")
+                return True
+            else:
+                logger.debug("Found \"" + subname + "\" from \"" + repr(mygroup) + "\" belonging to BlockSlot \"" + self.name + "\".")
+
+            subgroup = mygroup[subname]
+
+            nonZeroBlocks = self.blockslot[index].value
+            for blockIndex in xrange(len(nonZeroBlocks)):
+                blockName = 'block{:04d}'.format(blockIndex)
+
+                if blockName not in subgroup:
+                    logger.debug("Missing \"" + blockName + "\" from \"" + repr(subgroup) + "\". Should serialize.")
+                    return True
+                else:
+                    logger.debug("Found \"" + blockName + "\" from \"" + repr(subgroup) + "\" belonging to BlockSlot \"" + self.name + "\".")
+
+        logger.debug("Everything belonging to BlockSlot \"" + self.name + "\" appears to be in order. Should not serialize.")
+
+        return False
 
     @timeLogged(logger, logging.DEBUG)
     def _serialize(self, group, name, slot):
@@ -365,6 +421,9 @@ class SerialBlockSlot(SerialSlot):
             subgroup = mygroup.create_group(subname)
             nonZeroBlocks = self.blockslot[index].value
             for blockIndex, slicing in enumerate(nonZeroBlocks):
+                if not isinstance(slicing[0], slice):
+                    slicing = roiToSlice(*slicing)
+
                 block = self.slot[index][slicing].wait()
                 blockName = 'block{:04d}'.format(blockIndex)
 
@@ -391,7 +450,13 @@ class SerialBlockSlot(SerialSlot):
         num = len(mygroup)
         if len(self.inslot) < num:
             self.inslot.resize(num)
-        for index, t in enumerate(sorted(mygroup.items())):
+        # Annoyingly, some applets store their groups with names like, img0,img1,img2,..,img9,img10,img11
+        # which means that sorted() needs a special key to avoid sorting img10 before img2
+        # We have to find the index and sort according to its numerical value.
+        index_capture = re.compile(r'[^0-9]*(\d*).*')
+        def extract_index(s):
+            return int(index_capture.match(s).groups()[0])
+        for index, t in enumerate(sorted(mygroup.items(), key=lambda (k,v): extract_index(k))):
             groupName, labelGroup = t
             for blockData in labelGroup.values():
                 slicing = stringToSlicing(blockData.attrs['blockSlice'])
@@ -417,8 +482,16 @@ class SerialHdf5BlockSlot(SerialBlockSlot):
         num = len(mygroup)
         if len(self.inslot) < num:
             self.inslot.resize(num)
-        for index, t in enumerate(sorted(mygroup.items())):
+        
+        # Annoyingly, some applets store their groups with names like, img0,img1,img2,..,img9,img10,img11
+        # which means that sorted() needs a special key to avoid sorting img10 before img2
+        # We have to find the index and sort according to its numerical value.
+        index_capture = re.compile(r'[^0-9]*(\d*).*')
+        def extract_index(s):
+            return int(index_capture.match(s).groups()[0])
+        for index, t in enumerate(sorted(mygroup.items(), key=lambda (k,v): extract_index(k))):
             groupName, labelGroup = t
+            assert extract_index(groupName) == index, "subgroup extraction order should be numerical order!"
             for blockRoiString, blockDataset in labelGroup.items():
                 blockRoi = eval(blockRoiString)
                 roiShape = TinyVector(blockRoi[1]) - TinyVector(blockRoi[0])
@@ -427,7 +500,7 @@ class SerialHdf5BlockSlot(SerialBlockSlot):
                 self.inslot[index][roiToSlice( *blockRoi )] = blockDataset
 
 class SerialClassifierSlot(SerialSlot):
-    """For saving a random forest classifier."""
+    """For saving a classifier.  Here we assume the classifier is stored in the ."""
     def __init__(self, slot, cache, inslot=None, name=None,
                  default=None, depends=None, selfdepends=True):
         super(SerialClassifierSlot, self).__init__(
@@ -436,15 +509,19 @@ class SerialClassifierSlot(SerialSlot):
         self.cache = cache
         if self.name is None:
             self.name = slot.name
-        self._bind(cache.Output)
+        
+        # We want to bind to the INPUT, not Output:
+        # - if the input becomes dirty, we want to make sure the cache is deleted
+        # - if the input becomes dirty and then the cache is reloaded, we'll save the classifier.
+        self._bind(cache.Input)
 
     def _serialize(self, group, name, slot):
+        # Is the cache up-to-date?
+        # if not, we'll just return (don't recompute the classifier just to save it)
         if self.cache._dirty:
             return
 
-        cache_contents = self.cache._value
-        assert cache_contents.shape == (1,)
-        classifier = cache_contents[0]
+        classifier = self.cache.Output.value
 
         # Classifier can be None if there isn't any training data yet.
         if classifier is None:
@@ -486,10 +563,10 @@ class SerialClassifierSlot(SerialSlot):
 
 class SerialCountingSlot(SerialSlot):
     """For saving a random forest classifier."""
-    def __init__(self, slot, cache, inslot=None, name=None, subname=None,
+    def __init__(self, slot, cache, inslot=None, name=None,
                  default=None, depends=None, selfdepends=True):
         super(SerialCountingSlot, self).__init__(
-            slot, inslot, name, subname, default, depends, selfdepends
+            slot, inslot, name, "wrapper{:04d}", default, depends, selfdepends
         )
         self.cache = cache
         if self.name is None:
@@ -609,18 +686,40 @@ class SerialDictSlot(SerialSlot):
         except AssertionError as e:
             warnings.warn('setValue() failed. message: {}'.format(e.message))
 
-class SerialPickledSlot(SerialSlot):
+class SerialClassifierFactorySlot(SerialSlot):
     def __init__(self, slot, name=None):
-        super( SerialPickledSlot, self ).__init__( slot, name=name )
+        super( SerialClassifierFactorySlot, self ).__init__( slot, name=name )
+        self._failed_to_deserialize = False
+        assert slot.ready(), \
+            "ClassifierFactory slots must be given a default value "\
+            "(in case the classifier can't be deserialized in a future version of ilastik)."
     
     def _saveValue(self, group, name, value):
         pickled = pickle.dumps( value )
         group.create_dataset(name, data=pickled)
+        self._failed_to_deserialize = False
+
+    def shouldSerialize(self, group):
+        if self._failed_to_deserialize:
+            return True
+        else:
+            return super(SerialClassifierFactorySlot, self).shouldSerialize(group)
 
     def _getValue(self, dset, slot):
         pickled = dset[()]
-        value = pickle.loads(pickled)
-        slot.setValue( value )         
+        try:
+            # Attempt to unpickle
+            value = pickle.loads(pickled)
+            
+            # Verify that the VERSION of the classifier factory in the currently executing code
+            #  has not changed since this classifier was stored.
+            assert 'VERSION' in value.__dict__ and value.VERSION == type(value).VERSION
+        except:
+            self._failed_to_deserialize = True
+            warnings.warn("This project file uses an old or unsupported classifier storage format. "
+                          "The classifier will be stored in the new format when you save your project.")
+        else:
+            slot.setValue( value )
 
 ####################################
 # the base applet serializer class #
@@ -692,6 +791,20 @@ class AppletSerializer(object):
 
         """
         return any(list(ss.dirty for ss in self.serialSlots))
+
+    def shouldSerialize(self, hdf5File):
+        """Whether to serialize or not."""
+
+        if self.isDirty():
+            return True
+
+        # Need to check if slots should be serialized. First must verify that self.topGroupName is not an empty string
+        # (as this seems to happen sometimes).
+        if self.topGroupName:
+            topGroup = getOrCreateGroup(hdf5File, self.topGroupName)
+            return any([ss.shouldSerialize(topGroup) for ss in self.serialSlots])
+
+        return False
 
     @property
     def ignoreDirty(self):
@@ -806,6 +919,7 @@ class AppletSerializer(object):
         from volumina.utility import encode_from_qstring
         
         text = "The file at {} could not be found any more. Do you want to search for it at another directory?".format(path)
+        logger.info(text)
         c = QMessageBox.critical(None, "update external data",text, QMessageBox.Ok | QMessageBox.Cancel)
         
         if c == QMessageBox.Cancel:

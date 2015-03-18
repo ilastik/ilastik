@@ -1,11 +1,16 @@
 import httplib
 import socket
+import logging
 
 import pydvid
 from pydvid.gui.contents_browser import ContentsBrowser
 
 from volumina.widgets.subregionRoiWidget import SubregionRoiWidget
-from PyQt4.QtGui import QVBoxLayout, QGroupBox, QSizePolicy, QMessageBox
+from PyQt4.QtGui import QVBoxLayout, QGroupBox, QSizePolicy, QMessageBox, QDialogButtonBox
+
+from ilastik.utility import log_exception
+
+logger = logging.getLogger(__name__)
 
 class DvidDataSelectionBrowser(ContentsBrowser):
     """
@@ -40,12 +45,12 @@ class DvidDataSelectionBrowser(ContentsBrowser):
 
     def _update_display(self):
         super( DvidDataSelectionBrowser, self )._update_display()
-        hostname, dset_index, dataname, node_uuid = self.get_selection()
+        hostname, dset_uuid, dataname, node_uuid = self.get_selection()
 
-        enable_contents = self._datasets_info is not None and dataname != "" and node_uuid != ""
+        enable_contents = self._repos_info is not None and dataname != "" and node_uuid != ""
         self._roi_groupbox.setEnabled(enable_contents)
 
-        if dataname == "" or node_uuid == "":
+        if not dataname or not node_uuid:
             self._roi_widget.initWithExtents( "", (), (), () )
             return
         
@@ -59,6 +64,15 @@ class DvidDataSelectionBrowser(ContentsBrowser):
             error_msg = "Socket Error: {} (Error {})".format( ex.args[1], ex.args[0] )
         except httplib.HTTPException as ex:
             error_msg = "HTTP Error: {}".format( ex.args[0] )
+        except pydvid.errors.DvidHttpError as ex:
+            # DVID will return an error if the selected dataset 
+            #  isn't a 'voxels' dataset and thus has no voxels metadata
+            # In that case, show the error on the console, and don't let the user hit 'okay'.
+            log_exception( logger, level=logging.WARN )
+            self._buttonbox.button(QDialogButtonBox.Ok).setEnabled(False)
+            return
+        else:
+            self._buttonbox.button(QDialogButtonBox.Ok).setEnabled(True)
 
         if error_msg:
             QMessageBox.critical(self, "DVID Error", error_msg)
@@ -85,7 +99,9 @@ if __name__ == "__main__":
     parser.add_argument("--mode", choices=["select_existing", "specify_new"], default="select_existing")
     parser.add_argument("hostname", metavar="hostname:port")
     
-    DEBUG = True
+    sys.argv.append("emdata2:8000")
+
+    DEBUG = False
     if DEBUG and len(sys.argv) == 1:
         # default debug args
         parser.print_help()

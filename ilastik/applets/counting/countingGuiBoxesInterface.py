@@ -566,9 +566,7 @@ class CoupledRectangleElement(object):
 
         #Operator changes
         self._opsub.Input.connect(self._inputSlot)
-        self._opsub.Start.setValue(self.getStart())
-        self._opsub.Stop.setValue(self.getStop())
-#         self.opsum.Input.connect(self._opsub.Output)
+        self._opsub.Roi.setValue( [self.getStart(), self.getStop()] )
         self._inputSlot.notifyDirty(self._updateTextWhenChanges)
 
 
@@ -659,10 +657,8 @@ class CoupledRectangleElement(object):
             start.append(int(np.minimum(s1,s2)))
             stop.append(int(np.maximum(s1,s2)))
 
-        self._opsub.Stop.disconnect()
-        self._opsub.Start.disconnect()
-        self._opsub.Start.setValue(tuple(start))
-        self._opsub.Stop.setValue(tuple(stop))
+        self._opsub.Roi.disconnect()
+        self._opsub.Roi.setValue([ tuple(start), tuple(stop)] )
 
 
         return self._opsub.outputs["Output"][:].wait()

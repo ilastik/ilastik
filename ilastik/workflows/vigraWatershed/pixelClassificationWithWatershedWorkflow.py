@@ -24,6 +24,8 @@ from ilastik.applets.vigraWatershedViewer import VigraWatershedViewerApplet
 class PixelClassificationWithWatershedWorkflow(PixelClassificationWorkflow):
 
     workflowName = "Pixel Classification (with Watershed Preview)"
+    workflowDisplayName = "Pixel Classification (with Watershed Preview)"
+    
     
     def __init__( self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs ):
         super(PixelClassificationWithWatershedWorkflow, self).__init__( shell, headless, workflow_cmdline_args, project_creation_args, appendBatchOperators=False, *args, **kwargs )

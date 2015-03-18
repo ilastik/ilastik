@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 #Python
-from copy import copy
+from copy import copy, deepcopy
 import collections
 from collections import defaultdict
 
@@ -246,7 +246,7 @@ class OpRegionFeatures3d(Operator):
         
         logger.debug("Computing default features")
 
-        feature_names = self.Features([]).wait()
+        feature_names = deepcopy(self.Features([]).wait())
 
         # do global features
         logger.debug("computing global features")
@@ -405,12 +405,14 @@ class OpRegionFeatures(Operator):
 
         # Distribute the raw data
         self.opRawTimeSlicer = OpMultiArraySlicer2(parent=self)
+        self.opRawTimeSlicer.name = 'OpRegionFeatures.opRawTimeSlicer'
         self.opRawTimeSlicer.AxisFlag.setValue('t')
         self.opRawTimeSlicer.Input.connect(self.RawImage)
         assert self.opRawTimeSlicer.Slices.level == 1
 
         # Distribute the labels
         self.opLabelTimeSlicer = OpMultiArraySlicer2(parent=self)
+        self.opLabelTimeSlicer.name = 'OpRegionFeatures.opLabelTimeSlicer'
         self.opLabelTimeSlicer.AxisFlag.setValue('t')
         self.opLabelTimeSlicer.Input.connect(self.LabelImage)
         assert self.opLabelTimeSlicer.Slices.level == 1
@@ -424,6 +426,7 @@ class OpRegionFeatures(Operator):
         assert self.opRegionFeatures3dBlocks.Output.level == 1
 
         self.opTimeStacker = OpMultiArrayStacker(parent=self)
+        self.opTimeStacker.name = 'OpRegionFeatures.opTimeStacker'
         self.opTimeStacker.AxisFlag.setValue('t')
         assert self.opTimeStacker.Images.level == 1
         self.opTimeStacker.Images.connect(self.opRegionFeatures3dBlocks.Output)

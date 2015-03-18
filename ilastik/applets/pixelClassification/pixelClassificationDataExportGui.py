@@ -48,7 +48,7 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
         # This code depends on a specific order for the export slots.
         # If those change, update this function!
         selection_names = opLane.SelectionNames.value
-        assert selection_names == ['Probabilities', 'Simple Segmentation', 'Uncertainty'] # see comment above
+        assert selection_names == ['Probabilities', 'Simple Segmentation', 'Uncertainty', 'Features'] # see comment above
         
         selection = selection_names[ opLane.InputSelection.value ]
 
@@ -96,6 +96,19 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
                 exportedLayer.opacity = 0.5
                 exportedLayer.visible = True
                 exportedLayer.name = "Uncertainty - Exported"
+                layers.append(exportedLayer)
+        elif selection == "Features":
+            if opLane.ImageToExport.ready():
+                previewLayer = self.createStandardLayerFromSlot( opLane.ImageToExport )
+                previewLayer.visible = False
+                previewLayer.name = "Features - Preview"
+                previewLayer.set_normalize( 0, None )
+                layers.append(previewLayer)
+            if opLane.ImageOnDisk.ready():
+                exportedLayer = self.createStandardLayerFromSlot( opLane.ImageOnDisk )
+                exportedLayer.visible = True
+                exportedLayer.name = "Features - Exported"
+                exportedLayer.set_normalize( 0, None )
                 layers.append(exportedLayer)
 
         # If available, also show the raw data layer

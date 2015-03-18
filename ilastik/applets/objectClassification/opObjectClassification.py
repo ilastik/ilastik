@@ -36,7 +36,7 @@ from lazyflow.request import Request, RequestPool, RequestLock
 from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory, ParallelVigraRfLazyflowClassifier
 
 from ilastik.utility import OperatorSubView, MultiLaneOperatorABC, OpMultiLaneWrapper
-from ilastik.utility.mode import mode
+from ilastik.utility.exportingOperator import ExportingOperator
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
 
@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 
 MISSING_VALUE = 0
 
-class OpObjectClassification(Operator, MultiLaneOperatorABC):
+class OpObjectClassification(Operator, ExportingOperator,MultiLaneOperatorABC):
     """The top-level operator for object classification.
 
     Most functionality is handled by specialized operators such as
@@ -127,6 +127,8 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
     def __init__(self, *args, **kwargs):
         super(OpObjectClassification, self).__init__(*args, **kwargs)
+
+        self.export_progress_dialog = None
 
         # internal operators
         opkwargs = dict(parent=self)
@@ -230,6 +232,7 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
             """
             numClasses = len(self.LabelNames.value)
             self.opPredict.LabelsCount.setValue( numClasses )
+            self.opTrain.LabelsCount.setValue( numClasses )
             self.NumLabels.setValue( numClasses )
         self.LabelNames.notifyDirty( _updateNumClasses )
 
@@ -403,19 +406,24 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         labelslot.setDirty([(timeCoord, objIndex)])
 
         #Fill the cache of label bounding boxes, if it was empty
-        if len(self._labelBBoxes[imageIndex].keys())==0:
-            #it's the first label for this image
-            feats = self.ObjectFeatures[imageIndex]([timeCoord]).wait()
-
-            #the bboxes should be the same for all channels
-            mins = feats[timeCoord][default_features_key]["Coord<Minimum>"]
-            maxs = feats[timeCoord][default_features_key]["Coord<Maximum>"]
-            bboxes = dict()
-            bboxes["Coord<Minimum>"] = mins
-            bboxes["Coord<Maximum>"] = maxs
-            self._labelBBoxes[imageIndex][timeCoord]=bboxes
+        # FIXME: TRANSFER LABELS:
+        #        Apparently this code was required for triggerTransferLabels(),
+        #        But it has the unfortunate effect of synchronously computing the object features for the current image
+        #        as soon as the user has clicked her first label.  It causes quite a noticeable lag!
+#         if len(self._labelBBoxes[imageIndex].keys())==0:
+#             #it's the first label for this image
+#             feats = self.ObjectFeatures[imageIndex]([timeCoord]).wait()
+# 
+#             #the bboxes should be the same for all channels
+#             mins = feats[timeCoord][default_features_key]["Coord<Minimum>"]
+#             maxs = feats[timeCoord][default_features_key]["Coord<Maximum>"]
+#             bboxes = dict()
+#             bboxes["Coord<Minimum>"] = mins
+#             bboxes["Coord<Maximum>"] = maxs
+#             self._labelBBoxes[imageIndex][timeCoord]=bboxes
 
     def triggerTransferLabels(self, imageIndex):
+        # FIXME: This function no longer works, partly thanks to the code commented out above.  See "FIXME: TRANSFER LABELS"
         if not self._needLabelTransfer:
             return None
         if not self.SegmentationImages[imageIndex].ready():
@@ -550,6 +558,124 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
         new_labels[0]=0 #FIXME: hardcoded background value again
         return new_labels, old_labels_lost, new_labels_lost
 
+    def exportLabelInfo(self, file_path):
+        """
+        For all images with labels, export object bounding boxes and label classes as JSON.
+        """
+        import json
+        import collections
+        from functools import partial
+
+        logger.info("Exporting label information as json to: {}".format( file_path ))
+
+        json_data_all_lanes = collections.OrderedDict()
+        
+        for lane_index, (label_slot, object_feature_slot) in enumerate(zip(self.LabelInputs, self.ObjectFeatures)):
+            logger.info("Processing image #{}".format( lane_index ))
+            json_data_this_lane = collections.OrderedDict()
+            labels_timewise = label_slot.value
+            for t in sorted(labels_timewise.keys()):
+                labels = labels_timewise[t]
+                if not any(labels):
+                    continue
+
+                object_features_timewise = object_feature_slot([t]).wait()
+                object_features = object_features_timewise[t]
+
+                min_coords = object_features["Default features"]["Coord<Minimum>"]
+                max_coords = object_features["Default features"]["Coord<Maximum>"]
+
+                # Don't bother saving info for objects that aren't labeled
+                min_coords = min_coords[labels.nonzero()]
+                max_coords = max_coords[labels.nonzero()]
+                labels = labels[labels.nonzero()]
+
+                json_data_this_time = collections.OrderedDict()
+                bounding_boxes = collections.OrderedDict()
+                # Convert from numpy array to list (for json)
+                bounding_boxes["Coord<Minimum>"] = map( partial(map, int), min_coords )
+                bounding_boxes["Coord<Maximum>"] = map( partial(map, int), max_coords )
+                
+                json_data_this_time["bounding_boxes"] = bounding_boxes
+                json_data_this_time["labels"] = map(int, labels)
+                
+                json_data_this_lane[int(t)] = json_data_this_time
+            json_data_all_lanes[lane_index] = json_data_this_lane
+
+        with open(file_path, 'w') as f:
+            json.dump(json_data_all_lanes, f)
+        logger.info("Label export FINISHED.")
+
+    def importLabelInfo(self, file_path):
+        """
+        Read labels and bounding boxes from a JSON file.  
+        For all image lanes in the JSON file, replace all labels in that image.  
+        For image lanes NOT listed in the JSON file, keep the existing labels.
+        """
+        import json
+        logger.info("Reading label information from json: {}".format( file_path ))
+        
+        with open(file_path, 'r') as f:
+            json_data_all_lanes = json.load(f)
+        
+        max_label = 0
+        
+        new_labels_all_lanes = {}
+        for lane_index_str in sorted(json_data_all_lanes.keys(), key=int):
+            lane_index = int(lane_index_str)
+            logger.info("Processing image #{}".format( lane_index ))
+
+            json_data_this_lane = json_data_all_lanes[lane_index_str]
+            
+            new_labels_this_lane = {}
+            for time_str in sorted(json_data_this_lane.keys(), key=int):
+                time = int(time_str)
+                
+                old_features_timewise = self.ObjectFeatures[lane_index]([time]).wait()
+                old_features = old_features_timewise[time]
+                
+                current_bboxes = {}
+                current_bboxes["Coord<Minimum>"] = old_features["Default features"]["Coord<Minimum>"]
+                current_bboxes["Coord<Maximum>"] = old_features["Default features"]["Coord<Maximum>"]
+
+                json_data_this_time = json_data_this_lane[time_str]
+                saved_labels = numpy.array( json_data_this_time["labels"] )
+                max_label = max( max_label, saved_labels.max() )
+
+                saved_bboxes = {}
+                saved_bboxes["Coord<Minimum>"] = numpy.array( json_data_this_time["bounding_boxes"]["Coord<Minimum>"] )
+                saved_bboxes["Coord<Maximum>"] = numpy.array( json_data_this_time["bounding_boxes"]["Coord<Maximum>"] )
+                
+                # Calculate new labels
+                newlabels, oldlost, newlost = OpObjectClassification.transferLabels(saved_labels, saved_bboxes, current_bboxes, None)
+                new_labels_this_lane[time] = newlabels
+
+                logger.info("Lane {}, time {} new labels: {}".format( lane_index, time, list(newlabels) ))
+                logger.info("Lane {}, time {} lost OLD: {}".format( lane_index, time, oldlost ))
+                logger.info("Lane {}, time {} lost NEW: {}".format( lane_index, time, newlost ))
+                
+            # Apply new labels
+            new_labels_all_lanes[lane_index] = new_labels_this_lane
+
+        # If we have a new max label, add label classes as needed.
+        label_names = self.LabelNames.value
+        if len(self.LabelNames.value) < max_label:
+            new_label_names = list(label_names)
+            for class_index in range( len(label_names)+1, int(max_label)+1 ):
+                new_label_names.append( "Label {}".format( class_index ) )
+            self.LabelNames.setValue( new_label_names )
+        
+        for lane_index, new_labels_timewise in sorted(new_labels_all_lanes.items()):
+            for t in range( self.SegmentationImages[lane_index].meta.getTaggedShape()['t'] ):
+                if t not in new_labels_timewise:
+                    # No replacement labels. Copy old labels.
+                    new_labels_timewise[t] = self.LabelInputs[lane_index].value[t]
+            
+            logger.info("Applying new labels to lane {}".format( lane_index ))
+            self.LabelInputs[lane_index].setValue(new_labels_timewise)
+        
+        logger.info("Label import FINISHED")
+
 
     def createExportTable(self, lane, roi):
         numLanes = len(self.SegmentationImages)
@@ -581,6 +707,49 @@ class OpObjectClassification(Operator, MultiLaneOperatorABC):
 
     def getLane(self, laneIndex):
         return OperatorSubView(self, laneIndex)
+
+    def save_export_progress_dialog(self, dialog):
+        """
+        Implements ExportOperator.save_export_progress_dialog
+        Without this the progress dialog would be hidden after the export
+        :param dialog: the ProgressDialog to save
+        """
+        self.export_progress_dialog = dialog
+
+    def do_export(self, settings, selected_features, progress_slot):
+        """
+        Implements ExportOperator.do_export(settings, selected_features, progress_slot
+        Most likely called from ExportOperator.export_object_data
+        :param settings: the settings for the exporter, see
+        :param selected_features:
+        :param progress_slot:
+        :return:
+        """
+        from ilastik.utility.exportFile import objects_per_frame, ExportFile, ilastik_ids, Mode, Default
+
+        label_image = self.SegmentationImages[0]
+        obj_count = list(objects_per_frame(label_image))
+        ids = ilastik_ids(obj_count)
+
+        export_file = ExportFile(settings["file path"])
+        export_file.ExportProgress.subscribe(progress_slot)
+        export_file.InsertionProgress.subscribe(progress_slot)
+
+        export_file.add_columns("table", range(sum(obj_count)), Mode.List, Default.KnimeId)
+        export_file.add_columns("table", list(ids), Mode.List, Default.IlastikId)
+        export_file.add_columns("table", self.ObjectFeatures[0], Mode.IlastikFeatureTable,
+                                {"selection": selected_features})
+
+        if settings["file type"] == "h5":
+            export_file.add_rois(Default.LabelRoiPath, label_image, "table", settings["margin"], "labeling")
+            if settings["include raw"]:
+                export_file.add_image(Default.RawPath, self.RawImages[0])
+            else:
+                export_file.add_rois(Default.RawRoiPath, self.RawImages[0], "table", settings["margin"])
+        export_file.write_all(settings["file type"], settings["compression"])
+
+        export_file.ExportProgress.unsubscribe(progress_slot)
+        export_file.InsertionProgress.unsubscribe(progress_slot)
 
 
 def _atleast_nd(a, ndim):
@@ -675,6 +844,7 @@ class OpObjectTrain(Operator):
     category = "Learning"
 
     Labels = InputSlot(level=1, stype=Opaque, rtype=List)
+    LabelsCount = InputSlot(stype='int')
     Features = InputSlot(level=1, rtype=List, stype=Opaque)
     SelectedFeatures = InputSlot(rtype=List, stype=Opaque)
     FixClassifier = InputSlot(stype="bool")
@@ -702,6 +872,11 @@ class OpObjectTrain(Operator):
         featList = []
         all_col_names = []
         labelsList = []
+        # get the number of ALL labels
+        numLabels=0
+        if self.LabelsCount.ready():
+            numLabels = self.LabelsCount[:].wait()
+            numLabels = int(numLabels[0])
 
         # will be available at slot self.Warnings
         all_bad_objects = defaultdict(lambda: defaultdict(list))
@@ -712,14 +887,13 @@ class OpObjectTrain(Operator):
             # no features - no predictions
             self.Classifier.setValue(None)
             return
-        
-        for i in range(len(self.Labels)):
-            # this loop is by image, not time! 
 
+        lock = RequestLock()
+        def fetch_features(lane_index):
             # TODO: we should be able to use self.Labels[i].value,
             # but the current implementation of Slot.value() does not
             # do the right thing.
-            labels_image = self.Labels[i]([]).wait()
+            labels_image = self.Labels[lane_index]([]).wait()
             labels_image_filtered = {}
             nztimes = []
             for timestep, labels_time in labels_image.iteritems():
@@ -731,28 +905,35 @@ class OpObjectTrain(Operator):
                     labels_image_filtered[timestep] = labels_time
 
             if len(nztimes)==0:
-                continue
+                return
             # compute the features if there are nonzero labels in this image
             # and only for the time steps, which have labels
-            feats = self.Features[i](nztimes).wait()
+            feats = self.Features[lane_index](nztimes).wait()
 
             featstmp, row_names, col_names, labelstmp = make_feature_array(feats, selected, labels_image_filtered)
             if labelstmp.size == 0 or featstmp.size == 0:
-                continue
+                return
 
             rows, cols = replace_missing(featstmp)
 
-            featList.append(featstmp)
-            all_col_names.append(tuple(col_names))
-            labelsList.append(labelstmp)
+            # Critical section: Adding to shared lists.
+            with lock:
+                featList.append(featstmp)
+                all_col_names.append(tuple(col_names))
+                labelsList.append(labelstmp)
+    
+                for idx in rows:
+                    t, obj = row_names[idx]
+                    all_bad_objects[lane_index][t].append(obj)
+    
+                for c in cols:
+                    all_bad_feats.add(col_names[c])
 
-            for idx in rows:
-                t, obj = row_names[idx]
-                all_bad_objects[i][t].append(obj)
-
-            for c in cols:
-                all_bad_feats.add(col_names[c])
-
+        pool = RequestPool()
+        for i in range(len(self.Labels)):
+            # this loop is by image, not time! 
+            pool.add( Request( partial(fetch_features, i) ) )
+        pool.wait()
 
         if len(labelsList)==0:
             #no labels, return here
@@ -773,7 +954,8 @@ class OpObjectTrain(Operator):
         if featMatrix.size == 0 or labelsMatrix.size == 0:
             result[:] = None
             return
-        classifier_factory = ParallelVigraRfLazyflowClassifierFactory( self.ForestCount.value, self._tree_count )
+        allLabels=map(long, range(1,numLabels+1))
+        classifier_factory = ParallelVigraRfLazyflowClassifierFactory( self._tree_count, self.ForestCount.value, labels=allLabels )
         classifier = classifier_factory.create_and_train( featMatrix.astype(numpy.float32), numpy.asarray(labelsMatrix, dtype=numpy.uint32) )
         avg_oob = numpy.mean(classifier.oobs)
         logger.info("training finished, average out-of-bag error: {}".format(avg_oob))
@@ -877,6 +1059,13 @@ class OpObjectPredict(Operator):
 
         selected = self.SelectedFeatures([]).wait()
 
+        def get_num_objects(extracted_features):
+            n = 0
+            for group, feature_dict in extracted_features.items():
+                for feature_name, feature_matrix in feature_dict.items():
+                    n = max(n, len(feature_matrix))
+            return n
+
         # FIXME: self.prob_cache is shared, so we need to block.
         # However, this makes prediction single-threaded.
         with self.lock:
@@ -884,33 +1073,45 @@ class OpObjectPredict(Operator):
                 if t in self.prob_cache:
                     continue
 
+                # Initialize with a single value for the 'background object '
+                prob_predictions[t] = numpy.zeros( (1, len(self.ProbabilityChannels)), dtype=numpy.float32 )
                 tmpfeats = self.Features([t]).wait()
+                num_objects = get_num_objects(tmpfeats[t])
+
+                # Apparently self.Features always returns a background object, 
+                #  so we expect at least 1 object in the list, even if there's nothing to predict.
+                assert num_objects > 0
+                if num_objects == 1:
+                    continue
+                    
                 ftmatrix, _, col_names = make_feature_array(tmpfeats, selected)
                 rows, cols = replace_missing(ftmatrix)
                 self.bad_objects[t] = numpy.zeros((ftmatrix.shape[0],))
                 self.bad_objects[t][rows] = 1
                 feats[t] = ftmatrix
-                prob_predictions[t] = 0
 
-            def predict_forest(_t):
-                # Note: We can't use RandomForest.predictLabels() here because we're training in parallel,
-                #        and we have to average the PROBABILITIES from all forests.
-                #       Averaging the label predictions from each forest is NOT equivalent.
-                #       For details please see wikipedia:
-                #       http://en.wikipedia.org/wiki/Electoral_College_%28United_States%29#Irrelevancy_of_national_popular_vote
-                #       (^-^)
-                prob_predictions[_t] = classifier.predict_probabilities(feats[_t].astype(numpy.float32))
-
-            # predict the data with all the forests in parallel
-            pool = RequestPool()
-            for t in times:
-                if t in self.prob_cache:
-                    continue
-                req = Request( partial(predict_forest, t) )
-                pool.add(req)
-
-            pool.wait()
-            pool.clean()
+            # Are there any objects to predict?
+            if len(feats) > 0:
+                def predict_forest(_t):
+                    # Note: We can't use RandomForest.predictLabels() here because we're training in parallel,
+                    #        and we have to average the PROBABILITIES from all forests.
+                    #       Averaging the label predictions from each forest is NOT equivalent.
+                    #       For details please see wikipedia:
+                    #       http://en.wikipedia.org/wiki/Electoral_College_%28United_States%29#Irrelevancy_of_national_popular_vote
+                    #       (^-^)
+                    prob_predictions[_t] = classifier.predict_probabilities(feats[_t].astype(numpy.float32))
+    
+                # predict the data with all the forests in parallel
+                pool = RequestPool()
+                for t in times:
+                    if t in self.prob_cache:
+                        continue
+                    logger.debug("Predicting object probabilities for time step: {}".format( t ))
+                    req = Request( partial(predict_forest, t) )
+                    pool.add(req)
+    
+                pool.wait()
+                pool.clean()
 
             for t in times:
                 if t not in self.prob_cache:

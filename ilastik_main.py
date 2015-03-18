@@ -1,6 +1,7 @@
 import sys
 import os
 
+import ilastik.config
 from ilastik.config import cfg as ilastik_config
 
 import logging
@@ -17,8 +18,12 @@ parser.add_argument('--new_project', help='Create a new project with the specifi
 parser.add_argument('--workflow', help='When used with --new_project, specifies the workflow to use.', required=False)
 
 parser.add_argument('--clean_paths', help='Remove ilastik-unrelated directories from PATH and PYTHONPATH.', action='store_true', default=False)
+parser.add_argument('--redirect_output', help='A filepath to redirect stdout to', required=False)
 
 parser.add_argument('--debug', help='Start ilastik in debug mode.', action='store_true', default=False)
+parser.add_argument('--logfile', help='A filepath to dump all log messages to.', required=False)
+parser.add_argument('--process_name', help='A process name (used for logging purposes).', required=False)
+parser.add_argument('--configfile', help='A custom path to a user config file for expert ilastik settings.', required=False)
 parser.add_argument('--fullscreen', help='Show Window in fullscreen mode.', action='store_true', default=False)
 
 parser.add_argument('--start_recording', help='Open the recorder controls and immediately start recording', action='store_true', default=False)
@@ -31,15 +36,23 @@ def main( parsed_args, workflow_cmdline_args=[] ):
     this_path = os.path.dirname(__file__)
     ilastik_dir = os.path.abspath(os.path.join(this_path, "..%s.." % os.path.sep))
     
-    _clean_paths( parsed_args, ilastik_dir )
-    _update_debug_mode( parsed_args )
+    # If necessary, redirect stdout BEFORE logging is initialized
+    _redirect_output( parsed_args )
     _init_logging( parsed_args ) # Initialize logging before anything else
+
+    _init_configfile( parsed_args )
+    
+    _update_debug_mode( parsed_args )
     _init_threading_monkeypatch()
     _validate_arg_compatibility( parsed_args )
 
     # Extra initialization functions.
     # Called during app startup.
     init_funcs = []
+    lazyflow_config_fn = _prepare_lazyflow_config( parsed_args )
+    if lazyflow_config_fn:
+        init_funcs.append( lazyflow_config_fn )    
+
     load_fn = _prepare_auto_open_project( parsed_args )
     if load_fn:
         init_funcs.append( load_fn )    
@@ -73,30 +86,29 @@ def main( parsed_args, workflow_cmdline_args=[] ):
         from ilastik.shell.gui.startShellGui import startShellGui
         sys.exit(startShellGui(workflow_cmdline_args, eventcapture_mode, playback_args, *init_funcs))
 
-def _clean_paths( parsed_args, ilastik_dir ):
-    if parsed_args.clean_paths:
-        # remove undesired paths from PYTHONPATH and add ilastik's submodules
-        pythonpath = [k for k in sys.path if k.startswith(ilastik_dir)]
-        for k in ['/ilastik/lazyflow', '/ilastik/volumina', '/ilastik/ilastik']:
-            pythonpath.append(ilastik_dir + k.replace('/', os.path.sep))
-        sys.path = pythonpath
+def _init_configfile( parsed_args ):
+    # If the user provided a custom config path to use instead of the default .ilastikrc,
+    # Re-initialize the config module for it.
+    if parsed_args.configfile:
+        ilastik.config.init_ilastik_config( parsed_args.configfile )
+
+stdout_redirect_file = None
+old_stdout = None
+old_stderr = None
+def _redirect_output( parsed_args ):
+    if parsed_args.redirect_output:        
+        global old_stdout, old_stderr
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
         
-        if sys.platform.startswith('win'):
-            # empty PATH except for gurobi and CPLEX and add ilastik's installation paths
-            path = [k for k in os.environ.get('PATH').split(os.pathsep) \
-                       if k.count('CPLEX') > 0 or k.count('gurobi') > 0 or \
-                          k.count('windows\\system32') > 0]
-            for k in ['/Qt4/bin', '/python', '/bin']:
-                path.append(ilastik_dir + k.replace('/', os.path.sep))
-            os.environ['PATH'] = os.pathsep.join(reversed(path))
-        else:
-            # clean LD_LIBRARY_PATH and add ilastik's installation paths
-            # (gurobi and CPLEX are supposed to be located there as well)
-            path = [k for k in os.environ['LD_LIBRARY_PATH'] if k.startswith(ilastik_dir)]
-            
-            for k in ['/lib/vtk-5.10', '/lib']:
-                path.append(ilastik_dir + k.replace('/', os.path.sep))
-            os.environ['LD_LIBRARY_PATH'] = os.pathsep.join(reversed(path))
+        global stdout_redirect_file
+        stdout_redirect_file = open( parsed_args.redirect_output, 'a' )
+        sys.stdout = stdout_redirect_file
+        sys.stderr = stdout_redirect_file
+        
+        # Close the file when we exit...
+        import atexit
+        atexit.register( stdout_redirect_file.close )
 
 def _update_debug_mode( parsed_args ):
     # Force debug mode if any of these flags are active.
@@ -110,12 +122,22 @@ def _update_debug_mode( parsed_args ):
         parsed_args.debug = True
 
 def _init_logging( parsed_args ):
-    from ilastik.ilastik_logging import default_config, startUpdateInterval
+    from ilastik.ilastik_logging import default_config, startUpdateInterval, DEFAULT_LOGFILE_PATH
+
+    logfile_path = parsed_args.logfile or DEFAULT_LOGFILE_PATH
+    process_name = ""
+    if parsed_args.process_name:
+        process_name = parsed_args.process_name + " "
+
     if ilastik_config.getboolean('ilastik', 'debug') or parsed_args.headless:
-        default_config.init(output_mode=default_config.OutputMode.BOTH)
+        default_config.init(process_name, default_config.OutputMode.BOTH, logfile_path)
     else:
-        default_config.init(output_mode=default_config.OutputMode.LOGFILE_WITH_CONSOLE_ERRORS)
+        default_config.init(process_name, default_config.OutputMode.LOGFILE_WITH_CONSOLE_ERRORS, logfile_path)
         startUpdateInterval(10) # 10 second periodic refresh
+    
+    if parsed_args.redirect_output:
+        logger.info( "All console output is being redirected to: {}"
+                     .format( parsed_args.redirect_output ) )
 
 def _init_threading_monkeypatch():
     # Monkey-patch thread starts if this special logger is active
@@ -149,9 +171,49 @@ def _validate_arg_compatibility( parsed_args ):
         sys.stderr.write("Some of the command-line options you provided are not supported in headless mode.  Exiting.")
         sys.exit(1)
 
+def _prepare_lazyflow_config( parsed_args ):
+    # Check environment variable settings.
+    n_threads = os.getenv("LAZYFLOW_THREADS", None)
+    total_ram_mb = os.getenv("LAZYFLOW_TOTAL_RAM_MB", None)
+
+    # Convert str -> int
+    if n_threads is not None:
+        n_threads = int(n_threads)
+    total_ram_mb = total_ram_mb and int(total_ram_mb)
+
+    # If not in env, check config file.
+    if n_threads is None:
+        n_threads = ilastik_config.getint('lazyflow', 'threads')
+        if n_threads == -1:
+            n_threads = None
+    total_ram_mb = total_ram_mb or ilastik_config.getint('lazyflow', 'total_ram_mb')
+    
+    # Note that n_threads == 0 is valid and useful for debugging.
+    if (n_threads is not None) or total_ram_mb:
+        def _configure_lazyflow_settings(shell):
+            import lazyflow
+            import lazyflow.request
+            if n_threads is not None:
+                logger.info("Resetting lazyflow thread pool with {} threads.".format( n_threads ))
+                lazyflow.request.Request.reset_thread_pool(n_threads)
+            if total_ram_mb > 0:
+                if total_ram_mb < 500:
+                    raise Exception("In your current configuration, RAM is limited to {} MB."
+                                    "  Remember to specify RAM in MB, not GB."
+                                    .format( total_ram_mb ))
+                logger.info("Configuring lazyflow RAM limit to {} MB".format( total_ram_mb ))
+                lazyflow.AVAILABLE_RAM_MB = total_ram_mb
+        return _configure_lazyflow_settings
+    return None
+
 def _prepare_auto_open_project( parsed_args ):
     if parsed_args.project is None:
         return None
+
+    # Make sure project file exists.
+    if not os.path.exists(parsed_args.project):
+        raise RuntimeError("Project file '" + parsed_args.project + "' does not exist.")
+
     parsed_args.project = os.path.expanduser(parsed_args.project)
     #convert path to convenient format
     from lazyflow.utility.pathHelpers import PathComponents

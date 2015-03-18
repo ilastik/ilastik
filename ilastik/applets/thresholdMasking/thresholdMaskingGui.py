@@ -18,21 +18,17 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtGui import *
-from PyQt4 import uic
-
 import os
 
-from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+from PyQt4 import uic
+from PyQt4.QtGui import QVBoxLayout, QSpacerItem, QSizePolicy
+
 from volumina.widgets.thresholdingWidget import ThresholdingWidget
-
-import logging
-logger = logging.getLogger(__name__)
-
-from ilastik.utility import bind
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 class ThresholdMaskingGui(LayerViewerGui):
     """
+    Simple example of an applet tha  
     """
     
     ###########################################
@@ -40,7 +36,7 @@ class ThresholdMaskingGui(LayerViewerGui):
     ###########################################
 
     def appletDrawer(self):
-        return self.getAppletDrawerUi()
+        return self._drawer
 
     # (Other methods already provided by our base class)
 
@@ -57,38 +53,42 @@ class ThresholdMaskingGui(LayerViewerGui):
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
-        
+
+        # Init threshold widget        
+        self.thresholdWidget = ThresholdingWidget(self)
+        self.thresholdWidget.valueChanged.connect( self.apply_gui_settings_to_operator )
+
+        # Add widget to a layout
         layout = QVBoxLayout()
         layout.setSpacing(0)
+        layout.addWidget( self.thresholdWidget )
+        layout.addSpacerItem( QSpacerItem(0,0,vPolicy=QSizePolicy.Expanding) )
+
+        # Apply layout to the drawer
         self._drawer.setLayout( layout )
 
-        thresholdWidget = ThresholdingWidget(self)
-        thresholdWidget.valueChanged.connect( self.handleThresholdGuiValuesChanged )
-        self._drawer.layout().addWidget( thresholdWidget )
-        self._drawer.layout().addSpacerItem( QSpacerItem(0,0,vPolicy=QSizePolicy.Expanding) )
-        
-        def updateDrawerFromOperator():
-            minValue, maxValue = (0,255)
+        # Initialize the gui with the operator's current values
+        self.apply_operator_settings_to_gui()
 
-            if self.topLevelOperatorView.MinValue.ready():
-                minValue = self.topLevelOperatorView.MinValue.value
-            if self.topLevelOperatorView.MaxValue.ready():
-                maxValue = self.topLevelOperatorView.MaxValue.value
+    def apply_operator_settings_to_gui(self):
+        minValue, maxValue = (0,255)
 
-            thresholdWidget.setValue(minValue, maxValue)
-            
-        self.topLevelOperatorView.MinValue.notifyDirty( bind(updateDrawerFromOperator) )
-        self.topLevelOperatorView.MaxValue.notifyDirty( bind(updateDrawerFromOperator) )
-        updateDrawerFromOperator()
-        
-    def handleThresholdGuiValuesChanged(self, minVal, maxVal):
+        if self.topLevelOperatorView.MinValue.ready():
+            minValue = self.topLevelOperatorView.MinValue.value
+        if self.topLevelOperatorView.MaxValue.ready():
+            maxValue = self.topLevelOperatorView.MaxValue.value
+
+        self.thresholdWidget.setValue(minValue, maxValue)
+
+    def apply_gui_settings_to_operator(self, minVal, maxVal):
         self.topLevelOperatorView.MinValue.setValue(minVal)
         self.topLevelOperatorView.MaxValue.setValue(maxVal)
     
-    def getAppletDrawerUi(self):
-        return self._drawer
-    
     def setupLayers(self):
+        """
+        Overridden from LayerViewerGui.
+        Create a list of all layer objects that should be displayed.
+        """
         layers = []
 
         # Show the thresholded data
@@ -119,17 +119,3 @@ class ThresholdMaskingGui(LayerViewerGui):
             layers.append(inputLayer)
 
         return layers
-
-
-
-
-
-
-
-
-
-
-
-
-
-

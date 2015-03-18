@@ -31,8 +31,8 @@ class OpThresholdMasking(Operator):
     category = "Pointwise"
     
     InputImage = InputSlot()
-    MinValue = InputSlot(stype='int')
-    MaxValue = InputSlot(stype='int')
+    MinValue = InputSlot()
+    MaxValue = InputSlot()
     
     Output = OutputSlot()
     InvertedOutput = OutputSlot()
