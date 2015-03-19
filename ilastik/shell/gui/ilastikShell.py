@@ -46,7 +46,7 @@ from ilastik.widgets.ipcserver.zmqPubSubInfoWidget import ZMQPublisherInfoWidget
 from lazyflow.roi import TinyVector
 from lazyflow.graph import Operator
 import lazyflow.tools.schematic
-from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
+from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
 from lazyflow.utility import timeLogged
 
 # volumina
@@ -163,7 +163,7 @@ class ProgressDisplayManager(QObject):
         self.memoryWidget.showDialogButton.clicked.connect(self.parent().showMemUsageDialog)
         self.statusBar.addPermanentWidget(self.memoryWidget)
 
-        mgr = ArrayCacheMemoryMgr.instance
+        mgr = CacheMemoryManager()
 
         def printIt(msg):
             self.memoryWidget.setMemoryBytes(msg)

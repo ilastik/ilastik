@@ -26,8 +26,8 @@ from PyQt4.QtCore import QTimer, Qt
 from PyQt4.QtGui import QDialog, QVBoxLayout, QTreeWidget, QTreeWidgetItem
 
 #lazyflow
-from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr
-from lazyflow.operators.arrayCacheMemoryMgr import MemInfoNode
+from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
+from lazyflow.operators.opCache import MemInfoNode
 
 import warnings
 
@@ -36,87 +36,38 @@ import warnings
 #===------------------------------------------------------------------------===
 
 
-class MemUsageDialog(QDialog):
-    def __init__(self, parent=None, update=True):
-        QDialog.__init__(self, parent=parent)
-        layout = QVBoxLayout()
-        self.tree = QTreeWidget()
-        layout.addWidget(self.tree)
-        self.setLayout(layout)
+class TreeNode(QTreeWidgetItem):
+    _updated = False
+    _children = {}
+    _id = None
 
-        self.memMgr = ArrayCacheMemoryMgr.instance
+    def handleChildrenReports(self, reports, root=None):
+        if root is None:
+            root = self
+        for report in reports:
+            child = self._childFromReport(report, root)
+            child._setData(report)
+            child.handleChildrenReports(report.children)
+            child._updated = True
+        for child in [self.child(i) for i in range(self.childCount())]:
+            if not child._updated:
+                root.removeChild(child)
+            child._updated = False
 
-        self.timer = QTimer(self)
-        if update:
-            self.timer.timeout.connect(self._updateReport)
-            self._updateReport()
+    def _childFromReport(self, report, root):
+        if report.id in self._children:
+            return self._children[report.id]
+        else:
+            child = TreeNode()
+            root.addChild(child)
+            child._id = report.id
+            self._children[report.id] = child
+            return child
 
-        # tree setup code
-        self.tree.setHeaderLabels(
-            ["cache", "memory", "roi", "dtype", "type", "id"])
-        self._idIndex = self.tree.columnCount() - 1
-        self.tree.setColumnHidden(self._idIndex, True)
-        self.tree.setSortingEnabled(True)
-        self.tree.clear()
-
-    def _updateReport(self):
-        # we keep track of dirty reports so we just have to update the tree
-        # instead of reconstructing it
-        reports = []
-        for c in self.memMgr.namedCaches:
-            r = MemInfoNode()
-            try:
-                c.generateReport(r)
-            except NotImplementedError:
-                warnings.warn('cache operator {} does'
-                              'not implement generateReport()'.format(c))
-            else:
-                reports.append(r)
-        self._updateBranch(self.tree.invisibleRootItem(), reports)
-
-    def _updateBranch(self, branch, reports):
-        # use dict for fast access
-        d = dict((r.id, r) for r in reports)
-
-        # check what can be reused
-        toRemove = []
-        toUpdate = set()
-        for i in range(branch.childCount()):
-            child = branch.child(i)
-            childId = child.data(self._idIndex, Qt.DisplayRole)
-            if childId not in d:
-                toRemove.append(child)
-            else:
-                toUpdate.add(i)
-
-        # update existent children
-        for i in toUpdate:
-            child = branch.child(i)
-            childId = child.data(self._idIndex)
-            r = d[childId]
-            del d[childId]
-            self._updateBranch(child, r.children)
-            self._updateNode(child, r)
-
-        # remove children if not in reports
-        for child in reversed(toRemove):
-            # delete from back to front to avoid index trouble
-            branch.removeChild(child)
-
-        # handle new reports (all remaining entries in d)
-        for childId in d:
-            self._addNode(branch, d[childId])
-
-    def _updateNode(self, node, report):
+    def _setData(self, report):
         l = self._makeTreeWidgetItemData(report)
         for i, v in enumerate(l):
-            node.setData(i, Qt.DisplayRole, v)
-
-    def _addNode(self, branch, report):
-        node = QTreeWidgetItem(branch)
-        self._updateNode(node, report)
-        for child in report.children:
-            self._addNode(node, child)
+            self.setData(i, Qt.DisplayRole, v)
 
     def _makeTreeWidgetItemData(self, report):
         l = []
@@ -145,8 +96,54 @@ class MemUsageDialog(QDialog):
         t = t[len("<type '")+1:-len("'>")]
         t = t.split(".")[-1]
         l.append(t)
+        l.append(report.info)
         l.append(report.id)
         return l
+
+    @staticmethod
+    def constructFrom(other):
+        node = TreeNode()
+        node.__dict__.update(other.__dict__)
+        return node
+
+
+class MemUsageDialog(QDialog):
+    def __init__(self, parent=None, update=True):
+        QDialog.__init__(self, parent=parent)
+        layout = QVBoxLayout()
+        self.tree = QTreeWidget()
+        layout.addWidget(self.tree)
+        self.setLayout(layout)
+
+        self._mgr = CacheMemoryManager()
+
+        self._tracked_caches = {}
+
+        # tree setup code
+        self.tree.setHeaderLabels(
+            ["cache", "memory", "roi", "dtype", "type", "info", "id"])
+        self._idIndex = self.tree.columnCount() - 1
+        self.tree.setColumnHidden(self._idIndex, True)
+        self.tree.setSortingEnabled(True)
+        self.tree.clear()
+
+        self._root = TreeNode()
+
+        # refresh every x seconds (see showEvent())
+        self.timer = QTimer(self)
+        if update:
+            self.timer.timeout.connect(self._updateReport)
+
+    def _updateReport(self):
+        # we keep track of dirty reports so we just have to update the tree
+        # instead of reconstructing it
+        reports = []
+        for c in self._mgr.getFirstClassCaches():
+            r = MemInfoNode()
+            c.generateReport(r)
+            reports.append(r)
+        self._root.handleChildrenReports(
+            reports, root=self.tree.invisibleRootItem())
 
     def hideEvent(self, event):
         self.timer.stop()
