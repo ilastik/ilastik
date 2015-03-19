@@ -1,5 +1,5 @@
 import numpy
-from lazyflow.roi import determineBlockShape, getIntersection, enlargeRoiForHalo, TinyVector, nonzero_bounding_box
+from lazyflow.roi import determineBlockShape, getIntersection, enlargeRoiForHalo, TinyVector, nonzero_bounding_box, containing_rois
 
 class Test_determineBlockShape(object):
     
@@ -101,7 +101,30 @@ class test_nonzero_bounding_box(object):
         bb_roi = nonzero_bounding_box(data)
         assert isinstance(bb_roi, numpy.ndarray)
         assert (bb_roi == [[0,0,0], [0,0,0]]).all()
+
+class test_containing_rois(object):
+    
+    def testBasic(self):
+        rois = [([0,0,0], [10,10,10]),
+                ([5,3,2], [11,12,13]),
+                ([4,6,4], [5,9,9])]
         
+        result = containing_rois( rois, ( [4,7,6], [5,8,8] ) )
+        assert ( result == [([0,0,0], [10,10,10]),
+                            ([4,6,4], [5,9,9])] ).all()
+
+    def testEmptyResult(self):
+        rois = [([0,0,0], [10,10,10]),
+                ([5,3,2], [11,12,13]),
+                ([4,6,4], [5,9,9])]
+        
+        result = containing_rois( rois, ( [100,100,100], [200,200,200] ) )
+        assert result.shape == (0, 2, 3)
+
+    def testEmptyInput(self):
+        rois = []
+        result = containing_rois( rois, ( [100,100,100], [200,200,200] ) )
+        assert result.shape == (0,)
 
 if __name__ == "__main__":
     # Run nose

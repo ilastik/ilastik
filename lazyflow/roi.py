@@ -344,6 +344,32 @@ def nonzero_bounding_box(data):
         block_bounding_box_roi[1,:] += 1
     return block_bounding_box_roi
 
+def containing_rois(rois, inner_roi):
+    """
+    Given a list of rois and an "inner roi" which may or may not be fully 
+    contained within some of the rois from the list,
+    return the subset of rois that entirely envelop the given inner roi.
+    
+    Example:
+        >>> rois = [([0,0,0], [10,10,10]),
+        ...         ([5,3,2], [11,12,13]),
+        ...         ([4,6,4], [5,9,9])]        
+        >>> containing_rois( rois, ( [4,7,6], [5,8,8] ) )
+        array([[[ 0,  0,  0],
+                [10, 10, 10]],
+        <BLANKLINE>
+               [[ 4,  6,  4],
+                [ 5,  9,  9]]])
+    """
+    if not rois:
+        return numpy.array([])
+    rois = numpy.asarray(rois)
+    left_matches = (rois[:,0] <= inner_roi[0])
+    right_matches = (rois[:,1] >= inner_roi[1])
+    both_matches = numpy.logical_and(left_matches, right_matches)
+    matching_rows = numpy.logical_and.reduce(both_matches, axis=1).nonzero()
+    return rois[matching_rows]
+
 def enlargeRoiForHalo(start, stop, shape, sigma, window=3.5, enlarge_axes=None, return_result_roi=False):
     """
     Enlarge the given roi (start,stop) with a halo according to the given 
