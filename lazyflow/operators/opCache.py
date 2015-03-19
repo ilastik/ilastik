@@ -36,6 +36,10 @@ class OpCache(Operator):
     have non-negligible amounts of memory allocated internally *must* implement
     this interface. However, most operators that need to implement this
     interface *should* probably implement an extended interface (see below).
+    This interface can still be useful for several purposes:
+      * tell the user about memory consuming objects in general (e.g. in an
+        environment like ilastik)
+      * automated statistics and tests
 
     Caches are automatically added to the CacheMemoryManager instance.
     """
@@ -73,6 +77,10 @@ class OpCache(Operator):
 class OpObservableCache(OpCache):
     """
     Interface for caches that can report their usage
+
+    This interface is intended for caches that can be measured, but for
+    which no (easy) cleanup method is known, or which do not want to
+    be cleaned up by the cache memory manager. 
     """
 
     @abstractmethod
@@ -92,7 +100,9 @@ class OpObservableCache(OpCache):
         get fraction of used memory that is in a dirty state
 
         Dirty memory is memory that has been allocated, but cannot be used
-        anymore.
+        anymore. It is ok to always return 0 if there is no dirtiness
+        management inside the cache. The returned value must lie in the
+        range [0, 1].
         """
         return 0.0
 
@@ -124,7 +134,15 @@ class OpManagedCache(OpObservableCache):
     def freeMemory(self):
         """
         free all memory cached by this operator and its children
-        
+
+        The result of `freeMemory()` should be compatible with
+        `usedMemory()`, i.e.
+
+        >>> a = cache.usedMemory()
+        >>> d = cache.freeMemory()
+        >>> a - d == cache.usedMemory()
+        True  
+
         @return amount of bytes freed (if applicable)
         """
         raise NotImplementedError("No default implementation for freeMemory()")
@@ -150,7 +168,8 @@ class MemInfoNode:
     # data type of single cache elements (if applicable)
     dtype = None
 
-    #FIXME what is this?
+    # a region of interest this cache is assigned to
+    # (mostly useful for wrapped caches as in OpBlockedArrayCache)
     roi = None
 
     # fraction of used memory that is dirty

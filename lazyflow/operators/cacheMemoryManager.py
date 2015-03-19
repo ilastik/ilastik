@@ -42,32 +42,32 @@ this_process = psutil.Process(os.getpid())
 
 
 def memoryUsage():
-    '''
+    """
     get current memory usage in bytes
-    '''
+    """
     return this_process.memory_info().rss
 
 
 def memoryUsagePercentage():
-    '''
+    """
     get the percentage of (memory in use) / (allowed memory use)
     
     Note: the return value is obviously non-negative, but if the user specified
     memory limit is smaller than the amount of memory actually available, this
     value can be larger than 1.
-    '''
+    """
     return (memoryUsage() * 100.0) / getAvailableRamBytes()
 
 
 def getAvailableRamBytes():
-    '''
+    """
     get the amount of memory, in bytes, that lazyflow is allowed to use
     
     Note: When a user specified setting (e.g. via .ilastikrc) is not available,
     the function will try to estimate how much memory is available after
     subtracting known overhead. Overhead estimation is currently only available
     on Mac.
-    '''
+    """
     if "Darwin" in platform.system():
         # only Mac and BSD have the wired attribute, which we can use to
         # assess available RAM more precisely
@@ -84,10 +84,14 @@ default_refresh_interval = 5
 
 
 class CacheMemoryManager(threading.Thread):
-    '''
+    """
     class for the management of cache memory
 
-    TODO: cache cleanup documentation
+    The cache memory manager is a background thread that observes caches
+    in use and cleans them up when the total memory consumption by the
+    process exceeds the limit defined by `lazyflow.AVAILABLE_RAM_MB`.
+    See the definition of the cache interfaces (opCache.py) to get an
+    overview over the possible caches. 
 
     Usage:
     This manager is a singleton - just call its constructor somewhere and you
@@ -95,16 +99,16 @@ class CacheMemoryManager(threading.Thread):
 
     Interface:
     The manager provides a signal you can subscribe to
-    >>> mgr = ArrayCacheManager
+    >>> mgr = ArrayCacheManager()
     >>> mgr.totalCacheMemory.subscribe(print)
-    which emits the size of all managed caches, combined, in regular intervals.
+    which emits the size of all observable caches, combined, in regular intervals.
 
     The update interval (for the signal and for automated cache release) can
     be set with a call to a class method
-    >>> ArrayCacheManager.setRefreshInterval(5)
+    >>> ArrayCacheManager().setRefreshInterval(5)
     the interval is measured in seconds. Each change of refresh interval
     triggers cleanup.
-    '''
+    """
     __metaclass__ = Singleton
 
     totalCacheMemory = OrderedSignal()
@@ -205,6 +209,10 @@ class CacheMemoryManager(threading.Thread):
                     self.logger.debug("Cleaning up cache '{}'".format(c.name))
                     c.freeMemory()
                     current_usage_percentage = memoryUsagePercentage()
+
+                # don't keep a reference until next cleanup!
+                del c
+
                 self.logger.debug(
                     "Done cleaning up, memory usage is now at "
                     "{}%".format(100*current_usage_percentage))
