@@ -1,5 +1,5 @@
 import numpy
-from lazyflow.roi import determineBlockShape, getIntersection, enlargeRoiForHalo, TinyVector
+from lazyflow.roi import determineBlockShape, getIntersection, enlargeRoiForHalo, TinyVector, nonzero_bounding_box
 
 class Test_determineBlockShape(object):
     
@@ -86,7 +86,22 @@ class test_enlargeRoiForHalo(object):
         assert enlarged_stop[2] == stop[2] + full_halo_width
         assert enlarged_stop[3] == 500
 
-        print enlarged_start, enlarged_stop
+class test_nonzero_bounding_box(object):
+    
+    def testBasic(self):
+        data = numpy.zeros( (10,100,100), numpy.uint8 )
+        data[4, 30:40, 50:60] = 1
+        data[7, 45:55, 30:35] = 255
+        bb_roi = nonzero_bounding_box(data)
+        assert isinstance(bb_roi, numpy.ndarray)
+        assert (bb_roi == [[4,30,30], [8,55,60]]).all()
+    
+    def test_empty_data(self):
+        data = numpy.zeros( (10,100,100), numpy.uint8 )
+        bb_roi = nonzero_bounding_box(data)
+        assert isinstance(bb_roi, numpy.ndarray)
+        assert (bb_roi == [[0,0,0], [0,0,0]]).all()
+        
 
 if __name__ == "__main__":
     # Run nose

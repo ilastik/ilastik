@@ -321,6 +321,28 @@ def roiToSlice(start, stop, hardBind=False):
     else:
         return tuple(map(rTsl1,start,stop))
 
+def nonzero_bounding_box(data):
+    """
+    For an array with sparsely distributed non-zero values,
+      find the bounding box (a ROI) of the non-zero values.
+
+    Example:    
+        >>> data = numpy.zeros( (10,100,100) )
+        >>> data[4, 30:40, 50:60] = 1
+        >>> data[7, 45:55, 30:35] = 255
+        >>> nonzero_bounding_box(data)
+        array([[ 4, 30, 30],
+               [ 8, 55, 60]])
+
+    """
+    nonzero_coords = numpy.nonzero(data)
+    if len(nonzero_coords[0]) == 0:
+        block_bounding_box_roi = numpy.array( ([0]*data.ndim, [0]*data.ndim) )
+    else:
+        block_bounding_box_roi = numpy.array( [ map( numpy.min, nonzero_coords ),
+                                                map( numpy.max, nonzero_coords ) ] )
+        block_bounding_box_roi[1,:] += 1
+    return block_bounding_box_roi
 
 def enlargeRoiForHalo(start, stop, shape, sigma, window=3.5, enlarge_axes=None, return_result_roi=False):
     """
@@ -335,9 +357,9 @@ def enlargeRoiForHalo(start, stop, shape, sigma, window=3.5, enlarge_axes=None, 
     shape: Total shape of the image (not to be exceeded)
     sigma: The sigma of the filter.
     window: The window size, expressed in units of sigma.
-    halo_axes: If provided, indicates which axes to expand with the halo.
-               Should be a list of bools (or 1/0 values). 
-               For example, halo_axes=(0,1,1,1,0) means: "enlarge roi for axes 1,2,3 but not axes 0,4"
+    enlarge_axes: If provided, indicates which axes to expand with the halo.
+                  Should be a list of bools (or 1/0 values). 
+                  For example, halo_axes=(0,1,1,1,0) means: "enlarge roi for axes 1,2,3 but not axes 0,4"
     return_result_roi: If True, also return the "result roi".  
                        That is, the roi which you can use to extract the inner data 
                        from an array retrieved using the enlarged roi.
