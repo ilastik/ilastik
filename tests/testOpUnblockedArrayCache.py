@@ -53,6 +53,14 @@ class TestOpUnblockedArrayCacheCache(object):
             pool.wait()
             assert opDataProvider.accessCount == 1
 
+        # Also, make sure requests for INNER rois of stored blocks are also serviced from memory
+        opDataProvider.accessCount = 0
+        inner_roi = ((35, 35, 35), (45, 45, 45))
+        cache_data = opCache.Output( *inner_roi ).wait()
+        assert (cache_data == data[roiToSlice(*inner_roi)]).all()
+        assert opDataProvider.accessCount == 0
+
+
 if __name__ == "__main__":
     # Set up logging for debug
     import sys
