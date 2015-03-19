@@ -167,4 +167,7 @@ class MemInfoNode:
 
     # reports for all of this operators children that are of type
     # OpObservableCache
-    children = []
+    children = None
+
+    def __init__(self):
+        self.children = list()
