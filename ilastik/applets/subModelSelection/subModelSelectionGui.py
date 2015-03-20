@@ -279,7 +279,7 @@ class SubModelSelectionGui(LayerViewerGui):
         #self.topLevelOperatorView.MaxValueT.setValue(maxValueT)
 
     def setTimeValues(self, minValueT, maxValueT):
-        print " ..... SLT .....> in setTimeValues",minValueT, maxValueTgit
+        print " ..... SLT .....> in setTimeValues",minValueT, maxValueT
 
         self.topLevelOperatorView.MinValueT.setValue(minValueT)
         self.topLevelOperatorView.MaxValueT.setValue(maxValueT)
@@ -457,14 +457,18 @@ class SubModelSelectionGui(LayerViewerGui):
         self.setTimeValues(minValueT,maxValueT)
 
         if self.topLevelOperatorView.MinValueT.ready():
-            minValueT = self.topLevelOperatorView.MinValueT.value
+            minValueTnew = self.topLevelOperatorView.MinValueT.value
         else:
-            minValueT = 0
+            minValueTnew = 0
 
         if self.topLevelOperatorView.MaxValueT.ready():
-            maxValueT = self.topLevelOperatorView.MaxValueT.value
+            maxValueTnew = self.topLevelOperatorView.MaxValueT.value
         else:
-            maxValueT = tagged_shape['t'] - 1
+            maxValueTnew = tagged_shape['t'] - 1
+
+        minValueT = max(minValueT,minValueTnew)
+        maxValueT = min(maxValueT,maxValueTnew)
+        self.setTimeValues(minValueT,maxValueT)
 
         # x
         if self.topLevelOperatorView.MinValueX.ready():
