@@ -262,7 +262,15 @@ class OpCompressedCache(OpManagedCache):
         return dtype().nbytes
     
     def usedMemory(self):
+        tot, unc = self._usedMemory()
+        self._compression_factor = 1.0
+        if tot > 0:
+            self._compression_factor = unc/float(tot)
+        return tot
+
+    def _usedMemory(self):
         tot = 0.0
+        unc = 0.0
         for key in self._cacheFiles.keys():
             try:
                 group = self._cacheFiles[key]
@@ -271,11 +279,11 @@ class OpCompressedCache(OpManagedCache):
                 continue
             if "data" in group:
                 ds = group["data"]
-                # use actual size, not number of bytes in
-                # *uncompressed* array
+                # actual size
                 tot += get_storage_size(ds)
-                # tot += ds.size * self._getDtypeBytes(ds.dtype)
-        return tot
+                # uncompressed size
+                unc += ds.size * self._getDtypeBytes(ds.dtype)
+        return tot, unc
     
     def fractionOfUsedMemoryDirty(self):
         tot = 0.0
@@ -301,6 +309,8 @@ class OpCompressedCache(OpManagedCache):
     def generateReport(self, report):
         super(OpCompressedCache, self).generateReport(report)
         report.dtype = self.Output.meta.dtype
+        f = self._compression_factor
+        report.info = "Compression factor: {:.2f}".format(f)
 
     def freeMemory(self):
         mem = self.usedMemory()

@@ -231,6 +231,16 @@ class OpValueCache(OpObservableCache):
             return 1.0
         else:
             return 0.0
+
+    def generateReport(self, report):
+        super(OpValueCache, self).generateReport(report)
+        if self._value is None:
+            s = "no value"
+        else:
+            t = str(type(self._value))
+            t = t[len("<type '")+1:-len("'>")]
+            s = "value of type '{}'".format(t)
+        report.info = s
     
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
