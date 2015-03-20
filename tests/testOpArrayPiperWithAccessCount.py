@@ -21,7 +21,7 @@
 ###############################################################################
 
 __author__ = "John Kirkham <kirkhamj@janelia.hhmi.org>"
-__date__ = "$Feb 06, 2015 12:28:04 EST$"
+__date__ = "$Mar 06, 2015 12:14:39 EST$"
 
 
 
@@ -32,7 +32,7 @@ import numpy
 import vigra
 
 from lazyflow.graph import Graph
-from lazyflow.operators.opArrayPiper import OpArrayPiper
+from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 from lazyflow.roi import roiFromShape, roiToSlice
 
 
@@ -41,11 +41,11 @@ class AllowMaskException(Exception):
     pass
 
 
-class TestOpArrayPiper(object):
+class TestOpArrayPiperWithAccessCount(object):
     def setUp(self):
         self.graph = Graph()
 
-        self.operator_identity = OpArrayPiper(graph=self.graph)
+        self.operator_identity = OpArrayPiperWithAccessCount(graph=self.graph)
 
         self.operator_identity.Input.meta.axistags = vigra.AxisTags("txyzc")
 
@@ -57,6 +57,7 @@ class TestOpArrayPiper(object):
         self.operator_identity.Input.setValue(data)
         output = self.operator_identity.Output[None].wait()
 
+        assert (self.operator_identity.accessCount == 1)
         assert((data == output).all())
 
     def test2(self):
@@ -72,6 +73,7 @@ class TestOpArrayPiper(object):
         output[:2] = self.operator_identity.Output[:2].wait()
         output[2:] = self.operator_identity.Output[2:].wait()
 
+        assert (self.operator_identity.accessCount == 2)
         assert((data == output).all())
 
     def test3(self):
@@ -82,15 +84,8 @@ class TestOpArrayPiper(object):
         self.operator_identity.Input.setValue(numpy.zeros_like(data))
         output = self.operator_identity.Output[None].wait()
 
+        assert (self.operator_identity.accessCount == 1)
         assert((output == 0).all())
-
-        # Try setInSlot
-        data_shape_roi = roiFromShape(data.shape)
-        data_shape_slice = roiToSlice(*data_shape_roi)
-        self.operator_identity.Input[data_shape_slice] = data
-        output = self.operator_identity.Output[None].wait()
-
-        assert((data == output).all())
 
     def tearDown(self):
         # Take down operators
@@ -99,11 +94,11 @@ class TestOpArrayPiper(object):
         self.operator_identity.cleanUp()
 
 
-class TestOpArrayPiper2(object):
+class TestOpArrayPiperWithAccessCount2(object):
     def setUp(self):
         self.graph = Graph()
 
-        self.operator_identity = OpArrayPiper(graph=self.graph)
+        self.operator_identity = OpArrayPiperWithAccessCount(graph=self.graph)
 
         self.operator_identity.Input.meta.axistags = vigra.AxisTags("txyzc")
         self.operator_identity.Input.meta.has_mask = True
@@ -121,6 +116,7 @@ class TestOpArrayPiper2(object):
         self.operator_identity.Input.setValue(data)
         output = self.operator_identity.Output[None].wait()
 
+        assert (self.operator_identity.accessCount == 1)
         assert((data == output).all())
         assert(data.mask.shape == output.mask.shape)
         assert((data.mask == output.mask).all())
@@ -144,6 +140,7 @@ class TestOpArrayPiper2(object):
         output[:2] = self.operator_identity.Output[:2].wait()
         output[2:] = self.operator_identity.Output[2:].wait()
 
+        assert (self.operator_identity.accessCount == 2)
         assert((data == output).all())
         assert(data.mask.shape == output.mask.shape)
         assert((data.mask == output.mask).all())
@@ -161,19 +158,10 @@ class TestOpArrayPiper2(object):
         self.operator_identity.Input.setValue(numpy.zeros_like(data))
         output = self.operator_identity.Output[None].wait()
 
+        assert (self.operator_identity.accessCount == 1)
         assert((output == 0).all())
         assert(data.mask.shape == output.mask.shape)
         assert((output.mask == False).all())
-
-        # Try setInSlot
-        data_shape_roi = roiFromShape(data.shape)
-        data_shape_slice = roiToSlice(*data_shape_roi)
-        self.operator_identity.Input[data_shape_slice] = data
-        output = self.operator_identity.Output[None].wait()
-
-        assert((data == output).all())
-        assert(data.mask.shape == output.mask.shape)
-        assert((data.mask == output.mask).all())
 
     def tearDown(self):
         # Take down operators
@@ -182,11 +170,11 @@ class TestOpArrayPiper2(object):
         self.operator_identity.cleanUp()
 
 
-class TestOpArrayPiper3(object):
+class TestOpArrayPiperWithAccessCount3(object):
     def setUp(self):
         self.graph = Graph()
 
-        self.operator_identity = OpArrayPiper(graph=self.graph)
+        self.operator_identity = OpArrayPiperWithAccessCount(graph=self.graph)
 
         self.operator_identity.Input.meta.axistags = vigra.AxisTags("txyzc")
 
@@ -205,6 +193,7 @@ class TestOpArrayPiper3(object):
         assert(self.operator_identity.Output.meta.has_mask)
         output = self.operator_identity.Output[None].wait()
 
+        assert (self.operator_identity.accessCount == 1)
         assert((data == output).all())
         assert(data.mask.shape == output.mask.shape)
         assert((data.mask == output.mask).all())
@@ -230,6 +219,7 @@ class TestOpArrayPiper3(object):
         output[:2] = self.operator_identity.Output[:2].wait()
         output[2:] = self.operator_identity.Output[2:].wait()
 
+        assert (self.operator_identity.accessCount == 2)
         assert((data == output).all())
         assert(data.mask.shape == output.mask.shape)
         assert((data.mask == output.mask).all())
@@ -249,19 +239,10 @@ class TestOpArrayPiper3(object):
         assert(self.operator_identity.Output.meta.has_mask)
         output = self.operator_identity.Output[None].wait()
 
+        assert (self.operator_identity.accessCount == 1)
         assert((output == 0).all())
         assert(data.mask.shape == output.mask.shape)
         assert((output.mask == False).all())
-
-        # Try setInSlot
-        data_shape_roi = roiFromShape(data.shape)
-        data_shape_slice = roiToSlice(*data_shape_roi)
-        self.operator_identity.Input[data_shape_slice] = data
-        output = self.operator_identity.Output[None].wait()
-
-        assert((data == output).all())
-        assert(data.mask.shape == output.mask.shape)
-        assert((data.mask == output.mask).all())
 
     def tearDown(self):
         # Take down operators
@@ -270,11 +251,11 @@ class TestOpArrayPiper3(object):
         self.operator_identity.cleanUp()
 
 
-class TestOpArrayPiper4(object):
+class TestOpArrayPiperWithAccessCount4(object):
     def setUp(self):
         self.graph = Graph()
 
-        self.operator_identity = OpArrayPiper(graph=self.graph)
+        self.operator_identity = OpArrayPiperWithAccessCount(graph=self.graph)
         self.operator_identity.Input.allow_mask = False
         self.operator_identity.Output.allow_mask = False
         self.operator_identity.Input.meta.has_mask = False
@@ -342,11 +323,11 @@ class TestOpArrayPiper4(object):
         self.operator_identity.cleanUp()
 
 
-class TestOpArrayPiper5(object):
+class TestOpArrayPiperWithAccessCount5(object):
     def setUp(self):
         self.graph = Graph()
 
-        self.operator_identity = OpArrayPiper(graph=self.graph)
+        self.operator_identity = OpArrayPiperWithAccessCount(graph=self.graph)
         self.operator_identity.Input.allow_mask = False
         self.operator_identity.Output.allow_mask = False
 
@@ -378,11 +359,6 @@ class TestOpArrayPiper5(object):
             shrink=False
         )
 
-        # Create array to store results. Don't keep original data.
-        output = data.copy()
-        output[:] = 0
-        output[:] = numpy.ma.nomask
-
         # Provide input and grab chunks.
         try:
             self.operator_identity.Input.setValue(data)
@@ -412,12 +388,12 @@ class TestOpArrayPiper5(object):
         self.operator_identity.cleanUp()
 
 
-class TestOpArrayPiper6(object):
+class TestOpArrayPiperWithAccessCount6(object):
     def setUp(self):
         self.graph = Graph()
 
-        self.operator_identity_1 = OpArrayPiper(graph=self.graph)
-        self.operator_identity_2 = OpArrayPiper(graph=self.graph)
+        self.operator_identity_1 = OpArrayPiperWithAccessCount(graph=self.graph)
+        self.operator_identity_2 = OpArrayPiperWithAccessCount(graph=self.graph)
         self.operator_identity_2.Input.allow_mask = False
         self.operator_identity_2.Output.allow_mask = False
 
@@ -465,12 +441,12 @@ class TestOpArrayPiper6(object):
         self.operator_identity_1.cleanUp()
 
 
-class TestOpArrayPiper7(object):
+class TestOpArrayPiperWithAccessCount7(object):
     def setUp(self):
         self.graph = Graph()
 
-        self.operator_identity_1 = OpArrayPiper(graph=self.graph)
-        self.operator_identity_2 = OpArrayPiper(graph=self.graph)
+        self.operator_identity_1 = OpArrayPiperWithAccessCount(graph=self.graph)
+        self.operator_identity_2 = OpArrayPiperWithAccessCount(graph=self.graph)
 
         self.operator_identity_1.Input.meta.axistags = vigra.AxisTags("txyzc")
         self.operator_identity_2.Input.meta.axistags = vigra.AxisTags("txyzc")
@@ -493,6 +469,8 @@ class TestOpArrayPiper7(object):
         self.operator_identity_1.Input.setValue(data)
         output = self.operator_identity_2.Output[None].wait()
 
+        assert (self.operator_identity_1.accessCount == 1)
+        assert (self.operator_identity_2.accessCount == 1)
         assert((data == output).all())
         assert(data.mask.shape == output.mask.shape)
         assert((data.mask == output.mask).all())
@@ -512,6 +490,8 @@ class TestOpArrayPiper7(object):
         self.operator_identity_2.Input.connect(self.operator_identity_1.Output)
         output = self.operator_identity_2.Output[None].wait()
 
+        assert (self.operator_identity_1.accessCount == 1)
+        assert (self.operator_identity_2.accessCount == 1)
         assert((data == output).all())
         assert(data.mask.shape == output.mask.shape)
         assert((data.mask == output.mask).all())

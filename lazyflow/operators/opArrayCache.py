@@ -35,7 +35,7 @@ import numpy
 
 #lazyflow
 from lazyflow.request import RequestPool
-from lazyflow.roi import sliceToRoi, roiToSlice, getBlockBounds, TinyVector
+from lazyflow.roi import roiFromShape, sliceToRoi, roiToSlice, getBlockBounds, TinyVector
 from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.utility import fastWhere
 from lazyflow.operators.opCache import OpCache
@@ -63,13 +63,13 @@ class OpArrayCache(OpCache):
     DefaultBlockSize = 64
 
     #Input
-    Input = InputSlot()
+    Input = InputSlot(allow_mask=True)
     blockShape = InputSlot(value = DefaultBlockSize)
     fixAtCurrent = InputSlot(value = False)
    
     #Output
     CleanBlocks = OutputSlot()
-    Output = OutputSlot()
+    Output = OutputSlot(allow_mask=True)
 
     loggingName = __name__ + ".OpArrayCache"
     logger = logging.getLogger(loggingName)
@@ -195,7 +195,8 @@ class OpArrayCache(OpCache):
             self._running = 0
 
             if self._cache is None or (self._cache.shape != self.Output.meta.shape):
-                mem = numpy.zeros(self.Output.meta.shape, dtype = self.Output.meta.dtype)
+                mem = self.Output.stype.allocateDestination(None)
+                mem[:] = 0
                 self.logger.debug("OpArrayCache: Allocating cache (size: %dbytes)" % mem.nbytes)
                 if self._blockState is None:
                     self._allocateManagementStructures()
@@ -348,7 +349,9 @@ class OpArrayCache(OpCache):
             # many lines of python code when all data is
             # is already in the cache:
             if numpy.logical_or(blockSet == OpArrayCache.CLEAN, blockSet == OpArrayCache.FIXED_DIRTY).all():
-                result[:] = self._cache[roiToSlice(start, stop)]
+                cache_result = self._cache[roiToSlice(start, stop)]
+                self.Output.stype.copy_data(result, cache_result)
+
                 self._running -= 1
                 self._updatePriority()
                 cacheView = None
@@ -448,7 +451,8 @@ class OpArrayCache(OpCache):
         # finally, store results in result area
         with self._lock:
             if self._cache is not None:
-                result[:] = self._cache[roiToSlice(start, stop)]
+                cache_result = self._cache[roiToSlice(start, stop)]
+                self.Output.stype.copy_data(result, cache_result)
             else:
                 self.inputs["Input"][roiToSlice(start, stop)].writeInto(result).wait()
             self._running -= 1
@@ -475,7 +479,10 @@ class OpArrayCache(OpCache):
             with self._lock:
                 if self._cache is None:
                     self._allocateCache()
-                self._cache[key2] = value[roiToSlice(start2-start,stop2-start)]
+                self.Output.stype.copy_data(
+                    self._cache[key2],
+                    value[roiToSlice(start2-start,stop2-start)]
+                )
                 self._blockState[blockKey] = self._dirtyState
                 self._blockQuery[blockKey] = None
 

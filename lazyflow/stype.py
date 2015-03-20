@@ -20,6 +20,7 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 import numpy, vigra
+import collections
 import warnings
 
 from roi import roiToSlice
@@ -97,32 +98,55 @@ class SlotType( object ):
 
 class ArrayLike( SlotType ):
     def allocateDestination( self, roi ):
+        # If we do not support masked arrays, ensure that we are not allocating one.
+        assert self.slot.allow_mask or (not self.slot.meta.has_mask), \
+            "Allocation of a masked array is expected by the slot, \"%s\", of operator, " "\"%s\"," \
+            " even though it is not supported. If you believe this message to be incorrect, " \
+            "please pass the keyword argument `allow_mask=True` to the slot constructor." \
+            % (self.slot.operator.name, self.slot.name)
+
         shape = roi.stop - roi.start if roi else self.slot.meta.shape
         storage = numpy.ndarray(shape, dtype=self.slot.meta.dtype)
 
+        # if self.slot.meta.axistags is True:
+        #     storage = vigra.taggedView(storage, self.slot.meta.axistags)
+        #     #storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(self.slot.meta.axistags))))
+        #     ##storage = storage.view(vigra.VigraArray)
+        #     ##storage.axistags = copy.copy(self.slot.meta.axistags)
         if self.slot.meta.has_mask:
             storage_mask = numpy.zeros(storage.shape, dtype=bool)
-            storage = numpy.ma.masked_array(storage, mask=storage_mask, shrink=False)
-        # if axistags is True:
-        #     storage = vigra.VigraArray(storage, storage.dtype, axistags = copy.copy(s))elf.axistags))
-        #     #storage = storage.view(vigra.VigraArray)
-        #     #storage.axistags = copy.copy(self.axistags)
+            storage_fill_value = None
+            if issubclass(storage.dtype.type, (numpy.bool8, numpy.integer)):
+                storage_fill_value = storage.dtype.type(0)
+            elif issubclass(storage.dtype.type, numpy.floating):
+                storage_fill_value = storage.dtype.type(numpy.nan)
+            elif issubclass(storage.dtype.type, numpy.complexfloating):
+                storage_fill_value = storage.dtype.type(numpy.nan)
+            storage = numpy.ma.masked_array(storage, mask=storage_mask, fill_value=storage_fill_value, shrink=False)
 
         return storage
 
     def writeIntoDestination( self, destination, value, roi ):
+        # If we do not support masked arrays, ensure that we are not being passed one.
+        assert self.slot.allow_mask or (not self.slot.meta.has_mask), \
+            "A masked array was provided as a destination. However," \
+            " the slot, \"%s\", of operator, " "\"%s\", does not support masked arrays." \
+            " If you believe this message to be incorrect, " \
+            "please pass the keyword argument `allow_mask=True` to the slot constructor." \
+            % (self.slot.operator.name, self.slot.name)
+
         if destination is not None:
             if not isinstance(destination, list):
                 assert(roi.dim == destination.ndim), "%r ndim=%r, shape=%r" % (roi.toSlice(), destination.ndim, destination.shape)
             sl = roiToSlice(roi.start, roi.stop)
             try:
-                destination[:] = value[sl]
+                self.copy_data(destination, value[sl])
             except TypeError:
                 # FIXME: This warning used to be triggered by a corner case that could be encountered by "value slots".
                 #        The behavior here isn't truly deprecated.  But we need a better solution for lazyflow 2.0.
                 # See ilastik/ilastik#704
                 #warn_deprecated("old style slot encountered: non array-like value set -> change SlotType from ArrayLike to proper SlotType")
-                destination[:] = value
+                self.copy_data(destination, value)
         else:
             sl = roiToSlice(roi.start, roi.stop)
             try:
@@ -134,7 +158,7 @@ class ArrayLike( SlotType ):
                 #warn_deprecated("old style slot encountered: non array-like value set -> change SlotType from ArrayLike to proper SlotType")
                 destination = [value]
 
-            if type(destination) == numpy.ndarray and destination.shape == ():
+            if isinstance(destination, numpy.ndarray) and destination.shape == ():
                 # This is necessary because numpy types will not be caught in the except statement above.
                 # They don't throw when used with __getitem__
                 # e.g. try this:
@@ -161,6 +185,8 @@ class ArrayLike( SlotType ):
             self.slot.meta.dtype = value.dtype.type
             if hasattr(value,"axistags"):
                 self.slot.meta.axistags = value.axistags
+            if isinstance(value, numpy.ma.masked_array):
+                self.slot.meta.has_mask = True
         else:
             self.slot.meta.shape = (1,)
             if isinstance(value, int) or \
@@ -181,7 +207,20 @@ class ArrayLike( SlotType ):
 
 
     def copy_data(self, dst, src):
-        dst[...] = src[...]
+        # Unfortunately, there appears to be a bug when copying masked arrays
+        # ( https://github.com/numpy/numpy/issues/5558 ).
+        # So, this must be used in the interim.
+        if isinstance(dst, numpy.ma.masked_array):
+            src_val = src[...]
+            dst.data[...] = numpy.ma.getdata(src_val)
+            dst.mask[...] = numpy.ma.getmaskarray(src_val)
+            if isinstance(src_val, numpy.ma.masked_array):
+                dst.fill_value = src_val.fill_value
+        elif isinstance(dst, collections.MutableSequence) or \
+                isinstance(src, collections.MutableSequence):
+            dst[:] = src[:]
+        else:
+            dst[...] = src[...]
 
     def check_result_valid(self, roi, result):
         if isinstance(result, numpy.ndarray):
@@ -191,7 +230,7 @@ class ArrayLike( SlotType ):
                     "check_result_valid: result has wrong shape.  Got {}, expected {}".format( result.shape, roi.stop - roi.start )
         elif isinstance(result, list):
             s = roi.stop[0] - roi.start[0]
-            assert len(result) == s, "check_result_valid: result has wrong shape (%d instead of %d) for dimension %d" % (result.shape[d], s, d)
+            assert len(result) == s, "check_result_valid: result has wrong shape (%d instead of %d)" % (len(result), s)
         elif isinstance(result, h5py.Group):
             # FIXME: this is a hack. the slot
             # OpCompressedCache.OutputHdf5 is not really array-like,

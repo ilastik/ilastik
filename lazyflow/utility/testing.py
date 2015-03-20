@@ -76,8 +76,8 @@ class OpArrayPiperWithAccessCount(Operator):
     """
     array piper that counts how many times its execute function has been called
     """
-    Input = InputSlot()
-    Output = OutputSlot()
+    Input = InputSlot(allow_mask=True)
+    Output = OutputSlot(allow_mask=True)
 
     def __init__(self, *args, **kwargs):
         super(OpArrayPiperWithAccessCount, self).__init__(*args, **kwargs)
