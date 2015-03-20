@@ -19,14 +19,14 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 
-print "----- SLTt -----> in opSubModelSelection" ###xxx
+#print "----- SLTt -----> in opSubModelSelection" ###xxx
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
 import numpy
 
 class OpSubModelSelection(Operator):
-    print " ==== SLT =====> in opModelSelectionSerializer" ###xxx
+    #print " ==== SLT =====> in opModelSelectionSerializer" ###xxx
     """
     Given an input image and visible crop lines,
     allows selection of a SubModel.
@@ -83,7 +83,7 @@ class OpSubModelSelection(Operator):
 
 
     def execute(self, slot, subindex, roi, result):
-        #print " ==== SLT =====> in execute opModelSelectionSerializer" ###xxx
+        print " ==== SLT =====> in execute opModelSelectionSerializer" ###xxx
         key = roi.toSlice()
         #raw = self.InputImage[key].wait()
         #mask = numpy.ones_like(raw)#logical_and(self.MinValue.value <= raw, raw <= self.MaxValue.value)

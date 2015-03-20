@@ -26,12 +26,13 @@ from PyQt4.QtGui import QVBoxLayout, QSpacerItem, QSizePolicy
 from volumina.widgets.subModelSelectionWidget import SubModelSelectionWidget
 from volumina.imageView2D import ImageView2D
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+from ilastik.widgets.subModelListView import SubModelListView
 
 class SubModelSelectionGui(LayerViewerGui):
     """
     Sub model selection applet
     """
-    print " ..... SLT .....> in SubModelSelectionGui"
+    #print " ..... SLT .....> in SubModelSelectionGui"
 
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
@@ -48,7 +49,7 @@ class SubModelSelectionGui(LayerViewerGui):
     def __init__(self, parentApplet, topLevelOperatorView):
         """
         """
-        print " ..... SLT .....> in __init__ SubModelSelectionGui"
+        #print " ..... SLT .....> in __init__ SubModelSelectionGui"
         self.topLevelOperatorView = topLevelOperatorView
         super(SubModelSelectionGui, self).__init__(parentApplet, self.topLevelOperatorView)
         self.subModels = []
@@ -102,8 +103,9 @@ class SubModelSelectionGui(LayerViewerGui):
         self._drawer.setLayout( layout )
 
         # Initialize the gui with the operator's current values
-        self.apply_operator_settings_to_gui()
         self.setDefaultValues()
+        print "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<, apply_operator_settings_to_gui"
+        self.apply_operator_settings_to_gui()
 
         #self.editor.newImageView2DFocus.connect(self.onCropShapeChanged)
 
@@ -128,15 +130,16 @@ class SubModelSelectionGui(LayerViewerGui):
         self.subModelSelectionWidget._minSliderZ.valueChanged.connect(self._onMinSliderZMoved)
         self.subModelSelectionWidget._maxSliderZ.valueChanged.connect(self._onMaxSliderZMoved)
 
-    def createSubModel(self):
+        #self.subModelSelectionWidget._subModelListView = SubModelListView(self)
 
+    def createSubModel(self):
+        print "              in createSubModel"
         try:
             # add a model
             print "0"
-            newSubModel = ["Sub Model "+str(self.numSubModels() +1),self.get_roi_4d()]
+            newSubModel = ["Sub Model "+str(self.numSubModels() + 1),self.get_roi_4d()]
             print "1"
             self.subModels += newSubModel
-            self.subModelSelectionWidget._modelListView.
             print ">>>> Sub Model Created", newSubModel
 
         except:
@@ -146,11 +149,13 @@ class SubModelSelectionGui(LayerViewerGui):
         return len(self.subModels)
 
     def get_roi_4d(self):
-        return [(self.topLevelOperatorView.MinValueT,self.topLevelOperatorView.MinValueX,self.topLevelOperatorView.MinValueY,self.topLevelOperatorView.MinValueZ),
-                (self.topLevelOperatorView.MaxValueT,self.topLevelOperatorView.MaxValueX,self.topLevelOperatorView.MaxValueY,self.topLevelOperatorView.MaxValueZ)]
+        return [(self.topLevelOperatorView.MinValueT.value,self.topLevelOperatorView.MinValueX.value,self.topLevelOperatorView.MinValueY.value,self.topLevelOperatorView.MinValueZ.value),
+                (self.topLevelOperatorView.MaxValueT.value,self.topLevelOperatorView.MaxValueX.value,self.topLevelOperatorView.MaxValueY.value,self.topLevelOperatorView.MaxValueZ.value)]
 
     def changeTime(self):
+        print "---------------------------->change TIME"
         delta = self.subModelSelectionWidget._minSliderT.value() - self.editor.posModel.time
+        print "delta", delta
         if delta > 0:
             self.editor.navCtrl.changeTimeRelative(delta)
         else:
@@ -196,9 +201,9 @@ class SubModelSelectionGui(LayerViewerGui):
 
     def onCropModelChanged(self):
         starts, stops = self.editor.cropModel.get_roi_3d()
-        print("===== CURRENT CROP MODEL =====")
+        print("===== On crop model  CHANGED   -----   CURRENT CROP MODEL =====")
         for dim, start, stop in zip("xyz", starts, stops):
-            print(dim + ": {} to {}".format(start, stop))
+            #print(dim + ": {} to {}".format(start, stop))
             if dim=='x':
                 self.topLevelOperatorView.MinValueX.setValue(start)
                 self.topLevelOperatorView.MaxValueX.setValue(stop)
@@ -210,21 +215,42 @@ class SubModelSelectionGui(LayerViewerGui):
                 self.topLevelOperatorView.MaxValueZ.setValue(stop)
             else:
                 print "MY ERROR: Setting up an axis that does NOT exist!"
+
+        print "---->",[[start, stop] for dim, start, stop in zip("xyz", starts, stops)]
         return [[start, stop] for dim, start, stop in zip("xyz", starts, stops)]
 
 #    def onMinXChanged(self):
 #        self.editor.cropModel.set_roi_3d([(minValueX,minValueY,minValueZ),(maxValueX,maxValueY,maxValueZ)])
 #        self.editor.cropModel.set_roi_3d([(minValueX,0,0),(99,99,99)])
 
+#    def apply_model_settings_to_operator(self,*args):
+#        self.topLevelOperatorView.MinValueT.setValue(self.editor.posModel.time)
+#        self.topLevelOperatorView.MaxValueT.setValue(self.editor.posModel.time)
+#
+#        self.topLevelOperatorView.MinValueX.setValue()
+#        self.topLevelOperatorView.MaxValueX.setValue()
+#
+#        self.topLevelOperatorView.MinValueY.setValue()
+#        self.topLevelOperatorView.MaxValueY.setValue()
+#
+#        self.topLevelOperatorView.MinValueZ.setValue()
+#        self.topLevelOperatorView.MaxValueZ.setValue()
+
     def apply_operator_settings_to_gui(self,*args):
+        print ""
+        print ""
+        print ""
         print " ..... SLT .....> in apply_operator_settings_to_gui SubModelSelectionGui"
-        minValueT, maxValueT, minValueX, maxValueX, minValueY, maxValueY, minValueZ, maxValueZ = [0]*8
+        minValueT, maxValueT, minValueX, maxValueX, minValueY, maxValueY, minValueZ, maxValueZ = [-1]*8
 
         # t
+        print "is TIME min READY",self.topLevelOperatorView.MinValueT.ready()
         if self.topLevelOperatorView.MinValueT.ready():
             minValueT = self.topLevelOperatorView.MinValueT.value
+        print "is TIME max READY",self.topLevelOperatorView.MaxValueT.ready()
         if self.topLevelOperatorView.MaxValueT.ready():
             maxValueT = self.topLevelOperatorView.MaxValueT.value
+        self.setTimeValues(minValueT,maxValueT)
 
         # x
         if self.topLevelOperatorView.MinValueX.ready():
@@ -244,13 +270,31 @@ class SubModelSelectionGui(LayerViewerGui):
         if self.topLevelOperatorView.MaxValueZ.ready():
             maxValueZ = self.topLevelOperatorView.MaxValueZ.value
 
-        print " TIME=",minValueT, maxValueT
-        self.subModelSelectionWidget.setValue(minValueT, maxValueT, minValueX, maxValueX-1, minValueY, maxValueY-1, minValueZ, maxValueZ-1)
-        print "............> roi   =",self.editor.cropModel.get_roi_3d()#[[minValueX,minValueY,minValueZ],[maxValueX,maxValueY,maxValueZ]])
-        print "............> values=",[[minValueX,minValueY,minValueZ],[maxValueX,maxValueY,maxValueZ]]
+        print " TIME=",minValueT, maxValueT, minValueX, maxValueX, minValueY, maxValueY, minValueZ, maxValueZ
         self.editor.cropModel.set_roi_3d([(minValueX,minValueY,minValueZ),(maxValueX,maxValueY,maxValueZ)])
+        self.subModelSelectionWidget.setValue(minValueT, maxValueT, minValueX, maxValueX-1, minValueY, maxValueY-1, minValueZ, maxValueZ-1)
+        #print "............> roi   =",self.editor.cropModel.get_roi_3d()#[[minValueX,minValueY,minValueZ],[maxValueX,maxValueY,maxValueZ]])
+        #print "............> values=",[[minValueX,minValueY,minValueZ],[maxValueX,maxValueY,maxValueZ]]
         #self.topLevelOperatorView.MinValueT.setValue(minValueT)
         #self.topLevelOperatorView.MaxValueT.setValue(maxValueT)
+
+    def setTimeValues(self, minValueT, maxValueT):
+        print " ..... SLT .....> in setTimeValues",minValueT, maxValueTgit
+
+        self.topLevelOperatorView.MinValueT.setValue(minValueT)
+        self.topLevelOperatorView.MaxValueT.setValue(maxValueT)
+
+    def setValues(self, minValueT, maxValueT, minValueX, maxValueX, minValueY, maxValueY, minValueZ, maxValueZ):
+        print " ..... SLT .....> in setValues"
+
+        self.topLevelOperatorView.MinValueT.setValue(minValueT)
+        self.topLevelOperatorView.MaxValueT.setValue(maxValueT)
+        self.topLevelOperatorView.MinValueX.setValue(minValueX)
+        self.topLevelOperatorView.MaxValueX.setValue(maxValueX)
+        self.topLevelOperatorView.MinValueY.setValue(minValueY)
+        self.topLevelOperatorView.MaxValueY.setValue(maxValueY)
+        self.topLevelOperatorView.MinValueZ.setValue(minValueZ)
+        self.topLevelOperatorView.MaxValueZ.setValue(maxValueZ)
 
     def apply_gui_settings_to_operator(self, ):
         print " ..... SLT .....> in apply_gui_settings_to_operator SubModelSelectionGui"
@@ -283,16 +327,14 @@ class SubModelSelectionGui(LayerViewerGui):
 
         #print " ..... SLT .....> in setupLayers SubModelSelectionGui"
 
-        # Show the raw input data
-        inputImageSlot = self.topLevelOperatorView.InputImage
-        #print " ..... SLT .....> inputImageSlot.ready()=", inputImageSlot.ready()
-        if inputImageSlot.ready():
-            #print " ..... SLT .....> in if inputImageSlot.ready()"
-            inputLayer = self.createStandardLayerFromSlot( inputImageSlot )
-            inputLayer.name = "Raw Input"
-            inputLayer.visible = True
-            inputLayer.opacity = 0.75
-            layers.append(inputLayer)
+        # Show the cropped data
+        cropImageSlot = self.topLevelOperatorView.CropImage
+        if cropImageSlot.ready():
+            cropImageLayer = self.createStandardLayerFromSlot( cropImageSlot )
+            cropImageLayer.name = "Sub-Model"
+            cropImageLayer.visible = False #True
+            cropImageLayer.opacity = 0.25
+            layers.append(cropImageLayer)
 
         # Show the prediction data
         predictionImageSlot = self.topLevelOperatorView.PredictionImage
@@ -303,15 +345,17 @@ class SubModelSelectionGui(LayerViewerGui):
             inputPredictionLayer.visible = False
             inputPredictionLayer.opacity = 0.75
             layers.append(inputPredictionLayer)
-        
-        # Show the cropped data
-        cropImageSlot = self.topLevelOperatorView.CropImage
-        if cropImageSlot.ready():
-            cropImageLayer = self.createStandardLayerFromSlot( cropImageSlot )
-            cropImageLayer.name = "Sub-Model"
-            cropImageLayer.visible = False #True
-            cropImageLayer.opacity = 0.25
-            layers.append(cropImageLayer)
+
+        # Show the raw input data
+        inputImageSlot = self.topLevelOperatorView.InputImage
+        #print " ..... SLT .....> inputImageSlot.ready()=", inputImageSlot.ready()
+        if inputImageSlot.ready():
+            #print " ..... SLT .....> in if inputImageSlot.ready()"
+            inputLayer = self.createStandardLayerFromSlot( inputImageSlot )
+            inputLayer.name = "Raw Input"
+            inputLayer.visible = True
+            inputLayer.opacity = 0.75
+            layers.append(inputLayer)
 
         # Show the cropped prediction
         #cropPredictionSlot = self.topLevelOperatorView.CropPrediction
@@ -329,32 +373,171 @@ class SubModelSelectionGui(LayerViewerGui):
 
         return layers
 
-    def defaultValues(self):
+    def defaultRangeValues(self):
+        print "defaultRangeValues"
         inputImageSlot = self.topLevelOperatorView.InputImage
-        print " ==== SLT =====> in defaultValues"
 
         if not inputImageSlot.ready():
+            print "defaultRangeValues ---> ZEROS"
             return [0]*8
 
         tagged_shape = inputImageSlot.meta.getTaggedShape()
-
+        #if self.topLevelOperatorView.MinValueT.ready():
+        #    minValueT = self.topLevelOperatorView.MinValueT.value
+        #else:
         minValueT = 0
+
+        #if self.topLevelOperatorView.MaxValueT.ready():
+        #    maxValueT = self.topLevelOperatorView.MaxValueT.value
+        #else:
         maxValueT = tagged_shape['t'] - 1
+
+        # x
+        #if self.topLevelOperatorView.MinValueX.ready():
+        #    minValueX = self.topLevelOperatorView.MinValueX.value
+        #else:
         minValueX = 0
+
+        #if self.topLevelOperatorView.MaxValueX.ready():
+        #    maxValueX = self.topLevelOperatorView.MaxValueX.value
+        #else:
         maxValueX = tagged_shape['x'] - 1
+
+        # y
+        #if self.topLevelOperatorView.MinValueY.ready():
+        #    minValueY = self.topLevelOperatorView.MinValueY.value
+        #else:
         minValueY = 0
+
+        #if self.topLevelOperatorView.MaxValueY.ready():
+        #    maxValueY = self.topLevelOperatorView.MaxValueY.value
+        #else:
         maxValueY = tagged_shape['y'] - 1
+
+  # z
+        #if self.topLevelOperatorView.MinValueZ.ready():
+        #    minValueZ = self.topLevelOperatorView.MinValueZ.value
+        #else:
         minValueZ = 0
+
+        #if self.topLevelOperatorView.MaxValueZ.ready():
+        #    maxValueZ = self.topLevelOperatorView.MaxValueZ.value
+        #else:
         maxValueZ = tagged_shape['z'] - 1
 
-        print " ==== SLT =====> in defaultValues",minValueT,maxValueT,minValueX,maxValueX,minValueY,maxValueY,minValueZ,maxValueZ
+        print "defaultRangeValues ---> Image SHAPE",minValueT,maxValueT,minValueX,maxValueX,minValueY,maxValueY,minValueZ,maxValueZ
 
         return minValueT,maxValueT,minValueX,maxValueX,minValueY,maxValueY,minValueZ,maxValueZ
 
+    def defaultValues(self):
+        print "==========================defaultValues========================="
+        #inputImageSlot = self.topLevelOperatorView.InputImage
+        #cropImageSlot = self.editor.cropModel
+
+        inputImageSlot = self.topLevelOperatorView.InputImage
+        if not inputImageSlot.ready():
+            print "defaultValues zeros"
+            return [0]*8
+
+        #print "cropImageSlot",cropImageSlot
+        #if cropImageSlot==None:
+        #    print "defaultValues ----> MAX RANGES"
+        #    return self.defaultRangeValues()
+
+        print "defaultValues ----> OPERATOR model"
+        #[(minValueX,minValueY,minValueZ),(maxValueX,maxValueY,maxValueZ)] = self.editor.cropModel.get_roi_3d()
+
+        #editor.quadview.statusBar.timeSpinBox.
+
+
+
+        tagged_shape = inputImageSlot.meta.getTaggedShape()
+        minValueT = 0#max(0,self.topLevelOperatorView.MinValueT.value)
+        maxValueT = tagged_shape['t'] - 1
+        self.setTimeValues(minValueT,maxValueT)
+
+        if self.topLevelOperatorView.MinValueT.ready():
+            minValueT = self.topLevelOperatorView.MinValueT.value
+        else:
+            minValueT = 0
+
+        if self.topLevelOperatorView.MaxValueT.ready():
+            maxValueT = self.topLevelOperatorView.MaxValueT.value
+        else:
+            maxValueT = tagged_shape['t'] - 1
+
+        # x
+        if self.topLevelOperatorView.MinValueX.ready():
+            minValueX = self.topLevelOperatorView.MinValueX.value
+        else:
+            minValueX = 0
+
+        if self.topLevelOperatorView.MaxValueX.ready():
+            maxValueX = self.topLevelOperatorView.MaxValueX.value
+        else:
+            maxValueX = tagged_shape['x'] - 1
+
+        # y
+        if self.topLevelOperatorView.MinValueY.ready():
+            minValueY = self.topLevelOperatorView.MinValueY.value
+        else:
+            minValueY = 0
+
+        if self.topLevelOperatorView.MaxValueY.ready():
+            maxValueY = self.topLevelOperatorView.MaxValueY.value
+        else:
+            maxValueY = tagged_shape['y'] - 1
+
+  # z
+        if self.topLevelOperatorView.MinValueZ.ready():
+            minValueZ = self.topLevelOperatorView.MinValueZ.value
+        else:
+            minValueZ = 0
+
+        if self.topLevelOperatorView.MaxValueZ.ready():
+            maxValueZ = self.topLevelOperatorView.MaxValueZ.value
+        else:
+            maxValueZ = tagged_shape['z'] - 1
+        self.setValues(minValueT,maxValueT,minValueX,maxValueX,minValueY,maxValueY,minValueZ,maxValueZ)
+                #minValueT = 0#max(0,self.topLevelOperatorView.MinValueT.value)
+        #maxValueT = tagged_shape['t'] - 1
+
+        #if inputImageSlot.ready():
+        #    tagged_shape = inputImageSlot.meta.getTaggedShape()
+        #    maxValueT = min(self.topLevelOperatorView.MaxValueT.value,tagged_shape['t'] - 1)
+        #else:
+        #    maxValueT = self.topLevelOperatorView.MaxValueT.value
+
+#        minValueX = max(0,self.topLevelOperatorView.MinValueX.value)
+#        if inputImageSlot.ready():
+#            tagged_shape = inputImageSlot.meta.getTaggedShape()
+#            maxValueX = min(self.topLevelOperatorView.MaxValueX.value,tagged_shape['t'] - 1)
+#        else:
+#            maxValueX = self.topLevelOperatorView.MaxValueX.value#
+#
+#
+#
+#        minValueY = self.topLevelOperatorView.MinValueY.value
+#        maxValueY = self.topLevelOperatorView.MaxValueY.value
+#        minValueZ = self.topLevelOperatorView.MinValueZ.value
+#        maxValueZ = self.topLevelOperatorView.MaxValueZ.value
+        print "?????????????????>",minValueT,maxValueT,minValueX,maxValueX,minValueY,maxValueY,minValueZ,maxValueZ
+        return minValueT,maxValueT,minValueX,maxValueX,minValueY,maxValueY,minValueZ,maxValueZ
+
     def setDefaultValues(self,*args):
-        print " ==== SLT =====> in setDefaultValues"
-        minValueT,maxValueT,minValueX,maxValueX,minValueY,maxValueY,minValueZ,maxValueZ = self.defaultValues()
+        print "setDefault RANGE Values"
+        minValueT,maxValueT,minValueX,maxValueX,minValueY,maxValueY,minValueZ,maxValueZ = self.defaultRangeValues()
         self.subModelSelectionWidget.setRange(minValueT, maxValueT, minValueX, maxValueX, minValueY, maxValueY, minValueZ, maxValueZ)
+
+        print "setDefault VALUES"
+        minValueT,maxValueT,minValueX,maxValueX,minValueY,maxValueY,minValueZ,maxValueZ = self.defaultValues()
+        #self.setValues(minValueT,maxValueT,minValueX,maxValueX,minValueY,maxValueY,minValueZ,maxValueZ)
+        self.subModelSelectionWidget.setValue(minValueT, maxValueT, minValueX, maxValueX-1, minValueY, maxValueY-1, minValueZ, maxValueZ-1)
+
+        print "TIME-----------------------",self.editor.posModel.time
+        self.changeTime()
+        print "TIME-----------------------",self.editor.posModel.time
+        #self.apply_gui_settings_to_operator()
 
 #    def onCropShapeChanged(self):
 #        print " in onCropShapeChanged"

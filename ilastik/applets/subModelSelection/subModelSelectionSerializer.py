@@ -34,6 +34,7 @@ class SubModelSelectionSerializer(AppletSerializer):
                  SerialSlot(operator.MaxValueY, selfdepends=True),
                  SerialSlot(operator.MinValueZ, selfdepends=True),
                  SerialSlot(operator.MaxValueZ, selfdepends=True)]
-        
+        print " ==== SLT =====> in subModelSelection   SERIALIZER __init__", operator.MinValueT.value, operator.MaxValueT.value,operator.MinValueX,operator.MaxValueX
+
         super(SubModelSelectionSerializer, self).__init__(projectFileGroupName,
                                                          slots=slots)

@@ -19,32 +19,24 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 
-print "----- SLT -----> in SubModelSelectionApplet" ###xxx
+#print "----- SLT -----> in SubModelSelectionApplet" ###xxx
 
 from ilastik.applets.base.standardApplet import StandardApplet
-
-print " ==== SLT ===1==> before import opSubModelSelection" ###xxx
 from opSubModelSelection import OpSubModelSelection
-
-
-
-
-
-print " ==== SLT ===2==> before import subModelSelectionSerializer" ###xxx
 from subModelSelectionSerializer import SubModelSelectionSerializer
-print " ==== SLT ===3==> after import subModelSelectionSerializer" ###xxx
 
 class SubModelSelectionApplet( StandardApplet ):
-    print " ==== SLT ===1==> in SubModelSelectionApplet" ###xxx
+    #print " ==== SLT ===1==> in SubModelSelectionApplet" ###xxx
     """
     This is a simple applet facilitating sub model selection
     """
     def __init__( self, workflow, guiName, projectFileGroupName ):
-        print " ==== SLT ===1==> in __init__ SubModelSelectionApplet" ###xxx
+        #print " ==== SLT ===1==> in __init__ SubModelSelectionApplet" ###xxx
         super(SubModelSelectionApplet, self).__init__(guiName, workflow)
         self._serializableItems = [ SubModelSelectionSerializer(self.topLevelOperator, projectFileGroupName) ]
-        
-        print " ==== SLT ===1==> end __init__ SubModelSelectionApplet" ###xxx
+        self.predictionSerializer = self._serializableItems[0]
+
+        #print " ==== SLT ===1==> end __init__ SubModelSelectionApplet" ###xxx
 
     @property
     def singleLaneOperatorClass(self):

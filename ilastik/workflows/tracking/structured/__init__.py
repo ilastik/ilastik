@@ -23,7 +23,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 try:
-    print "===== SLT =====> structured"
+    #print "===== SLT =====> structured"
     from structuredTrackingWorkflow import StructuredTrackingWorkflow
 except ImportError as e:
     logger.warn( "Failed to import structured tracking workflow; check dependencies: " + str(e) )

@@ -19,11 +19,6 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 
-print "----- SLT -----> in __init__ subModelSelectionApplet" ###xxx
-
-print "----- SLT -----> before SubModelSelectionApplet" ###xxx
 from subModelSelectionApplet import  SubModelSelectionApplet
-print "----- SLT -----> before opSubModelSelection" ###xxx
 from opSubModelSelection import  OpSubModelSelection
-print "----- SLT -----> after __init__ subModelSelectionApplet" ###xxx
-#__author__ = 'jales'
+__author__ = 'jales'

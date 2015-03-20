@@ -19,18 +19,13 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 
-print "----- SLT -----> in structuredTrackingWorkflow" ###xxx
-
 from lazyflow.graph import Graph
 from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.tracking.structured.structuredTrackingApplet import StructuredTrackingApplet
 from ilastik.applets.objectExtraction.objectExtractionApplet import ObjectExtractionApplet
 from ilastik.applets.thresholdTwoLevels.thresholdTwoLevelsApplet import ThresholdTwoLevelsApplet
-
-print " ==== SLT =====> before import SubModelSelectionApplet" ###xxx
-from ilastik.applets.subModelSelection.subModelSelectionApplet import SubModelSelectionApplet ###xxx
-print " ==== SLT =====> after import SubModelSelectionApplet" ###xxx
+from ilastik.applets.subModelSelection.subModelSelectionApplet import SubModelSelectionApplet
 
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
@@ -78,7 +73,7 @@ class StructuredTrackingWorkflow( Workflow ):
         self._applets.append(self.dataSelectionApplet)
 
         # insert subModelSelectionApplet
-        self._applets.append(self.subModelSelectionApplet) ###xxx
+        self._applets.append(self.subModelSelectionApplet)
 
         self._applets.append(self.thresholdTwoLevelsApplet)
         self._applets.append(self.objectExtractionApplet)
@@ -92,15 +87,15 @@ class StructuredTrackingWorkflow( Workflow ):
         opTwoLevelThreshold = self.thresholdTwoLevelsApplet.topLevelOperator.getLane(laneIndex)
         opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
 
-        opSubModelSelection = self.subModelSelectionApplet.topLevelOperator.getLane(laneIndex) ###xxx
+        opSubModelSelection = self.subModelSelectionApplet.topLevelOperator.getLane(laneIndex)
 
         ## Connect operators ##
         op5Raw = OpReorderAxes(parent=self)
         op5Raw.AxisOrder.setValue("txyzc")
         op5Raw.Input.connect(opData.ImageGroup[0])
 
-        opSubModelSelection.InputImage.connect( opData.ImageGroup[0] ) ###xxx
-        opSubModelSelection.PredictionImage.connect( opData.ImageGroup[1] ) ###xxx
+        opSubModelSelection.InputImage.connect( opData.ImageGroup[0] )
+        opSubModelSelection.PredictionImage.connect( opData.ImageGroup[1] )
 
         opTwoLevelThreshold.InputImage.connect( opData.ImageGroup[1] )
         opTwoLevelThreshold.RawInput.connect( opData.ImageGroup[0] ) # Used for display only
