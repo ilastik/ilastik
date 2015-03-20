@@ -223,12 +223,14 @@ class CacheMemoryManager(threading.Thread):
         """
         sleep for _refresh_interval seconds or until woken up
         """
-        # can't use context manager because of error messages at shutdown
-        self._condition.acquire()
-        self._condition.wait(self._refresh_interval)
-        if self._condition is not None:
-            # no idea how that happens, but it does (see above)
-            self._condition.release()
+        try:
+            with self._condition:
+                self._condition.wait(self._refresh_interval)
+        except TypeError:
+            # this can occur during shutdown, will not be fixed in
+            # python2
+            # http://bugs.python.org/issue14623
+            pass
 
     def setRefreshInterval(self, t):
         """
