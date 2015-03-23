@@ -49,13 +49,13 @@ class SubModelSelectionGui(LayerViewerGui):
     def __init__(self, parentApplet, topLevelOperatorView):
         """
         """
-        #print " ..... SLT .....> in __init__ SubModelSelectionGui"
+        print " ..... SLT .....> in __init__ SubModelSelectionGui"
         self.topLevelOperatorView = topLevelOperatorView
         super(SubModelSelectionGui, self).__init__(parentApplet, self.topLevelOperatorView)
         self.subModels = []
 
     def initAppletDrawerUi(self):
-        #print " ..... SLT .....> in initAppletDrawerUi SubModelSelectionGui"
+        print " ..... SLT .....> in initAppletDrawerUi SubModelSelectionGui",self.editor.posModel.shape5D
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
@@ -153,15 +153,16 @@ class SubModelSelectionGui(LayerViewerGui):
                 (self.topLevelOperatorView.MaxValueT.value,self.topLevelOperatorView.MaxValueX.value,self.topLevelOperatorView.MaxValueY.value,self.topLevelOperatorView.MaxValueZ.value)]
 
     def changeTime(self):
-        print "---------------------------->change TIME"
         delta = self.subModelSelectionWidget._minSliderT.value() - self.editor.posModel.time
-        print "delta", delta
         if delta > 0:
             self.editor.navCtrl.changeTimeRelative(delta)
         else:
             delta = self.subModelSelectionWidget._maxSliderT.value() - self.editor.posModel.time
             if delta < 0:
                 self.editor.navCtrl.changeTimeRelative(delta)
+        print "---------------------------->self.editor.posModel.time", self.editor.posModel.time
+        print "---------------------------->                    delta", delta
+        print "---------------------------->              change TIME", self.editor.posModel.time
 
     def _onMinSliderTMoved(self):
         delta = self.subModelSelectionWidget._minSliderT.value() - self.editor.posModel.time
@@ -241,7 +242,7 @@ class SubModelSelectionGui(LayerViewerGui):
         print ""
         print ""
         print " ..... SLT .....> in apply_operator_settings_to_gui SubModelSelectionGui"
-        minValueT, maxValueT, minValueX, maxValueX, minValueY, maxValueY, minValueZ, maxValueZ = [-1]*8
+        minValueT, maxValueT, minValueX, maxValueX, minValueY, maxValueY, minValueZ, maxValueZ = [0]*8
 
         # t
         print "is TIME min READY",self.topLevelOperatorView.MinValueT.ready()
@@ -250,7 +251,7 @@ class SubModelSelectionGui(LayerViewerGui):
         print "is TIME max READY",self.topLevelOperatorView.MaxValueT.ready()
         if self.topLevelOperatorView.MaxValueT.ready():
             maxValueT = self.topLevelOperatorView.MaxValueT.value
-        self.setTimeValues(minValueT,maxValueT)
+        #self.setTimeValues(minValueT,maxValueT)
 
         # x
         if self.topLevelOperatorView.MinValueX.ready():
@@ -277,6 +278,14 @@ class SubModelSelectionGui(LayerViewerGui):
         #print "............> values=",[[minValueX,minValueY,minValueZ],[maxValueX,maxValueY,maxValueZ]]
         #self.topLevelOperatorView.MinValueT.setValue(minValueT)
         #self.topLevelOperatorView.MaxValueT.setValue(maxValueT)
+
+        inputImageSlot = self.topLevelOperatorView.InputImage
+        tagged_shape = inputImageSlot.meta.getTaggedShape()
+        
+        print " end of apply_operator_settings_to_gui",self.editor.posModel.shape5D
+        self.editor.posModel.shape5D = [tagged_shape['t'],tagged_shape['x'],tagged_shape['y'],tagged_shape['z'],tagged_shape['c']]
+        print " end of apply_operator_settings_to_gui",self.editor.posModel.shape5D
+        self.changeTime()
 
     def setTimeValues(self, minValueT, maxValueT):
         print " ..... SLT .....> in setTimeValues",minValueT, maxValueT
@@ -390,7 +399,7 @@ class SubModelSelectionGui(LayerViewerGui):
         #if self.topLevelOperatorView.MaxValueT.ready():
         #    maxValueT = self.topLevelOperatorView.MaxValueT.value
         #else:
-        maxValueT = tagged_shape['t'] - 1
+        maxValueT = tagged_shape['t']
 
         # x
         #if self.topLevelOperatorView.MinValueX.ready():
@@ -401,7 +410,7 @@ class SubModelSelectionGui(LayerViewerGui):
         #if self.topLevelOperatorView.MaxValueX.ready():
         #    maxValueX = self.topLevelOperatorView.MaxValueX.value
         #else:
-        maxValueX = tagged_shape['x'] - 1
+        maxValueX = tagged_shape['x']
 
         # y
         #if self.topLevelOperatorView.MinValueY.ready():
@@ -412,7 +421,7 @@ class SubModelSelectionGui(LayerViewerGui):
         #if self.topLevelOperatorView.MaxValueY.ready():
         #    maxValueY = self.topLevelOperatorView.MaxValueY.value
         #else:
-        maxValueY = tagged_shape['y'] - 1
+        maxValueY = tagged_shape['y']
 
   # z
         #if self.topLevelOperatorView.MinValueZ.ready():
@@ -423,11 +432,12 @@ class SubModelSelectionGui(LayerViewerGui):
         #if self.topLevelOperatorView.MaxValueZ.ready():
         #    maxValueZ = self.topLevelOperatorView.MaxValueZ.value
         #else:
-        maxValueZ = tagged_shape['z'] - 1
+        maxValueZ = tagged_shape['z']
 
-        print "defaultRangeValues ---> Image SHAPE",minValueT,maxValueT,minValueX,maxValueX,minValueY,maxValueY,minValueZ,maxValueZ
+        #self.editor.posModel.shape5D = (maxValueT,maxValueX,maxValueY,maxValueZ,tagged_shape['c'])
+        print "defaultRangeValues ---> Image SHAPE",minValueT,maxValueT-1,minValueX,maxValueX-1,minValueY,maxValueY-1,minValueZ,maxValueZ-1
 
-        return minValueT,maxValueT,minValueX,maxValueX,minValueY,maxValueY,minValueZ,maxValueZ
+        return minValueT,maxValueT-1,minValueX,maxValueX-1,minValueY,maxValueY-1,minValueZ,maxValueZ-1
 
     def defaultValues(self):
         print "==========================defaultValues========================="
@@ -454,7 +464,7 @@ class SubModelSelectionGui(LayerViewerGui):
         tagged_shape = inputImageSlot.meta.getTaggedShape()
         minValueT = 0#max(0,self.topLevelOperatorView.MinValueT.value)
         maxValueT = tagged_shape['t'] - 1
-        self.setTimeValues(minValueT,maxValueT)
+        #self.setTimeValues(minValueT,maxValueT)
 
         if self.topLevelOperatorView.MinValueT.ready():
             minValueTnew = self.topLevelOperatorView.MinValueT.value
@@ -468,7 +478,7 @@ class SubModelSelectionGui(LayerViewerGui):
 
         minValueT = max(minValueT,minValueTnew)
         maxValueT = min(maxValueT,maxValueTnew)
-        self.setTimeValues(minValueT,maxValueT)
+        #self.setTimeValues(minValueT,maxValueT)
 
         # x
         if self.topLevelOperatorView.MinValueX.ready():
@@ -538,9 +548,12 @@ class SubModelSelectionGui(LayerViewerGui):
         #self.setValues(minValueT,maxValueT,minValueX,maxValueX,minValueY,maxValueY,minValueZ,maxValueZ)
         self.subModelSelectionWidget.setValue(minValueT, maxValueT, minValueX, maxValueX-1, minValueY, maxValueY-1, minValueZ, maxValueZ-1)
 
-        print "TIME-----------------------",self.editor.posModel.time
-        self.changeTime()
-        print "TIME-----------------------",self.editor.posModel.time
+        #print "TIME-----------------------",self.editor.posModel.time,minValueT, maxValueT
+        #self.editor.posModel.time = minValueT
+        #print "TIME-----------------------",self.editor.posModel.time
+        #self.editor.navCtrl.changeTime (minValueT)
+        #self. changeTime()
+        #print "TIME-----------------------",self.editor.posModel.time
         #self.apply_gui_settings_to_operator()
 
 #    def onCropShapeChanged(self):
@@ -551,3 +564,7 @@ class SubModelSelectionGui(LayerViewerGui):
 
 
 
+        #inputImageSlot = self.topLevelOperatorView.InputImage
+        #tagged_shape = inputImageSlot.meta.getTaggedShape()
+        #self._shape5D    = [tagged_shape['t'],tagged_shape['x'],tagged_shape['y'],tagged_shape['z'],tagged_shape['c']]
+        #
