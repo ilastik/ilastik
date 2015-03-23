@@ -623,6 +623,12 @@ class IlastikShell(QMainWindow):
 
         menu.addAction("Show IPC Server Info", IPCFacade().show_info)
 
+        def hideApplets(hideThem):
+            self.mainSplitter.setVisible(not hideThem)
+        hide = menu.addAction("Hide applets")
+        hide.setCheckable(True)
+        hide.toggled.connect(hideApplets)
+
         return menu
 
     def _createProfilingSubmenu(self):
