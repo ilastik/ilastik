@@ -27,15 +27,12 @@ class ObjectClassificationDataExportApplet( DataExportApplet ):
     """
     def __init__(self, *args, **kwargs):
         super(ObjectClassificationDataExportApplet, self).__init__(*args, **kwargs)
-        print "INIT APPLET", id(self)
         self.exporting_op = None
 
     def set_exporting_operator(self, op):
         self.exporting_op = op
-        print "SET OPERATOR", id(self)
-        
+
     def getMultiLaneGui(self):
-        print "GET LANE", id(self), self.top is None
         if self._gui is None:
             # Gui is a special subclass of the generic gui
             from objectClassificationDataExportGui import ObjectClassificationDataExportGui

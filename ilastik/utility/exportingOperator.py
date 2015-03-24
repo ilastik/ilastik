@@ -29,7 +29,7 @@ class ExportingOperator(object):
             progress_display = gui["dialog"]
             self.save_export_progress_dialog(progress_display)
 
-        export = partial(self.do_export, settings, selected_features, progress_display)();return
+        export = partial(self.do_export, settings, selected_features, progress_display)()
         request = Request(export)
         if "fail" in gui:
             request.notify_failed(gui["fail"])

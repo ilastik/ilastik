@@ -34,29 +34,28 @@ class ObjectClassificationDataExportGui( DataExportGui, ExportingGui ):
         super(ObjectClassificationDataExportGui, self).__init__(*args, **kwargs)
         self.topLevelOperatorView = None
 
-        print "INIT GUI", id(self)
-
     def set_exporting_operator(self, op):
         self.topLevelOperatorView = op
-        print "SET OP GUI", id(self)
 
     def createLayerViewer(self, opLane):
         return ObjectClassificationResultsViewer(self.parentApplet, opLane)
 
     def get_export_dialog_title(self):
-        return "TITLE"
+        return "Export Object Information"
 
     def lock_gui(self):
-        print "LOCK"
+        self.parentApplet.busy = True
+        self.parentApplet.appletStateUpdateRequested.emit()
 
     def unlock_gui(self):
-        print "UNLOCK"
+        self.parentApplet.busy = False
+        self.parentApplet.appletStateUpdateRequested.emit()
 
     def get_raw_shape(self):
         return ()
 
     def get_feature_names(self):
-        return {}
+        return self.topLevelOperatorView.ComputedFeatureNames([]).wait()
 
     def _initAppletDrawerUic(self):
         super(ObjectClassificationDataExportGui, self)._initAppletDrawerUic()
