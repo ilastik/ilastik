@@ -24,13 +24,41 @@ from PyQt4.QtGui import QColor
 from volumina.api import LazyflowSource, ColortableLayer, AlphaModulatedLayer
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
 from lazyflow.operators import OpMultiArraySlicer2
+from ilastik.utility.exportingOperator import ExportingGui
 
-class ObjectClassificationDataExportGui( DataExportGui ):
+class ObjectClassificationDataExportGui( DataExportGui, ExportingGui ):
     """
     A subclass of the generic data export gui that creates custom layer viewers.
     """
     def createLayerViewer(self, opLane):
         return ObjectClassificationResultsViewer(self.parentApplet, opLane)
+
+    def get_export_dialog_title(self):
+        return "TITLE"
+
+    def lock_gui(self):
+        print "LOCK"
+
+    def unlock_gui(self):
+        print "UNLOCK"
+
+    def get_raw_shape(self):
+        return ()
+
+    def get_feature_names(self):
+        return {}
+
+    def _initAppletDrawerUic(self):
+        super(ObjectClassificationDataExportGui, self)._initAppletDrawerUic()
+
+        from PyQt4.QtGui import QGroupBox, QPushButton, QVBoxLayout
+        group = QGroupBox("Export Features", self.drawer)
+        group.setLayout(QVBoxLayout())
+        self.drawer.layout().addWidget(group)
+
+        btn = QPushButton("Configure", group)
+        btn.clicked.connect(self.show_export_dialog)
+        group.layout().addWidget(btn)
         
 
 def _createDefault16ColorColorTable():
