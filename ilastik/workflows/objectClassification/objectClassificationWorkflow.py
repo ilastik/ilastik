@@ -119,6 +119,7 @@ class ObjectClassificationWorkflow(Workflow):
         self.objectExtractionApplet = ObjectExtractionApplet(workflow=self, name = "Object Feature Selection")
         self.objectClassificationApplet = ObjectClassificationApplet(workflow=self)
         self.dataExportApplet = ObjectClassificationDataExportApplet(self, "Object Prediction Export")
+        self.dataExportApplet.set_exporting_operator(self.objectClassificationApplet.topLevelOperator)
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.WorkingDirectory.connect( self.dataSelectionApplet.topLevelOperator.WorkingDirectory )
         

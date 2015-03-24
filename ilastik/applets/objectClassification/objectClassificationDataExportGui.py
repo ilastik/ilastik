@@ -30,6 +30,16 @@ class ObjectClassificationDataExportGui( DataExportGui, ExportingGui ):
     """
     A subclass of the generic data export gui that creates custom layer viewers.
     """
+    def __init__(self, *args, **kwargs):
+        super(ObjectClassificationDataExportGui, self).__init__(*args, **kwargs)
+        self.topLevelOperatorView = None
+
+        print "INIT GUI", id(self)
+
+    def set_exporting_operator(self, op):
+        self.topLevelOperatorView = op
+        print "SET OP GUI", id(self)
+
     def createLayerViewer(self, opLane):
         return ObjectClassificationResultsViewer(self.parentApplet, opLane)
 
