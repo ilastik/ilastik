@@ -40,7 +40,7 @@ class ExportObjectInfoDialog(QDialog):
 
         self.setWindowTitle(title)
 
-        self.raw_size = reduce(mul, dimensions)
+        self.raw_size = reduce(mul, dimensions, 0)
 
         if req_features is None:
             req_features = []
