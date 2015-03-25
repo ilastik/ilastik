@@ -31,19 +31,20 @@ class ExportingOperator(object):
 
         export = partial(self.do_export, settings, selected_features, progress_display)
         request = Request(export)
-        if "fail" in gui:
-            request.notify_failed(gui["fail"])
-        if "ok" in gui:
-            request.notify_finished(gui["ok"])
-        if "cancel" in gui:
-            request.notify_cancelled(gui["cancel"])
-        if "unlock" in gui:
-            request.notify_cancelled(gui["unlock"])
-            request.notify_failed(gui["unlock"])
-            request.notify_finished(gui["unlock"])
-        if "lock" in gui:
-            lock = gui["lock"]
-            lock()
+        if gui is not None:
+            if "fail" in gui:
+                request.notify_failed(gui["fail"])
+            if "ok" in gui:
+                request.notify_finished(gui["ok"])
+            if "cancel" in gui:
+                request.notify_cancelled(gui["cancel"])
+            if "unlock" in gui:
+                request.notify_cancelled(gui["unlock"])
+                request.notify_failed(gui["unlock"])
+                request.notify_finished(gui["unlock"])
+            if "lock" in gui:
+                lock = gui["lock"]
+                lock()
         request.notify_failed(self.export_failed)
         request.notify_finished(self.export_finished)
         request.notify_cancelled(self.export_cancelled)
@@ -161,7 +162,7 @@ class ExportingGui(object):
         """
         raise NotImplementedError
 
-    def unlock_gui(self):
+    def unlock_gui(self, *_):
         self.gui_applet.busy = False
         self.gui_applet.appletStateUpdateRequested.emit()
 

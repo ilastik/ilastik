@@ -20,17 +20,55 @@
 ###############################################################################
 from PyQt4.QtCore import Qt
 from PyQt4.QtGui import QColor
+from ilastik.utility.exportingOperator import ExportingGui
 import volumina.colortables as colortables
 
 from volumina.api import LazyflowSource, ColortableLayer
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
 
-class TrackingBaseDataExportGui( DataExportGui ):
+
+class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
     """
     A subclass of the generic data export gui that creates custom layer viewers.
     """
+
+    @property
+    def gui_applet(self):
+        return self.parentApplet
+
+    def __init__(self, *args, **kwargs):
+        super(TrackingBaseDataExportGui, self).__init__(*args, **kwargs)
+        self._exporting_operator = None
+
+    def get_feature_names(self):
+        return self.get_exporting_operator().ComputedFeatureNamesWithDivFeatures([]).wait()
+
+    def get_exporting_operator(self, lane=0):
+        return self._exporting_operator.getLane(lane)
+
+    def set_exporting_operator(self, op):
+        self._exporting_operator = op
+
+    def get_export_dialog_title(self):
+        return "Export Tracking Data"
+
+    def get_raw_shape(self):
+        return self.get_exporting_operator().RawImage.meta.shape
+
     def createLayerViewer(self, opLane):
         return TrackingBaseResultsViewer(self.parentApplet, opLane)
+
+    def _initAppletDrawerUic(self):
+        super(TrackingBaseDataExportGui, self)._initAppletDrawerUic()
+
+        from PyQt4.QtGui import QGroupBox, QPushButton, QVBoxLayout
+        group = QGroupBox("Export Features and Tracks", self.drawer)
+        group.setLayout(QVBoxLayout())
+        self.drawer.layout().addWidget(group)
+
+        btn = QPushButton("Configure", group)
+        btn.clicked.connect(self.show_export_dialog)
+        group.layout().addWidget(btn)
         
 
 class TrackingBaseResultsViewer(DataExportLayerViewerGui):
