@@ -46,13 +46,9 @@ class ObjectClassificationDataExportGui( DataExportGui, ExportingGui ):
     def get_export_dialog_title(self):
         return "Export Object Information"
 
-    def lock_gui(self):
-        self.parentApplet.busy = True
-        self.parentApplet.appletStateUpdateRequested.emit()
-
-    def unlock_gui(self):
-        self.parentApplet.busy = False
-        self.parentApplet.appletStateUpdateRequested.emit()
+    @property
+    def gui_applet(self):
+        return self.parentApplet
 
     def get_raw_shape(self):
         return self.get_exporting_operator().RawImages.meta.shape

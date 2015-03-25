@@ -1276,10 +1276,6 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
     def get_export_dialog_title(self):
         return "Export Tracking Information"
 
-    def lock_gui(self):
-        self.applet.busy = True
-        self.applet.appletStateUpdateRequested.emit()
-
-    def unlock_gui(self, *_):
-        self.applet.busy = False
-        self.applet.appletStateUpdateRequested.emit()
+    @property
+    def gui_applet(self):
+        return self.applet

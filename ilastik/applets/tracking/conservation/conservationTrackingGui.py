@@ -250,13 +250,9 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             return self.topLevelOperatorView.ComputedFeatureNamesWithDivFeatures([]).wait()
         return self.topLevelOperatorView.ComputedFeatureNames([]).wait()
 
-    def unlock_gui(self, *_):
-        self.applet.busy = False
-        self.applet.appletStateUpdateRequested.emit()
-
-    def lock_gui(self):
-        self.applet.busy = True
-        self.applet.appletStateUpdateRequested.emit()
+    @property
+    def gui_applet(self):
+        return self.applet
 
     def get_export_dialog_title(self):
         return "Export Tracking Information"
