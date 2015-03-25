@@ -29,7 +29,7 @@ class ExportingOperator(object):
             progress_display = gui["dialog"]
             self.save_export_progress_dialog(progress_display)
 
-        export = partial(self.do_export, settings, selected_features, progress_display)()
+        export = partial(self.do_export, settings, selected_features, progress_display)
         request = Request(export)
         if "fail" in gui:
             request.notify_failed(gui["fail"])
@@ -103,8 +103,11 @@ class ExportingGui(object):
     A Mixin for the GUI that can export h5/csv data
     """
 
-    @property
     def get_exporting_operator(self, lane=0):
+        raise NotImplementedError
+
+    @property
+    def gui_applet(self):
         raise NotImplementedError
 
     def show_export_dialog(self):
@@ -159,10 +162,12 @@ class ExportingGui(object):
         raise NotImplementedError
 
     def unlock_gui(self):
-        raise NotImplementedError
+        self.gui_applet.busy = False
+        self.gui_applet.appletStateUpdateRequested.emit()
 
     def lock_gui(self):
-        raise NotImplementedError
+        self.gui_applet.busy = True
+        self.gui_applet.appletStateUpdateRequested.emit()
 
     def get_export_dialog_title(self):
         raise NotImplementedError
