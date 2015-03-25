@@ -40,7 +40,7 @@ class ExportObjectInfoDialog(QDialog):
 
         self.setWindowTitle(title)
 
-        self.raw_size = reduce(mul, dimensions, 0)
+        self.raw_size = reduce(mul, dimensions, 1)
 
         if req_features is None:
             req_features = []
@@ -52,7 +52,7 @@ class ExportObjectInfoDialog(QDialog):
 
         self.ui.exportPath.setText(os.path.expanduser("~") + "/exported_data.h5")
         self.ui.exportPath.dropEvent = self._drop_event
-        #self.ui.forceUniqueIds.setEnabled(dimensions[0] > 1)
+        # self.ui.forceUniqueIds.setEnabled(dimensions[0] > 1)
         self.ui.compressFrame.setVisible(False)
 
     def checked_features(self):
