@@ -111,7 +111,8 @@ class SubModelSelectionGui(LayerViewerGui):
 
         self.editor.showCropLines(True)
         self.editor.cropModel.changed.connect(self.onCropModelChanged)
-        self.editor.posModel.timeChanged.connect(self.changeTime)
+        self.editor.posModel.timeChanged.connect(self.updateTime)
+        #self.editor.navCtrl. timeChanged.connect(self.updateTime)
 
         #self.imageView2D = ImageView2D() #parent, cropModel, imagescene2d
         #viewportRect()
@@ -152,7 +153,7 @@ class SubModelSelectionGui(LayerViewerGui):
         return [(self.topLevelOperatorView.MinValueT.value,self.topLevelOperatorView.MinValueX.value,self.topLevelOperatorView.MinValueY.value,self.topLevelOperatorView.MinValueZ.value),
                 (self.topLevelOperatorView.MaxValueT.value,self.topLevelOperatorView.MaxValueX.value,self.topLevelOperatorView.MaxValueY.value,self.topLevelOperatorView.MaxValueZ.value)]
 
-    def changeTime(self):
+    def updateTime(self):
         delta = self.subModelSelectionWidget._minSliderT.value() - self.editor.posModel.time
         if delta > 0:
             self.editor.navCtrl.changeTimeRelative(delta)
@@ -163,6 +164,7 @@ class SubModelSelectionGui(LayerViewerGui):
         print "---------------------------->self.editor.posModel.time", self.editor.posModel.time
         print "---------------------------->                    delta", delta
         print "---------------------------->              change TIME", self.editor.posModel.time
+
 
     def _onMinSliderTMoved(self):
         delta = self.subModelSelectionWidget._minSliderT.value() - self.editor.posModel.time
@@ -217,6 +219,7 @@ class SubModelSelectionGui(LayerViewerGui):
             else:
                 print "MY ERROR: Setting up an axis that does NOT exist!"
 
+        #self.editor.navCtrl.
         print "---->",[[start, stop] for dim, start, stop in zip("xyz", starts, stops)]
         return [[start, stop] for dim, start, stop in zip("xyz", starts, stops)]
 
@@ -283,9 +286,10 @@ class SubModelSelectionGui(LayerViewerGui):
         tagged_shape = inputImageSlot.meta.getTaggedShape()
         
         print " end of apply_operator_settings_to_gui",self.editor.posModel.shape5D
+        print "SETTING SHAPE5D in ___apply_operator_settings_to_gui________________________________________________________________________________", self.editor.posModel.shape5D
         self.editor.posModel.shape5D = [tagged_shape['t'],tagged_shape['x'],tagged_shape['y'],tagged_shape['z'],tagged_shape['c']]
-        print " end of apply_operator_settings_to_gui",self.editor.posModel.shape5D
-        self.changeTime()
+        print " end of apply_operator_settings_to_gui_______________________________________________________________________________               ",self.editor.posModel.shape5D
+        self.updateTime()
 
     def setTimeValues(self, minValueT, maxValueT):
         print " ..... SLT .....> in setTimeValues",minValueT, maxValueT
@@ -552,7 +556,7 @@ class SubModelSelectionGui(LayerViewerGui):
         #self.editor.posModel.time = minValueT
         #print "TIME-----------------------",self.editor.posModel.time
         #self.editor.navCtrl.changeTime (minValueT)
-        #self. changeTime()
+        #self. updateTime()
         #print "TIME-----------------------",self.editor.posModel.time
         #self.apply_gui_settings_to_operator()
 
