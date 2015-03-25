@@ -55,7 +55,7 @@ class StructuredTrackingWorkflow( Workflow ):
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Prediction Maps'] )
 
-        self.subModelSelectionApplet = SubModelSelectionApplet(self,"Sub Model Selection","SubModelSelection") ###xxx
+        self.subModelSelectionApplet = SubModelSelectionApplet(self,"Sub Model Selection","SubModelSelection")
 
         self.thresholdTwoLevelsApplet = ThresholdTwoLevelsApplet( self,"Threshold and Size Filter","ThresholdTwoLevels" )
 
@@ -71,10 +71,7 @@ class StructuredTrackingWorkflow( Workflow ):
 
         self._applets = []
         self._applets.append(self.dataSelectionApplet)
-
-        # insert subModelSelectionApplet
         self._applets.append(self.subModelSelectionApplet)
-
         self._applets.append(self.thresholdTwoLevelsApplet)
         self._applets.append(self.objectExtractionApplet)
         self._applets.append(self.trackingApplet)

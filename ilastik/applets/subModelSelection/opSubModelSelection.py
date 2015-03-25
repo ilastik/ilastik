@@ -19,14 +19,11 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 
-#print "----- SLTt -----> in opSubModelSelection" ###xxx
-
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 
 import numpy
 
 class OpSubModelSelection(Operator):
-    #print " ==== SLT =====> in opModelSelectionSerializer" ###xxx
     """
     Given an input image and visible crop lines,
     allows selection of a SubModel.
@@ -49,26 +46,10 @@ class OpSubModelSelection(Operator):
     CropImage = OutputSlot()
     CropPrediction = OutputSlot()
 
-    #InvertedOutput = OutputSlot()
-
     def setupOutputs(self):
-        #print " ==== SLT =====> in setupOutputs opSubModelSelectionSerializer" ###xxx
-        # Copy the input metadata to both outputs
         self.CropImage.meta.assignFrom( self.InputImage.meta )
         self.CropPrediction.meta.assignFrom( self.PredictionImage.meta )
-        #self.InvertedOutput.meta.assignFrom( self.InputImage.meta )
-
-        # SANITY CHECK OF THESE VALUES FIRST,
-
         self._MinValueT=self.MinValueT.value
-        #print "self.InputImage.meta.shape",self.InputImage.meta.shape
-        #print "self.InputImage.meta.getTaggedShape()",self.InputImage.meta.getTaggedShape() # returns a dictionary
-        #print "self.InputImage.meta.axistags",self.InputImage.meta.axistags
-
-
-
-
-
         self._MaxValueT=self.MaxValueT.value
         self._MinValueX=self.MinValueX.value
         self._MaxValueX=self.MaxValueX.value
@@ -77,35 +58,23 @@ class OpSubModelSelection(Operator):
         self._MinValueZ=self.MinValueZ.value
         self._MaxValueZ=self.MaxValueZ.value
 
-        # compare the two shapes: image and prediction
-
-        # datasetConstraintError (somwhere in ilastik) vs. assert/value error error
-
-
     def execute(self, slot, subindex, roi, result):
-        print " ==== SLT =====> in execute opModelSelectionSerializer" ###xxx
         key = roi.toSlice()
-        #raw = self.InputImage[key].wait()
-        #mask = numpy.ones_like(raw)#logical_and(self.MinValue.value <= raw, raw <= self.MaxValue.value)
-        
+
         if slot.name == 'CropImage':
             raw = self.InputImage[key].wait()
-            mask = numpy.ones_like(raw)#<------------------------------------------
-            result[...] = mask * raw ###xxxxxxxxxxxxxxx
+            mask = numpy.ones_like(raw)
+            result[...] = mask * raw
         if slot.name == 'CropPrediction':
             raw = self.PredictionImage[key].wait()
-            mask = numpy.ones_like(raw)#<--------------------------------------------------
-            result[...] = numpy.logical_not(mask) * raw ###xxxxxxxxxxxxxxxxxxxxxxx
+            mask = numpy.ones_like(raw)
+            result[...] = numpy.logical_not(mask) * raw
 
     def propagateDirty(self, slot, subindex, roi):
-        #print " ==== SLT =====> in propagateDirty opSubModelSelectionSerializer" ###xxx
         if slot.name == "InputImage":
             self.CropImage.setDirty(roi)
-            #self.InvertedOutput.setDirty(roi)
         elif slot.name == "PredictionImage":
             self.CropPrediction.setDirty( roi )
-            #self.InvertedOutput.setDirty( slice(None) )
         else:
             self.CropImage.setDirty( slice(None) )
             self.CropPrediction.setDirty( slice(None) )
-            #assert False, "Unknown dirty input slot"

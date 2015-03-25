@@ -49,7 +49,6 @@ class OpStructuredTracking(Operator):
         self.labels = {}
         self.divisions = {}
         
-        # As soon as input data is available, check its constraints
         self.RawImage.notifyReady( self._checkConstraints )
         self.BinaryImage.notifyReady( self._checkConstraints )
         
@@ -177,47 +176,3 @@ class OpStructuredTracking(Operator):
             logger.info( "at timestep {}, {} traxels found".format( t, count ) )
             
         return oid2tids, alltids
-    
-#    def _getObjects(self, time_range, x_range, y_range, z_range, size_range, misdet_idx):
-#        trange = range(time_range[0], time_range[1])
-#        print 'trange=', trange
-#        feats = self.ObjectFeatures(trange).wait()        
-#          
-#        filtered_labels = {}
-#        oid2tids = {}
-#        alltids = set()
-#        for t in feats.keys():
-#            rc = feats[t][0]['RegionCenter']
-#            if rc.size:
-#                rc = rc[1:, ...]
-#                
-#            ct = feats[t][0]['Count']
-#            if ct.size:
-#                ct = ct[1:, ...]
-#            mainOperator
-#            print "at timestep ", t, rc.shape[0], "traxels found"
-#            count = 0
-#            filtered_labels[t] = []
-#            oid2tids[t] = {}
-#            for idx in range(rc.shape[0]):
-#                oid = int(idx) + 1
-#                x, y, z = rc[idx]
-#                size = ct[idx]
-#                if (x < x_range[0] or x >= x_range[1] or
-#                    y < y_range[0] or y >= y_range[1] or
-#                    z < z_range[0] or z >= z_range[1] or                    
-#                    size < size_range[0] or size >= size_range[1]):
-#                    filtered_labels[t].append(oid)
-#                    continue
-#                
-#                count += 1
-#                if t in self.labels.keys() and oid in self.labels[t].keys():
-#                    if misdet_idx not in self.labels[t][oid]:
-#                        oid2tids[t][oid] = self.labels[t][oid]
-#                        for l in self.labels[t][oid]:
-#                            alltids.add(l)   
-#                         
-#            print "at timestep ", t, count, "traxels passed filter"
-#            
-#        return oid2tids, alltids
-    

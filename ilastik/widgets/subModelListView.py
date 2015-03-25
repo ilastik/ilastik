@@ -32,12 +32,8 @@ class SubModelListView(ListView):
     def __init__(self, parent = None):
         super(SubModelListView, self).__init__(parent=parent)
         
-        #self._colorDialog = ColorDialog(self)
-        
         self.resetEmptyMessage("No Sub-Models defined.")
 
-        print ",,,,,,,,,,,,,,,,,,,,> __init__ SubModelListView"
-    
     #def tableViewCellDoubleClicked(self, modelIndex):
         #if modelIndex.column() == self.model.ColumnID.Color:
         #    self._colorDialog.setBrushColor(self._table.model()[modelIndex.row()].brushColor())

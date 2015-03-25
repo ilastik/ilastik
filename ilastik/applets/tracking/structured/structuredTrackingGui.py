@@ -50,7 +50,6 @@ class StructuredTrackingGui(LayerViewerGui):
         return self._drawer
 
     def _loadUiFile(self):
-        # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")        
         return self._drawer
@@ -121,16 +120,12 @@ class StructuredTrackingGui(LayerViewerGui):
                                        self,
                                        None ) )
         
-    ###########################################
-    ###########################################
-    
     def __init__(self, parentApplet, topLevelOperatorView):
         self.topLevelOperatorView = topLevelOperatorView
         super(StructuredTrackingGui, self).__init__(parentApplet, topLevelOperatorView)
         
         self.mainOperator = topLevelOperatorView
         
-        # get the applet reference from the workflow (needed for the progressSignal)
         self.applet = self.mainOperator.parent.parent.trackingApplet
         
         self.mainOperator.LabelImage.notifyMetaChanged( self._onMetaChanged)
@@ -240,7 +235,6 @@ class StructuredTrackingGui(LayerViewerGui):
 
 
         if self.mainOperator.RawImage.ready():
-            ## raw data layer
             self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
             rawLayer = GrayscaleLayer( self.rawsrc )
             rawLayer.name = "Raw"        
