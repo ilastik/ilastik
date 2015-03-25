@@ -103,6 +103,10 @@ class ExportingGui(object):
     A Mixin for the GUI that can export h5/csv data
     """
 
+    @property
+    def get_exporting_operator(self, lane=0):
+        raise NotImplementedError
+
     def show_export_dialog(self):
         """
         Shows the ExportObjectInfoDialog and calls the operators export_object_data method
@@ -133,14 +137,14 @@ class ExportingGui(object):
             "unlock": self.unlock_gui,
             "lock": self.lock_gui
         }
-        self.topLevelOperatorView.export_object_data(settings, selected_features, gui)
+        self.get_exporting_operator().export_object_data(settings, selected_features, gui)
 
     def get_raw_shape(self):
         """
         Implement this to provide the shape of the raw image in the show_export_dialog method
         :return: the raw image's shape
 
-        e.g. return self.topLevelOperatorView.RawImage.meta.shape
+        e.g. return self.exportingOperator.RawImage.meta.shape
         """
         raise NotImplementedError
 
@@ -150,7 +154,7 @@ class ExportingGui(object):
         :return: the computed feature names
         :rtype: dict
 
-        e.g. return self.topLevelOperatorView.ComputedFeatureNames([]).wait()
+        e.g. return self.exportingOperator.ComputedFeatureNames([]).wait()
         """
         raise NotImplementedError
 

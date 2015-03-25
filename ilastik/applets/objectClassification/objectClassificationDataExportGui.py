@@ -32,10 +32,13 @@ class ObjectClassificationDataExportGui( DataExportGui, ExportingGui ):
     """
     def __init__(self, *args, **kwargs):
         super(ObjectClassificationDataExportGui, self).__init__(*args, **kwargs)
-        self.topLevelOperatorView = None
+        self._exporting_operator = None
 
     def set_exporting_operator(self, op):
-        self.topLevelOperatorView = op
+        self._exporting_operator = op
+
+    def get_exporting_operator(self, lane=0):
+        return self._exporting_operator.getLane(lane)
 
     def createLayerViewer(self, opLane):
         return ObjectClassificationResultsViewer(self.parentApplet, opLane)
@@ -52,10 +55,10 @@ class ObjectClassificationDataExportGui( DataExportGui, ExportingGui ):
         self.parentApplet.appletStateUpdateRequested.emit()
 
     def get_raw_shape(self):
-        return ()
+        return self.get_exporting_operator().RawImages.meta.shape
 
     def get_feature_names(self):
-        return self.topLevelOperatorView.ComputedFeatureNames([]).wait()
+        return self.get_exporting_operator().ComputedFeatureNames([]).wait()
 
     def _initAppletDrawerUic(self):
         super(ObjectClassificationDataExportGui, self)._initAppletDrawerUic()
