@@ -200,30 +200,8 @@ class CarvingGui(LabelingGui):
         if hasattr( self.labelingDrawerUi, 'exportAllMeshesButton' ):
             self.labelingDrawerUi.exportAllMeshesButton.clicked.connect(self._exportAllObjectMeshes)
 
-        
-        def labelBackground():
-            self.selectLabel(0)
-        def labelObject():
-            self.selectLabel(1)
-
         self.labelingDrawerUi.labelListView.allowDelete = False
         self._labelControlUi.labelListModel.allowRemove(False)
-
-        bgToolTipObject = LabelListModel.EntryToolTipAdapter(self._labelControlUi.labelListModel, 0)
-        mgr.register( "1", ActionInfo( "Carving", 
-                                       "Select background label", 
-                                       "Select background label", 
-                                       labelBackground,
-                                       self.viewerControlWidget(),
-                                       bgToolTipObject ) )
-
-        fgToolTipObject = LabelListModel.EntryToolTipAdapter(self._labelControlUi.labelListModel, 1)
-        mgr.register( "2", ActionInfo( "Carving", 
-                                       "Select object label", 
-                                       "Select object label", 
-                                       labelObject,
-                                       self.viewerControlWidget(),
-                                       fgToolTipObject ) )
 
         def layerIndexForName(name):
             return self.layerstack.findMatchingIndex(lambda x: x.name == name)
