@@ -27,6 +27,7 @@ import time
 import threading
 import weakref
 import platform
+import functools
 
 import logging
 logger = logging.getLogger(__name__)
@@ -35,7 +36,7 @@ logger = logging.getLogger(__name__)
 import psutil
 
 #lazyflow
-from lazyflow.utility import OrderedSignal, Singleton
+from lazyflow.utility import OrderedSignal, Singleton, PriorityQueue
 import lazyflow
 
 this_process = psutil.Process(os.getpid())
@@ -74,7 +75,7 @@ def getAvailableRamBytes():
         ram = psutil.virtual_memory().total - psutil.virtual_memory().wired
     else:
         ram = psutil.virtual_memory().total
-    if lazyflow.AVAILABLE_RAM_MB != 0:
+    if lazyflow.AVAILABLE_RAM_MB > 0:
         # AVAILABLE_RAM_MB is the total RAM the user wants us to limit ourselves to.
         ram = min(ram, lazyflow.AVAILABLE_RAM_MB * 1024**2)
     return ram
@@ -99,8 +100,9 @@ class CacheMemoryManager(threading.Thread):
 
     Interface:
     The manager provides a signal you can subscribe to
+    >>> writeFunction = lambda x: sys.stdout.write("total mem: {}".format(x))
     >>> mgr = ArrayCacheManager()
-    >>> mgr.totalCacheMemory.subscribe(print)
+    >>> mgr.totalCacheMemory.subscribe(writeFunction)
     which emits the size of all observable caches, combined, in regular intervals.
 
     The update interval (for the signal and for automated cache release) can
@@ -125,8 +127,11 @@ class CacheMemoryManager(threading.Thread):
         self._first_class_caches = weakref.WeakSet()
         self._observable_caches = weakref.WeakSet()
         self._managed_caches = weakref.WeakSet()
+        self._managed_blocked_caches = weakref.WeakSet()
 
         self._condition = threading.Condition()
+        self._disable_lock = threading.Condition()
+        self._disabled = False
         self._refresh_interval = default_refresh_interval
 
         # maximum percentage of *allowed memory* used
@@ -139,7 +144,7 @@ class CacheMemoryManager(threading.Thread):
     def addFirstClassCache(self, cache):
         """
         add a first class cache (root cache) to the manager
-        
+
         First class caches are handled differently so we are able to
         show a tree view of the caches (e.g. in ilastik). This method
         calls addCache() automatically.
@@ -173,51 +178,82 @@ class CacheMemoryManager(threading.Thread):
         from lazyflow.operators.opCache import Cache
         from lazyflow.operators.opCache import ObservableCache
         from lazyflow.operators.opCache import ManagedCache
+        from lazyflow.operators.opCache import ManagedBlockedCache
         assert isinstance(cache, Cache),\
             "Only Cache instances can be managed by CacheMemoryManager"
         self._caches.add(cache)
         if isinstance(cache, ObservableCache):
             self._observable_caches.add(cache)
-        if isinstance(cache, ManagedCache):
+        if (isinstance(cache, ManagedCache) and
+                not isinstance(cache, ManagedBlockedCache)):
             self._managed_caches.add(cache)
+        if isinstance(cache, ManagedBlockedCache):
+            self._managed_blocked_caches.add(cache)
 
     def run(self):
         """
         main loop
         """
-        from lazyflow.operators.opCache import OpObservableCache
         while True:
             self._wait()
-            try:
-                # notify subscribed functions about current cache memory
-                total = 0
-                for cache in self._first_class_caches:
-                    if isinstance(cache, OpObservableCache):
-                        total += cache.usedMemory()
-                self.totalCacheMemory(total)
 
-                # check current memory state
-                current_usage_percentage = memoryUsagePercentage()
-                if current_usage_percentage <= self._max_usage:
+            # acquire lock so that we don't get disabled during cleanup
+            with self._disable_lock:
+                if self._disabled:
                     continue
+                self._cleanup()
 
-                # we need a cache cleanup
-                caches = list(self._managed_caches)
-                caches.sort(key=lambda x: x.lastAccessTime())
-                while current_usage_percentage > self._target_usage and caches:
-                    c = caches.pop(0)
-                    self.logger.debug("Cleaning up cache '{}'".format(c.name))
-                    c.freeMemory()
-                    current_usage_percentage = memoryUsagePercentage()
+    def _cleanup(self):
+        """
+        clean up once
+        """
+        from lazyflow.operators.opCache import ObservableCache
+        try:
+            # notify subscribed functions about current cache memory
+            total = 0
+            for cache in self._first_class_caches:
+                if isinstance(cache, ObservableCache):
+                    total += cache.usedMemory()
+            self.totalCacheMemory(total)
+            del cache
 
-                # don't keep a reference until next cleanup!
+            # check current memory state
+            current_usage_percentage = memoryUsagePercentage()
+            if current_usage_percentage <= self._max_usage:
+                return
+
+            # === we need a cache cleanup ===
+
+            # queue holds time stamps and cleanup functions
+            q = PriorityQueue()
+            caches = list(self._managed_caches)
+            for c in caches:
+                q.push((c.lastAccessTime(), c.name, c.freeMemory))
+            caches = list(self._managed_blocked_caches)
+            for c in caches:
+                for k, t in c.getLastAccessTimes():
+                    cleanupFun = functools.partial(c.freeBlock, k)
+                    info = "{}: {}".format(c.name, k)
+                    q.push((t, cleanupFun))
+            if len(caches) > 0:
                 del c
+            del caches
 
-                self.logger.debug(
-                    "Done cleaning up, memory usage is now at "
-                    "{}%".format(100*current_usage_percentage))
-            except Exception as e:
-                self.logger.error(str(e))
+            while current_usage_percentage > self._target_usage and len(q) > 0:
+                t, info, cleanupFun = q.pop()
+                self.logger.debug("Cleaning up {}".format(info))
+                cleanupFun()
+                current_usage_percentage = memoryUsagePercentage()
+
+            # don't keep a reference until next loop iteration
+            del cleanupFun
+            del q
+
+            self.logger.debug(
+                "Done cleaning up, memory usage is now at "
+                "{}%".format(100*current_usage_percentage))
+        except Exception as e:
+            self.logger.error(str(e))
 
     def _wait(self):
         """
@@ -240,4 +276,22 @@ class CacheMemoryManager(threading.Thread):
         """
         with self._condition:
             self._refresh_interval = t
+            self._condition.notifyAll()
+
+    def disable(self):
+        """
+        disable all memory management
+
+        This method blocks until current memory management tasks are finished.
+        """
+        with self._disable_lock:
+            self._disabled = True
+
+    def enable(self):
+        """
+        enable cache management and wake the thread
+        """
+        with self._disable_lock:
+            self._disabled = False
+        with self._condition:
             self._condition.notifyAll()

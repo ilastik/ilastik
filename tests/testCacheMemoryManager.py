@@ -47,26 +47,27 @@ class NonRegisteredCache(object):
 OpCache.register(NonRegisteredCache)
 assert issubclass(NonRegisteredCache, OpCache)
 
+
+
 class TestCacheMemoryManager(unittest.TestCase):
     def setUp(self):
         self._old_ram_mb = lazyflow.AVAILABLE_RAM_MB
-        pass
 
     def tearDown(self):
         # reset cleanup frequency to sane value
-        mgr = CacheMemoryManager()
-        mgr.setRefreshInterval(default_refresh_interval)
         # reset max memory
         lazyflow.AVAILABLE_RAM_MB = self._old_ram_mb
+        mgr = CacheMemoryManager()
+        mgr.setRefreshInterval(default_refresh_interval)
+        mgr.enable()
 
     def testAPIConformity(self):
         c = NonRegisteredCache("c")
         mgr = CacheMemoryManager()
 
         # dont clean up while we are testing
-        mgr.setRefreshInterval(100000)
-        time.sleep(1)
-        
+        mgr.disable()
+
         import weakref
         d = NonRegisteredCache("testwr")
         s = weakref.WeakSet()
@@ -122,26 +123,28 @@ class TestCacheMemoryManager(unittest.TestCase):
 
         mgr = CacheMemoryManager()
 
-        # set to frequent cleanup
-        mgr.setRefreshInterval(.1)
+        # restrict memory to 1 Byte
+        # note that 0 has a special meaning
+        lazyflow.AVAILABLE_RAM_MB = 0.000001
 
-        # restrict memory
-        current_mem = memoryUsage()
-        lazyflow.AVAILABLE_RAM_MB = current_mem/1024.0**2
+        # set to frequent cleanup
+        mgr.setRefreshInterval(.01)
+        mgr.enable()
 
         cache.blockShape.setValue((k,)*5)
         cache.Input.connect(pipe.Output)
         pipe.Input.setValue(vol)
 
         a = pipe.accessCount
-        out = cache.Output[...].wait()
+        cache.Output[...].wait()
         b = pipe.accessCount
         assert b > a, "did not cache"
 
         # let the manager clean up
+        mgr.enable()
         time.sleep(.5)
         gc.collect()
 
-        out = cache.Output[...].wait()
+        cache.Output[...].wait()
         c = pipe.accessCount
         assert c > b, "did not clean up"
