@@ -32,7 +32,7 @@ from PyQt4.QtGui import QMouseEvent, QApplication, QPixmap, qApp
 import ilastik.config
 from ilastik.shell.gui.startShellGui import launchShell
 from ilastik.utility.gui.threadRouter import ThreadRouter
-from helpers.mainThreadHelpers import wait_for_main_func, run_in_main_thread
+from mainThreadHelpers import wait_for_main_func, run_in_main_thread
 
 from ilastik.ilastik_logging import default_config
 default_config.init(output_mode=default_config.OutputMode.CONSOLE)
