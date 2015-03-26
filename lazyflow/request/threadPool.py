@@ -31,6 +31,8 @@ import ctypes
 
 import psutil
 
+from lazyflow.utility.priorityQueue import PriorityQueue
+
 
 class ThreadPool(object):
     """
