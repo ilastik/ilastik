@@ -60,11 +60,11 @@ class ObjectClassificationDataExportGui( DataExportGui, ExportingGui ):
         super(ObjectClassificationDataExportGui, self)._initAppletDrawerUic()
 
         from PyQt4.QtGui import QGroupBox, QPushButton, QVBoxLayout
-        group = QGroupBox("Export Features", self.drawer)
+        group = QGroupBox("Export Object Feature Table", self.drawer)
         group.setLayout(QVBoxLayout())
         self.drawer.layout().addWidget(group)
 
-        btn = QPushButton("Configure", group)
+        btn = QPushButton("Configure and export", group)
         btn.clicked.connect(self.show_export_dialog)
         group.layout().addWidget(btn)
         

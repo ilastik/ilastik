@@ -1262,10 +1262,12 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
                 b.setEnabled(enable)
 
     def menus(self):
-        m = QtGui.QMenu("&Export", self.volumeEditorWidget)
-        m.addAction("Export Tracking Information").triggered.connect(self.show_export_dialog)
+        menu_list = []
+        if ilastik_config.getboolean("ilastik", "debug"):
+            menu_list.append(QtGui.QMenu("&Export", self.volumeEditorWidget))
+            menu_list[-1].addAction("Export Tracking Information").triggered.connect(self.show_export_dialog)
 
-        return [m]
+        return menu_list
 
     def get_raw_shape(self):
         return self.topLevelOperatorView.RawImage.meta.shape

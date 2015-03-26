@@ -1,4 +1,4 @@
-# ##############################################################################
+###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
 #       Copyright (C) 2011-2014, the ilastik developers
@@ -29,11 +29,9 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.rtype import List, SubRegion
 from lazyflow.stype import Opaque
 
-
 import numpy as np
 
 import logging
-
 logger = logging.getLogger(__name__)
 
 
