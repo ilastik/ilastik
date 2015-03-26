@@ -30,7 +30,7 @@ from lazyflow.roi import roiToSlice
 from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.operators.opCache import MemInfoNode
 from lazyflow.utility.testing import OpArrayPiperWithAccessCount
-from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr
+from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
 
 
 class KeyMaker():
@@ -321,7 +321,7 @@ class TestOpBlockedArrayCache(object):
 
     def testCleanup(self):
         try:
-            ArrayCacheMemoryMgr.instance.pause()
+            CacheMemoryManager().disable()
 
             op = OpBlockedArrayCache(graph=self.opProvider.graph)
             op.Input.connect(self.opProvider.Output)
@@ -343,7 +343,7 @@ class TestOpBlockedArrayCache(object):
                 
             assert r() is None, "OpBlockedArrayCache was not cleaned up correctly"
         finally:
-            ArrayCacheMemoryMgr.instance.unpause()
+            CacheMemoryManager().enable()
 
 
 class TestOpBlockedArrayCache_masked(object):

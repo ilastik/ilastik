@@ -8,10 +8,10 @@ import gc
 from lazyflow.graph import Graph
 from lazyflow.operators import OpLabelVolume, OpArrayPiper
 from lazyflow.operator import Operator
-from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr
 from lazyflow.slot import InputSlot, OutputSlot
 from lazyflow.rtype import SubRegion
 from lazyflow.utility.testing import assertEquivalentLabeling
+from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
 
 from numpy.testing import assert_array_equal
 
@@ -293,7 +293,7 @@ class TestVigra(unittest.TestCase):
 
     def testCleanup(self):
         try:
-            ArrayCacheMemoryMgr.instance.pause()
+            CacheMemoryManager().disable()
 
             sampleData = np.random.randint(0, 256, size=(50, 30, 10))
             sampleData = sampleData.astype(np.uint8)
@@ -319,7 +319,7 @@ class TestVigra(unittest.TestCase):
 
             assert r() is None, "OpBlockedArrayCache was not cleaned up correctly"
         finally:
-            ArrayCacheMemoryMgr.instance.unpause()
+            CacheMemoryManager().enable()
 
 
 

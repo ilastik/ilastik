@@ -35,7 +35,7 @@ import numpy
 
 #lazyflow
 from lazyflow.request import RequestPool
-from lazyflow.roi import roiFromShape, sliceToRoi, roiToSlice, getBlockBounds, TinyVector
+from lazyflow.roi import sliceToRoi, roiToSlice, getBlockBounds, TinyVector
 from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.utility import fastWhere
 from lazyflow.operators.opCache import OpManagedCache
@@ -199,18 +199,17 @@ class OpArrayCache(OpManagedCache):
         self._dirtyState = OpArrayCache.CLEAN
     
     def _allocateCache(self):
-        with self._cacheLock:
-            self._last_access_time = 0
-            self._cache_priority = 0
-            self._running = 0
+        self._last_access_time = 0
+        self._cache_priority = 0
+        self._running = 0
 
-            if self._cache is None or (self._cache.shape != self.Output.meta.shape):
-                mem = self.Output.stype.allocateDestination(None)
-                mem[:] = 0
-                self.logger.debug("OpArrayCache: Allocating cache (size: %dbytes)" % mem.nbytes)
-                if self._blockState is None:
-                    self._allocateManagementStructures()
-                self._cache = mem
+        if self._cache is None or (self._cache.shape != self.Output.meta.shape):
+            mem = self.Output.stype.allocateDestination(None)
+            mem[:] = 0
+            self.logger.debug("OpArrayCache: Allocating cache (size: %dbytes)" % mem.nbytes)
+            if self._blockState is None:
+                self._allocateManagementStructures()
+            self._cache = mem
 
     def setupOutputs(self):
         self.CleanBlocks.meta.shape = (1,)
