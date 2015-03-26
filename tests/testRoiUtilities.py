@@ -1,5 +1,5 @@
 import numpy
-from lazyflow.roi import determineBlockShape, getIntersection, enlargeRoiForHalo, TinyVector
+from lazyflow.roi import determineBlockShape, getIntersection, enlargeRoiForHalo, TinyVector, nonzero_bounding_box, containing_rois
 
 class Test_determineBlockShape(object):
     
@@ -86,7 +86,45 @@ class test_enlargeRoiForHalo(object):
         assert enlarged_stop[2] == stop[2] + full_halo_width
         assert enlarged_stop[3] == 500
 
-        print enlarged_start, enlarged_stop
+class test_nonzero_bounding_box(object):
+    
+    def testBasic(self):
+        data = numpy.zeros( (10,100,100), numpy.uint8 )
+        data[4, 30:40, 50:60] = 1
+        data[7, 45:55, 30:35] = 255
+        bb_roi = nonzero_bounding_box(data)
+        assert isinstance(bb_roi, numpy.ndarray)
+        assert (bb_roi == [[4,30,30], [8,55,60]]).all()
+    
+    def test_empty_data(self):
+        data = numpy.zeros( (10,100,100), numpy.uint8 )
+        bb_roi = nonzero_bounding_box(data)
+        assert isinstance(bb_roi, numpy.ndarray)
+        assert (bb_roi == [[0,0,0], [0,0,0]]).all()
+
+class test_containing_rois(object):
+    
+    def testBasic(self):
+        rois = [([0,0,0], [10,10,10]),
+                ([5,3,2], [11,12,13]),
+                ([4,6,4], [5,9,9])]
+        
+        result = containing_rois( rois, ( [4,7,6], [5,8,8] ) )
+        assert ( result == [([0,0,0], [10,10,10]),
+                            ([4,6,4], [5,9,9])] ).all()
+
+    def testEmptyResult(self):
+        rois = [([0,0,0], [10,10,10]),
+                ([5,3,2], [11,12,13]),
+                ([4,6,4], [5,9,9])]
+        
+        result = containing_rois( rois, ( [100,100,100], [200,200,200] ) )
+        assert result.shape == (0, 2, 3)
+
+    def testEmptyInput(self):
+        rois = []
+        result = containing_rois( rois, ( [100,100,100], [200,200,200] ) )
+        assert result.shape == (0,)
 
 if __name__ == "__main__":
     # Run nose

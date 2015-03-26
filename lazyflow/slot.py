@@ -22,6 +22,7 @@
 #Python
 import sys
 import logging
+import collections
 import itertools
 import threading
 import functools
@@ -73,7 +74,20 @@ class ValueRequest(object):
         self.result = None
 
     def writeInto(self, destination):
-        destination[:] = self.result
+        # Unfortunately, there appears to be a bug when copying masked arrays
+        # ( https://github.com/numpy/numpy/issues/5558 ).
+        # So, this must be used in the interim.
+        if isinstance(destination, numpy.ma.masked_array):
+            destination.data[...] = numpy.ma.getdata(self.result)
+            destination.mask[...] = numpy.ma.getmaskarray(self.result)
+            if isinstance(self.result, numpy.ma.masked_array):
+                destination.fill_value = self.result.fill_value
+        elif isinstance(destination, collections.MutableSequence) or \
+             isinstance(self.result, collections.MutableSequence):
+            destination[:] = self.result[:]
+        else:
+            destination[...] = self.result[...]
+
         return self
 
 def is_setup_fn(func):
@@ -120,7 +134,7 @@ class Slot(object):
     
     def __init__(self, name="", operator=None, stype=ArrayLike,
                  rtype=rtype.SubRegion, value=None, optional=False,
-                 level=0, nonlane=False):
+                 level=0, nonlane=False, allow_mask=False):
         """Constructor of the Slot class.
 
         :param name: user readable name of the slot, is normally
@@ -149,6 +163,12 @@ class Slot(object):
         # This assertion is here for a reason: default values do NOT work on OutputSlots.
         # (We should probably change that at some point...)
         assert value is None or isinstance(self, InputSlot), "Only InputSlots can have default values.  OutputSlots cannot."
+
+        # If we do not support masked arrays, ensure that we are not being passed one.
+        assert allow_mask or not isinstance(value, numpy.ma.masked_array), \
+            "The operator, \"%s\", is being setup to receive a masked array as input to slot, \"%s\"." \
+            " This is currently not supported." \
+            % (self.operator.name, self.name)
         
         # Check for simple mistakes in parameter order...
         assert isinstance(name, str)
@@ -162,6 +182,7 @@ class Slot(object):
         self.name = name
         self._optional = optional
         self.operator = operator
+        self.allow_mask = allow_mask
         self._real_operator = None # Memoized in getRealOperator()
 
         # in the case of an InputSlot this is the slot to which it is
@@ -428,6 +449,10 @@ class Slot(object):
             assert isinstance(partner, Slot), ("Slot.connect() can only be used to"
                                                " connect other Slots.  Did you mean"
                                                " to use Slot.setValue()?")
+            assert self.allow_mask or (not partner.meta.has_mask), \
+                        "The operator, \"%s\", is being setup to receive a masked array as input to slot, \"%s\"," \
+                        " from the output slot, \"%s\", on operator, \"%s\". This is currently not supported." \
+                        % (self.operator.name, self.name, partner.name, partner.operator.name)
 
             my_op = self.getRealOperator()
             partner_op = partner.getRealOperator()
@@ -948,7 +973,7 @@ class Slot(object):
 
 
     def __setitem__(self, key, value):
-        """This method provied access to the subslots of a
+        """This method provides access to the subslots of a
         MultiSlot.
 
         """
@@ -961,6 +986,11 @@ class Slot(object):
             "cannot do __setitem__ on Slot '{}' -> no operator !!"
         assert slicingtools.is_bounded(key), \
             "Can't use Slot.__setitem__ with keys that include : or ..."
+        # If we do not support masked arrays, ensure that we are not being passed one.
+        assert self.allow_mask or not (self.meta.has_mask or isinstance(value, numpy.ma.masked_array)), \
+            "The operator, \"%s\", is being setup to receive a masked array as input to slot, \"%s\"." \
+            " This is currently not supported." \
+            % (self.operator.name, self.name)
         roi = self.rtype(self, pslice=key)
         if self._value is not None:
             self._value[key] = value
@@ -985,6 +1015,11 @@ class Slot(object):
         this setInSlot() method.
 
         """
+        # If we do not support masked arrays, ensure that we are not being passed one.
+        assert self.allow_mask or not (self.meta.has_mask or isinstance(value, numpy.ma.masked_array)), \
+            "The operator, \"%s\", is being setup to receive a masked array as input to slot, \"%s\"." \
+            " This is currently not supported." \
+            % (self.operator.name, self.name)
         # Determine which subslot this is and prepend it to the totalIndex
         totalIndex = (self._subSlots.index(slot),) + subindex
         # Forward the call to our operator
@@ -1052,6 +1087,12 @@ class Slot(object):
             # passing slots as values, then this assertion can be refined.
             assert not isinstance(value, Slot), \
                 "When using setValue, value cannot be a slot.  Use connect instead."
+
+            # If we do not support masked arrays, ensure that we are not being passed one.
+            assert self.allow_mask or not (self.meta.has_mask or isinstance(value, numpy.ma.masked_array)), \
+                "The operator, \"%s\", is being setup to receive a masked array as input to slot, \"%s\"." \
+                " This is currently not supported." \
+                % (self.operator.name, self.name)
     
             if not self.backpropagate_values:
                 assert self.partner is None, \
@@ -1072,6 +1113,12 @@ class Slot(object):
                 # Fast path checks for array types
                 if isinstance(value, numpy.ndarray) or isinstance(self._value, numpy.ndarray):
                     if type(value) != type(self._value) or value.shape != self._value.shape:
+                        changed = True
+                if isinstance(value, numpy.ma.masked_array) and isinstance(self._value, numpy.ma.masked_array):
+                    # Type comparison already checked as all masked arrays are subclasses of ndarrays.
+                    # NAN does not compare equal so we need a way to check that separately.
+                    if (value.fill_value != self._value.fill_value) and \
+                        not (numpy.isnan(value.fill_value) and numpy.isnan(self._value.fill_value)):
                         changed = True
                 if isinstance(value, vigra.VigraArray) or isinstance(self._value, vigra.VigraArray):
                     if type(value) != type(self._value) or value.axistags != self._value.axistags:
@@ -1277,6 +1324,7 @@ class Slot(object):
         init_kwargs['value'] = self._defaultValue
         init_kwargs['level'] = self.level
         init_kwargs['nonlane'] = self.nonlane
+        init_kwargs['allow_mask'] = self.allow_mask
         if self._type == "input":
             init_kwargs['optional'] = self._optional
         
@@ -1307,6 +1355,10 @@ class Slot(object):
 
         wasdirty = self.meta._dirty
         if self.meta._dirty:
+            assert self.allow_mask or (not self.meta.has_mask), \
+                "The operator, \"%s\", is being setup to receive a masked array as input to slot, \"%s\"." \
+                " This is currently not supported." \
+                % (self.operator.name, self.name)
             for c in self.partners:
                 c._changed()
             self.meta._dirty = False

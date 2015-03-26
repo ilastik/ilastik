@@ -29,7 +29,7 @@ import numpy
 
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal, OperatorWrapper
-from lazyflow.roi import sliceToRoi, roiToSlice, getIntersection, roiFromShape
+from lazyflow.roi import sliceToRoi, roiToSlice, getIntersection, roiFromShape, nonzero_bounding_box, enlargeRoiForHalo
 from lazyflow.utility import Timer
 from lazyflow.classifiers import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC, \
                                  LazyflowPixelwiseClassifierABC, LazyflowPixelwiseClassifierFactoryABC
@@ -142,32 +142,44 @@ class OpTrainPixelwiseClassifierBlocked(Operator):
         for image_slot, label_slot, nonzero_block_slot in zip(self.Images, self.Labels, self.nonzeroLabelBlocks):
             block_slicings = nonzero_block_slot.value
             for block_slicing in block_slicings:
-                block_label_roi = sliceToRoi( block_slicing, image_slot.meta.shape )
-
-                # Ask for the halo needed by the classifier
-                axiskeys = image_slot.meta.getAxisKeys()
-                halo_shape = classifier_factory.get_halo_shape(axiskeys)
-                assert len(halo_shape) == len( block_label_roi[0] )
-                assert halo_shape[-1] == 0, "Didn't expect a non-zero halo for channel dimension."
-
-                # Expand block by halo, then clip to image bounds
-                block_label_roi = numpy.array( block_label_roi )
-                block_label_roi[0] -= halo_shape
-                block_label_roi[1] += halo_shape
-                block_label_roi = getIntersection( block_label_roi, roiFromShape(image_slot.meta.shape) )
-
-                block_image_roi = numpy.array( block_label_roi )
-                assert (block_image_roi[:, -1] == [0,1]).all()
-                num_channels = image_slot.meta.shape[-1]
-                block_image_roi[:, -1] = [0, num_channels]
-
-                # Ensure the results are plain ndarray, not VigraArray, 
-                #  which some classifiers might have trouble with.
-                block_label_data = numpy.asarray( label_slot(*block_label_roi).wait() )
-                block_image_data = numpy.asarray( image_slot(*block_image_roi).wait() )
+                # Get labels
+                block_label_roi = sliceToRoi( block_slicing, label_slot.meta.shape )
+                block_label_data = label_slot(*block_label_roi).wait()
                 
-                label_data_blocks.append( block_label_data )
-                image_data_blocks.append( block_image_data )
+                # Shrink roi to bounding box of actual label pixels
+                bb_roi_within_block = nonzero_bounding_box(block_label_data)
+                block_label_bb_roi = bb_roi_within_block + block_label_roi[0]
+
+                # Double-check that there is at least 1 non-zero label in the block.
+                if (block_label_bb_roi[1] > block_label_bb_roi[0]).all():
+                    # Ask for the halo needed by the classifier
+                    axiskeys = image_slot.meta.getAxisKeys()
+                    halo_shape = classifier_factory.get_halo_shape(axiskeys)
+                    assert len(halo_shape) == len( block_label_roi[0] )
+                    assert halo_shape[-1] == 0, "Didn't expect a non-zero halo for channel dimension."
+    
+                    # Expand block by halo, but keep clipped to image bounds
+                    padded_label_roi, bb_roi_within_padded = enlargeRoiForHalo( *block_label_bb_roi, 
+                                                                                shape=label_slot.meta.shape,
+                                                                                sigma=halo_shape,
+                                                                                window=1,
+                                                                                return_result_roi=True )
+                    
+                    # Copy labels to new array, which has size == bounding-box + halo
+                    padded_label_data = numpy.zeros( padded_label_roi[1] - padded_label_roi[0], label_slot.meta.dtype )                
+                    padded_label_data[roiToSlice(*bb_roi_within_padded)] = block_label_data[roiToSlice(*bb_roi_within_block)]
+    
+                    padded_image_roi = numpy.array( padded_label_roi )
+                    assert (padded_image_roi[:, -1] == [0,1]).all()
+                    num_channels = image_slot.meta.shape[-1]
+                    padded_image_roi[:, -1] = [0, num_channels]
+    
+                    # Ensure the results are plain ndarray, not VigraArray, 
+                    #  which some classifiers might have trouble with.
+                    padded_image_data = numpy.asarray( image_slot(*padded_image_roi).wait() )
+                    
+                    label_data_blocks.append( padded_label_data )
+                    image_data_blocks.append( padded_image_data )
 
         if len(image_data_blocks) == 0:
             result[0] = None

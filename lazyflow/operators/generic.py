@@ -511,9 +511,9 @@ class OpSubRegion(Operator):
     - Always propagates dirty state.
     - Simpler implementation...
     """
-    Input = InputSlot()
+    Input = InputSlot(allow_mask=True)
     Roi = InputSlot() # value slot. value is a tuple: (start, stop)
-    Output = OutputSlot()
+    Output = OutputSlot(allow_mask=True)
 
     def setupOutputs(self):
         self._roi = self.Roi.value

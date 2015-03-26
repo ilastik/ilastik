@@ -8,6 +8,7 @@ import gc
 from lazyflow.graph import Graph
 from lazyflow.operators import OpLabelVolume, OpArrayPiper
 from lazyflow.operator import Operator
+from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr
 from lazyflow.slot import InputSlot, OutputSlot
 from lazyflow.rtype import SubRegion
 from lazyflow.utility.testing import assertEquivalentLabeling
@@ -291,22 +292,35 @@ class TestVigra(unittest.TestCase):
                     assertEquivalentLabeling(vol[..., c, t], out.squeeze())
 
     def testCleanup(self):
-        sampleData = np.random.randint(0, 256, size=(50, 30, 10))
-        sampleData = sampleData.astype(np.uint8)
-        sampleData = vigra.taggedView(sampleData, axistags='xyz')
+        try:
+            ArrayCacheMemoryMgr.instance.pause()
 
-        graph = Graph()
-        opData = OpArrayPiper(graph=graph)
-        opData.Input.setValue(sampleData)
+            sampleData = np.random.randint(0, 256, size=(50, 30, 10))
+            sampleData = sampleData.astype(np.uint8)
+            sampleData = vigra.taggedView(sampleData, axistags='xyz')
 
-        op = OpLabelVolume(graph=graph)
-        op.Input.connect(opData.Output)
-        x = op.Output[...].wait()
-        op.Input.disconnect()
-        r = weakref.ref(op)
-        del op
-        gc.collect()
-        assert r() is None, "OpBlockedArrayCache was not cleaned up correctly"
+            graph = Graph()
+            opData = OpArrayPiper(graph=graph)
+            opData.Input.setValue(sampleData)
+
+            op = OpLabelVolume(graph=graph)
+            op.Input.connect(opData.Output)
+            x = op.Output[...].wait()
+            op.Input.disconnect()
+            op.cleanUp()
+
+            r = weakref.ref(op)
+            del op
+            gc.collect()
+            ref = r()
+            if ref is not None:
+                for i, o in enumerate(gc.get_referrers(ref)):
+                    print "Object", i, ":", type(o), ":", o
+
+            assert r() is None, "OpBlockedArrayCache was not cleaned up correctly"
+        finally:
+            ArrayCacheMemoryMgr.instance.unpause()
+
 
 
 if haveBlocked():

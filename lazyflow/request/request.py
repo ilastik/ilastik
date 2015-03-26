@@ -1001,7 +1001,9 @@ class SimpleRequestCondition(object):
         """
         # Special debug mode initialization: 
         # Just use a normal condition variable.
-        self._debug_condition = threading.Condition(threading.RLock())
+        condition_lock = threading.RLock()
+        self._debug_condition = threading.Condition(condition_lock)
+        self._debug_condition.locked = lambda: condition_lock._RLock__count > 0
         self.acquire = self._debug_condition.acquire
         self.release = self._debug_condition.release
         self.wait = self._debug_condition.wait

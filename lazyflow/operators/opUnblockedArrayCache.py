@@ -22,11 +22,12 @@
 
 import time
 import collections
+import numpy
 
 from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.operators.opCache import OpManagedBlockedCache
 from lazyflow.request import RequestLock
-from lazyflow.roi import getIntersection, roiFromShape
+from lazyflow.roi import getIntersection, roiFromShape, roiToSlice, containing_rois
 
 import logging
 logger = logging.getLogger(__name__)
@@ -36,7 +37,9 @@ class OpUnblockedArrayCache(OpManagedBlockedCache):
     This cache operator stores the results of all requests that pass through 
     it, in exactly the same blocks that were requested.
 
-    - If there are any overlapping requests, then the data for the overlapping portion will be stored multiple times.
+    - If there are any overlapping requests, then the data for the overlapping portion will 
+        be stored multiple times, except for the special case where the new request happens 
+        to fall ENTIRELY within an existing block of data.
     - If any portion of a stored block is marked dirty, the entire block is discarded.
 
     Unlike other caches, this cache does not impose its own blocking on the data.
@@ -65,6 +68,16 @@ class OpUnblockedArrayCache(OpManagedBlockedCache):
         self.Output.meta.assignFrom(self.Input.meta)
     
     def execute(self, slot, subindex, roi, result):
+        with self._lock:
+            # Does this roi happen to fit ENTIRELY within an existing stored block?
+            outer_rois = containing_rois( self._block_data.keys(), (roi.start, roi.stop) )
+            if len(outer_rois) > 0:
+                # Use the first one we found
+                block_roi = self._standardize_roi( *outer_rois[0] )
+                block_relative_roi = numpy.array( (roi.start, roi.stop) ) - block_roi[0]
+                result[:] = self._block_data[block_roi][ roiToSlice(*block_relative_roi) ]
+                return
+                
         # Standardize roi for usage as dict key
         block_roi = self._standardize_roi( roi.start, roi.stop )
         

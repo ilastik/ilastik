@@ -21,7 +21,7 @@
 ###############################################################################
 
 __author__ = "John Kirkham <kirkhamj@janelia.hhmi.org>"
-__date__ = "$Feb 06, 2015 13:14:23 EST$"
+__date__ = "$Feb 26, 2015 11:47:00 EST$"
 
 
 
@@ -31,40 +31,44 @@ from lazyflow.operator import Operator
 from lazyflow.slot import InputSlot, OutputSlot
 
 
-class OpMaskArray(Operator):
-    name = "OpMaskArray"
+class OpFillMaskArray(Operator):
+    name = "OpFillMaskArray"
     category = "Pointwise"
 
 
     InputArray = InputSlot(allow_mask=True)
-    InputMask = InputSlot()
+    InputFillValue = InputSlot(optional=True)
 
-    Output = OutputSlot(allow_mask=True)
+    Output = OutputSlot()
 
     def __init__(self, *args, **kwargs):
-        super( OpMaskArray, self ).__init__( *args, **kwargs )
+        super( OpFillMaskArray, self ).__init__( *args, **kwargs )
 
     def setupOutputs(self):
         # Copy the input metadata to both outputs
         self.Output.meta.assignFrom( self.InputArray.meta )
-        self.Output.meta.has_mask = True
+        self.Output.meta.has_mask = False
 
     def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
 
+        # Get data
+        data = self.InputArray[key].wait()
+
+        # Copy results
         if slot.name == 'Output':
-            # Write data into result (including a mask if provided)
-            self.InputArray[key].writeInto(result).wait()
-
-            # Get the added mask
-            mask = self.InputMask[key].wait()
-
-            # Apply the combination of the masks to result.
-            result.mask[...] |= mask
+            if not isinstance(data, numpy.ma.masked_array):
+                result[...] = data
+            elif self.InputFillValue.ready():
+                result[...] = data.filled(self.InputFillValue.value)
+            else:
+                result[...] = data.filled()
 
     def propagateDirty(self, slot, subindex, roi):
-        if (slot.name == "InputArray") or (slot.name == "InputMask"):
+        if (slot.name == "InputArray"):
             slicing = roi.toSlice()
             self.Output.setDirty(slicing)
+        elif (slot.name == "InputFillValue"):
+            self.Output.setDirty(slice(None))
         else:
             assert False, "Unknown dirty input slot"

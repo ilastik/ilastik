@@ -26,10 +26,10 @@ class OpArrayPiper(Operator):
     description = "simple piping operator"
 
     #Inputs
-    Input = InputSlot()
+    Input = InputSlot(allow_mask=True)
    
     #Outputs
-    Output = OutputSlot()
+    Output = OutputSlot(allow_mask=True)
 
     def setupOutputs(self):
         inputSlot = self.inputs["Input"]
