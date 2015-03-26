@@ -34,7 +34,7 @@ import h5py
 from lazyflow.request import Request, RequestPool, RequestLock
 from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.roi import TinyVector, getIntersectingBlocks, getBlockBounds, roiToSlice, getIntersection
-from lazyflow.operators.opCache import OpManagedCache
+from lazyflow.operators.opCache import OpManagedBlockedCache
 from lazyflow.utility.chunkHelpers import chooseChunkShape
 
 logger = logging.getLogger(__name__)
@@ -48,7 +48,7 @@ def get_storage_size(h5dataset):
     '''
     return h5py.h5d.DatasetID.get_storage_size(h5dataset.id)
 
-class OpCompressedCache(OpManagedCache):
+class OpCompressedCache(OpManagedBlockedCache):
     """
     A blockwise cache that stores each block as a separate in-memory hdf5 file with a compressed dataset.
     
@@ -79,7 +79,7 @@ class OpCompressedCache(OpManagedCache):
             self._dirtyBlocks = set()
             self._blockLocks = {}
             self._chunkshape = self._chooseChunkshape(self._blockshape)
-            self._last_access_time = 0
+            self._last_access_times = collections.defaultdict(float)
 
     def cleanUp(self):
         logger.debug( "Cleaning up" )
@@ -137,7 +137,6 @@ class OpCompressedCache(OpManagedCache):
         # Ensure all block cache files are up-to-date
         self._waitForBlocks(block_starts)
         self._copyData(roi, destination, block_starts)
-        self._last_access_time = time.time()
         return destination
 
     def _waitForBlocks(self, block_starts):
@@ -170,6 +169,7 @@ class OpCompressedCache(OpManagedCache):
             # Copy from block to destination
             dataset = self._getBlockDataset( entire_block_roi )
             destination[ roiToSlice(*destination_relative_intersection) ] = dataset[ roiToSlice( *block_relative_intersection ) ]
+            self._last_access_times[block_start] = time.time()
 
     def _executeCleanBlocks(self, destination):
         """
@@ -288,8 +288,12 @@ class OpCompressedCache(OpManagedCache):
     def fractionOfUsedMemoryDirty(self):
         tot = 0.0
         dirty = 0.0
-        for key in self._cacheFiles:
-            group = self._cacheFiles[key]
+        for key in self._cacheFiles.keys():
+            try:
+                group = self._cacheFiles[key]
+            except KeyError:
+                # this file was deleted
+                continue
             if "data" in group:
                 ds = group["data"]
                 # use actual size, not number of bytes in
@@ -302,9 +306,6 @@ class OpCompressedCache(OpManagedCache):
             return dirty / tot
         else:
             return 0.0
-
-    def lastAccessTime(self):
-        return super(OpCompressedCache, self).lastAccessTime()
     
     def generateReport(self, report):
         super(OpCompressedCache, self).generateReport(report)
@@ -319,6 +320,40 @@ class OpCompressedCache(OpManagedCache):
             self._cacheFiles = {}
             self._dirtyBlocks = set()
         return mem
+
+    def freeDirtyMemory(self):
+        dirty = 0.0
+        for key in self._cacheFiles.keys():
+            if key in self._dirtyBlocks:
+                dirty += self.freeBlock(key)
+                with self._lock:
+                    self._dirtyBlocks.discard(key)
+        return dirty
+
+    def freeBlock(self, block_id):
+        if block_id not in self._blockLocks:
+            return 0
+        with self._blockLocks[block_id]:
+            try:
+                f = self._cacheFiles[block_id]
+            except KeyError:
+                # this file was deleted
+                return 0
+            if "data" not in f:
+                return 0
+            ds = f["data"]
+            # use actual size, not number of bytes in
+            # *uncompressed* array
+            mem = get_storage_size(ds)
+            f.close()
+            del self._cacheFiles[block_id]
+            del self._last_access_times[block_id]
+            return mem
+
+    def getBlockAccessTimes(self):
+        # FIXME
+        return [(key, self._last_access_times[key])
+                for key in self._last_access_times]
 
     def _getCacheFile(self, entire_block_roi):
         """

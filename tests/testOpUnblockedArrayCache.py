@@ -53,6 +53,23 @@ class TestOpUnblockedArrayCacheCache(object):
             pool.wait()
             assert opDataProvider.accessCount == 1
 
+    def testCacheApi(self):
+        graph = Graph()
+        opDataProvider = OpArrayPiperWithAccessCount( graph=graph )
+        opCache = OpUnblockedArrayCache( graph=graph )
+        
+        data = np.random.random( (100,100,100) ).astype(np.float32)
+        opDataProvider.Input.setValue( vigra.taggedView( data, 'zyx' ) )
+        opCache.Input.connect( opDataProvider.Output )
+
+        opCache.Output[10:20, 20:40, 50:100].wait()
+        opCache.Output[11:21, 22:43, 53:90].wait()
+
+        l = opCache.getBlockAccessTimes()
+        assert len(l) == 2
+        for k, t in l:
+            assert t > 0.0
+
 if __name__ == "__main__":
     # Set up logging for debug
     import sys

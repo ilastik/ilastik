@@ -21,16 +21,17 @@
 ###############################################################################
 
 import time
+import collections
 
 from lazyflow.graph import InputSlot, OutputSlot
-from lazyflow.operators.opCache import OpManagedCache
+from lazyflow.operators.opCache import OpManagedBlockedCache
 from lazyflow.request import RequestLock
 from lazyflow.roi import getIntersection, roiFromShape
 
 import logging
 logger = logging.getLogger(__name__)
 
-class OpUnblockedArrayCache(OpManagedCache):
+class OpUnblockedArrayCache(OpManagedBlockedCache):
     """
     This cache operator stores the results of all requests that pass through 
     it, in exactly the same blocks that were requested.
@@ -51,6 +52,7 @@ class OpUnblockedArrayCache(OpManagedCache):
         self._lock = RequestLock()
         self._block_data = {}
         self._block_locks = {}
+        self._last_access_times = collections.defaultdict(float)
     
     def _standardize_roi(self, start, stop):
         # We use rois as dict keys.
@@ -88,7 +90,7 @@ class OpUnblockedArrayCache(OpManagedCache):
                     # (Could have happened via propagateDirty() or eventually the arrayCacheMemoryMgr)
                     if block_roi in self._block_locks:
                         self._block_data[block_roi] = block
-            self._last_access_time = time.time()
+            self._last_access_times[block_roi] = time.time()
 
     def propagateDirty(self, slot, subindex, roi):
         dirty_roi = self._standardize_roi( roi.start, roi.stop )
@@ -137,9 +139,28 @@ class OpUnblockedArrayCache(OpManagedCache):
     def lastAccessTime(self):
         return super(OpUnblockedArrayCache, self).lastAccessTime()
 
+    def getBlockAccessTimes(self):
+        l = [(k, self._last_access_times[k])
+             for k in self._last_access_times]
+        return l
+
     def freeMemory(self):
         used = self.usedMemory()
         with self._lock:
             self._block_data = {}
             self._block_locks = {}
         return used
+
+    def freeBlock(self, key):
+        with self._lock:
+            if key not in self._block_locks:
+                return 0
+            block = self._block_data[key]
+            bytes_per_pixel = block.dtype.itemsize
+            mem = block.size * bytes_per_pixel
+            del self._block_data[key]
+            del self._block_locks[key]
+            return mem
+
+    def freeDirtyMemory(self):
+        return 0.0

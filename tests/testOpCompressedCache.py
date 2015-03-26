@@ -35,6 +35,8 @@ from lazyflow.operators import OpCompressedCache, OpArrayPiper
 from lazyflow.utility.slicingtools import slicing2shape
 from lazyflow.operators.opCache import MemInfoNode
 
+from lazyflow.utility.testing import OpArrayPiperWithAccessCount
+
 logger = logging.getLogger("tests.testOpCompressedCache")
 cacheLogger = logging.getLogger("lazyflow.operators.opCompressedCache")
 
@@ -382,6 +384,26 @@ class TestOpCompressedCache( object ):
         del op
         gc.collect()
         assert r() is None, "OpBlockedArrayCache was not cleaned up correctly"
+
+    def testFree(self):
+        sampleData = numpy.indices((100, 200, 150), dtype=numpy.float32).sum(0)
+        sampleData = vigra.taggedView(sampleData, axistags='xyz')
+        
+        graph = Graph()
+        opData = OpArrayPiperWithAccessCount(graph=graph)
+        opData.Input.setValue(sampleData)
+        
+        op = OpCompressedCache(graph=graph)
+        #logger.debug("Setting block shape...")
+        op.BlockShape.setValue([100, 75, 50])
+        op.Input.connect(opData.Output)
+
+        op.Output[...].wait()
+        mem = op.usedMemory()
+        keys = map(lambda x: x[0], op.getBlockAccessTimes())
+        key = keys[0]
+        op.freeBlock(key)
+        assert op.usedMemory() < mem
 
 
 if __name__ == "__main__":

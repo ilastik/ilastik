@@ -128,6 +128,13 @@ class OpArrayCache(OpManagedCache):
     def freeMemory(self):
         return self._freeMemory()
 
+    def freeDirtyMemory(self):
+        if self.fractionOfUsedMemoryDirty() >= 1.0:
+            # we can only free if all is dirty without touching non-dirty areas
+            return self.freeMemory()
+        else:
+            return 0
+
     # ========== END CACHE API ==========
 
     def _blockShapeForIndex(self, index):

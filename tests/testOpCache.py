@@ -74,7 +74,7 @@ knownAbstractBases = [Cache,
                       OpObservableCache,
                       OpManagedCache,
                       OpManagedBlockedCache]
-for subtype in iterSubclasses(OpCache):
+for subtype in iterSubclasses(Cache):
     if subtype in knownAbstractBases or subtype not in opClasses:
         # skip known abstract implementations and classes that are
         # not operators
@@ -104,9 +104,9 @@ class GeneralTestOpObservableCache(object):
         assert frac == r.fractionOfUsedMemoryDirty
 
 
-# automagically test all implementations of OpObservableCache
-for subtype in iterSubclasses(OpObservableCache):
-    if subtype in [OpObservableCache, OpManagedCache]:
+# automagically test all implementations of ObservableCache *and* Operator
+for subtype in iterSubclasses(ObservableCache):
+    if subtype in knownAbstractBases or subtype not in opClasses:
         # skip known abstract implementations
         continue
     name = "TestOpObservableCache_Test" + subtype.__name__
@@ -128,17 +128,60 @@ class GeneralTestOpManagedCache(object):
         assert t >= 0.0
         assert t == r.lastAccessTime
 
+        dirty = op.fractionOfUsedMemoryDirty()
+        memFreed = op.freeDirtyMemory()
+        assert op.fractionOfUsedMemoryDirty() <= dirty
+        assert memFreed is not None
+        assert memFreed >= 0
+
         memFreed = op.freeMemory()
         assert op.usedMemory() == 0
         assert memFreed is not None
         assert memFreed >= 0
 
 
-# automagically test all implementations of OpManagedCache
-for subtype in iterSubclasses(OpManagedCache):
-    if subtype in [OpManagedCache]:
+# automagically test all implementations of ManagedCache *and* Operator
+for subtype in iterSubclasses(ManagedCache):
+    if subtype in knownAbstractBases or subtype not in opClasses:
         # skip known abstract implementations
         continue
     name = "TestOpManagedCache_Test" + subtype.__name__
     globals()[name] = ClassFactory(name, subtype, GeneralTestOpManagedCache)
+
+
+class GeneralTestOpManagedBlockedCache(object):
+    def setUp(self):
+        pass
+
+    def testAPIConformity(self):
+        g = Graph()
+        op = self.Model(graph=g)
+        r = MemInfoNode()
+        op.generateReport(r)
+        
+        t = op.lastAccessTime()
+        assert t is not None
+        assert t >= 0.0
+        assert t == r.lastAccessTime
+
+        dirty = op.fractionOfUsedMemoryDirty()
+        memFreed = op.freeDirtyMemory()
+        assert op.fractionOfUsedMemoryDirty() <= dirty
+        assert memFreed is not None
+        assert memFreed >= 0
+
+        memFreed = op.freeMemory()
+        assert op.usedMemory() == 0
+        assert memFreed is not None
+        assert memFreed >= 0
+
+
+# automagically test all implementations of ManagedBlockedCache and Operator
+for subtype in iterSubclasses(ManagedBlockedCache):
+    if subtype in knownAbstractBases or subtype not in opClasses:
+        # skip known abstract implementations
+        continue
+    name = "TestOpManagedBlockedCache_Test" + subtype.__name__
+    globals()[name] = ClassFactory(name, subtype,
+                                   GeneralTestOpManagedBlockedCache)
 

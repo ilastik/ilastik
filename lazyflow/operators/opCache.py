@@ -151,6 +151,19 @@ class ManagedCache(ObservableCache):
         raise NotImplementedError(
             "No default implementation for freeMemory()")
 
+    @abstractmethod
+    def freeDirtyMemory(self):
+        """
+        free all memory cached by this operator and its children that
+        is marked as dirty
+
+        This should not delete any non-dirty memory
+
+        @return amount of bytes freed (if applicable)
+        """
+        raise NotImplementedError(
+            "No default implementation for freeDirtyMemory()")
+
     def generateReport(self, memInfoNode):
         super(ManagedCache, self).generateReport(memInfoNode)
         memInfoNode.lastAccessTime = self.lastAccessTime()
@@ -160,6 +173,18 @@ class ManagedBlockedCache(ManagedCache):
     """
     Interface for caches that can be managed in more detail
     """
+
+    def lastAccessTime(self):
+        """
+        get the timestamp of the last access (python timestamp)
+
+        The default method is to use the maximum of the block timestamps.
+        """
+        t = map(lambda x: x[1], self.getBlockAccessTimes())
+        if not t:
+            return 0.0
+        else:
+            return max(t)
 
     @abstractmethod
     def getBlockAccessTimes(self):
@@ -175,7 +200,8 @@ class ManagedBlockedCache(ManagedCache):
         free memory in a specific block
 
         The block_id argument must have been in the result of a call to
-        getBlockAccessTimes.
+        getBlockAccessTimes. When all blocks returned by getBlockAccessTimes()
+        are freed, the cache should be empty.
 
         @return amount of bytes freed (if applicable)
         """
