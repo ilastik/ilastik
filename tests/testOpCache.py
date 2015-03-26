@@ -22,11 +22,16 @@
 
 import unittest
 
-from lazyflow.graph import Graph
+from lazyflow.graph import Graph, Operator
 
+from lazyflow.operators.opCache import Cache
+from lazyflow.operators.opCache import ObservableCache
+from lazyflow.operators.opCache import ManagedCache
+from lazyflow.operators.opCache import ManagedBlockedCache
 from lazyflow.operators.opCache import OpCache
 from lazyflow.operators.opCache import OpObservableCache
 from lazyflow.operators.opCache import OpManagedCache
+from lazyflow.operators.opCache import OpManagedBlockedCache
 from lazyflow.operators.opCache import MemInfoNode
 
 
@@ -59,10 +64,20 @@ class GeneralTestOpCache(object):
         assert r.name is not None
 
 
-# automagically test all implementations of OpCache
+# automagically test all implementations of Cache *and* Operator
+opClasses = set(iterSubclasses(Operator))
+knownAbstractBases = [Cache,
+                      ObservableCache,
+                      ManagedCache,
+                      ManagedBlockedCache,
+                      OpCache,
+                      OpObservableCache,
+                      OpManagedCache,
+                      OpManagedBlockedCache]
 for subtype in iterSubclasses(OpCache):
-    if subtype in [OpCache, OpObservableCache, OpManagedCache]:
-        # skip known abstract implementations
+    if subtype in knownAbstractBases or subtype not in opClasses:
+        # skip known abstract implementations and classes that are
+        # not operators
         continue
     name = "TestOpCache_Test" + subtype.__name__
     globals()[name] = ClassFactory(name, subtype, GeneralTestOpCache)

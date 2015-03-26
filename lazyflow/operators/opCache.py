@@ -23,13 +23,16 @@
 from abc import abstractmethod, ABCMeta
 
 #lazyflow
-from lazyflow.graph import Operator
+from lazyflow.operator import Operator, Operator
 from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
 
 
-class OpCache(Operator):
+class Cache(object):
     """
-    Interface for operators that act as caches
+    Interface for objects that act as caches. This is a mixin, use as
+
+    >>> class MyCachingOperator(Cache, Operator):
+    ...     pass
 
     This interface is designed for operators that hold values but can neither
     be queried for their memory usage nor be cleaned up. All operators that
@@ -41,10 +44,24 @@ class OpCache(Operator):
         environment like ilastik)
       * automated statistics and tests
 
-    Caches are automatically added to the CacheMemoryManager instance.
+    Caches are automatically added to the CacheMemoryManager instance if
+    the constructor of this mixin is called via super().
+
+    WARNING: If you plan to do time consuming operations in your
+    __init__, be sure to make all cache API methods threadsafe. A cache
+    cleanup could occur while the cache is still under construction!
     """
 
     __metaclass__ = ABCMeta
+
+    def __init__(self, *args, **kwargs):
+        super(Cache, self).__init__(*args, **kwargs)
+        manager = CacheMemoryManager()
+        if self.parent is None or not isinstance(self.parent, OpCache):
+            manager.addFirstClassCache(self)
+        else:
+            manager.addCache(self)
+        
 
     def generateReport(self, memInfoNode):
         rs = []
@@ -59,22 +76,8 @@ class OpCache(Operator):
         memInfoNode.id = id(self)
         memInfoNode.name = self.name
 
-    def _after_init(self):
-        """
-        Overridden from Operator to add us to the cache management
-        """
-        super(OpCache, self)._after_init()
 
-        # Register with the manager here, AFTER we're fully initialized
-        # Otherwise it isn't safe for the manager to poll our stats.
-        manager = CacheMemoryManager()
-        if self.parent is None or not isinstance(self.parent, OpCache):
-            manager.addFirstClassCache(self)
-        else:
-            manager.addCache(self)
-
-
-class OpObservableCache(OpCache):
+class ObservableCache(Cache):
     """
     Interface for caches that can report their usage
 
@@ -107,13 +110,13 @@ class OpObservableCache(OpCache):
         return 0.0
 
     def generateReport(self, memInfoNode):
-        super(OpObservableCache, self).generateReport(memInfoNode)
+        super(ObservableCache, self).generateReport(memInfoNode)
         memInfoNode.usedMemory = self.usedMemory()
         memInfoNode.fractionOfUsedMemoryDirty =\
             self.fractionOfUsedMemoryDirty()
 
 
-class OpManagedCache(OpObservableCache):
+class ManagedCache(ObservableCache):
     """
     Interface for caches that can report their usage and can be cleaned up
     """
@@ -145,11 +148,39 @@ class OpManagedCache(OpObservableCache):
 
         @return amount of bytes freed (if applicable)
         """
-        raise NotImplementedError("No default implementation for freeMemory()")
+        raise NotImplementedError(
+            "No default implementation for freeMemory()")
 
     def generateReport(self, memInfoNode):
-        super(OpManagedCache, self).generateReport(memInfoNode)
+        super(ManagedCache, self).generateReport(memInfoNode)
         memInfoNode.lastAccessTime = self.lastAccessTime()
+
+
+class ManagedBlockedCache(ManagedCache):
+    """
+    Interface for caches that can be managed in more detail
+    """
+
+    @abstractmethod
+    def getBlockAccessTimes(self):
+        """
+        get a list of block ids and their time stamps
+        """
+        raise NotImplementedError(
+            "No default implementation for getBlockAccessTimes()")
+
+    @abstractmethod
+    def freeBlock(self, block_id):
+        """
+        free memory in a specific block
+
+        The block_id argument must have been in the result of a call to
+        getBlockAccessTimes.
+
+        @return amount of bytes freed (if applicable)
+        """
+        raise NotImplementedError(
+            "No default implementation for freeBlock()")
 
 
 class MemInfoNode:
@@ -190,3 +221,21 @@ class MemInfoNode:
 
     def __init__(self):
         self.children = list()
+
+
+# ====== convenience classes ======
+
+class OpCache(Cache, Operator):
+    pass
+
+
+class OpObservableCache(ObservableCache, Operator):
+    pass
+
+
+class OpManagedCache(ManagedCache, Operator):
+    pass
+
+
+class OpManagedBlockedCache(ManagedBlockedCache, Operator):
+    pass

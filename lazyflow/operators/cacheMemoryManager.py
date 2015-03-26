@@ -145,8 +145,8 @@ class CacheMemoryManager(threading.Thread):
         calls addCache() automatically.
         """
         # late import to prevent import loop
-        from lazyflow.operators.opCache import OpCache
-        if isinstance(cache, OpCache):
+        from lazyflow.operators.opCache import Cache
+        if isinstance(cache, Cache):
             self._first_class_caches.add(cache)
         self.addCache(cache)
 
@@ -170,15 +170,15 @@ class CacheMemoryManager(threading.Thread):
         remove them from the manager.
         """
         # late import to prevent import loop
-        from lazyflow.operators.opCache import OpCache
-        from lazyflow.operators.opCache import OpObservableCache
-        from lazyflow.operators.opCache import OpManagedCache
-        assert isinstance(cache, OpCache),\
-            "Only OpCache can be managed by CacheMemoryManager"
+        from lazyflow.operators.opCache import Cache
+        from lazyflow.operators.opCache import ObservableCache
+        from lazyflow.operators.opCache import ManagedCache
+        assert isinstance(cache, Cache),\
+            "Only Cache instances can be managed by CacheMemoryManager"
         self._caches.add(cache)
-        if isinstance(cache, OpObservableCache):
+        if isinstance(cache, ObservableCache):
             self._observable_caches.add(cache)
-        if isinstance(cache, OpManagedCache):
+        if isinstance(cache, ManagedCache):
             self._managed_caches.add(cache)
 
     def run(self):
@@ -226,10 +226,12 @@ class CacheMemoryManager(threading.Thread):
         try:
             with self._condition:
                 self._condition.wait(self._refresh_interval)
-        except TypeError:
+        except Exception:
             # this can occur during shutdown, will not be fixed in
             # python2
             # http://bugs.python.org/issue14623
+            # We need to catch all exceptions here, because concrete
+            # exceptions could already bew cleaned up.
             pass
 
     def setRefreshInterval(self, t):
