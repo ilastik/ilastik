@@ -76,6 +76,12 @@ def main( parsed_args, workflow_cmdline_args=[] ):
     
     # Headless launch
     if parsed_args.headless:
+        # If any applet imports the GUI in headless mode, that's a mistake.
+        # To help developers catch such mistakes, we replace PyQt with a dummy module, so we'll see import errors.
+        import ilastik
+        dummy_module_dir = os.path.join( os.path.split(ilastik.__file__)[0], "headless_dummy_modules" )
+        sys.path.insert(0, dummy_module_dir)
+        
         from ilastik.shell.headless.headlessShell import HeadlessShell
         shell = HeadlessShell( workflow_cmdline_args )
         for f in init_funcs:
