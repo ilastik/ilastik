@@ -1,7 +1,6 @@
 from ilastik.applets.base.standardApplet import StandardApplet
 from ilastik.applets.trackingFeatureExtraction.opTrackingFeatureExtraction import OpTrackingFeatureExtraction
 from ilastik.applets.trackingFeatureExtraction.trackingFeatureExtractionSerializer import TrackingFeatureExtractionSerializer
-from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 class TrackingFeatureExtractionApplet( StandardApplet ):
     def __init__( self, name="Object Extraction", workflow=None, interactive=True, projectFileGroupName="TrackingFeatureExtraction" ):
@@ -18,6 +17,7 @@ class TrackingFeatureExtractionApplet( StandardApplet ):
 
     @property
     def singleLaneGuiClass( self ):
+        from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
         return LayerViewerGui
 
     @property
