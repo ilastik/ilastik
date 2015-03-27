@@ -24,3 +24,4 @@ from multiLaneOperator import MultiLaneOperatorABC
 from operatorSubView import OperatorSubView
 from opMultiLaneWrapper import OpMultiLaneWrapper
 from log_exception import log_exception
+from autocleaned_tempdir import autocleaned_tempdir
