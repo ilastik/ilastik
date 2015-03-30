@@ -153,6 +153,7 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
         with h5py.File(cachePath, 'r') as cacheFile:
             parent_group.copy(cacheFile[name], name)
 
+        h5py_group = parent_group[name]
         h5py_group['known_labels'] = self._known_labels
         
         # This field is required for all classifiers
