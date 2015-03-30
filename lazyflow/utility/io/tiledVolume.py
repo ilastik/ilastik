@@ -260,20 +260,6 @@ class TiledVolume(object):
         else:
             rest_args['raveler_z_base'] = str(raveler_z_base) + '/'
 
-        # More special Raveler support:
-        # Raveler's conventions for the Y-axis are the reverse for everyone else's.
-        if self.description.invert_y_axis:
-            y_bound = self.description.bounds_zyx[1]
-            y_tile_size = self.description.tile_shape_2d_yx[0]
-            
-            # We haven't written the logic that would allow incomplete 
-            #  'end' tiles for these crazy 'inverted' volumes, so just force 
-            #  the y-dimension to be a clean multiple of the tile size.
-            assert y_bound % y_tile_size == 0, \
-                "When using invert_y_axis, your Y-dimension must be a multiple of the tile shape."
-            rest_args['y_start'] = rest_args['y_start'] - y_bound
-            rest_args['y_stop'] = rest_args['y_stop'] - y_bound
-            rest_args['y_index'] = (y_bound / y_tile_size) - rest_args['y_index'] - 1
         return rest_args
 
     def _retrieve_local_tile(self, rest_args, tile_relative_intersection, data_out):
@@ -282,6 +268,7 @@ class TiledVolume(object):
 
         if not os.path.exists(tile_path):
             logger.error("Tile does not exist: {}".format( tile_path ))
+            data_out[...] = 0
             return
 
         # Read the image from the disk with vigra
@@ -295,7 +282,12 @@ class TiledVolume(object):
         
         # img has axes xyc, but we want zyx
         img = img.transpose()[None,0,:,:]
-    
+
+        if self.description.invert_y_axis:
+            # More special Raveler support:
+            # Raveler's conventions for the Y-axis are the reverse for everyone else's.
+            img = img[:, ::-1, :]
+
         # Copy just the part we need into the destination array
         assert img[roiToSlice(*tile_relative_intersection)].shape == data_out.shape
         data_out[:] = img[roiToSlice(*tile_relative_intersection)]
@@ -376,6 +368,11 @@ class TiledVolume(object):
                                   "If it is RGB, be sure to set the is_rgb flag in your description json."
             # img has axes xy, but we want zyx
             img = img[None]
+
+            if self.description.invert_y_axis:
+                # More special Raveler support:
+                # Raveler's conventions for the Y-axis are the reverse for everyone else's.
+                img = img[:, ::-1, :]
         
             # Copy just the part we need into the destination array
             assert img[roiToSlice(*tile_relative_intersection)].shape == data_out.shape
