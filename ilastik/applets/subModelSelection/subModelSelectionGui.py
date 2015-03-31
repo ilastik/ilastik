@@ -26,9 +26,11 @@ from PyQt4.QtGui import QVBoxLayout, QSpacerItem, QSizePolicy
 from volumina.widgets.subModelSelectionWidget import SubModelSelectionWidget
 #from volumina.imageView2D import ImageView2D
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
-#from ilastik.widgets.subModelListView import SubModelListView
+from ilastik.widgets.cropListView import CropListView
+from ilastik.applets.cropping.croppingGui import CroppingGui
 
 class SubModelSelectionGui(LayerViewerGui):
+#class SubModelSelectionGui(CroppingGui):
     """
     Sub model selection applet
     """
@@ -43,6 +45,29 @@ class SubModelSelectionGui(LayerViewerGui):
         """
         """
         self.topLevelOperatorView = topLevelOperatorView
+
+
+
+
+
+
+        # Tell our base class which slots to monitor
+        #cropSlots = CroppingGui.CroppingSlots()
+        #cropSlots.cropInput = topLevelOperatorView.CropInputs
+        #cropSlots.cropOutput = topLevelOperatorView.CropImages
+        #cropSlots.cropEraserValue = None#topLevelOperatorView.opCropPipeline.opCropArray.eraser
+        #cropSlots.cropDelete = None#topLevelOperatorView.opCropPipeline.DeleteCrop
+        #cropSlots.cropNames = topLevelOperatorView.CropNames
+        #cropSlots.cropsAllowed = topLevelOperatorView.CropsAllowedFlags
+
+        # We provide our own UI file (which adds an extra control for interactive mode)
+        #croppingDrawerUiPath = os.path.split(__file__)[0] + '/croppingDrawer.ui'
+
+        #super(SubModelSelectionGui, self).__init__(parentApplet, cropSlots, self.topLevelOperatorView, croppingDrawerUiPath)
+
+
+
+
         super(SubModelSelectionGui, self).__init__(parentApplet, self.topLevelOperatorView)
         self.subModels = []
 
@@ -64,8 +89,8 @@ class SubModelSelectionGui(LayerViewerGui):
         self.subModelSelectionWidget.labelMinZ.setVisible(data_has_z_axis)
         self.subModelSelectionWidget.labelMaxZ.setVisible(data_has_z_axis)
 
-        self.subModelSelectionWidget.ApplyButton.clicked.connect( self.apply_gui_settings_to_operator )
-        self.subModelSelectionWidget.ApplyButton.clicked.connect( self.apply_gui_settings_to_operator )
+        self.subModelSelectionWidget.NewCropButton.clicked.connect( self.apply_gui_settings_to_operator )
+        self.subModelSelectionWidget.NewCropButton.clicked.connect( self.apply_gui_settings_to_operator )
 
         self.topLevelOperatorView.MinValueT.notifyDirty(self.apply_operator_settings_to_gui)
         self.topLevelOperatorView.MaxValueT.notifyDirty(self.apply_operator_settings_to_gui)
@@ -85,6 +110,7 @@ class SubModelSelectionGui(LayerViewerGui):
         layout.addSpacerItem( QSpacerItem(0,0,vPolicy=QSizePolicy.Expanding) )
 
         self._drawer.setLayout( layout )
+        print "==================================>",self.subModelSelectionWidget._cropListView
 
         self.setDefaultValues()
         self.apply_operator_settings_to_gui()
@@ -103,8 +129,12 @@ class SubModelSelectionGui(LayerViewerGui):
 
     def createSubModel(self):
         try:
+            print "=====>", self.get_roi_4d(), self.numSubModels(), self.subModels
             newSubModel = ["Sub Model "+str(self.numSubModels() + 1),self.get_roi_4d()]
-            self.subModels += newSubModel
+            self.subModels += [newSubModel]
+            print "----->", self.get_roi_4d(), self.numSubModels(), self.subModels
+
+            self.subModelSelectionWidget._cropListView
         except:
             print " ERROR: Structured Learning: Failed to create sub model!"
 

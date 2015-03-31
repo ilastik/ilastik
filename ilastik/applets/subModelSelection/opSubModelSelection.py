@@ -20,6 +20,7 @@
 ###############################################################################
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
+from ilastik.utility import OpMultiLaneWrapper
 
 import numpy
 
@@ -33,6 +34,10 @@ class OpSubModelSelection(Operator):
     
     InputImage = InputSlot()
     PredictionImage = InputSlot()
+    CropInputs = InputSlot()
+    CropImages = InputSlot()
+    CropNames = InputSlot()
+    CropsAllowedFlags = InputSlot()
 
     MinValueT = InputSlot(value=0)
     MaxValueT = InputSlot(value=0)
@@ -45,6 +50,10 @@ class OpSubModelSelection(Operator):
 
     CropImage = OutputSlot()
     CropPrediction = OutputSlot()
+
+    #def __init__( self, *args, **kwargs ):
+        # Hook up Cropping Pipeline
+        #self.opCropPipeline = OpMultiLaneWrapper( OpCropPipeline, parent=self, broadcastingSlotNames=['DeleteCrop'] )
 
     def setupOutputs(self):
         self.CropImage.meta.assignFrom( self.InputImage.meta )
@@ -78,3 +87,45 @@ class OpSubModelSelection(Operator):
         else:
             self.CropImage.setDirty( slice(None) )
             self.CropPrediction.setDirty( slice(None) )
+
+#class OpCropPipeline( Operator ):
+#    RawImage = InputSlot()
+#    CropInput = InputSlot()
+#    DeleteCrop = InputSlot()
+#
+#    Output = OutputSlot()
+#    nonzeroBlocks = OutputSlot()
+#
+#    def __init__(self, *args, **kwargs):
+#        super( OpCropPipeline, self ).__init__( *args, **kwargs )
+#
+#        self.opCropArray = OpCompressedUserCropArray( parent=self )
+#        self.opCropArray.Input.connect( self.CropInput )
+#        self.opCropArray.eraser.setValue(100)
+#
+#        self.opCropArray.deleteCrop.connect( self.DeleteCrop )
+#
+#        # Connect external outputs to their internal sources
+#        self.Output.connect( self.opCropArray.Output )
+#        self.nonzeroBlocks.connect( self.opCropArray.nonzeroBlocks )
+#
+#    def setupOutputs(self):
+#        tagged_shape = self.RawImage.meta.getTaggedShape()
+#        tagged_shape['c'] = 1
+#
+#        # Aim for blocks that are roughly 1MB
+#        block_shape = determineBlockShape( tagged_shape.values(), 1e6 )
+#        self.opCropArray.blockShape.setValue( block_shape )
+#
+#    def setInSlot(self, slot, subindex, roi, value):
+#        # Nothing to do here: All inputs that support __setitem__
+#        #   are directly connected to internal operators.
+#        pass
+#
+#    def execute(self, slot, subindex, roi, result):
+#        assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
+#
+#    def propagateDirty(self, slot, subindex, roi):
+#        # Our output changes when the input changed shape, not when it becomes dirty.
+#        pass
+
