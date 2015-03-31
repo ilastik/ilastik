@@ -163,7 +163,7 @@ class OpNansheExtractF0(Operator):
     def setInSlot(self, slot, subindex, roi, value):
         pass
 
-    def _f0BecameDirty(self, roi):
+    def _f0BecameDirty(self, slot, roi):
         self._generation[self.name] += 1
         self.dF_F.setDirty(roi.toSlice())
 
