@@ -539,6 +539,10 @@ class OpSubRegion(Operator):
 
     def propagateDirty(self, dirtySlot, subindex, input_dirty_roi):
         input_dirty_roi = ( input_dirty_roi.start, input_dirty_roi.stop )
+        if len(input_dirty_roi[0]) != len(self._roi[0]):
+            # The dimensionality of the data is changing.
+            # The whole workflow must be updating, so don't bother with dirty notifications.
+            return
         intersection = getIntersection( input_dirty_roi, self._roi, False )
         if intersection:
             output_dirty_roi = numpy.array(intersection)
