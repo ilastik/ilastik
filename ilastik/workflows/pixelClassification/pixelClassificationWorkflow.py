@@ -68,8 +68,6 @@ class PixelClassificationWorkflow(Workflow):
         self._applets = []
         self._workflow_cmdline_args = workflow_cmdline_args
 
-        data_instructions = "Select your input data using the 'Raw Data' tab shown on the right"
-
         # Parse workflow-specific command-line args
         parser = argparse.ArgumentParser()
         parser.add_argument('--filter', help="pixel feature filter implementation.", choices=['Original', 'Refactored', 'Interpolated'], default='Original')
@@ -96,6 +94,9 @@ class PixelClassificationWorkflow(Workflow):
         if parsed_args.filter and parsed_args.filter != parsed_creation_args.filter:
             logger.error("Ignoring new --filter setting.  Filter implementation cannot be changed after initial project creation.")
         
+        data_instructions = "Select your input data using the 'Raw Data' tab shown on the right.\n\n"\
+                            "Power users: Optionally use the 'Prediction Mask' tab to supply a binary image that tells ilastik where it should avoid computations you don't need."
+
         # Applets for training (interactive) workflow 
         self.projectMetadataApplet = ProjectMetadataApplet()
         self.dataSelectionApplet = DataSelectionApplet( self,
@@ -106,13 +107,8 @@ class PixelClassificationWorkflow(Workflow):
                                                         instructionText=data_instructions )
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         
-        if ilastik_config.getboolean('ilastik', 'debug'):
-            # see role constants, above
-            role_names = ['Raw Data', 'Prediction Mask']
-            opDataSelection.DatasetRoles.setValue( role_names )
-        else:
-            role_names = ['Raw Data']
-            opDataSelection.DatasetRoles.setValue( role_names )
+        # see role constants, above
+        opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Prediction Mask'] )
 
         self.featureSelectionApplet = FeatureSelectionApplet(self, "Feature Selection", "FeatureSelections", self.filter_implementation)
 
