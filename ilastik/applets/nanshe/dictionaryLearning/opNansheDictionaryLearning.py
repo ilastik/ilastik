@@ -34,9 +34,8 @@ import numpy
 import vigra
 
 import nanshe
-import nanshe.nanshe
-import nanshe.nanshe.advanced_image_processing
-import nanshe.nanshe.additional_generators
+import nanshe.imp.advanced_image_processing
+import nanshe.util.iters
 
 
 class OpNansheDictionaryLearning(Operator):

@@ -30,7 +30,7 @@ import vigra
 from lazyflow.graph import Graph
 from lazyflow.operators import OpArrayPiper
 
-from nanshe.nanshe.expanded_numpy import expand_view, array_to_matrix
+from nanshe.util.xnumpy import expand_view, array_to_matrix
 
 import ilastik
 import ilastik.applets

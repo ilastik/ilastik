@@ -24,7 +24,7 @@ __date__ = "$Oct 16, 2014 16:04:03 EDT$"
 
 
 
-from nanshe.nanshe.read_config import read_parameters
+from nanshe.io.xjson import read_parameters
 
 from lazyflow.graph import Graph
 

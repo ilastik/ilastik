@@ -29,9 +29,8 @@ from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 import vigra
 
 import nanshe
-import nanshe.nanshe
-import nanshe.nanshe.wavelet_transform
-import nanshe.nanshe.additional_generators
+import nanshe.imp.wavelet_transform
+import nanshe.util.iters
 
 
 class OpMaxProjection(Operator):
@@ -59,7 +58,7 @@ class OpMaxProjection(Operator):
         self.Output.meta.assignFrom( self.Input.meta )
 
         self.Output.meta.axistags = vigra.AxisTags(
-            *list(nanshe.nanshe.additional_generators.iter_with_skip_indices( self.Output.meta.axistags, self.Axis.value))
+            *list(nanshe.util.iters.iter_with_skip_indices( self.Output.meta.axistags, self.Axis.value))
         )
 
         self.Output.meta.shape = self.Output.meta.shape[:self.Axis.value] +\
@@ -75,7 +74,7 @@ class OpMaxProjection(Operator):
         key = roi.toSlice()
         key = list(key)
         key = key[:axis] + [slice(None)] + key[axis:]
-        key[axis] = nanshe.nanshe.additional_generators.reformat_slice(key[axis], self.Input.meta.shape[axis])
+        key[axis] = nanshe.util.iters.reformat_slice(key[axis], self.Input.meta.shape[axis])
         key = tuple(key)
 
         raw = self.Input[key].wait()
