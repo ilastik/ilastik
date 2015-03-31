@@ -121,7 +121,7 @@ class OpNansheRemoveZeroedLines(Operator):
         key = roi.toSlice()
         raw = self.Input[key].wait()
         raw = raw[..., 0]
-        raw = raw.astype(numpy.float32, copy=False)
+        raw = numpy.asanyarray(raw, numpy.float32)
 
         erosion_shape = self.ErosionShape.value
         dilation_shape = self.DilationShape.value
