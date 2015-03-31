@@ -604,27 +604,39 @@ class OpMultiArrayMerger(Operator):
 
 
 class OpMaxChannelIndicatorOperator(Operator):
-    name = "OpMaxChannelIndicatorOperator"
+    """
+    Produces a bool image where each value is either 0 or 1, depending on whether
+    or not that channel of the input is the max value at that pixel compared 
+    to the other channels.
+    """
 
     Input = InputSlot()
     Output = OutputSlot()
 
     def setupOutputs(self):
+        assert self.Input.meta.getAxisKeys()[-1] == 'c', \
+            "This operator assumes that the last axis is the channel axis."
         self.Output.meta.assignFrom( self.Input.meta )
         self.Output.meta.dtype = numpy.uint8
         self.Output.meta.drange = (0,1)
-        self._num_channels = self.Input.meta.shape[-1]
 
     def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
         data = self.inputs["Input"][key[:-1]+(slice(None),)].wait()
     
-        #FIXME: only works if channels are in last dimension
-        dm = numpy.max(data, axis = data.ndim-1)
+        dm = numpy.max(data, axis = data.ndim-1, keepdims=True)
         res = numpy.zeros(data.shape, numpy.uint8)
+        numpy.equal(data, dm, out=res)
 
-        for c in range(data.shape[-1]):
-            numpy.equal(data[...,c], dm, out=res[...,c])
+        # Special case: If all channels are tied, then none of them win.
+        tied_pixels = numpy.logical_and.reduce(res, axis=-1, keepdims=True, dtype=numpy.uint8)
+
+        # We could use numpy.concatenate():
+        #  tied_pixels = numpy.concatenate((tied_pixels, tied_pixels), axis=-1)
+        # But that's not as fast as duplicating the array with a stride trick.
+        # (This only works because channel is the last axis.)
+        tied_pixels = numpy.lib.stride_tricks.as_strided(tied_pixels, shape=res.shape, strides = tied_pixels.strides)
+        res[tied_pixels] = 0 
 
         result[:] = res[...,key[-1]]
 
