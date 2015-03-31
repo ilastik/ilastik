@@ -81,7 +81,7 @@ class OpNansheExtractF0(Operator):
         self.opEstimateF0.Input.connect( self.Input )
         self.F0.connect( self.opEstimateF0.Output )
 
-        self.dF_F.notifyDirty(self._f0BecameDirty)
+        self.F0.notifyDirty(self._f0BecameDirty)
 
         self.Input.notifyReady( self._checkConstraints )
 
