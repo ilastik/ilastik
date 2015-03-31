@@ -47,7 +47,7 @@ class TestOpNansheRemoveZeroedLines(object):
 
         ar = a.copy()
         for each_r in r:
-            nanshe.util.xnumpy.index_axis_at_pos(nanshe.util.xnumpy.index_axis_at_pos(ar, 0, each_r[0]), -2, each_r[-1])[:] = 0
+            nanshe.util.xnumpy.index_axis_at_pos(nanshe.util.xnumpy.index_axis_at_pos(ar, 0, each_r[0]), -1, each_r[-1])[:] = 0
 
 
         graph = Graph()
@@ -76,7 +76,7 @@ class TestOpNansheRemoveZeroedLines(object):
 
         ar = a.copy()
         for each_r in r:
-            nanshe.util.xnumpy.index_axis_at_pos(nanshe.util.xnumpy.index_axis_at_pos(ar, 0, each_r[0]), -2, each_r[-1])[:] = 0
+            nanshe.util.xnumpy.index_axis_at_pos(nanshe.util.xnumpy.index_axis_at_pos(ar, 0, each_r[0]), -1, each_r[-1])[:] = 0
 
 
         graph = Graph()
@@ -105,7 +105,7 @@ class TestOpNansheRemoveZeroedLines(object):
 
         ar = a.copy()
         for each_r in r:
-            nanshe.util.xnumpy.index_axis_at_pos(nanshe.util.xnumpy.index_axis_at_pos(ar, 0, each_r[0]), -2, each_r[-1])[:] = 0
+            nanshe.util.xnumpy.index_axis_at_pos(nanshe.util.xnumpy.index_axis_at_pos(ar, 0, each_r[0]), -1, each_r[-1])[:] = 0
 
 
         graph = Graph()
@@ -134,7 +134,7 @@ class TestOpNansheRemoveZeroedLines(object):
 
         ar = a.copy()
         for each_r in r:
-            nanshe.util.xnumpy.index_axis_at_pos(nanshe.util.xnumpy.index_axis_at_pos(ar, 0, each_r[0]), -2, each_r[-1])[:] = 0
+            nanshe.util.xnumpy.index_axis_at_pos(nanshe.util.xnumpy.index_axis_at_pos(ar, 0, each_r[0]), -1, each_r[-1])[:] = 0
 
 
         graph = Graph()
