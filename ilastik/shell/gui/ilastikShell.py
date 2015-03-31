@@ -466,17 +466,6 @@ class IlastikShell(QMainWindow):
 
         shellActions = ShellActions()
 
-        # Menu item: New Project
-
-        #FIXME: disabled for 1.0
-        #
-        #newProjectMenu = menu.addMenu("&New Project...")
-        #
-        #workflowActions = []
-        #for w,_name in getAvailableWorkflows():
-        #    a = newProjectMenu.addAction(_name)
-        #    a.triggered.connect(partial(self.onNewProjectActionTriggered,w))
-
         # Menu item: Open Project
         shellActions.openProjectAction = menu.addAction("&Open Project...")
         shellActions.openProjectAction.setIcon(QIcon(ilastikIcons.Open))
@@ -505,11 +494,10 @@ class IlastikShell(QMainWindow):
         shellActions.importProjectAction.setIcon(QIcon(ilastikIcons.Open))
         shellActions.importProjectAction.triggered.connect(self.onImportProjectActionTriggered)
 
-        if ilastik_config.getboolean("ilastik", "debug"):
-            shellActions.closeAction = menu.addAction("&Close")
-            shellActions.closeAction.setIcon(QIcon(ilastikIcons.ProcessStop))
-            shellActions.closeAction.setShortcuts(QKeySequence.Close)
-            shellActions.closeAction.triggered.connect(self.onCloseActionTriggered)
+        shellActions.closeAction = menu.addAction("&Close")
+        shellActions.closeAction.setIcon(QIcon(ilastikIcons.ProcessStop))
+        shellActions.closeAction.setShortcuts(QKeySequence.Close)
+        shellActions.closeAction.triggered.connect(self.onCloseActionTriggered)
 
         # Menu item: Quit
         shellActions.quitAction = menu.addAction("&Quit")
