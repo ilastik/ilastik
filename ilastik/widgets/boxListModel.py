@@ -220,8 +220,6 @@ class BoxListModel(ListModel):
                 return Qt.NoItemFlags
 
     def removeRow(self, position, parent=QModelIndex()):
-
-        print position,self._elements
         self.boxRemoved.emit(position)
         return super(BoxListModel,self).removeRow(position, parent=parent)
 
