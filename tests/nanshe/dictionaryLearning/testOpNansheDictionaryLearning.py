@@ -24,8 +24,7 @@ import numpy
 import vigra
 
 import nanshe
-import nanshe.synthetic_data
-import nanshe.synthetic_data.synthetic_data
+import nanshe.syn.data
 
 from lazyflow.graph import Graph
 from lazyflow.operators import OpArrayPiper
@@ -46,7 +45,7 @@ class TestOpNansheDictionaryLearning(object):
         space = numpy.array((100, 100))
         radii = numpy.array((5, 6, 7))
 
-        g = nanshe.synthetic_data.synthetic_data.generate_hypersphere_masks(space, p, radii)
+        g = nanshe.syn.data.generate_hypersphere_masks(space, p, radii)
         gv = g[..., None]
         gv = gv.astype(float)
         gv = vigra.taggedView(gv, "tyxc")

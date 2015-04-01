@@ -36,8 +36,7 @@ import numpy
 
 import nanshe
 import nanshe.util.iters
-import nanshe.imp.wavelet_transform
-
+import nanshe.imp.filters.wavelet
 
 class OpNansheWaveletTransform(Operator):
     """
@@ -172,10 +171,10 @@ class OpNansheWaveletTransform(Operator):
         raw = self.Input[halo_key].wait()
         raw = raw[..., 0]
 
-        processed = nanshe.imp.wavelet_transform.wavelet_transform(raw,
-                                                                      scale=scale,
-                                                                      include_intermediates = False,
-                                                                      include_lower_scales = False)
+        processed = nanshe.imp.filters.wavelet.transform(raw,
+                                                         scale=scale,
+                                                         include_intermediates = False,
+                                                         include_lower_scales = False)
         processed = processed[..., None]
         
         if slot.name == 'Output':

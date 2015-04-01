@@ -38,7 +38,7 @@ import numpy
 
 import nanshe
 import nanshe.imp
-import nanshe.imp.advanced_image_processing
+import nanshe.imp.segment
 
 
 class OpNansheEstimateF0(Operator):
@@ -191,7 +191,7 @@ class OpNansheEstimateF0(Operator):
         raw = self.Input[halo_key].wait()
         raw = raw[..., 0]
 
-        f0 = nanshe.imp.advanced_image_processing.estimate_f0(
+        f0 = nanshe.imp.segment.estimate_f0(
             raw,
             half_window_size=half_window_size,
             which_quantile=which_quantile,

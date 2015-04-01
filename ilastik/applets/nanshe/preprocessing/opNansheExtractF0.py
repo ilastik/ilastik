@@ -37,7 +37,7 @@ from ilastik.applets.nanshe.preprocessing.opNansheEstimateF0 import OpNansheEsti
 import numpy
 
 import nanshe
-import nanshe.imp.advanced_image_processing
+import nanshe.imp.segment
 
 
 class OpNansheExtractF0(Operator):

@@ -177,7 +177,7 @@ class NansheWorkflow(Workflow):
             self.nanshePreprocessingApplet.topLevelOperator.ToWaveletTransform.setValue(False)
 
 
-        norm = preprocess_config["normalize_data"]["simple_image_processing.renormalized_images"].get("ord", 2)
+        norm = preprocess_config["normalize_data"]["renormalized_images"].get("ord", 2)
         self.nansheDictionaryLearningApplet.topLevelOperator.Ord.setValue(norm)
 
         self.nansheDictionaryLearningApplet.topLevelOperator.K.setValue(dictionary_config["K"])
@@ -196,13 +196,13 @@ class NansheWorkflow(Workflow):
 
 
         self.nanshePostprocessingApplet.topLevelOperator.SignificanceThreshold.setValue(
-            postprocess_config["wavelet_denoising"]["denoising.estimate_noise"]["significance_threshold"]
+            postprocess_config["wavelet_denoising"]["estimate_noise"]["significance_threshold"]
         )
         self.nanshePostprocessingApplet.topLevelOperator.WaveletTransformScale.setValue(
-            postprocess_config["wavelet_denoising"]["wavelet_transform.wavelet_transform"]["scale"]
+            postprocess_config["wavelet_denoising"]["wavelet.transform"]["scale"]
         )
         self.nanshePostprocessingApplet.topLevelOperator.NoiseThreshold.setValue(
-            postprocess_config["wavelet_denoising"]["denoising.significant_mask"]["noise_threshold"]
+            postprocess_config["wavelet_denoising"]["significant_mask"]["noise_threshold"]
         )
 
         major_axis_length_config = postprocess_config["wavelet_denoising"]["accepted_region_shape_constraints"].get("major_axis_length")
@@ -374,8 +374,8 @@ class NansheWorkflow(Workflow):
 
             preprocess_data_config["__comment__normalize_data"] = "How to normalize data. L_2 norm recommended."
             preprocess_data_config["normalize_data"] = OrderedDict()
-            preprocess_data_config["normalize_data"]["simple_image_processing.renormalized_images"] = OrderedDict()
-            preprocess_data_config["normalize_data"]["simple_image_processing.renormalized_images"]["ord"] = 2
+            preprocess_data_config["normalize_data"]["renormalized_images"] = OrderedDict()
+            preprocess_data_config["normalize_data"]["renormalized_images"]["ord"] = 2
 
 
 
@@ -410,18 +410,18 @@ class NansheWorkflow(Workflow):
             postprocess_data_config["wavelet_denoising"] = OrderedDict()
             wavelet_denoising_config = postprocess_data_config["wavelet_denoising"]
 
-            wavelet_denoising_config["__comment__denoising.estimate_noise"] = "Estimates the upper bound on the noise by finding the standard deviation on a subset of the data. The subset is determined by finding the standard deviation ( std_all ) for all of the data and determining what is within that std_all*significance_threshold. It is recommended that significance_threshold is left at 3.0."
-            wavelet_denoising_config["denoising.estimate_noise"] = OrderedDict()
-            wavelet_denoising_config["denoising.estimate_noise"]["significance_threshold"] = self.nanshePostprocessingApplet.topLevelOperator.SignificanceThreshold.value
+            wavelet_denoising_config["__comment__estimate_noise"] = "Estimates the upper bound on the noise by finding the standard deviation on a subset of the data. The subset is determined by finding the standard deviation ( std_all ) for all of the data and determining what is within that std_all*significance_threshold. It is recommended that significance_threshold is left at 3.0."
+            wavelet_denoising_config["estimate_noise"] = OrderedDict()
+            wavelet_denoising_config["estimate_noise"]["significance_threshold"] = self.nanshePostprocessingApplet.topLevelOperator.SignificanceThreshold.value
 
-            wavelet_denoising_config["__comment__wavelet_transform.wavelet_transform"] = "Performed on the basis image."
-            wavelet_denoising_config["wavelet_transform.wavelet_transform"] = OrderedDict()
-            wavelet_denoising_config["wavelet_transform.wavelet_transform"]["__comment__scale"] = "Scalars are applied to all dimensions. It is recommended that this be symmetric."
-            wavelet_denoising_config["wavelet_transform.wavelet_transform"]["scale"] = self.nanshePostprocessingApplet.topLevelOperator.WaveletTransformScale.value
+            wavelet_denoising_config["__comment__wavelet.transform"] = "Performed on the basis image."
+            wavelet_denoising_config["wavelet.transform"] = OrderedDict()
+            wavelet_denoising_config["wavelet.transform"]["__comment__scale"] = "Scalars are applied to all dimensions. It is recommended that this be symmetric."
+            wavelet_denoising_config["wavelet.transform"]["scale"] = self.nanshePostprocessingApplet.topLevelOperator.WaveletTransformScale.value
 
-            wavelet_denoising_config["__comment__denoising.significant_mask"] = "Using the noise estimate from denoising.estimate_noise and the wavelet transformed image from wavelet_transform.wavelet_transform, anything within the noise range from before scaled up by the noise_threshold. Typical values are 2.0-4.0."
-            wavelet_denoising_config["denoising.significant_mask"] = OrderedDict()
-            wavelet_denoising_config["denoising.significant_mask"]["noise_threshold"] = self.nanshePostprocessingApplet.topLevelOperator.NoiseThreshold.value
+            wavelet_denoising_config["__comment__significant_mask"] = "Using the noise estimate from estimate_noise and the wavelet transformed image from wavelet.transform, anything within the noise range from before scaled up by the noise_threshold. Typical values are 2.0-4.0."
+            wavelet_denoising_config["significant_mask"] = OrderedDict()
+            wavelet_denoising_config["significant_mask"]["noise_threshold"] = self.nanshePostprocessingApplet.topLevelOperator.NoiseThreshold.value
 
 
             wavelet_denoising_config["__comment__accepted_region_shape_constraints"] = "Set of region constraints to determine if the wavelet transform is too high for that region. If so, the next lowest transform replaces it."

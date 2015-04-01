@@ -29,7 +29,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 import numpy
 
 import nanshe
-import nanshe.imp.advanced_image_processing
+import nanshe.imp.segment
 
 
 class OpNansheNormalizeData(Operator):
@@ -60,11 +60,12 @@ class OpNansheNormalizeData(Operator):
 
         ord = self.Ord.value
 
-        processed = nanshe.imp.advanced_image_processing.normalize_data(raw,
-                                                                    **{"simple_image_processing.renormalized_images" : {
-                                                                        "ord" : ord
-                                                                       }
-                                                                    })
+        processed = nanshe.imp.segment.normalize_data(raw,
+                                                      **{
+                                                          "renormalized_images" : {
+                                                          "ord" : ord
+                                                          }
+                                                      })
         processed = processed[..., None]
         
         if slot.name == 'Output':

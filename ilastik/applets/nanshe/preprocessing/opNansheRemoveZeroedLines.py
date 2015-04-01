@@ -34,7 +34,7 @@ import itertools
 import numpy
 
 import nanshe
-import nanshe.imp.advanced_image_processing
+import nanshe.imp.segment
 
 
 class OpNansheRemoveZeroedLines(Operator):
@@ -126,9 +126,9 @@ class OpNansheRemoveZeroedLines(Operator):
         erosion_shape = self.ErosionShape.value
         dilation_shape = self.DilationShape.value
 
-        processed = nanshe.imp.advanced_image_processing.remove_zeroed_lines(raw,
-                                                                                erosion_shape=erosion_shape,
-                                                                                dilation_shape=dilation_shape)
+        processed = nanshe.imp.segment.remove_zeroed_lines(raw,
+                                                           erosion_shape=erosion_shape,
+                                                           dilation_shape=dilation_shape)
         processed = processed[..., None]
 
         if slot.name == 'Output':

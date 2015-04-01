@@ -34,7 +34,7 @@ import numpy
 
 import nanshe
 import nanshe.util.xnumpy
-import nanshe.imp.advanced_image_processing
+import nanshe.imp.segment
 
 
 class OpNanshePostprocessing(Operator):

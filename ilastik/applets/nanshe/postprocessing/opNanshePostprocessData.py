@@ -36,7 +36,7 @@ import vigra
 import numpy
 
 import nanshe
-import nanshe.imp.advanced_image_processing
+import nanshe.imp.segment
 import nanshe.util.xnumpy
 
 
@@ -188,15 +188,15 @@ class OpNanshePostprocessData(Operator):
         parameters = {
             "wavelet_denoising" : {
 
-                "denoising.estimate_noise" : {
+                "estimate_noise" : {
                     "significance_threshold" : self.SignificanceThreshold.value
                 },
 
-                "wavelet_transform.wavelet_transform" : {
+                "wavelet.transform" : {
                     "scale" : self.WaveletTransformScale.value
                 },
 
-                "denoising.significant_mask" : {
+                "significant_mask" : {
                     "noise_threshold" : self.NoiseThreshold.value
                 },
 
@@ -224,7 +224,7 @@ class OpNanshePostprocessData(Operator):
             }
         }
 
-        processed = nanshe.imp.advanced_image_processing.postprocess_data(raw, **parameters)
+        processed = nanshe.imp.segment.postprocess_data(raw, **parameters)
 
         processed_label_image = nanshe.util.xnumpy.enumerate_masks_max(processed["mask"])
 

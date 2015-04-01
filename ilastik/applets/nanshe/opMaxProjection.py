@@ -29,7 +29,6 @@ from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 import vigra
 
 import nanshe
-import nanshe.imp.wavelet_transform
 import nanshe.util.iters
 
 

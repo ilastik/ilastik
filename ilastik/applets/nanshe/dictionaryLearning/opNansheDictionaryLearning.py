@@ -34,7 +34,7 @@ import numpy
 import vigra
 
 import nanshe
-import nanshe.imp.advanced_image_processing
+import nanshe.imp.segment
 import nanshe.util.iters
 
 
