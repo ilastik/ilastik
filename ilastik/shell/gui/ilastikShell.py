@@ -73,7 +73,6 @@ from ilastik.shell.gui.licenseDialog import LicenseDialog
 from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox
 from ilastik.widgets.filePathButton import FilePathButton
 
-#from ilastik.shell.gui.messageServer import MessageServer
 from ilastik.shell.gui.ipcManager import IPCFacade, TCPServer, TCPClient, ZMQPublisher, ZMQSubscriber, ZMQBase
 import os
 
@@ -592,22 +591,6 @@ class IlastikShell(QMainWindow):
 
         menu.addAction("&Memory usage").triggered.connect(self.showMemUsageDialog)
         menu.addMenu(self._createProfilingSubmenu())
-
-        # Start message server for receiving remote commands (e.g. from KNIME)
-        # For now, this is a developer-only feature, activated by a menu item.
-        def start_message_server():
-            self.socketServer = MessageServer(self, 'localhost', 9997)
-            if self.socketServer.sending:
-                server_action.setText("<Message server is running>")
-                server_action.setEnabled(False)
-            else:
-                QMessageBox.critical(self,
-                                     "Failed to start server",
-                                     "Couldn't start message server.  See error log for details.")
-
-        #server_action = menu.addAction("Start message server")
-        #server_action.triggered.connect(start_message_server)
-
 
         menu.addAction("Show IPC Server Info", IPCFacade().show_info)
 
