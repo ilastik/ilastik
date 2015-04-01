@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 import psutil
 
 #lazyflow
-from lazyflow.utility import OrderedSignal, Singleton, PriorityQueue
+from lazyflow.utility import OrderedSignal, Singleton, PriorityQueue, log_exception
 import lazyflow
 
 this_process = psutil.Process(os.getpid())
@@ -252,8 +252,8 @@ class CacheMemoryManager(threading.Thread):
             self.logger.debug(
                 "Done cleaning up, memory usage is now at "
                 "{}%".format(100*current_usage_percentage))
-        except Exception as e:
-            self.logger.error(str(e))
+        except:
+            log_exception(self.logger)
 
     def _wait(self):
         """
