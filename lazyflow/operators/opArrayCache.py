@@ -36,9 +36,9 @@ import numpy
 #lazyflow
 from lazyflow.request import RequestPool
 from lazyflow.roi import sliceToRoi, roiToSlice, getBlockBounds, TinyVector
-from lazyflow.graph import InputSlot, OutputSlot
+from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility import fastWhere
-from lazyflow.operators.opCache import OpManagedCache
+from lazyflow.operators.opCache import ManagedCache
 
 try:
     from lazyflow.drtile import drtile
@@ -47,7 +47,7 @@ except ImportError:
     has_drtile = False
 
 
-class OpArrayCache(OpManagedCache):
+class OpArrayCache(Operator, ManagedCache):
     """ Allocates a block of memory as large as Input.meta.shape (==Output.meta.shape)
         with the same dtype in order to be able to cache results.
         
@@ -93,6 +93,9 @@ class OpArrayCache(OpManagedCache):
         self._cacheHits = 0
         self._has_fixed_dirty_blocks = False
         self._running = 0
+
+        # Now that we're initialized, it's safe to register with the memory manager
+        self.registerWithMemoryManager()
 
     # ========== CACHE API ==========
 

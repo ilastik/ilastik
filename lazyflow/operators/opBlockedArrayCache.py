@@ -33,15 +33,15 @@ import numpy
 #lazyflow
 from lazyflow.roi import roiToSlice
 from lazyflow.utility import RamMeasurementContext
-from lazyflow.graph import InputSlot, OutputSlot
+from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.rtype import SubRegion
 from lazyflow.request import RequestPool
-from lazyflow.operators.opCache import OpObservableCache
+from lazyflow.operators.opCache import ObservableCache
 from lazyflow.operators.opArrayCache import OpArrayCache
 from lazyflow.operators.opCache import MemInfoNode
 
 
-class OpBlockedArrayCache(OpObservableCache):
+class OpBlockedArrayCache(Operator, ObservableCache):
     name = "OpBlockedArrayCache"
     description = ""
 
@@ -76,6 +76,9 @@ class OpBlockedArrayCache(OpObservableCache):
 
         # This member is used by tests that check RAM usage.
         self.setup_ram_context = RamMeasurementContext()
+        
+        # Now that we're initialized, it's safe to register with the memory manager
+        self.registerWithMemoryManager()
 
     def setupOutputs(self):
         if len(self.innerBlockShape.value) != len(self.Input.meta.shape) or\

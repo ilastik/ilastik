@@ -34,7 +34,7 @@ from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
 from lazyflow.operators.cacheMemoryManager import memoryUsage
 from lazyflow.operators.cacheMemoryManager\
     import default_refresh_interval
-from lazyflow.operators.opCache import OpCache
+from lazyflow.operators.opCache import Cache
 from lazyflow.operators.opArrayCache import OpArrayCache
 from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 
@@ -44,8 +44,8 @@ class NonRegisteredCache(object):
         self.name = name
         self._randn = np.random.randint(2**16)
 
-OpCache.register(NonRegisteredCache)
-assert issubclass(NonRegisteredCache, OpCache)
+Cache.register(NonRegisteredCache)
+assert issubclass(NonRegisteredCache, Cache)
 
 
 

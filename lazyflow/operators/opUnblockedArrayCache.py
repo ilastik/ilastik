@@ -24,15 +24,15 @@ import time
 import collections
 import numpy
 
-from lazyflow.graph import InputSlot, OutputSlot
-from lazyflow.operators.opCache import OpManagedBlockedCache
+from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.operators.opCache import ManagedBlockedCache
 from lazyflow.request import RequestLock
 from lazyflow.roi import getIntersection, roiFromShape, roiToSlice, containing_rois
 
 import logging
 logger = logging.getLogger(__name__)
 
-class OpUnblockedArrayCache(OpManagedBlockedCache):
+class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
     """
     This cache operator stores the results of all requests that pass through 
     it, in exactly the same blocks that were requested.
@@ -56,6 +56,9 @@ class OpUnblockedArrayCache(OpManagedBlockedCache):
         self._block_data = {}
         self._block_locks = {}
         self._last_access_times = collections.defaultdict(float)
+
+        # Now that we're initialized, it's safe to register with the memory manager
+        self.registerWithMemoryManager()
     
     def _standardize_roi(self, start, stop):
         # We use rois as dict keys.

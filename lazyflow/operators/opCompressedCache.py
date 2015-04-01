@@ -32,9 +32,9 @@ import h5py
 
 # Lazyflow
 from lazyflow.request import Request, RequestPool, RequestLock
-from lazyflow.graph import InputSlot, OutputSlot
+from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import TinyVector, getIntersectingBlocks, getBlockBounds, roiToSlice, getIntersection
-from lazyflow.operators.opCache import OpManagedBlockedCache
+from lazyflow.operators.opCache import ManagedBlockedCache
 from lazyflow.utility.chunkHelpers import chooseChunkShape
 
 logger = logging.getLogger(__name__)
@@ -48,7 +48,7 @@ def get_storage_size(h5dataset):
     '''
     return h5py.h5d.DatasetID.get_storage_size(h5dataset.id)
 
-class OpCompressedCache(OpManagedBlockedCache):
+class OpCompressedCache(Operator, ManagedBlockedCache):
     """
     A blockwise cache that stores each block as a separate in-memory hdf5 file with a compressed dataset.
     
@@ -71,6 +71,9 @@ class OpCompressedCache(OpManagedBlockedCache):
         self._lock = RequestLock()
         self._init_cache(None)
         self._block_id_counter = itertools.count() # Used to ensure unique in-memory file names
+
+        # Now that we're initialized, it's safe to register with the memory manager
+        self.registerWithMemoryManager()
 
     def _init_cache(self, new_blockshape):
         with self._lock:
