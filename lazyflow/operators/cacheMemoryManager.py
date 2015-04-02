@@ -28,6 +28,7 @@ import threading
 import weakref
 import platform
 import functools
+import atexit
 
 import logging
 logger = logging.getLogger(__name__)
@@ -139,7 +140,9 @@ class CacheMemoryManager(threading.Thread):
         # target usage percentage
         self._target_usage = 70
         self._last_usage = memoryUsagePercentage()
+        self._stopped = False
         self.start()
+        atexit.register(self.stop)
 
     def addFirstClassCache(self, cache):
         """
@@ -194,12 +197,12 @@ class CacheMemoryManager(threading.Thread):
         """
         main loop
         """
-        while True:
+        while not self._stopped:
             self._wait()
 
             # acquire lock so that we don't get disabled during cleanup
             with self._disable_lock:
-                if self._disabled:
+                if self._disabled or self._stopped:
                     continue
                 self._cleanup()
 
@@ -258,16 +261,16 @@ class CacheMemoryManager(threading.Thread):
         """
         sleep for _refresh_interval seconds or until woken up
         """
-        try:
-            with self._condition:
-                self._condition.wait(self._refresh_interval)
-        except Exception:
-            # this can occur during shutdown, will not be fixed in
-            # python2
-            # http://bugs.python.org/issue14623
-            # We need to catch all exceptions here, because concrete
-            # exceptions could already bew cleaned up.
-            pass
+        with self._condition:
+            self._condition.wait(self._refresh_interval)
+
+    def stop(self):
+        """
+        Stop the memory manager thread in preparation for app exit.
+        """
+        self._stopped = True
+        with self._condition:
+            self._condition.notify()
 
     def setRefreshInterval(self, t):
         """
