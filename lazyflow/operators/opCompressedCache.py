@@ -48,9 +48,12 @@ def get_storage_size(h5dataset):
     '''
     return h5py.h5d.DatasetID.get_storage_size(h5dataset.id)
 
-class OpCompressedCache(Operator, ManagedBlockedCache):
+class OpUnmanagedCompressedCache(Operator):
     """
     A blockwise cache that stores each block as a separate in-memory hdf5 file with a compressed dataset.
+    
+    Note: This class is not managed by the memory manager, so there can be non-managed subclasses.
+          The "managed" version is OpCompressedCache, defined below.
     
     Note: 
       * It is not safe to call execute() and change the blockshape
@@ -67,13 +70,10 @@ class OpCompressedCache(Operator, ManagedBlockedCache):
     OutputHdf5 = OutputSlot(allow_mask=True) # Provides data as hdf5 datasets.  Only allowed for rois that exactly match a block.
 
     def __init__(self, *args, **kwargs):
-        super( OpCompressedCache, self ).__init__( *args, **kwargs )
+        super( OpUnmanagedCompressedCache, self ).__init__( *args, **kwargs )
         self._lock = RequestLock()
         self._init_cache(None)
         self._block_id_counter = itertools.count() # Used to ensure unique in-memory file names
-
-        # Now that we're initialized, it's safe to register with the memory manager
-        self.registerWithMemoryManager()
 
     def _init_cache(self, new_blockshape):
         with self._lock:
@@ -87,7 +87,7 @@ class OpCompressedCache(Operator, ManagedBlockedCache):
     def cleanUp(self):
         logger.debug( "Cleaning up" )
         self._closeAllCacheFiles()
-        super( OpCompressedCache, self ).cleanUp()
+        super( OpUnmanagedCompressedCache, self ).cleanUp()
 
 
     def setupOutputs(self):
@@ -308,67 +308,6 @@ class OpCompressedCache(Operator, ManagedBlockedCache):
             tot += group["fill_value"].size *\
                 self._getDtypeBytes(group["fill_value"].dtype)
         return tot, unc
-
-    def fractionOfUsedMemoryDirty(self):
-        tot = 0.0
-        dirty = 0.0
-        for key in self._cacheFiles.keys():
-            real, virt = self._memoryForBlock(key)
-            tot += real
-            if key in self._dirtyBlocks:
-                dirty += real
-        if tot > 0:
-            return dirty / tot
-        else:
-            return 0.0
-    
-    def generateReport(self, report):
-        super(OpCompressedCache, self).generateReport(report)
-        report.dtype = self.Output.meta.dtype
-        f = self._compression_factor
-        report.info = "Compression factor: {:.2f}".format(f)
-
-    def freeMemory(self):
-        mem = self.usedMemory()
-        self._closeAllCacheFiles()
-        with self._lock:
-            self._cacheFiles = {}
-            self._dirtyBlocks = set()
-        return mem
-
-    def freeDirtyMemory(self):
-        dirty = 0.0
-        for key in self._cacheFiles.keys():
-            if key in self._dirtyBlocks:
-                dirty += self.freeBlock(key)
-                with self._lock:
-                    self._dirtyBlocks.discard(key)
-        return dirty
-
-    def freeBlock(self, block_id):
-        if block_id not in self._blockLocks:
-            return 0
-        with self._blockLocks[block_id]:
-            try:
-                f = self._cacheFiles[block_id]
-            except KeyError:
-                # this file was deleted
-                return 0
-            if "data" not in f:
-                return 0
-            ds = f["data"]
-            # use actual size, not number of bytes in
-            # *uncompressed* array
-            mem = get_storage_size(ds)
-            f.close()
-            del self._cacheFiles[block_id]
-            del self._last_access_times[block_id]
-            return mem
-
-    def getBlockAccessTimes(self):
-        # FIXME
-        return [(key, self._last_access_times[key])
-                for key in self._last_access_times]
 
     def _getCacheFile(self, entire_block_roi):
         """
@@ -618,3 +557,71 @@ class OpCompressedCache(Operator, ManagedBlockedCache):
         with self._lock:
             self._blockLocks = {}
             self._cacheFiles = {}
+
+class OpCompressedCache(OpUnmanagedCompressedCache, ManagedBlockedCache):
+
+    def __init__(self, *args, **kwargs):
+        super(OpCompressedCache, self).__init__(*args, **kwargs)
+        # Now that we're initialized, it's safe to register with the memory manager
+        self.registerWithMemoryManager()
+
+    def fractionOfUsedMemoryDirty(self):
+        tot = 0.0
+        dirty = 0.0
+        for key in self._cacheFiles.keys():
+            real, virt = self._memoryForBlock(key)
+            tot += real
+            if key in self._dirtyBlocks:
+                dirty += real
+        if tot > 0:
+            return dirty / tot
+        else:
+            return 0.0
+    
+    def generateReport(self, report):
+        super(OpCompressedCache, self).generateReport(report)
+        report.dtype = self.Output.meta.dtype
+        f = self._compression_factor
+        report.info = "Compression factor: {:.2f}".format(f)
+
+    def freeMemory(self):
+        mem = self.usedMemory()
+        self._closeAllCacheFiles()
+        with self._lock:
+            self._cacheFiles = {}
+            self._dirtyBlocks = set()
+        return mem
+
+    def freeDirtyMemory(self):
+        dirty = 0.0
+        for key in self._cacheFiles.keys():
+            if key in self._dirtyBlocks:
+                dirty += self.freeBlock(key)
+                with self._lock:
+                    self._dirtyBlocks.discard(key)
+        return dirty
+
+    def freeBlock(self, block_id):
+        if block_id not in self._blockLocks:
+            return 0
+        with self._blockLocks[block_id]:
+            try:
+                f = self._cacheFiles[block_id]
+            except KeyError:
+                # this file was deleted
+                return 0
+            if "data" not in f:
+                return 0
+            ds = f["data"]
+            # use actual size, not number of bytes in
+            # *uncompressed* array
+            mem = get_storage_size(ds)
+            f.close()
+            del self._cacheFiles[block_id]
+            del self._last_access_times[block_id]
+            return mem
+
+    def getBlockAccessTimes(self):
+        # FIXME
+        return [(key, self._last_access_times[key])
+                for key in self._last_access_times]
