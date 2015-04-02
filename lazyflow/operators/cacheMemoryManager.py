@@ -215,7 +215,7 @@ class CacheMemoryManager(threading.Thread):
                 if isinstance(cache, ObservableCache):
                     total += cache.usedMemory()
             self.totalCacheMemory(total)
-            del cache
+            cache = None
 
             # check current memory state
             current_usage_percentage = memoryUsagePercentage()
@@ -235,9 +235,8 @@ class CacheMemoryManager(threading.Thread):
                     cleanupFun = functools.partial(c.freeBlock, k)
                     info = "{}: {}".format(c.name, k)
                     q.push((t, cleanupFun))
-            if len(caches) > 0:
-                del c
-            del caches
+            c = None
+            caches = None
 
             while current_usage_percentage > self._target_usage and len(q) > 0:
                 t, info, cleanupFun = q.pop()
@@ -246,8 +245,8 @@ class CacheMemoryManager(threading.Thread):
                 current_usage_percentage = memoryUsagePercentage()
 
             # don't keep a reference until next loop iteration
-            del cleanupFun
-            del q
+            cleanupFun = None
+            q = None
 
             self.logger.debug(
                 "Done cleaning up, memory usage is now at "
