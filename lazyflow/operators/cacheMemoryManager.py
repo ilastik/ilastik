@@ -241,6 +241,10 @@ class CacheMemoryManager(threading.Thread):
             c = None
             caches = None
 
+            if current_usage_percentage > self._target_usage and len(q) > 0:
+                current_usage_percentage = memoryUsagePercentage()
+                self.logger.debug("Memory usage is: {}%".format(100*current_usage_percentage))
+                
             while current_usage_percentage > self._target_usage and len(q) > 0:
                 t, info, cleanupFun = q.pop()
                 self.logger.debug("Cleaning up {}".format(info))
