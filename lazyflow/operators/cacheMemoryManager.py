@@ -275,6 +275,7 @@ class CacheMemoryManager(threading.Thread):
         self._stopped = True
         with self._condition:
             self._condition.notify()
+        self.join()
 
     def setRefreshInterval(self, t):
         """
