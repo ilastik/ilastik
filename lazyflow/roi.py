@@ -515,9 +515,16 @@ def getIntersectingBlocks( blockshape, roi, asarray=False ):
         axiscount = block_indices.shape[-1]
         return numpy.reshape( block_indices, (num_indexes, axiscount) )
 
-def getIntersectingRois(dataset_shape, blockshape, roi):
+def getIntersectingRois(dataset_shape, blockshape, roi, clip_blocks_to_roi=True):
     block_starts = getIntersectingBlocks(blockshape, roi)
-    return map( partial(getBlockBounds, dataset_shape, blockshape), block_starts )
+    block_rois = map( partial(getBlockBounds, dataset_shape, blockshape), block_starts )
+    if clip_blocks_to_roi:
+        block_rois = map( lambda block_roi: getIntersection(block_roi, roi), block_rois )
+    return block_rois
+
+def is_fully_contained( inner_roi, outer_roi ):
+    inner_roi = numpy.asarray(inner_roi)
+    return (inner_roi[0] >= outer_roi[0]).all() and (inner_roi[1] <= outer_roi[1]).all()
 
 def getBlockBounds(dataset_shape, block_shape, block_start):
     """
