@@ -27,9 +27,16 @@ import numpy
 import vigra
 from lazyflow.graph import Graph
 from lazyflow.roi import sliceToRoi, roiToSlice
-from lazyflow.operators import OpBlockedArrayCache
+from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr
+
+# This test suite works for the old and new implementations of OpBlockedArrayCache
+from lazyflow.operators.opRefactoredBlockedArrayCache import OpRefactoredBlockedArrayCache
+OpBlockedArrayCache = OpRefactoredBlockedArrayCache
+
+from lazyflow.request import Request
+Request.reset_thread_pool(0)
 
 class KeyMaker():
     def __getitem__(self, *args):
@@ -79,11 +86,11 @@ class TestOpBlockedArrayCache(object):
         assert opProvider.accessCount == expectedAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, expectedAccessCount)
                 
         # Not block-aligned request
-        slicing = make_key[0:1, 5:15, 10:20, 0:10, 0:1]
+        slicing = make_key[0:1, 35:45, 10:20, 0:10, 0:1]
         data = opCache.Output( slicing ).wait()
         data = data.view(vigra.VigraArray)
         data.axistags = opCache.Output.meta.axistags
-        expectedAccessCount += 1
+        expectedAccessCount += 2
         assert (data == self.data[slicing]).all()
         assert opProvider.accessCount == expectedAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, expectedAccessCount)
 
@@ -139,13 +146,15 @@ class TestOpBlockedArrayCache(object):
         oldAccessCount = opProvider.accessCount
 
     def testFixAtCurrent(self):
+        ArrayCacheMemoryMgr.instance.pause()
+
         opCache = self.opCache
         opProvider = self.opProvider        
 
         # Track dirty notifications
-        gotDirtyKeys = []
+        gotDirtyRois = []
         def handleDirty(slot, roi):
-            gotDirtyKeys.append( list(roiToSlice(roi.start, roi.stop)) )
+            gotDirtyRois.append( (roi.start, roi.stop) )
         opCache.Output.notifyDirty(handleDirty)
 
         opCache.fixAtCurrent.setValue(True)
@@ -164,10 +173,16 @@ class TestOpBlockedArrayCache(object):
 
         opCache.fixAtCurrent.setValue(False)
         
-        # Since we got zeros while the cache was fixed, the requested 
+        def boundingBox(roiA, roiB):
+            return ( numpy.minimum(roiA[0], roiB[0]), 
+                     numpy.maximum(roiA[1], roiB[1]) )
+        
+        # Since we got zeros while the cache was fixed, the requested
         #  tiles are signaled as dirty when the cache becomes unfixed.
-        assert len(gotDirtyKeys) == 1
-        assert gotDirtyKeys[0] == make_key[0:1, 0:60, 0:60, 0:10, 0:1]
+        # Our only requirement here is that any dirty rois we got add up to encompass all the tiles we requested.
+        dirty_bb = reduce(boundingBox, gotDirtyRois)
+        requested_roi = sliceToRoi(slicing, opCache.Output.meta.shape)
+        assert (dirty_bb[0] <= requested_roi[0]).all() and (dirty_bb[1] >= requested_roi[1]).all()
 
         # Request again.  Data should match this time.
         oldAccessCount = opProvider.accessCount
@@ -195,7 +210,7 @@ class TestOpBlockedArrayCache(object):
         opCache.fixAtCurrent.setValue(True)
 
         # Clear previous
-        gotDirtyKeys = []
+        gotDirtyRois = []
 
         # Change some of the input data that ISN'T cached yet and mark it dirty
         dirtykey = make_key[0:1, 90:100, 90:100, 0:1, 0:1]
@@ -203,7 +218,7 @@ class TestOpBlockedArrayCache(object):
         opProvider.Input.setDirty(dirtykey)
 
         # Dirtiness not propagated due to fixAtCurrent
-        assert len(gotDirtyKeys) == 0
+        assert len(gotDirtyRois) == 0
         
         # Same request.  Data should still match the previous data (not yet refreshed)
         data2 = opCache.Output( slicing ).wait()
@@ -216,7 +231,7 @@ class TestOpBlockedArrayCache(object):
         opCache.fixAtCurrent.setValue(False)
 
         # Dirty blocks are propagated after the cache is unfixed.
-        assert len(gotDirtyKeys) > 0
+        assert len(gotDirtyRois) > 0
 
         # Same request.  Data should be updated now that we're unfrozen.
         data = opCache.Output( slicing ).wait()
@@ -233,7 +248,7 @@ class TestOpBlockedArrayCache(object):
         opCache.fixAtCurrent.setValue(True)
 
         # Reset tracked notifications
-        gotDirtyKeys = []
+        gotDirtyRois = []
         
         # Change some of the input data that IS cached and mark it dirty
         dirtykey = make_key[:, 0:25, 20:40, 0:1, :]
@@ -241,7 +256,7 @@ class TestOpBlockedArrayCache(object):
         opProvider.Input.setDirty(dirtykey)
 
         # Dirtiness not propagated due to fixAtCurrent
-        assert len(gotDirtyKeys) == 0
+        assert len(gotDirtyRois) == 0
         
         # Same request.  Data should still match the previous data (not yet refreshed)
         data2 = opCache.Output( slicing ).wait()
@@ -252,7 +267,7 @@ class TestOpBlockedArrayCache(object):
 
         # Unfreeze. Previous dirty notifications should now be seen.
         opCache.fixAtCurrent.setValue(False)
-        assert len(gotDirtyKeys) > 0
+        assert len(gotDirtyRois) > 0
 
         # Same request.  Data should be updated now that we're unfrozen.
         data = opCache.Output( slicing ).wait()
@@ -266,20 +281,20 @@ class TestOpBlockedArrayCache(object):
         maxAccess = oldAccessCount + 6
         assert opProvider.accessCount >= minAccess
         assert opProvider.accessCount <= maxAccess
-        oldAccessCount = opProvider.accessCount
 
         #####################        
 
         #### Repeat plain dirty test to ensure fixAtCurrent didn't mess up the block states.
 
-        gotDirtyKeys = []
+        opProvider.accessCount = 0 # Reset
+        gotDirtyRois = []
 
         # Change some of the input data and mark it dirty
         dirtykey = make_key[0:1, 10:11, 20:21, 0:3, 0:1]
         self.data[dirtykey] = 0.54321
         opProvider.Input.setDirty(dirtykey)
 
-        assert len(gotDirtyKeys) > 0
+        assert len(gotDirtyRois) > 0
         
         # Should need access again.
         slicing = make_key[:, 0:50, 15:45, 0:10, :]
@@ -289,11 +304,13 @@ class TestOpBlockedArrayCache(object):
         assert (data == self.data[slicing]).all()
 
         # The dirty data intersected 1 outerBlocks and a total of 1 innerblock
-        minAccess = oldAccessCount + 1
-        maxAccess = oldAccessCount + 1
+        minAccess = 1
+        maxAccess = 1
         assert opProvider.accessCount >= minAccess
-        assert opProvider.accessCount <= maxAccess
+        assert opProvider.accessCount <= maxAccess, "Too many accesses: {}".format( opProvider.accessCount )
         oldAccessCount = opProvider.accessCount
+
+        ArrayCacheMemoryMgr.instance.unpause()
 
     def testCleanup(self):
         try:
@@ -371,10 +388,10 @@ class TestOpBlockedArrayCache_masked(object):
         assert opProvider.accessCount == expectedAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, expectedAccessCount)
 
         # Not block-aligned request
-        slicing = make_key[0:1, 5:15, 10:20, 0:10, 0:1]
+        slicing = make_key[0:1, 35:45, 10:20, 0:10, 0:1]
         data = opCache.Output( slicing ).wait()
         data.axistags = opCache.Output.meta.axistags
-        expectedAccessCount += 1
+        expectedAccessCount += 2
         assert (data == self.data[slicing]).all()
         assert (data.mask == self.data.mask[slicing]).all()
         assert (data.fill_value == self.data.fill_value).all()
@@ -439,9 +456,9 @@ class TestOpBlockedArrayCache_masked(object):
         opProvider = self.opProvider
 
         # Track dirty notifications
-        gotDirtyKeys = []
+        gotDirtyRois = []
         def handleDirty(slot, roi):
-            gotDirtyKeys.append( list(roiToSlice(roi.start, roi.stop)) )
+            gotDirtyRois.append( (roi.start, roi.stop) )
         opCache.Output.notifyDirty(handleDirty)
 
         opCache.fixAtCurrent.setValue(True)
@@ -462,10 +479,15 @@ class TestOpBlockedArrayCache_masked(object):
 
         opCache.fixAtCurrent.setValue(False)
 
+        def boundingBox(roiA, roiB):
+            return ( numpy.minimum(roiA[0], roiB[0]), 
+                     numpy.maximum(roiA[1], roiB[1]) )
+        
         # Since we got zeros while the cache was fixed, the requested
         #  tiles are signaled as dirty when the cache becomes unfixed.
-        assert len(gotDirtyKeys) == 1
-        assert gotDirtyKeys[0] == make_key[0:1, 0:60, 0:60, 0:10, 0:1]
+        dirty_bb = reduce(boundingBox, gotDirtyRois)
+        requested_roi = sliceToRoi(slicing, opCache.Output.meta.shape)
+        assert (dirty_bb[0] <= requested_roi[0]).all() and (dirty_bb[1] >= requested_roi[1]).all()
 
         # Request again.  Data should match this time.
         oldAccessCount = opProvider.accessCount
@@ -495,7 +517,7 @@ class TestOpBlockedArrayCache_masked(object):
         opCache.fixAtCurrent.setValue(True)
 
         # Clear previous
-        gotDirtyKeys = []
+        gotDirtyRois = []
 
         # Change some of the input data that ISN'T cached yet and mark it dirty
         dirtykey = make_key[0:1, 90:100, 90:100, 0:1, 0:1]
@@ -503,7 +525,7 @@ class TestOpBlockedArrayCache_masked(object):
         opProvider.Input.setDirty(dirtykey)
 
         # Dirtiness not propagated due to fixAtCurrent
-        assert len(gotDirtyKeys) == 0
+        assert len(gotDirtyRois) == 0
 
         # Same request.  Data should still match the previous data (not yet refreshed)
         data2 = opCache.Output( slicing ).wait()
@@ -517,7 +539,7 @@ class TestOpBlockedArrayCache_masked(object):
         opCache.fixAtCurrent.setValue(False)
 
         # Dirty blocks are propagated after the cache is unfixed.
-        assert len(gotDirtyKeys) > 0
+        assert len(gotDirtyRois) > 0
 
         # Same request.  Data should be updated now that we're unfrozen.
         data = opCache.Output( slicing ).wait()
@@ -535,7 +557,7 @@ class TestOpBlockedArrayCache_masked(object):
         opCache.fixAtCurrent.setValue(True)
 
         # Reset tracked notifications
-        gotDirtyKeys = []
+        gotDirtyRois = []
 
         # Change some of the input data that IS cached and mark it dirty
         dirtykey = make_key[:, 0:25, 20:40, 0:1, :]
@@ -543,7 +565,7 @@ class TestOpBlockedArrayCache_masked(object):
         opProvider.Input.setDirty(dirtykey)
 
         # Dirtiness not propagated due to fixAtCurrent
-        assert len(gotDirtyKeys) == 0
+        assert len(gotDirtyRois) == 0
 
         # Same request.  Data should still match the previous data (not yet refreshed)
         data2 = opCache.Output( slicing ).wait()
@@ -555,7 +577,7 @@ class TestOpBlockedArrayCache_masked(object):
 
         # Unfreeze. Previous dirty notifications should now be seen.
         opCache.fixAtCurrent.setValue(False)
-        assert len(gotDirtyKeys) > 0
+        assert len(gotDirtyRois) > 0
 
         # Same request.  Data should be updated now that we're unfrozen.
         data = opCache.Output( slicing ).wait()
@@ -576,14 +598,14 @@ class TestOpBlockedArrayCache_masked(object):
 
         #### Repeat plain dirty test to ensure fixAtCurrent didn't mess up the block states.
 
-        gotDirtyKeys = []
+        gotDirtyRois = []
 
         # Change some of the input data and mark it dirty
         dirtykey = make_key[0:1, 10:11, 20:21, 0:3, 0:1]
         self.data[dirtykey] = 0.54321
         opProvider.Input.setDirty(dirtykey)
 
-        assert len(gotDirtyKeys) > 0
+        assert len(gotDirtyRois) > 0
 
         # Should need access again.
         slicing = make_key[:, 0:50, 15:45, 0:10, :]
@@ -597,7 +619,7 @@ class TestOpBlockedArrayCache_masked(object):
         minAccess = oldAccessCount + 1
         maxAccess = oldAccessCount + 1
         assert opProvider.accessCount >= minAccess
-        assert opProvider.accessCount <= maxAccess
+        assert opProvider.accessCount <= maxAccess, "Too many accesses: {}".format( opProvider.accessCount )
         oldAccessCount = opProvider.accessCount
 
 
