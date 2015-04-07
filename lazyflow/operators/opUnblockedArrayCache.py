@@ -23,8 +23,8 @@ class OpUnblockedArrayCache(OpCache):
     Hopefully the downstream operators are reasonably consistent in the blocks they request data with,
     since every unique result is cached separately.
     """
-    Input = InputSlot()
-    Output = OutputSlot()
+    Input = InputSlot(allow_mask=True)
+    Output = OutputSlot(allow_mask=True)
     
     def __init__(self, *args, **kwargs):
         super( OpUnblockedArrayCache, self ).__init__(*args, **kwargs)
@@ -50,7 +50,7 @@ class OpUnblockedArrayCache(OpCache):
                 # Use the first one we found
                 block_roi = self._standardize_roi( *outer_rois[0] )
                 block_relative_roi = numpy.array( (roi.start, roi.stop) ) - block_roi[0]
-                result[:] = self._block_data[block_roi][ roiToSlice(*block_relative_roi) ]
+                self.Output.stype.copy_data(result, self._block_data[block_roi][ roiToSlice(*block_relative_roi) ])
                 return
                 
         # Standardize roi for usage as dict key
@@ -65,7 +65,7 @@ class OpUnblockedArrayCache(OpCache):
         # Handle identical simultaneous requests
         with block_lock:
             try:
-                result[:] = self._block_data[block_roi]
+                self.Output.stype.copy_data(result, self._block_data[block_roi])
                 return
             except KeyError:
                 # Not yet stored: Request it now.
