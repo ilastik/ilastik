@@ -311,6 +311,21 @@ class LabelingGui(LayerViewerGui):
                                        self.labelingDrawerUi.eraserToolButton.click,
                                        self.labelingDrawerUi.eraserToolButton,
                                        self.labelingDrawerUi.eraserToolButton ) )
+
+        mgr.register( ",", ActionInfo( shortcutGroupName,
+                                       "Decrease Brush Size",
+                                       "Decrease Brush Size",
+                                       partial(self._tweakBrushSize, False),
+                                       self.labelingDrawerUi.brushSizeComboBox,
+                                       self.labelingDrawerUi.brushSizeComboBox ) )
+
+        mgr.register( ".", ActionInfo( shortcutGroupName,
+                                       "Increase Brush Size",
+                                       "Increase Brush Size",
+                                       partial(self._tweakBrushSize, True),
+                                       self.labelingDrawerUi.brushSizeComboBox,
+                                       self.labelingDrawerUi.brushSizeComboBox ) )
+
         if hasattr(self.labelingDrawerUi, "thresToolButton"):
             mgr.register( "t", ActionInfo( shortcutGroupName,
                                            "Window Leveling",
@@ -321,6 +336,29 @@ class LabelingGui(LayerViewerGui):
         
 
         self._labelShortcuts = []
+
+    def _tweakBrushSize(self, increase):
+        """
+        Increment or decrement the paint brush size or eraser size (depending on which is currently selected).
+        
+        increase: Bool. If True, increment.  Otherwise, decrement.
+        """
+        if self._toolId == Tool.Erase:
+            if increase:
+                self.eraserSizeIndex += 1
+                self.eraserSizeIndex = min(len(self.brushSizes)-1, self.eraserSizeIndex)
+            else:
+                self.eraserSizeIndex -=1
+                self.eraserSizeIndex = max(0, self.eraserSizeIndex)
+            self._changeInteractionMode(Tool.Erase)
+        else:
+            if increase:
+                self.paintBrushSizeIndex += 1
+                self.paintBrushSizeIndex = min(len(self.brushSizes)-1, self.paintBrushSizeIndex)
+            else:
+                self.paintBrushSizeIndex -=1
+                self.paintBrushSizeIndex = max(0, self.paintBrushSizeIndex)
+            self._changeInteractionMode(Tool.Paint)
 
     def _updateLabelShortcuts(self):
         numShortcuts = len(self._labelShortcuts)

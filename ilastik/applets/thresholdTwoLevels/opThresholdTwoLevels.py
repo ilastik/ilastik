@@ -69,6 +69,7 @@ class OpThresholdTwoLevels(Operator):
     name = "OpThresholdTwoLevels"
 
     RawInput = InputSlot(optional=True)  # Display only
+    InputChannelColors = InputSlot(optional=True) # Display only
 
     InputImage = InputSlot()
     MinSize = InputSlot(stype='int', value=10)

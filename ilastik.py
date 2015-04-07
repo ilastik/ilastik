@@ -74,6 +74,10 @@ def main():
     #parsed_args.headless = True
     #os.environ["LAZYFLOW_THREADS"] = "0"
 
+    #parsed_args.headless = True
+    #parsed_args.new_project = '/tmp/emptyproj.ilp'
+    #parsed_args.workflow = "Pixel Classification"
+
     ilastik_main.main(parsed_args, workflow_cmdline_args)
 
 if __name__ == "__main__":

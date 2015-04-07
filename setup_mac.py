@@ -24,16 +24,22 @@ import sys
 from setuptools import setup, find_packages
 from ilastik import __version__
 
+
+# Running into recursion limit too quickly, which stops build.
+sys.setrecursionlimit(1500)
+
 APP = ['ilastik.py']
 DATA_FILES = []
 
 includes = [\
-                'h5py', 'h5py.defs', 'h5py.utils', 'h5py._proxy', 'h5py._errors',
+                'h5py', 'h5py.defs', 'h5py.utils', 'h5py._proxy', 'h5py._errors', 'h5py.h5ac', 'h5py._objects',
                 'PyQt4.pyqtconfig', 'PyQt4.uic','PyQt4.QtCore','PyQt4.QtGui',
                 'site', 'os',
                 'vtk',
+                'rank_filter', 'nanshe',
                 'vtk.vtkCommonPythonSIP',
                 'sklearn', 'sklearn.utils',
+                'skimage'
              ]
 
 # The py2app dependency walker finds this code, which is intended only for Python3.
@@ -61,6 +67,17 @@ package_data={'ilastik': ['ilastik-splash.png',
               'ilastik.plugins': ['*.yapsy-plugin'],
               '': ['*.ui']
               }
+
+class nanshe_recipe(object):
+    def check(self, dist, mf):
+        m = mf.findNode('nanshe')
+        if m is None:
+            return None
+
+        # Don't put nanshe in the site-packages.zip file
+        return dict(
+            packages=['nanshe']
+        )
 
 class ilastik_recipe(object):
     def check(self, dist, mf):
@@ -117,6 +134,17 @@ class sklearn_recipe(object):
             packages=['sklearn']
         )
 
+class skimage_recipe(object):
+    def check(self, dist, mf):
+        m = mf.findNode('skimage')
+        if m is None:
+            return None
+
+        # Don't put skimage in the site-packages.zip file
+        return dict(
+            packages=['skimage']
+        )
+
 class jsonschema_recipe(object):
     def check(self, dist, mf):
         m = mf.findNode('jsonschema')
@@ -129,11 +157,13 @@ class jsonschema_recipe(object):
         )
 
 import py2app.recipes
+py2app.recipes.nanshe = nanshe_recipe()
 py2app.recipes.ilastik = ilastik_recipe()
 py2app.recipes.volumina = volumina_recipe()
 py2app.recipes.lazyflow = lazyflow_recipe()
 py2app.recipes.vtk = vtk_recipe()
 py2app.recipes.sklearn = sklearn_recipe()
+py2app.recipes.skimage = skimage_recipe()
 py2app.recipes.jsonschema = jsonschema_recipe()
 
 

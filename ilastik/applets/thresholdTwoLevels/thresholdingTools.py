@@ -21,9 +21,7 @@
 
 # Built-in
 import gc
-import warnings
 import logging
-from functools import partial
 
 # Third-party
 import numpy
@@ -32,14 +30,10 @@ import psutil
 
 # Lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpFilterLabels, OpReorderAxes
-from lazyflow.roi import extendSlice, TinyVector
-from lazyflow.rtype import SubRegion
-from lazyflow.request import Request, RequestPool
+from lazyflow.roi import enlargeRoiForHalo, TinyVector
 
 # ilastik
 from lazyflow.utility.timer import Timer
-
 
 logger = logging.getLogger(__name__)
 
@@ -131,7 +125,7 @@ class OpAnisotropicGaussianSmoothing5d(Operator):
         sigma = [0] + map(self._sigmas.get, 'xyz') + [0]
         spatialRoi = (spatStart, spatStop)
 
-        inputSpatialRoi = extendSlice(roi.start, roi.stop, shape,
+        inputSpatialRoi = enlargeRoiForHalo(roi.start, roi.stop, shape,
                                       sigma, window=2.0)
 
         # Determine the roi within the input data we're going to request
@@ -263,7 +257,7 @@ class OpAnisotropicGaussianSmoothing(Operator):
                 spatialRoi[0].pop(ind)
                 spatialRoi[1].pop(ind)
         
-        inputSpatialRoi = extendSlice(spatialRoi[0], spatialRoi[1], inputSpatialShape.values(), sigma, window=2.0)
+        inputSpatialRoi = enlargeRoiForHalo(spatialRoi[0], spatialRoi[1], inputSpatialShape.values(), sigma, window=2.0)
         
         # Determine the roi within the input data we're going to request
         inputRoiOffset = spatialRoi[0] - inputSpatialRoi[0]
