@@ -19,7 +19,6 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.appletSerializer import AppletSerializer, getOrCreateGroup, deleteIfPresent
-from cylemon.segmentation import MSTSegmentor
 import h5py
 import numpy
 import os
@@ -98,7 +97,6 @@ class PreprocessingSerializer( AppletSerializer ):
             opPre.initialFilter = sfilter
             opPre.Filter.setValue(sfilter)
             
-            #mst = MSTSegmentor.loadH5G(graphgroup)
             mst = WatershedSegmentor(h5file=graphgroup)
             opPre._prepData = numpy.array([mst])
         

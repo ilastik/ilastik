@@ -168,10 +168,6 @@ class OpSimpleWatershed(Operator):
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
-        
-        # Use a SIGNED int32 becacuse that's what cylemon.segmentation expects. (Unfortunately.)
-
-        # not any more!
         self.Output.meta.dtype = numpy.uint32
 
     def execute(self, slot, subindex, roi, result):
@@ -261,7 +257,7 @@ class OpPreprocessing(Operator):
     WatershedSource = InputSlot(value="filtered") # Choices: "raw", "input", "filtered"
     InvertWatershedSource = InputSlot(value=False)
     
-    #Image after preprocess as cylemon.MST
+    #Image after preprocess 
     PreprocessedData = OutputSlot()
     
     # Display outputs
