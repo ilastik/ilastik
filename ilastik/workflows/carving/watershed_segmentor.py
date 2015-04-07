@@ -1,6 +1,7 @@
 import vigra
 from vigra import graphs as vgraph
-from vigra import ilastiktools
+#from vigra import ilastiktools
+import ilastiktools
 import numpy
 
 

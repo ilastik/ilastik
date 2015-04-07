@@ -34,8 +34,6 @@ from lazyflow.utility.timer import Timer
 from ilastik.applets.base.applet import DatasetConstraintError
 
 #carving Cython module
-from cylemon.segmentation import MSTSegmentor
-
 from watershed_segmentor import WatershedSegmentor
 
 import logging
