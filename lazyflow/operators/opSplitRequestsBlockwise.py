@@ -3,15 +3,31 @@ import numpy
 from functools import partial
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.roi import getIntersectingRois, roiToSlice, getIntersection
+from lazyflow.roi import getIntersectingRois, roiToSlice
 from lazyflow.request import RequestPool
 
 class OpSplitRequestsBlockwise(Operator):
+    """
+    Large requests serviced on the downstream Output will be broken up into smaller requests, 
+    and requested in parallel from the upstream Input.
+    The size of the smaller requests is determined by the BlockShape slot.
+    A constructor argument offers an additional feature for exactly how requests are translated into blocks.
+    """
     Input = InputSlot(allow_mask=True)
     BlockShape = InputSlot()
     Output = OutputSlot(allow_mask=True)
 
     def __init__(self, always_request_full_blocks, *args, **kwargs):
+        """
+        always_request_full_blocks: If True, requests for upstream data will always be the "full" block as specified
+                                    by the BlockShape.  The requests will not be truncated to match the user's 
+                                    requested ROI.  (But the user's requested ROI will be used to extract the data 
+                                    from the block results.)
+                                    
+                                    This feature allows us to turn an "unblocked" cache into a "blocked" cache.
+                                    (If we didn't expand requests to the full blocks they intersect, the upstream 
+                                    cache blocks would not have uniform size.)                                    
+        """
         super( OpSplitRequestsBlockwise, self ).__init__(*args, **kwargs)
         self._always_request_full_blocks = always_request_full_blocks
     

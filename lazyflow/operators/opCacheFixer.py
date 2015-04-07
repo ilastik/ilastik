@@ -3,6 +3,17 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiFromShape
 
 class OpCacheFixer(Operator):
+    """
+    Can be inserted in front of a cache operator to implement the "fixAtCurrent" 
+    behavior currently implemented by multiple lazyflow caches.
+    
+    While fixAtCurrent=False, this operator is merely a pass-through.
+    
+    While fixAtCurrent=True, this operator does not forward dirty notifications 
+    to downstream operators. Instead, it remembers the total ROI of the dirty area 
+    (as a bounding box), and emits the entire dirty ROI at once as soon as it becomes "unfixed".
+    Also, this operator returns only zeros while fixAtCurrent=True.
+    """
     Input = InputSlot(allow_mask=True)
     fixAtCurrent = InputSlot(value=False)
     Output = OutputSlot(allow_mask=True)

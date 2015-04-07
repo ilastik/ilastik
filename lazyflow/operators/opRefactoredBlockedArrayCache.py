@@ -5,6 +5,14 @@ from opUnblockedArrayCache import OpUnblockedArrayCache
 from opSplitRequestsBlockwise import OpSplitRequestsBlockwise
 
 class OpRefactoredBlockedArrayCache(Operator):
+    """
+    A blockwise array cache designed to replace the old OpBlockedArrayCache.  
+    Instead of a monolithic implementation, this operator is a small pipeline of three simple operators.
+    
+    The actual caching of data is handled by an unblocked cache, so the "blocked" functionality is 
+    implemented via separate "splitting" operator that comes after the cache.
+    Also, the "fixAtCurrent" feature is implemented in a special operator, which comes before the cache.    
+    """
     Input = InputSlot(allow_mask=True)
     fixAtCurrent = InputSlot(value=False)
     #BlockShape = InputSlot()
