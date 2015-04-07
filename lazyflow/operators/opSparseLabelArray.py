@@ -41,9 +41,9 @@ except:
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import sliceToRoi, roiToSlice
-from lazyflow.operators.opCache import OpCache
+from lazyflow.operators.opCache import Cache
 
-class OpSparseLabelArray(OpCache):
+class OpSparseLabelArray(Operator, Cache):
     name = "Sparse Label Array"
     description = "simple cache for sparse label arrays"
 
@@ -63,7 +63,10 @@ class OpSparseLabelArray(OpCache):
         self._denseArray = None
         self._sparseNZ = None
         self._oldShape = (0,)
-        self._maxLabel = 0            
+        self._maxLabel = 0
+
+        # Now that we're initialized, it's safe to register with the memory manager
+        self.registerWithMemoryManager()
 
     def usedMemory(self):
         if self._denseArray is not None:

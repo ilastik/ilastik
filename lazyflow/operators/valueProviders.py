@@ -30,8 +30,7 @@ import numpy
 #lazyflow
 from lazyflow.request import Request
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from operators import OpArrayCache, OpArrayPiper
-from lazyflow.operators.opCache import OpObservableCache
+from lazyflow.operators.opCache import ObservableCache
 
 class ListToMultiOperator(Operator):
     name = "List to Multislot converter"
@@ -192,7 +191,7 @@ class OpOutputProvider(Operator):
         result[...] = self._data[key]
 
 
-class OpValueCache(OpObservableCache):
+class OpValueCache(Operator, ObservableCache):
     """
     This operator caches a value in its entirety, 
     and allows for the value to be "forced in" from an external user.
@@ -216,6 +215,9 @@ class OpValueCache(OpObservableCache):
         self._value = None
         self._lock = threading.Lock()
         self._request = None
+
+        # Now that we're initialized, it's safe to register with the memory manager
+        self.registerWithMemoryManager()
         
         def handle_unready(slot):
             self._dirty = True

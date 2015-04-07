@@ -28,10 +28,6 @@ from lazyflow.operators.opCache import Cache
 from lazyflow.operators.opCache import ObservableCache
 from lazyflow.operators.opCache import ManagedCache
 from lazyflow.operators.opCache import ManagedBlockedCache
-from lazyflow.operators.opCache import OpCache
-from lazyflow.operators.opCache import OpObservableCache
-from lazyflow.operators.opCache import OpManagedCache
-from lazyflow.operators.opCache import OpManagedBlockedCache
 from lazyflow.operators.opCache import MemInfoNode
 
 
@@ -69,11 +65,7 @@ opClasses = set(iterSubclasses(Operator))
 knownAbstractBases = [Cache,
                       ObservableCache,
                       ManagedCache,
-                      ManagedBlockedCache,
-                      OpCache,
-                      OpObservableCache,
-                      OpManagedCache,
-                      OpManagedBlockedCache]
+                      ManagedBlockedCache]
 for subtype in iterSubclasses(Cache):
     if subtype in knownAbstractBases or subtype not in opClasses:
         # skip known abstract implementations and classes that are

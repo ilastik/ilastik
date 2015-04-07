@@ -28,6 +28,7 @@ import threading
 import weakref
 import platform
 import functools
+import atexit
 
 import logging
 logger = logging.getLogger(__name__)
@@ -36,7 +37,7 @@ logger = logging.getLogger(__name__)
 import psutil
 
 #lazyflow
-from lazyflow.utility import OrderedSignal, Singleton, PriorityQueue
+from lazyflow.utility import OrderedSignal, Singleton, PriorityQueue, log_exception
 import lazyflow
 
 this_process = psutil.Process(os.getpid())
@@ -139,7 +140,9 @@ class CacheMemoryManager(threading.Thread):
         # target usage percentage
         self._target_usage = 70
         self._last_usage = memoryUsagePercentage()
+        self._stopped = False
         self.start()
+        atexit.register(self.stop)
 
     def addFirstClassCache(self, cache):
         """
@@ -194,12 +197,12 @@ class CacheMemoryManager(threading.Thread):
         """
         main loop
         """
-        while True:
+        while not self._stopped:
             self._wait()
 
             # acquire lock so that we don't get disabled during cleanup
             with self._disable_lock:
-                if self._disabled:
+                if self._disabled or self._stopped:
                     continue
                 self._cleanup()
 
@@ -215,7 +218,7 @@ class CacheMemoryManager(threading.Thread):
                 if isinstance(cache, ObservableCache):
                     total += cache.usedMemory()
             self.totalCacheMemory(total)
-            del cache
+            cache = None
 
             # check current memory state
             current_usage_percentage = memoryUsagePercentage()
@@ -235,10 +238,13 @@ class CacheMemoryManager(threading.Thread):
                     cleanupFun = functools.partial(c.freeBlock, k)
                     info = "{}: {}".format(c.name, k)
                     q.push((t, cleanupFun))
-            if len(caches) > 0:
-                del c
-            del caches
+            c = None
+            caches = None
 
+            if current_usage_percentage > self._target_usage and len(q) > 0:
+                current_usage_percentage = memoryUsagePercentage()
+                self.logger.debug("Memory usage is: {}%".format(100*current_usage_percentage))
+                
             while current_usage_percentage > self._target_usage and len(q) > 0:
                 t, info, cleanupFun = q.pop()
                 self.logger.debug("Cleaning up {}".format(info))
@@ -246,29 +252,29 @@ class CacheMemoryManager(threading.Thread):
                 current_usage_percentage = memoryUsagePercentage()
 
             # don't keep a reference until next loop iteration
-            del cleanupFun
-            del q
+            cleanupFun = None
+            q = None
 
             self.logger.debug(
                 "Done cleaning up, memory usage is now at "
                 "{}%".format(100*current_usage_percentage))
-        except Exception as e:
-            self.logger.error(str(e))
+        except:
+            log_exception(self.logger)
 
     def _wait(self):
         """
         sleep for _refresh_interval seconds or until woken up
         """
-        try:
-            with self._condition:
-                self._condition.wait(self._refresh_interval)
-        except Exception:
-            # this can occur during shutdown, will not be fixed in
-            # python2
-            # http://bugs.python.org/issue14623
-            # We need to catch all exceptions here, because concrete
-            # exceptions could already bew cleaned up.
-            pass
+        with self._condition:
+            self._condition.wait(self._refresh_interval)
+
+    def stop(self):
+        """
+        Stop the memory manager thread in preparation for app exit.
+        """
+        self._stopped = True
+        with self._condition:
+            self._condition.notify()
 
     def setRefreshInterval(self, t):
         """

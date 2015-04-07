@@ -32,9 +32,9 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.roi import sliceToRoi
 from lazyflow.operators.opCache import MemInfoNode
-from lazyflow.operators.opCache import OpObservableCache
+from lazyflow.operators.opCache import ObservableCache
 
-class OpSlicedBlockedArrayCache(OpObservableCache):
+class OpSlicedBlockedArrayCache(Operator, ObservableCache):
     name = "OpSlicedBlockedArrayCache"
     description = ""
 
@@ -55,6 +55,9 @@ class OpSlicedBlockedArrayCache(OpObservableCache):
     def __init__(self, *args, **kwargs):
         super(OpSlicedBlockedArrayCache, self).__init__(*args, **kwargs)
         self._innerOps = []
+
+        # Now that we're initialized, it's safe to register with the memory manager
+        self.registerWithMemoryManager()
 
     def generateReport(self, report):
         report.name = self.name

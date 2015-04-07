@@ -23,7 +23,6 @@
 from abc import abstractmethod, ABCMeta
 
 #lazyflow
-from lazyflow.operator import Operator, Operator
 from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
 
 
@@ -54,10 +53,9 @@ class Cache(object):
 
     __metaclass__ = ABCMeta
 
-    def __init__(self, *args, **kwargs):
-        super(Cache, self).__init__(*args, **kwargs)
+    def registerWithMemoryManager(self):
         manager = CacheMemoryManager()
-        if self.parent is None or not isinstance(self.parent, OpCache):
+        if self.parent is None or not isinstance(self.parent, Cache):
             manager.addFirstClassCache(self)
         else:
             manager.addCache(self)
@@ -66,7 +64,7 @@ class Cache(object):
     def generateReport(self, memInfoNode):
         rs = []
         for child in self.children:
-            if not isinstance(child, OpCache):
+            if not isinstance(child, Cache):
                 continue
             r = MemInfoNode()
             child.generateReport(r)
@@ -93,7 +91,7 @@ class ObservableCache(Cache):
         """
         total = 0
         for child in self.children:
-            if isinstance(child, OpObservableCache):
+            if isinstance(child, ObservableCache):
                 total += child.usedMemory()
         return 0
 
@@ -247,21 +245,3 @@ class MemInfoNode:
 
     def __init__(self):
         self.children = list()
-
-
-# ====== convenience classes ======
-
-class OpCache(Cache, Operator):
-    pass
-
-
-class OpObservableCache(ObservableCache, Operator):
-    pass
-
-
-class OpManagedCache(ManagedCache, Operator):
-    pass
-
-
-class OpManagedBlockedCache(ManagedBlockedCache, Operator):
-    pass

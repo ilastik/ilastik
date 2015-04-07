@@ -34,14 +34,13 @@ import numpy
 import blist
 
 #lazyflow
-from lazyflow.rtype import SubRegion
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import sliceToRoi, roiToSlice
 from lazyflow.operators.opSparseLabelArray import OpSparseLabelArray
-from lazyflow.operators.opCache import OpCache
+from lazyflow.operators.opCache import Cache
 from lazyflow.operators.opCache import MemInfoNode
 
-class OpBlockedSparseLabelArray(OpCache):
+class OpBlockedSparseLabelArray(Operator, Cache):
     """
     This operator is designed to provide sparse access to label data.
     
@@ -99,6 +98,9 @@ class OpBlockedSparseLabelArray(OpCache):
         self._maxLabel = 0
         self._maxLabelHistogram = numpy.zeros((1024,), numpy.uint32) # keeps track of how many sub- OpSparseLabelArrays vote for a vertain maxLabel
         self.deleteLabel.setValue(-1)
+        
+        # Now that we're initialized, it's safe to register with the memory manager
+        self.registerWithMemoryManager()
             
     def fractionOfUsedMemoryDirty(self):
         """fraction of the currently used memory that is marked as dirty"""

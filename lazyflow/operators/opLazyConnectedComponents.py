@@ -32,10 +32,8 @@ import itertools
 
 from lazyflow.operator import Operator, InputSlot, OutputSlot
 from lazyflow.rtype import SubRegion
-from lazyflow.operators import OpCompressedCache, OpReorderAxes
-from lazyflow.request import Request, RequestPool
-from lazyflow.request import RequestLock as ReqLock
-from lazyflow.operators.opCache import OpObservableCache
+from lazyflow.operators import OpReorderAxes
+from lazyflow.operators.opCache import ObservableCache
 
 # the lazyflow lock seems to have deadlock issues sometimes
 Lock = HardLock
@@ -214,7 +212,7 @@ class _LabelManager(object):
 # and avoids excessive computation by tracking which process is 
 # responsible for which particular set of local labels.
 #
-class OpLazyConnectedComponents(OpObservableCache):
+class OpLazyConnectedComponents(Operator, ObservableCache):
     name = "OpLazyConnectedComponents"
     supportedDtypes = [np.uint8, np.uint32, np.float32]
 
@@ -267,6 +265,9 @@ class OpLazyConnectedComponents(OpObservableCache):
         self._opOut.Input.connect(self._Output)
         self.Output.connect(self._opOut.Output)
         self.CachedOutput.connect(self.Output)
+        
+        # Now that we're initialized, it's safe to register with the memory manager
+        self.registerWithMemoryManager()
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)

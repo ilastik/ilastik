@@ -27,17 +27,17 @@ import collections
 import numpy
 
 # Lazyflow
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.roi import TinyVector, getIntersectingBlocks, getBlockBounds, roiToSlice, getIntersection, roiFromShape
-from lazyflow.operators.opCache import OpCache
-from lazyflow.operators.opCompressedCache import OpCompressedCache
+from lazyflow.operators.opCompressedCache import OpUnmanagedCompressedCache
 from lazyflow.rtype import SubRegion
 
 logger = logging.getLogger(__name__)
 
-class OpCompressedUserLabelArray(OpCompressedCache):
+class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
     """
-    A subclass of OpCompressedCache that is suitable for storing user-drawn label pixels.
+    A subclass of OpUnmanagedCompressedCache that is suitable for storing user-drawn label pixels.
+    (This is not a 'managed' cache because its data must never be deleted by the memory manager.)
     Note that setInSlot has special functionality (only non-zero pixels are written, and there is also an "eraser" pixel value).
 
     See note below about blockshape changes.
@@ -67,9 +67,9 @@ class OpCompressedUserLabelArray(OpCompressedCache):
                                                # The output is suitable for display in a colortable.
     
     def __init__(self, *args, **kwargs):
-        super(OpCompressedUserLabelArray, self).__init__( *args, **kwargs )
         self._blockshape = None
         self._label_to_purge = 0
+        super(OpCompressedUserLabelArray, self).__init__( *args, **kwargs )
     
     def clearLabel(self, label_value):
         """
@@ -163,7 +163,7 @@ class OpCompressedUserLabelArray(OpCompressedCache):
                 changed_block_rois.append( block_roi )
 
         for block_roi in changed_block_rois:
-            # FIXME: Shouldn't this dirty notification be handled in OpCompressedCache?
+            # FIXME: Shouldn't this dirty notification be handled in OpUnmanagedCompressedCache?
             self.Output.setDirty( *block_roi )
     
     def execute(self, slot, subindex, roi, destination):
@@ -394,7 +394,7 @@ class OpCompressedUserLabelArray(OpCompressedCache):
         # Set in the cache (our superclass).
         super( OpCompressedUserLabelArray, self )._setInSlotInput( slot, subindex, roi, cleaned_data, store_zero_blocks=False )
         
-        # FIXME: Shouldn't this notification be triggered from within OpCompressedCache?
+        # FIXME: Shouldn't this notification be triggered from within OpUnmanagedCompressedCache?
         self.Output.setDirty( roi.start, roi.stop )
         
         return cleaned_data # Internal use: Return the cleaned_data        
