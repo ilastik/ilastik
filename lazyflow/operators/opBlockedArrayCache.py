@@ -204,7 +204,7 @@ class OpBlockedArrayCache(Operator, ObservableCache):
         report.type = type(self)
         report.id = id(self)
 
-        for block_index, block in self._cache_list.iteritems():
+        for block_index in self._cache_list.keys():
             start = self._blockShape*self._get_block_multi_index(block_index)
             stop = map(lambda z: z[0]+z[1], zip(start, self._blockShape))
             stop = numpy.minimum(stop, self.Output.meta.shape)
@@ -212,7 +212,13 @@ class OpBlockedArrayCache(Operator, ObservableCache):
             n = MemInfoNode()
             n.roi = (start, stop)
             report.children.append(n)
-            block.generateReport(n)
+            try:
+                block = self._cache_list[block_index]
+            except KeyError:
+                # probably cleaned up 
+                pass
+            else:
+                block.generateReport(n)
             
     def usedMemory(self):
         tot = 0.0

@@ -70,7 +70,7 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
         if sh is not None:
             report.roi = ([0]*len(sh), sh)
 
-        for i, iOp in enumerate(self._innerOps):
+        for iOp in self._innerOps:
             n = MemInfoNode()
             report.children.append(n)
             iOp.generateReport(n)
