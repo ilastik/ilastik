@@ -32,6 +32,7 @@ if __name__ == "__main__":
 import numpy
 from math import ceil, floor, pow, log10
 import collections
+from functools import partial
 
 class TinyVector(list):
     __slots__ = []
@@ -513,6 +514,10 @@ def getIntersectingBlocks( blockshape, roi, asarray=False ):
         num_indexes = numpy.prod(block_indices.shape[0:-1])
         axiscount = block_indices.shape[-1]
         return numpy.reshape( block_indices, (num_indexes, axiscount) )
+
+def getIntersectingRois(dataset_shape, blockshape, roi):
+    block_starts = getIntersectingBlocks(blockshape, roi)
+    return map( partial(getBlockBounds, dataset_shape, blockshape), block_starts )
 
 def getBlockBounds(dataset_shape, block_shape, block_start):
     """
