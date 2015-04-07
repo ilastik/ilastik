@@ -40,7 +40,11 @@ from lazyflow.operators.opCache import OpCache
 from lazyflow.operators.opArrayCache import OpArrayCache
 from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
 
-class OpBlockedArrayCache(OpCache):
+from opRefactoredBlockedArrayCache import OpRefactoredBlockedArrayCache
+
+OpBlockedArrayCache = OpRefactoredBlockedArrayCache
+
+class OLD_OpBlockedArrayCache(OpCache):
     name = "OpBlockedArrayCache"
     description = ""
 
