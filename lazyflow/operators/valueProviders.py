@@ -240,7 +240,7 @@ class OpValueCache(Operator, ObservableCache):
             s = "no value"
         else:
             t = str(type(self._value))
-            t = t[len("<type '")+1:-len("'>")]
+            t = t[len("<type '"):-len("'>")]
             s = "value of type '{}'".format(t)
         report.info = s
     
