@@ -509,54 +509,20 @@ class OpCarving(Operator):
             else:
                 objNr = 1
 
-        if True :
-            print "get the result seg"
-            sVseg  = self._mst.getSuperVoxelSeg()
-            print "get the result seeds"
-            sVseed = self._mst.getSuperVoxelSeeds() 
+        sVseg  = self._mst.getSuperVoxelSeg()
+        sVseed = self._mst.getSuperVoxelSeeds() 
 
 
-            print "unique seg",numpy.unique(sVseg)
-            print "unique seeds",numpy.unique(sVseed)
 
-            self._mst.object_names[name] = objNr
+        self._mst.object_names[name] = objNr
 
-            self._mst.bg_priority[name] = self.BackgroundPriority.value
-            self._mst.no_bias_below[name] = self.NoBiasBelow.value
+        self._mst.bg_priority[name] = self.BackgroundPriority.value
+        self._mst.no_bias_below[name] = self.NoBiasBelow.value
 
-            self._mst.objects[name] = numpy.where(sVseg == 2)
-            self._mst.object_lut[name] = numpy.where(sVseg == 2)
+        self._mst.objects[name] = numpy.where(sVseg == 2)
+        self._mst.object_lut[name] = numpy.where(sVseg == 2)
 
-        if False:
-            #delete old object, if it exists
-            lut_objects = self._mst.objects.lut[:]
-            lut_objects[:] = numpy.where(lut_objects == objNr, 0, lut_objects)
-
-            #save new object
-            lut_segmentation = self._mst.segmentation.lut[:]
-            lut_objects[:] = numpy.where(lut_segmentation == seed, objNr, lut_objects)
-
-            objectSupervoxels = numpy.where(lut_segmentation == seed)
-            self._mst.object_lut[name] = objectSupervoxels
-
-            #save object name with objNr
-            self._mst.object_names[name] = objNr
-
-            lut_seeds = self._mst.seeds.lut[:]
-
-            # save object seeds
-            self._mst.object_seeds_fg[name] = numpy.where(lut_seeds == seed)[0]
-            self._mst.object_seeds_bg[name] = numpy.where(lut_seeds == 1)[0] #one is background=
-
-            # reset seeds
-            #self._mst.seeds[:] = numpy.int32(-1) #see segmentation.pyx: -1 means write zeros
-            # More efficient to set the lut directly:
-            self._mst.seeds.lut[:] = 0
-
-            #numpy.asarray([BackgroundPriority.value()], dtype=numpy.float32)
-            #numpy.asarray([NoBiasBelow.value()], dtype=numpy.int32)
-            self._mst.bg_priority[name] = self.BackgroundPriority.value
-            self._mst.no_bias_below[name] = self.NoBiasBelow.value
+     
 
         self._setCurrObjectName("<not saved yet>")
         self.HasSegmentation.setValue(False)
