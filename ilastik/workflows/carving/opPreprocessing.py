@@ -36,7 +36,7 @@ from ilastik.applets.base.applet import DatasetConstraintError
 #carving Cython module
 from cylemon.segmentation import MSTSegmentor
 
-from newMst import NewSegmentor
+from watershed_segmentor import WatershedSegmentor
 
 import logging
 logger = logging.getLogger(__name__)
@@ -237,7 +237,7 @@ class OpMstSegmentorProvider(Operator):
        #mst.raw = None
         
 
-        newMst = NewSegmentor(labelVolume[0,...,0],numpy.asarray(volume_feat[0,...,0], numpy.float32), 
+        newMst = WatershedSegmentor(labelVolume[0,...,0],numpy.asarray(volume_feat[0,...,0], numpy.float32), 
                           edgeWeightFunctor = "minimum",progressCallback = updateProgressBar)
 
         #Output is of shape 1

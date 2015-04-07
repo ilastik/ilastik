@@ -35,8 +35,6 @@ from lazyflow.operators.valueProviders import OpValueCache
 from lazyflow.utility.timer import Timer
 from ilastik.applets.base.applet import DatasetConstraintError
 
-#carving
-from cylemon.segmentation import MSTSegmentor
 
 import logging
 logger = logging.getLogger(__name__)

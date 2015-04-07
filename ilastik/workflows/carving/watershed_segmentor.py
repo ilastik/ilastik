@@ -4,7 +4,7 @@ from vigra import ilastiktools
 import numpy
 
 
-class NewSegmentor(object):
+class WatershedSegmentor(object):
     def __init__(self, labels = None, volume_feat = None, edgeWeightFunctor = None, progressCallback = None,
                  h5file = None):
         self.object_names = dict()
@@ -21,9 +21,8 @@ class NewSegmentor(object):
         if h5file is None:
             self.supervoxelUint32 = labels
             self.volumeFeat = volume_feat.squeeze()
-            with vigra.Timer("new rag"):
-                self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
-                self.gridSegmentor.preprocessing(self.supervoxelUint32,self.volumeFeat)
+            self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
+            self.gridSegmentor.preprocessing(self.supervoxelUint32,self.volumeFeat)
 
             # fixe! which of both??!
             self.nodeNum = self.gridSegmentor.nodeNum()
@@ -42,11 +41,7 @@ class NewSegmentor(object):
             nodeSeeds = h5file['nodeSeeds'][:]
             resultSegmentation = h5file['resultSegmentation'][:]
 
-            print "self.supervoxelUint32",type(self.supervoxelUint32),self.supervoxelUint32.dtype,self.supervoxelUint32.shape
-            print "graphS",type(graphS),graphS.dtype,graphS.shape
-            print "edgeWeights",type(edgeWeights),edgeWeights.dtype,edgeWeights.shape
-            print "nodeSeeds",type(nodeSeeds),nodeSeeds.dtype,nodeSeeds.shape
-            print "resultSegmentation",type(resultSegmentation),resultSegmentation.dtype,resultSegmentation.shape
+           
 
             self.gridSegmentor.preprocessingFromSerialization(labels=self.supervoxelUint32,
                 serialization=graphS, edgeWeights=edgeWeights, nodeSeeds=nodeSeeds, 
@@ -84,7 +79,6 @@ class NewSegmentor(object):
         return  self.gridSegmentor.getSuperVoxelSeeds()
 
     def saveH5(self, filename, groupname, mode="w"):
-        print "saving segmentor to %r[%r] ..." % (filename, groupname)
         f = h5py.File(filename, mode)
         try:
             f.create_group(groupname)
@@ -94,69 +88,10 @@ class NewSegmentor(object):
         self.saveH5G(h5g)
 
     def saveH5G(self, h5g):
-        """        g = h5g
-                g.attrs["numNodes"] = self.numNodes
-                g.attrs["edgeWeightFunctor"] = self._edgeWeightFunctor
-                g.create_dataset("labels", data = self.regionVol)
 
-
-
-                cdef np.ndarray[dtype=np.int32_t, ndim = 2] indices = np.ndarray((self.graph.maxArcId()+1,2),dtype=np.int32)
-                cdef np.ndarray[dtype=np.float32_t, ndim = 1] data = np.ndarray((self.graph.maxArcId()+1,),dtype=np.float32)
-                cdef NodeIt node
-                cdef OutArcIt arcit
-                cdef int a,b,i
-
-                node = NodeIt(deref(self.graph))
-                i = 0
-                while node != INVALID:
-                    arcit = OutArcIt(deref(self.graph),Node(node))
-                    while arcit != INVALID:
-                        a = self.graph.id(self.graph.source(arcit))
-                        b = self.graph.id(self.graph.target(arcit))
-                        indices[i,0] = a
-                        indices[i,1] = b
-                        data[i] = deref(self.arcMap)[arcit]
-                        i += 1
-                        inc(arcit)
-                    inc(node)
-                
-                g.create_dataset("coo_indices",data=indices)
-                g.create_dataset("coo_data",data=data)
-                g.create_dataset("regions", data=self._regionVol)
-                g.create_dataset("regionCenter", data=self._regionCenter)
-                g.create_dataset("regionSize", data=self._regionSize)
-                g.create_dataset("seeds",data = self._seeds)
-                g.create_dataset("objects",data = self._objects)
-
-                sg = g.create_group("objects_seeds")
-                
-                g.file.flush()
-                
-                # delete old attributes
-                for k in sg.attrs.keys():
-                    del sg.attrs[k]
-                  
-
-                # insert new attributes
-                for k,v in self.object_names.items():
-                      print "   -> saving object %r with Nr=%r" % (k,v)
-                      sg.attrs[k] = v
-                      og = sg.create_group(k)
-                      og.create_dataset("foreground", data = self.object_seeds_fg[k])
-                      og.create_dataset("background", data = self.object_seeds_bg[k])
-
-                if self._rawData is not None:
-                    g.create_dataset("raw",data=self._rawData)
-
-                g.file.flush()
-                print "   done"
-        """
         g = h5g
 
         g.attrs["numNodes"] = self.numNodes
-
-
         g.create_dataset("labels", data = self.supervoxelUint32)
 
         gridSeg = self.gridSegmentor

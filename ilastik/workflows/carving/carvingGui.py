@@ -61,7 +61,7 @@ class CarvingGui(LabelingGui):
         #members
         self._doneSegmentationLayer = None
         self._showSegmentationIn3D = False
-        self._showUncertaintyLayer = False
+        #self._showUncertaintyLayer = False
         #end: members
 
         labelingSlots = LabelingGui.LabelingSlots()
@@ -103,7 +103,7 @@ class CarvingGui(LabelingGui):
         try:
             self.render = True
             self._shownObjects3D = {}
-            self._renderMgr = RenderingManager( self.editor.view3d )
+            self._renderMgr = RenderingManager( self.editor.view3d , 6)
         except:
             self.render = False
 
@@ -120,43 +120,43 @@ class CarvingGui(LabelingGui):
 
         ## uncertainty
 
-        self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(False)
-        self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(False)
+        #self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(False)
+        #self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(False)
 
-        def onUncertaintyFGButton():
-            logger.debug( "uncertFG button clicked" )
-            pos = self.topLevelOperatorView.getMaxUncertaintyPos(label=2)
-            self.editor.posModel.slicingPos = (pos[0], pos[1], pos[2])
-        self.labelingDrawerUi.pushButtonUncertaintyFG.clicked.connect(onUncertaintyFGButton)
+        #def onUncertaintyFGButton():
+        #    logger.debug( "uncertFG button clicked" )
+        #    pos = self.topLevelOperatorView.getMaxUncertaintyPos(label=2)
+        #    self.editor.posModel.slicingPos = (pos[0], pos[1], pos[2])
+        #self.labelingDrawerUi.pushButtonUncertaintyFG.clicked.connect(onUncertaintyFGButton)
 
-        def onUncertaintyBGButton():
-            logger.debug( "uncertBG button clicked" )
-            pos = self.topLevelOperatorView.getMaxUncertaintyPos(label=1)
-            self.editor.posModel.slicingPos = (pos[0], pos[1], pos[2])
-        self.labelingDrawerUi.pushButtonUncertaintyBG.clicked.connect(onUncertaintyBGButton)
+        #def onUncertaintyBGButton():
+        #    logger.debug( "uncertBG button clicked" )
+        #    pos = self.topLevelOperatorView.getMaxUncertaintyPos(label=1)
+        #    self.editor.posModel.slicingPos = (pos[0], pos[1], pos[2])
+        #self.labelingDrawerUi.pushButtonUncertaintyBG.clicked.connect(onUncertaintyBGButton)
 
-        def onUncertaintyCombo(value):
-            if value == 0:
-                value = "none"
-                self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(False)
-                self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(False)
-                self._showUncertaintyLayer = False
-            else:
-                if value == 1:
-                    value = "localMargin"
-                elif value == 2:
-                    value = "exchangeCount"
-                elif value == 3:
-                    value = "gabow"
-                else:
-                    raise RuntimeError("unhandled case '%r'" % value)
-                self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(True)
-                self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(True)
-                self._showUncertaintyLayer = True
-                logger.debug( "uncertainty changed to %r" % value )
-            self.topLevelOperatorView.UncertaintyType.setValue(value)
-            self.updateAllLayers() #make sure that an added/deleted uncertainty layer is recognized
-        self.labelingDrawerUi.uncertaintyCombo.currentIndexChanged.connect(onUncertaintyCombo)
+        #def onUncertaintyCombo(value):
+        #    if value == 0:
+        #        value = "none"
+        #        self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(False)
+        #        self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(False)
+        #        self._showUncertaintyLayer = False
+        #    else:
+        #        if value == 1:
+        #            value = "localMargin"
+        #        elif value == 2:
+        #            value = "exchangeCount"
+        #        elif value == 3:
+        #            value = "gabow"
+        #        else:
+        #            raise RuntimeError("unhandled case '%r'" % value)
+        #        self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(True)
+        #        self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(True)
+        #        self._showUncertaintyLayer = True
+        #        logger.debug( "uncertainty changed to %r" % value )
+        #    self.topLevelOperatorView.UncertaintyType.setValue(value)
+        #    self.updateAllLayers() #make sure that an added/deleted uncertainty layer is recognized
+        #self.labelingDrawerUi.uncertaintyCombo.currentIndexChanged.connect(onUncertaintyCombo)
 
         ## background priority
         
@@ -595,6 +595,7 @@ class CarvingGui(LabelingGui):
 
         op = self.topLevelOperatorView
         if not self._renderMgr.ready:
+            shape = op.InputData.meta.shape[1:4]
             self._renderMgr.setup(op.InputData.meta.shape[1:4])
 
         # remove nonexistent objects
@@ -609,8 +610,9 @@ class CarvingGui(LabelingGui):
         if self._showSegmentationIn3D:
             # Add segmentation as label, which is green
             lut[:] = numpy.where( op.MST.value.getSuperVoxelSeg() == 2, self._segmentation_3d_label, lut )
-                    
-        self._renderMgr.volume = lut[op.MST.value.supervoxelUint32] # (Advanced indexing)
+        import vigra
+        with vigra.Timer("remapping"):          
+            self._renderMgr.volume = lut[op.MST.value.supervoxelUint32] # (Advanced indexing)
         self._update_colors()
         self._renderMgr.update()
 
@@ -669,19 +671,18 @@ class CarvingGui(LabelingGui):
             self.editor.setLabelSink(labelsrc)
 
         #uncertainty
-        if self._showUncertaintyLayer:
-            uncert = self.topLevelOperatorView.Uncertainty
-            if uncert.ready():
-                colortable = []
-                for i in range(256-len(colortable)):
-                    r,g,b,a = i,0,0,i
-                    colortable.append(QColor(r,g,b,a).rgba())
-    
-                layer = ColortableLayer(LazyflowSource(uncert), colortable, direct=True)
-                layer.name = "Uncertainty"
-                layer.visible = True
-                layer.opacity = 0.3
-                layers.append(layer)
+        #if self._showUncertaintyLayer:
+        #    uncert = self.topLevelOperatorView.Uncertainty
+        #    if uncert.ready():
+        #        colortable = []
+        #        for i in range(256-len(colortable)):
+        #            r,g,b,a = i,0,0,i
+        #            colortable.append(QColor(r,g,b,a).rgba())
+        #        layer = ColortableLayer(LazyflowSource(uncert), colortable, direct=True)
+        #        layer.name = "Uncertainty"
+        #        layer.visible = True
+        #        layer.opacity = 0.3
+        #        layers.append(layer)
        
         #segmentation 
         seg = self.topLevelOperatorView.Segmentation

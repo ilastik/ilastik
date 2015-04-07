@@ -24,7 +24,7 @@ import h5py
 import numpy
 import os
 
-from newMst import NewSegmentor
+from watershed_segmentor import WatershedSegmentor
 
 class PreprocessingSerializer( AppletSerializer ):
     def __init__(self, preprocessingTopLevelOperator, *args, **kwargs):
@@ -99,7 +99,7 @@ class PreprocessingSerializer( AppletSerializer ):
             opPre.Filter.setValue(sfilter)
             
             #mst = MSTSegmentor.loadH5G(graphgroup)
-            mst = NewSegmentor(h5file=graphgroup)
+            mst = WatershedSegmentor(h5file=graphgroup)
             opPre._prepData = numpy.array([mst])
         
             
