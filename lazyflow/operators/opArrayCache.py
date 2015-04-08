@@ -100,11 +100,7 @@ class OpArrayCache(Operator, ManagedCache):
     # ========== CACHE API ==========
 
     def usedMemory(self):
-        try:
-            return self._cache.nbytes
-        except:
-            # cache is empty or deleted, or somehting along these lines
-            return 0
+        return self._usedMemory(self._cache)
 
     def fractionOfUsedMemoryDirty(self):
         if self.Output.meta.shape is None:
@@ -138,7 +134,37 @@ class OpArrayCache(Operator, ManagedCache):
         else:
             return 0
 
+    def generateReport(self, memInfoNode):
+        super(OpArrayCache, self).generateReport(memInfoNode)
+        if self._cache is not None:
+            if hasattr(self._cache, "dtype"):
+                memInfoNode.dtype = self._cache.dtype
+            else:
+                # cache is no array, so we cannot determine the dtype
+                pass
+
     # ========== END CACHE API ==========
+
+    @staticmethod
+    def _usedMemory(item):
+        s = 0
+        if isinstance(item, numpy.ndarray):
+            if item.dtype == numpy.object:
+                for x in item.ravel():
+                    s += OpArrayCache._usedMemory(x)
+            else:
+                s = item.nbytes
+        elif isinstance(item, dict):
+            for key in item.keys():
+                try:
+                    obj = item[key]
+                except KeyError:
+                    # cleaned up
+                    pass
+                else:
+                    s += OpArrayCache._usedMemory(obj)
+        return s
+                    
 
     def _blockShapeForIndex(self, index):
         if self._cache is None:
