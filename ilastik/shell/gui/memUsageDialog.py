@@ -29,6 +29,9 @@ from PyQt4.QtGui import QDialog, QVBoxLayout, QTreeWidget, QTreeWidgetItem
 from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
 from lazyflow.operators.opCache import MemInfoNode
 
+#volumina
+from volumina.utility.qstring_codec import encode_from_qstring
+
 import warnings
 
 #===------------------------------------------------------------------------===
@@ -40,6 +43,7 @@ class TreeNode(QTreeWidgetItem):
     _updated = False
     _children = {}
     _id = None
+    _size_index = 1
 
     def handleChildrenReports(self, reports, root=None):
         if root is None:
@@ -100,11 +104,30 @@ class TreeNode(QTreeWidgetItem):
         l.append(report.id)
         return l
 
+    def __lt__(self, other):
+        col = self.treeWidget().sortColumn()
+        if col == self._size_index:
+            a = self.data(col, Qt.DisplayRole)
+            a = TreeNode.extract_numeric_size(a)
+            b = other.data(col, Qt.DisplayRole)
+            b = TreeNode.extract_numeric_size(b)
+            return a < b
+        else:
+            return super(TreeNode, self).__lt__(other)
+
     @staticmethod
     def constructFrom(other):
         node = TreeNode()
         node.__dict__.update(other.__dict__)
         return node
+
+    @staticmethod
+    def extract_numeric_size(txt):
+        split = encode_from_qstring(txt.toString()).split()
+        if len(split) == 0:
+            return 0.0
+        else:
+            return float(split[0])
 
 
 class MemUsageDialog(QDialog):
