@@ -22,6 +22,7 @@
 
 import weakref
 import gc
+import unittest
 
 import numpy
 import vigra
@@ -48,7 +49,7 @@ class KeyMaker():
 make_key = KeyMaker()
 
 
-class TestOpBlockedArrayCache(object):
+class TestOpBlockedArrayCache(unittest.TestCase):
 
     def setUp(self):
         self.dataShape = (1,100,100,10,1)
@@ -367,6 +368,24 @@ class TestOpBlockedArrayCache(object):
         finally:
             CacheMemoryManager().enable()
 
+    def testDirtyPropagation(self):
+        opCache = self.opCache
+        opProvider = self.opProvider
+        # opProvider.Input.setDirty(slice(None))
+        # opProvider.clean()
+        dirty_key = make_key[0:1, 10:11, 20:21, 0:3, 0:1]
+        req_key = make_key[:, 0:50, 15:45, 0:10, :]
+  
+        # Should need access again.
+        # block shape: (20. 20, 20, 20, 20), input shape: (1,100,100,10,1)
+        opCache.Output(req_key).wait()
+        assert opProvider.accessCount == 3*3*1, str(opProvider.accessCount)
+
+        opProvider.clear()
+
+        opProvider.Input.setDirty(dirty_key)
+        opCache.Output(req_key).wait()
+        assert opProvider.accessCount == 1
 
 class TestOpBlockedArrayCache_masked(object):
 
