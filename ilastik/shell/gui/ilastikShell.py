@@ -46,7 +46,7 @@ from ilastik.widgets.ipcserver.zmqPubSubInfoWidget import ZMQPublisherInfoWidget
 from lazyflow.roi import TinyVector
 from lazyflow.graph import Operator
 import lazyflow.tools.schematic
-from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
+from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
 from lazyflow.utility import timeLogged
 
 # volumina
@@ -73,7 +73,6 @@ from ilastik.shell.gui.licenseDialog import LicenseDialog
 from ilastik.widgets.appletDrawerToolBox import AppletDrawerToolBox
 from ilastik.widgets.filePathButton import FilePathButton
 
-#from ilastik.shell.gui.messageServer import MessageServer
 from ilastik.shell.gui.ipcManager import IPCFacade, TCPServer, TCPClient, ZMQPublisher, ZMQSubscriber, ZMQBase
 import os
 
@@ -163,7 +162,7 @@ class ProgressDisplayManager(QObject):
         self.memoryWidget.showDialogButton.clicked.connect(self.parent().showMemUsageDialog)
         self.statusBar.addPermanentWidget(self.memoryWidget)
 
-        mgr = ArrayCacheMemoryMgr.instance
+        mgr = CacheMemoryManager()
 
         def printIt(msg):
             self.memoryWidget.setMemoryBytes(msg)
@@ -466,17 +465,6 @@ class IlastikShell(QMainWindow):
 
         shellActions = ShellActions()
 
-        # Menu item: New Project
-
-        #FIXME: disabled for 1.0
-        #
-        #newProjectMenu = menu.addMenu("&New Project...")
-        #
-        #workflowActions = []
-        #for w,_name in getAvailableWorkflows():
-        #    a = newProjectMenu.addAction(_name)
-        #    a.triggered.connect(partial(self.onNewProjectActionTriggered,w))
-
         # Menu item: Open Project
         shellActions.openProjectAction = menu.addAction("&Open Project...")
         shellActions.openProjectAction.setIcon(QIcon(ilastikIcons.Open))
@@ -505,11 +493,10 @@ class IlastikShell(QMainWindow):
         shellActions.importProjectAction.setIcon(QIcon(ilastikIcons.Open))
         shellActions.importProjectAction.triggered.connect(self.onImportProjectActionTriggered)
 
-        if ilastik_config.getboolean("ilastik", "debug"):
-            shellActions.closeAction = menu.addAction("&Close")
-            shellActions.closeAction.setIcon(QIcon(ilastikIcons.ProcessStop))
-            shellActions.closeAction.setShortcuts(QKeySequence.Close)
-            shellActions.closeAction.triggered.connect(self.onCloseActionTriggered)
+        shellActions.closeAction = menu.addAction("&Close")
+        shellActions.closeAction.setIcon(QIcon(ilastikIcons.ProcessStop))
+        shellActions.closeAction.setShortcuts(QKeySequence.Close)
+        shellActions.closeAction.triggered.connect(self.onCloseActionTriggered)
 
         # Menu item: Quit
         shellActions.quitAction = menu.addAction("&Quit")
@@ -605,23 +592,13 @@ class IlastikShell(QMainWindow):
         menu.addAction("&Memory usage").triggered.connect(self.showMemUsageDialog)
         menu.addMenu(self._createProfilingSubmenu())
 
-        # Start message server for receiving remote commands (e.g. from KNIME)
-        # For now, this is a developer-only feature, activated by a menu item.
-        def start_message_server():
-            self.socketServer = MessageServer(self, 'localhost', 9997)
-            if self.socketServer.sending:
-                server_action.setText("<Message server is running>")
-                server_action.setEnabled(False)
-            else:
-                QMessageBox.critical(self,
-                                     "Failed to start server",
-                                     "Couldn't start message server.  See error log for details.")
-
-        #server_action = menu.addAction("Start message server")
-        #server_action.triggered.connect(start_message_server)
-
-
         menu.addAction("Show IPC Server Info", IPCFacade().show_info)
+
+        def hideApplets(hideThem):
+            self.mainSplitter.setVisible(not hideThem)
+        hide = menu.addAction("Hide applets")
+        hide.setCheckable(True)
+        hide.toggled.connect(hideApplets)
 
         return menu
 

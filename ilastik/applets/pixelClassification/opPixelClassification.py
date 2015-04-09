@@ -536,21 +536,21 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         axisOrder = [ tag.key for tag in self.FeatureImages.meta.axistags ]
 
         blockDimsX = { 't' : (1,1),
-                       'z' : (128,256),
-                       'y' : (128,256),
+                       'z' : (256,256),
+                       'y' : (256,256),
                        'x' : (1,1),
                        'c' : (100, 100) }
 
         blockDimsY = { 't' : (1,1),
-                       'z' : (128,256),
+                       'z' : (256,256),
                        'y' : (1,1),
-                       'x' : (128,256),
+                       'x' : (256,256),
                        'c' : (100,100) }
 
         blockDimsZ = { 't' : (1,1),
                        'z' : (1,1),
-                       'y' : (128,256),
-                       'x' : (128,256),
+                       'y' : (256,256),
+                       'x' : (256,256),
                        'c' : (100,100) }
 
         innerBlockShapeX = tuple( blockDimsX[k][0] for k in axisOrder )

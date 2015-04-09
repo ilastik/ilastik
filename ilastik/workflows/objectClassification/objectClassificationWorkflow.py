@@ -692,6 +692,7 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
 
         opThreshold.RawInput.connect(op5raw.Output)
         opThreshold.InputImage.connect(op5pred.Output)
+        opThreshold.InputChannelColors.connect( opClassify.PmapColors )
 
         op5threshold.Input.connect(opThreshold.CachedOutput)
 
