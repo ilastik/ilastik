@@ -35,8 +35,8 @@ from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr
 from lazyflow.operators.opRefactoredBlockedArrayCache import OpRefactoredBlockedArrayCache
 OpBlockedArrayCache = OpRefactoredBlockedArrayCache
 
-from lazyflow.request import Request
-Request.reset_thread_pool(0)
+#from lazyflow.request import Request
+#Request.reset_thread_pool(0)
 
 class KeyMaker():
     def __getitem__(self, *args):
