@@ -82,6 +82,7 @@ class OpArrayPiperWithAccessCount(Operator):
     def __init__(self, *args, **kwargs):
         super(OpArrayPiperWithAccessCount, self).__init__(*args, **kwargs)
         self.accessCount = 0
+        self.requests = []
         self._lock = threading.Lock()
 
     def setupOutputs(self):
@@ -90,6 +91,7 @@ class OpArrayPiperWithAccessCount(Operator):
     def execute(self, slot, subindex, roi, result):
         with self._lock:
             self.accessCount += 1
+            self.requests.append(roi)
         req = self.Input.get(roi)
         req.writeInto(result)
         req.block()
@@ -105,8 +107,8 @@ class OpCallWhenDirty(Operator):
     The parameters of the dirty call are stored in attributres.
     """
 
-    Input = InputSlot()
-    Output = OutputSlot()
+    Input = InputSlot(allow_mask=True)
+    Output = OutputSlot(allow_mask=True)
 
     function = lambda: None
     slot = None
