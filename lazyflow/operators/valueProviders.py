@@ -30,8 +30,7 @@ import numpy
 #lazyflow
 from lazyflow.request import Request
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from operators import OpArrayCache, OpArrayPiper
-from lazyflow.operators.opCache import OpCache
+from lazyflow.operators.opCache import ObservableCache
 
 class ListToMultiOperator(Operator):
     name = "List to Multislot converter"
@@ -192,7 +191,7 @@ class OpOutputProvider(Operator):
         result[...] = self._data[key]
 
 
-class OpValueCache(OpCache):
+class OpValueCache(Operator, ObservableCache):
     """
     This operator caches a value in its entirety, 
     and allows for the value to be "forced in" from an external user.
@@ -216,6 +215,9 @@ class OpValueCache(OpCache):
         self._value = None
         self._lock = threading.Lock()
         self._request = None
+
+        # Now that we're initialized, it's safe to register with the memory manager
+        self.registerWithMemoryManager()
         
         def handle_unready(slot):
             self._dirty = True
@@ -225,15 +227,22 @@ class OpValueCache(OpCache):
         if isinstance(self._value, numpy.ndarray):
             return self._value.nbytes
         return 0 #FIXME
-    
+
+    def fractionOfUsedMemoryDirty(self):
+        if self._dirty:
+            return 1.0
+        else:
+            return 0.0
+
     def generateReport(self, report):
-        report.name = self.name
-        report.fractionOfUsedMemoryDirty = self.fractionOfUsedMemoryDirty()
-        report.usedMemory = self.usedMemory()
-        report.lastAccessTime = self.lastAccessTime()
-        report.dtype = self.Output.meta.dtype
-        report.type = type(self)
-        report.id = id(self)
+        super(OpValueCache, self).generateReport(report)
+        if self._value is None:
+            s = "no value"
+        else:
+            t = str(type(self._value))
+            t = t[len("<type '"):-len("'>")]
+            s = "value of type '{}'".format(t)
+        report.info = s
     
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)

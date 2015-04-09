@@ -1,4 +1,27 @@
+###############################################################################
+#   lazyflow: data flow based lazy parallel computation framework
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the Lesser GNU General Public License
+# as published by the Free Software Foundation; either version 2.1
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Lesser General Public License for more details.
+#
+# See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
+# GNU Lesser General Public License version 2.1 and 3 respectively.
+# This information is also available on the ilastik web site at:
+#          http://ilastik.org/license/
+###############################################################################
+
 from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.utility import RamMeasurementContext
 
 from opCacheFixer import OpCacheFixer
 from opUnblockedArrayCache import OpUnblockedArrayCache
@@ -44,6 +67,9 @@ class OpRefactoredBlockedArrayCache(Operator):
         # FIXME: Connecting the output directly like this will result in RAM being allocated for zero-blocks in the cache when fixAtCurrent=True.
         #        It doesn't result in incorrect results, but it is inefficient.
         self.Output.connect( self._opSplitRequestsBlockwise.Output )
+
+        # This member is used by tests that check RAM usage.
+        self.setup_ram_context = RamMeasurementContext()
         
     def setupOutputs(self):
         pass
@@ -53,3 +79,28 @@ class OpRefactoredBlockedArrayCache(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         pass
+
+    # ======= mimic cache interface for wrapping operators =======
+
+    def usedMemory(self):
+        return self._opUnblockedArrayCache.usedMemory()
+
+    def fractionOfUsedMemoryDirty(self):
+        # dirty memory is discarded immediately
+        return self._opUnblockedArrayCache.fractionOfUsedMemoryDirty()
+
+    # cannot wrap this
+    # def lastAccessTime(self):
+    #     return super(OpUnblockedArrayCache, self).lastAccessTime()
+
+    def getBlockAccessTimes(self):
+        return self._opUnblockedArrayCache.getBlockAccessTimes()
+
+    def freeMemory(self):
+        return self._opUnblockedArrayCache.freeMemory()
+
+    def freeBlock(self, key):
+        return self._opUnblockedArrayCache.freeBlock(key)
+
+    def freeDirtyMemory(self):
+        return self._opUnblockedArrayCache.freeDirtyMemory()

@@ -24,6 +24,7 @@ import sys
 import logging
 import threading
 import functools
+import time
 import weakref
 import gc
 import tempfile
@@ -36,6 +37,10 @@ import vigra
 from lazyflow.graph import Graph
 from lazyflow.operators import OpCompressedCache, OpArrayPiper
 from lazyflow.utility.slicingtools import slicing2shape
+from lazyflow.operators.opCache import MemInfoNode
+from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
+
+from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 
 logger = logging.getLogger("tests.testOpCompressedCache")
 cacheLogger = logging.getLogger("lazyflow.operators.opCompressedCache")
@@ -597,6 +602,67 @@ class TestOpCompressedCache( object ):
         #logger.debug("Checking data...")    
         assert (readData == expectedData).all(), "Incorrect output!"
 
+    def testReportGeneration(self):
+        graph = Graph()
+        sampleData = numpy.random.randint(0, 256, size=(50, 50, 50))
+        sampleData = sampleData.astype(numpy.uint8)
+        sampleData = vigra.taggedView(sampleData, axistags='xyz')
+
+        opData = OpArrayPiper(graph=graph)
+        opData.Input.setValue(sampleData)
+
+        op = OpCompressedCache(parent=None, graph=graph)
+        op.BlockShape.setValue((25, 25, 25))
+        op.Input.connect(opData.Output)
+
+        before = time.time()
+        assert op.Output.ready()
+        assert op.usedMemory() == 0.0,\
+            "cache must not be filled at this point"
+        op.Output[...].wait()
+        assert op.usedMemory() > 0.0,\
+            "cache must contain data at this point"
+        after = time.time()
+
+        r = MemInfoNode()
+        op.generateReport(r)
+        # not sure how good this can be compressed, but the cache
+        # should hold memory by now
+        assert r.usedMemory > 0
+        # check sanity of last access time
+        assert r.lastAccessTime >= before, str(r.lastAccessTime)
+        assert r.lastAccessTime <= after, str(r.lastAccessTime)
+        assert r.fractionOfUsedMemoryDirty == 0.0
+
+        opData.Input.setDirty(
+            (slice(0, 25), slice(0, 25), slice(0, 25)))
+        assert op.fractionOfUsedMemoryDirty() < 1.0
+        assert op.fractionOfUsedMemoryDirty() > 0
+
+        opData.Input.setDirty(slice(None))
+        assert op.fractionOfUsedMemoryDirty() == 1.0
+
+    def testReasonableCompression(self):
+        # compression should be *way* better than this
+        expected_factor = 4.0
+        graph = Graph()
+        sampleData = numpy.zeros((10000, 1000), dtype=numpy.uint8)
+        sampleData = vigra.taggedView(sampleData, axistags='xy')
+
+        opData = OpArrayPiper(graph=graph)
+        opData.Input.setValue(sampleData)
+
+        op = OpCompressedCache(parent=None, graph=graph)
+        op.Input.connect(opData.Output)
+
+        assert op.Output.ready()
+        assert op.usedMemory() == 0.0,\
+            "cache must not be filled at this point"
+        op.Output[...].wait()
+        assert op.usedMemory() <= sampleData.nbytes/expected_factor,\
+            "Compression of all-zeroes should be better than factor "\
+            "{}".format(expected_factor)
+
     def testChangeBlockshape_masked(self):
         logger.info("Generating sample data...")
         sampleData = numpy.indices((100, 200, 150), dtype=numpy.float32).sum(0)
@@ -651,26 +717,49 @@ class TestOpCompressedCache( object ):
                 (numpy.isnan(readData.fill_value) & numpy.isnan(expectedData.fill_value))).all(),\
             "Incorrect output!"
 
-
     def testCleanup(self):
+        try:
+            CacheMemoryManager().disable()
+            sampleData = numpy.indices((100, 200, 150), dtype=numpy.float32).sum(0)
+            sampleData = vigra.taggedView(sampleData, axistags='xyz')
+            
+            graph = Graph()
+            opData = OpArrayPiper(graph=graph)
+            opData.Input.setValue( sampleData )
+            
+            op = OpCompressedCache(graph=graph)
+            #logger.debug("Setting block shape...")
+            op.BlockShape.setValue([100, 75, 50])
+            op.Input.connect(opData.Output)
+            x = op.Output[...].wait()
+            op.Input.disconnect()
+            r = weakref.ref(op)
+            del op
+            gc.collect()
+            assert r() is None, "OpBlockedArrayCache was not cleaned up correctly"
+        finally:
+            CacheMemoryManager().enable()
+
+    def testFree(self):
         sampleData = numpy.indices((100, 200, 150), dtype=numpy.float32).sum(0)
         sampleData = vigra.taggedView(sampleData, axistags='xyz')
         
         graph = Graph()
-        opData = OpArrayPiper(graph=graph)
-        opData.Input.setValue( sampleData )
+        opData = OpArrayPiperWithAccessCount(graph=graph)
+        opData.Input.setValue(sampleData)
         
         op = OpCompressedCache(graph=graph)
         #logger.debug("Setting block shape...")
         op.BlockShape.setValue([100, 75, 50])
         op.Input.connect(opData.Output)
-        x = op.Output[...].wait()
-        op.Input.disconnect()
-        r = weakref.ref(op)
-        del op
-        gc.collect()
-        assert r() is None, "OpBlockedArrayCache was not cleaned up correctly"
-        
+
+        op.Output[...].wait()
+        mem = op.usedMemory()
+        keys = map(lambda x: x[0], op.getBlockAccessTimes())
+        key = keys[0]
+        op.freeBlock(key)
+        assert op.usedMemory() < mem
+
     def testHDF5(self):
         logger.info("Generating sample data...")
         sampleData = numpy.indices((150, 250, 150), dtype=numpy.float32).sum(0)
@@ -795,6 +884,7 @@ class TestOpCompressedCache( object ):
                     "Incorrect output!"
         finally:
             shutil.rmtree(tempdir)
+
 
 if __name__ == "__main__":
     # Set up logging for debug

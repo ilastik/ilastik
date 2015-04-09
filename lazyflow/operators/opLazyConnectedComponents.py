@@ -23,6 +23,8 @@
 import numpy as np
 import vigra
 import h5py
+from threading import Condition
+from threading import Lock as HardLock
 
 from collections import defaultdict
 from functools import partial, wraps
@@ -30,13 +32,11 @@ import itertools
 
 from lazyflow.operator import Operator, InputSlot, OutputSlot
 from lazyflow.rtype import SubRegion
-from lazyflow.operators import OpCompressedCache, OpReorderAxes
-from lazyflow.request import Request, RequestPool
-from lazyflow.request import RequestLock as ReqLock
+from lazyflow.operators import OpReorderAxes
+from lazyflow.operators.opCache import ObservableCache
+
 # the lazyflow lock seems to have deadlock issues sometimes
-from threading import Lock as HardLock
 Lock = HardLock
-from threading import Condition
 
 import logging
 logger = logging.getLogger(__name__)
@@ -212,7 +212,7 @@ class _LabelManager(object):
 # and avoids excessive computation by tracking which process is 
 # responsible for which particular set of local labels.
 #
-class OpLazyConnectedComponents(Operator):
+class OpLazyConnectedComponents(Operator, ObservableCache):
     name = "OpLazyConnectedComponents"
     supportedDtypes = [np.uint8, np.uint32, np.float32]
 
@@ -252,6 +252,8 @@ class OpLazyConnectedComponents(Operator):
     def __init__(self, *args, **kwargs):
         super(OpLazyConnectedComponents, self).__init__(*args, **kwargs)
         self._lock = HardLock()
+        # be able to request usage stats right from initialization
+        self._cache = None
 
         # reordering operators - we want to handle txyzc inside this operator
         self._opIn = OpReorderAxes(parent=self)
@@ -263,6 +265,9 @@ class OpLazyConnectedComponents(Operator):
         self._opOut.Input.connect(self._Output)
         self.Output.connect(self._opOut.Output)
         self.CachedOutput.connect(self.Output)
+        
+        # Now that we're initialized, it's safe to register with the memory manager
+        self.registerWithMemoryManager()
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
@@ -778,6 +783,22 @@ class OpLazyConnectedComponents(Operator):
             return (1,) + shape[1:4] + (1,)
         else:
             return default
+
+    # ======== CACHE API ========
+
+    def usedMemory(self):
+        if self._cache is not None:
+            return self._cache.data_bytes
+        else:
+            return 0
+
+    def fractionOfUsedMemoryDirty(self):
+        # we do not handle dirtyness
+        return 0.0
+
+    def generateReport(self, report):
+        super(OpLazyConnectedComponents, self).generateReport(report)
+        report.dtype = _LABEL_TYPE
 
 
 ###########
