@@ -32,7 +32,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List, SubRegion
 from lazyflow.roi import roiToSlice, sliceToRoi
-from lazyflow.operators import OpLabelVolume, OpCompressedCache, OpValueCache
+from lazyflow.operators import OpLabelVolume, OpCompressedCache, OpArrayCache
 
 import logging
 logger = logging.getLogger(__name__)
@@ -140,7 +140,7 @@ class OpCachedRegionFeatures(Operator):
         self._opRegionFeatures.Features.connect(self.Features)
 
         # Hook up the cache.
-        self._opCache = OpValueCache(parent=self)
+        self._opCache = OpArrayCache(parent=self)
         self._opCache.name = "OpCachedRegionFeatures._opCache"
         self._opCache.Input.connect(self._opRegionFeatures.Output)
 
