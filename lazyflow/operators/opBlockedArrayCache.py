@@ -44,7 +44,7 @@ from opRefactoredBlockedArrayCache import OpRefactoredBlockedArrayCache
 
 OpBlockedArrayCache = OpRefactoredBlockedArrayCache
 
-class OLD_OpBlockedArrayCache(OpCache):
+class OLD_OpBlockedArrayCache(Operator, ObservableCache):
     name = "OpBlockedArrayCache"
     description = ""
 
@@ -63,7 +63,7 @@ class OLD_OpBlockedArrayCache(OpCache):
     traceLogger = logging.getLogger("TRACE." + loggerName)
 
     def __init__(self, *args, **kwargs):
-        super(OpBlockedArrayCache, self).__init__( *args, **kwargs )
+        super(OLD_OpBlockedArrayCache, self).__init__( *args, **kwargs )
         self._configured = False
         self._fixed = False
         self._fixed_dirty_blocks = set()
