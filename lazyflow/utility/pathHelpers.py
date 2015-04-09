@@ -21,6 +21,7 @@
 ###############################################################################
 import os
 
+
 class PathComponents(object):
     """
     Provides a convenient access to path components of a combined external/internal path to a dataset.
@@ -232,6 +233,7 @@ class PathComponents(object):
         new_internal = os.path.join( new, self._internalDatasetName )
         self.internalPath = new_internal
 
+
 def areOnSameDrive(path1,path2):
     #if one path is relative, assume they are on same drive
     if isUrl(path1) or isUrl(path2):
@@ -241,6 +243,7 @@ def areOnSameDrive(path1,path2):
     drive1,path1 = os.path.splitdrive(path1)
     drive2,path2 = os.path.splitdrive(path2)
     return drive1==drive2
+
 
 def compressPathForDisplay(pathstr,maxlength):
     '''Add alternatingly parts of the start and the end of the path
@@ -265,9 +268,11 @@ def compressPathForDisplay(pathstr,maxlength):
         prefix = c
     return prefix + dots + suffix
 
+
 def isUrl(path):
     # For now, the simplest rule will work.
     return '://' in path
+
 
 def getPathVariants(originalPath, workingDirectory):
     """
