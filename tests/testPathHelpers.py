@@ -29,20 +29,20 @@ class TestPathHelpers(object):
         assert components.externalPath == '/some/external/path/to/file.h5'
         assert components.extension == '.h5'
         assert components.internalPath == '/with/internal/path/to/data'
-        
+
         components = PathComponents('/some/external/path/to/file.h5_crazy_ext.h5/with/internal/path/to/data')
         assert components.externalPath == '/some/external/path/to/file.h5_crazy_ext.h5'
         assert components.extension == '.h5'
         assert components.internalPath == '/with/internal/path/to/data'
-        
+
         # Everything should work for URLs, too.
         components = PathComponents('http://somehost:8000/path/to/data/with.ext')
         assert components.externalPath == 'http://somehost:8000/path/to/data/with.ext'
-        assert components.extension == '.ext'    
+        assert components.extension == '.ext'
         assert components.internalPath is None
         assert components.externalDirectory == 'http://somehost:8000/path/to/data'
         assert components.filenameBase == 'with'
-        
+
         # Try modifying the properties and verify that the total path is updated.
         components = PathComponents('/some/external/path/to/file.h5/with/internal/path/to/data')
         components.extension = '.hdf5'
@@ -64,7 +64,7 @@ class TestPathHelpers(object):
         assert components.totalPath() == '/new/externalpath/newfilename.h5/new/internal/dir/newdata'
         components.internalPath = '/new/internal/path/dataset'
         assert components.totalPath() == '/new/externalpath/newfilename.h5/new/internal/path/dataset'
-    
+
     def testCompressPathForDisplay(self):
         assert compressPathForDisplay("/a/b.txt", 30) == "/a/b.txt"
         path = "/test/bla/bla/this_is_a_very_long_filename_bla_bla.txt"
@@ -77,13 +77,13 @@ class TestPathHelpers(object):
         # Use normpath to make sure this test works on windows...
         assert abs == os.path.normpath(os.path.join('/aaa/bbb/ccc/eee', '/aaa/bbb/ccc/ddd.txt'))
         assert rel == '../ddd.txt'
-    
+
         abs, rel = getPathVariants('../ddd.txt', '/aaa/bbb/ccc/eee')
         #assert abs == '/aaa/bbb/ccc/ddd.txt'
         # Use normpath to make sure this test works on windows...
         assert abs == os.path.normpath(os.path.join('/aaa/bbb/ccc/eee', '../ddd.txt'))
         assert rel == '../ddd.txt'
-    
+
         abs, rel = getPathVariants('ddd.txt', '/aaa/bbb/ccc')
         #assert abs == '/aaa/bbb/ccc/ddd.txt'
         # Use normpath to make sure this test works on windows...
@@ -91,7 +91,7 @@ class TestPathHelpers(object):
         assert rel == 'ddd.txt'
 
         assert getPathVariants('', '/abc') == ('/abc', '')
-        
+
 if __name__ == "__main__":
     import sys
     import nose
