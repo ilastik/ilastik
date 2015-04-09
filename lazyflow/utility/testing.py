@@ -96,3 +96,37 @@ class OpArrayPiperWithAccessCount(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         self.Output.setDirty(roi)
+
+
+class OpCallWhenDirty(Operator):
+    """
+    calls the attribute 'function' when Input gets dirty
+
+    The parameters of the dirty call are stored in attributres.
+    """
+
+    Input = InputSlot()
+    Output = OutputSlot()
+
+    function = lambda: None
+    slot = None
+    roi = None
+
+    def setupOutputs(self):
+        self.Output.meta.assignFrom(self.Input.meta)
+
+    def execute(self, slot, subindex, roi, result):
+        req = self.Input.get(roi)
+        req.writeInto(result)
+        req.block()
+
+    def propagateDirty(self, slot, subindex, roi):
+        try:
+            self.slot = slot
+            self.subindex = subindex
+            self.roi = roi
+            self.function()
+        except:
+            raise
+        finally:
+            self.Output.setDirty(roi)
