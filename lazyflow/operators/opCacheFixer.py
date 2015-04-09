@@ -54,6 +54,8 @@ class OpCacheFixer(Operator):
             # When we become "unfixed", we need to tell him.
             self._expand_fixed_dirty_roi( (roi.start, roi.stop) )
             result[:] = 0
+            if hasattr(result, 'userflags'):
+                result.userflags['dontcache'] = True
         else:
             self.Input(roi.start, roi.stop).writeInto(result).wait()
         
