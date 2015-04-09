@@ -40,7 +40,6 @@ from lazyflow.request import Request, RequestPool
 
 # required lazyflow operators
 from lazyflow.operators.opLabelVolume import OpLabelVolume
-from lazyflow.operators.valueProviders import OpArrayCache
 from lazyflow.operators.opCompressedCache import OpCompressedCache
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
