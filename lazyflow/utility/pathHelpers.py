@@ -58,7 +58,7 @@ class PathComponents(object):
         extIndex = -1
 
         if cwd is not None:
-            absPath, relPath = getPathVariants( totalPath, cwd )
+            absPath, relPath = getPathVariants(totalPath, cwd)
             totalPath = absPath
 
         #convention for Windows: use "/"
@@ -83,8 +83,8 @@ class PathComponents(object):
             self._externalPath = parts[0] + ext # /some/path/to/file.h5
             self._internalPath = parts[1].replace('\\', '/') # /with/internal/dataset
 
-            self._internalDirectory = os.path.split( self.internalPath )[0]   # /with/internal
-            self._internalDatasetName = os.path.split( self.internalPath )[1] # dataset
+            self._internalDirectory = os.path.split(self.internalPath)[0]   # /with/internal
+            self._internalDatasetName = os.path.split(self.internalPath)[1] # dataset
         else:
             # For non-hdf5 files, use normal path/extension (no internal path)
             (self._externalPath, self._extension) = os.path.splitext(totalPath)
@@ -93,8 +93,8 @@ class PathComponents(object):
             self._internalDatasetName = None
             self._internalDirectory = None
 
-        self._externalDirectory = os.path.split( self._externalPath )[0] # /some/path/to
-        self._filename = os.path.split( self._externalPath )[1]          # file.h5
+        self._externalDirectory = os.path.split(self._externalPath)[0] # /some/path/to
+        self._filename = os.path.split(self._externalPath)[1]          # file.h5
         self._filenameBase = os.path.splitext(self._filename)[0]         # file
 
     def __setattr__(self, attr, value):
@@ -102,10 +102,10 @@ class PathComponents(object):
         This prevents us from accidentally writing to a non-existant attribute.
         e.g. if the user tries to say components.fIlEnAmE = 'newfile.h5', raise an error.
         """
-        if hasattr( self, '_initialized' ):
+        if hasattr(self, '_initialized'):
             # Attempt to get the old attribute first
             oldval = getattr(self, attr)
-        object.__setattr__( self, attr, value )
+        object.__setattr__(self, attr, value)
 
     def totalPath(self):
         """
@@ -184,9 +184,9 @@ class PathComponents(object):
     def externalPath(self, new):
         assert new[-1] != '/'
         if self._internalPath:
-            self._init( new + self._internalPath, self._cwd )
+            self._init(new + self._internalPath, self._cwd)
         else:
-            self._init( new, self._cwd )
+            self._init(new, self._cwd)
 
     @externalDirectory.setter
     def externalDirectory(self, new):
@@ -195,12 +195,12 @@ class PathComponents(object):
 
     @filename.setter
     def filename(self, new):
-        new_external = os.path.join( self._externalDirectory, new )
+        new_external = os.path.join(self._externalDirectory, new)
         self.externalPath = new_external
 
     @filenameBase.setter
     def filenameBase(self, new):
-        new_external = os.path.join( self._externalDirectory, new + self._extension )
+        new_external = os.path.join(self._externalDirectory, new + self._extension)
         self.externalPath = new_external
 
     @extension.setter
@@ -208,18 +208,18 @@ class PathComponents(object):
         assert (not self._internalPath) or (new in self.HDF5_EXTS), \
             "This PathComponents has an internal path ({}), but you are "\
             "attempting to assign a non-hdf5 extension to it ({})"\
-            .format( self._internalPath, new )
-        new_external = os.path.join( self._externalDirectory, self._filenameBase + new )
+            .format(self._internalPath, new)
+        new_external = os.path.join(self._externalDirectory, self._filenameBase + new)
         self.externalPath = new_external
 
     @internalPath.setter
     def internalPath(self, new):
         assert self._extension in self.HDF5_EXTS, \
-            "Can't set an internal path on a filename with extension {}".format( self._extension )
+            "Can't set an internal path on a filename with extension {}".format(self._extension)
         if new:
-            self._init( self._externalPath + new, self._cwd )
+            self._init(self._externalPath + new, self._cwd)
         else:
-            self._init( self._externalPath, self._cwd )
+            self._init(self._externalPath, self._cwd)
 
     @internalDatasetName.setter
     def internalDatasetName(self, new):
@@ -230,7 +230,7 @@ class PathComponents(object):
     def internalDirectory(self, new):
         if new and new[0] != '/':
             new = '/' + new
-        new_internal = os.path.join( new, self._internalDatasetName )
+        new_internal = os.path.join(new, self._internalDatasetName)
         self.internalPath = new_internal
 
 
@@ -297,6 +297,6 @@ def getPathVariants(originalPath, workingDirectory):
             relPath = None
     else:
         relPath = originalPath
-        absPath = os.path.normpath( os.path.join(workingDirectory, relPath) )
+        absPath = os.path.normpath(os.path.join(workingDirectory, relPath))
 
     return (absPath, relPath)
