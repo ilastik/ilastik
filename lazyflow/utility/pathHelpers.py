@@ -26,14 +26,14 @@ class PathComponents(object):
     Provides a convenient access to path components of a combined external/internal path to a dataset.
     Also, each of the properties listed below is writable, in which case ALL properties are updated accordingly.
     """
-    
+
     # Only files with these extensions are allowed to have an 'internal' path
     HDF5_EXTS = ['.ilp', '.h5', '.hdf5']
-    
+
     def __init__(self, totalPath, cwd=None):
         """
         Initialize the path components.
-        
+
         :param totalPath: The entire path to the dataset, including any internal path (e.g. the path to an hdf5 dataset).
                           For example, ``totalPath='/some/path/to/file.h5/with/internal/dataset'``
 
@@ -41,13 +41,13 @@ class PathComponents(object):
         """
         self._externalPath = None
         self._externalDirectory = None
-        self._filename = None            
+        self._filename = None
         self._filenameBase = None
         self._extension = None
         self._internalPath = None
         self._internalDatasetName = None
         self._internalDirectory = None
-        
+
         self._cwd = cwd
         self._init(totalPath, cwd)
         self._initialized = True
@@ -55,14 +55,14 @@ class PathComponents(object):
     def _init(self, totalPath, cwd):
         ext = None
         extIndex = -1
-        
+
         if cwd is not None:
             absPath, relPath = getPathVariants( totalPath, cwd )
             totalPath = absPath
-        
+
         #convention for Windows: use "/"
         totalPath = totalPath.replace("\\","/")
-        
+
         # For hdf5 paths, split into external, extension, and internal paths
         for x in self.HDF5_EXTS:
             if totalPath.find(x) > extIndex:
@@ -74,7 +74,7 @@ class PathComponents(object):
         if ext is not None:
             self._extension = ext                              # .h5
             parts = totalPath.split(ext)
-            
+
             # Must deal with pathological filenames such as /path/to/file.h5_with_duplicate_ext.h5
             while len(parts) > 2:
                 parts[0] = parts[0] + ext + parts[1]
@@ -95,7 +95,7 @@ class PathComponents(object):
         self._externalDirectory = os.path.split( self._externalPath )[0] # /some/path/to
         self._filename = os.path.split( self._externalPath )[1]          # file.h5
         self._filenameBase = os.path.splitext(self._filename)[0]         # file
-    
+
     def __setattr__(self, attr, value):
         """
         This prevents us from accidentally writing to a non-existant attribute.
@@ -110,15 +110,15 @@ class PathComponents(object):
         """
         Return the (reconstructed) totalPath to the dataset.
         """
-        total = self.externalPath 
+        total = self.externalPath
         if self.internalPath:
             total += self.internalPath
         return total
-    
+
     #
     # Getters
     #
-    
+
     @property
     def externalPath(self):
         """
@@ -185,7 +185,7 @@ class PathComponents(object):
         if self._internalPath:
             self._init( new + self._internalPath, self._cwd )
         else:
-            self._init( new, self._cwd ) 
+            self._init( new, self._cwd )
 
     @externalDirectory.setter
     def externalDirectory(self, new):
@@ -209,7 +209,7 @@ class PathComponents(object):
             "attempting to assign a non-hdf5 extension to it ({})"\
             .format( self._internalPath, new )
         new_external = os.path.join( self._externalDirectory, self._filenameBase + new )
-        self.externalPath = new_external        
+        self.externalPath = new_external
 
     @internalPath.setter
     def internalPath(self, new):
@@ -277,12 +277,12 @@ def getPathVariants(originalPath, workingDirectory):
     # urls are considered absolute
     if isUrl(originalPath):
         return originalPath, None
-    
+
     if len(originalPath) > 0 and originalPath[0] == '~':
         originalPath = os.path.expanduser(originalPath)
-    
+
     relPath = originalPath
-    
+
     if os.path.isabs(originalPath):
         absPath = originalPath
         if areOnSameDrive(originalPath,workingDirectory):
@@ -293,5 +293,5 @@ def getPathVariants(originalPath, workingDirectory):
     else:
         relPath = originalPath
         absPath = os.path.normpath( os.path.join(workingDirectory, relPath) )
-        
+
     return (absPath, relPath)
