@@ -214,7 +214,8 @@ class CacheMemoryManager(threading.Thread):
         try:
             # notify subscribed functions about current cache memory
             total = 0
-            for cache in self._first_class_caches:
+            first_class_caches = self._first_class_caches.copy() # Avoid "RuntimeError: Set changed size during iteration"
+            for cache in first_class_caches:
                 if isinstance(cache, ObservableCache):
                     total += cache.usedMemory()
             self.totalCacheMemory(total)
