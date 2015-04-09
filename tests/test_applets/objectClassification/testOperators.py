@@ -101,8 +101,8 @@ class TestOpObjectTrain(unittest.TestCase):
         
         g = Graph()
         self.featsop = OpRegionFeatures(graph=g)
-        self.featsop.LabelImage.setValue(segimg)
-        self.featsop.RawImage.setValue( rawimg )
+        self.featsop.LabelVolume.setValue(segimg)
+        self.featsop.RawVolume.setValue( rawimg )
         self.featsop.Features.setValue(feats)
         self.assertTrue(self.featsop.Output.ready(), "The output of operator {} was not ready after connections took place.".format(self.featsop))
 
@@ -143,8 +143,8 @@ class TestOpObjectTrain(unittest.TestCase):
         rawimg[0,...] = 0
         featsFail = {"Standard Object Features": {"Count":{}}, "TestFeatures": {"fail_on_zero":{}}}
         
-        self.featsop.LabelImage.setValue(segimg)
-        self.featsop.RawImage.setValue(rawimg)
+        self.featsop.LabelVolume.setValue(segimg)
+        self.featsop.RawVolume.setValue(rawimg)
         self.featsop.Features.setValue(featsFail)
         
         self.op.SelectedFeatures.setValue(featsFail)
@@ -180,8 +180,8 @@ class TestOpObjectPredict(unittest.TestCase):
         features = {"Standard Object Features": {"Count":{}}}
         
         self.featsop = OpRegionFeatures(graph=g)
-        self.featsop.LabelImage.setValue(segimg)
-        self.featsop.RawImage.setValue( rawimg )
+        self.featsop.LabelVolume.setValue(segimg)
+        self.featsop.RawVolume.setValue( rawimg )
         self.featsop.Features.setValue(features)
         self.assertTrue(self.featsop.Output.ready(), "The output of operator {} was not ready after connections took place.".format(self.featsop))
 
