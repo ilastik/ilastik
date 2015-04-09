@@ -26,23 +26,25 @@ import gc
 import numpy
 import vigra
 from lazyflow.graph import Graph
-from lazyflow.roi import sliceToRoi, roiToSlice
+from lazyflow.roi import roiToSlice
 from lazyflow.operators import OpBlockedArrayCache
+from lazyflow.operators.opCache import MemInfoNode
 from lazyflow.utility.testing import OpArrayPiperWithAccessCount
-from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr
+from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
+
 
 class KeyMaker():
     def __getitem__(self, *args):
         return list(*args)
 make_key = KeyMaker()
 
-       
 
 class TestOpBlockedArrayCache(object):
 
     def setUp(self):
         self.dataShape = (1,100,100,10,1)
-        self.data = (numpy.random.random(self.dataShape) * 100).astype(int)
+        self.data = numpy.random.randint(0, 256, size=self.dataShape)
+        self.data = self.data.astype(numpy.uint32)
         self.data = self.data.view(vigra.VigraArray)
         self.data.axistags = vigra.defaultAxistags('txyzc')
 
@@ -295,9 +297,31 @@ class TestOpBlockedArrayCache(object):
         assert opProvider.accessCount <= maxAccess
         oldAccessCount = opProvider.accessCount
 
+    def testReportGeneration(self):
+        opCache = self.opCache
+        opProvider = self.opProvider        
+        
+        expectedAccessCount = 0
+        assert opProvider.accessCount == expectedAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, expectedAccessCount)
+        
+        # Block-aligned request
+        slicing = make_key[0:1, 0:10, 10:20, 0:10, 0:1]
+        data = opCache.Output( slicing ).wait()
+        data = data.view(vigra.VigraArray)
+        data.axistags = opCache.Output.meta.axistags
+        expectedAccessCount += 1        
+        assert (data == self.data[slicing]).all()
+
+        r = MemInfoNode()
+        opCache.generateReport(r)
+        # we are expecting one inner block to be reserved, inner block
+        # size is 20x20x10, uint32 is 4 bytes
+        usedMemory = 20*20*10*4
+        numpy.testing.assert_equal(r.usedMemory, usedMemory)
+
     def testCleanup(self):
         try:
-            ArrayCacheMemoryMgr.instance.pause()
+            CacheMemoryManager().disable()
 
             op = OpBlockedArrayCache(graph=self.opProvider.graph)
             op.Input.connect(self.opProvider.Output)
@@ -319,7 +343,7 @@ class TestOpBlockedArrayCache(object):
                 
             assert r() is None, "OpBlockedArrayCache was not cleaned up correctly"
         finally:
-            ArrayCacheMemoryMgr.instance.unpause()
+            CacheMemoryManager().enable()
 
 
 class TestOpBlockedArrayCache_masked(object):

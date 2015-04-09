@@ -20,11 +20,11 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 # Built-in
-import copy
 import logging
 from functools import partial
 import collections
 import itertools
+import time
 
 # Third-party
 import numpy
@@ -32,17 +32,33 @@ import h5py
 
 # Lazyflow
 from lazyflow.request import Request, RequestPool, RequestLock
-from lazyflow.graph import InputSlot, OutputSlot
+from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import TinyVector, getIntersectingBlocks, getBlockBounds, roiToSlice, getIntersection
-from lazyflow.operators.opCache import OpCache
+from lazyflow.operators.opCache import ManagedBlockedCache
+from lazyflow.utility.chunkHelpers import chooseChunkShape
 
 logger = logging.getLogger(__name__)
 
-class OpCompressedCache(OpCache):
+
+def get_storage_size(h5dataset):
+    '''
+    get the storage size allocated for this hdf5 dataset in bytes
+
+    (shorthand for the hidden h5py functionality)
+    '''
+    return h5py.h5d.DatasetID.get_storage_size(h5dataset.id)
+
+class OpUnmanagedCompressedCache(Operator):
     """
     A blockwise cache that stores each block as a separate in-memory hdf5 file with a compressed dataset.
     
-    Note: It is not safe to call execute() change the blockshape simultaneously.
+    Note: This class is not managed by the memory manager, so there can be non-managed subclasses.
+          The "managed" version is OpCompressedCache, defined below.
+    
+    Note: 
+      * It is not safe to call execute() and change the blockshape
+        simultaneously.
+      * it is not safe to reuse this cache #FIXME
     """
     Input = InputSlot(allow_mask=True) # Also used to asynchronously force data into the cache via __setitem__ (see setInSlot(), below()
     BlockShape = InputSlot(optional=True) # If not provided, the entire input is treated as one block
@@ -52,9 +68,9 @@ class OpCompressedCache(OpCache):
     InputHdf5 = InputSlot(optional=True, allow_mask=True)
     CleanBlocks = OutputSlot() # A list of rois (tuples) of the blocks that are currently stored in the cache
     OutputHdf5 = OutputSlot(allow_mask=True) # Provides data as hdf5 datasets.  Only allowed for rois that exactly match a block.
-    
+
     def __init__(self, *args, **kwargs):
-        super( OpCompressedCache, self ).__init__( *args, **kwargs )
+        super( OpUnmanagedCompressedCache, self ).__init__( *args, **kwargs )
         self._lock = RequestLock()
         self._init_cache(None)
         self._block_id_counter = itertools.count() # Used to ensure unique in-memory file names
@@ -66,11 +82,12 @@ class OpCompressedCache(OpCache):
             self._dirtyBlocks = set()
             self._blockLocks = {}
             self._chunkshape = self._chooseChunkshape(self._blockshape)
+            self._last_access_times = collections.defaultdict(float)
 
     def cleanUp(self):
         logger.debug( "Cleaning up" )
         self._closeAllCacheFiles()
-        super( OpCompressedCache, self ).cleanUp()
+        super( OpUnmanagedCompressedCache, self ).cleanUp()
 
 
     def setupOutputs(self):
@@ -162,6 +179,7 @@ class OpCompressedCache(OpCache):
                 destination.fill_value = dataset["fill_value"][()]
             else:
                 destination[ destination_relative_intersection_slicing ] = dataset[ block_relative_intersection_slicing ]
+            self._last_access_times[block_start] = time.time()
 
     def _executeCleanBlocks(self, destination):
         """
@@ -209,63 +227,42 @@ class OpCompressedCache(OpCache):
             self.Output.setDirty( slice(None) )
         else:
             assert False, "Unknown output slot"
-            
 
     def _chooseChunkshape(self, blockshape):
         """
         Choose an optimal chunkshape for our blockshape and Input shape.
+        We assume access patterns to vary more in space than in time or channel
+        and choose the inner chunk shape to be 100kiB slices of t and c.
+        Furthermore, we use the function
+          lazyflow.utility.chunkHelpers.chooseChunkShape()
+        to preserve the aspect ratio of the input (at least approximately).
         """
         if blockshape is None:
             return None
-        # Choose a chunkshape:
-        # - same time dimension as blockshape
-        # - same channel dimension as blockshape
-        # - aim for roughly 100k (for decent compression/decompression times)
-        # - aim for roughly the same ratio of xyz sizes as the blockshape
 
         # Start with a copy of blockshape
         axes = self.Output.meta.getTaggedShape().keys()
-        taggedBlockshape = collections.OrderedDict( zip(axes, self._blockshape) )
-        taggedChunkshape = copy.copy( taggedBlockshape )
+        taggedBlockShape = collections.OrderedDict(zip(axes, self._blockshape))
 
         dtypeBytes = self._getDtypeBytes(self.Output.meta.dtype)
 
-        # How much xyz space can a chunk occupy and still fit within 100k?
-        desiredSpace = 100000.0 / dtypeBytes
+        desiredSpace = 1024**2 / float(dtypeBytes)
+
+        # set t and c to 1
         for key in 'tc':
-            if key in taggedChunkshape:
-                desiredSpace /= taggedChunkshape[key] 
+            if key in taggedBlockShape:
+                taggedBlockShape[key] = 1 
         logger.debug("desired space: {}".format( desiredSpace ))
 
-        # How big is the blockshape?
-        blockshapeSpace = 1.0
-        numSpaceAxes = 0.0
-        for key in 'xyz':
-            if key in taggedBlockshape:
-                numSpaceAxes += 1.0
-                blockshapeSpace *= taggedBlockshape[key]
-        logger.debug("blockshape space: {}".format( blockshapeSpace ))
-        
-        # Determine factor to shrink each spatial dimension
-        factor = blockshapeSpace / float(desiredSpace)
-        factor = factor**(1/numSpaceAxes)
-        logger.debug("factor: {}".format(factor))
-        
-        # Adjust by factor
-        for key in 'xyz':
-            if key in taggedChunkshape:
-                taggedChunkshape[key] /= factor
-                taggedChunkshape[key] = max(1, taggedChunkshape[key])
-                taggedChunkshape[key] = int(taggedChunkshape[key])
-
-        chunkshape = taggedChunkshape.values()
-        
-        # h5py will crash if the chunkshape is larger than the dataset shape.
-        chunkshape = numpy.minimum(self._blockshape, chunkshape )
-
-        chunkshape = tuple( chunkshape )
-        logger.debug("Using chunk shape: {}".format( chunkshape ))
-        return chunkshape
+        # extract only the spatial shape
+        spatialKeys = [k for k in taggedBlockShape.keys() if k in 'xyz']
+        spatialShape = [taggedBlockShape[k] for k in spatialKeys]
+        newSpatialShape = chooseChunkShape(spatialShape, desiredSpace)
+        for k, v in zip(spatialKeys, newSpatialShape):
+            taggedBlockShape[k] = v
+        chunkShape = tuple(taggedBlockShape.values())
+        logger.debug("Using chunk shape: {}".format( chunkShape ))
+        return chunkShape
 
     def _getDtypeBytes(self, dtype):
         if type(dtype) is numpy.dtype:
@@ -275,25 +272,42 @@ class OpCompressedCache(OpCache):
         return dtype().nbytes
     
     def usedMemory(self):
-        #FIXME
-        tot = 0.0
-        for b in self._cacheFiles:
-            if "data" in b:
-                tot += b["data"].size * self._getDtypeBytes(b["data"].dtype)
-            if "mask" in b:
-                tot += b["mask"].size * self._getDtypeBytes(b["mask"].dtype)
-            if "fill_value" in b:
-                tot += b["fill_value"].size * self._getDtypeBytes(b["fill_value"].dtype)
+        tot, unc = self._usedMemory()
+        self._compression_factor = 1.0
+        if tot > 0:
+            self._compression_factor = unc/float(tot)
         return tot
-    
-    def generateReport(self, report):
-        report.name = self.name
-        report.fractionOfUsedMemoryDirty = self.fractionOfUsedMemoryDirty()
-        report.usedMemory = self.usedMemory()
-        report.lastAccessTime = self.lastAccessTime()
-        report.dtype = self.Output.meta.dtype
-        report.type = type(self)
-        report.id = id(self)
+
+    def _usedMemory(self):
+        tot = 0.0
+        unc = 0.0
+        for key in self._cacheFiles.keys():
+            real, virt = self._memoryForBlock(key)
+            tot += real
+            unc += virt
+        return tot, unc
+
+    def _memoryForBlock(self, key):
+        try:
+            group = self._cacheFiles[key]
+        except KeyError:
+            # entry was removed, ignore it
+            return 0
+        tot = 0
+        unc = 0
+        if "data" in group:
+            ds = group["data"]
+            # actual size
+            tot += get_storage_size(ds)
+            # uncompressed size
+            unc += ds.size * self._getDtypeBytes(ds.dtype)
+        if "mask" in group:
+            tot += group["mask"].size *\
+                self._getDtypeBytes(group["mask"].dtype)
+        if "fill_value" in group:
+            tot += group["fill_value"].size *\
+                self._getDtypeBytes(group["fill_value"].dtype)
+        return tot, unc
 
     def _getCacheFile(self, entire_block_roi):
         """
@@ -543,3 +557,71 @@ class OpCompressedCache(OpCache):
         with self._lock:
             self._blockLocks = {}
             self._cacheFiles = {}
+
+class OpCompressedCache(OpUnmanagedCompressedCache, ManagedBlockedCache):
+
+    def __init__(self, *args, **kwargs):
+        super(OpCompressedCache, self).__init__(*args, **kwargs)
+        # Now that we're initialized, it's safe to register with the memory manager
+        self.registerWithMemoryManager()
+
+    def fractionOfUsedMemoryDirty(self):
+        tot = 0.0
+        dirty = 0.0
+        for key in self._cacheFiles.keys():
+            real, virt = self._memoryForBlock(key)
+            tot += real
+            if key in self._dirtyBlocks:
+                dirty += real
+        if tot > 0:
+            return dirty / tot
+        else:
+            return 0.0
+    
+    def generateReport(self, report):
+        super(OpCompressedCache, self).generateReport(report)
+        report.dtype = self.Output.meta.dtype
+        f = self._compression_factor
+        report.info = "Compression factor: {:.2f}".format(f)
+
+    def freeMemory(self):
+        mem = self.usedMemory()
+        self._closeAllCacheFiles()
+        with self._lock:
+            self._cacheFiles = {}
+            self._dirtyBlocks = set()
+        return mem
+
+    def freeDirtyMemory(self):
+        dirty = 0.0
+        for key in self._cacheFiles.keys():
+            if key in self._dirtyBlocks:
+                dirty += self.freeBlock(key)
+                with self._lock:
+                    self._dirtyBlocks.discard(key)
+        return dirty
+
+    def freeBlock(self, block_id):
+        if block_id not in self._blockLocks:
+            return 0
+        with self._blockLocks[block_id]:
+            try:
+                f = self._cacheFiles[block_id]
+            except KeyError:
+                # this file was deleted
+                return 0
+            if "data" not in f:
+                return 0
+            ds = f["data"]
+            # use actual size, not number of bytes in
+            # *uncompressed* array
+            mem = get_storage_size(ds)
+            f.close()
+            del self._cacheFiles[block_id]
+            del self._last_access_times[block_id]
+            return mem
+
+    def getBlockAccessTimes(self):
+        # FIXME
+        return [(key, self._last_access_times[key])
+                for key in self._last_access_times]

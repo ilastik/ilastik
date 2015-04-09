@@ -36,11 +36,12 @@ from lazyflow.utility import RamMeasurementContext
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.rtype import SubRegion
 from lazyflow.request import RequestPool
-from lazyflow.operators.opCache import OpCache
+from lazyflow.operators.opCache import ObservableCache
 from lazyflow.operators.opArrayCache import OpArrayCache
-from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr, MemInfoNode
+from lazyflow.operators.opCache import MemInfoNode
 
-class OpBlockedArrayCache(OpCache):
+
+class OpBlockedArrayCache(Operator, ObservableCache):
     name = "OpBlockedArrayCache"
     description = ""
 
@@ -75,6 +76,9 @@ class OpBlockedArrayCache(OpCache):
 
         # This member is used by tests that check RAM usage.
         self.setup_ram_context = RamMeasurementContext()
+        
+        # Now that we're initialized, it's safe to register with the memory manager
+        self.registerWithMemoryManager()
 
     def setupOutputs(self):
         if len(self.innerBlockShape.value) != len(self.Input.meta.shape) or\
@@ -197,24 +201,43 @@ class OpBlockedArrayCache(OpCache):
         report.name = self.name
         report.fractionOfUsedMemoryDirty = self.fractionOfUsedMemoryDirty()
         report.usedMemory = self.usedMemory()
-        report.lastAccessTime = self.lastAccessTime()
         report.type = type(self)
         report.id = id(self)
-       
-        for block_index, block in self._cache_list.iteritems():
+
+        for block_index in self._cache_list.keys():
             start = self._blockShape*self._get_block_multi_index(block_index)
-            stop  = numpy.minimum(start + self._blockShape, self.Output.meta.shape)
+            stop = map(lambda z: z[0]+z[1], zip(start, self._blockShape))
+            stop = numpy.minimum(stop, self.Output.meta.shape)
             
             n = MemInfoNode()
             n.roi = (start, stop)
             report.children.append(n)
-            block.generateReport(n)
+            try:
+                block = self._cache_list[block_index]
+            except KeyError:
+                # probably cleaned up 
+                pass
+            else:
+                block.generateReport(n)
             
     def usedMemory(self):
         tot = 0.0
         for block in self._cache_list.values():
             tot += block.usedMemory()
         return tot
+
+    def fractionOfUsedMemoryDirty(self):
+        tot = 0.0
+        dirty = 0.0
+        for block in self._cache_list.values():
+            mem = block.usedMemory()
+            tot += mem
+            dirty += block.fractionOfUsedMemoryDirty()*mem
+        if dirty > 0:
+            return tot/float(dirty)
+        else:
+            return 0.0
+        
 
     def execute(self, slot, subindex, roi, result):
         assert (roi.start >= 0).all(), \

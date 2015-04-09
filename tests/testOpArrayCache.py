@@ -29,7 +29,8 @@ from lazyflow.graph import Graph
 from lazyflow.roi import sliceToRoi, roiToSlice
 from lazyflow.operators import OpArrayCache
 from lazyflow.operators.opArrayCache import has_drtile
-from lazyflow.operators.arrayCacheMemoryMgr import ArrayCacheMemoryMgr
+from lazyflow.operators.opCache import MemInfoNode
+from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
 
 from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 
@@ -43,7 +44,8 @@ class TestOpArrayCache(object):
  
     def setUp(self):
         self.dataShape = (1,100,100,10,1)
-        self.data = (numpy.random.random(self.dataShape) * 100).astype(int)
+        self.data = numpy.random.randint(255, size=self.dataShape)
+        self.data = self.data.astype(numpy.uint8)
         self.data = self.data.view(vigra.VigraArray)
         self.data.axistags = vigra.defaultAxistags('txyzc')
  
@@ -270,22 +272,51 @@ class TestOpArrayCache(object):
 
     def testCleanup(self):
         try:
-            ArrayCacheMemoryMgr.instance.pause()
+            CacheMemoryManager().disable()
             op = OpArrayCache(graph=self.opProvider.graph)
             op.Input.connect(self.opProvider.Output)
             x = op.Output[...].wait()
             op.Input.disconnect()
-            op.cleanUp()
-
             r = weakref.ref(op)
             del op
             gc.collect()
             assert r() is None, "OpArrayCache was not cleaned up correctly"
         finally:
-            ArrayCacheMemoryMgr.instance.unpause()
-                    
-         
- 
+            CacheMemoryManager().enable()
+
+    def testReportGeneration(self):
+        r = MemInfoNode()
+        cache = self.opCache
+
+        # nothing cached yet
+        cache.generateReport(r)
+        numpy.testing.assert_equal(r.usedMemory, 0)
+
+        # cache everything now
+        out = cache.Output[...].wait()
+        cache.generateReport(r)
+        numpy.testing.assert_equal(r.usedMemory, self.data.nbytes)
+
+        # set stuff dirty
+        cache.Input.setDirty(slice(None))
+        cache.generateReport(r)
+        numpy.testing.assert_equal(r.fractionOfUsedMemoryDirty, 1.0)
+
+        vol = numpy.random.randint(255, size=(31, 13, 23)).astype(numpy.uint8)
+        vol = vigra.taggedView(vol, axistags='xyz')
+        self.opProvider.Input.setValue(vol)
+        cache.blockShape.setValue((5, 5, 5))
+
+        out2 = cache.Output[...].wait()
+        cache.generateReport(r)
+        numpy.testing.assert_equal(r.usedMemory, vol.nbytes)
+
+        # set stuff dirty
+        cache.Input.setDirty(slice(None))
+        cache.generateReport(r)
+        numpy.testing.assert_equal(r.fractionOfUsedMemoryDirty, 1.0)
+
+
 class TestOpArrayCacheWithObjectDtype(object):
     """
     This test is here to convince me that the OpArrayCache can be used with objects as the dtype.
