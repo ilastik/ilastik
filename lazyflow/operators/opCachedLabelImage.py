@@ -21,10 +21,9 @@
 ###############################################################################
 from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.operators import OpLabelImage, OpCompressedCache, Operator
-from lazyflow.operators.opCache import OpCache
 from lazyflow.utility.helpers import warn_deprecated
 
-class OpCachedLabelImage(OpCache):
+class OpCachedLabelImage(Operator):
     """
     Combines OpLabelImage with OpCompressedCache, and provides a default block shape.
     """
