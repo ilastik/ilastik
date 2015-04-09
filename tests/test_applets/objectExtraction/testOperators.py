@@ -22,7 +22,7 @@ import unittest
 import numpy as np
 import vigra
 from lazyflow.graph import Graph
-from lazyflow.operators import OpLabelImage
+from lazyflow.operators import OpLabelVolume
 from ilastik.applets.objectExtraction.opObjectExtraction import OpAdaptTimeListRoi, OpRegionFeatures, OpObjectExtraction
 from ilastik.plugins import pluginManager
 
@@ -74,35 +74,17 @@ def rawImage():
 
     return img
 
-class TestOpLabelImage(object):
-    def setUp(self):
-        g = Graph()
-        self.op = OpLabelImage(graph=g)
-        self.img = binaryImage()
-        self.op.Input.setValue(self.img)
-
-    def test_segment(self):
-        labelImg = self.op.Output.value
-        labelImg = labelImg.astype(np.int)
-        assert np.all(labelImg.shape==self.img.shape)
-
-        vigraImage0 = vigra.analysis.labelVolumeWithBackground(self.img[0,...])
-        vigraImage1 = vigra.analysis.labelVolumeWithBackground(self.img[1,...])
-
-        assert np.all(np.asarray(vigraImage0)==labelImg[0,...])
-        assert np.all(np.asarray(vigraImage1)==labelImg[1,...])
-
 
 class TestOpRegionFeatures(object):
     def setUp(self):
         g = Graph()
-        self.labelop = OpLabelImage(graph=g)
+        self.labelop = OpLabelVolume(graph=g)
         self.op = OpRegionFeatures(graph=g)
-        self.op.LabelImage.connect(self.labelop.Output)
+        self.op.LabelVolume.connect(self.labelop.Output)
 
         # Raw image is arbitrary for our purposes. Just re-use the
         # label image
-        self.op.RawImage.connect(self.labelop.Output)
+        self.op.RawVolume.connect(self.labelop.Output)
         self.op.Features.setValue(FEATURES)
         self.img = binaryImage()
         self.labelop.Input.setValue(self.img)
@@ -149,10 +131,10 @@ class testOpRegionFeaturesAgainstNumpy(object):
 
         binimage = binaryImage()
         self.rawimage = rawImage()
-        self.labelop = OpLabelImage(graph=g)
+        self.labelop = OpLabelVolume(graph=g)
         self.op = OpRegionFeatures(graph=g)
-        self.op.LabelImage.connect(self.labelop.Output)
-        self.op.RawImage.setValue(self.rawimage)
+        self.op.LabelVolume.connect(self.labelop.Output)
+        self.op.RawVolume.setValue(self.rawimage)
         self.op.Features.setValue(self.features)
         self.img = binaryImage()
         self.labelop.Input.setValue(binimage)
