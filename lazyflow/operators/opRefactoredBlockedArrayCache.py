@@ -79,3 +79,28 @@ class OpRefactoredBlockedArrayCache(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         pass
+
+    # ======= mimic cache interface for wrapping operators =======
+
+    def usedMemory(self):
+        return self._opUnblockedArrayCache.usedMemory()
+
+    def fractionOfUsedMemoryDirty(self):
+        # dirty memory is discarded immediately
+        return self._opUnblockedArrayCache.fractionOfUsedMemoryDirty()
+
+    # cannot wrap this
+    # def lastAccessTime(self):
+    #     return super(OpUnblockedArrayCache, self).lastAccessTime()
+
+    def getBlockAccessTimes(self):
+        return self._opUnblockedArrayCache.getBlockAccessTimes()
+
+    def freeMemory(self):
+        return self._opUnblockedArrayCache.freeMemory()
+
+    def freeBlock(self, key):
+        return self._opUnblockedArrayCache.freeBlock(key)
+
+    def freeDirtyMemory(self):
+        return self._opUnblockedArrayCache.freeDirtyMemory()
