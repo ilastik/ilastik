@@ -21,6 +21,7 @@
 ###############################################################################
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.utility import RamMeasurementContext
 
 from opCacheFixer import OpCacheFixer
 from opUnblockedArrayCache import OpUnblockedArrayCache
@@ -66,6 +67,9 @@ class OpRefactoredBlockedArrayCache(Operator):
         # FIXME: Connecting the output directly like this will result in RAM being allocated for zero-blocks in the cache when fixAtCurrent=True.
         #        It doesn't result in incorrect results, but it is inefficient.
         self.Output.connect( self._opSplitRequestsBlockwise.Output )
+
+        # This member is used by tests that check RAM usage.
+        self.setup_ram_context = RamMeasurementContext()
         
     def setupOutputs(self):
         pass
