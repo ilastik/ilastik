@@ -64,8 +64,6 @@ class OpRefactoredBlockedArrayCache(Operator):
         self._opSplitRequestsBlockwise.BlockShape.connect( self.outerBlockShape )
         self._opSplitRequestsBlockwise.Input.connect( self._opUnblockedArrayCache.Output )
 
-        # FIXME: Connecting the output directly like this will result in RAM being allocated for zero-blocks in the cache when fixAtCurrent=True.
-        #        It doesn't result in incorrect results, but it is inefficient.
         self.Output.connect( self._opSplitRequestsBlockwise.Output )
 
         # This member is used by tests that check RAM usage.
