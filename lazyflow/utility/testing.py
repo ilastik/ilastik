@@ -81,8 +81,7 @@ class OpArrayPiperWithAccessCount(Operator):
 
     def __init__(self, *args, **kwargs):
         super(OpArrayPiperWithAccessCount, self).__init__(*args, **kwargs)
-        self.accessCount = 0
-        self.requests = []
+        self.clear()
         self._lock = threading.Lock()
 
     def setupOutputs(self):
@@ -98,6 +97,10 @@ class OpArrayPiperWithAccessCount(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         self.Output.setDirty(roi)
+
+    def clear(self):
+        self.requests = []
+        self.accessCount = 0
 
 
 class OpCallWhenDirty(Operator):
