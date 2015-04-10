@@ -89,6 +89,7 @@ class OpUnmanagedCompressedCache(Operator):
         self._lock = RequestLock()
         self._init_cache(None)
         self._block_id_counter = itertools.count() # Used to ensure unique in-memory file names
+        self._ignore_ideal_blockshape = False
 
     def _init_cache(self, new_blockshape):
         with self._lock:
@@ -275,7 +276,7 @@ class OpUnmanagedCompressedCache(Operator):
             m = map(lambda (i, b, f): b == f or b % i == 0, z)
             return all(m)
 
-        if self.Input.ready():
+        if not self._ignore_ideal_blockshape and self.Input.ready():
             # take the ideal chunk shape, but check if sane
             ideal = self.Input.meta.ideal_blockshape
             if ideal is not None:
@@ -292,6 +293,8 @@ class OpUnmanagedCompressedCache(Operator):
                 else:
                     logger.warn("{}: Encountered meta.ideal_blockshape that does "
                                 "not fit the data".format(self.name))
+
+        # we need to figure out an ideal chunk shape on our own
 
         # Start with a copy of blockshape
         axes = self.Output.meta.getTaggedShape().keys()

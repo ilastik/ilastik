@@ -70,6 +70,10 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
         self._blockshape = None
         self._label_to_purge = 0
         super(OpCompressedUserLabelArray, self).__init__( *args, **kwargs )
+
+        # ignoring the ideal chunk shape is ok because we use the input only
+        # to get the volume shape
+        self._ignore_ideal_blockshape = True
     
     def clearLabel(self, label_value):
         """
@@ -127,7 +131,7 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
                 self._label_to_purge = new_purge_label
                 if self._label_to_purge > 0:
                     self._purge_label( self._label_to_purge, True )
-    
+
     def _purge_label(self, label_to_purge, decrement_remaining):
         """
         Scan through all labeled pixels.
