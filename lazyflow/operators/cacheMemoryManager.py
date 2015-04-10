@@ -136,9 +136,9 @@ class CacheMemoryManager(threading.Thread):
         self._refresh_interval = default_refresh_interval
 
         # maximum percentage of *allowed memory* used
-        self._max_usage = 85
+        self._max_usage = 50
         # target usage percentage
-        self._target_usage = 70
+        self._target_usage = 40
         self._last_usage = memoryUsagePercentage()
         self._stopped = False
         self.start()
@@ -222,7 +222,8 @@ class CacheMemoryManager(threading.Thread):
             cache = None
 
             # check current memory state
-            current_usage_percentage = memoryUsagePercentage()
+            current_usage_percentage = total/float(getAvailableRamBytes())*100
+
             if current_usage_percentage <= self._max_usage:
                 return
 
@@ -235,30 +236,32 @@ class CacheMemoryManager(threading.Thread):
                 q.push((c.lastAccessTime(), c.name, c.freeMemory))
             caches = list(self._managed_blocked_caches)
             for c in caches:
-                for k, t in c.getLastAccessTimes():
+                for k, t in c.getBlockAccessTimes():
                     cleanupFun = functools.partial(c.freeBlock, k)
                     info = "{}: {}".format(c.name, k)
-                    q.push((t, cleanupFun))
+                    q.push((t, info, cleanupFun))
             c = None
             caches = None
 
-            if current_usage_percentage > self._target_usage and len(q) > 0:
-                current_usage_percentage = memoryUsagePercentage()
-                self.logger.debug("Memory usage is: {}%".format(100*current_usage_percentage))
-                
+            self.logger.debug(
+                "Caches are using {:.1f}MB memory ({:.1f}%)..."
+                "".format(total/1024.0/1024.0, current_usage_percentage))
+
             while current_usage_percentage > self._target_usage and len(q) > 0:
                 t, info, cleanupFun = q.pop()
-                self.logger.debug("Cleaning up {}".format(info))
-                cleanupFun()
-                current_usage_percentage = memoryUsagePercentage()
-
+                mem = cleanupFun()
+                self.logger.debug("Cleaned up {} ({:.1f}MB)".format(
+                    info, mem/1024.0/1024.0))
+                total -= mem
+                current_usage_percentage = total/float(getAvailableRamBytes())*100
+            gc.collect()
             # don't keep a reference until next loop iteration
             cleanupFun = None
             q = None
 
             self.logger.debug(
-                "Done cleaning up, memory usage is now at "
-                "{}%".format(100*current_usage_percentage))
+                "Done cleaning up, cache memory usage is now at "
+                "{:.1f}%".format(current_usage_percentage))
         except:
             log_exception(self.logger)
 
