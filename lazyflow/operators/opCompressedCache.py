@@ -262,16 +262,20 @@ class OpUnmanagedCompressedCache(Operator):
             # take the ideal chunk shape, but check if sane
             ideal = self.Input.meta.ideal_blockshape
             if ideal is not None:
-                if len(ideal) != len(blockshape):
-                    logger.warn("Encountered meta.ideal_blockshape that does "
-                                "not fit the data")
-                elif (any(map(lambda (a, A): A%a, zip(ideal, blockshape)))
-                        and self.BlockShape.ready()):
-                    logger.warn("BlockShape and ideal_blockshape are "
-                                "inconsistent")
+                if len(ideal) == len(blockshape):
+                    ideal = numpy.asarray(ideal)
+                    for i, d in enumerate(ideal):
+                        if d == 0:
+                            ideal[i] = blockshape[i]
+                    if (any(map(lambda (a, A): A%a, zip(ideal, blockshape)))
+                            and self.BlockShape.ready()):
+                        logger.warn("{}: BlockShape and ideal_blockshape are "
+                                    "inconsistent {} vs {}".format(self.name, ideal, blockshape))
+                    else:
+                        return tuple(ideal)
                 else:
-                    # seems good
-                    return ideal
+                    logger.warn("{}: Encountered meta.ideal_blockshape that does "
+                                "not fit the data".format(self.name))
 
         # Start with a copy of blockshape
         axes = self.Output.meta.getTaggedShape().keys()
