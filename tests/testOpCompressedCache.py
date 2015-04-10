@@ -34,6 +34,8 @@ import numpy
 import h5py
 import vigra
 
+from numpy.testing import assert_array_equal
+
 from lazyflow.graph import Graph
 from lazyflow.operators import OpCompressedCache, OpArrayPiper
 from lazyflow.utility.slicingtools import slicing2shape
@@ -54,7 +56,7 @@ class TestOpCompressedCache( object ):
         sampleData.axistags = vigra.defaultAxistags('txyzc')
         
         graph = Graph()
-        opData = OpArrayPiper( graph=graph )
+        opData = OpArrayPiperWithAccessCount( graph=graph )
         opData.Input.setValue( sampleData )
         
         op = OpCompressedCache( parent=None, graph=graph )
@@ -72,6 +74,7 @@ class TestOpCompressedCache( object ):
         
         #logger.debug("Checking data...")    
         assert (readData == expectedData).all(), "Incorrect output!"
+        assert opData.accessCount == 2*1*2*2*1, str(opData.accessCount)
 
     def testBasic5d_masked(self):
         logger.info("Generating sample data...")
@@ -81,7 +84,7 @@ class TestOpCompressedCache( object ):
         sampleData[0] = numpy.ma.masked
 
         graph = Graph()
-        opData = OpArrayPiper( graph=graph )
+        opData = OpArrayPiperWithAccessCount( graph=graph )
         opData.Input.meta.has_mask = True
         opData.Input.meta.axistags = vigra.defaultAxistags('txyzc')
         opData.Input.setValue( sampleData )
@@ -105,6 +108,7 @@ class TestOpCompressedCache( object ):
                ((readData.fill_value == expectedData.fill_value) |
                 (numpy.isnan(readData.fill_value) & numpy.isnan(expectedData.fill_value))).all(),\
             "Incorrect output!"
+        assert opData.accessCount == 2*1*2*2*1, str(opData.accessCount)
 
     def testBasic3d(self):
         logger.info("Generating sample data...")
@@ -884,6 +888,49 @@ class TestOpCompressedCache( object ):
                     "Incorrect output!"
         finally:
             shutil.rmtree(tempdir)
+
+    def testIdealBlockShapeChoice(self):
+        sampleData = numpy.indices((150, 250, 350), dtype=numpy.float32).sum(0)
+        sampleData = vigra.taggedView(sampleData, axistags='xyz')
+        graph = Graph()
+        opData = OpArrayPiper(graph=graph)
+
+        # 1) input has valid ideal_blockshape, no block shape given
+        print("1)")
+        ideal = (33, 33, 33)
+        opData.Input.meta.ideal_blockshape = ideal
+        opData.Input.setValue(sampleData)
+        op = OpCompressedCache(graph=graph)
+        op.Input.connect(opData.Output)
+
+        assert op.Output.ready()
+        assert_array_equal(op.Output.meta.ideal_blockshape, ideal)
+
+        # 2) input has invalid ideal_blockshape
+        print("2)")
+        ideal = (33, 33)
+        opData.Input.meta.ideal_blockshape = ideal
+        opData.Input.setValue(None)
+        opData.Input.setValue(sampleData)
+        op = OpCompressedCache(graph=graph)
+        op.Input.connect(opData.Output)
+
+        assert op.Output.ready()
+        assert len(op.Output.meta.ideal_blockshape) == 3
+
+        # 3) input has valid ideal_blockshape, but BlockShape is incompatible
+        print("3)")
+        ideal = (33, 33, 33)
+        blockShape = (50, 50, 50)
+        opData.Input.meta.ideal_blockshape = ideal
+        opData.Input.setValue(None)
+        opData.Input.setValue(sampleData)
+        op = OpCompressedCache(graph=graph)
+        op.Input.connect(opData.Output)
+        op.BlockShape.setValue(blockShape)
+
+        assert op.Output.ready()
+        assert_array_equal(op.Output.meta.ideal_blockshape, blockShape)
 
 
 if __name__ == "__main__":

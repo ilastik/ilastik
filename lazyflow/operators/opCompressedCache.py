@@ -51,7 +51,16 @@ def get_storage_size(h5dataset):
 class OpUnmanagedCompressedCache(Operator):
     """
     A blockwise cache that stores each block as a separate in-memory hdf5 file with a compressed dataset.
-    
+
+    The files for each block have an internal chunk-shape, which corresponds to
+    the amount of data that has to be decompressed for a single pixel lookup.
+    The chunk shape is prioritized as follows:
+        1. Input.meta.ideal_blockshape
+           (make sure to set BlockShape to a multiple of ideal_blockshape!)
+        2. BlockShape, if available and smaller than 1MiB (raw)
+        3. Automatically determined shape with t=1, c=1 and xyz such that the
+           blocks are smaller than 1MiB (raw)
+
     Note: This class is not managed by the memory manager, so there can be non-managed subclasses.
           The "managed" version is OpCompressedCache, defined below.
     
@@ -60,14 +69,20 @@ class OpUnmanagedCompressedCache(Operator):
         simultaneously.
       * it is not safe to reuse this cache #FIXME
     """
-    Input = InputSlot(allow_mask=True) # Also used to asynchronously force data into the cache via __setitem__ (see setInSlot(), below()
-    BlockShape = InputSlot(optional=True) # If not provided, the entire input is treated as one block
-    
-    Output = OutputSlot(allow_mask=True) # Output as numpy arrays
+    # Also used to asynchronously force data into the cache via __setitem__ (see setInSlot(), below()
+    Input = InputSlot(allow_mask=True) 
+
+    # shape of internal in-memory hdf5 files (defaults to the whole volume)
+    BlockShape = InputSlot(optional=True)
+
+    # Output as numpy arrays
+    Output = OutputSlot(allow_mask=True)
 
     InputHdf5 = InputSlot(optional=True, allow_mask=True)
-    CleanBlocks = OutputSlot() # A list of rois (tuples) of the blocks that are currently stored in the cache
-    OutputHdf5 = OutputSlot(allow_mask=True) # Provides data as hdf5 datasets.  Only allowed for rois that exactly match a block.
+    # A list of rois (tuples) of the blocks that are currently stored in the cache
+    CleanBlocks = OutputSlot()
+    # Provides data as hdf5 datasets.  Only allowed for rois that exactly match a block.
+    OutputHdf5 = OutputSlot(allow_mask=True)
 
     def __init__(self, *args, **kwargs):
         super( OpUnmanagedCompressedCache, self ).__init__( *args, **kwargs )
@@ -114,6 +129,9 @@ class OpUnmanagedCompressedCache(Operator):
         if new_blockshape != self._blockshape:
             # If the blockshape changes, we have to reset the entire cache.
             self._init_cache(new_blockshape)
+
+        self.Output.meta.ideal_blockshape = self._chunkshape
+        
 
     def execute(self, slot, subindex, roi, destination):
         if slot == self.Output:
@@ -232,13 +250,28 @@ class OpUnmanagedCompressedCache(Operator):
         """
         Choose an optimal chunkshape for our blockshape and Input shape.
         We assume access patterns to vary more in space than in time or channel
-        and choose the inner chunk shape to be 100kiB slices of t and c.
+        and choose the inner chunk shape to be about 1MiB slices of t and c.
         Furthermore, we use the function
           lazyflow.utility.chunkHelpers.chooseChunkShape()
         to preserve the aspect ratio of the input (at least approximately).
         """
         if blockshape is None:
             return None
+
+        if self.Input.ready():
+            # take the ideal chunk shape, but check if sane
+            ideal = self.Input.meta.ideal_blockshape
+            if ideal is not None:
+                if len(ideal) != len(blockshape):
+                    logger.warn("Encountered meta.ideal_blockshape that does "
+                                "not fit the data")
+                elif (any(map(lambda (a, A): A%a, zip(ideal, blockshape)))
+                        and self.BlockShape.ready()):
+                    logger.warn("BlockShape and ideal_blockshape are "
+                                "inconsistent")
+                else:
+                    # seems good
+                    return ideal
 
         # Start with a copy of blockshape
         axes = self.Output.meta.getTaggedShape().keys()
@@ -248,11 +281,14 @@ class OpUnmanagedCompressedCache(Operator):
 
         desiredSpace = 1024**2 / float(dtypeBytes)
 
+        if numpy.prod(blockshape) <= desiredSpace:
+            return blockshape
+
         # set t and c to 1
         for key in 'tc':
             if key in taggedBlockShape:
-                taggedBlockShape[key] = 1 
-        logger.debug("desired space: {}".format( desiredSpace ))
+                taggedBlockShape[key] = 1
+        logger.debug("desired space: {}".format(desiredSpace))
 
         # extract only the spatial shape
         spatialKeys = [k for k in taggedBlockShape.keys() if k in 'xyz']
@@ -261,7 +297,7 @@ class OpUnmanagedCompressedCache(Operator):
         for k, v in zip(spatialKeys, newSpatialShape):
             taggedBlockShape[k] = v
         chunkShape = tuple(taggedBlockShape.values())
-        logger.debug("Using chunk shape: {}".format( chunkShape ))
+        logger.debug("Using chunk shape: {}".format(chunkShape))
         return chunkShape
 
     def _getDtypeBytes(self, dtype):
@@ -270,7 +306,7 @@ class OpUnmanagedCompressedCache(Operator):
             #  not a numpy.dtype
             dtype = dtype.type
         return dtype().nbytes
-    
+
     def usedMemory(self):
         tot, unc = self._usedMemory()
         self._compression_factor = 1.0
