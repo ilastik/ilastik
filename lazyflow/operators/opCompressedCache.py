@@ -263,14 +263,14 @@ class OpUnmanagedCompressedCache(Operator):
             ideal = self.Input.meta.ideal_blockshape
             if ideal is not None:
                 if len(ideal) == len(blockshape):
-                    ideal = numpy.asarray(ideal)
+                    ideal = numpy.asarray(ideal, dtype=numpy.int)
                     for i, d in enumerate(ideal):
                         if d == 0:
                             ideal[i] = blockshape[i]
                     if (any(map(lambda (a, A): A%a, zip(ideal, blockshape)))
                             and self.BlockShape.ready()):
                         logger.warn("{}: BlockShape and ideal_blockshape are "
-                                    "inconsistent {} vs {}".format(self.name, ideal, blockshape))
+                                    "inconsistent")
                     else:
                         return tuple(ideal)
                 else:

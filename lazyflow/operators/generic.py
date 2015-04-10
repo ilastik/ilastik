@@ -466,7 +466,7 @@ class OpSingleChannelSelector(Operator):
 
         ideal = self.Output.meta.ideal_blockshape
         if ideal is not None and len(ideal) == len(inshape):
-            ideal = numpy.asarray(ideal)
+            ideal = numpy.asarray(ideal, dtype=numpy.int)
             ideal[channelAxis] = 1
             self.Output.meta.ideal_blockshape = tuple(ideal)
 
