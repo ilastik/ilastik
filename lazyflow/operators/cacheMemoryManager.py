@@ -235,7 +235,7 @@ class CacheMemoryManager(threading.Thread):
                 q.push((c.lastAccessTime(), c.name, c.freeMemory))
             caches = list(self._managed_blocked_caches)
             for c in caches:
-                for k, t in c.getLastAccessTimes():
+                for k, t in c.getBlockAccessTimes():
                     cleanupFun = functools.partial(c.freeBlock, k)
                     info = "{}: {}".format(c.name, k)
                     q.push((t, cleanupFun))
