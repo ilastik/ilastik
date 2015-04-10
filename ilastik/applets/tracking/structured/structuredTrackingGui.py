@@ -150,6 +150,7 @@ class StructuredTrackingGui(LayerViewerGui):
         self._initShortcuts()
         
 
+
     def _onMetaChanged( self, slot ):
         if slot is self.mainOperator.LabelImage:
             if slot.meta.shape:                

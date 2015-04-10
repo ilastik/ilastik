@@ -81,7 +81,7 @@ class LabelListModel(ListModel):
 
         self._labels=self._elements
         self.elementSelected.connect(self.labelSelected.emit)
-        
+
 
     def __len__(self):
         return len(self._labels)

@@ -66,7 +66,7 @@ class CropListView(ListView):
         super(CropListView, self).__init__(parent=parent)
         
         self._colorDialog = ColorDialog(self)
-        
+
         self.resetEmptyMessage("No crops defined.")
         print ".........................................> initializing CropListView"
 

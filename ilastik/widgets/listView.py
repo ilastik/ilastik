@@ -37,7 +37,7 @@ class ListView(QStackedWidget):
     PAGE_LISTVIEW = 1
 
     def __init__(self, parent = None):
-        
+
         super(ListView, self).__init__(parent=parent)
         
         self.emptyMessage = QLabel("no elements defined yet")

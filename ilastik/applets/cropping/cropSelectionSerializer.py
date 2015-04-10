@@ -18,21 +18,32 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialBlockSlot, SerialListSlot
 
-class SubModelSelectionSerializer(AppletSerializer):
+class CropSelectionSerializer(AppletSerializer):
     """
     Serializes to an ilastik v0.6 project file.
     """
     def __init__(self, operator, projectFileGroupName):
-        slots = [SerialSlot(operator.MinValueT, selfdepends=True),
+        slots = [#SerialListSlot(operator.CropNames,
+                 #               transform=str),
+                 #SerialListSlot(operator.CropColors, transform=lambda x: tuple(x.flat)),
+                 #SerialListSlot(operator.PmapColors, transform=lambda x: tuple(x.flat)),
+                 SerialSlot(operator.MinValueT, selfdepends=True),
                  SerialSlot(operator.MaxValueT, selfdepends=True),
                  SerialSlot(operator.MinValueX, selfdepends=True),
                  SerialSlot(operator.MaxValueX, selfdepends=True),
                  SerialSlot(operator.MinValueY, selfdepends=True),
                  SerialSlot(operator.MaxValueY, selfdepends=True),
                  SerialSlot(operator.MinValueZ, selfdepends=True),
-                 SerialSlot(operator.MaxValueZ, selfdepends=True)]
+                 SerialSlot(operator.MaxValueZ, selfdepends=True),
+                 #SerialBlockSlot(operator.CropInputs,
+                 #                operator.NonzeroCropBlocks,
+                 #                name='CropSets',
+                 #                subname='crops{:03d}',
+                 #                selfdepends=False,
+                 #                shrink_to_bb=True)
+                 ]
 
-        super(SubModelSelectionSerializer, self).__init__(projectFileGroupName,
+        super(CropSelectionSerializer, self).__init__(projectFileGroupName,
                                                          slots=slots)

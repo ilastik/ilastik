@@ -67,7 +67,7 @@ class LabelListView(ListView):
         self._colorDialog = ColorDialog(self)
         
         self.resetEmptyMessage("no labels defined yet")
-    
+
     def tableViewCellDoubleClicked(self, modelIndex):
         if modelIndex.column() == self.model.ColumnID.Color:
             self._colorDialog.setBrushColor(self._table.model()[modelIndex.row()].brushColor())

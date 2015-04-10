@@ -20,21 +20,21 @@
 ###############################################################################
 
 from ilastik.applets.base.standardApplet import StandardApplet
-from opSubModelSelection import OpSubModelSelection
-from subModelSelectionSerializer import SubModelSelectionSerializer
+from opCropSelection import OpCropSelection
+from cropSelectionSerializer import CropSelectionSerializer
 
-class SubModelSelectionApplet( StandardApplet ):
+class CropSelectionApplet( StandardApplet ):
     """
     This is a simple applet facilitating sub model selection
     """
     def __init__( self, workflow, guiName, projectFileGroupName ):
-        super(SubModelSelectionApplet, self).__init__(guiName, workflow)
-        self._serializableItems = [ SubModelSelectionSerializer(self.topLevelOperator, projectFileGroupName) ]
+        super(CropSelectionApplet, self).__init__(guiName, workflow)
+        self._serializableItems = [ CropSelectionSerializer(self.topLevelOperator, projectFileGroupName) ]
         self.predictionSerializer = self._serializableItems[0]
 
     @property
     def singleLaneOperatorClass(self):
-        return OpSubModelSelection
+        return OpCropSelection
 
     @property
     def broadcastingSlots(self):
@@ -42,8 +42,8 @@ class SubModelSelectionApplet( StandardApplet ):
     
     @property
     def singleLaneGuiClass(self):
-        from subModelSelectionGui import SubModelSelectionGui
-        return SubModelSelectionGui
+        from cropSelectionGui import CropSelectionGui
+        return CropSelectionGui
 
     @property
     def dataSerializers(self):

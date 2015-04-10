@@ -43,7 +43,7 @@ class OpStructuredTracking(Operator):
     Labels = OutputSlot(stype=Opaque, rtype=List)
     Divisions = OutputSlot(stype=Opaque, rtype=List)
     UntrackedImage = OutputSlot()
-    
+
     def __init__(self, parent=None, graph=None):
         super(OpStructuredTracking, self).__init__(parent=parent, graph=graph)
         self.labels = {}
@@ -52,15 +52,15 @@ class OpStructuredTracking(Operator):
         self.RawImage.notifyReady( self._checkConstraints )
         self.BinaryImage.notifyReady( self._checkConstraints )
         
-    def setupOutputs(self):        
+    def setupOutputs(self):
         self.TrackImage.meta.assignFrom(self.LabelImage.meta)
         self.UntrackedImage.meta.assignFrom(self.LabelImage.meta)
                 
         for t in range(self.LabelImage.meta.shape[0]):
             if t not in self.labels.keys():
-                self.labels[t]={}     
+                self.labels[t]={}
 
-    
+
     def _checkConstraints(self, *args):
         if self.RawImage.ready():
             rawTaggedShape = self.RawImage.meta.getTaggedShape()
