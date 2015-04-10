@@ -47,6 +47,7 @@ class OpCacheFixer(Operator):
 
     def setupOutputs(self):
         self.Output.meta.assignFrom( self.Input.meta )
+        self.Output.meta.dontcache = self.fixAtCurrent.value
 
     def execute(self, slot, subindex, roi, result):
         if self._fixed:
@@ -54,8 +55,6 @@ class OpCacheFixer(Operator):
             # When we become "unfixed", we need to tell him.
             self._expand_fixed_dirty_roi( (roi.start, roi.stop) )
             result[:] = 0
-            if hasattr(result, 'userflags'):
-                result.userflags['dontcache'] = True
         else:
             self.Input(roi.start, roi.stop).writeInto(result).wait()
         

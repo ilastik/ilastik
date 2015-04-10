@@ -99,10 +99,9 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
 
                 # We attach a special attribute to the array to allow the upstream operator
                 #  to optionally tell us not to bother caching the data.
-                result = attach_array_userflags(result)
                 self.Input(roi.start, roi.stop).writeInto(result).block()
-                
-                if 'dontcache' in result.userflags and result.userflags['dontcache']:
+
+                if self.Input.meta.dontcache:
                     # The upstream operator says not to bother caching the data.
                     # (For example, see OpCacheFixer.)
                     return
@@ -189,18 +188,3 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
 
     def freeDirtyMemory(self):
         return 0.0
-
-class NdArraySubclass(numpy.ndarray):
-    """
-    This subclass allows us add our own attributes to ndarray.
-    """
-    pass
-
-def attach_array_userflags(a):
-    """
-    Add a userflags dict attribute to the given array.
-    """
-    if type(a) is numpy.ndarray:
-        a = a.view(NdArraySubclass)
-    a.userflags = {}
-    return a
