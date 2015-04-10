@@ -258,6 +258,23 @@ class OpUnmanagedCompressedCache(Operator):
         if blockshape is None:
             return None
 
+        def isConsistent(idealshape):
+            """
+            check if ideal block shape and given block shape are consistent
+
+            shapes are consistent if, for each dimension,
+                * input is unready, or
+                * blockshape equals fullshape, or
+                * idealshape divides blockshape evenly
+            """
+            if not self.Input.ready():
+                return True
+
+            fullshape = self.Input.meta.shape
+            z = zip(idealshape, blockshape, fullshape)
+            m = map(lambda (i, b, f): b == f or b % i == 0, z)
+            return all(m)
+
         if self.Input.ready():
             # take the ideal chunk shape, but check if sane
             ideal = self.Input.meta.ideal_blockshape
@@ -267,10 +284,9 @@ class OpUnmanagedCompressedCache(Operator):
                     for i, d in enumerate(ideal):
                         if d == 0:
                             ideal[i] = blockshape[i]
-                    if (any(map(lambda (a, A): A%a, zip(ideal, blockshape)))
-                            and self.BlockShape.ready()):
+                    if not isConsistent(ideal):
                         logger.warn("{}: BlockShape and ideal_blockshape are "
-                                    "inconsistent")
+                                    "inconsistent {} vs {}".format(self.name, blockshape, ideal))
                     else:
                         return tuple(ideal)
                 else:
