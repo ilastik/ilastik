@@ -22,12 +22,14 @@
 
 from __future__ import division
 
+import os
 import psutil
 import platform
 import logging
 
 
 logger = logging.getLogger(__name__)
+this_process = psutil.Process(os.getpid())
 
 
 class Memory(object):
@@ -41,7 +43,7 @@ class Memory(object):
         # assess available RAM more precisely
         _physically_available_ram -= psutil.virtual_memory().wired
 
-    _default_allowed_ram = (_physically_available_ram * 3) / 4
+    _default_allowed_ram = _physically_available_ram
     _allowed_ram = _default_allowed_ram
     _user_limits_specified = {'total': False,
                               'caches': False}
@@ -78,8 +80,7 @@ class Memory(object):
         set the amount of memory, in bytes, that lazyflow is allowed to use
 
         If the argument ram is negative, lazyflow will not try to limit
-        its RAM usage. Per default, lazyflow will limit itself to 75%
-        of the total memory available.
+        its RAM usage. Per default, lazyflow will use all of the available RAM.
         """
 
         if ram < 0:
