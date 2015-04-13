@@ -87,9 +87,8 @@ class OpRefactoredBlockedArrayCache(Operator):
         # dirty memory is discarded immediately
         return self._opUnblockedArrayCache.fractionOfUsedMemoryDirty()
 
-    # cannot wrap this
-    # def lastAccessTime(self):
-    #     return super(OpUnblockedArrayCache, self).lastAccessTime()
+    def lastAccessTime(self):
+        return self._opUnblockedArrayCache.lastAccessTime()
 
     def getBlockAccessTimes(self):
         return self._opUnblockedArrayCache.getBlockAccessTimes()
@@ -102,3 +101,6 @@ class OpRefactoredBlockedArrayCache(Operator):
 
     def freeDirtyMemory(self):
         return self._opUnblockedArrayCache.freeDirtyMemory()
+
+    def generateReport(self, report):
+        self._opUnblockedArrayCache.generatereport(report)
