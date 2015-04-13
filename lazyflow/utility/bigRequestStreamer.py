@@ -25,7 +25,7 @@ from lazyflow.utility import RoiRequestBatch
 from lazyflow.roi import getIntersectingBlocks, getBlockBounds, getIntersection, determine_optimal_request_blockshape, determineBlockShape
 
 import logging
-import psutil
+from memory import Memory
 logger = logging.getLogger(__name__)
 
 class BigRequestStreamer(object):
