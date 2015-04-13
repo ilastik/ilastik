@@ -206,9 +206,9 @@ def _prepare_lazyflow_config( parsed_args ):
                 lazyflow.request.Request.reset_thread_pool(n_threads)
             if total_ram_mb > 0:
                 if total_ram_mb < 500:
-                    logger.warn("In your current configuration, RAM is limited to {} MB."
-                                "  Remember to specify RAM in MB, not GB."
-                                .format( total_ram_mb ))
+                    raise Exception("In your current configuration, RAM is limited to {} MB."
+                                    "  Remember to specify RAM in MB, not GB."
+                                    .format( total_ram_mb ))
                 ram = total_ram_mb * 1024**2
                 fmt = Memory.format(ram)
                 logger.info("Configuring lazyflow RAM limit to {}".format(fmt))
