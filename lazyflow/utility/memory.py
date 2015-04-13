@@ -105,7 +105,7 @@ class Memory(object):
         if cls._user_limits_specified['caches']:
             return cls._allowed_ram_caches
         else:
-            return cls._allowed_ram / 2
+            return cls._allowed_ram / 4
 
     @classmethod
     def setAvailableRamCaches(cls, ram):
@@ -113,7 +113,7 @@ class Memory(object):
         set the amount of memory, in bytes, that lazyflow may use for caches
 
         If the argument ram is negative lazyflow will default to using
-        50% of its available memory for caches.
+        25% of its available memory for caches.
         """
 
         if ram < 0:
