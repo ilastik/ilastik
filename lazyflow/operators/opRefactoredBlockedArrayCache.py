@@ -20,14 +20,17 @@
 #          http://ilastik.org/license/
 ###############################################################################
 
+import copy
+
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility import RamMeasurementContext
 
 from opCacheFixer import OpCacheFixer
+from opCache import ManagedBlockedCache
 from opUnblockedArrayCache import OpUnblockedArrayCache
 from opSplitRequestsBlockwise import OpSplitRequestsBlockwise
 
-class OpRefactoredBlockedArrayCache(Operator):
+class OpRefactoredBlockedArrayCache(Operator, ManagedBlockedCache):
     """
     A blockwise array cache designed to replace the old OpBlockedArrayCache.  
     Instead of a monolithic implementation, this operator is a small pipeline of three simple operators.
@@ -87,9 +90,8 @@ class OpRefactoredBlockedArrayCache(Operator):
         # dirty memory is discarded immediately
         return self._opUnblockedArrayCache.fractionOfUsedMemoryDirty()
 
-    # cannot wrap this
-    # def lastAccessTime(self):
-    #     return super(OpUnblockedArrayCache, self).lastAccessTime()
+    def lastAccessTime(self):
+        return self._opUnblockedArrayCache.lastAccessTime()
 
     def getBlockAccessTimes(self):
         return self._opUnblockedArrayCache.getBlockAccessTimes()
@@ -102,3 +104,9 @@ class OpRefactoredBlockedArrayCache(Operator):
 
     def freeDirtyMemory(self):
         return self._opUnblockedArrayCache.freeDirtyMemory()
+
+    def generateReport(self, report):
+        self._opUnblockedArrayCache.generateReport(report)
+        child = copy.copy(report)
+        super(OpRefactoredBlockedArrayCache, self).generateReport(report)
+        report.children.append(child)
