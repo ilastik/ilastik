@@ -273,10 +273,24 @@ class OpObjectCenterImage(Operator):
         return result
 
     def propagateDirty(self, slot, subindex, roi):
-        # the roi here is a list of time steps 
+        # the roi here is a list of time steps
         if slot is self.RegionCenters:
-            for t in roi:
-                self.Output.setDirty(slice(t, t+1, None))
+            roi = list(roi)
+            t = roi[0]
+            T = t + 1
+            a = t
+            for b in roi[1:]:
+                assert b-1 == a, "List roi must be contiguous"
+                a = b
+                T += 1
+            time_index = self.BinaryImage.meta.axistags.index('t')
+            stop = np.asarray(self.BinaryImage.meta.shape, dtype=np.int)
+            start = np.zeros_like(stop)
+            stop[time_index] = T
+            start[time_index] = t
+            
+            roi = SubRegion(self.Output, tuple(start), tuple(stop))
+            self.Output.setDirty(roi)
                                   
 
 class OpObjectExtraction(Operator):
@@ -394,8 +408,8 @@ class OpObjectExtraction(Operator):
         for k in taggedShape.keys():
             if k == 't' or k == 'c':
                 taggedShape[k] = 1
-            else:
-                taggedShape[k] = 256
+            # else:
+            #     taggedShape[k] = 256
         self._opCenterCache.BlockShape.setValue(tuple(taggedShape.values()))
 
     def execute(self, slot, subindex, roi, result):
