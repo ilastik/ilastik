@@ -20,18 +20,15 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 
-#Python
+# Python
 import gc
-import os
-import time
 import threading
 import weakref
-import platform
 import functools
 import atexit
 
 
-#lazyflow
+# lazyflow
 from lazyflow.utility import OrderedSignal
 from lazyflow.utility import Singleton
 from lazyflow.utility import PriorityQueue
@@ -94,9 +91,9 @@ class CacheMemoryManager(threading.Thread):
         self._refresh_interval = default_refresh_interval
 
         # maximum fraction of *allowed memory* used
-        self._max_usage = .90
+        self._max_usage = 1.0
         # target usage fraction
-        self._target_usage = .70
+        self._target_usage = .90
 
         self._stopped = False
         self.start()
