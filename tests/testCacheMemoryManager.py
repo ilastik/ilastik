@@ -31,7 +31,7 @@ import unittest
 import lazyflow
 from lazyflow.graph import Graph
 from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
-from lazyflow.operators.cacheMemoryManager import memoryUsage
+from lazyflow.utility import Memory
 from lazyflow.operators.cacheMemoryManager\
     import default_refresh_interval
 from lazyflow.operators.opCache import Cache
@@ -51,12 +51,12 @@ assert issubclass(NonRegisteredCache, Cache)
 
 class TestCacheMemoryManager(unittest.TestCase):
     def setUp(self):
-        self._old_ram_mb = lazyflow.AVAILABLE_RAM_MB
+        pass
 
     def tearDown(self):
         # reset cleanup frequency to sane value
         # reset max memory
-        lazyflow.AVAILABLE_RAM_MB = self._old_ram_mb
+        Memory.setAvailableRamCaches(-1)
         mgr = CacheMemoryManager()
         mgr.setRefreshInterval(default_refresh_interval)
         mgr.enable()
@@ -123,9 +123,8 @@ class TestCacheMemoryManager(unittest.TestCase):
 
         mgr = CacheMemoryManager()
 
-        # restrict memory to 1 Byte
-        # note that 0 has a special meaning
-        lazyflow.AVAILABLE_RAM_MB = 0.000001
+        # disallow cache memory
+        Memory.setAvailableRamCaches(1)
 
         # set to frequent cleanup
         mgr.setRefreshInterval(.01)
