@@ -69,6 +69,7 @@ class ManualTrackingWorkflow( Workflow ):
         self.trackingApplet = ManualTrackingApplet( workflow=self )
         opTracking = self.trackingApplet.topLevelOperator
         self.dataExportApplet = TrackingBaseDataExportApplet(self, "Tracking Result Export")
+        self.dataExportApplet.set_exporting_operator(opTracking)
         
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.SelectionNames.setValue( ['Manual Tracking', 'Object Identities'] )
