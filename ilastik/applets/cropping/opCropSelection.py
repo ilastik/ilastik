@@ -63,6 +63,7 @@ class OpCropSelection(Operator):
     PmapColors = OutputSlot()
     NumClasses = OutputSlot()
 
+    Crops = OutputSlot()
 
 
 
@@ -76,6 +77,9 @@ class OpCropSelection(Operator):
         self.CropNames.setValue( [] )
         self.CropColors.setValue( [] )
         self.PmapColors.setValue( [] )
+
+        self.Crops.setValue( dict())
+
         #self.CropInputs.connect( self.InputImage )
 
         def _updateNumClasses(*args):
@@ -104,16 +108,15 @@ class OpCropSelection(Operator):
 
         self.CropNames.meta.dtype = object
         self.CropNames.meta.shape = (1,)
-        #self.CropNames.setValue([])
 
         self.CropColors.meta.dtype = object
         self.CropColors.meta.shape = (1,)
-        #self.CropColors.setValue([])
 
         self.PmapColors.meta.dtype = object
         self.PmapColors.meta.shape = (1,)
-        #self.PmapColors.setValue([])
 
+        self.Crops.meta.dtype = object
+        self.Crops.meta.shape = (1,)
 
     def execute(self, slot, subindex, roi, result):
         key = roi.toSlice()
@@ -132,9 +135,9 @@ class OpCropSelection(Operator):
             mask = numpy.ones_like(raw)
             result[...] = mask * raw
 
-        #if slot.name == 'CropNames':
-        #    cropNames = self.CropNames[key].wait()
-        #    result[...] = cropNames
+        if slot.name == 'Crops':
+            crops = self.Crops[key].wait()
+            result[...] = crops
 
     def propagateDirty(self, slot, subindex, roi):
         if slot.name == "InputImage":
@@ -143,10 +146,13 @@ class OpCropSelection(Operator):
             self.CropPrediction.setDirty( roi )
         elif slot.name == "CropNames":
             self.CropNames.setDirty( roi )
+        elif slot.name == "Crops":
+            self.Crops.setDirty( roi )
         else:
             self.CropImage.setDirty( slice(None) )
             self.CropPrediction.setDirty( slice(None) )
             self.CropNames.setDirty( slice(None) )
+            self.Crops.setDirty( slice(None) )
 
 class OpCropPipeline( Operator ):
     RawImage = InputSlot()

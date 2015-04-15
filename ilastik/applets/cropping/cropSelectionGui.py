@@ -313,6 +313,8 @@ class CropSelectionGui(CroppingGui):
             for i in range(3):
                 self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
 
+        self.topLevelOperatorView.Crops.setValue(self._crops)
+
 
     def getNextCropName(self):
         return "Crop {}".format(self._maxCropNumUsed+1)
@@ -484,6 +486,8 @@ class CropSelectionGui(CroppingGui):
 
         self.topLevelOperatorView.MinValueZ.setValue(minValueZ)
         self.topLevelOperatorView.MaxValueZ.setValue(maxValueZ+1)
+
+        self.topLevelOperatorView.Crops.setValue(self._crops)
 
     def setupLayers(self):
         """

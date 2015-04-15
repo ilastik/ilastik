@@ -24,7 +24,7 @@ from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.tracking.structured.structuredTrackingApplet import StructuredTrackingApplet
 from ilastik.applets.objectExtraction.objectExtractionApplet import ObjectExtractionApplet
-from ilastik.applets.thresholdTwoLevels.thresholdTwoLevelsApplet import ThresholdTwoLevelsApplet
+from ilastik.applets.cropThresholdTwoLevels.cropThresholdTwoLevelsApplet import CropThresholdTwoLevelsApplet
 from ilastik.applets.cropping.cropSelectionApplet import CropSelectionApplet
 
 from lazyflow.operators.opReorderAxes import OpReorderAxes
@@ -57,7 +57,7 @@ class StructuredTrackingWorkflow( Workflow ):
 
         self.cropSelectionApplet = CropSelectionApplet(self,"Crop Selection","CropSelection")
 
-        self.thresholdTwoLevelsApplet = ThresholdTwoLevelsApplet( self,"Threshold and Size Filter","ThresholdTwoLevels" )
+        self.cropThresholdTwoLevelsApplet = CropThresholdTwoLevelsApplet( self,"Threshold and Size Filter for a Crop","CropThresholdTwoLevels" )
 
         self.objectExtractionApplet = ObjectExtractionApplet(name="Object Feature Computation",workflow=self, interactive=False)
 
@@ -72,7 +72,7 @@ class StructuredTrackingWorkflow( Workflow ):
         self._applets = []
         self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.cropSelectionApplet)
-        self._applets.append(self.thresholdTwoLevelsApplet)
+        self._applets.append(self.cropThresholdTwoLevelsApplet)
         self._applets.append(self.objectExtractionApplet)
         self._applets.append(self.trackingApplet)
         self._applets.append(self.dataExportApplet)
@@ -81,7 +81,7 @@ class StructuredTrackingWorkflow( Workflow ):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)
         opTracking = self.trackingApplet.topLevelOperator.getLane(laneIndex)
-        opTwoLevelThreshold = self.thresholdTwoLevelsApplet.topLevelOperator.getLane(laneIndex)
+        opTwoLevelThreshold = self.cropThresholdTwoLevelsApplet.topLevelOperator.getLane(laneIndex)
         opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
 
         opCropSelection = self.cropSelectionApplet.topLevelOperator.getLane(laneIndex)
@@ -96,6 +96,9 @@ class StructuredTrackingWorkflow( Workflow ):
 
         opTwoLevelThreshold.InputImage.connect( opData.ImageGroup[1] )
         opTwoLevelThreshold.RawInput.connect( opData.ImageGroup[0] ) # Used for display only
+        opTwoLevelThreshold.Crops.connect( opCropSelection.Crops)
+
+
         # Use OpReorderAxis for both input datasets such that they are guaranteed to
         # have the same axis order after thresholding
         op5Binary = OpReorderAxes( parent=self )
@@ -136,9 +139,14 @@ class StructuredTrackingWorkflow( Workflow ):
         # If no data, nothing else is ready.
         input_ready = self._inputReady(2) and not self.dataSelectionApplet.busy
 
-        opThresholding = self.thresholdTwoLevelsApplet.topLevelOperator
+        opCropSelection = self.cropSelectionApplet.topLevelOperator
+        croppingOutput = opCropSelection.Crops
+        cropping_ready = input_ready and \
+                            len(croppingOutput) > 0
+
+        opThresholding = self.cropThresholdTwoLevelsApplet.topLevelOperator
         thresholdingOutput = opThresholding.CachedOutput
-        thresholding_ready = input_ready and \
+        thresholding_ready = cropping_ready and \
                        len(thresholdingOutput) > 0
 
         opObjectExtraction = self.objectExtractionApplet.topLevelOperator
@@ -154,12 +162,14 @@ class StructuredTrackingWorkflow( Workflow ):
 
         busy = False
         busy |= self.dataSelectionApplet.busy
+        busy |= self.cropSelectionApplet.busy
         busy |= self.dataExportApplet.busy
         busy |= self.trackingApplet.busy
         self._shell.enableProjectChanges( not busy )
 
         self._shell.setAppletEnabled(self.dataSelectionApplet, not busy)
-        self._shell.setAppletEnabled(self.thresholdTwoLevelsApplet, input_ready and not busy)
+        self._shell.setAppletEnabled(self.cropSelectionApplet, input_ready and not busy)
+        self._shell.setAppletEnabled(self.cropThresholdTwoLevelsApplet, input_ready and not busy)
         self._shell.setAppletEnabled(self.objectExtractionApplet, thresholding_ready and not busy)
         self._shell.setAppletEnabled(self.trackingApplet, features_ready and not busy)
         self._shell.setAppletEnabled(self.dataExportApplet, tracking_ready and not busy and \

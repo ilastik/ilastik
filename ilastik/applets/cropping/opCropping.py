@@ -74,7 +74,6 @@ class OpCroppingTopLevel( Operator ):
         self.CropColors.setValue( [] )
         self.CropNames.setValue( [] )
 
-
     def propagateDirty(self, slot, subindex, roi):
         # Nothing to do here: All outputs are directly connected to 
         #  internal operators that handle their own dirty propagation.
