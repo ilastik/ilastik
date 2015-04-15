@@ -40,7 +40,7 @@ class CropSelectionWidget(QWidget):
         self.uiPath = p+"/cropSelectionWidget.ui"
         uic.loadUi(self.uiPath, self)
         self.setRange(0,0,0,0,0,0,0,0)
-        
+
         self._minSliderT.valueChanged.connect(self._onMinSliderTMoved)
         self._maxSliderT.valueChanged.connect(self._onMaxSliderTMoved)
         self._minSpinT.valueChanged.connect(self._onMinSpinTMoved)

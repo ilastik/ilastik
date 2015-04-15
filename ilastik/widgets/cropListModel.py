@@ -19,9 +19,8 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from PyQt4.QtGui import QColor, QPixmap, QIcon, QItemSelectionModel, QImage
-from PyQt4.QtCore import Qt, pyqtSignal
+from PyQt4.QtCore import Qt, pyqtSignal, QModelIndex
 from listModel import ListModel,ListElement,_NPIXELS
-
 
 import logging
 logger = logging.getLogger(__name__)
@@ -30,14 +29,27 @@ class Crop(ListElement):
     changed      = pyqtSignal()
     colorChanged = pyqtSignal(QColor)
     pmapColorChanged = pyqtSignal(QColor)
+    roi_4dChanged = pyqtSignal()
 
-    def __init__(self, name, color, parent = None, pmapColor=None):
+    def __init__(self, name, roi_4d, color, parent = None, pmapColor=None):
         ListElement.__init__(self, name,parent)
         self._brushColor = color
         if pmapColor is None:
             self._pmapColor = color
         else:
             self._pmapColor = pmapColor
+
+        self._roi_4d = roi_4d
+
+    def roi_4d(self):
+        return self._roi_4d
+
+    def setRoi_4d(self, roi_4d):
+        if self._roi_4d != roi_4d:
+            logger.debug("Crop '{}' has new RoI {}".format(
+                self._roi_4d, roi_4d))
+            self._roi_4d = roi_4d
+            self.roi_4dChanged.emit()
 
     def brushColor(self):
         return self._brushColor
@@ -72,7 +84,7 @@ class CropListModel(ListModel):
         Color  = 0
         Name   = 1
         Delete = 2
-        
+
         ncols=3
     
     def __init__(self, crops=None, parent=None):
@@ -88,6 +100,23 @@ class CropListModel(ListModel):
 
     def __getitem__(self, i):
         return self._crops[i]
+
+    def rowCount(self, parent=None):
+        return len(self._elements)
+
+    def removeRow(self, position, parent=QModelIndex()):
+        if position in self.unremovable_rows:
+            return False
+
+        if self.rowCount() <= 1:
+            return False
+
+        self.beginRemoveRows(parent, position, position)
+        value = self._elements[position]
+        logger.debug("removing row: " + str(value))
+        self._elements.remove(value)
+        self.endRemoveRows()
+        return True
 
     def data(self, index, role):
         if role == Qt.EditRole and index.column() == self.ColumnID.Color:

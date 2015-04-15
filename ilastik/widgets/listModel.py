@@ -175,6 +175,7 @@ class ListModel(QAbstractTableModel):
         return True
 
     def removeRow(self, position, parent=QModelIndex()):
+        print "remove row in listModel"
         if position in self.unremovable_rows:
             return False
 

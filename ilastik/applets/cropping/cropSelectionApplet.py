@@ -25,7 +25,7 @@ from cropSelectionSerializer import CropSelectionSerializer
 
 class CropSelectionApplet( StandardApplet ):
     """
-    This is a simple applet facilitating sub model selection
+    This is a simple applet facilitating crop selection
     """
     def __init__( self, workflow, guiName, projectFileGroupName ):
         super(CropSelectionApplet, self).__init__(guiName, workflow)

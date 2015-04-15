@@ -401,9 +401,14 @@ class LayerViewerGui(QWidget):
                        
             # Find the xyz midpoint
             midpos5d = [x/2 for x in newDataShape]
-            
             # center viewer there
             self.setViewerPos(midpos5d)
+
+            if not (self.editor.cropModel._crop_extents[0][0]  == None or self.editor.cropModel.cropZero()):
+                cropMidPos = [(b+a)/2 for [a,b] in self.editor.cropModel._crop_extents]
+                for i in range(3):
+                    self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
+
 
         # Old layers are deleted if
         # (1) They are not in the new set or
@@ -476,8 +481,16 @@ class LayerViewerGui(QWidget):
                 self.editor.posModel.channel = pos5d[4]
 
             self.editor.navCtrl.panSlicingViews( pos3d, [0,1,2] )
+            #self.editor.navCtrl.changeSliceAbsolute(pos3d[0],0)
+            #self.editor.navCtrl.changeSliceAbsolute(pos3d[1],1)
+            #self.editor.navCtrl.changeSliceAbsolute(pos3d[2],2)
+            if not (self.editor.cropModel._crop_extents[0][0]  == None or self.editor.cropModel.cropZero()):
+                cropMidPos = [(b+a)/2 for [a,b] in self.editor.cropModel._crop_extents]
+                for i in range(3):
+                    self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
+
         except Exception, e:
-            logger.warn("Failed to navigate to position (%s): %s" % (pos, e))
+             logger.warn("Failed to navigate to position (%s): %s" % (pos, e))
         return
     
     def validatePos(self, pos, dims=5):

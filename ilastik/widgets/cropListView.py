@@ -21,11 +21,10 @@
 import os
 from PyQt4.QtGui import QColorDialog, QVBoxLayout, QPushButton, QDialog,\
     QColor, QWidget
-from PyQt4.QtCore import Qt
+from PyQt4.QtCore import Qt, pyqtSignal
 from PyQt4 import uic
 from cropListModel import CropListModel, Crop
 from listView import ListView
-
 
 class ColorDialog(QDialog):
     def __init__(self, parent=None):
@@ -37,7 +36,6 @@ class ColorDialog(QDialog):
                              self)
         self.ui.brushColorButton.clicked.connect(self.onBrushColor)
         self.ui.pmapColorButton.clicked.connect(self.onPmapColor)
-        print ".........................................> loading CropDialog"
 
     def setBrushColor(self, c):
         self._brushColor = c
@@ -62,13 +60,14 @@ class ColorDialog(QDialog):
 
 class CropListView(ListView):
 
+    deleteCrop = pyqtSignal( int )
+
     def __init__(self, parent = None):
         super(CropListView, self).__init__(parent=parent)
         
         self._colorDialog = ColorDialog(self)
 
         self.resetEmptyMessage("No crops defined.")
-        print ".........................................> initializing CropListView"
 
     def tableViewCellDoubleClicked(self, modelIndex):
         if modelIndex.column() == self.model.ColumnID.Color:
@@ -81,6 +80,8 @@ class CropListView(ListView):
                                               self._colorDialog.pmapColor ()))
     
     def tableViewCellClicked(self, modelIndex):
+
         if (modelIndex.column() == self.model.ColumnID.Delete and
             not self._table.model().flags(modelIndex) == Qt.NoItemFlags):
+            self.deleteCrop.emit(modelIndex.row())
             self._table.model().removeRow(modelIndex.row())

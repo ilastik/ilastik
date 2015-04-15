@@ -55,7 +55,7 @@ class StructuredTrackingWorkflow( Workflow ):
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Prediction Maps'] )
 
-        self.cropSelectionApplet = CropSelectionApplet(self,"Sub Model Selection","CropSelection")
+        self.cropSelectionApplet = CropSelectionApplet(self,"Crop Selection","CropSelection")
 
         self.thresholdTwoLevelsApplet = ThresholdTwoLevelsApplet( self,"Threshold and Size Filter","ThresholdTwoLevels" )
 

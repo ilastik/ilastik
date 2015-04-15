@@ -29,7 +29,7 @@ class PyLabelListViewPlugin(QPyDesignerCustomWidgetPlugin):
     def __init__(self, parent = None):
         QPyDesignerCustomWidgetPlugin.__init__(self)
         self.initialized = False
-        
+
     def initialize(self, core):
         if self.initialized:
             return

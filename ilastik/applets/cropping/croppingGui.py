@@ -158,7 +158,6 @@ class CroppingGui(LayerViewerGui):
         assert croppingSlots.cropsAllowed is not None, "Missing a required slot."
 
         self.__cleanup_fns = []
-
         self._croppingSlots = croppingSlots
         self._minCropNumber = 0
         self._maxCropNumber = 99 #100 or 255 is reserved for eraser
@@ -177,11 +176,17 @@ class CroppingGui(LayerViewerGui):
         #    drawerUiPath = os.path.split(__file__)[0] + '/croppingDrawer.ui'
         #    print "I am locating file here:",drawerUiPath
         self._initCropUic(drawerUiPath)
+
+        self._crops = dict()
+        self._currentCrop = 0
+        self._maxCropNumUsed = 0
+
         # Init base class
         super(CroppingGui, self).__init__(parentApplet,
                                           topLevelOperatorView,
                                           [croppingSlots.cropInput, croppingSlots.cropOutput],
                                           crosshair=crosshair)
+        self.editor.cropModel.set_roi_3d([(0,0,0),(self.editor.dataShape[1],self.editor.dataShape[2],self.editor.dataShape[3])])
 
         self.__initShortcuts()
         self._croppingSlots.cropEraserValue.setValue(self.editor.brushingModel.erasingNumber)
@@ -190,6 +195,10 @@ class CroppingGui(LayerViewerGui):
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
         #    self._changeInteractionMode(Tool.Navigation)
+
+        self.newCrop()
+        self.setCrop()
+        #self._onCropSelected(0)
 
     def _initCropUic(self, drawerUiPath):
         #_cropControlUi = uic.loadUi(drawerUiPath)
@@ -308,28 +317,6 @@ class CroppingGui(LayerViewerGui):
         #                               self.croppingDrawerUi.arrowToolButton,
         #                               self.croppingDrawerUi.arrowToolButton ) )
 
-        #mgr.register( "b", ActionInfo( shortcutGroupName,
-        #                               "Brush Cursor",
-        #                               "Brush Cursor",
-        #                               self.croppingDrawerUi.paintToolButton.click,
-        #                               self.croppingDrawerUi.paintToolButton,
-        #                               self.croppingDrawerUi.paintToolButton ) )
-
-        #mgr.register( "e", ActionInfo( shortcutGroupName,
-        #                               "Eraser Cursor",
-        #                               "Eraser Cursor",
-        #                               self.croppingDrawerUi.eraserToolButton.click,
-        #                               self.croppingDrawerUi.eraserToolButton,
-        #                               self.croppingDrawerUi.eraserToolButton ) )
-        #if hasattr(self.croppingDrawerUi, "thresToolButton"):
-        #    mgr.register( "t", ActionInfo( shortcutGroupName,
-        #                                   "Window Leveling",
-        #                                   "<p>Window Leveling can be used to adjust the data range used for visualization. Pressing the left mouse button while moving the mouse back and forth changes the window width (data range). Moving the mouse in the left-right plane changes the window mean. Pressing the right mouse button resets the view back to the original data.",
-        #                                   self.croppingDrawerUi.thresToolButton.click,
-        #                                   self.croppingDrawerUi.thresToolButton,
-        #                                   self.croppingDrawerUi.thresToolButton ) )
-        
-
         self._cropShortcuts = []
 
     def _updateCropShortcuts(self):
@@ -374,25 +361,15 @@ class CroppingGui(LayerViewerGui):
          Implement the GUI's response to the user selecting a new tool.
          """
          # Uncheck all the other buttons
-         for tool, button in self.toolButtons.items():
-             if tool != toolId:
-                 button.setChecked(False)
+         if self.toolButtons != None:
+             for tool, button in self.toolButtons.items():
+                 if tool != toolId:
+                     button.setChecked(False)
 
          # If we have no editor, we can't do anything yet
          if self.editor is None:
              return
 
-    #     # The volume editor expects one of two specific names
-    #     if hasattr(self.croppingDrawerUi, "thresToolButton"):
-    #         modeNames = { Tool.Navigation   : "navigation",
-    #                       Tool.Paint        : "brushing",
-    #                       Tool.Erase        : "brushing" ,
-    #                       Tool.Threshold    : "thresholding"}
-    #     else:
-    #         modeNames = { Tool.Navigation   : "navigation",
-    #                       Tool.Paint        : "brushing",
-    #                       Tool.Erase        : "brushing" }
-    #
          # If the user can't crop this image, disable the button and say why its disabled
          cropsAllowed = False
 
@@ -449,18 +426,6 @@ class CroppingGui(LayerViewerGui):
     #     self._cropControlUi.brushSizeComboBox.setEnabled(enable)
 
 
-    def _onCropSelected(self, row):
-        logger.debug("switching to crop=%r" % (self._cropControlUi.cropListModel[row]))
-
-        # If the user is selecting a crop, he probably wants to be in paint mode
-        #self._changeInteractionMode(Tool.Paint)
-
-        #+1 because first is transparent
-        #FIXME: shouldn't be just row+1 here
-        self.editor.brushingModel.setDrawnNumber(row+1)
-        brushColor = self._cropControlUi.cropListModel[row].brushColor()
-        self.editor.brushingModel.setBrushColor( brushColor )
-
     def _resetCropSelection(self):
         logger.debug("Resetting crop selection")
         if len(self._cropControlUi.cropListModel) > 0:
@@ -506,7 +471,7 @@ class CroppingGui(LayerViewerGui):
         Add a new crop to the crop list GUI control.
         Return the new number of crops in the control.
         """
-        crop = Crop( self.getNextCropName(), self.getNextCropColor(),
+        crop = Crop( self.getNextCropName(), self.get_roi_4d(), self.getNextCropColor(),
                        pmapColor=self.getNextPmapColor(),
                    )
         crop.nameChanged.connect(self._updateCropShortcuts)
@@ -540,7 +505,6 @@ class CroppingGui(LayerViewerGui):
                 raise
 
 
-
         # Call the 'changed' callbacks immediately to initialize any listeners
         self.onCropNameChanged()
         self.onCropColorChanged()
@@ -549,13 +513,16 @@ class CroppingGui(LayerViewerGui):
         # Make the new crop selected
         ncrops = self._cropControlUi.cropListModel.rowCount()
         selectedRow = ncrops-1
+        self._crops[self._cropControlUi.cropListModel[selectedRow].name] = self.editor.cropModel.get_roi_3d()
         self._cropControlUi.cropListModel.select(selectedRow)
+
+        self._maxCropNumUsed += 1
 
         self._updateCropShortcuts()
        
         e = self._cropControlUi.cropListModel.rowCount() > 0
         #self._gui_enableCropping(e)
-        
+
         QApplication.restoreOverrideCursor()
 
     def getNextCropName(self):
@@ -615,6 +582,7 @@ class CroppingGui(LayerViewerGui):
         """
         self._programmaticallyRemovingCrops = True
         numRows = self._cropControlUi.cropListModel.rowCount()
+
         # This will trigger the signal that calls _onCropRemoved()
         self._cropControlUi.cropListModel.removeRow(numRows-1)
         self._updateCropShortcuts()
@@ -635,6 +603,10 @@ class CroppingGui(LayerViewerGui):
         row = start
 
         oldcount = self._cropControlUi.cropListModel.rowCount() + 1
+        # we need at least one crop
+        if oldcount <= 1:
+            return
+
         logger.debug("removing crop {} out of {}".format( row, oldcount ))
 
         if self._allowDeleteLastCropOnly:
@@ -675,7 +647,7 @@ class CroppingGui(LayerViewerGui):
             cropNames = self._croppingSlots.cropNames.value
             cropNames.pop(start)
             self._croppingSlots.cropNames.setValue(cropNames, check_changed=False)
-       
+
     def getLayer(self, name):
         """find a layer by name"""
         try:
