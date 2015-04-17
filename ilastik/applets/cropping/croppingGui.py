@@ -510,11 +510,6 @@ class CroppingGui(LayerViewerGui):
         self.onCropColorChanged()
         self.onPmapColorChanged()
 
-        # Make the new crop selected
-        ncrops = self._cropControlUi.cropListModel.rowCount()
-        selectedRow = ncrops-1
-        self._crops[self._cropControlUi.cropListModel[selectedRow].name] = self.editor.cropModel.get_roi_3d()
-        self._cropControlUi.cropListModel.select(selectedRow)
 
         self._maxCropNumUsed += 1
 
