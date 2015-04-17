@@ -24,11 +24,15 @@ from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.tracking.structured.structuredTrackingApplet import StructuredTrackingApplet
 from ilastik.applets.objectExtraction.objectExtractionApplet import ObjectExtractionApplet
-from ilastik.applets.cropThresholdTwoLevels.cropThresholdTwoLevelsApplet import CropThresholdTwoLevelsApplet
+from ilastik.applets.thresholdTwoLevels.thresholdTwoLevelsApplet import ThresholdTwoLevelsApplet
+from ilastik.applets.objectClassification.objectClassificationApplet import ObjectClassificationApplet
 from ilastik.applets.cropping.cropSelectionApplet import CropSelectionApplet
+from ilastik.applets.trackingFeatureExtraction import config
+from ilastik.applets.trackingFeatureExtraction.trackingFeatureExtractionApplet import TrackingFeatureExtractionApplet
 
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
+from ilastik.applets.trackingFeatureExtraction.trackingFeatureExtractionApplet import TrackingFeatureExtractionApplet
 
 class StructuredTrackingWorkflow( Workflow ):
     workflowName = "Structured Learning Tracking Workflow"
@@ -55,9 +59,19 @@ class StructuredTrackingWorkflow( Workflow ):
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Prediction Maps'] )
 
+        self.thresholdTwoLevelsApplet = ThresholdTwoLevelsApplet( self,"Threshold and Size Filter","ThresholdTwoLevels" )
+
+        self.divisionDetectionApplet = ObjectClassificationApplet(workflow=self,
+                                                                     name="Division Detection (optional)",
+                                                                     projectFileGroupName="DivisionDetection")
+
+        self.cellClassificationApplet = ObjectClassificationApplet(workflow=self,
+                                                                     name="Object Count Classification (optional)",
+                                                                     projectFileGroupName="CountClassification")
+
         self.cropSelectionApplet = CropSelectionApplet(self,"Crop Selection","CropSelection")
 
-        self.cropThresholdTwoLevelsApplet = CropThresholdTwoLevelsApplet( self,"Threshold and Size Filter for a Crop","CropThresholdTwoLevels" )
+        self.trackingFeatureExtractionApplet = TrackingFeatureExtractionApplet(name="Object Feature Computation",workflow=self, interactive=False)
 
         self.objectExtractionApplet = ObjectExtractionApplet(name="Object Feature Computation",workflow=self, interactive=False)
 
@@ -71,8 +85,11 @@ class StructuredTrackingWorkflow( Workflow ):
 
         self._applets = []
         self._applets.append(self.dataSelectionApplet)
+        self._applets.append(self.thresholdTwoLevelsApplet)
+        self._applets.append(self.trackingFeatureExtractionApplet)
+        self._applets.append(self.divisionDetectionApplet)
+        self._applets.append(self.cellClassificationApplet)
         self._applets.append(self.cropSelectionApplet)
-        self._applets.append(self.cropThresholdTwoLevelsApplet)
         self._applets.append(self.objectExtractionApplet)
         self._applets.append(self.trackingApplet)
         self._applets.append(self.dataExportApplet)
@@ -80,8 +97,10 @@ class StructuredTrackingWorkflow( Workflow ):
     def connectLane(self, laneIndex):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)
+        opTrackingFeatureExtraction = self.trackingFeatureExtractionApplet.topLevelOperator.getLane(laneIndex)
+
         opTracking = self.trackingApplet.topLevelOperator.getLane(laneIndex)
-        opTwoLevelThreshold = self.cropThresholdTwoLevelsApplet.topLevelOperator.getLane(laneIndex)
+        opTwoLevelThreshold = self.thresholdTwoLevelsApplet.topLevelOperator.getLane(laneIndex)
         opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
 
         opCropSelection = self.cropSelectionApplet.topLevelOperator.getLane(laneIndex)
@@ -91,13 +110,14 @@ class StructuredTrackingWorkflow( Workflow ):
         op5Raw.AxisOrder.setValue("txyzc")
         op5Raw.Input.connect(opData.ImageGroup[0])
 
-        opCropSelection.InputImage.connect( opData.ImageGroup[0] )
-        opCropSelection.PredictionImage.connect( opData.ImageGroup[1] )
+        opDivDetection = self.divisionDetectionApplet.topLevelOperator.getLane(laneIndex)
+        opCellClassification = self.cellClassificationApplet.topLevelOperator.getLane(laneIndex)
 
         opTwoLevelThreshold.InputImage.connect( opData.ImageGroup[1] )
         opTwoLevelThreshold.RawInput.connect( opData.ImageGroup[0] ) # Used for display only
-        opTwoLevelThreshold.Crops.connect( opCropSelection.Crops)
 
+        opCropSelection.InputImage.connect( opData.ImageGroup[0] )
+        opCropSelection.PredictionImage.connect( opData.ImageGroup[1] )
 
         # Use OpReorderAxis for both input datasets such that they are guaranteed to
         # have the same axis order after thresholding
@@ -107,6 +127,52 @@ class StructuredTrackingWorkflow( Workflow ):
 
         opObjExtraction.RawImage.connect( op5Raw.Output )
         opObjExtraction.BinaryImage.connect( op5Binary.Output )
+
+        opTrackingFeatureExtraction.RawImage.connect( op5Raw.Output )
+        opTrackingFeatureExtraction.BinaryImage.connect( op5Binary.Output )
+
+        vigra_features = list((set(config.vigra_features)).union(config.selected_features_objectcount[config.features_vigra_name]))
+        feature_names_vigra = {}
+        feature_names_vigra[config.features_vigra_name] = { name: {} for name in vigra_features }
+
+        opTrackingFeatureExtraction.FeatureNamesVigra.setValue(feature_names_vigra)
+        feature_dict_division = {}
+        feature_dict_division[config.features_division_name] = { name: {} for name in config.division_features }
+        opTrackingFeatureExtraction.FeatureNamesDivision.setValue(feature_dict_division)
+
+        selected_features_div = {}
+        for plugin_name in config.selected_features_division.keys():
+            selected_features_div[plugin_name] = { name: {} for name in config.selected_features_division[plugin_name] }
+
+        # FIXME: do not hard code this
+        for name in [ 'SquaredDistances_' + str(i) for i in range(config.n_best_successors) ]:
+            selected_features_div[config.features_division_name][name] = {}
+
+        opDivDetection.BinaryImages.connect( op5Binary.Output )
+        opDivDetection.RawImages.connect( op5Raw.Output )
+        opDivDetection.LabelsAllowedFlags.connect(opData.AllowLabels)
+        opDivDetection.SegmentationImages.connect(opTrackingFeatureExtraction.LabelImage)
+        opDivDetection.ObjectFeatures.connect(opTrackingFeatureExtraction.RegionFeaturesAll)
+        opDivDetection.ComputedFeatureNames.connect(opTrackingFeatureExtraction.ComputedFeatureNamesAll)
+        opDivDetection.SelectedFeatures.setValue(selected_features_div)
+        opDivDetection.LabelNames.setValue(['Not Dividing', 'Dividing'])
+        opDivDetection.AllowDeleteLabels.setValue(False)
+        opDivDetection.AllowAddLabel.setValue(False)
+        opDivDetection.EnableLabelTransfer.setValue(False)
+
+        selected_features_objectcount = {}
+        for plugin_name in config.selected_features_objectcount.keys():
+            selected_features_objectcount[plugin_name] = { name: {} for name in config.selected_features_objectcount[plugin_name] }
+        opCellClassification.BinaryImages.connect( op5Binary.Output )
+        opCellClassification.RawImages.connect( op5Raw.Output )
+        opCellClassification.LabelsAllowedFlags.connect(opData.AllowLabels)
+        opCellClassification.SegmentationImages.connect(opTrackingFeatureExtraction.LabelImage)
+        opCellClassification.ObjectFeatures.connect(opTrackingFeatureExtraction.RegionFeaturesVigra)
+        opCellClassification.ComputedFeatureNames.connect(opTrackingFeatureExtraction.ComputedFeatureNamesVigra)
+        opCellClassification.SelectedFeatures.setValue( selected_features_objectcount )
+        opCellClassification.SuggestedLabelNames.setValue( ['false detection',] + [str(i) + ' Objects' for i in range(1,10) ] )
+        opCellClassification.AllowDeleteLastLabelOnly.setValue(True)
+        opCellClassification.EnableLabelTransfer.setValue(False)
 
         opTracking.RawImage.connect( op5Raw.Output )
         opTracking.BinaryImage.connect( op5Binary.Output )
@@ -139,15 +205,22 @@ class StructuredTrackingWorkflow( Workflow ):
         # If no data, nothing else is ready.
         input_ready = self._inputReady(2) and not self.dataSelectionApplet.busy
 
+        opThresholding = self.thresholdTwoLevelsApplet.topLevelOperator
+        thresholdingOutput = opThresholding.CachedOutput
+        thresholding_ready = input_ready and len(thresholdingOutput) > 0
+
+        #features_ready = thresholding_ready and \
+        #                 len(objectExtractionOutput) > 0
+
+        opTrackingFeatureExtraction = self.trackingFeatureExtractionApplet.topLevelOperator
+        trackingFeatureExtractionOutput = opTrackingFeatureExtraction.ComputedFeatureNamesAll
+        tracking_features_ready = thresholding_ready and len(trackingFeatureExtractionOutput) > 0
+
         opCropSelection = self.cropSelectionApplet.topLevelOperator
         croppingOutput = opCropSelection.Crops
-        cropping_ready = input_ready and \
-                            len(croppingOutput) > 0
+        cropping_ready = thresholding_ready and len(croppingOutput) > 0
 
-        opThresholding = self.cropThresholdTwoLevelsApplet.topLevelOperator
-        thresholdingOutput = opThresholding.CachedOutput
-        thresholding_ready = cropping_ready and \
-                       len(thresholdingOutput) > 0
+        #objectCountClassifier_ready = tracking_features_ready
 
         opObjectExtraction = self.objectExtractionApplet.topLevelOperator
         objectExtractionOutput = opObjectExtraction.ComputedFeatureNames
@@ -160,17 +233,31 @@ class StructuredTrackingWorkflow( Workflow ):
                            opTracking.Labels.ready() and \
                            opTracking.TrackImage.ready()
 
+        print "--------------------------------------"
+        print "input_ready",input_ready
+        print "thresholding_ready",thresholding_ready
+        print "tracking_features_ready",tracking_features_ready
+        print "cropping_ready",cropping_ready
+        print "features_ready",features_ready
+        print "tracking_ready",tracking_ready
         busy = False
         busy |= self.dataSelectionApplet.busy
-        busy |= self.cropSelectionApplet.busy
+        #busy |= self.thresholdTwoLevelsApplet.busy
+        #busy |= self.trackingFeatureExtractionApplet.busy
+        #busy |= self.divisionDetectionApplet.busy
+        #busy |= self.cellClassificationApplet.busy
+        #busy |= self.cropSelectionApplet.busy
         busy |= self.dataExportApplet.busy
         busy |= self.trackingApplet.busy
         self._shell.enableProjectChanges( not busy )
 
         self._shell.setAppletEnabled(self.dataSelectionApplet, not busy)
-        self._shell.setAppletEnabled(self.cropSelectionApplet, input_ready and not busy)
-        self._shell.setAppletEnabled(self.cropThresholdTwoLevelsApplet, input_ready and not busy)
-        self._shell.setAppletEnabled(self.objectExtractionApplet, thresholding_ready and not busy)
+        self._shell.setAppletEnabled(self.thresholdTwoLevelsApplet, input_ready and not busy)
+        self._shell.setAppletEnabled(self.trackingFeatureExtractionApplet, thresholding_ready and not busy)
+        self._shell.setAppletEnabled(self.cellClassificationApplet, tracking_features_ready and not busy)
+        self._shell.setAppletEnabled(self.divisionDetectionApplet, tracking_features_ready and not busy)
+        self._shell.setAppletEnabled(self.cropSelectionApplet, thresholding_ready and not busy)
+        self._shell.setAppletEnabled(self.objectExtractionApplet, not busy)
         self._shell.setAppletEnabled(self.trackingApplet, features_ready and not busy)
         self._shell.setAppletEnabled(self.dataExportApplet, tracking_ready and not busy and \
                                         self.dataExportApplet.topLevelOperator.Inputs[0][0].ready() )

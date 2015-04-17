@@ -24,7 +24,7 @@ from opStructuredTracking import OpStructuredTracking
 from structuredTrackingSerializer import StructuredTrackingSerializer
 
 class StructuredTrackingApplet(StandardApplet):
-    def __init__( self, name="Structured Tracking", workflow=None, projectFileGroupName="StructuredTracking" ):
+    def __init__( self, name="Tracking Annotations", workflow=None, projectFileGroupName="TrackingAnnotations" ):
         super(StructuredTrackingApplet, self).__init__( name=name, workflow=workflow )
         self._serializableItems = [ StructuredTrackingSerializer(self.topLevelOperator, projectFileGroupName) ]
         self.busy = False

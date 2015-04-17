@@ -76,7 +76,7 @@ class StructuredTrackingGui(LayerViewerGui):
     def _initShortcuts(self):
         mgr = ShortcutManager()
         ActionInfo = ShortcutManager.ActionInfo
-        shortcutGroupName = "Structured Tracking"
+        shortcutGroupName = "Tracking Annotations"
 
         mgr.register( "d", ActionInfo( shortcutGroupName,
                                        "Mark Division Event",
@@ -182,7 +182,7 @@ class StructuredTrackingGui(LayerViewerGui):
         if self.topLevelOperatorView.TrackImage.ready():
             self.trackingsrc = LazyflowSource( self.topLevelOperatorView.TrackImage )
             trackingLayer = ColortableLayer( self.trackingsrc, self.ct )
-            trackingLayer.name = "Structured Tracking"
+            trackingLayer.name = "Tracking Annotations"
             trackingLayer.visible = True
             trackingLayer.opacity = 0.8
 

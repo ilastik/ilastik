@@ -312,7 +312,7 @@ class CropSelectionGui(CroppingGui):
             cropMidPos = [(b+a)/2 for [a,b] in self.editor.cropModel._crop_extents]
             for i in range(3):
                 self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
-
+        print " cropSelectionGui.setCrop",self._crops
         self.topLevelOperatorView.Crops.setValue(self._crops)
 
 
@@ -410,15 +410,18 @@ class CropSelectionGui(CroppingGui):
         self.editor.brushingModel.setDrawnNumber(row+1)
         brushColor = self._cropControlUi.cropListModel[row].brushColor()
         self.editor.brushingModel.setBrushColor( brushColor )
+        ce = self.editor.cropModel._crop_extents
+        roi = self._crops[self._cropControlUi.cropListModel[row].name]
 
-        self.editor.cropModel.set_roi_3d(self._crops[self._cropControlUi.cropListModel[row].name])
+        # croppingMarkers.onExtentsChanged works correctly only if called on start OR stop coordinates
+        self.editor.cropModel.set_crop_extents([[roi[0][0], ce[0][1]],[roi[0][1], ce[1][1]],[roi[0][2], ce[2][1]]])
+        self.editor.cropModel.set_crop_extents([[roi[0][0],roi[1][0]],[roi[0][1],roi[1][1]],[roi[0][2],roi[1][2]]])
         if not (self.editor.cropModel._crop_extents[0][0]  == None or self.editor.cropModel.cropZero()):
             cropMidPos = [(b+a)/2 for [a,b] in self.editor.cropModel._crop_extents]
             for i in range(3):
                 self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
-
-        self.editor.cropModel._cropColor = QColor.cyan#self._cropControlUi.cropListModel[row].brushColor
-        self.editor.cropModel.colorChanged.emit()#self.editor.cropModel)#self._cropControlUi.cropListModel[row].brushColor)
+        #self.editor.cropModel._cropColor = QColor.cyan#self._cropControlUi.cropListModel[row].brushColor
+        #self.editor.cropModel.colorChanged.emit()#self.editor.cropModel)#self._cropControlUi.cropListModel[row].brushColor)
 
 
     def apply_operator_settings_to_gui(self,*args):
