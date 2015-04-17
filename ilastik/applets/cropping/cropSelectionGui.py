@@ -24,7 +24,7 @@ from functools import partial
 import numpy
 from PyQt4 import uic
 from PyQt4.QtGui import QVBoxLayout, QSpacerItem, QSizePolicy, QColor
-from PyQt4.QtCore import pyqtSlot
+from PyQt4.QtCore import pyqtSignal, pyqtSlot
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.widgets.cropListView import CropListView
@@ -112,8 +112,6 @@ class CropSelectionGui(CroppingGui):
             except:
                 self.render = False
 
-
-
     def initAppletDrawerUi(self):
         localDir = os.path.split(__file__)[0]
         self._drawer = self._cropControlUi#uic.loadUi(localDir+"/drawer.ui")
@@ -173,6 +171,7 @@ class CropSelectionGui(CroppingGui):
         self._cropControlUi._maxSliderZ.valueChanged.connect(self._onMaxSliderZMoved)
 
         self._cropControlUi.cropListView.deleteCrop.connect(self.onDeleteCrop)
+
 
         # The editor's layerstack is in charge of which layer movement buttons are enabled
         #model = self.editor.layerStack
@@ -430,10 +429,7 @@ class CropSelectionGui(CroppingGui):
                 self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
         self._cropControlUi._minSliderT.setValue(self._crops[self._cropControlUi.cropListModel[row].name][0][0])
         self._cropControlUi._maxSliderT.setValue(self._crops[self._cropControlUi.cropListModel[row].name][0][1])
-
-        #self.editor.cropModel._cropColor = QColor.cyan#self._cropControlUi.cropListModel[row].brushColor
-        #self.editor.cropModel.colorChanged.emit()#self.editor.cropModel)#self._cropControlUi.cropListModel[row].brushColor)
-
+        self.editor.cropModel.colorChanged.emit(brushColor)
 
     def apply_operator_settings_to_gui(self,*args):
         minValueT, maxValueT, minValueX, maxValueX, minValueY, maxValueY, minValueZ, maxValueZ = [0]*8
