@@ -464,6 +464,7 @@ class CropSelectionGui(CroppingGui):
             for i in range(3):
                 self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
 
+        self.editor.navCtrl.changeTimeRelative(self.topLevelOperatorView.Crops.value[self._cropControlUi.cropListModel[row].name]["time"][0] - self.editor.posModel.time)
         self.editor.cropModel.colorChanged.emit(brushColor)
 
     def apply_operator_settings_to_gui(self,*args):

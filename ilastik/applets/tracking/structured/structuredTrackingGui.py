@@ -229,9 +229,8 @@ class StructuredTrackingGui(LayerViewerGui):
             for i in range(3):
                 self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
 
-        self.editor.navCtrl.changeTime(self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[row].name]["time"][0])
+        self.editor.navCtrl.changeTimeRelative(self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[row].name]["time"][0] - self.editor.posModel.time)
         self.editor.cropModel.colorChanged.emit(brushColor)
-        self.updateTime()
 
     def updateTime(self):
         delta = self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[self._drawer.cropListModel.selectedRow()].name]["time"][0] - self.editor.posModel.time
