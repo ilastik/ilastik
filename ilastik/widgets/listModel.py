@@ -169,13 +169,12 @@ class ListModel(QAbstractTableModel):
 
     def insertRow(self, position, object, parent=QModelIndex()):
         self.beginInsertRows(parent, position, position)
-        object.changed.connect(self.modelReset)
+        object.objectChanged.connect(self.modelReset)
         self._elements.insert(position, object)
         self.endInsertRows()
         return True
 
     def removeRow(self, position, parent=QModelIndex()):
-        print "remove row in listModel"
         if position in self.unremovable_rows:
             return False
 

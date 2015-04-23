@@ -21,7 +21,7 @@
 import os
 from PyQt4.QtGui import QColorDialog, QVBoxLayout, QPushButton, QDialog,\
     QColor, QWidget
-from PyQt4.QtCore import Qt, pyqtSignal
+from PyQt4.QtCore import Qt, pyqtSignal, QObject, QModelIndex
 from PyQt4 import uic
 from cropListModel import CropListModel, Crop
 from listView import ListView
@@ -61,6 +61,7 @@ class ColorDialog(QDialog):
 class CropListView(ListView):
 
     deleteCrop = pyqtSignal( int )
+    colorsChanged = pyqtSignal( QModelIndex )
 
     def __init__(self, parent = None):
         super(CropListView, self).__init__(parent=parent)
@@ -78,6 +79,8 @@ class CropListView(ListView):
             #print "pmap color  = {}".format(self._colorDialog.pmapColor().name())
             self._table.model().setData(modelIndex, (self._colorDialog.brushColor(),
                                               self._colorDialog.pmapColor ()))
+            self.colorsChanged.emit(modelIndex)
+
     
     def tableViewCellClicked(self, modelIndex):
 

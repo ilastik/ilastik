@@ -177,8 +177,8 @@ class CroppingGui(LayerViewerGui):
         #    print "I am locating file here:",drawerUiPath
         self._initCropUic(drawerUiPath)
 
-        self._crops = dict()
-        self._currentCrop = 0
+        #self._crops = dict()
+        #self._currentCrop = 0
         self._maxCropNumUsed = 0
 
         # Init base class
@@ -186,7 +186,7 @@ class CroppingGui(LayerViewerGui):
                                           topLevelOperatorView,
                                           [croppingSlots.cropInput, croppingSlots.cropOutput],
                                           crosshair=crosshair)
-        self.editor.cropModel.set_roi_3d([(0,0,0),(self.editor.dataShape[1],self.editor.dataShape[2],self.editor.dataShape[3])])
+        #self.editor.cropModel.set_roi_3d([(0,0,0),(self.editor.dataShape[1],self.editor.dataShape[2],self.editor.dataShape[3])])
 
         self.__initShortcuts()
         self._croppingSlots.cropEraserValue.setValue(self.editor.brushingModel.erasingNumber)
@@ -195,10 +195,6 @@ class CroppingGui(LayerViewerGui):
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
         #    self._changeInteractionMode(Tool.Navigation)
-
-        self.newCrop()
-        self.setCrop()
-        #self._onCropSelected(0)
 
     def _initCropUic(self, drawerUiPath):
         #_cropControlUi = uic.loadUi(drawerUiPath)
@@ -273,6 +269,33 @@ class CroppingGui(LayerViewerGui):
         #self.paintBrushSizeIndex = PreferencesManager().get( 'cropping', 'paint brush size', default=0 )
         #self.eraserSizeIndex = PreferencesManager().get( 'cropping', 'eraser brush size', default=4 )
         self.toolButtons = None
+
+    def _initCropListView(self):
+        if self.topLevelOperatorView.Crops.value != {}:
+            self._cropControlUi.cropListModel=CropListModel()
+            crops = self.topLevelOperatorView.Crops.value
+            for key in crops:
+                newRow = self._cropControlUi.cropListModel.rowCount()
+                crop = Crop(
+                        key,
+                        [(crops[key]["time"][0],crops[key]["starts"][0],crops[key]["starts"][1],crops[key]["starts"][2]),(crops[key]["time"][1],crops[key]["stops"][0],crops[key]["stops"][1],crops[key]["stops"][2])],
+                        QColor(crops[key]["cropColor"][0],crops[key]["cropColor"][1],crops[key]["cropColor"][2]),
+                        pmapColor=QColor(crops[key]["pmapColor"][0],crops[key]["pmapColor"][1],crops[key]["pmapColor"][2])
+                )
+
+                self._cropControlUi.cropListModel.insertRow( newRow, crop )
+                #self._cropControlUi.cropListModel.setData(self._cropControlUi.cropListModel.index(newRow,self._cropControlUi.cropListModel.ColumnID.Name), key )
+                #self._cropControlUi.cropListModel.setData(self._cropControlUi.cropListModel.index(newRow,self._cropControlUi.cropListModel.ColumnID.Color), QColor(crops[key]["cropColor"][0],crops[key]["cropColor"][1],crops[key]["cropColor"][2]) )
+
+            self._cropControlUi.cropListModel.elementSelected.connect(self._onCropSelected)
+            self._cropControlUi.cropListView.setModel(self._cropControlUi.cropListModel)
+            self._cropControlUi.cropListView.updateGeometry()
+            self._cropControlUi.cropListView.update()
+            self._cropControlUi.cropListView.selectRow(0)
+        else:
+            self.newCrop()
+            self.setCrop()
+
 
     def onCropListDataChanged(self, topLeft, bottomRight):
         """Handle changes to the crop list selections."""
@@ -441,8 +464,10 @@ class CroppingGui(LayerViewerGui):
         """
         # Get the number of crops in the crop data
         # (Or the number of the crops the user has added.)
-        names = self._croppingSlots.cropNames.value
-        numCrops = len(self._croppingSlots.cropNames.value)
+        #names = self._croppingSlots.cropNames.value
+        #numCrops = len(self._croppingSlots.cropNames.value)
+        names = self.topLevelOperatorView.Crops.value.keys()
+        numCrops = len(names)
 
         # Add rows until we have the right number
         while self._cropControlUi.cropListModel.rowCount() < numCrops:
@@ -466,6 +491,7 @@ class CroppingGui(LayerViewerGui):
             self._cropControlUi.AddCropButton.setEnabled(numCrops < self.maxCropNumber)
 
     def _addNewCrop(self):
+
         QApplication.setOverrideCursor(Qt.WaitCursor)
         """
         Add a new crop to the crop list GUI control.
@@ -629,19 +655,25 @@ class CroppingGui(LayerViewerGui):
         #self._gui_enableCropping(e)
 
         # If the gui list model isn't in sync with the operator, update the operator.
-        if len(self._croppingSlots.cropNames.value) > self._cropControlUi.cropListModel.rowCount():
+        #if len(self._croppingSlots.cropNames.value) > self._cropControlUi.cropListModel.rowCount():
+        if len(self.topLevelOperatorView.Crops.value) > self._cropControlUi.cropListModel.rowCount():
             # Changing the deleteCrop input causes the operator (OpBlockedSparseArray)
             #  to search through the entire list of crops and delete the entries for the matching crop.
-            self._croppingSlots.cropDelete.setValue(row+1)
-    
+            #self._croppingSlots.cropDelete.setValue(row+1)
+            del self.topLevelOperatorView.Crops[self._cropControlUi.cropListModel[row].name]
+
             # We need to "reset" the deleteCrop input to -1 when we're finished.
             #  Otherwise, you can never delete the same crop twice in a row.
             #  (Only *changes* to the input are acted upon.)
             self._croppingSlots.cropDelete.setValue(-1)
             
-            cropNames = self._croppingSlots.cropNames.value
-            cropNames.pop(start)
-            self._croppingSlots.cropNames.setValue(cropNames, check_changed=False)
+            #cropNames = self._croppingSlots.cropNames.value
+            #cropNames.pop(start)
+            #self._croppingSlots.cropNames.setValue(cropNames, check_changed=False)
+
+            #cropNames = self._croppingSlots.cropNames.value
+            #cropNames.pop(start)
+            #self._croppingSlots.cropNames.setValue(cropNames, check_changed=False)
 
     def getLayer(self, name):
         """find a layer by name"""

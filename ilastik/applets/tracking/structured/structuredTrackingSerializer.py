@@ -18,8 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from ilastik.applets.base.appletSerializer import AppletSerializer,\
-    SerialSlot, deleteIfPresent, getOrCreateGroup
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialDictSlot, deleteIfPresent, getOrCreateGroup
 
 class SerialDivisionsSlot(SerialSlot):
     def serialize(self, group):
@@ -94,7 +93,8 @@ class StructuredTrackingSerializer(AppletSerializer):
     
     def __init__(self, operator, projectFileGroupName):
         slots = [ #SerialSlot(operator.TrackImage),
-                   SerialDivisionsSlot(operator.Divisions),
-                   SerialLabelsSlot(operator.Labels)]
+                  #SerialDictSlot(operator.Annotations),
+                  SerialDivisionsSlot(operator.Divisions),
+                  SerialLabelsSlot(operator.Labels)]
     
         super(StructuredTrackingSerializer, self ).__init__(projectFileGroupName, slots=slots)

@@ -34,6 +34,8 @@ traceLogger = logging.getLogger('TRACE.' + __name__)
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.utility import log_exception
+from ilastik.widgets.cropListView import Crop
+from ilastik.widgets.cropListModel import CropListModel
 
 import volumina.colortables as colortables
 from volumina.api import LazyflowSource, GrayscaleLayer, ColortableLayer
@@ -72,6 +74,26 @@ class StructuredTrackingGui(LayerViewerGui):
         self._drawer.exportTifButton.pressed.connect(self._onExportTifButtonPressed)
         self._drawer.gotoLabel.pressed.connect(self._onGotoLabel)
         self._drawer.nextUnlabeledButton.pressed.connect(self._onNextUnlabeledPressed)
+
+        self.editor.showCropLines(True)
+
+
+
+
+
+
+        self._cropListViewInit()
+        #self.editor.cropModel.changed.connect(self.onCropModelChanged)
+        #self.editor.posModel.timeChanged.connect(self.updateTime)
+
+    def updateTime(self):
+        delta = self.topLevelOperatorView.Crops[self._drawer.cropListModel[self._drawer.cropListModel.selectedRow()].name][0][0] - self.editor.posModel.time
+        if delta > 0:
+            self.editor.navCtrl.changeTimeRelative(delta)
+        else:
+            delta = self.topLevelOperatorView.Crops[self._drawer.cropListModel[self._drawer.cropListModel.selectedRow()].name][0][1] - self.editor.posModel.time
+            if delta < 0:
+                self.editor.navCtrl.changeTimeRelative(delta)
 
     def _initShortcuts(self):
         mgr = ShortcutManager()
@@ -148,8 +170,32 @@ class StructuredTrackingGui(LayerViewerGui):
         self.connect( self, QtCore.SIGNAL('postCriticalMessage(QString)'), self.postCriticalMessage)
         
         self._initShortcuts()
-        
 
+    def _cropListViewInit(self):
+        if self.topLevelOperatorView.Crops.value != {}:
+            self._drawer.cropListModel=CropListModel()
+            crops = self.topLevelOperatorView.Crops.value
+            for key in crops:
+                newRow = self._drawer.cropListModel.rowCount()
+
+
+                crop = Crop(
+                        key,
+                        [(crops[key]["time"][0],crops[key]["starts"][0],crops[key]["starts"][1],crops[key]["starts"][2]),(crops[key]["time"][1],crops[key]["stops"][0],crops[key]["stops"][1],crops[key]["stops"][2])],
+                        QColor(crops[key]["cropColor"][0],crops[key]["cropColor"][1],crops[key]["cropColor"][2]),
+                        pmapColor=QColor(crops[key]["pmapColor"][0],crops[key]["pmapColor"][1],crops[key]["pmapColor"][2])
+                )
+
+                self._drawer.cropListModel.insertRow( newRow, crop )
+                #model.setData(model.index(count,model.ColumnID.Name), key )
+                #model.setData(model.index(count,model.ColumnID.Color), crops[key][2] )
+
+            self._drawer.cropListModel.elementSelected.connect(self._onCropSelected)
+
+            self._drawer.cropListView.setModel(self._drawer.cropListModel)
+            self._drawer.cropListView.updateGeometry()
+            self._drawer.cropListView.update()
+            #self._drawer.cropListView.selectRow(0)
 
     def _onMetaChanged( self, slot ):
         if slot is self.mainOperator.LabelImage:
@@ -171,7 +217,27 @@ class StructuredTrackingGui(LayerViewerGui):
                 layerraw.name = "Raw"
                 self.layerstack.append( layerraw )
 
-    
+    def _onCropSelected(self, row):
+        #logger.debug("switching to crop=%r" % (self._drawer.cropListModel[row]))
+
+        self.editor.brushingModel.setDrawnNumber(row+1)
+        brushColor = self._drawer.cropListModel[row].brushColor()
+        self.editor.brushingModel.setBrushColor( brushColor )
+        ce = self.editor.cropModel._crop_extents
+        starts = self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[row].name]["starts"]
+        stops = self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[row].name]["stops"]
+
+        # croppingMarkers.onExtentsChanged works correctly only if called on start OR stop coordinates
+        self.editor.cropModel.set_crop_extents([[starts[0], ce[0][1]],[starts[1], ce[1][1]],[starts[2], ce[2][1]]])
+        self.editor.cropModel.set_crop_extents([[starts[0],stops[0]],[starts[1],stops[1]],[starts[2],stops[2]]])
+        if not (self.editor.cropModel._crop_extents[0][0]  == None or self.editor.cropModel.cropZero()):
+            cropMidPos = [(b+a)/2 for [a,b] in self.editor.cropModel._crop_extents]
+            for i in range(3):
+                self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
+        #self._drawer._minSliderT.setValue(self._crops[self._drawer.cropListModel[row].name][0][0])
+        #self._drawer._maxSliderT.setValue(self._crops[self._drawer.cropListModel[row].name][0][1])
+        self.editor.cropModel.colorChanged.emit(brushColor)
+
     def setupLayers( self ):        
         layers = []
  
@@ -246,7 +312,6 @@ class StructuredTrackingGui(LayerViewerGui):
         self.topLevelOperatorView.RawImage.notifyMetaChanged( self._onMetaChanged )
         
         self._reset()
-        
         return layers
 
     @threadRouted
@@ -336,6 +401,7 @@ class StructuredTrackingGui(LayerViewerGui):
         elif slot is self.mainOperator.UntrackedImage:
             roi = SubRegion(self.mainOperator.UntrackedImage, start=[min(timesteps),] + 4*[0,], stop=[max(timesteps)+1,] + list(self.mainOperator.TrackImage.meta.shape[1:]))
             self.mainOperator.UntrackedImage.setDirty(roi)
+        print "_setDirty"
             
     def handleEditorLeftClick(self, position5d, globalWindowCoordiante):
         if self.divLock:
@@ -1255,3 +1321,4 @@ class StructuredTrackingGui(LayerViewerGui):
             if exceptButtons is None or b not in exceptButtons:
                 b.setEnabled(enable)
         
+        print "_enableButtons"

@@ -178,6 +178,7 @@ class StructuredTrackingWorkflow( Workflow ):
         opTracking.BinaryImage.connect( op5Binary.Output )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
         opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeatures )
+        opTracking.Crops.connect( opCropSelection.Crops)
 
         opDataExport.Inputs.resize(2)
         opDataExport.Inputs[0].connect( opTracking.TrackImage )
@@ -233,13 +234,6 @@ class StructuredTrackingWorkflow( Workflow ):
                            opTracking.Labels.ready() and \
                            opTracking.TrackImage.ready()
 
-        print "--------------------------------------"
-        print "input_ready",input_ready
-        print "thresholding_ready",thresholding_ready
-        print "tracking_features_ready",tracking_features_ready
-        print "cropping_ready",cropping_ready
-        print "features_ready",features_ready
-        print "tracking_ready",tracking_ready
         busy = False
         busy |= self.dataSelectionApplet.busy
         #busy |= self.thresholdTwoLevelsApplet.busy

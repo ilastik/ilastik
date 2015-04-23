@@ -42,6 +42,7 @@ class OpCropSelection(Operator):
     #CropImages = InputSlot()
     #CropNames = InputSlot()
     CropsAllowedFlags = InputSlot(optional = True)
+    NonzeroCropBlocks = OutputSlot(level=1) # A list if slices that contain non-zero label values
 
     MinValueT = InputSlot(value=0)
     MaxValueT = InputSlot(value=0)
@@ -64,6 +65,7 @@ class OpCropSelection(Operator):
     NumClasses = OutputSlot()
 
     Crops = OutputSlot()
+    TestCrops = OutputSlot()
 
 
 
@@ -72,13 +74,15 @@ class OpCropSelection(Operator):
     def __init__( self, parent=None, graph=None ):
         super(OpCropSelection, self).__init__(parent=parent, graph=graph)
         # Hook up Cropping Pipeline
-        #self.opCropPipeline = OpMultiLaneWrapper( OpCropPipeline, parent=self, broadcastingSlotNames=['DeleteCrop'] )
+        self.opCropPipeline = OpMultiLaneWrapper( OpCropPipeline, parent=self, broadcastingSlotNames=['DeleteCrop'] )
         self.opCropPipeline = OpCropPipeline(parent=self)#, broadcastingSlotNames=['DeleteCrop'] )
         self.CropNames.setValue( [] )
         self.CropColors.setValue( [] )
         self.PmapColors.setValue( [] )
+        self.NonzeroCropBlocks.connect( self.opCropPipeline.nonzeroBlocks )
 
         self.Crops.setValue( dict())
+        #self.TestCrops.setValue( dict({"Crop 1" : { "time": (0,49), "starts":(0,0,0), "stops":(99,99,99), "cropColor":(0,255,0), "pmapColor":(0,255,0)}}))
 
         #self.CropInputs.connect( self.InputImage )
 
@@ -93,6 +97,14 @@ class OpCropSelection(Operator):
             #self.opPredictionPipeline.NumClasses.setValue( numClasses )
             self.NumClasses.setValue( numClasses )
         self.CropNames.notifyDirty( _updateNumClasses )
+
+        def inputResizeHandler( slot, oldsize, newsize ):
+            if ( newsize == 0 ):
+                self.LabelImages.resize(0)
+                self.NonzeroLabelBlocks.resize(0)
+                self.PredictionProbabilities.resize(0)
+                self.CachedPredictionProbabilities.resize(0)
+        self.InputImage.notifyResized( inputResizeHandler )
 
     def setupOutputs(self):
         self.CropImage.meta.assignFrom( self.InputImage.meta )

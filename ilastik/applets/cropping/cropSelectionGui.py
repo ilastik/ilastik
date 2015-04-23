@@ -19,12 +19,13 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 import os
+import copy
 from functools import partial
 
 import numpy
 from PyQt4 import uic
 from PyQt4.QtGui import QVBoxLayout, QSpacerItem, QSizePolicy, QColor
-from PyQt4.QtCore import pyqtSignal, pyqtSlot
+from PyQt4.QtCore import pyqtSignal, pyqtSlot, Qt, QObject
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.widgets.cropListView import CropListView
@@ -35,6 +36,7 @@ from lazyflow.operators import OpCompressedUserCropArray
 #from lazyflow.operators import OpValueCache, OpTrainClassifierBlocked, OpClassifierPredict,\
 #                               OpSlicedBlockedArrayCache, OpMultiArraySlicer2, \
 #                               OpPixelOperator, OpMaxChannelIndicatorOperator, OpCompressedUserLabelArray
+from ilastik.widgets.cropListModel import CropListModel
 
 def _listReplace(old, new):
     if len(old) > len(new):
@@ -171,7 +173,9 @@ class CropSelectionGui(CroppingGui):
         self._cropControlUi._maxSliderZ.valueChanged.connect(self._onMaxSliderZMoved)
 
         self._cropControlUi.cropListView.deleteCrop.connect(self.onDeleteCrop)
+        self._cropControlUi.cropListView.colorsChanged.connect(self.onColorsChanged)
 
+        self._initCropListView()
 
         # The editor's layerstack is in charge of which layer movement buttons are enabled
         #model = self.editor.layerStack
@@ -181,6 +185,16 @@ class CropSelectionGui(CroppingGui):
         #    _cropControlUi.AddCropButton.setIcon( QIcon(ilastikIcons.AddSel) )
         #    _cropControlUi.AddCropButton.clicked.connect( bind(self._addNewCrop) )
         #_cropControlUi.cropListModel.dataChanged.connect(self.onCropListDataChanged)
+
+    #def setCropListView(self):
+    #    print "in setCropListView =====>", self.topLevelOperatorView.Crops.value
+
+    def onColorsChanged(self, index):
+        color = self._cropControlUi.cropListView._table.model().data(index,Qt.EditRole)[0]
+        self.topLevelOperatorView.Crops.value[self._cropControlUi.cropListModel[index.row()].name]["cropColor"] = (color.red(),color.green(),color.blue())
+
+        color = self._cropControlUi.cropListView._table.model().data(index,Qt.EditRole)[1]
+        self.topLevelOperatorView.Crops.value[self._cropControlUi.cropListModel[index.row()].name]["pmapColor"] = (color.red(),color.green(),color.blue())
 
     @pyqtSlot()
     @threadRouted
@@ -228,8 +242,8 @@ class CropSelectionGui(CroppingGui):
                     slot.setValue(value, check_changed=False)
 
     def onDeleteCrop(self, position):
-        if len(self._crops) > 1:
-            del self._crops[self._cropControlUi.cropListModel[position].name]
+        if len(self.topLevelOperatorView.Crops.value) > 1:
+            del self.topLevelOperatorView.Crops.value[self._cropControlUi.cropListModel[position].name]
 
     def getNextCropName(self):
         return self._getNext(self.topLevelOperatorView.CropNames,
@@ -309,19 +323,36 @@ class CropSelectionGui(CroppingGui):
         # Make the new crop selected
         ncrops = self._cropControlUi.cropListModel.rowCount()
         selectedRow = ncrops-1
-        self._crops[self._cropControlUi.cropListModel[selectedRow].name] = [ [self.topLevelOperatorView.MinValueT.value, self.topLevelOperatorView.MaxValueT.value], self.editor.cropModel.get_roi_3d()]
+        color1 = self._cropControlUi.cropListModel[selectedRow].brushColor()
+        color2 = self._cropControlUi.cropListModel[selectedRow].pmapColor()
+        self.topLevelOperatorView.Crops.value[self._cropControlUi.cropListModel[selectedRow].name] = {
+            "time": (self.topLevelOperatorView.MinValueT.value, self.topLevelOperatorView.MaxValueT.value),
+            "starts": self.editor.cropModel.get_roi_3d()[0],
+            "stops": self.editor.cropModel.get_roi_3d()[1],
+            "cropColor": (color1.red(), color1.green(),color1.blue()),
+            "pmapColor": (color2.red(), color2.green(),color2.blue())
+        }
+        #self.topLevelOperatorView.CropNames.value = self.topLevelOperatorView.CropNames.value.append(self._cropControlUi.cropListModel[selectedRow].name)
         self._cropControlUi.cropListModel.select(selectedRow)
 
     def setCrop(self):
         self.apply_gui_settings_to_operator()
-        self._crops [self._cropControlUi.cropListModel[self._cropControlUi.cropListModel.selectedRow()].name]=[[self.topLevelOperatorView.MinValueT.value, self.topLevelOperatorView.MaxValueT.value], self.editor.cropModel.get_roi_3d()]
+        row = self._cropControlUi.cropListModel.selectedRow()
+        color1 = self._cropControlUi.cropListModel[row].brushColor()
+        color2 = self._cropControlUi.cropListModel[row].pmapColor()
+        self.topLevelOperatorView.Crops.value[self._cropControlUi.cropListModel[row].name]= {
+            "time": (self.topLevelOperatorView.MinValueT.value, self.topLevelOperatorView.MaxValueT.value),
+            "starts": self.editor.cropModel.get_roi_3d()[0],
+            "stops": self.editor.cropModel.get_roi_3d()[1],
+            "cropColor": (color1.red(), color1.green(),color1.blue()),
+            "pmapColor": (color2.red(), color2.green(),color2.blue())
+        }
         if not (self.editor.cropModel._crop_extents[0][0]  == None or self.editor.cropModel.cropZero()):
             cropMidPos = [(b+a)/2 for [a,b] in self.editor.cropModel._crop_extents]
             for i in range(3):
                 self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
-        print " cropSelectionGui.setCrop",self._crops
-        self.topLevelOperatorView.Crops.setValue(self._crops)
-
+        #self.topLevelOperatorView.Crops.setValue(self._crops)
+        #self.setCropListView()
 
     def getNextCropName(self):
         return "Crop {}".format(self._maxCropNumUsed+1)
@@ -343,7 +374,7 @@ class CropSelectionGui(CroppingGui):
         return color
 
     def numCrops(self):
-        return len(self._crops)
+        return len(self.topLevelOperatorView.Crops.value)
 
     def get_roi_4d(self):
         return [(self.topLevelOperatorView.MinValueT.value,self.topLevelOperatorView.MinValueX.value,self.topLevelOperatorView.MinValueY.value,self.topLevelOperatorView.MinValueZ.value),
@@ -414,21 +445,25 @@ class CropSelectionGui(CroppingGui):
     def _onCropSelected(self, row):
         #logger.debug("switching to crop=%r" % (self._cropControlUi.cropListModel[row]))
 
+        self._cropControlUi._minSliderT.setValue(self.topLevelOperatorView.Crops.value[self._cropControlUi.cropListModel[row].name]["time"][0])
+        self._cropControlUi._maxSliderT.setValue(self.topLevelOperatorView.Crops.value[self._cropControlUi.cropListModel[row].name]["time"][1])
+
         self.editor.brushingModel.setDrawnNumber(row+1)
         brushColor = self._cropControlUi.cropListModel[row].brushColor()
         self.editor.brushingModel.setBrushColor( brushColor )
         ce = self.editor.cropModel._crop_extents
-        roi = self._crops[self._cropControlUi.cropListModel[row].name][1]
+
+        starts = self.topLevelOperatorView.Crops.value[self._cropControlUi.cropListModel[row].name]["starts"]
+        stops = self.topLevelOperatorView.Crops.value[self._cropControlUi.cropListModel[row].name]["stops"]
 
         # croppingMarkers.onExtentsChanged works correctly only if called on start OR stop coordinates
-        self.editor.cropModel.set_crop_extents([[roi[0][0], ce[0][1]],[roi[0][1], ce[1][1]],[roi[0][2], ce[2][1]]])
-        self.editor.cropModel.set_crop_extents([[roi[0][0],roi[1][0]],[roi[0][1],roi[1][1]],[roi[0][2],roi[1][2]]])
+        self.editor.cropModel.set_crop_extents([[starts[0], ce[0][1]],[starts[1], ce[1][1]],[starts[2], ce[2][1]]])
+        self.editor.cropModel.set_crop_extents([[starts[0],stops[0]],[starts[1],stops[1]],[starts[2],stops[2]]])
         if not (self.editor.cropModel._crop_extents[0][0]  == None or self.editor.cropModel.cropZero()):
             cropMidPos = [(b+a)/2 for [a,b] in self.editor.cropModel._crop_extents]
             for i in range(3):
                 self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
-        self._cropControlUi._minSliderT.setValue(self._crops[self._cropControlUi.cropListModel[row].name][0][0])
-        self._cropControlUi._maxSliderT.setValue(self._crops[self._cropControlUi.cropListModel[row].name][0][1])
+
         self.editor.cropModel.colorChanged.emit(brushColor)
 
     def apply_operator_settings_to_gui(self,*args):
@@ -501,7 +536,7 @@ class CropSelectionGui(CroppingGui):
         self.topLevelOperatorView.MinValueZ.setValue(minValueZ)
         self.topLevelOperatorView.MaxValueZ.setValue(maxValueZ+1)
 
-        self.topLevelOperatorView.Crops.setValue(self._crops)
+        #self.topLevelOperatorView.Crops.setValue(self._crops)
 
     def setupLayers(self):
         """

@@ -37,18 +37,23 @@ class OpStructuredTracking(Operator):
     LabelImage = InputSlot()    
     RawImage = InputSlot()
     ActiveTrack = InputSlot(stype='int', value=0)
-    ObjectFeatures = InputSlot(stype=Opaque, rtype=List)    
+    ObjectFeatures = InputSlot(stype=Opaque, rtype=List)
+    Crops = InputSlot()
     
     TrackImage = OutputSlot()
     Labels = OutputSlot(stype=Opaque, rtype=List)
     Divisions = OutputSlot(stype=Opaque, rtype=List)
     UntrackedImage = OutputSlot()
 
+    Annotations = OutputSlot()
+
     def __init__(self, parent=None, graph=None):
         super(OpStructuredTracking, self).__init__(parent=parent, graph=graph)
         self.labels = {}
         self.divisions = {}
-        
+
+        self.Annotations.setValue({})
+
         self.RawImage.notifyReady( self._checkConstraints )
         self.BinaryImage.notifyReady( self._checkConstraints )
         

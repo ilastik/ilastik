@@ -116,7 +116,7 @@ class ListView(QStackedWidget):
             self.setCurrentIndex(self.PAGE_LISTVIEW)
         else:
             self.setCurrentIndex(self.PAGE_EMPTY)
-            
+
         model.rowsInserted.connect(self._onRowsChanged)
         model.rowsRemoved.connect(self._onRowsChanged)
         self.model=model

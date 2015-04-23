@@ -18,17 +18,20 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialBlockSlot, SerialListSlot
+import numpy
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialDictSlot, SerialSlot, SerialBlockSlot, SerialListSlot
 
 class CropSelectionSerializer(AppletSerializer):
     """
     Serializes to an ilastik v0.6 project file.
     """
     def __init__(self, operator, projectFileGroupName):
-        slots = [#SerialListSlot(operator.CropNames,
-                 #               transform=str),
+        slots = [#SerialSlot(
+                 #   operator.CropNames,
+                 #   transform=str),
                  #SerialListSlot(operator.CropColors, transform=lambda x: tuple(x.flat)),
-                 #SerialListSlot(operator.PmapColors, transform=lambda x: tuple(x.flat)),
+                 #SerialSlot(operator.PmapColors, transform=lambda x: tuple(x.flat)),
+                 SerialDictSlot(operator.Crops),
                  SerialSlot(operator.MinValueT, selfdepends=True),
                  SerialSlot(operator.MaxValueT, selfdepends=True),
                  SerialSlot(operator.MinValueX, selfdepends=True),
@@ -37,7 +40,8 @@ class CropSelectionSerializer(AppletSerializer):
                  SerialSlot(operator.MaxValueY, selfdepends=True),
                  SerialSlot(operator.MinValueZ, selfdepends=True),
                  SerialSlot(operator.MaxValueZ, selfdepends=True),
-                 #SerialBlockSlot(operator.CropInputs,
+                 #SerialBlockSlot(operator.CropImage,
+                 #                operator.CropInputs,
                  #                operator.NonzeroCropBlocks,
                  #                name='CropSets',
                  #                subname='crops{:03d}',
