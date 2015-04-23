@@ -481,9 +481,9 @@ class LayerViewerGui(QWidget):
                 self.editor.posModel.channel = pos5d[4]
 
             self.editor.navCtrl.panSlicingViews( pos3d, [0,1,2] )
-            #self.editor.navCtrl.changeSliceAbsolute(pos3d[0],0)
-            #self.editor.navCtrl.changeSliceAbsolute(pos3d[1],1)
-            #self.editor.navCtrl.changeSliceAbsolute(pos3d[2],2)
+            self.editor.navCtrl.changeSliceAbsolute(pos3d[0],0)
+            self.editor.navCtrl.changeSliceAbsolute(pos3d[1],1)
+            self.editor.navCtrl.changeSliceAbsolute(pos3d[2],2)
             if not (self.editor.cropModel._crop_extents[0][0]  == None or self.editor.cropModel.cropZero()):
                 cropMidPos = [(b+a)/2 for [a,b] in self.editor.cropModel._crop_extents]
                 for i in range(3):

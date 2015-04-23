@@ -558,7 +558,7 @@ class CropSelectionGui(CroppingGui):
         if predictionImageSlot.ready():
             inputPredictionLayer = self.createStandardLayerFromSlot( predictionImageSlot )
             inputPredictionLayer.name = "Prediction Input"
-            inputPredictionLayer.visible = True
+            inputPredictionLayer.visible = False
             inputPredictionLayer.opacity = 0.75
             layers.append(inputPredictionLayer)
 

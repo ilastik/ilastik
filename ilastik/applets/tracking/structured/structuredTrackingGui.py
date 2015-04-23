@@ -76,15 +76,9 @@ class StructuredTrackingGui(LayerViewerGui):
         self._drawer.nextUnlabeledButton.pressed.connect(self._onNextUnlabeledPressed)
 
         self.editor.showCropLines(True)
-
-
-
-
-
+        self.editor.posModel.timeChanged.connect(self.updateTime)
 
         self._cropListViewInit()
-        #self.editor.cropModel.changed.connect(self.onCropModelChanged)
-        #self.editor.posModel.timeChanged.connect(self.updateTime)
 
     def updateTime(self):
         delta = self.topLevelOperatorView.Crops[self._drawer.cropListModel[self._drawer.cropListModel.selectedRow()].name][0][0] - self.editor.posModel.time
@@ -195,7 +189,7 @@ class StructuredTrackingGui(LayerViewerGui):
             self._drawer.cropListView.setModel(self._drawer.cropListModel)
             self._drawer.cropListView.updateGeometry()
             self._drawer.cropListView.update()
-            #self._drawer.cropListView.selectRow(0)
+            self._drawer.cropListView.selectRow(0)
 
     def _onMetaChanged( self, slot ):
         if slot is self.mainOperator.LabelImage:
@@ -234,11 +228,21 @@ class StructuredTrackingGui(LayerViewerGui):
             cropMidPos = [(b+a)/2 for [a,b] in self.editor.cropModel._crop_extents]
             for i in range(3):
                 self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
-        #self._drawer._minSliderT.setValue(self._crops[self._drawer.cropListModel[row].name][0][0])
-        #self._drawer._maxSliderT.setValue(self._crops[self._drawer.cropListModel[row].name][0][1])
-        self.editor.cropModel.colorChanged.emit(brushColor)
 
-    def setupLayers( self ):        
+        self.editor.navCtrl.changeTime(self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[row].name]["time"][0])
+        self.editor.cropModel.colorChanged.emit(brushColor)
+        self.updateTime()
+
+    def updateTime(self):
+        delta = self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[self._drawer.cropListModel.selectedRow()].name]["time"][0] - self.editor.posModel.time
+        if delta > 0:
+            self.editor.navCtrl.changeTimeRelative(delta)
+        else:
+            delta = self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[self._drawer.cropListModel.selectedRow()].name]["time"][1] - self.editor.posModel.time
+            if delta < 0:
+                self.editor.navCtrl.changeTimeRelative(delta)
+
+    def setupLayers( self ):
         layers = []
  
         self.ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent        
