@@ -166,7 +166,7 @@ class CroppingGui(LayerViewerGui):
 
         self.topLevelOperatorView.Crops.notifyDirty( bind(self._updateCropList) )
         self.topLevelOperatorView.Crops.notifyDirty( bind(self._updateCropList) )
-        self.__cleanup_fns.append( partial( self._croppingSlots.cropNames.unregisterDirty, bind(self._updateCropList) ) )
+        self.__cleanup_fns.append( partial( self.topLevelOperatorView.Crops.unregisterDirty, bind(self._updateCropList) ) )
         
         self._colorTable16 = self._createDefault16ColorColorTable()
         self._programmaticallyRemovingCrops = False
@@ -292,6 +292,7 @@ class CroppingGui(LayerViewerGui):
             self._cropControlUi.cropListView.updateGeometry()
             self._cropControlUi.cropListView.update()
             self._cropControlUi.cropListView.selectRow(0)
+            self._maxCropNumUsed = len(crops)
         else:
             self.editor.cropModel.set_volume_shape_3d([0,0,0],self.editor.dataShape[1:4])
             self.newCrop()
@@ -492,13 +493,15 @@ class CroppingGui(LayerViewerGui):
             self._cropControlUi.AddCropButton.setEnabled(numCrops < self.maxCropNumber)
 
     def _addNewCrop(self):
-
+        print "_addNewCrop"
         QApplication.setOverrideCursor(Qt.WaitCursor)
         """
         Add a new crop to the crop list GUI control.
         Return the new number of crops in the control.
         """
-        crop = Crop( self.getNextCropName(), self.get_roi_4d(), self.getNextCropColor(),
+        color = self.getNextCropColor()
+        print "color=",color
+        crop = Crop( self.getNextCropName(), self.get_roi_4d(), color,
                        pmapColor=self.getNextPmapColor(),
                    )
         crop.nameChanged.connect(self._updateCropShortcuts)
@@ -546,6 +549,7 @@ class CroppingGui(LayerViewerGui):
         #self._gui_enableCropping(e)
 
         QApplication.restoreOverrideCursor()
+        print "out _addNewCrop"
 
     def getNextCropName(self):
         """
@@ -559,20 +563,22 @@ class CroppingGui(LayerViewerGui):
                 maxNum = max(maxNum, int(n))
         return "Crop {}".format(maxNum+1)
 
-    def getNextCropColor(self):
-        """
-        Return a QColor to use for the next crop.
-        """
-        numCrops = len(self._cropControlUi.cropListModel)
-        if numCrops >= len(self._colorTable16)-1:
-            # If the color table isn't large enough to handle all our crops,
-            #  append a random color
-            randomColor = QColor(numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255))
-            self._colorTable16.append( randomColor.rgba() )
-
-        color = QColor()
-        color.setRgba(self._colorTable16[numCrops+1]) # First entry is transparent (for zero crop)
-        return color
+    #def getNextCropColor(self):
+    #    print "getNextCropColor"
+    #    """
+    #    Return a QColor to use for the next crop.
+    #    """
+    #    numCrops = len(self._cropControlUi.cropListModel)
+    #    print "len(self._cropControlUi.cropListModel)",len(self._cropControlUi.cropListModel)
+    #    if numCrops >= len(self._colorTable16)-1:
+    #        # If the color table isn't large enough to handle all our crops,
+    #        #  append a random color
+     #       randomColor = QColor(numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255))
+     #       self._colorTable16.append( randomColor.rgba() )
+#
+#        color = QColor()
+#        color.setRgba(self._colorTable16[numCrops+1]) # First entry is transparent (for zero crop)
+#        return color
 
     def getNextPmapColor(self):
         """

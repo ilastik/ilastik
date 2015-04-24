@@ -74,11 +74,15 @@ class StructuredTrackingGui(LayerViewerGui):
         self._drawer.exportTifButton.pressed.connect(self._onExportTifButtonPressed)
         self._drawer.gotoLabel.pressed.connect(self._onGotoLabel)
         self._drawer.nextUnlabeledButton.pressed.connect(self._onNextUnlabeledPressed)
+        self._drawer.importCrops.pressed.connect(self._cropListViewInit)
 
         self.editor.showCropLines(True)
         self.editor.cropModel.editableChanged.emit (False)
 
         self.editor.posModel.timeChanged.connect(self.updateTime)
+
+        #self._drawer.cropListModel.rowsRemoved.connect(self._onCropRemoved)
+        #self._drawer.cropListModel.elementSelected.connect(self._onCropSelected)
 
         self._cropListViewInit()
 
@@ -140,6 +144,8 @@ class StructuredTrackingGui(LayerViewerGui):
         
     def __init__(self, parentApplet, topLevelOperatorView):
         self.topLevelOperatorView = topLevelOperatorView
+        self._previousCrop = -1
+
         super(StructuredTrackingGui, self).__init__(parentApplet, topLevelOperatorView)
         
         self.mainOperator = topLevelOperatorView
@@ -148,15 +154,16 @@ class StructuredTrackingGui(LayerViewerGui):
         
         self.mainOperator.LabelImage.notifyMetaChanged( self._onMetaChanged)
         self.mainOperator.LabelImage.notifyDirty( self._reset )
-        
-        self.ct = colortables.create_random_16bit()        
+
+        self.ct = colortables.create_random_16bit()
         
         self.divLock = False
         self.divs = []
         self.labelsWithDivisions = {}
         self.misdetLock = False
         self.misdetIdx = -1
-        
+
+
         if self.mainOperator.LabelImage.meta.shape:
             # FIXME: assumes t,x,y,z,c
             if self.mainOperator.LabelImage.meta.shape[3] == 1: # 2D images
@@ -166,8 +173,11 @@ class StructuredTrackingGui(LayerViewerGui):
         self.connect( self, QtCore.SIGNAL('postCriticalMessage(QString)'), self.postCriticalMessage)
         
         self._initShortcuts()
+        self.editor.posModel.timeChanged.connect(self.updateTime)
+        self.editor.navCtrl.changeTimeRelative(self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[0].name]["time"][0] - self.editor.posModel.time)
 
     def _cropListViewInit(self):
+        print "ST._cropListViewInit",self.topLevelOperatorView.Crops.value
         if self.topLevelOperatorView.Crops.value != {}:
             self._drawer.cropListModel=CropListModel()
             crops = self.topLevelOperatorView.Crops.value
@@ -192,8 +202,12 @@ class StructuredTrackingGui(LayerViewerGui):
             self._drawer.cropListView.updateGeometry()
             self._drawer.cropListView.update()
             self._drawer.cropListView.selectRow(0)
+            self._previousCrop = -1
+            print "=====>",self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[0].name]["time"][0] - self.editor.posModel.time
+            self.editor.navCtrl.changeTimeRelative(self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[0].name]["time"][0] - self.editor.posModel.time)
 
     def _onMetaChanged( self, slot ):
+        print "on meta changed"
         if slot is self.mainOperator.LabelImage:
             if slot.meta.shape:                
                 self.editor.dataShape = slot.meta.shape
@@ -206,14 +220,25 @@ class StructuredTrackingGui(LayerViewerGui):
                 self.layerstack.append( layerraw )
 
     def _onReady( self, slot ):
+        print "_onReady"
         if slot is self.mainOperator.RawImage:
             if slot.meta.shape and not self.rawsrc:
                 self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
                 layerraw = GrayscaleLayer( self.rawsrc )    
                 layerraw.name = "Raw"
                 self.layerstack.append( layerraw )
+        #elif slot is self.mainOperator.Crops:
+        #    print "ready Crops"
+        #    self._cropListViewInit()
 
     def _onCropSelected(self, row):
+        print "_onCropSelected",self.topLevelOperatorView.Crops.value
+        print "_onCropSelected",self.topLevelOperatorView.Annotations.value
+        print "row",row
+        print "previous",self._previousCrop
+        if self._previousCrop != -1:
+            name = self._drawer.cropListModel[self._previousCrop].name
+            self.topLevelOperatorView.Annotations.value[name] = { name: {"labels": self.topLevelOperatorView.labels, "divisions": self.topLevelOperatorView.divisions} }
         #logger.debug("switching to crop=%r" % (self._drawer.cropListModel[row]))
 
         self.editor.brushingModel.setDrawnNumber(row+1)
@@ -231,10 +256,14 @@ class StructuredTrackingGui(LayerViewerGui):
             for i in range(3):
                 self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
 
+        print "I set time",self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[row].name]["time"][0] - self.editor.posModel.time
         self.editor.navCtrl.changeTimeRelative(self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[row].name]["time"][0] - self.editor.posModel.time)
         self.editor.cropModel.colorChanged.emit(brushColor)
+        self._previousCrop = row
+        print "Annotations",self.topLevelOperatorView.Annotations.value
 
     def updateTime(self):
+        print "updateTime"
         delta = self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[self._drawer.cropListModel.selectedRow()].name]["time"][0] - self.editor.posModel.time
         if delta > 0:
             self.editor.navCtrl.changeTimeRelative(delta)
@@ -244,6 +273,7 @@ class StructuredTrackingGui(LayerViewerGui):
                 self.editor.navCtrl.changeTimeRelative(delta)
 
     def setupLayers( self ):
+        print "setupLayers"
         layers = []
  
         self.ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent        
@@ -315,7 +345,7 @@ class StructuredTrackingGui(LayerViewerGui):
         
         self.topLevelOperatorView.RawImage.notifyReady( self._onReady )
         self.topLevelOperatorView.RawImage.notifyMetaChanged( self._onMetaChanged )
-        
+
         self._reset()
         return layers
 

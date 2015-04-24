@@ -251,6 +251,7 @@ class CropSelectionGui(CroppingGui):
                              super(CropSelectionGui, self).getNextCropName)
 
     def getNextCropColor(self):
+        print "--->getNextCropColor"
         return self._getNext(
             self.topLevelOperatorView.CropColors,
             super(CropSelectionGui, self).getNextCropColor,
@@ -320,7 +321,7 @@ class CropSelectionGui(CroppingGui):
     def newCrop(self):
         self.apply_gui_settings_to_operator()
         #self.apply_operator_settings_to_gui()
-
+        print "newCrop"
         self._addNewCrop()
         ncrops = self._cropControlUi.cropListModel.rowCount()
         selectedRow = ncrops-1
@@ -361,6 +362,7 @@ class CropSelectionGui(CroppingGui):
         return "Crop {}".format(self._maxCropNumUsed+1)
 
     def getNextCropColor(self):
+        print "===> getNextCropColor"
         """
         Return a QColor to use for the next crop.
         """

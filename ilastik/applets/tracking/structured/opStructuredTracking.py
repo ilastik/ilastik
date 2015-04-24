@@ -45,7 +45,7 @@ class OpStructuredTracking(Operator):
     Divisions = OutputSlot(stype=Opaque, rtype=List)
     UntrackedImage = OutputSlot()
 
-    Annotations = OutputSlot()
+    Annotations = OutputSlot(stype=Opaque)
 
     def __init__(self, parent=None, graph=None):
         super(OpStructuredTracking, self).__init__(parent=parent, graph=graph)
