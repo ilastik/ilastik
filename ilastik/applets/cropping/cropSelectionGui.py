@@ -161,6 +161,7 @@ class CropSelectionGui(CroppingGui):
         self.apply_operator_settings_to_gui()
 
         self.editor.showCropLines(True)
+        self.editor.cropModel.setEditable (True)
         self.editor.cropModel.changed.connect(self.onCropModelChanged)
         self.editor.posModel.timeChanged.connect(self.updateTime)
         self._cropControlUi._minSliderT.valueChanged.connect(self._onMinSliderTMoved)
@@ -318,9 +319,9 @@ class CropSelectionGui(CroppingGui):
 
     def newCrop(self):
         self.apply_gui_settings_to_operator()
-        self._addNewCrop()
+        #self.apply_operator_settings_to_gui()
 
-        # Make the new crop selected
+        self._addNewCrop()
         ncrops = self._cropControlUi.cropListModel.rowCount()
         selectedRow = ncrops-1
         color1 = self._cropControlUi.cropListModel[selectedRow].brushColor()
@@ -332,6 +333,8 @@ class CropSelectionGui(CroppingGui):
             "cropColor": (color1.red(), color1.green(),color1.blue()),
             "pmapColor": (color2.red(), color2.green(),color2.blue())
         }
+
+        # Make the new crop selected
         #self.topLevelOperatorView.CropNames.value = self.topLevelOperatorView.CropNames.value.append(self._cropControlUi.cropListModel[selectedRow].name)
         self._cropControlUi.cropListModel.select(selectedRow)
 

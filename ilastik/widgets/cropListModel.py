@@ -26,7 +26,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class Crop(ListElement):
-    objectChanged      = pyqtSignal()
+    changed      = pyqtSignal()
     colorChanged = pyqtSignal(QColor)
     pmapColorChanged = pyqtSignal(QColor)
     roi_4dChanged = pyqtSignal()
@@ -105,8 +105,6 @@ class CropListModel(ListModel):
         return len(self._elements)
 
     def removeRow(self, position, parent=QModelIndex()):
-        print "cropListModel.removeRow"
-
         if position in self.unremovable_rows:
             return False
 
@@ -170,7 +168,6 @@ class CropListModel(ListModel):
             return ListModel.flags(self, index)
         
     def setData(self, index, value, role=Qt.EditRole):
-        print "cropListModel.setData"
         if role == Qt.EditRole  and index.column() == self.ColumnID.Color:
             row = index.row()
             brushColor = QColor(value[0])
@@ -193,7 +190,6 @@ class CropListModel(ListModel):
             return ListModel.setData(self, index, value, role)
         
     def select(self, row):
-        print "cropListModel.select"
         self._selectionModel.clear()
         self._selectionModel.select(self.index(row, self.ColumnID.Color),
                                     QItemSelectionModel.Select)

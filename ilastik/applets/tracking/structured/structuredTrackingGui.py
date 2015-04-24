@@ -76,6 +76,8 @@ class StructuredTrackingGui(LayerViewerGui):
         self._drawer.nextUnlabeledButton.pressed.connect(self._onNextUnlabeledPressed)
 
         self.editor.showCropLines(True)
+        self.editor.cropModel.editableChanged.emit (False)
+
         self.editor.posModel.timeChanged.connect(self.updateTime)
 
         self._cropListViewInit()

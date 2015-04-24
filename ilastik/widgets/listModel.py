@@ -169,7 +169,7 @@ class ListModel(QAbstractTableModel):
 
     def insertRow(self, position, object, parent=QModelIndex()):
         self.beginInsertRows(parent, position, position)
-        object.objectChanged.connect(self.modelReset)
+        object.changed.connect(self.modelReset)
         self._elements.insert(position, object)
         self.endInsertRows()
         return True

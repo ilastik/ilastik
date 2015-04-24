@@ -164,8 +164,8 @@ class CroppingGui(LayerViewerGui):
 
         self._rawInputSlot = rawInputSlot
 
-        self._croppingSlots.cropNames.notifyDirty( bind(self._updateCropList) )
-        self._croppingSlots.cropNames.notifyDirty( bind(self._updateCropList) )
+        self.topLevelOperatorView.Crops.notifyDirty( bind(self._updateCropList) )
+        self.topLevelOperatorView.Crops.notifyDirty( bind(self._updateCropList) )
         self.__cleanup_fns.append( partial( self._croppingSlots.cropNames.unregisterDirty, bind(self._updateCropList) ) )
         
         self._colorTable16 = self._createDefault16ColorColorTable()
@@ -181,6 +181,8 @@ class CroppingGui(LayerViewerGui):
         #self._currentCrop = 0
         self._maxCropNumUsed = 0
 
+        self._allowDeleteLastCropOnly = False
+        self.__initShortcuts()
         # Init base class
         super(CroppingGui, self).__init__(parentApplet,
                                           topLevelOperatorView,
@@ -188,9 +190,7 @@ class CroppingGui(LayerViewerGui):
                                           crosshair=crosshair)
         #self.editor.cropModel.set_roi_3d([(0,0,0),(self.editor.dataShape[1],self.editor.dataShape[2],self.editor.dataShape[3])])
 
-        self.__initShortcuts()
         self._croppingSlots.cropEraserValue.setValue(self.editor.brushingModel.erasingNumber)
-        self._allowDeleteLastCropOnly = False
 
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
@@ -293,6 +293,7 @@ class CroppingGui(LayerViewerGui):
             self._cropControlUi.cropListView.update()
             self._cropControlUi.cropListView.selectRow(0)
         else:
+            self.editor.cropModel.set_volume_shape_3d([0,0,0],self.editor.dataShape[1:4])
             self.newCrop()
             self.setCrop()
 
