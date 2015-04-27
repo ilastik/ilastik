@@ -203,11 +203,13 @@ class StructuredTrackingGui(LayerViewerGui):
             self._drawer.cropListView.update()
             self._drawer.cropListView.selectRow(0)
             self._previousCrop = -1
-            print "=====>",self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[0].name]["time"][0] - self.editor.posModel.time
+
+            rawImageSlot = self.topLevelOperatorView.RawImage
+            tagged_shape = rawImageSlot.meta.getTaggedShape()
+            self.editor.posModel.shape5D = [tagged_shape['t'],tagged_shape['x'],tagged_shape['y'],tagged_shape['z'],tagged_shape['c']]
             self.editor.navCtrl.changeTimeRelative(self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[0].name]["time"][0] - self.editor.posModel.time)
 
     def _onMetaChanged( self, slot ):
-        print "on meta changed"
         if slot is self.mainOperator.LabelImage:
             if slot.meta.shape:                
                 self.editor.dataShape = slot.meta.shape
@@ -220,7 +222,6 @@ class StructuredTrackingGui(LayerViewerGui):
                 self.layerstack.append( layerraw )
 
     def _onReady( self, slot ):
-        print "_onReady"
         if slot is self.mainOperator.RawImage:
             if slot.meta.shape and not self.rawsrc:
                 self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
@@ -232,10 +233,6 @@ class StructuredTrackingGui(LayerViewerGui):
         #    self._cropListViewInit()
 
     def _onCropSelected(self, row):
-        print "_onCropSelected",self.topLevelOperatorView.Crops.value
-        print "_onCropSelected",self.topLevelOperatorView.Annotations.value
-        print "row",row
-        print "previous",self._previousCrop
         if self._previousCrop != -1:
             name = self._drawer.cropListModel[self._previousCrop].name
             self.topLevelOperatorView.Annotations.value[name] = { name: {"labels": self.topLevelOperatorView.labels, "divisions": self.topLevelOperatorView.divisions} }
@@ -256,14 +253,11 @@ class StructuredTrackingGui(LayerViewerGui):
             for i in range(3):
                 self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
 
-        print "I set time",self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[row].name]["time"][0] - self.editor.posModel.time
         self.editor.navCtrl.changeTimeRelative(self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[row].name]["time"][0] - self.editor.posModel.time)
         self.editor.cropModel.colorChanged.emit(brushColor)
         self._previousCrop = row
-        print "Annotations",self.topLevelOperatorView.Annotations.value
 
     def updateTime(self):
-        print "updateTime"
         delta = self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[self._drawer.cropListModel.selectedRow()].name]["time"][0] - self.editor.posModel.time
         if delta > 0:
             self.editor.navCtrl.changeTimeRelative(delta)
@@ -273,7 +267,6 @@ class StructuredTrackingGui(LayerViewerGui):
                 self.editor.navCtrl.changeTimeRelative(delta)
 
     def setupLayers( self ):
-        print "setupLayers"
         layers = []
  
         self.ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent        
