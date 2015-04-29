@@ -70,7 +70,10 @@ class PixelClassificationSerializer(AppletSerializer):
                     data = block[:]
                     all_labels.update( numpy.unique(data) )
 
-            max_label = max(all_labels)
+            if all_labels:
+                max_label = max(all_labels)
+            else:
+                max_label = 0
             
             label_names = []
             for i in range(max_label):

@@ -31,9 +31,8 @@ ClusterConfigFields = \
     "output_slot_id" : str,
 
     "sys_tmp_dir" : str,
-    "task_subrequest_shape" : dict, # Optional.  Output description sub_block_shape overrides this now.
-    "task_parallel_subrequests" : AutoEval(int),
     "task_threadpool_size" : AutoEval(int),
+    "task_total_ram_mb" : AutoEval(int),
     "task_timeout_secs" : AutoEval(int),
     "use_node_local_scratch" : bool,
     "use_master_local_scratch" : bool,

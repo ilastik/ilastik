@@ -1,0 +1,630 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ExportObjectInfoDialog</class>
+ <widget class="QDialog" name="ExportObjectInfoDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>522</width>
+    <height>520</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Dialog</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QToolBox" name="toolBox">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
+     <widget class="QWidget" name="generalBox">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>504</width>
+        <height>376</height>
+       </rect>
+      </property>
+      <attribute name="label">
+       <string>General</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout_4" columnstretch="0,0,0">
+       <item row="2" column="1" colspan="2">
+        <widget class="QLineEdit" name="exportPath">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The location and filename for the dataset&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="frame">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QPushButton" name="choosePath">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="toolTip">
+          <string>Choose the location and filename for the dataset</string>
+         </property>
+         <property name="text">
+          <string>Choose File</string>
+         </property>
+         <property name="autoDefault">
+          <bool>true</bool>
+         </property>
+         <property name="default">
+          <bool>false</bool>
+         </property>
+         <property name="flat">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1" colspan="2">
+        <widget class="QComboBox" name="fileFormat">
+         <item>
+          <property name="text">
+           <string>HDF ( .h5 )</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>CSV ( .csv )</string>
+          </property>
+         </item>
+        </widget>
+       </item>
+       <item row="6" column="0" colspan="3">
+        <spacer name="verticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item row="3" column="0">
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>Format</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="featureBox">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>504</width>
+        <height>376</height>
+       </rect>
+      </property>
+      <attribute name="label">
+       <string>Features</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout">
+       <item row="3" column="1">
+        <widget class="QPushButton" name="selectAllFeatures">
+         <property name="toolTip">
+          <string>Select all features</string>
+         </property>
+         <property name="text">
+          <string>All</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="2">
+        <widget class="QPushButton" name="selectNoFeatures">
+         <property name="toolTip">
+          <string>Clear selection</string>
+         </property>
+         <property name="text">
+          <string>None</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="3">
+        <spacer name="horizontalSpacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item row="1" column="0" colspan="4">
+        <widget class="QTreeWidget" name="featureView">
+         <property name="toolTip">
+          <string>Select additional features to export. Default Features will always be exported.</string>
+         </property>
+         <property name="alternatingRowColors">
+          <bool>false</bool>
+         </property>
+         <property name="selectionMode">
+          <enum>QAbstractItemView::NoSelection</enum>
+         </property>
+         <property name="textElideMode">
+          <enum>Qt::ElideNone</enum>
+         </property>
+         <column>
+          <property name="text">
+           <string notr="true">Select Features</string>
+          </property>
+         </column>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="settingsBox">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>504</width>
+        <height>376</height>
+       </rect>
+      </property>
+      <attribute name="label">
+       <string>Settings</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout_3">
+       <item row="2" column="1">
+        <widget class="QSpinBox" name="addMargin">
+         <property name="toolTip">
+          <string>The margin in pixels</string>
+         </property>
+         <property name="accelerated">
+          <bool>true</bool>
+         </property>
+         <property name="maximum">
+          <number>200</number>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QLabel" name="marginLabel">
+         <property name="toolTip">
+          <string>Extend the roi of each object</string>
+         </property>
+         <property name="text">
+          <string>Add margin around ROIs</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="0" colspan="2">
+        <widget class="QCheckBox" name="includeRaw">
+         <property name="toolTip">
+          <string>When checked the whole raw image will be exported. Otherwise the roi for each object will be exported</string>
+         </property>
+         <property name="text">
+          <string>Include whole raw image instead of regions of interest (ROIs)</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="0" colspan="2">
+        <spacer name="verticalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item row="7" column="0" colspan="2">
+        <widget class="QFrame" name="compressFrame">
+         <property name="enabled">
+          <bool>true</bool>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>10</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="frameShape">
+          <enum>QFrame::StyledPanel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Raised</enum>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_2" columnstretch="2,1,0,0">
+          <item row="2" column="0">
+           <widget class="QCheckBox" name="enableCompression">
+            <property name="toolTip">
+             <string>Compress each dataset if possible</string>
+            </property>
+            <property name="text">
+             <string>Enable Compression</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="2" colspan="2">
+           <widget class="QCheckBox" name="enableShuffling">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="toolTip">
+             <string>Shuffle the contents for better compression</string>
+            </property>
+            <property name="text">
+             <string>Enable Shuffling</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="0">
+           <widget class="QComboBox" name="compressionType">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="toolTip">
+             <string>The compressions type: gzip or lzf ( not working )</string>
+            </property>
+            <property name="frame">
+             <bool>true</bool>
+            </property>
+            <item>
+             <property name="text">
+              <string>gzip</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>lzf (DON'T USE)</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item row="5" column="3">
+           <widget class="QSpinBox" name="gzipRate">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="toolTip">
+             <string>The compression rate for gzip. 1: fastest, 9: smallest</string>
+            </property>
+            <property name="maximum">
+             <number>9</number>
+            </property>
+            <property name="value">
+             <number>5</number>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="2">
+           <widget class="QLabel" name="rateLabel">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="toolTip">
+             <string>The compression rate for gzip. 1: fastest, 9: smallest</string>
+            </property>
+            <property name="text">
+             <string>Rate</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="1">
+           <spacer name="horizontalSpacer_2">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item row="2" column="1">
+           <spacer name="horizontalSpacer_3">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="compress">
+            <property name="styleSheet">
+             <string notr="true">font-weight: bold;</string>
+            </property>
+            <property name="text">
+             <string>Compression</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="toolTip">
+      <string/>
+     </property>
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>accepted()</signal>
+   <receiver>ExportObjectInfoDialog</receiver>
+   <slot>validate_before_exit()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>248</x>
+     <y>254</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>157</x>
+     <y>274</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>buttonBox</sender>
+   <signal>rejected()</signal>
+   <receiver>ExportObjectInfoDialog</receiver>
+   <slot>reject()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>316</x>
+     <y>260</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>286</x>
+     <y>274</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>enableCompression</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>gzipRate</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>134</x>
+     <y>269</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>467</x>
+     <y>300</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>includeRaw</sender>
+   <signal>stateChanged(int)</signal>
+   <receiver>ExportObjectInfoDialog</receiver>
+   <slot>include_raw_changed(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>272</x>
+     <y>92</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>272</x>
+     <y>213</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>enableCompression</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>compressionType</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>139</x>
+     <y>271</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>369</x>
+     <y>272</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>selectAllFeatures</sender>
+   <signal>clicked()</signal>
+   <receiver>ExportObjectInfoDialog</receiver>
+   <slot>select_all_features()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>66</x>
+     <y>362</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>272</x>
+     <y>213</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>selectNoFeatures</sender>
+   <signal>clicked()</signal>
+   <receiver>ExportObjectInfoDialog</receiver>
+   <slot>select_no_features()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>157</x>
+     <y>362</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>272</x>
+     <y>213</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>enableCompression</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>enableShuffling</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>150</x>
+     <y>271</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>150</x>
+     <y>302</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>includeRaw</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>marginLabel</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>260</x>
+     <y>227</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>95</x>
+     <y>258</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>choosePath</sender>
+   <signal>clicked()</signal>
+   <receiver>ExportObjectInfoDialog</receiver>
+   <slot>choose_path()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>65</x>
+     <y>62</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>272</x>
+     <y>213</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>includeRaw</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>addMargin</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>260</x>
+     <y>227</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>424</x>
+     <y>258</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>enableCompression</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>rateLabel</receiver>
+   <slot>setEnabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>134</x>
+     <y>269</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>393</x>
+     <y>300</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>compressionType</sender>
+   <signal>currentIndexChanged(QString)</signal>
+   <receiver>ExportObjectInfoDialog</receiver>
+   <slot>change_compression(QString)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>134</x>
+     <y>300</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>264</x>
+     <y>249</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>fileFormat</sender>
+   <signal>currentIndexChanged(int)</signal>
+   <receiver>ExportObjectInfoDialog</receiver>
+   <slot>file_format_changed(int)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>311</x>
+     <y>95</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>260</x>
+     <y>259</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+ <slots>
+  <slot>select_all_features()</slot>
+  <slot>select_no_features()</slot>
+  <slot>validate_before_exit()</slot>
+  <slot>choose_path()</slot>
+  <slot>include_raw_changed(int)</slot>
+  <slot>change_compression(QString)</slot>
+  <slot>file_format_changed(int)</slot>
+ </slots>
+</ui>

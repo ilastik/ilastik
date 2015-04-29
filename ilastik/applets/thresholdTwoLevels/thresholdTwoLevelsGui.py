@@ -54,7 +54,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
     def __init__(self, *args, **kwargs):
         self.__cleanup_fns = []
         super( ThresholdTwoLevelsGui, self ).__init__(*args, **kwargs)
-        self._channelColors = self._createDefault16ColorColorTable()
+        self._defaultInputchannelColors = self._createDefault16ColorColorTable()
 
         self._onInputMetaChanged()
 
@@ -304,6 +304,10 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             outputLayer.setToolTip("Results of thresholding and size filter")
             layers.append(outputLayer)
 
+        if op.InputChannelColors.ready():
+            input_channel_colors = map(lambda (r,g,b): QColor(r,g,b), op.InputChannelColors.value)
+        else:
+            input_channel_colors = map(QColor, self._defaultInputchannelColors)
         for channel, channelProvider in enumerate(self._channelProviders):
             slot_drange = channelProvider.Output.meta.drange
             if slot_drange is not None:
@@ -312,7 +316,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
                 drange = (0.0, 1.0)
             channelSrc = LazyflowSource(channelProvider.Output)
             inputChannelLayer = AlphaModulatedLayer(
-                channelSrc, tintColor=QColor(self._channelColors[channel]),
+                channelSrc, tintColor=input_channel_colors[channel],
                 range=drange, normalize=drange)
             inputChannelLayer.opacity = 0.5
             inputChannelLayer.visible = True

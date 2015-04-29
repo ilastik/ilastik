@@ -47,14 +47,16 @@ def getOrCreateGroup(parentGroup, groupName):
     necessary.
 
     """
-    if groupName in parentGroup:
-        return parentGroup[groupName]
-    return parentGroup.create_group(groupName)
+
+    return parentGroup.require_group(groupName)
 
 def deleteIfPresent(parentGroup, name):
     """Deletes parentGroup[name], if it exists."""
-    if name in parentGroup:
+
+    try:
         del parentGroup[name]
+    except KeyError:
+        pass
 
 def slicingToString(slicing):
     """Convert the given slicing into a string of the form
@@ -357,6 +359,58 @@ class SerialBlockSlot(SerialSlot):
         self._bind(slot)
         self._shrink_to_bb = shrink_to_bb
 
+    def shouldSerialize(self, group):
+        # Should this be a docstring?
+        #
+        # Must be overloaded as SerialBlockSlot does not serialize itself in the simple way that other SerialSlot do
+        # as a consequence of the nesting of groups required. Follows the same logic as _serialize and checks to see
+        # if each relevant subgroup has been created and if any are missing or their data is missing it should be
+        # serialized. Otherwise, if everything is intact, it doesn't suggest serialization unless the state has changed.
+
+        logger.debug("Checking whether to serialize BlockSlot: {}".format( self.name ))
+
+        if self.dirty:
+            logger.debug("BlockSlot \"" + self.name + "\" appears to be dirty. Should serialize.")
+            return True
+
+        # SerialSlot interchanges self.name and name when they frequently are the same thing. It is not clear if using
+        # self.name would be acceptable here or whether name should be an input to shouldSerialize or if there should be
+        # a _shouldSerialize method, which takes the name.
+        if self.name not in group:
+            logger.debug("Missing \"" + self.name + "\" in group \"" + repr(group) + "\" belonging to BlockSlot \"" + self.name + "\". Should serialize.")
+            return True
+        else:
+            logger.debug("Found \"" + self.name + "\" in group \"" + repr(group) + "\" belonging to BlockSlot \"" + self.name + "\".")
+
+        # Just because the group was serialized doesn't mean that the relevant data was.
+        mygroup = group[self.name]
+        num = len(self.blockslot)
+        for index in range(num):
+            subname = self.subname.format(index)
+
+            # Check to se if each subname has been created as a group
+            if subname not in mygroup:
+                logger.debug("Missing \"" + subname + "\" from \"" + repr(mygroup) + "\" belonging to BlockSlot \"" + self.name + "\". Should serialize.")
+                return True
+            else:
+                logger.debug("Found \"" + subname + "\" from \"" + repr(mygroup) + "\" belonging to BlockSlot \"" + self.name + "\".")
+
+            subgroup = mygroup[subname]
+
+            nonZeroBlocks = self.blockslot[index].value
+            for blockIndex in xrange(len(nonZeroBlocks)):
+                blockName = 'block{:04d}'.format(blockIndex)
+
+                if blockName not in subgroup:
+                    logger.debug("Missing \"" + blockName + "\" from \"" + repr(subgroup) + "\". Should serialize.")
+                    return True
+                else:
+                    logger.debug("Found \"" + blockName + "\" from \"" + repr(subgroup) + "\" belonging to BlockSlot \"" + self.name + "\".")
+
+        logger.debug("Everything belonging to BlockSlot \"" + self.name + "\" appears to be in order. Should not serialize.")
+
+        return False
+
     @timeLogged(logger, logging.DEBUG)
     def _serialize(self, group, name, slot):
         logger.debug("Serializing BlockSlot: {}".format( self.name ))
@@ -387,8 +441,25 @@ class SerialBlockSlot(SerialSlot):
                         slicing = roiToSlice(*bounding_box_roi)
                         block = block[block_slicing]
 
-                subgroup.create_dataset(blockName, data=block)
-                subgroup[blockName].attrs['blockSlice'] = slicingToString(slicing)
+                # If we have a masked array, convert it to a structured array so that h5py can handle it.
+                if slot[index].meta.has_mask:
+                    mygroup.attrs["meta.has_mask"] = True
+
+                    block_group = subgroup.create_group(blockName)
+
+                    block_group.create_dataset("data", data=block.data)
+                    block_group.create_dataset(
+                        "mask",
+                        data=block.mask,
+                        compression="gzip",
+                        compression_opts=2
+                    )
+                    block_group.create_dataset("fill_value", data=block.fill_value)
+
+                    block_group.attrs['blockSlice'] = slicingToString(slicing)
+                else:
+                    subgroup.create_dataset(blockName, data=block)
+                    subgroup[blockName].attrs['blockSlice'] = slicingToString(slicing)
 
     @timeLogged(logger, logging.DEBUG)
     def _deserialize(self, mygroup, slot):
@@ -406,7 +477,28 @@ class SerialBlockSlot(SerialSlot):
             groupName, labelGroup = t
             for blockData in labelGroup.values():
                 slicing = stringToSlicing(blockData.attrs['blockSlice'])
-                self.inslot[index][slicing] = blockData[...]
+
+                # If it is suppose to be a masked array,
+                # deserialize the pieces and rebuild the masked array.
+                assert slot[index].meta.has_mask == mygroup.attrs.get("meta.has_mask"), \
+                       "The slot and stored data have different values for" + \
+                       " `has_mask`. They are" + \
+                       " `bool(slot[index].meta.has_mask)`=" + \
+                       repr(bool(slot[index].meta.has_mask)) + " and" + \
+                       " `mygroup.attrs.get(\"meta.has_mask\", False)`=" + \
+                       repr(mygroup.attrs.get("meta.has_mask", False)) + \
+                       ". Please fix this to proceed with deserialization."
+                if slot[index].meta.has_mask:
+                    blockArray = numpy.ma.masked_array(
+                        blockData["data"][()],
+                        mask=blockData["mask"][()],
+                        fill_value=blockData["fill_value"][()],
+                        shrink=False
+                    )
+                else:
+                    blockArray = blockData[...]
+
+                self.inslot[index][slicing] = blockArray
 
 class SerialHdf5BlockSlot(SerialBlockSlot):
 
@@ -437,6 +529,7 @@ class SerialHdf5BlockSlot(SerialBlockSlot):
             return int(index_capture.match(s).groups()[0])
         for index, t in enumerate(sorted(mygroup.items(), key=lambda (k,v): extract_index(k))):
             groupName, labelGroup = t
+            assert extract_index(groupName) == index, "subgroup extraction order should be numerical order!"
             for blockRoiString, blockDataset in labelGroup.items():
                 blockRoi = eval(blockRoiString)
                 roiShape = TinyVector(blockRoi[1]) - TinyVector(blockRoi[0])
@@ -736,6 +829,20 @@ class AppletSerializer(object):
 
         """
         return any(list(ss.dirty for ss in self.serialSlots))
+
+    def shouldSerialize(self, hdf5File):
+        """Whether to serialize or not."""
+
+        if self.isDirty():
+            return True
+
+        # Need to check if slots should be serialized. First must verify that self.topGroupName is not an empty string
+        # (as this seems to happen sometimes).
+        if self.topGroupName:
+            topGroup = getOrCreateGroup(hdf5File, self.topGroupName)
+            return any([ss.shouldSerialize(topGroup) for ss in self.serialSlots])
+
+        return False
 
     @property
     def ignoreDirty(self):

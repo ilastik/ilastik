@@ -27,8 +27,8 @@ import numpy
 # lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.request import RequestLock, RequestPool
-from lazyflow.roi import getIntersectingBlocks, getBlockBounds, getIntersection, roiToSlice
-from lazyflow.operators import OpSubRegion, OpMultiArrayStacker
+from lazyflow.roi import getIntersectingBlocks, getBlockBounds, getIntersection, roiToSlice, TinyVector
+from lazyflow.operators import OpSubRegion, OpMultiArrayStacker, OpArrayCache
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List
 
@@ -50,6 +50,7 @@ class OpSingleBlockObjectPrediction( Operator ):
     Classifier = InputSlot()
     LabelsCount = InputSlot()
     
+    ObjectwisePredictions = OutputSlot(stype=Opaque, rtype=List)
     PredictionImage = OutputSlot()
     ProbabilityChannelImage = OutputSlot()
     BlockwiseRegionFeatures = OutputSlot() # Indexed by (t,c)
@@ -115,16 +116,22 @@ class OpSingleBlockObjectPrediction( Operator ):
         self._opExtract.Features.connect(self.SelectedFeatures)
         self.BlockwiseRegionFeatures.connect( self._opExtract.BlockwiseRegionFeatures )
         
+        self._opExtract._opRegFeats._opCache.name = "blockwise-regionfeats-cache"
+        
         self._opPredict = OpObjectPredict( parent=self )
         self._opPredict.Features.connect( self._opExtract.RegionFeatures )
         self._opPredict.SelectedFeatures.connect( self.SelectedFeatures )
         self._opPredict.Classifier.connect( self.Classifier )
         self._opPredict.LabelsCount.connect( self.LabelsCount )
+        self.ObjectwisePredictions.connect( self._opPredict.Predictions )
         
         self._opPredictionImage = OpRelabelSegmentation( parent=self )
         self._opPredictionImage.Image.connect( self._opExtract.LabelImage ) 
         self._opPredictionImage.Features.connect( self._opExtract.RegionFeatures )
         self._opPredictionImage.ObjectMap.connect( self._opPredict.Predictions )
+
+        self._opPredictionCache = OpArrayCache( parent=self )
+        self._opPredictionCache.Input.connect( self._opPredictionImage.Output )
         
         self._opProbabilityChannelsToImage = OpMultiRelabelSegmentation( parent=self )
         self._opProbabilityChannelsToImage.Image.connect( self._opExtract.LabelImage )
@@ -161,6 +168,7 @@ class OpSingleBlockObjectPrediction( Operator ):
         self.PredictionImage.meta.shape = tuple( numpy.subtract( self.block_roi[1], self.block_roi[0] ) )
 
         # Forward dirty regions to our own output
+        self._opPredictionCache.blockShape.setValue( self._opPredictionCache.Input.meta.shape )
         self._opPredictionImage.Output.notifyDirty( self._handleDirtyPrediction )
     
     def execute(self, slot, subindex, roi, destination):
@@ -171,7 +179,7 @@ class OpSingleBlockObjectPrediction( Operator ):
         halo_offset = numpy.subtract(self.block_roi[0], self._halo_roi[0])
         adjusted_roi = ( halo_offset + roi.start,
                          halo_offset + roi.stop )
-        return self._opPredictionImage.Output(*adjusted_roi).writeInto(destination).wait()
+        return self._opPredictionCache.Output(*adjusted_roi).writeInto(destination).wait()
 
     def propagateDirty(self, slot, subindex, roi):
         """
@@ -349,13 +357,16 @@ class OpBlockwiseObjectClassification( Operator ):
             tagged_block_start_tc = filter( lambda (k,v): k in 'tc', tagged_block_start )
             block_start_tc = map( lambda (k,v): v, tagged_block_start_tc )
             block_roi_tc = ( block_start_tc, block_start_tc + numpy.array([1,1]) )
+            block_roi_t = (block_roi_tc[0][:-1], block_roi_tc[1][:-1])
 
             destination_start = numpy.array(block_start) / block_shape - roi.start
             destination_stop = destination_start + numpy.array( [1]*len(axiskeys) )
 
             opBlockPipeline = self._blockPipelines[block_start]
-            req = opBlockPipeline.BlockwiseRegionFeatures( *block_roi_tc )
-            req.writeInto( destination[ roiToSlice( destination_start, destination_stop ) ] )
+            req = opBlockPipeline.BlockwiseRegionFeatures( *block_roi_t )
+            destination_without_channel = destination[ roiToSlice( destination_start, destination_stop ) ]
+            destination_with_channel = destination_without_channel[ ...,block_roi_tc[0][-1] : block_roi_tc[1][-1] ]
+            req.writeInto( destination_with_channel )
             req.wait()
         
         return destination
@@ -389,6 +400,22 @@ class OpBlockwiseObjectClassification( Operator ):
             
             self._blockPipelines[block_start] = opBlockPipeline
 
+    def get_blockshape(self):
+        return self._getFullShape(self.BlockShape3dDict.value)
+
+    def get_block_roi(self, block_start):
+        block_shape = self._getFullShape( self._block_shape_dict )
+        input_shape = self.RawImage.meta.shape
+        block_stop = getBlockBounds( input_shape, block_shape, block_start )[1]
+        block_roi = (block_start, block_stop)
+        return block_roi
+
+    def is_in_block(self, block_start, coord):
+        block_roi = self.get_block_roi(block_start)
+        coord_roi = (coord, TinyVector( coord ) + 1)
+        intersection = getIntersection(block_roi, coord_roi, False)
+        return (intersection is not None)
+        
     
     def _getFullShape(self, spatialShapeDict):
         # 't' should match raw input

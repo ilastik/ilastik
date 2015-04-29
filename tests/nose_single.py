@@ -22,7 +22,7 @@ import sys
 import nose
 import threading
 
-from tests.helpers import mainThreadHelpers
+from helpers import mainThreadHelpers
 
 # For some mysterious reason, we need to make sure that volumina.api gets imported 
 #  from the main thread before nose imports it from a separate thread.

@@ -19,7 +19,8 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 import ConfigParser
-import io, os
+import io
+import os
 
 """
 ilastik will read settings from ~/.ilastikrc
@@ -38,19 +39,48 @@ debug: false
 plugin_directories: ~/.ilastik/plugins,
 
 [lazyflow]
-threads: 0
+threads: -1
 total_ram_mb: 0
+
+[ipc raw tcp]
+autostart: false
+autoaccept: true
+port: 9999
+interface: localhost
+
+[ipc zmq tcp publisher]
+autostart: false
+address: 127.0.0.1:9998
+
+[ipc zmq tcp subscriber]
+autostart: false
+address: localhost:9997
+
+[ipc zmq ipc]
+basedir: /tmp/ilastik
+
+[ipc zmq ipc publisher]
+autostart: false
+filename: out
+
+[ipc zmq ipc subscriber]
+autostart: false
+filename: in
 """
 
+
 cfg = ConfigParser.SafeConfigParser()
-def init_ilastik_config( userConfig=None ):
+
+
+def init_ilastik_config(userConfig=None):
     global cfg
     cfg.readfp(io.BytesIO(default_config))
 
     if userConfig is not None and not os.path.exists(userConfig):
-        raise Exception("ilastik config file does not exist: {}".format( userConfig ))
+        raise Exception(
+            "ilastik config file does not exist: {}".format(userConfig))
 
-    if userConfig is None:    
+    if userConfig is None:
         userConfig = os.path.expanduser("~/.ilastikrc")
     if os.path.exists(userConfig):
         cfg.read(userConfig)

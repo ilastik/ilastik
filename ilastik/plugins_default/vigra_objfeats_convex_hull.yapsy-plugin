@@ -1,0 +1,9 @@
+[Core]
+Name = 2D Convex Hull Features
+Module = vigra_objfeats_convex_hull
+
+[Documentation]
+Author = Janez Ales
+Version = 0.1
+Website = todo
+Description = todo
