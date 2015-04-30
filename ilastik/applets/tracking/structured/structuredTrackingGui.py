@@ -74,7 +74,8 @@ class StructuredTrackingGui(LayerViewerGui):
         self._drawer.exportTifButton.pressed.connect(self._onExportTifButtonPressed)
         self._drawer.gotoLabel.pressed.connect(self._onGotoLabel)
         self._drawer.nextUnlabeledButton.pressed.connect(self._onNextUnlabeledPressed)
-        self._drawer.importCrops.pressed.connect(self._cropListViewInit)
+        self._drawer.importCrops.pressed.connect(self._onImportCrops)
+        self._drawer.saveAnnotations.pressed.connect(self._onSaveAnnotations)
 
         self.editor.showCropLines(True)
         self.editor.cropModel.editableChanged.emit (False)
@@ -141,10 +142,57 @@ class StructuredTrackingGui(LayerViewerGui):
                                        self._onNextUnlabeledPressed,
                                        self,
                                        None ) )
-        
+    def _onImportCrops(self):
+
+        if self.topLevelOperatorView.Annotations.value != {}:
+            print "WARNING: All your annotations will be lost! You can save the project, then save it under a new name and continue without loss of current annotations."
+            self.mainOperator.Annotations.setValue({})
+        self.mainOperator.Divisions.setValue({})
+        self.mainOperator.Labels.setValue({})
+
+        self.mainOperator.divisions = {}
+        #self.mainOperator.labels = {t:{} for t in range(self.mainOperator.LabelImage.meta.shape[0])}
+        self.labelsWithDivisions = {}
+        self.divs = []
+
+        self._cropListViewInit()
+        print "self.mainOperator.TrackImage.meta.shape",self.mainOperator.TrackImage.meta.shape
+        roi = {}
+        roi["start"]=(0,0,0,0,0)
+        roi["stop"]=self.mainOperator.TrackImage.meta.shape
+
+        self.divLock = False
+        self.misdetLock = False
+        self.misdetIdx = -1
+
+        self.mainOperator.initOutputs()
+
+        self._reset()
+
+        #self._onMetaChanged(self.mainOperator.LabelImage)
+
+        #self.mainOperator.setupOutputs()
+        #self._reset()
+
+        self._setDirty(self.mainOperator.LabelImage, range(self.mainOperator.TrackImage.meta.shape[0]))
+        self._setDirty(self.mainOperator.Labels, range(self.mainOperator.TrackImage.meta.shape[0]))
+        self._setDirty(self.mainOperator.Divisions, range(self.mainOperator.TrackImage.meta.shape[0]))
+        self._setDirty(self.mainOperator.TrackImage, range(self.mainOperator.TrackImage.meta.shape[0]))
+        self._setDirty(self.mainOperator.UntrackedImage, range(self.mainOperator.TrackImage.meta.shape[0]))
+
+        print "self.labelsWithDivisions--->",self.labelsWithDivisions
+
+        #result = {}
+        #self.mainOperator.execute(self.mainOperator.TrackImage.value,-1,roi,result)
+        #print "result",result
+        self.setupLayers()
+        self._onCropSelected(0)
+
     def __init__(self, parentApplet, topLevelOperatorView):
         self.topLevelOperatorView = topLevelOperatorView
         self._previousCrop = -1
+        self._currentCrop = -1
+        self._currentCropName = ""
 
         super(StructuredTrackingGui, self).__init__(parentApplet, topLevelOperatorView)
         
@@ -232,12 +280,30 @@ class StructuredTrackingGui(LayerViewerGui):
         #    print "ready Crops"
         #    self._cropListViewInit()
 
+    def _onSaveAnnotations(self):
+        self.topLevelOperatorView.Annotations.value[self._currentCropName] = {self._currentCropName : {"labels": self.topLevelOperatorView.labels, "divisions": self.topLevelOperatorView.divisions} }
+        print "_onSaveAnnotations", self.topLevelOperatorView.Annotations.value
+
+
     def _onCropSelected(self, row):
-        if self._previousCrop != -1:
-            name = self._drawer.cropListModel[self._previousCrop].name
-            self.topLevelOperatorView.Annotations.value[name] = { name: {"labels": self.topLevelOperatorView.labels, "divisions": self.topLevelOperatorView.divisions} }
+        print "_onCropSelected row", row
+        print "self.mainOperator.TrackImage",self.topLevelOperatorView.TrackImage
+        print "self.mainOperator.UntrackedImage",self.topLevelOperatorView.UntrackedImage
+        print "self.mainOperator.LabelImage",self.topLevelOperatorView.LabelImage
+        print "self.mainOperator.Labels",self.topLevelOperatorView.Labels
+        print "self.mainOperator.Divisions",self.topLevelOperatorView.Divisions
         #logger.debug("switching to crop=%r" % (self._drawer.cropListModel[row]))
 
+        currentName = self._drawer.cropListModel[row].name
+        #if currentName in self.topLevelOperatorView.Annotations.value.keys():
+        #    self.topLevelOperatorView.labels = self.topLevelOperatorView.Annotations.value[currentName]["labels"]
+        #    self.topLevelOperatorView.divisions  = self.topLevelOperatorView.Annotations.value[currentName]["divisions"]
+        #else:
+        #    self.topLevelOperatorView.labels = {}#t:{} for t in range(self.topLevelOperatorView.LabelImage.meta.shape[0])}
+        #    self.topLevelOperatorView.divisions  = {}
+
+
+        print "labels",self.topLevelOperatorView.labels
         self.editor.brushingModel.setDrawnNumber(row+1)
         brushColor = self._drawer.cropListModel[row].brushColor()
         self.editor.brushingModel.setBrushColor( brushColor )
@@ -255,7 +321,9 @@ class StructuredTrackingGui(LayerViewerGui):
 
         self.editor.navCtrl.changeTimeRelative(self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[row].name]["time"][0] - self.editor.posModel.time)
         self.editor.cropModel.colorChanged.emit(brushColor)
-        self._previousCrop = row
+        #self._previousCrop = row
+        self._currentCrop = row
+        self._currentCropName = currentName
 
     def updateTime(self):
         delta = self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[self._drawer.cropListModel.selectedRow()].name]["time"][0] - self.editor.posModel.time
@@ -267,6 +335,7 @@ class StructuredTrackingGui(LayerViewerGui):
                 self.editor.navCtrl.changeTimeRelative(delta)
 
     def setupLayers( self ):
+        print "setupLayers"
         layers = []
  
         self.ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent        
@@ -274,6 +343,7 @@ class StructuredTrackingGui(LayerViewerGui):
         self.ct[-1] = QColor(0,0,0,255).rgba()       
         
         if self.topLevelOperatorView.TrackImage.ready():
+            print "setupLayers TrackImage"
             self.trackingsrc = LazyflowSource( self.topLevelOperatorView.TrackImage )
             trackingLayer = ColortableLayer( self.trackingsrc, self.ct )
             trackingLayer.name = "Tracking Annotations"
@@ -429,9 +499,11 @@ class StructuredTrackingGui(LayerViewerGui):
         elif slot is self.mainOperator.UntrackedImage:
             roi = SubRegion(self.mainOperator.UntrackedImage, start=[min(timesteps),] + 4*[0,], stop=[max(timesteps)+1,] + list(self.mainOperator.TrackImage.meta.shape[1:]))
             self.mainOperator.UntrackedImage.setDirty(roi)
-        print "_setDirty"
+        print "_setDirty",slot.name
             
     def handleEditorLeftClick(self, position5d, globalWindowCoordiante):
+        print "IN leftClick labels   ", self.mainOperator.labels
+        print "IN leftClick divisions", self.mainOperator.divisions
         if self.divLock:
             oid = self._getObject(self.mainOperator.LabelImage, position5d)
             item = (position5d[0], oid)
@@ -499,7 +571,9 @@ class StructuredTrackingGui(LayerViewerGui):
     
             self._setPosModel(time=self.editor.posModel.time + 1)
 
-            
+        print "OUTleftClick labels   ", self.mainOperator.labels
+        print "OUTleftClick divisions", self.mainOperator.divisions
+
         
     def handleEditorRightClick(self, position5d, globalWindowCoordiante):
         if self.divLock:

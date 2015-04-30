@@ -66,6 +66,16 @@ class OpStructuredTracking(Operator):
                 self.labels[t]={}
 
 
+    def initOutputs(self):
+        print "--->initOutputs",self.labels
+        self.TrackImage.meta.assignFrom(self.LabelImage.meta)
+        self.UntrackedImage.meta.assignFrom(self.LabelImage.meta)
+
+        for t in range(self.LabelImage.meta.shape[0]):
+            self.labels[t]={}
+        print "===>initOutputs",self.labels
+
+
     def _checkConstraints(self, *args):
         if self.RawImage.ready():
             rawTaggedShape = self.RawImage.meta.getTaggedShape()
@@ -109,11 +119,13 @@ class OpStructuredTracking(Operator):
                 result[t] = self.labels[t]
                 
         elif slot is self.TrackImage:
+            #print "in execute TrackImage "
+            #print "===>",self.labels, "<==="
             for t in range(roi.start[0],roi.stop[0]):          
                 if t not in self.labels.keys():
                     result[t-roi.start[0],...][:] = 0
                     return result
-            
+
                 result[t-roi.start[0],...] = self.LabelImage.get(roi).wait()[t-roi.start[0],...]      
                 result[t-roi.start[0], ..., 0] = self._relabel(result[t-roi.start[0], ..., 0], self.labels[t])        
         
@@ -128,11 +140,16 @@ class OpStructuredTracking(Operator):
         return result
         
     def propagateDirty(self, inputSlot, subindex, roi):
+        print "propagateDirty",inputSlot.name
         if inputSlot == self.LabelImage:
             self.labels = {}
             self.divisions = {}
+        #if inputSlot == self.TrackImage:
+        #    self.labels = {}
+        #    self.divisions = {}
  
     def _relabel(self, volume, replace):
+        print "_relabel volume, replace--->", replace, "<---"
         mp = np.arange(0, np.amax(volume) + 1, dtype=volume.dtype)
         mp[1:] = 0
         labels = np.unique(volume).tolist()
