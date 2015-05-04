@@ -409,6 +409,7 @@ class OpTrackingBase(Operator, ExportingOperator):
 
         logger.info("filling traxelstore")
         ts = pgmlink.TraxelStore()
+        fs = pgmlink.FeatureStore()
 
         max_traxel_id_at = pgmlink.VectorOfInt()
         filtered_labels = {}
@@ -458,6 +459,7 @@ class OpTrackingBase(Operator, ExportingOperator):
                 else:
                     count += 1
                 tr = pgmlink.Traxel()
+                tr.set_feature_store(fs)
                 tr.set_x_scale(x_scale)
                 tr.set_y_scale(y_scale)
                 tr.set_z_scale(z_scale)
@@ -507,7 +509,7 @@ class OpTrackingBase(Operator, ExportingOperator):
                 if median_object_size is not None:
                     obj_sizes.append(float(size))
 
-                ts.add(tr)
+                ts.add(fs, tr)
 
                 # add coordinate lists
 

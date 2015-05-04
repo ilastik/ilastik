@@ -187,23 +187,37 @@ class OpConservationTracking(OpTrackingBase):
                                          float(divThreshold),
                                          "none",  # detection_rf_filename
                                          fov,
-                                         "none" # dump traxelstore
+                                         "none", # dump traxelstore,
+                                         pgmlink.ConsTrackingSolverType.CplexSolver
                                          )
             self.tracker.buildGraph(ts)
-        
+
+        # create dummy uncertainty parameter object with just one iteration, so no perturbations at all (iter=0 -> MAP)
+        sigmas = pgmlink.VectorOfDouble()
+        for i in range(5):
+            sigmas.append(0.0)
+        uncertaintyParams = pgmlink.UncertaintyParameter(1, pgmlink.DistrId.PerturbAndMAP, sigmas)
+
         try:
             eventsVector = self.tracker.track(0,       # forbidden_cost
                                             float(ep_gap), # ep_gap
                                             withTracklets,
+                                            10.0, # detection weight
                                             divWeight,
                                             transWeight,
                                             disappearance_cost, # disappearance cost
                                             appearance_cost, # appearance cost
+                                            withMergerResolution,
                                             ndim,
                                             transition_parameter,
                                             borderAwareWidth,
                                             True, #with_constraints
-                                            cplex_timeout)
+                                            uncertaintyParams,
+                                            cplex_timeout,
+                                            None) # TransitionClassifier
+
+            eventsVector = eventsVector[0] # we have a vector such that we could get a vector per perturbation
+
             # extract the coordinates with the given event vector
             if withMergerResolution:
                 coordinate_map = pgmlink.TimestepIdCoordinateMap()
@@ -223,7 +237,8 @@ class OpConservationTracking(OpTrackingBase):
                                                 ndim,
                                                 transition_parameter,
                                                 True, # with_constraints
-                                                True) # with_multi_frame_moves
+                                                #True) # with_multi_frame_moves
+                                                None) # TransitionClassifier
         except Exception as e:
             raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
         
