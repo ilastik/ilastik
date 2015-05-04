@@ -486,14 +486,14 @@ class DataSelectionGui(QWidget):
         # If no exception was thrown so far, set up the operator now
         loaded_all = self._configureOpWithInfos(roleIndex, startingLane, endingLane, infos)
         
-        # Now check the resulting slots.
-        # If they should be copied to the project file, say so.
-        self._reconfigureDatasetLocations(roleIndex, startingLane, endingLane)
-
-        self._checkDataFormatWarnings(roleIndex, startingLane, endingLane)
-
-        # If we succeeded in adding all images, show the first one.
         if loaded_all:
+            # Now check the resulting slots.
+            # If they should be copied to the project file, say so.
+            self._reconfigureDatasetLocations(roleIndex, startingLane, endingLane)
+    
+            self._checkDataFormatWarnings(roleIndex, startingLane, endingLane)
+    
+            # If we succeeded in adding all images, show the first one.
             self.showDataset(startingLane, roleIndex)
 
         # Notify the workflow that something that could affect applet readyness has occurred.

@@ -101,14 +101,6 @@ class ClassifierSelectionDlg(QDialog):
         classifiers["Parallel Random Forest (VIGRA)"] = ParallelVigraRfLazyflowClassifierFactory(100)
         
         try:
-            from iiboostLazyflowClassifier import IIBoostLazyflowClassifierFactory
-            classifiers["IIBoost"] = IIBoostLazyflowClassifierFactory(numStumps=2, debugOutput=True)
-            assert issubclass( type(classifiers["IIBoost"]), LazyflowPixelwiseClassifierFactoryABC )
-        except ImportError:
-            import warnings
-            warnings.warn("Couldn't import IIBoost.")
-        
-        try:
             from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
             from sklearn.naive_bayes import GaussianNB
             from sklearn.tree import DecisionTreeClassifier
