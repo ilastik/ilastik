@@ -281,7 +281,7 @@ class StructuredTrackingGui(LayerViewerGui):
         #    self._cropListViewInit()
 
     def _onSaveAnnotations(self):
-        self.topLevelOperatorView.Annotations.value[self._currentCropName] = {self._currentCropName : {"labels": self.topLevelOperatorView.labels, "divisions": self.topLevelOperatorView.divisions} }
+        self.topLevelOperatorView.Annotations.value[self._currentCropName] = {"labels": self.topLevelOperatorView.labels, "divisions": self.topLevelOperatorView.divisions}
         print "_onSaveAnnotations", self.topLevelOperatorView.Annotations.value
 
 
@@ -295,11 +295,13 @@ class StructuredTrackingGui(LayerViewerGui):
         #logger.debug("switching to crop=%r" % (self._drawer.cropListModel[row]))
 
         currentName = self._drawer.cropListModel[row].name
-        #if currentName in self.topLevelOperatorView.Annotations.value.keys():
-        #    self.topLevelOperatorView.labels = self.topLevelOperatorView.Annotations.value[currentName]["labels"]
-        #    self.topLevelOperatorView.divisions  = self.topLevelOperatorView.Annotations.value[currentName]["divisions"]
+        if currentName in self.topLevelOperatorView.Annotations.value.keys():
+            print "copy Annotations"
+            self.topLevelOperatorView.labels = self.topLevelOperatorView.Annotations.value[currentName]["labels"]
+            self.topLevelOperatorView.divisions  = self.topLevelOperatorView.Annotations.value[currentName]["divisions"]
         #else:
-        #    self.topLevelOperatorView.labels = {}#t:{} for t in range(self.topLevelOperatorView.LabelImage.meta.shape[0])}
+        #    print "init Annotations"
+        #    self.topLevelOperatorView.labels = { }#t:{} for t in range(self.topLevelOperatorView.LabelImage.meta.shape[0])}
         #    self.topLevelOperatorView.divisions  = {}
 
 
