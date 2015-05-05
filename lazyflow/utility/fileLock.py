@@ -21,8 +21,9 @@
 ###############################################################################
 """
 Implementation of a simple cross-platform file locking mechanism.
-This is a modified version of code retrieved on 2013-01-01 from http://www.evanfosmark.com/2009/01/cross-platform-file-locking-support-in-python.
-The original code was released under the BSD License, as is this modified version.
+This is a modified version of code retrieved on 2013-01-01 from 
+http://www.evanfosmark.com/2009/01/cross-platform-file-locking-support-in-python.
+(The original code was released under the BSD License.  See below for details.)
 
 Modifications in this version:
  - Tweak docstrings for sphinx.
@@ -44,6 +45,41 @@ WARNINGS:
    (Newer versions of NFS should be okay, e.g. NFSv3 with Linux kernel 2.6. Check the open(2) man page for details about O_EXCL.)
  - This code has not been thoroughly tested on Windows, and there has been one report of incorrect results on Windows XP and Windows 7.
    The locking mechanism used in this class should (in theory) be cross-platform, but use at your own risk.
+
+ORIGINAL LICENSE:
+
+The original code did not properly include license text.
+(It merely said "License: BSD".)
+Therefore, we'll attach the following generic BSD License terms to this file.
+Those who extract this file from the lazyflow code base (LGPL) for their own use
+are therefore bound by the terms of both the Simplified BSD License below AND the LGPL.
+
+Copyright (c) 2013, Evan Fosmark and others.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+The views and conclusions contained in the software and documentation are those
+of the authors and should not be interpreted as representing official policies,
+either expressed or implied, of the FreeBSD Project.
 """
 
 import os
