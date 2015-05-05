@@ -174,6 +174,9 @@ class StructuredTrackingGui(LayerViewerGui):
         #self.mainOperator.setupOutputs()
         #self._reset()
 
+        self.currentLabels = {}
+        self.currentDivisions = {}
+
         self._setDirty(self.mainOperator.LabelImage, range(self.mainOperator.TrackImage.meta.shape[0]))
         self._setDirty(self.mainOperator.Labels, range(self.mainOperator.TrackImage.meta.shape[0]))
         self._setDirty(self.mainOperator.Divisions, range(self.mainOperator.TrackImage.meta.shape[0]))
@@ -211,6 +214,8 @@ class StructuredTrackingGui(LayerViewerGui):
         self.misdetLock = False
         self.misdetIdx = -1
 
+        self.currentLabels = {}
+        self.currentDivisions = {}
 
         if self.mainOperator.LabelImage.meta.shape:
             # FIXME: assumes t,x,y,z,c
@@ -282,6 +287,7 @@ class StructuredTrackingGui(LayerViewerGui):
 
     def _onSaveAnnotations(self):
         self.topLevelOperatorView.Annotations.value[self._currentCropName] = {"labels": self.topLevelOperatorView.labels, "divisions": self.topLevelOperatorView.divisions}
+        #self.topLevelOperatorView.Annotations.value[self._currentCropName] = {"labels": self.currentLabels, "divisions": self.currentDivisions}
         print "_onSaveAnnotations", self.topLevelOperatorView.Annotations.value
 
 
@@ -299,10 +305,12 @@ class StructuredTrackingGui(LayerViewerGui):
             print "copy Annotations"
             self.topLevelOperatorView.labels = self.topLevelOperatorView.Annotations.value[currentName]["labels"]
             self.topLevelOperatorView.divisions  = self.topLevelOperatorView.Annotations.value[currentName]["divisions"]
-        #else:
-        #    print "init Annotations"
-        #    self.topLevelOperatorView.labels = { }#t:{} for t in range(self.topLevelOperatorView.LabelImage.meta.shape[0])}
-        #    self.topLevelOperatorView.divisions  = {}
+
+            self.currentLabels = self.topLevelOperatorView.Annotations.value[currentName]["labels"]
+            self.currentDivisions  = self.topLevelOperatorView.Annotations.value[currentName]["divisions"]
+        else:
+            self.currentLabels = { }#t:{} for t in range(self.topLevelOperatorView.LabelImage.meta.shape[0])}
+            self.currentDivisions  = {}
 
 
         print "labels",self.topLevelOperatorView.labels
