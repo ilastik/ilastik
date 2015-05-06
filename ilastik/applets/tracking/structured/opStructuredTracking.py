@@ -65,16 +65,16 @@ class OpStructuredTracking(Operator):
             if t not in self.labels.keys():
                 self.labels[t]={}
 
+        self.Annotations.meta.dtype = object
+        self.Annotations.meta.shape = (1,)
+
 
     def initOutputs(self):
-        print "--->initOutputs",self.labels
         self.TrackImage.meta.assignFrom(self.LabelImage.meta)
         self.UntrackedImage.meta.assignFrom(self.LabelImage.meta)
 
         for t in range(self.LabelImage.meta.shape[0]):
             self.labels[t]={}
-        print "===>initOutputs",self.labels
-
 
     def _checkConstraints(self, *args):
         if self.RawImage.ready():
@@ -119,12 +119,10 @@ class OpStructuredTracking(Operator):
                 result[t] = self.labels[t]
                 
         elif slot is self.TrackImage:
-            #print "===>",self.labels, "<==="
-            for t in range(roi.start[0],roi.stop[0]):          
+            for t in range(roi.start[0],roi.stop[0]):
                 if t not in self.labels.keys():
                     result[t-roi.start[0],...][:] = 0
                     return result
-                print "in execute TrackImage ",self.labels[0]
 
                 result[t-roi.start[0],...] = self.LabelImage.get(roi).wait()[t-roi.start[0],...]      
                 result[t-roi.start[0], ..., 0] = self._relabel(result[t-roi.start[0], ..., 0], self.labels[t])        
@@ -137,19 +135,21 @@ class OpStructuredTracking(Operator):
                     labels_at = self.labels[t]
                 result[t-roi.start[0],...,0] = self._relabelUntracked(result[t-roi.start[0],...,0], labels_at)
 
+        key = roi.toSlice()
+        if slot.name == 'Annotations':
+            annotations = self.Annotations[key].wait()
+            result[...] = annotations
+
         return result
         
-    def propagateDirty(self, inputSlot, subindex, roi):
-        print "propagateDirty",inputSlot.name
-        if inputSlot == self.LabelImage:
+    def propagateDirty(self, slot, subindex, roi):
+        if slot == self.LabelImage:
             self.labels = {}
             self.divisions = {}
-        #if inputSlot == self.TrackImage:
-        #    self.labels = {}
-        #    self.divisions = {}
- 
+        elif slot.name == "Annotations":
+            self.Annotations.setDirty( roi )
+
     def _relabel(self, volume, replace):
-        #print "_relabel volume, replace--->", replace, "<---"
         mp = np.arange(0, np.amax(volume) + 1, dtype=volume.dtype)
         mp[1:] = 0
         labels = np.unique(volume).tolist()

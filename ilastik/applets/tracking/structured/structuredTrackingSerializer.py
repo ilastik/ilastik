@@ -95,7 +95,6 @@ class StructuredTrackingSerializer(AppletSerializer):
         slots = [ SerialSlot(operator.TrackImage),
                   SerialDictSlot(operator.Annotations),
                   SerialDivisionsSlot(operator.Divisions),
-                  SerialLabelsSlot(operator.Labels),
-                  SerialDictSlot(operator.Annotations)]
+                  SerialLabelsSlot(operator.Labels)]
     
         super(StructuredTrackingSerializer, self ).__init__(projectFileGroupName, slots=slots)

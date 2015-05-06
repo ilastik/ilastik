@@ -36,6 +36,7 @@ from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.utility import log_exception
 from ilastik.widgets.cropListView import Crop
 from ilastik.widgets.cropListModel import CropListModel
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
 import volumina.colortables as colortables
 from volumina.api import LazyflowSource, GrayscaleLayer, ColortableLayer
@@ -156,7 +157,6 @@ class StructuredTrackingGui(LayerViewerGui):
         self.divs = []
 
         self._cropListViewInit()
-        print "self.mainOperator.TrackImage.meta.shape",self.mainOperator.TrackImage.meta.shape
         roi = {}
         roi["start"]=(0,0,0,0,0)
         roi["stop"]=self.mainOperator.TrackImage.meta.shape
@@ -183,11 +183,6 @@ class StructuredTrackingGui(LayerViewerGui):
         self._setDirty(self.mainOperator.TrackImage, range(self.mainOperator.TrackImage.meta.shape[0]))
         self._setDirty(self.mainOperator.UntrackedImage, range(self.mainOperator.TrackImage.meta.shape[0]))
 
-        print "self.labelsWithDivisions--->",self.labelsWithDivisions
-
-        #result = {}
-        #self.mainOperator.execute(self.mainOperator.TrackImage.value,-1,roi,result)
-        #print "result",result
         self.setupLayers()
         self._onCropSelected(0)
 
@@ -229,8 +224,10 @@ class StructuredTrackingGui(LayerViewerGui):
         self.editor.posModel.timeChanged.connect(self.updateTime)
         self.editor.navCtrl.changeTimeRelative(self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[0].name]["time"][0] - self.editor.posModel.time)
 
+        self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
+        self._initAnnotations()
+
     def _cropListViewInit(self):
-        print "ST._cropListViewInit",self.topLevelOperatorView.Crops.value
         if self.topLevelOperatorView.Crops.value != {}:
             self._drawer.cropListModel=CropListModel()
             crops = self.topLevelOperatorView.Crops.value
@@ -281,39 +278,113 @@ class StructuredTrackingGui(LayerViewerGui):
                 layerraw = GrayscaleLayer( self.rawsrc )    
                 layerraw.name = "Raw"
                 self.layerstack.append( layerraw )
-        #elif slot is self.mainOperator.Crops:
-        #    print "ready Crops"
-        #    self._cropListViewInit()
 
-    def _onSaveAnnotations(self):
-        self.topLevelOperatorView.Annotations.value[self._currentCropName] = {"labels": self.topLevelOperatorView.labels, "divisions": self.topLevelOperatorView.divisions}
-        #self.topLevelOperatorView.Annotations.value[self._currentCropName] = {"labels": self.currentLabels, "divisions": self.currentDivisions}
-        print "_onSaveAnnotations", self.topLevelOperatorView.Annotations.value
+    def _initAnnotations(self):
+        for name in self.topLevelOperatorView.Crops.value.keys():
+            self._onSaveAnnotations(name=name)
 
+    def _onSaveAnnotations(self, name=""):
+        if name == "":
+            name = self._currentCropName
+            crop = self.getCurrentCrop()
+        else:
+            crop = self.topLevelOperatorView.Crops.value[name]
+
+        for time in range(crop["time"][0],crop["time"][1]):
+            for label in self.topLevelOperatorView.labels[time].keys():
+                lower = self.features[time][default_features_key]['Coord<Minimum>'][label]
+                upper = self.features[time][default_features_key]['Coord<Maximum>'][label]
+
+                addAnnotation = False
+                if len(lower) == 2:
+                    if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
+                        crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1]:
+                        addAnnotation = True
+                else:
+                    if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
+                        crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1] and \
+                        crop["starts"][2] <= upper[2] and lower[2] <= crop["stops"][2]:
+                        addAnnotation = True
+
+                if addAnnotation:
+                    if name not in self.topLevelOperatorView.Annotations.value.keys():
+                        self.topLevelOperatorView.Annotations.value[name] = {}
+                    if "labels" not in self.topLevelOperatorView.Annotations.value[name].keys():
+                        self.topLevelOperatorView.Annotations.value[name]["labels"] = {}
+                    if time not in self.topLevelOperatorView.Annotations.value[name]["labels"].keys():
+                        self.topLevelOperatorView.Annotations.value[name]["labels"][time] = {}
+                    self.topLevelOperatorView.Annotations.value[name]["labels"][time][label] = self.topLevelOperatorView.labels[time][label]
+
+        for parentTrack in self.topLevelOperatorView.divisions.keys():
+            time = self.topLevelOperatorView.divisions[parentTrack][1]
+            child1Track = self.topLevelOperatorView.divisions[parentTrack][0][0]
+            child2Track = self.topLevelOperatorView.divisions[parentTrack][0][1]
+
+            parent = self.getLabel(time, parentTrack)
+            child1 = self.getLabel(time+1, child1Track)
+            child2 = self.getLabel(time+1, child2Track)
+
+            if not (parent and child1 and child2):
+                print "WARNING:Your divisons and labels do not match for time ",time, " and parent track ", parentTrack,"(label ",parent," )!"
+            else:
+                lowerParent = self.features[time][default_features_key]['Coord<Minimum>'][parent]
+                upperParent = self.features[time][default_features_key]['Coord<Maximum>'][parent]
+
+                lowerChild1 = self.features[time][default_features_key]['Coord<Minimum>'][child1]
+                upperChild1 = self.features[time][default_features_key]['Coord<Maximum>'][child1]
+
+                lowerChild2 = self.features[time][default_features_key]['Coord<Minimum>'][child2]
+                upperChild2 = self.features[time][default_features_key]['Coord<Maximum>'][child2]
+
+                addAnnotation = False
+                if len(lowerParent) == 2:
+                    if (crop["time"][0] <= time and time <= crop["time"][1]) and \
+                        ((crop["starts"][0] <= upperParent[0] and lowerParent[0] <= crop["stops"][0] and \
+                        crop["starts"][1] <= upperParent[1] and lowerParent[1] <= crop["stops"][1]) or \
+                        ( crop["starts"][0] <= upperChild1[0] and lowerChild1[0] <= crop["stops"][0] and \
+                        crop["starts"][1] <= upperChild1[1] and lowerChild1[1] <= crop["stops"][1]) or \
+                        ( crop["starts"][0] <= upperChild2[0] and lowerChild2[0] <= crop["stops"][0] and \
+                        crop["starts"][1] <= upperChild2[1] and lowerChild2[1] <= crop["stops"][1])):
+                        addAnnotation = True
+                else:
+                    if (crop["time"][0] <= time and time <= crop["time"][1]) and \
+                        ((crop["starts"][0] <= upperParent[0] and lowerParent[0] <= crop["stops"][0] and \
+                        crop["starts"][1] <= upperParent[1] and lowerParent[1] <= crop["stops"][1] and \
+                        crop["starts"][2] <= upperParent[2] and lowerParent[2] <= crop["stops"][2]) or \
+                        ( crop["starts"][0] <= upperChild1[0] and lowerChild1[0] <= crop["stops"][0] and \
+                        crop["starts"][1] <= upperChild1[1] and lowerChild1[1] <= crop["stops"][1] and \
+                        crop["starts"][2] <= upperChild1[2] and lowerChild1[2] <= crop["stops"][2]) or \
+                        ( crop["starts"][0] <= upperChild2[0] and lowerChild2[0] <= crop["stops"][0] and \
+                        crop["starts"][1] <= upperChild2[1] and lowerChild2[1] <= crop["stops"][1] and \
+                        crop["starts"][2] <= upperChild2[2] and lowerChild2[2] <= crop["stops"][2])):
+                        addAnnotation = True
+
+                if addAnnotation:
+                    if name not in self.topLevelOperatorView.Annotations.value.keys():
+                        self.topLevelOperatorView.Annotations.value[name] = {}
+                    if "divisions" not in self.topLevelOperatorView.Annotations.value[name].keys():
+                        self.topLevelOperatorView.Annotations.value[name]["divisions"] = {}
+                    if parentTrack not in self.topLevelOperatorView.Annotations.value[name]["divisions"].keys():
+                        self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = {}
+                    self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = self.topLevelOperatorView.divisions[parentTrack]
+
+    def getLabel(self, time, track):
+        for label in self.mainOperator.labels[time].keys():
+            if self.mainOperator.labels[time][label] == set([track]):
+                return label
+        return False
+
+    def getCurrentCrop(self):
+        row = self._drawer.cropListModel.selectedRow()
+        name = self._drawer.cropListModel[row].name
+        crop = self.topLevelOperatorView.Crops.value[name]
+        return crop
 
     def _onCropSelected(self, row):
-        print "_onCropSelected row", row
-        print "self.mainOperator.TrackImage",self.topLevelOperatorView.TrackImage
-        print "self.mainOperator.UntrackedImage",self.topLevelOperatorView.UntrackedImage
-        print "self.mainOperator.LabelImage",self.topLevelOperatorView.LabelImage
-        print "self.mainOperator.Labels",self.topLevelOperatorView.Labels
-        print "self.mainOperator.Divisions",self.topLevelOperatorView.Divisions
         #logger.debug("switching to crop=%r" % (self._drawer.cropListModel[row]))
 
         currentName = self._drawer.cropListModel[row].name
-        if currentName in self.topLevelOperatorView.Annotations.value.keys():
-            print "copy Annotations"
-            self.topLevelOperatorView.labels = self.topLevelOperatorView.Annotations.value[currentName]["labels"]
-            self.topLevelOperatorView.divisions  = self.topLevelOperatorView.Annotations.value[currentName]["divisions"]
 
-            self.currentLabels = self.topLevelOperatorView.Annotations.value[currentName]["labels"]
-            self.currentDivisions  = self.topLevelOperatorView.Annotations.value[currentName]["divisions"]
-        else:
-            self.currentLabels = { }#t:{} for t in range(self.topLevelOperatorView.LabelImage.meta.shape[0])}
-            self.currentDivisions  = {}
-
-
-        print "labels",self.topLevelOperatorView.labels
         self.editor.brushingModel.setDrawnNumber(row+1)
         brushColor = self._drawer.cropListModel[row].brushColor()
         self.editor.brushingModel.setBrushColor( brushColor )
@@ -331,7 +402,6 @@ class StructuredTrackingGui(LayerViewerGui):
 
         self.editor.navCtrl.changeTimeRelative(self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[row].name]["time"][0] - self.editor.posModel.time)
         self.editor.cropModel.colorChanged.emit(brushColor)
-        #self._previousCrop = row
         self._currentCrop = row
         self._currentCropName = currentName
 
@@ -345,7 +415,6 @@ class StructuredTrackingGui(LayerViewerGui):
                 self.editor.navCtrl.changeTimeRelative(delta)
 
     def setupLayers( self ):
-        print "setupLayers"
         layers = []
  
         self.ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent        
@@ -353,7 +422,6 @@ class StructuredTrackingGui(LayerViewerGui):
         self.ct[-1] = QColor(0,0,0,255).rgba()       
         
         if self.topLevelOperatorView.TrackImage.ready():
-            print "setupLayers TrackImage"
             self.trackingsrc = LazyflowSource( self.topLevelOperatorView.TrackImage )
             trackingLayer = ColortableLayer( self.trackingsrc, self.ct )
             trackingLayer.name = "Tracking Annotations"
@@ -509,11 +577,8 @@ class StructuredTrackingGui(LayerViewerGui):
         elif slot is self.mainOperator.UntrackedImage:
             roi = SubRegion(self.mainOperator.UntrackedImage, start=[min(timesteps),] + 4*[0,], stop=[max(timesteps)+1,] + list(self.mainOperator.TrackImage.meta.shape[1:]))
             self.mainOperator.UntrackedImage.setDirty(roi)
-        print "_setDirty",slot.name
-            
+
     def handleEditorLeftClick(self, position5d, globalWindowCoordiante):
-        print "IN leftClick labels   ", self.mainOperator.labels
-        print "IN leftClick divisions", self.mainOperator.divisions
         if self.divLock:
             oid = self._getObject(self.mainOperator.LabelImage, position5d)
             item = (position5d[0], oid)
@@ -581,10 +646,6 @@ class StructuredTrackingGui(LayerViewerGui):
     
             self._setPosModel(time=self.editor.posModel.time + 1)
 
-        print "OUTleftClick labels   ", self.mainOperator.labels
-        print "OUTleftClick divisions", self.mainOperator.divisions
-
-        
     def handleEditorRightClick(self, position5d, globalWindowCoordiante):
         if self.divLock:
             return
@@ -1432,5 +1493,3 @@ class StructuredTrackingGui(LayerViewerGui):
         for b in buttons:
             if exceptButtons is None or b not in exceptButtons:
                 b.setEnabled(enable)
-        
-        print "_enableButtons"
