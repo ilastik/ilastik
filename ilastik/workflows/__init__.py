@@ -31,7 +31,7 @@ except ImportError as e:
     logger.warn("Failed to import object workflow; check dependencies: " + str(e))
 
 try:
-    import carving 
+    import carving
 except ImportError as e:
     logger.warn( "Failed to import carving workflow; check cylemon dependency: " + str(e) )
 
