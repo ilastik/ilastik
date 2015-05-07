@@ -1,11 +1,17 @@
 from PyQt4 import uic, QtGui
+from PyQt4.QtGui import *
 import os
 import logging
 import sys
 import re
 import traceback
+from PyQt4.QtCore import pyqtSignal
 from ilastik.applets.tracking.base.trackingBaseGui import TrackingBaseGui
+from ilastik.utility.exportingOperator import ExportingGui
 from ilastik.utility.gui.threadRouter import threadRouted
+from ilastik.utility.gui.titledMenu import TitledMenu
+from ilastik.utility.ipcProtocol import Protocol
+from ilastik.shell.gui.ipcManager import IPCFacade
 from ilastik.config import cfg as ilastik_config
 
 from lazyflow.request.request import Request
@@ -13,10 +19,9 @@ from lazyflow.request.request import Request
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
-class ConservationTrackingGui( TrackingBaseGui ):     
+class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
     
     withMergers = True
-    
     @threadRouted
     def _setMergerLegend(self, labels, selection):   
         for i in range(1,len(labels)+1):
@@ -198,7 +203,8 @@ class ConservationTrackingGui( TrackingBaseGui ):
                     withArmaCoordinates = withArmaCoordinates,
                     cplex_timeout = cplex_timeout,
                     appearance_cost = appearanceCost,
-                    disappearance_cost = disappearanceCost
+                    disappearance_cost = disappearanceCost,
+                    graph_building_parameter_changed = True
                     )
             except Exception:           
                 ex_type, ex, tb = sys.exc_info()
@@ -229,5 +235,83 @@ class ConservationTrackingGui( TrackingBaseGui ):
         req.notify_failed( _handle_failure )
         req.notify_finished( _handle_finished )
         req.submit()
-                
 
+    def menus(self):
+        m = QtGui.QMenu("&Export", self.volumeEditorWidget)
+        m.addAction("Export Tracking Information").triggered.connect(self.show_export_dialog)
+
+        return [m]
+
+    def get_raw_shape(self):
+        return self.topLevelOperatorView.RawImage.meta.shape
+
+    def get_feature_names(self):
+        return self.topLevelOperatorView.ComputedFeatureNames([]).wait()
+
+    def handleEditorRightClick(self, position5d, win_coord):
+        debug = ilastik_config.getboolean("ilastik", "debug")
+
+        obj, time = self.get_object(position5d)
+        if obj == 0:
+            menu = TitledMenu(["Background"])
+            if debug:
+                menu.addAction("Clear Hilite", IPCFacade().broadcast(Protocol.cmd("clear")))
+            menu.exec_(win_coord)
+            return
+
+        try:
+            color = self.mainOperator.label2color[time][obj]
+            tracks = [self.mainOperator.track_id[time][obj]]
+            extra = self.mainOperator.extra_track_ids
+        except (IndexError, KeyError):
+            color = None
+            tracks = []
+            extra = {}
+
+        if time in extra and obj in extra[time]:
+            tracks.extend(extra[time][obj])
+        if tracks:
+            children, parents = self.mainOperator.track_family(tracks[0])
+        else:
+            children, parents = None, None
+
+        menu = TitledMenu([
+            "Object {} of lineage id {}".format(obj, color),
+            "Track ids: " + (", ".join(map(str, set(tracks))) or "None"),
+        ])
+
+        if not debug:
+            menu.exec_(win_coord)
+            return
+
+        if any(IPCFacade().sending):
+
+            obj_sub_menu = menu.addMenu("Hilite Object")
+            for mode in Protocol.ValidHiliteModes:
+                where = Protocol.simple("and", ilastik_id=obj, time=time)
+                cmd = Protocol.cmd(mode, where)
+                obj_sub_menu.addAction(mode.capitalize(), IPCFacade().broadcast(cmd))
+
+            sub_menus = [
+                ("Tracks", Protocol.simple_in, tracks),
+                ("Parents", Protocol.simple_in, parents),
+                ("Children", Protocol.simple_in, children)
+            ]
+            for name, protocol, args in sub_menus:
+                if args:
+                    sub = menu.addMenu("Hilite {}".format(name))
+                    for mode in Protocol.ValidHiliteModes[:-1]:
+                        mode = mode.capitalize()
+                        where = protocol("track_id*", args)
+                        cmd = Protocol.cmd(mode, where)
+                        sub.addAction(mode, IPCFacade().broadcast(cmd))
+                else:
+                    sub = menu.addAction("Hilite {}".format(name))
+                    sub.setEnabled(False)
+
+            menu.addAction("Clear Hilite", IPCFacade().broadcast(Protocol.cmd("clear")))
+        else:
+            menu.addAction("Open IPC Server Window", IPCFacade().show_info)
+            menu.addAction("Start IPC Server", IPCFacade().start)
+
+        menu.exec_(win_coord)

@@ -20,15 +20,16 @@
 ###############################################################################
 from PyQt4.QtGui import *
 from PyQt4 import uic
-from PyQt4.QtCore import pyqtSignal, pyqtSlot, Qt, QObject
+from PyQt4.QtCore import pyqtSignal, pyqtSlot, Qt, QObject, pyqtBoundSignal
 from PyQt4.QtGui import QFileDialog
+from ilastik.shell.gui.ipcManager import IPCFacade, Protocol
+from ilastik.utility.exportingOperator import ExportingGui
 
 from ilastik.widgets.featureTableWidget import FeatureEntry
 from ilastik.widgets.featureDlg import FeatureDlg
-from ilastik.widgets.exportToKnimeDialog import ExportToKnimeDialog
+from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog
 from ilastik.applets.objectExtraction.opObjectExtraction import OpRegionFeatures3d
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
-
 from ilastik.applets.objectClassification.opObjectClassification import OpObjectClassification
 
 import os
@@ -39,7 +40,6 @@ from functools import partial
 from ilastik.config import cfg as ilastik_config
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
-from lazyflow.operators.ioOperators import OpExportToKnime 
 
 import logging
 logger = logging.getLogger(__name__)
@@ -55,6 +55,7 @@ from volumina.utility import encode_from_qstring
 
 from volumina.interpreter import ClickInterpreter
 from volumina.utility import ShortcutManager
+
 
 def _listReplace(old, new):
     if len(old) > len(new):
@@ -80,7 +81,7 @@ class FeatureSubSelectionDialog(FeatureSelectionDialog):
         self.ui.label_2.setVisible(False)
         self.ui.label_z.setVisible(False)
 
-class ObjectClassificationGui(LabelingGui):
+class ObjectClassificationGui(LabelingGui, ExportingGui):
     """A subclass of LabelingGui for labeling objects.
 
     Handles labeling objects, viewing the predicted results, and
@@ -206,52 +207,17 @@ class ObjectClassificationGui(LabelingGui):
             self.labelingDrawerUi.AddLabelButton.hide()
             self.labelingDrawerUi.AddLabelButton.clicked.disconnect()
 
+        self.badObjectBox = None
+
         self.checkEnableButtons()
 
     def menus(self):
-        if ilastik_config.getboolean('ilastik', 'debug'):
-            m = QMenu("Special Stuff", self.volumeEditorWidget)
-            m.addAction( "Export to Knime" ).triggered.connect(self.exportObjectInfo)
+        m = QMenu("&Export", self.volumeEditorWidget)
+        m.addAction("Export Object Information").triggered.connect(self.show_export_dialog)
+        if ilastik_config.getboolean("ilastik", "debug"):
             m.addAction("Export All Label Info").triggered.connect( self.exportLabelInfo )
             m.addAction("Import New Label Info").triggered.connect( self.importLabelInfo )
-            mlist = [m]
-        else:
-            mlist = []
-        return mlist
-
-    def exportObjectInfo(self):
-        if not self.layerstack or len(self.layerstack)==0:
-            print "Wait, nothing defined yet"
-            
-        else:
-            rawIndex = self.layerstack.findMatchingIndex(lambda x: x.name=="Raw data")
-            objIndex = self.layerstack.findMatchingIndex(lambda x: x.name=="Objects")
-            rawLayer = self.layerstack[rawIndex]
-            objLayer = self.layerstack[objIndex]
-            mainOperator = self.topLevelOperatorView
-            computedFeatures = mainOperator.ComputedFeatureNames([]).wait()
-            
-            dlg = ExportToKnimeDialog(rawLayer, objLayer, computedFeatures)
-            if dlg.exec_() == QDialog.Accepted:
-                if self._knime_exporter is None:
-                    #topLevelOp = self.topLevelOperatorView.viewed_operator()
-                    #imageIndex = topLevelOp.LabelInputs.index( self.topLevelOperatorView.LabelInputs )
-                    self._knime_exporter = OpExportToKnime(parent=mainOperator.viewed_operator())
-                    
-                    
-                    
-                    self._knime_exporter.RawImage.connect(mainOperator.RawImages)
-                    self._knime_exporter.CCImage.connect(mainOperator.SegmentationImages)
-                    #FIXME: pass the time region here, read it from the GUI somehow?
-                    feature_table = mainOperator.createExportTable(0, [])
-                    if feature_table is None:
-                        return
-                    self._knime_exporter.ObjectFeatures.setValue(feature_table)
-                    self._knime_exporter.ImagePerObject.setValue(True)
-                    self._knime_exporter.ImagePerTime.setValue(False)
-                
-                success = self._knime_exporter.WriteData([]).wait()
-                print "EXPORTED:", success
+        return [m]
 
     def exportLabelInfo(self):
         file_path = QFileDialog.getSaveFileName(parent=self, caption="Export Label Info as JSON", filter="*.json")
@@ -723,16 +689,24 @@ class ObjectClassificationGui(LabelingGui):
         menu = QMenu(self)
         text = "Print info for object {} in the terminal".format(obj)
         menu.addAction(text)
-        
-        if self.applet.connected_to_knime:
+
+        # IPC stuff
+        if ilastik_config.getboolean("ilastik", "debug"):
             menu.addSeparator()
-            knime_hilite = "Highlight object {} in KNIME".format(obj)
-            menu.addAction(knime_hilite)
-            knime_unhilite = "Unhighlight object {} in KNIME".format(obj)
-            menu.addAction(knime_unhilite)
-            knime_clearhilite = "Clear all highlighted objects in KNIME".format(obj)
-            menu.addAction(knime_clearhilite)
-            
+            if any(IPCFacade().sending):
+                time = position5d[0]
+
+                sub = menu.addMenu("Hilite Object")
+                for mode in Protocol.ValidHiliteModes[:-1]:
+                    where = Protocol.simple("and", time=time, ilastik_id=obj)
+                    cmd = Protocol.cmd(mode, where)
+                    sub.addAction(mode.capitalize(), IPCFacade().broadcast(cmd))
+                menu.addAction("Clear Hilite", IPCFacade().broadcast(Protocol.cmd("clear")))
+            else:
+                menu.addAction("Open IPC Server Window", IPCFacade().show_info)
+                menu.addAction("Start All IPC Servers", IPCFacade().start)
+
+
         menu.addSeparator()
         clearlabel = "Clear label for object {}".format(obj)
         menu.addAction(clearlabel)
@@ -799,7 +773,8 @@ class ObjectClassificationGui(LabelingGui):
             topLevelOp = self.topLevelOperatorView.viewed_operator()
             imageIndex = topLevelOp.LabelInputs.index( self.topLevelOperatorView.LabelInputs )
             self.topLevelOperatorView.assignObjectLabel(imageIndex, position5d, 0)
-            
+
+        #todo: remove old
         elif self.applet.connected_to_knime: 
             if action.text()==knime_hilite:
                 data = {'command': 0, 'objectid': 'Row'+str(obj)}
@@ -868,47 +843,70 @@ class ObjectClassificationGui(LabelingGui):
 
     @threadRouted
     def handleWarnings(self, *args, **kwargs):
+        """
+        handle incoming warning messages by opening a pop-up window
+        """
         # FIXME: dialog should not steal focus
+
+        # get warning from operator
         warning = self.op.Warnings[:].wait()
-        try:
-            box = self.badObjectBox
-        except AttributeError:
-            box = QMessageBox(QMessageBox.Warning,
-                              warning['title'],
-                              warning['text'],
-                              QMessageBox.NoButton,
-                              self)
-            box.setWindowModality(Qt.NonModal)
+
+        # log the warning message in any case
+        logger.warn(warning['text'])
+
+        # create dialog only once to prevent a pop-up window cascade
+        if self.badObjectBox is None:
+            box = BadObjectsDialog(warning, self)
             box.move(self.geometry().width(), 0)
+            self.badObjectBox = box
+        box = self.badObjectBox
         box.setWindowTitle(warning['title'])
         box.setText(warning['text'])
         box.setInformativeText(warning.get('info', ''))
         box.setDetailedText(warning.get('details', ''))
 
-        self.logBox(box)
         box.show()
-        self.badObjectBox = box
 
-    def logBox(self, box):
-        # log the warning message in any case
-        logger.warn(box.text())
+    def get_raw_shape(self):
+        """
+        Implements the ExportingGUI.get_raw_shape
+        :return: the raw shape
+        """
+        return self.op.RawImages.meta.shape
 
-        # make a callback for printing the whole error to the log file
-        def printToLog(*args, **kwargs):
-            parts = []
-            for s in (box.text(), box.informativeText(), box.detailedText()):
-                if len(s) > 0:
-                    parts.append(encode_from_qstring(s))
-            msg = "\n".join(parts)
-            logger.warn(msg)
+    def get_feature_names(self):
+        """
+        Implements the ExportingGUI.get_feature_names
+        :return: the feature names
+        :rtype: dict
+        """
+        return self.op.ComputedFeatureNames([]).wait()
 
+
+class BadObjectsDialog(QMessageBox):
+    def __init__(self, warning, parent):
+        super(BadObjectsDialog, self).__init__(QMessageBox.Warning,
+                                               warning['title'],
+                                               warning['text'],
+                                               QMessageBox.NoButton,
+                                               parent)
+        self.setWindowModality(Qt.NonModal)
         # make a button to connect to the logging callback
-        button = QPushButton(parent=box)
+        button = QPushButton(parent=self)
         button.setText("Print Details To Log...")
 
-        box.addButton(QMessageBox.Close)
-        box.addButton(button, QMessageBox.ActionRole)
-        #HACK do not close the dialog when print is clicked
+        self.addButton(QMessageBox.Close)
+        self.addButton(button, QMessageBox.ActionRole)
+        # do not close the dialog when print is clicked
         # => remove the 'close' callback
         button.clicked.disconnect()
-        button.clicked.connect(printToLog)
+        button.clicked.connect(self._printToLog)
+
+    def _printToLog(self, *args, **kwargs):
+        parts = []
+        for s in (self.text(), self.informativeText(), self.detailedText()):
+            if len(s) > 0:
+                parts.append(encode_from_qstring(s))
+        msg = "\n".join(parts)
+        logger.warn(msg)
+        

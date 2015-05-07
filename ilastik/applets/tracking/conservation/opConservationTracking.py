@@ -1,12 +1,15 @@
+import numpy as np
 from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.rtype import List
 from lazyflow.stype import Opaque
 import pgmlink
 from ilastik.applets.tracking.base.opTrackingBase import OpTrackingBase
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 from ilastik.applets.tracking.base.trackingUtilities import relabelMergers
 from ilastik.applets.tracking.base.trackingUtilities import get_events
 from lazyflow.operators.opCompressedCache import OpCompressedCache
 from lazyflow.roi import sliceToRoi
+
 
 import logging
 logger = logging.getLogger(__name__)
@@ -23,6 +26,7 @@ class OpConservationTracking(OpTrackingBase):
     MergerOutputHdf5 = OutputSlot()
     MergerCachedOutput = OutputSlot() # For the GUI (blockwise access)
     MergerOutput = OutputSlot()
+    
 
     def __init__(self, parent=None, graph=None):
         super(OpConservationTracking, self).__init__(parent=parent, graph=graph)
@@ -33,6 +37,9 @@ class OpConservationTracking(OpTrackingBase):
         self.MergerCleanBlocks.connect(self._mergerOpCache.CleanBlocks)
         self.MergerOutputHdf5.connect(self._mergerOpCache.OutputHdf5)
         self.MergerCachedOutput.connect(self._mergerOpCache.Output)
+        
+        self.tracker = None
+
 
     def setupOutputs(self):
         super(OpConservationTracking, self).setupOutputs()
@@ -85,7 +92,8 @@ class OpConservationTracking(OpTrackingBase):
             borderAwareWidth = 0.0,
             withArmaCoordinates = True,
             appearance_cost = 500,
-            disappearance_cost = 500
+            disappearance_cost = 500,
+            graph_building_parameter_changed = True
             ):
         
         if not self.Parameters.ready():
@@ -129,17 +137,12 @@ class OpConservationTracking(OpTrackingBase):
         
         median_obj_size = [0]
 
-        coordinate_map = pgmlink.TimestepIdCoordinateMap()
-        if withArmaCoordinates:
-            coordinate_map.initialize()
         ts, empty_frame = self._generate_traxelstore(time_range, x_range, y_range, z_range, 
                                                                       size_range, x_scale, y_scale, z_scale, 
                                                                       median_object_size=median_obj_size, 
                                                                       with_div=withDivisions,
                                                                       with_opt_correction=withOpticalCorrection,
-                                                                      with_coordinate_list=withMergerResolution , # no vigra coordinate list, that is done by arma
-                                                                      with_classifier_prior=withClassifierPrior,
-                                                                      coordinate_map=coordinate_map)
+                                                                      with_classifier_prior=withClassifierPrior)
         
         if empty_frame:
             raise Exception, 'cannot track frames with 0 objects, abort.'
@@ -174,33 +177,68 @@ class OpConservationTracking(OpTrackingBase):
         if ndim == 2:
             assert z_range[0] * z_scale == 0 and (z_range[1]-1) * z_scale == 0, "fov of z must be (0,0) if ndim==2"
 
-        tracker = pgmlink.ConsTracking(maxObj,
+        if(self.tracker == None or graph_building_parameter_changed):
+            print '\033[94m' +"make new graph"+  '\033[0m'
+            self.tracker = pgmlink.ConsTracking(maxObj,
+                                         sizeDependent,   # size_dependent_detection_prob
+                                         float(median_obj_size[0]), # median_object_size
                                          float(maxDist),
+                                         withDivisions,
                                          float(divThreshold),
                                          "none",  # detection_rf_filename
-                                         sizeDependent,   # size_dependent_detection_prob
-                                         0,       # forbidden_cost
-                                         float(ep_gap), # ep_gap
-                                         float(median_obj_size[0]), # median_object_size
-                                         withTracklets,
-                                         divWeight,
-                                         transWeight,
-                                         withDivisions,
-                                         disappearance_cost, # disappearance cost
-                                         appearance_cost, # appearance cost
-                                         withMergerResolution,
-                                         ndim,
-                                         transition_parameter,
-                                         borderAwareWidth,
                                          fov,
-                                         True, #with_constraints
-                                         cplex_timeout,
-                                         "none" # dump traxelstore
+                                         "none", # dump traxelstore,
+                                         pgmlink.ConsTrackingSolverType.CplexSolver
                                          )
+            self.tracker.buildGraph(ts)
 
-        
+        # create dummy uncertainty parameter object with just one iteration, so no perturbations at all (iter=0 -> MAP)
+        sigmas = pgmlink.VectorOfDouble()
+        for i in range(5):
+            sigmas.append(0.0)
+        uncertaintyParams = pgmlink.UncertaintyParameter(1, pgmlink.DistrId.PerturbAndMAP, sigmas)
+
         try:
-            eventsVector = tracker(ts, coordinate_map.get())
+            eventsVector = self.tracker.track(0,       # forbidden_cost
+                                            float(ep_gap), # ep_gap
+                                            withTracklets,
+                                            10.0, # detection weight
+                                            divWeight,
+                                            transWeight,
+                                            disappearance_cost, # disappearance cost
+                                            appearance_cost, # appearance cost
+                                            withMergerResolution,
+                                            ndim,
+                                            transition_parameter,
+                                            borderAwareWidth,
+                                            True, #with_constraints
+                                            uncertaintyParams,
+                                            cplex_timeout,
+                                            None) # TransitionClassifier
+
+            eventsVector = eventsVector[0] # we have a vector such that we could get a vector per perturbation
+
+            # extract the coordinates with the given event vector
+            if withMergerResolution:
+                coordinate_map = pgmlink.TimestepIdCoordinateMap()
+                # TODO what should the variable withArmaCoordinates toggle?
+                # is this the intended use?
+                if withArmaCoordinates:
+                    coordinate_map.initialize()
+                self._get_merger_coordinates(coordinate_map,
+                                             time_range,
+                                             eventsVector)
+
+                eventsVector = self.tracker.resolve_mergers(eventsVector,
+                                                coordinate_map.get(),
+                                                float(ep_gap),
+                                                transWeight,
+                                                withTracklets,
+                                                ndim,
+                                                transition_parameter,
+                                                True, # with_constraints
+                                                #True) # with_multi_frame_moves
+                                                None) # TransitionClassifier
         except Exception as e:
             raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
         
@@ -221,3 +259,41 @@ class OpConservationTracking(OpTrackingBase):
                     and self.NumLabels.ready() \
                     and self.NumLabels.value > 1:
                 self.parent.parent.trackingApplet._gui.currentGui()._drawer.maxObjectsBox.setValue(self.NumLabels.value-1)
+
+    def _get_merger_coordinates(self, coordinate_map, time_range, eventsVector):
+        # fetch features
+        feats = self.ObjectFeatures(time_range).wait()
+        # iterate over all timesteps
+        for t in feats.keys():
+            rc = feats[t][default_features_key]['RegionCenter']
+            lower = feats[t][default_features_key]['Coord<Minimum>']
+            upper = feats[t][default_features_key]['Coord<Maximum>']
+            size = feats[t][default_features_key]['Count']
+            for event in eventsVector[t]:
+                # check for merger events
+                if event.type == pgmlink.EventType.Merger:
+                    idx = event.traxel_ids[0]
+                    # generate roi: assume the following order: txyzc
+                    n_dim = len(rc[idx])
+                    roi = [0]*5
+                    roi[0] = slice(int(t), int(t+1))
+                    roi[1] = slice(int(lower[idx][0]), int(upper[idx][0] + 1))
+                    roi[2] = slice(int(lower[idx][1]), int(upper[idx][1] + 1))
+                    if n_dim == 3:
+                        roi[3] = slice(int(lower[idx][2]), int(upper[idx][2] + 1))
+                    else:
+                        assert n_dim == 2
+                    image_excerpt = self.LabelImage[roi].wait()
+                    if n_dim == 2:
+                        image_excerpt = image_excerpt[0, ..., 0, 0]
+                    elif n_dim ==3:
+                        image_excerpt = image_excerpt[0, ..., 0]
+                    else:
+                        raise Exception, "n_dim = %s instead of 2 or 3"
+
+                    pgmlink.extract_coord_by_timestep_id(coordinate_map,
+                                                         image_excerpt,
+                                                         lower[idx].astype(np.int64),
+                                                         t,
+                                                         idx,
+                                                         int(size[idx,0]))

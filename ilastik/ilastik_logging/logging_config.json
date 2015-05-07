@@ -35,7 +35,7 @@
         "volumina.pixelpipeline.imagesources.GrayscaleImageRequest": { "level": "INFO" },
         
         "lazyflow.operators.opArrayCache.OpArrayCache":                { "level":"INFO" },
-        "lazyflow.operators.arrayCacheMemoryMgr.ArrayCacheMemoryMgr":  { "level":"INFO" },
+        "lazyflow.operators.cacheMemoryManager.CacheMemoryManager":  { "level":"INFO" },
         "lazyflow.operators.vigraOperators":                        { "level":"INFO" },
         "lazyflow.operators.ioOperators.ioOperators.OpH5WriterBigDataset":  	{ "level":"INFO" },
         "lazyflow.operators.classifierOperators":                   { "level":"INFO" },
