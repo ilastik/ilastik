@@ -193,6 +193,7 @@ class SerialSlot(object):
             return
         deleteIfPresent(group, self.name)
         if self.slot.ready():
+            print " self.slot.name",self.slot.name
             self._serialize(group, self.name, self.slot)
         self.dirty = False
 

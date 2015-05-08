@@ -225,6 +225,7 @@ class AnnotationsGui(LayerViewerGui):
         self.editor.navCtrl.changeTimeRelative(self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[0].name]["time"][0] - self.editor.posModel.time)
 
         self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
+        print "before init Annotations"
         self._initAnnotations()
 
     def _cropListViewInit(self):
@@ -290,7 +291,7 @@ class AnnotationsGui(LayerViewerGui):
         else:
             crop = self.topLevelOperatorView.Crops.value[name]
 
-        for time in range(crop["time"][0],crop["time"][1]):
+        for time in range(crop["time"][0],crop["time"][1]+1):
             if time in self.topLevelOperatorView.labels.keys():
                 for label in self.topLevelOperatorView.labels[time].keys():
                     lower = self.features[time][default_features_key]['Coord<Minimum>'][label]
@@ -339,7 +340,7 @@ class AnnotationsGui(LayerViewerGui):
 
                 addAnnotation = False
                 if len(lowerParent) == 2:
-                    if (crop["time"][0] <= time and time <= crop["time"][1]) and \
+                    if (crop["time"][0] <= time and time <= crop["time"][1]+1) and \
                         ((crop["starts"][0] <= upperParent[0] and lowerParent[0] <= crop["stops"][0] and \
                         crop["starts"][1] <= upperParent[1] and lowerParent[1] <= crop["stops"][1]) or \
                         ( crop["starts"][0] <= upperChild1[0] and lowerChild1[0] <= crop["stops"][0] and \
@@ -348,7 +349,7 @@ class AnnotationsGui(LayerViewerGui):
                         crop["starts"][1] <= upperChild2[1] and lowerChild2[1] <= crop["stops"][1])):
                         addAnnotation = True
                 else:
-                    if (crop["time"][0] <= time and time <= crop["time"][1]) and \
+                    if (crop["time"][0] <= time and time <= crop["time"][1]+1) and \
                         ((crop["starts"][0] <= upperParent[0] and lowerParent[0] <= crop["stops"][0] and \
                         crop["starts"][1] <= upperParent[1] and lowerParent[1] <= crop["stops"][1] and \
                         crop["starts"][2] <= upperParent[2] and lowerParent[2] <= crop["stops"][2]) or \
@@ -359,7 +360,7 @@ class AnnotationsGui(LayerViewerGui):
                         crop["starts"][1] <= upperChild2[1] and lowerChild2[1] <= crop["stops"][1] and \
                         crop["starts"][2] <= upperChild2[2] and lowerChild2[2] <= crop["stops"][2])):
                         addAnnotation = True
-
+                print "addAnnotation",addAnnotation
                 if addAnnotation:
                     if name not in self.topLevelOperatorView.Annotations.value.keys():
                         self.topLevelOperatorView.Annotations.value[name] = {}
@@ -368,6 +369,10 @@ class AnnotationsGui(LayerViewerGui):
                     if parentTrack not in self.topLevelOperatorView.Annotations.value[name]["divisions"].keys():
                         self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = {}
                     self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = self.topLevelOperatorView.divisions[parentTrack]
+
+        print "in SAVE ANNOTATIONS divisions",self.topLevelOperatorView.divisions
+        print "in SAVE ANNOTATIONS labels   ",self.topLevelOperatorView.labels, self.mainOperator.Annotations.value
+        self._setDirty(self.mainOperator.Annotations, range(self.mainOperator.TrackImage.meta.shape[0]))
 
     def getLabel(self, time, track):
         for label in self.mainOperator.labels[time].keys():
@@ -573,6 +578,8 @@ class AnnotationsGui(LayerViewerGui):
             self.mainOperator.TrackImage.setDirty(roi)
         elif slot is self.mainOperator.Labels:
             self.mainOperator.Labels.setDirty(timesteps)
+        elif slot is self.mainOperator.Annotations:
+            self.mainOperator.Annotations.setDirty([])
         elif slot is self.mainOperator.Divisions:
             self.mainOperator.Divisions.setDirty([])
         elif slot is self.mainOperator.UntrackedImage:

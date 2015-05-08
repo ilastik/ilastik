@@ -19,6 +19,8 @@ class OpStructuredTracking(OpTrackingBase):
     DivisionProbabilities = InputSlot(stype=Opaque, rtype=List)
     DetectionProbabilities = InputSlot(stype=Opaque, rtype=List)
     NumLabels = InputSlot()
+    Annotations = InputSlot(stype=Opaque)
+    Crops = InputSlot()
 
     # compressed cache for merger output
     MergerInputHdf5 = InputSlot(optional=True)
@@ -26,7 +28,7 @@ class OpStructuredTracking(OpTrackingBase):
     MergerOutputHdf5 = OutputSlot()
     MergerCachedOutput = OutputSlot() # For the GUI (blockwise access)
     MergerOutput = OutputSlot()
-    
+
 
     def __init__(self, parent=None, graph=None):
         super(OpStructuredTracking, self).__init__(parent=parent, graph=graph)
@@ -37,9 +39,9 @@ class OpStructuredTracking(OpTrackingBase):
         self.MergerCleanBlocks.connect(self._mergerOpCache.CleanBlocks)
         self.MergerOutputHdf5.connect(self._mergerOpCache.OutputHdf5)
         self.MergerCachedOutput.connect(self._mergerOpCache.Output)
-        
-        self.tracker = None
 
+        self.tracker = None
+        self._parent = parent
 
     def setupOutputs(self):
         super(OpStructuredTracking, self).setupOutputs()

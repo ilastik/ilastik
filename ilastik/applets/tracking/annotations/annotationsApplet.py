@@ -24,7 +24,7 @@ from opAnnotations import OpAnnotations
 from annotationsSerializer import AnnotationsSerializer
 
 class AnnotationsApplet(StandardApplet):
-    def __init__( self, name="Tracking Annotations", workflow=None, projectFileGroupName="TrackingAnnotations" ):
+    def __init__( self, name="Annotations", workflow=None, projectFileGroupName="TrackingAnnotations" ):
         super(AnnotationsApplet, self).__init__( name=name, workflow=workflow )
         self._serializableItems = [ AnnotationsSerializer(self.topLevelOperator, projectFileGroupName) ]
         self.busy = False

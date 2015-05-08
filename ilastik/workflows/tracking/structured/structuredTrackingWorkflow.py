@@ -79,7 +79,7 @@ class StructuredTrackingWorkflow( Workflow ):
         self.annotationsApplet = AnnotationsApplet( workflow=self )
         opAnnotations = self.annotationsApplet.topLevelOperator
 
-        self.dataExportAnnotationsApplet = TrackingBaseDataExportApplet(self, "Annotations Result Export")
+        self.dataExportAnnotationsApplet = TrackingBaseDataExportApplet(self, "Annotations Export")
         opDataExportAnnotations = self.dataExportAnnotationsApplet.topLevelOperator
         opDataExportAnnotations.SelectionNames.setValue( ['Annotations', 'Object Identities'] )
         opDataExportAnnotations.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
@@ -208,6 +208,8 @@ class StructuredTrackingWorkflow( Workflow ):
         opStructuredTracking.DivisionProbabilities.connect( opDivDetection.Probabilities )
         opStructuredTracking.DetectionProbabilities.connect( opCellClassification.Probabilities )
         opStructuredTracking.NumLabels.connect( opCellClassification.NumLabels )
+        opStructuredTracking.Crops.connect (opCropSelection.Crops)
+        opStructuredTracking.Annotations.connect (opAnnotations.Annotations)
 
         opDataTrackingExport.Inputs.resize(3)
         opDataTrackingExport.Inputs[0].connect( opStructuredTracking.Output )

@@ -106,6 +106,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         
         self._onMaxObjectsBoxChanged()
         self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)                
+        self._drawer.ImportAnnotationsButton.clicked.connect(self._onImportAnnotationsButtonPressed)
+        self._drawer.StructuredLearningButton.clicked.connect(self._onRunStructuredLearningButtonPressed)
 
     @threadRouted
     def _onTimeoutBoxChanged(self, *args):
@@ -128,7 +130,15 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
     def _onMaxObjectsBoxChanged(self):
         self._setMergerLegend(self.mergerLabels, self._drawer.maxObjectsBox.value())
         
-    def _onTrackButtonPressed( self ):    
+    def _onImportAnnotationsButtonPressed(self):
+        self._annotations = self.mainOperator.Annotations.value
+        print "ImportAnnotations PRESSED local",self._annotations
+        print "ImportAnnotations PRESSED slot ",self.mainOperator.Annotations.value
+
+    def _onRunStructuredLearningButtonPressed(self):
+        print "RunStructuredLearningButton PRESSED"
+
+    def _onTrackButtonPressed( self ):
         if not self.mainOperator.ObjectFeatures.ready():
             self._criticalMessage("You have to compute object features first.")            
             return
