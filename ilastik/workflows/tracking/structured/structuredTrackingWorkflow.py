@@ -23,6 +23,7 @@ from lazyflow.graph import Graph
 from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.tracking.annotations.annotationsApplet import AnnotationsApplet
+from ilastik.applets.tracking.structured.structuredTrackingApplet import StructuredTrackingApplet
 from ilastik.applets.objectExtraction.objectExtractionApplet import ObjectExtractionApplet
 from ilastik.applets.thresholdTwoLevels.thresholdTwoLevelsApplet import ThresholdTwoLevelsApplet
 from ilastik.applets.objectClassification.objectClassificationApplet import ObjectClassificationApplet
@@ -78,10 +79,18 @@ class StructuredTrackingWorkflow( Workflow ):
         self.annotationsApplet = AnnotationsApplet( workflow=self )
         opAnnotations = self.annotationsApplet.topLevelOperator
 
-        self.dataExportApplet = TrackingBaseDataExportApplet(self, "Tracking Result Export")
-        opDataExport = self.dataExportApplet.topLevelOperator
-        opDataExport.SelectionNames.setValue( ['Structured Learning Tracking', 'Object Identities'] )
-        opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
+        self.dataExportAnnotationsApplet = TrackingBaseDataExportApplet(self, "Annotations Result Export")
+        opDataExportAnnotations = self.dataExportAnnotationsApplet.topLevelOperator
+        opDataExportAnnotations.SelectionNames.setValue( ['Annotations', 'Object Identities'] )
+        opDataExportAnnotations.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
+
+        self.trackingApplet = StructuredTrackingApplet( workflow=self )
+        opStructuredTracking = self.trackingApplet.topLevelOperator
+
+        self.dataExportTrackingApplet = TrackingBaseDataExportApplet(self, "Tracking Result Export")
+        opDataExportTracking = self.dataExportTrackingApplet.topLevelOperator
+        opDataExportTracking.SelectionNames.setValue( ['Tracking Result', 'Merger Result', 'Object Identities'] )
+        opDataExportTracking.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
 
         self._applets = []
         self._applets.append(self.dataSelectionApplet)
@@ -92,7 +101,9 @@ class StructuredTrackingWorkflow( Workflow ):
         self._applets.append(self.cropSelectionApplet)
         self._applets.append(self.objectExtractionApplet)
         self._applets.append(self.annotationsApplet)
-        self._applets.append(self.dataExportApplet)
+        self._applets.append(self.dataExportAnnotationsApplet)
+        self._applets.append(self.trackingApplet)
+        self._applets.append(self.dataExportTrackingApplet)
 
     def connectLane(self, laneIndex):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
@@ -101,9 +112,11 @@ class StructuredTrackingWorkflow( Workflow ):
 
         opAnnotations = self.annotationsApplet.topLevelOperator.getLane(laneIndex)
         opTwoLevelThreshold = self.thresholdTwoLevelsApplet.topLevelOperator.getLane(laneIndex)
-        opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
+        opDataAnnotationsExport = self.dataExportAnnotationsApplet.topLevelOperator.getLane(laneIndex)
 
         opCropSelection = self.cropSelectionApplet.topLevelOperator.getLane(laneIndex)
+        opStructuredTracking = self.trackingApplet.topLevelOperator.getLane(laneIndex)
+        opDataTrackingExport = self.dataExportTrackingApplet.topLevelOperator.getLane(laneIndex)
 
         ## Connect operators ##
         op5Raw = OpReorderAxes(parent=self)
@@ -180,11 +193,28 @@ class StructuredTrackingWorkflow( Workflow ):
         opAnnotations.ObjectFeatures.connect( opObjExtraction.RegionFeatures )
         opAnnotations.Crops.connect( opCropSelection.Crops)
 
-        opDataExport.Inputs.resize(2)
-        opDataExport.Inputs[0].connect( opAnnotations.TrackImage )
-        opDataExport.Inputs[1].connect( opAnnotations.LabelImage )
-        opDataExport.RawData.connect( op5Raw.Output )
-        opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
+        opDataAnnotationsExport.Inputs.resize(2)
+        opDataAnnotationsExport.Inputs[0].connect( opAnnotations.TrackImage )
+        opDataAnnotationsExport.Inputs[1].connect( opAnnotations.LabelImage )
+        opDataAnnotationsExport.RawData.connect( op5Raw.Output )
+        opDataAnnotationsExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
+
+        opStructuredTracking.RawImage.connect( op5Raw.Output )
+        opStructuredTracking.LabelImage.connect( opObjExtraction.LabelImage )
+        #opStructuredTracking.ObjectFeatures.connect( opObjExtraction.RegionFeaturesVigra )
+        #opStructuredTracking.ComputedFeatureNames.connect( opObjExtraction.ComputedFeatureNamesVigra )
+        opStructuredTracking.ObjectFeatures.connect( opTrackingFeatureExtraction.RegionFeaturesVigra )
+        opStructuredTracking.ComputedFeatureNames.connect( opTrackingFeatureExtraction.ComputedFeatureNamesVigra )
+        opStructuredTracking.DivisionProbabilities.connect( opDivDetection.Probabilities )
+        opStructuredTracking.DetectionProbabilities.connect( opCellClassification.Probabilities )
+        opStructuredTracking.NumLabels.connect( opCellClassification.NumLabels )
+
+        opDataTrackingExport.Inputs.resize(3)
+        opDataTrackingExport.Inputs[0].connect( opStructuredTracking.Output )
+        opDataTrackingExport.Inputs[1].connect( opStructuredTracking.MergerOutput )
+        opDataTrackingExport.Inputs[2].connect( opStructuredTracking.LabelImage )
+        opDataTrackingExport.RawData.connect( op5Raw.Output )
+        opDataTrackingExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
 
     def _inputReady(self, nRoles):
         slot = self.dataSelectionApplet.topLevelOperator.ImageGroup
@@ -221,7 +251,7 @@ class StructuredTrackingWorkflow( Workflow ):
         croppingOutput = opCropSelection.Crops
         cropping_ready = thresholding_ready and len(croppingOutput) > 0
 
-        #objectCountClassifier_ready = tracking_features_ready
+        objectCountClassifier_ready = tracking_features_ready
 
         opObjectExtraction = self.objectExtractionApplet.topLevelOperator
         objectExtractionOutput = opObjectExtraction.ComputedFeatureNames
@@ -234,6 +264,9 @@ class StructuredTrackingWorkflow( Workflow ):
                            opAnnotations.Labels.ready() and \
                            opAnnotations.TrackImage.ready()
 
+        opStructuredTracking = self.trackingApplet.topLevelOperator
+        structured_tracking_ready = objectCountClassifier_ready and \
+                           len(opStructuredTracking.EventsVector) > 0
         busy = False
         busy |= self.dataSelectionApplet.busy
         #busy |= self.thresholdTwoLevelsApplet.busy
@@ -241,8 +274,10 @@ class StructuredTrackingWorkflow( Workflow ):
         #busy |= self.divisionDetectionApplet.busy
         #busy |= self.cellClassificationApplet.busy
         #busy |= self.cropSelectionApplet.busy
-        busy |= self.dataExportApplet.busy
         busy |= self.annotationsApplet.busy
+        busy |= self.dataExportAnnotationsApplet.busy
+        busy |= self.trackingApplet.busy
+
         self._shell.enableProjectChanges( not busy )
 
         self._shell.setAppletEnabled(self.dataSelectionApplet, not busy)
@@ -253,5 +288,8 @@ class StructuredTrackingWorkflow( Workflow ):
         self._shell.setAppletEnabled(self.cropSelectionApplet, thresholding_ready and not busy)
         self._shell.setAppletEnabled(self.objectExtractionApplet, not busy)
         self._shell.setAppletEnabled(self.annotationsApplet, features_ready and not busy)
-        self._shell.setAppletEnabled(self.dataExportApplet, annotations_ready and not busy and \
-                                        self.dataExportApplet.topLevelOperator.Inputs[0][0].ready() )
+        self._shell.setAppletEnabled(self.dataExportAnnotationsApplet, annotations_ready and not busy and \
+                                        self.dataExportAnnotationsApplet.topLevelOperator.Inputs[0][0].ready() )
+        self._shell.setAppletEnabled(self.trackingApplet, objectCountClassifier_ready and not busy)
+        self._shell.setAppletEnabled(self.dataExportTrackingApplet, structured_tracking_ready and not busy and \
+                                    self.dataExportTrackingApplet.topLevelOperator.Inputs[0][0].ready() )
