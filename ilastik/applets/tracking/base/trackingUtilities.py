@@ -39,19 +39,6 @@ def relabel(volume, replace):
                 pass
 #    mp[replace.keys()] = replace.values()
     return mp[volume]
-    
-    
-#def relabelMergers(volume, merger):
-#    mp = np.arange(0, np.amax(volume) + 1, dtype=volume.dtype)
-#    mp[:] = 0
-#    labels = np.unique(volume)
-#    for label in labels:
-#        if label > 0:
-#            if label in merger:
-#                mp[label] = merger[label]
-#            else:
-#                mp[label] = 1
-#    return mp[volume]
 
 def get_dict_value(dic, key, default=[]):
     if key not in dic:
