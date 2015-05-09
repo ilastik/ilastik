@@ -96,30 +96,42 @@ class OpConservationTracking(OpTrackingBase):
             withArmaCoordinates = True,
             appearance_cost = 500,
             disappearance_cost = 500,
-            graph_building_parameter_changed = True
+            force_build_hypotheses_graph = False
             ):
         
         if not self.Parameters.ready():
             raise Exception("Parameter slot is not ready")
         
+        # it is assumed that the self.Parameters object is changed only at this
+        # place (ugly assumption). Therefore we can track any changes in the
+        # parameters as done in the following lines: If the same value for the
+        # key is already written in the parameters dictionary, the
+        # paramters_changed dictionary will get a "False" entry for this key,
+        # otherwise it is set to "True"
         parameters = self.Parameters.value
-        parameters['maxDist'] = maxDist
-        parameters['maxObj'] = maxObj
-        parameters['divThreshold'] = divThreshold
-        parameters['avgSize'] = avgSize
-        parameters['withTracklets'] = withTracklets
-        parameters['sizeDependent'] = sizeDependent
-        parameters['divWeight'] = divWeight   
-        parameters['transWeight'] = transWeight
-        parameters['withDivisions'] = withDivisions
-        parameters['withOpticalCorrection'] = withOpticalCorrection
-        parameters['withClassifierPrior'] = withClassifierPrior
-        parameters['withMergerResolution'] = withMergerResolution
-        parameters['borderAwareWidth'] = borderAwareWidth
-        parameters['withArmaCoordinates'] = withArmaCoordinates
-        parameters['appearanceCost'] = appearance_cost
-        parameters['disappearanceCost'] = disappearance_cost
-                
+        parameters_changed = {}
+        self._setParameter('maxDist', maxDist, parameters, parameters_changed)
+        self._setParameter('maxDist', maxDist, parameters, parameters_changed)
+        self._setParameter('maxObj', maxObj, parameters, parameters_changed)
+        self._setParameter('divThreshold', divThreshold, parameters, parameters_changed)
+        self._setParameter('avgSize', avgSize, parameters, parameters_changed)
+        self._setParameter('withTracklets', withTracklets, parameters, parameters_changed)
+        self._setParameter('sizeDependent', sizeDependent, parameters, parameters_changed)
+        self._setParameter('divWeight', divWeight, parameters, parameters_changed)
+        self._setParameter('transWeight', transWeight, parameters, parameters_changed)
+        self._setParameter('withDivisions', withDivisions, parameters, parameters_changed)
+        self._setParameter('withOpticalCorrection', withOpticalCorrection, parameters, parameters_changed)
+        self._setParameter('withClassifierPrior', withClassifierPrior, parameters, parameters_changed)
+        self._setParameter('withMergerResolution', withMergerResolution, parameters, parameters_changed)
+        self._setParameter('borderAwareWidth', borderAwareWidth, parameters, parameters_changed)
+        self._setParameter('withArmaCoordinates', withArmaCoordinates, parameters, parameters_changed)
+        self._setParameter('appearanceCost', appearance_cost, parameters, parameters_changed)
+        self._setParameter('disappearanceCost', disappearance_cost, parameters, parameters_changed)
+        if self._graphBuildingParameterChanged(parameters_changed):
+            do_build_hypotheses_graph = True
+        else:
+            do_build_hypotheses_graph = force_build_hypotheses_graph
+
         if cplex_timeout:
             parameters['cplex_timeout'] = cplex_timeout
         else:
@@ -180,7 +192,10 @@ class OpConservationTracking(OpTrackingBase):
         if ndim == 2:
             assert z_range[0] * z_scale == 0 and (z_range[1]-1) * z_scale == 0, "fov of z must be (0,0) if ndim==2"
 
-        if(self.tracker == None or graph_building_parameter_changed):
+        if self.tracker is None:
+            do_build_hypotheses_graph = True
+
+        if do_build_hypotheses_graph:
             print '\033[94m' +"make new graph"+  '\033[0m'
             self.tracker = pgmlink.ConsTracking(maxObj,
                                          sizeDependent,   # size_dependent_detection_prob
@@ -300,3 +315,20 @@ class OpConservationTracking(OpTrackingBase):
                     int(time),
                     int(new_id))
         return relabel(volume, self.label2color[time])
+
+    def _setParameter(self, key, value, parameters, parameters_changed):
+        if key in parameters.keys():
+            parameters_changed[key] = (value != parameters[key])
+            parameters[key] = value
+        else:
+            parameters_changed[key] = True
+            parameters[key] = value
+
+    def _graphBuildingParameterChanged(self, parameters_changed):
+        rebuild_for_keys_changed = [
+            'maxObj',
+            'sizeDependent',
+            'maxDist',
+            'withDivisions',
+            'divThreshold']
+        return any(parameters_changed[key] for key in rebuild_for_keys_changed)

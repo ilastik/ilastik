@@ -204,7 +204,7 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
                     cplex_timeout = cplex_timeout,
                     appearance_cost = appearanceCost,
                     disappearance_cost = disappearanceCost,
-                    graph_building_parameter_changed = True
+                    force_build_hypotheses_graph = False
                     )
             except Exception:           
                 ex_type, ex, tb = sys.exc_info()
