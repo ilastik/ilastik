@@ -65,7 +65,7 @@ class OpTrackingBase(Operator, ExportingOperator):
     def __init__(self, parent=None, graph=None):
         super(OpTrackingBase, self).__init__(parent=parent, graph=graph)
         self.label2color = []
-        self.mergers = []
+        self.resolvedto = []
 
         self.track_id = None
         self.extra_track_ids = None
@@ -191,19 +191,17 @@ class OpTrackingBase(Operator, ExportingOperator):
 
         label2color = []
         label2color.append({})
-        mergers = []
+        resolvedto = []
+        resolvedto.append({})
 
         maxId = 2  # misdetections have id 1
 
         # handle start time offsets
         for i in range(time_range[0]):
             label2color.append({})
-            mergers.append({})
+            resolvedto.append({})
 
         if export_mode:
-            extra_track_ids = {}
-            multi_move = {}
-            multi_move_next = {}
             divisions = []
 
         for i in time_range:
@@ -211,19 +209,17 @@ class OpTrackingBase(Operator, ExportingOperator):
             app = get_dict_value(events[str(i - time_range[0] + 1)], "app", [])
             div = get_dict_value(events[str(i - time_range[0] + 1)], "div", [])
             mov = get_dict_value(events[str(i - time_range[0] + 1)], "mov", [])
-            merger = get_dict_value(events[str(i - time_range[0])], "merger", [])
-            multi = get_dict_value(events[str(i - time_range[0] + 1)], "multiMove", [])
+            res = get_dict_value(events[str(i - time_range[0] + 1)], "res", [])
 
             logger.info(" {} dis at {}".format(len(dis), i))
             logger.info(" {} app at {}".format(len(app), i))
             logger.info(" {} div at {}".format(len(div), i))
             logger.info(" {} mov at {}".format(len(mov), i))
-            logger.info(" {} merger at {}".format(len(merger), i))
-            logger.info(" {} multiMoves at {}\n".format(len(multi), i))
+            logger.info(" {} res at {}".format(len(res), i))
 
             label2color.append({})
-            mergers.append({})
             moves_at = []
+            resolvedto.append({})
 
             if export_mode:
                 moves_to = {}
@@ -237,11 +233,6 @@ class OpTrackingBase(Operator, ExportingOperator):
 
             for e in mov:
                 if export_mode:
-                    if e[1] in moves_to:
-                        multi_move.setdefault(i, {})
-                        multi_move[i][e[0]] = e[1]
-                        multi_move[i][moves_to[e[1]][0]] = e[1]
-                        multi_move_next[(i, e[1])] = 0
                     moves_to.setdefault(e[1], [])
                     moves_to[e[1]].append(e[0])
 
@@ -253,12 +244,6 @@ class OpTrackingBase(Operator, ExportingOperator):
                         label2color[-2][int(e[0])] = np.random.randint(1, 255)
                 label2color[-1][int(e[1])] = label2color[-2][int(e[0])]
                 moves_at.append(int(e[0]))
-
-                if export_mode:
-                    key = i - 1, e[0]
-                    if key in multi_move_next:
-                        multi_move_next[key] = e[1]
-                        multi_move_next[(i, e[1])] = 0
 
             for e in div:  # event(parent, child, child)
                 # if not label2color[-2].has_key(int(e[0])):
@@ -281,36 +266,17 @@ class OpTrackingBase(Operator, ExportingOperator):
                     label2color[-1][int(e[1])] = ancestor_color
                     label2color[-1][int(e[2])] = ancestor_color
 
-            for e in merger:
-                mergers[-1][int(e[0])] = int(e[1])
-
-            for e in multi:
-                if int(e[2]) >= 0 and not label2color[time_range[0] + int(e[2])].has_key(int(e[0])):
-                    if successive_ids:
-                        label2color[time_range[0] + int(e[2])][int(e[0])] = maxId
-                        maxId += 1
-                    else:
-                        label2color[time_range[0] + int(e[2])][int(e[0])] = np.random.randint(1, 255)
-                label2color[-1][int(e[1])] = label2color[time_range[0] + int(e[2])][int(e[0])]
-                if export_mode:
-                    e_start = int(time_range[0] + e[2])
-                    e_end = int(i)
-                    track_id = label2color[time_range[0] + int(e[2])][int(e[0])]
-                    double_object = multi_move[e_start][e[0]]
-                    for t in xrange(e_start, e_end):
-                        extra_track_ids.setdefault(t + 1, {})
-                        extra_track_ids[t + 1].setdefault(double_object, [])
-                        extra_track_ids[t + 1][double_object].append(track_id)
-                        next_key = (t, double_object)
-                        double_object = multi_move_next[next_key]
-
+            for e in res:
+                resolvedto[-1][int(e[0])] = [int(i) for i  in e[1:-1]]
+                # label the original object with the false detection label
+                label2color[-1][int(e[0])] = 1
 
         # last timestep
-        merger = get_dict_value(events[str(time_range[-1] - time_range[0] + 1)], "merger", [])
-        mergers.append({})
-        for e in merger:
-            mergers[-1][int(e[0])] = int(e[1])
-
+        res = get_dict_value(events[str(time_range[-1] - time_range[0] + 1)], "res", [])
+        resolvedto.append({})
+        for e in res:
+            resolvedto[-1][int(e[0])] = [int(i) for i in e[1:-1]]
+            label2color[-1][int(e[0])] = 1
 
         # mark the filtered objects
         for i in filtered_labels.keys():
@@ -323,12 +289,12 @@ class OpTrackingBase(Operator, ExportingOperator):
 
         if export_mode:  # don't set fields when in export_mode
             self.track_id = label2color
-            self.extra_track_ids = extra_track_ids
             self.divisions = divisions
+            extra_track_ids = {}
             return label2color, extra_track_ids, divisions
 
         self.label2color = label2color
-        self.mergers = mergers
+        self.resolvedto = resolvedto
 
         self.Output._value = None
         self.Output.setDirty(slice(None))

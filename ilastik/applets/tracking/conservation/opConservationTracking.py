@@ -4,8 +4,8 @@ from lazyflow.rtype import List
 from lazyflow.stype import Opaque
 import pgmlink
 from ilastik.applets.tracking.base.opTrackingBase import OpTrackingBase
+from ilastik.applets.tracking.base.trackingUtilities import relabel
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
-from ilastik.applets.tracking.base.trackingUtilities import relabelMergers
 from ilastik.applets.tracking.base.trackingUtilities import get_events
 from lazyflow.operators.opCompressedCache import OpCompressedCache
 from lazyflow.roi import sliceToRoi
@@ -39,6 +39,7 @@ class OpConservationTracking(OpTrackingBase):
         self.MergerCachedOutput.connect(self._mergerOpCache.Output)
         
         self.tracker = None
+        self.coordinate_map = None
 
 
     def setupOutputs(self):
@@ -51,17 +52,19 @@ class OpConservationTracking(OpTrackingBase):
         result = super(OpConservationTracking, self).execute(slot, subindex, roi, result)
         
         if slot is self.MergerOutput:
-            result = self.LabelImage.get(roi).wait()
+            result = np.zeros(tuple(roi.stop - roi.start), dtype=np.uint16)
             parameters = self.Parameters.value
             
             trange = range(roi.start[0], roi.stop[0])
             for t in trange:
-                if ('time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0] and len(self.mergers) > t and len(self.mergers[t])):
-                    result[t-roi.start[0],...,0] = relabelMergers(result[t-roi.start[0],...,0], self.mergers[t])
+                if ('time_range' in parameters
+                        and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]
+                        and len(self.resolvedto) > t and len(self.resolvedto[t])):
+                    result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t)
                 else:
                     result[t-roi.start[0],...][:] = 0
-            
-        return result     
+
+        return result
 
     def setInSlot(self, slot, subindex, roi, value):
         assert slot == self.InputHdf5 or slot == self.MergerInputHdf5, "Invalid slot for setInSlot(): {}".format( slot.name )
@@ -214,6 +217,7 @@ class OpConservationTracking(OpTrackingBase):
                 self._get_merger_coordinates(coordinate_map,
                                              time_range,
                                              eventsVector)
+                self.coordinate_map = coordinate_map
 
                 eventsVector = self.tracker.resolve_mergers(eventsVector,
                                                 coordinate_map.get(),
@@ -223,7 +227,7 @@ class OpConservationTracking(OpTrackingBase):
                                                 ndim,
                                                 transition_parameter,
                                                 True, # with_constraints
-                                                True) # with_multi_frame_moves
+                                                False) # with_multi_frame_moves
         except Exception as e:
             raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
         
@@ -282,3 +286,17 @@ class OpConservationTracking(OpTrackingBase):
                                                          t,
                                                          idx,
                                                          int(size[idx,0]))
+
+    def _relabelMergers(self, volume, time):
+        if self.coordinate_map is None:
+            return volume
+        if time >= len(self.resolvedto):
+            return volume
+        for old_id, new_ids in self.resolvedto[time].iteritems():
+            for new_id in new_ids:
+                pgmlink.update_labelimage(
+                    self.coordinate_map,
+                    volume[...,0],
+                    int(time),
+                    int(new_id))
+        return relabel(volume, self.label2color[time])
