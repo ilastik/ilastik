@@ -87,11 +87,13 @@ class TrackingBaseGui( LayerViewerGui ):
     def setupLayers( self ):
         layers = []
 
-        if "MergerOutput" in self.topLevelOperatorView.outputs:
-            ct = colortables.create_default_8bit()
-            for i in range(7):
-                ct[i] = self.mergerColors[i].rgba()
+        # use same colortable for the following two generated layers: the merger
+        # and the tracking layer
+        ct = colortables.create_random_16bit()
+        ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
+        ct[1] = QColor(128,128,128,255).rgba() # misdetections have id 1 and will be indicated by grey
 
+        if "MergerOutput" in self.topLevelOperatorView.outputs:
             if self.topLevelOperatorView.MergerCachedOutput.ready():
                 self.mergersrc = LazyflowSource( self.topLevelOperatorView.MergerCachedOutput )
             else:
@@ -101,10 +103,6 @@ class TrackingBaseGui( LayerViewerGui ):
             mergerLayer.name = "Merger"
             mergerLayer.visible = True
             layers.append(mergerLayer)
-
-        ct = colortables.create_random_16bit()
-        ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
-        ct[1] = QColor(128,128,128,255).rgba() # misdetections have id 1 and will be indicated by grey
 
         if self.topLevelOperatorView.CachedOutput.ready():
             self.trackingsrc = LazyflowSource( self.topLevelOperatorView.CachedOutput )
@@ -228,6 +226,9 @@ class TrackingBaseGui( LayerViewerGui ):
         to_z.setRange(from_z.value(),maxz)
 
 
+    # TODO Remove the following code together with the labels in the GUI as it
+    # is no longer needed. The merger colors are now determined by the track id
+    # and therefore by the colormap of the tracking layer.
     def _initColors(self):
         self.mergerColors = [ QColor(c) for c in LabelingGui._createDefault16ColorColorTable()[1:] ]
         self.mergerColors[0] = QColor(0,0,0,0) # 0 and 1 must be transparent
