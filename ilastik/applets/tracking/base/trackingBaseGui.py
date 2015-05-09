@@ -333,7 +333,7 @@ class TrackingBaseGui( LayerViewerGui ):
                     labelImage = self.mainOperator.LabelImage.get(roi).wait()
                     labelImage = labelImage[0,...,0]
                     if self.withMergers:
-                        write_events(events_at, str(directory), t, labelImage, self.mainOperator.mergers)
+                        write_events(events_at, str(directory), t, labelImage, self.mainOperator.resolvedto)
                     else:
                         write_events(events_at, str(directory), t, labelImage)
                     _handle_progress(i/num_files * 100)
