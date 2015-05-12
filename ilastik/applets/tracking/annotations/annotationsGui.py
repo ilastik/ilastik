@@ -225,7 +225,6 @@ class AnnotationsGui(LayerViewerGui):
         self.editor.navCtrl.changeTimeRelative(self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[0].name]["time"][0] - self.editor.posModel.time)
 
         self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
-        print "before init Annotations"
         self._initAnnotations()
 
     def _cropListViewInit(self):
@@ -308,6 +307,8 @@ class AnnotationsGui(LayerViewerGui):
                             crop["starts"][2] <= upper[2] and lower[2] <= crop["stops"][2]:
                             addAnnotation = True
 
+                    # timeUnicodeStr = unicode(str(time))
+                    # labelUnicodeStr = unicode(str(label))
                     if addAnnotation:
                         if name not in self.topLevelOperatorView.Annotations.value.keys():
                             self.topLevelOperatorView.Annotations.value[name] = {}
@@ -316,6 +317,9 @@ class AnnotationsGui(LayerViewerGui):
                         if time not in self.topLevelOperatorView.Annotations.value[name]["labels"].keys():
                             self.topLevelOperatorView.Annotations.value[name]["labels"][time] = {}
                         self.topLevelOperatorView.Annotations.value[name]["labels"][time][label] = self.topLevelOperatorView.labels[time][label]
+                        # if timeUnicodeStr not in self.topLevelOperatorView.Annotations.value[name]["labels"].keys():
+                        #     self.topLevelOperatorView.Annotations.value[name]["labels"][timeUnicodeStr] = {}
+                        # self.topLevelOperatorView.Annotations.value[name]["labels"][timeUnicodeStr][labelUnicodeStr] = self.topLevelOperatorView.labels[time][label]
 
         for parentTrack in self.topLevelOperatorView.divisions.keys():
             time = self.topLevelOperatorView.divisions[parentTrack][1]
@@ -360,7 +364,6 @@ class AnnotationsGui(LayerViewerGui):
                         crop["starts"][1] <= upperChild2[1] and lowerChild2[1] <= crop["stops"][1] and \
                         crop["starts"][2] <= upperChild2[2] and lowerChild2[2] <= crop["stops"][2])):
                         addAnnotation = True
-                print "addAnnotation",addAnnotation
                 if addAnnotation:
                     if name not in self.topLevelOperatorView.Annotations.value.keys():
                         self.topLevelOperatorView.Annotations.value[name] = {}
@@ -370,8 +373,6 @@ class AnnotationsGui(LayerViewerGui):
                         self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = {}
                     self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = self.topLevelOperatorView.divisions[parentTrack]
 
-        print "in SAVE ANNOTATIONS divisions",self.topLevelOperatorView.divisions
-        print "in SAVE ANNOTATIONS labels   ",self.topLevelOperatorView.labels, self.mainOperator.Annotations.value
         self._setDirty(self.mainOperator.Annotations, range(self.mainOperator.TrackImage.meta.shape[0]))
 
     def getLabel(self, time, track):

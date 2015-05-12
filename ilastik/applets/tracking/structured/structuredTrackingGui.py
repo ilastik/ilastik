@@ -6,6 +6,9 @@ import sys
 import re
 import traceback
 from PyQt4.QtCore import pyqtSignal
+
+import pgmlink
+
 from ilastik.applets.tracking.base.trackingBaseGui import TrackingBaseGui
 from ilastik.utility.exportingOperator import ExportingGui
 from ilastik.utility.gui.threadRouter import threadRouted
@@ -132,11 +135,16 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         
     def _onImportAnnotationsButtonPressed(self):
         self._annotations = self.mainOperator.Annotations.value
-        print "ImportAnnotations PRESSED local",self._annotations
-        print "ImportAnnotations PRESSED slot ",self.mainOperator.Annotations.value
+        print "ImportAnnotations PRESSED local     ",self._annotations
 
     def _onRunStructuredLearningButtonPressed(self):
         print "RunStructuredLearningButton PRESSED"
+        for crop in self._annotations:
+            fieldOfView = pgmlink.FieldOfView(
+                crop["time"][0],crop["starts"][0],crop["starts"][1],crop["starts"][2],
+                crop["time"][1],crop["stops"][0],crop["stops"][1],crop["stops"][2])
+            
+
 
     def _onTrackButtonPressed( self ):
         if not self.mainOperator.ObjectFeatures.ready():

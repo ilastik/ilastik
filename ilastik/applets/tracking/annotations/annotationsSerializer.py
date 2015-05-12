@@ -92,7 +92,7 @@ class SerialLabelsSlot(SerialSlot):
 class AnnotationsSerializer(AppletSerializer):
     
     def __init__(self, operator, projectFileGroupName):
-        slots = [ SerialDictSlot(operator.Annotations),
+        slots = [ #SerialDictSlot(operator.Annotations),
                   SerialDivisionsSlot(operator.Divisions),
                   SerialLabelsSlot(operator.Labels)]
     

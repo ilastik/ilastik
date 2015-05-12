@@ -193,7 +193,6 @@ class SerialSlot(object):
             return
         deleteIfPresent(group, self.name)
         if self.slot.ready():
-            print " self.slot.name",self.slot.name
             self._serialize(group, self.name, self.slot)
         self.dirty = False
 
@@ -227,6 +226,7 @@ class SerialSlot(object):
             subgroup = group.create_group(name)
             for i, subslot in enumerate(slot):
                 subname = self.subname.format(i)
+                print " ----->",name, group
                 self._serialize(subgroup, subname, slot[i])
 
     def deserialize(self, group):

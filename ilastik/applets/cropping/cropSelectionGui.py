@@ -357,6 +357,7 @@ class CropSelectionGui(CroppingGui):
                 self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
         #self.topLevelOperatorView.Crops.setValue(self._crops)
         #self.setCropListView()
+        print "CROP SAVED", self.topLevelOperatorView.Crops.value
 
     def getNextCropName(self):
         return "Crop {}".format(self._maxCropNumUsed+1)
