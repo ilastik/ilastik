@@ -57,7 +57,6 @@ except ImportError as e:
     if ilastik.config.cfg.getboolean('ilastik', 'debug'):
         logger.warn( "Failed to import nanshe workflow. Check dependencies: " + str(e) )
 
-import iiboostPixelClassification
 try:
     import iiboostPixelClassification
 except ImportError as e:
