@@ -200,8 +200,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             print "exporting Crop to C++"
             structuredLearningTracker.exportCrop(fieldOfView)
 
-
-
     def _onTrackButtonPressed( self ):
         if not self.mainOperator.ObjectFeatures.ready():
             self._criticalMessage("You have to compute object features first.")            

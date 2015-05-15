@@ -190,7 +190,9 @@ class OpConservationTracking(OpTrackingBase):
                                          "none", # dump traxelstore,
                                          pgmlink.ConsTrackingSolverType.CplexSolver
                                          )
-            self.tracker.buildGraph(ts)
+            self.tracker.buildGraph(ts) # return value ???
+
+            # add labels and annotations
 
         # create dummy uncertainty parameter object with just one iteration, so no perturbations at all (iter=0 -> MAP)
         sigmas = pgmlink.VectorOfDouble()

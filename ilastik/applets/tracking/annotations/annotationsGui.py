@@ -307,6 +307,8 @@ class AnnotationsGui(LayerViewerGui):
                             crop["starts"][2] <= upper[2] and lower[2] <= crop["stops"][2]:
                             addAnnotation = True
 
+                    # timeUnicodeStr = unicode(str(time))
+                    # labelUnicodeStr = unicode(str(label))
                     if addAnnotation:
                         if name not in self.topLevelOperatorView.Annotations.value.keys():
                             self.topLevelOperatorView.Annotations.value[name] = {}
@@ -315,6 +317,9 @@ class AnnotationsGui(LayerViewerGui):
                         if time not in self.topLevelOperatorView.Annotations.value[name]["labels"].keys():
                             self.topLevelOperatorView.Annotations.value[name]["labels"][time] = {}
                         self.topLevelOperatorView.Annotations.value[name]["labels"][time][label] = self.topLevelOperatorView.labels[time][label]
+                        # if timeUnicodeStr not in self.topLevelOperatorView.Annotations.value[name]["labels"].keys():
+                        #     self.topLevelOperatorView.Annotations.value[name]["labels"][timeUnicodeStr] = {}
+                        # self.topLevelOperatorView.Annotations.value[name]["labels"][timeUnicodeStr][labelUnicodeStr] = self.topLevelOperatorView.labels[time][label]
 
         for parentTrack in self.topLevelOperatorView.divisions.keys():
             time = self.topLevelOperatorView.divisions[parentTrack][1]
