@@ -78,7 +78,7 @@ class TestOpGraphCut(unittest.TestCase):
 
         # check whether no new blocks introduced
         mask = np.where(self.labels > 0, 0, 1)
-        masked = out * mask
+        masked = out.view(np.ndarray) * mask
         assert_array_equal(masked, 0*masked)
 
         # check whether the interior was labeled 1
@@ -120,7 +120,7 @@ class TestOpObjectsSegment(unittest.TestCase):
 
         # check whether no new blocks introduced
         mask = np.where(self.labels > 0, 0, 1)
-        masked = out * mask
+        masked = out.view(np.ndarray) * mask
         assert_array_equal(masked, 0*masked)
 
         # check whether the interior was labeled 1
