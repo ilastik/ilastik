@@ -51,7 +51,7 @@ def test_RequestLock():
     status_thread.start()
     
     try:
-        _impl_test_lock(lockA, lockB, Request)
+        _impl_test_lock(lockA, lockB, Request, 1000)
     finally:
         log_request_system_status()
         running[0] = False
@@ -61,9 +61,9 @@ def test_ThreadingLock():
     # As a sanity check that our test works properly,
     #  try running it with 'normal' locks.
     # The test should pass no matter which task & lock implementation we use.
-    _impl_test_lock(threading.Lock(), threading.Lock(), ThreadRequest)
+    _impl_test_lock(threading.Lock(), threading.Lock(), ThreadRequest, 100)
 
-def _impl_test_lock(lockA, lockB, task_class):
+def _impl_test_lock(lockA, lockB, task_class, num_tasks):
     """
     Simple test to start a lot of tasks that acquire/release the same two locks.
     
@@ -109,7 +109,7 @@ def _impl_test_lock(lockA, lockB, task_class):
             logger.debug('lockB.pending: {}'.format( len(lockB._pendingRequests)) )
     
     tasks = []
-    for _ in range(1000):
+    for _ in range(num_tasks):
         tasks.append( task_class(f1) )
         tasks.append( task_class(f2) )
         
