@@ -416,6 +416,7 @@ class OpTrackingBase(Operator, ExportingOperator):
         obj_sizes = []
         total_count = 0
         empty_frame = False
+
         for t in feats.keys():
             rc = feats[t][default_features_key]['RegionCenter']
             lower = feats[t][default_features_key]['Coord<Minimum>']
@@ -464,7 +465,7 @@ class OpTrackingBase(Operator, ExportingOperator):
                 tr.set_y_scale(y_scale)
                 tr.set_z_scale(z_scale)
                 tr.Id = int(idx + 1)
-                tr.Timestep = t
+                tr.Timestep = int(t)
 
                 # pgmlink expects always 3 coordinates, z=0 for 2d data
                 tr.add_feature_array("com", 3)

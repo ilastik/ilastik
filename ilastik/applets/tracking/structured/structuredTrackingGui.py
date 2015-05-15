@@ -6,6 +6,9 @@ import sys
 import re
 import traceback
 from PyQt4.QtCore import pyqtSignal
+
+import pgmlink
+
 from ilastik.applets.tracking.base.trackingBaseGui import TrackingBaseGui
 from ilastik.utility.exportingOperator import ExportingGui
 from ilastik.utility.gui.threadRouter import threadRouted
@@ -132,11 +135,72 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         
     def _onImportAnnotationsButtonPressed(self):
         self._annotations = self.mainOperator.Annotations.value
-        print "ImportAnnotations PRESSED local",self._annotations
-        print "ImportAnnotations PRESSED slot ",self.mainOperator.Annotations.value
+        print "ImportAnnotations PRESSED annotations ",self._annotations
 
     def _onRunStructuredLearningButtonPressed(self):
-        print "RunStructuredLearningButton PRESSED"
+        print "RunStructuredLearningButton PRESSED crops", self.mainOperator.Crops.value
+
+        print "building consTracker"
+        median_obj_size = [0]
+
+        fieldOfView = pgmlink.FieldOfView(float(0),float(0),float(0),float(0),float(self.topLevelOperatorView.LabelImage.meta.shape[0]),float(self.topLevelOperatorView.LabelImage.meta.shape[1]),float(self.topLevelOperatorView.LabelImage.meta.shape[2]),float(self.topLevelOperatorView.LabelImage.meta.shape[3]))
+        consTracker = pgmlink.ConsTracking(
+            1000000,#maxObj,
+            True,#sizeDependent,   # size_dependent_detection_prob
+            float(median_obj_size[0]), # median_object_size
+            float(30),#maxDist),
+            True,#withDivisions,
+            float(0.5),#divThreshold),
+            "none",  # detection_rf_filename
+            fieldOfView,
+            "none", # dump traxelstore,
+            pgmlink.ConsTrackingSolverType.CplexSolver)
+
+        print "building traxelStore", self.topLevelOperatorView.LabelImage.meta.shape[0], self.topLevelOperatorView.LabelImage.meta.shape[1],self.topLevelOperatorView.LabelImage.meta.shape[2],self.topLevelOperatorView.LabelImage.meta.shape[3]
+
+        traxelStore, empty_frame = self.mainOperator._generate_traxelstore(
+            range(0,6),#self.topLevelOperatorView.LabelImage.meta.shape[0]),#time_range
+            (0,self.topLevelOperatorView.LabelImage.meta.shape[1]),#x_range
+            (0,self.topLevelOperatorView.LabelImage.meta.shape[2]),#y_range
+            (0,self.topLevelOperatorView.LabelImage.meta.shape[3]),#z_range,
+            (0, 100000),#size_range
+            1.0,# x_scale
+            1.0,# y_scale
+            1.0,# z_scale,
+            median_object_size=median_obj_size,
+            with_div=True,#withDivisions,
+            with_opt_correction=False,#withOpticalCorrection,
+            with_classifier_prior=False)#withClassifierPrior)
+
+        if empty_frame:
+            raise Exception, 'cannot track frames with 0 objects, abort.'
+
+        print "building Hypotheses Graph"
+        hypothesesGraph = consTracker.buildGraph(traxelStore)
+
+        print "building structuredLearningTracker"
+        structuredLearningTracker = pgmlink.StructuredLearningTracking(
+            hypothesesGraph,
+            4,#maxObj,
+            True,#sizeDependent,   # size_dependent_detection_prob
+            float(median_obj_size[0]), # median_object_size
+            float(30),#maxDist),
+            True,#withDivisions,
+            float(0.5),#divThreshold),
+            "none",  # detection_rf_filename
+            fieldOfView,
+            "none", # dump traxelstore,
+            pgmlink.ConsTrackingSolverType.CplexSolver)
+
+        for key in self.mainOperator.Crops.value.keys():
+            crop = self.mainOperator.Crops.value[key]
+            print "PYTHON---->",crop
+            fieldOfView = pgmlink.FieldOfView(float(crop["time"][0]),float(crop["starts"][0]),float(crop["starts"][1]),float(crop["starts"][2]),float(crop["time"][1]),float(crop["stops"][0]),float(crop["stops"][1]),float(crop["stops"][2]))
+
+            print "exporting Crop to C++"
+            structuredLearningTracker.exportCrop(fieldOfView)
+
+
 
     def _onTrackButtonPressed( self ):
         if not self.mainOperator.ObjectFeatures.ready():
