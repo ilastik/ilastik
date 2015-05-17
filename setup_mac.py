@@ -112,6 +112,18 @@ class lazyflow_recipe(object):
             packages=['lazyflow']
         )
 
+class iiboost_recipe(object):
+    def check(self, dist, mf):
+        m = mf.findNode('iiboost')
+        if m is None:
+            return None
+
+        # Don't put iiboost in the site-packages.zip file
+        return dict(
+            packages=['iiboost']
+        )
+
+
 class vtk_recipe(object):
     def check(self, dist, mf):
         m = mf.findNode('vtk')
@@ -161,11 +173,11 @@ import py2app.recipes
 py2app.recipes.ilastik = ilastik_recipe()
 py2app.recipes.volumina = volumina_recipe()
 py2app.recipes.lazyflow = lazyflow_recipe()
+py2app.recipes.iiboost = iiboost_recipe()
 py2app.recipes.vtk = vtk_recipe()
 py2app.recipes.sklearn = sklearn_recipe()
 py2app.recipes.skimage = skimage_recipe()
 py2app.recipes.jsonschema = jsonschema_recipe()
-
 
 ##
 ## The --include-meta-repo option is a special option added by this script.
