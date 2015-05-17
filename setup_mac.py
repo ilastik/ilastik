@@ -157,7 +157,7 @@ class jsonschema_recipe(object):
         )
 
 import py2app.recipes
-py2app.recipes.nanshe = nanshe_recipe()
+#py2app.recipes.nanshe = nanshe_recipe()
 py2app.recipes.ilastik = ilastik_recipe()
 py2app.recipes.volumina = volumina_recipe()
 py2app.recipes.lazyflow = lazyflow_recipe()
