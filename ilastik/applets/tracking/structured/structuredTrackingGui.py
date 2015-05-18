@@ -138,6 +138,9 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         print "ImportAnnotations PRESSED annotations ",self._annotations
 
     def _onRunStructuredLearningButtonPressed(self):
+
+        self._onImportAnnotationsButtonPressed()
+
         print "RunStructuredLearningButton PRESSED crops", self.mainOperator.Crops.value
 
         print "building consTracker"
@@ -192,13 +195,94 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             "none", # dump traxelstore,
             pgmlink.ConsTrackingSolverType.CplexSolver)
 
-        for key in self.mainOperator.Crops.value.keys():
-            crop = self.mainOperator.Crops.value[key]
-            print "PYTHON---->",crop
-            fieldOfView = pgmlink.FieldOfView(float(crop["time"][0]),float(crop["starts"][0]),float(crop["starts"][1]),float(crop["starts"][2]),float(crop["time"][1]),float(crop["stops"][0]),float(crop["stops"][1]),float(crop["stops"][2]))
+        print "update hypothesesGraph: labels ---> adding APPEARANCE/TRANSITION/DISAPPEARANCE nodes"
 
-            print "exporting Crop to C++"
-            structuredLearningTracker.exportCrop(fieldOfView)
+        for cropKey in self.mainOperator.Annotations.value.keys():
+            crop = self.mainOperator.Annotations.value[cropKey]
+            print "cropKey, crop",cropKey, crop
+
+            if "labels" in crop.keys():
+                labels = crop["labels"]
+                for time in labels.keys():
+                    print "time, labels", time, labels[time]
+                    for label in labels[time].keys():
+                        object = labels[time][label]
+                        track = object.pop() # This REMOVES an element of a set.
+                        object.add(track)
+                        print label, track
+
+                        # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track or FALSE_DETECTION
+                        type = self._type(time, track, cropKey)
+                        print type
+
+
+
+            if "divisions" in crop.keys():
+                divisions = crop["divisions"]
+                for track in divisions.keys():
+                    division = divisions[track]
+                    print "track, division, time", track, division, division[1]
+                    print division[1],"      : ", track, "--->", division[0][0]
+                    print division[1],"      : ", track, "--->", division[0][1]
+
+        # print "EXPORTING CROPS"
+        # for key in self.mainOperator.Crops.value.keys():
+        #     crop = self.mainOperator.Crops.value[key]
+        #     print "PYTHON---->",crop
+        #     fieldOfView = pgmlink.FieldOfView(float(crop["time"][0]),float(crop["starts"][0]),float(crop["starts"][1]),float(crop["starts"][2]),float(crop["time"][1]),float(crop["stops"][0]),float(crop["stops"][1]),float(crop["stops"][2]))
+        #
+        #     print "exporting Crop to C++"
+        #     structuredLearningTracker.exportCrop(fieldOfView)
+
+    def _type(self, time, track, cropKey):
+
+        type = None
+        if track == -1:
+            return "FALSE_DETECTION"
+        elif time == 0:
+            type = "FIRST"
+
+        labels = self.mainOperator.Annotations.value[cropKey]["labels"]
+        crop = self.mainOperator.Crops.value[cropKey]
+        lastTime = -1
+        #scan preceeding time frames for track
+        for t in range(crop["time"][0],time):
+            for label in labels[t]:
+                if track in labels[t][label]:
+                    lastTime = t
+
+        if lastTime == -1:
+            type = "FIRST"
+        elif lastTime < time-1:
+            print "ERROR: Your annotations are not complete. See time frame:", time-1
+        elif lastTime == time-1:
+            type =  "INTERMEDIATE"
+        else:
+            print "SHOULD NOT GET HERE!"
+
+        firstTime = -1
+        #scan following time frames for track
+        for t in range(crop["time"][1],time,-1):
+            for label in labels[t]:
+                if track in labels[t][label]:
+                    firstTime = t
+
+        if firstTime == -1:
+            if type == "FIRST":
+                return "SINGLETON(FIRST_LAST)"
+            else:
+                return "LAST"
+        elif firstTime > time+1:
+            print "ERROR: Your annotations are not complete. See time frame:", time+1
+        elif firstTime == time+1:
+            if type ==  "INTERMEDIATE":
+                return "INTERMEDIATE"
+            elif type != None:
+                return type,"<-----"
+            else:
+                print "Something is wrong!"
+        else:
+            print "Should not get here!"
 
     def _onTrackButtonPressed( self ):
         if not self.mainOperator.ObjectFeatures.ready():
