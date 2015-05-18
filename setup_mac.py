@@ -68,116 +68,32 @@ package_data={'ilastik': ['ilastik-splash.png',
               '': ['*.ui']
               }
 
-class nanshe_recipe(object):
+class exclude_from_zipped_packages(object):
+    def __init__(self, module):
+        self.module = module
+
     def check(self, dist, mf):
-        m = mf.findNode('nanshe')
+        m = mf.findNode(self.module)
         if m is None:
             return None
 
-        # Don't put nanshe in the site-packages.zip file
+        # Don't put the module in the site-packages.zip file
         return dict(
-            packages=['nanshe']
+            packages=[self.module]
         )
 
-class ilastik_recipe(object):
-    def check(self, dist, mf):
-        m = mf.findNode('ilastik')
-        if m is None:
-            return None
-        
-        # Don't put ilastik in the site-packages.zip file
-        return dict(
-            packages=['ilastik']
-        )
-
-class volumina_recipe(object):
-    def check(self, dist, mf):
-        m = mf.findNode('volumina')
-        if m is None:
-            return None
-
-        # Don't put volumina in the site-packages.zip file
-        return dict(
-            packages=['volumina']
-        )
-
-class lazyflow_recipe(object):
-    def check(self, dist, mf):
-        m = mf.findNode('lazyflow')
-        if m is None:
-            return None
-
-        # Don't put lazyflow in the site-packages.zip file
-        return dict(
-            packages=['lazyflow']
-        )
-
-class iiboost_recipe(object):
-    def check(self, dist, mf):
-        m = mf.findNode('iiboost')
-        if m is None:
-            return None
-
-        # Don't put iiboost in the site-packages.zip file
-        return dict(
-            packages=['iiboost']
-        )
-
-
-class vtk_recipe(object):
-    def check(self, dist, mf):
-        m = mf.findNode('vtk')
-        if m is None:
-            return None
-
-        # Don't put vtk in the site-packages.zip file
-        return dict(
-            packages=['vtk']
-        )
-
-class sklearn_recipe(object):
-    def check(self, dist, mf):
-        m = mf.findNode('sklearn')
-        if m is None:
-            return None
-
-        # Don't put sklearn in the site-packages.zip file
-        return dict(
-            packages=['sklearn']
-        )
-
-class skimage_recipe(object):
-    def check(self, dist, mf):
-        m = mf.findNode('skimage')
-        if m is None:
-            return None
-
-        # Don't put skimage in the site-packages.zip file
-        return dict(
-            packages=['skimage']
-        )
-
-class jsonschema_recipe(object):
-    def check(self, dist, mf):
-        m = mf.findNode('jsonschema')
-        if m is None:
-            return None
-
-        # Don't put jsonschema in the site-packages.zip file
-        return dict(
-            packages=['jsonschema']
-        )
-
+# Exclude various packages from the site-packages.zip file,
+#  since they don't import correctly if they're zipped.
 import py2app.recipes
-#py2app.recipes.nanshe = nanshe_recipe()
-py2app.recipes.ilastik = ilastik_recipe()
-py2app.recipes.volumina = volumina_recipe()
-py2app.recipes.lazyflow = lazyflow_recipe()
-py2app.recipes.iiboost = iiboost_recipe()
-py2app.recipes.vtk = vtk_recipe()
-py2app.recipes.sklearn = sklearn_recipe()
-py2app.recipes.skimage = skimage_recipe()
-py2app.recipes.jsonschema = jsonschema_recipe()
+for module in ['ilastik', 'volumina', 'lazyflow', 'iiboost', 'vtk', 'sklearn', 'skimage', 'jsonschema']:
+    setattr( py2app.recipes, module, exclude_from_zipped_packages(module) )
+
+# Include nanshe if it's available.
+try:
+    import nanshe
+    py2app.recipes.nanshe = exclude_from_zipped_packages('nanshe')
+except ImportError:
+    pass
 
 ##
 ## The --include-meta-repo option is a special option added by this script.
