@@ -20,7 +20,7 @@ class ThreadRequest(object):
     def wait(self):
         self.thr.join()    
 
-@fail_after_timeout(10)
+@fail_after_timeout(20)
 def test_RequestLock():
     assert Request.global_thread_pool.num_workers > 0, \
         "This test must be used with the real threadpool."
