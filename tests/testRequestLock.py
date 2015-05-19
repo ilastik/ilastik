@@ -52,10 +52,26 @@ def test_RequestLock():
     
     try:
         _impl_test_lock(lockA, lockB, Request, 1000)
-    finally:
+    except:
         log_request_system_status()
         running[0] = False
         status_thread.join()
+
+        global paused
+        paused = False
+
+        Request.reset_thread_pool(Request.global_thread_pool.num_workers)
+
+        if lockA.locked():
+            lockA.release()
+        if lockB.locked():
+            lockB.release()
+
+        raise
+
+    log_request_system_status()
+    running[0] = False
+    status_thread.join()
 
 def test_ThreadingLock():
     # As a sanity check that our test works properly,
@@ -63,6 +79,7 @@ def test_ThreadingLock():
     # The test should pass no matter which task & lock implementation we use.
     _impl_test_lock(threading.Lock(), threading.Lock(), ThreadRequest, 100)
 
+paused = True
 def _impl_test_lock(lockA, lockB, task_class, num_tasks):
     """
     Simple test to start a lot of tasks that acquire/release the same two locks.
@@ -74,7 +91,8 @@ def _impl_test_lock(lockA, lockB, task_class, num_tasks):
     threading.Threads and Locks (as long as the API is adapted a bit to look 
     like Requests via ThreadRequest, above.)
     """
-    paused = True    
+    global paused
+    paused = True
     progressAB = [0,0]
 
     # Prepare
