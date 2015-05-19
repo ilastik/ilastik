@@ -42,6 +42,9 @@ class VigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
         temp_rf = vigra.learning.RandomForest( *self._args, **self._kwargs )
         return "Vigra Random Forest ({} trees)".format( temp_rf.treeCount() )
 
+    def estimated_ram_usage_per_requested_predictionchannel(self):
+        return 4
+
     def __eq__(self, other):
         return (    isinstance(other, type(self))
                 and self._args == other._args

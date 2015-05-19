@@ -53,6 +53,9 @@ class VigraRfPixelwiseClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         halo = tuple(range( len(data_axes)-1 ))
         return halo + (0,) # (no channel halo)
 
+    def estimated_ram_usage_per_requested_predictionchannel(self):
+        return 4
+
     @property
     def description(self):
         temp_rf = vigra.learning.RandomForest( *self._args, **self._kwargs )

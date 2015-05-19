@@ -34,6 +34,13 @@ class LazyflowVectorwiseClassifierFactoryABC(object):
         """
         raise NotImplementedError
 
+    def estimated_ram_usage_per_requested_predictionchannel(self):
+        """
+        Return the RAM (in bytes) needed by the classifier to run classification.
+        The amount of RAM should be relative to the number of output channels (label classes).
+        """
+        return 0
+
     @classmethod
     def __subclasshook__(cls, C):
         """
@@ -150,6 +157,13 @@ class LazyflowPixelwiseClassifierFactoryABC(object):
         Return a human-readable description of this classifier.
         """
         raise NotImplementedError
+
+    def estimated_ram_usage_per_requested_predictionchannel(self):
+        """
+        Return the RAM (in bytes) needed by the classifier to run classification.
+        The amount of RAM should be relative to the number of output channels (label classes).
+        """
+        return 0
 
     @classmethod
     def __subclasshook__(cls, C):

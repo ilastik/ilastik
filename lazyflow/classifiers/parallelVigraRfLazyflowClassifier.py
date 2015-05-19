@@ -7,7 +7,7 @@ import numpy
 import vigra
 import h5py
 
-from lazyflow.request import Request, RequestPool
+from lazyflow.request import Request, RequestPool, RequestLock
 from lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
 
 import logging
@@ -69,6 +69,9 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
         logger.info( "Training complete. Average OOB: {}".format( numpy.average(oobs) ) )
         return ParallelVigraRfLazyflowClassifier( forests, oobs, known_labels )
 
+    def estimated_ram_usage_per_requested_predictionchannel(self):
+        return (Request.global_thread_pool.num_workers + 1) * 4
+
     @property
     def description(self):
         return "Parallel Vigra Random Forest Factory ({} trees total)"\
@@ -100,25 +103,27 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
         logger.debug( "Predicting with parallel vigra RF" )
         X = numpy.asarray(X, dtype=numpy.float32)
 
-        # Create a request for each forest        
-        reqs = []
+        # As each forest completes, aggregate results in a shared array.
+        # (Must put in a list so we can update it in this closure.)
+        total_predictions = [None]
+        total_predictions[0] = numpy.zeros( X.shape[:-1] + (len(self._known_labels),), dtype=numpy.float32 )
+        prediction_lock = RequestLock()
+        def update_predictions(forest, forest_predictions):
+            forest_predictions *= forest.treeCount()
+            with prediction_lock:
+                total_predictions[0] += forest_predictions
+
+        # Create a request for each forest
+        pool = RequestPool()
         for forest in self._forests:
             req = Request( partial( forest.predictProbabilities, X ) )
-            reqs.append( req )
-
-        # Execute all requests in a pool        
-        pool = RequestPool()
-        for req in reqs:
+            req.notify_finished( partial(update_predictions, forest) )
             pool.add( req )
+        del req
         pool.wait()
 
-        # Aggregate the results
-        predictions = self._forests[0].treeCount() * reqs[0].result
-        for forest, req in zip(self._forests[1:], reqs[1:]):
-            predictions += forest.treeCount() * req.result
-
-        predictions /= self._num_trees
-        return predictions
+        total_predictions[0] /= self._num_trees
+        return total_predictions[0]
     
     @property
     def oobs(self):
