@@ -162,7 +162,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         print "building traxelStore", self.topLevelOperatorView.LabelImage.meta.shape[0], self.topLevelOperatorView.LabelImage.meta.shape[1],self.topLevelOperatorView.LabelImage.meta.shape[2],self.topLevelOperatorView.LabelImage.meta.shape[3]
 
         traxelStore, empty_frame = self.mainOperator._generate_traxelstore(
-            range(0,6),#self.topLevelOperatorView.LabelImage.meta.shape[0]),#time_range
+            range(0,self.topLevelOperatorView.LabelImage.meta.shape[0]),#time_range
             (0,self.topLevelOperatorView.LabelImage.meta.shape[1]),#x_range
             (0,self.topLevelOperatorView.LabelImage.meta.shape[2]),#y_range
             (0,self.topLevelOperatorView.LabelImage.meta.shape[3]),#z_range,
@@ -181,21 +181,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         print "building Hypotheses Graph"
         hypothesesGraph = consTracker.buildGraph(traxelStore)
 
-        print "building structuredLearningTracker"
-        structuredLearningTracker = pgmlink.StructuredLearningTracking(
-            hypothesesGraph,
-            4,#maxObj,
-            True,#sizeDependent,   # size_dependent_detection_prob
-            float(median_obj_size[0]), # median_object_size
-            float(30),#maxDist),
-            True,#withDivisions,
-            float(0.5),#divThreshold),
-            "none",  # detection_rf_filename
-            fieldOfView,
-            "none", # dump traxelstore,
-            pgmlink.ConsTrackingSolverType.CplexSolver)
-
-        print "update hypothesesGraph: labels ---> adding APPEARANCE/TRANSITION/DISAPPEARANCE nodes"
+        print "update hypothesesGraph: labels ---> adding APPEARANCE/TRANSITION/DISAPPEARANCE labels"
 
         for cropKey in self.mainOperator.Annotations.value.keys():
             crop = self.mainOperator.Annotations.value[cropKey]
@@ -211,7 +197,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                         object.add(track)
                         print label, track
 
-                        # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track or FALSE_DETECTION
+                        # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
                         type = self._type(time, track, cropKey)
                         print type
 
@@ -224,6 +210,24 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                     print "track, division, time", track, division, division[1]
                     print division[1],"      : ", track, "--->", division[0][0]
                     print division[1],"      : ", track, "--->", division[0][1]
+
+        print "building structuredLearningTracker"
+        structuredLearningTracker = pgmlink.StructuredLearningTracking(
+            hypothesesGraph,
+            4,#maxObj,
+            True,#sizeDependent,   # size_dependent_detection_prob
+            float(median_obj_size[0]), # median_object_size
+            float(30),#maxDist),
+            True,#withDivisions,
+            float(0.5),#divThreshold),
+            "none",  # detection_rf_filename
+            fieldOfView,
+            "none", # dump traxelstore,
+            pgmlink.ConsTrackingSolverType.CplexSolver)
+
+        print "test iterate through hypothesesGraph NODES"
+        structuredLearningTracker.addAppearanceNode(hypothesesGraph)
+        structuredLearningTracker.hypothesesGraphTest(hypothesesGraph)
 
         # print "EXPORTING CROPS"
         # for key in self.mainOperator.Crops.value.keys():
