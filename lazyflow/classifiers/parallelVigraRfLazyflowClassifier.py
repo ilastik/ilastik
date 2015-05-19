@@ -70,7 +70,7 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
         return ParallelVigraRfLazyflowClassifier( forests, oobs, known_labels )
 
     def estimated_ram_usage_per_requested_predictionchannel(self):
-        return (Request.global_thread_pool.num_workers + 1) * 4
+        return (Request.global_thread_pool.num_workers) * 4
 
     @property
     def description(self):
@@ -106,12 +106,14 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
         # As each forest completes, aggregate results in a shared array.
         # (Must put in a list so we can update it in this closure.)
         total_predictions = [None]
-        total_predictions[0] = numpy.zeros( X.shape[:-1] + (len(self._known_labels),), dtype=numpy.float32 )
         prediction_lock = RequestLock()
         def update_predictions(forest, forest_predictions):
             forest_predictions *= forest.treeCount()
             with prediction_lock:
-                total_predictions[0] += forest_predictions
+                if total_predictions[0] is None:
+                    total_predictions[0] = forest_predictions
+                else:
+                    total_predictions[0] += forest_predictions
 
         # Create a request for each forest
         pool = RequestPool()
