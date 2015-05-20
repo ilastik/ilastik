@@ -111,6 +111,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)                
         self._drawer.ImportAnnotationsButton.clicked.connect(self._onImportAnnotationsButtonPressed)
         self._drawer.StructuredLearningButton.clicked.connect(self._onRunStructuredLearningButtonPressed)
+        self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
 
     @threadRouted
     def _onTimeoutBoxChanged(self, *args):
@@ -148,7 +149,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         fieldOfView = pgmlink.FieldOfView(float(0),float(0),float(0),float(0),float(self.topLevelOperatorView.LabelImage.meta.shape[0]),float(self.topLevelOperatorView.LabelImage.meta.shape[1]),float(self.topLevelOperatorView.LabelImage.meta.shape[2]),float(self.topLevelOperatorView.LabelImage.meta.shape[3]))
         consTracker = pgmlink.ConsTracking(
-            1000000,#maxObj,
+            4,#maxObj,
             True,#sizeDependent,   # size_dependent_detection_prob
             float(median_obj_size[0]), # median_object_size
             float(30),#maxDist),
@@ -162,7 +163,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         print "building traxelStore", self.topLevelOperatorView.LabelImage.meta.shape[0], self.topLevelOperatorView.LabelImage.meta.shape[1],self.topLevelOperatorView.LabelImage.meta.shape[2],self.topLevelOperatorView.LabelImage.meta.shape[3]
 
         traxelStore, empty_frame = self.mainOperator._generate_traxelstore(
-            range(0,self.topLevelOperatorView.LabelImage.meta.shape[0]),#time_range
+            range(0,2),#<--- TODO: change - only for testing: self.topLevelOperatorView.LabelImage.meta.shape[0]),#time_range
             (0,self.topLevelOperatorView.LabelImage.meta.shape[1]),#x_range
             (0,self.topLevelOperatorView.LabelImage.meta.shape[2]),#y_range
             (0,self.topLevelOperatorView.LabelImage.meta.shape[3]),#z_range,
@@ -182,6 +183,9 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         hypothesesGraph = consTracker.buildGraph(traxelStore)
 
         print "update hypothesesGraph: labels ---> adding APPEARANCE/TRANSITION/DISAPPEARANCE labels"
+        nodeTimestepMap = pgmlink.NodeTimestepMap(hypothesesGraph)
+        nodeTraxelMap = pgmlink.NodeTraxelMap(hypothesesGraph)
+
 
         for cropKey in self.mainOperator.Annotations.value.keys():
             crop = self.mainOperator.Annotations.value[cropKey]
@@ -195,11 +199,22 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                         object = labels[time][label]
                         track = object.pop() # This REMOVES an element of a set.
                         object.add(track)
-                        print label, track
+                        center = self.features[time]['Default features']['RegionCenter'][label]
+
+                        print time, label, track, center
 
                         # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
                         type = self._type(time, track, cropKey)
                         print type
+
+
+
+                        print "finding HypothesesGraph::Node for (time, label, track)=", time, label, track, "--->"
+                        for t in range(hypothesesGraph.earliest_timestep(),hypothesesGraph.latest_timestep()+1):
+                            print "HAppy", t
+
+                        #if type == "FIRST":
+                        #    hypothesesGraph.addAppearanceLabel()
 
 
 
@@ -226,7 +241,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             pgmlink.ConsTrackingSolverType.CplexSolver)
 
         print "test iterate through hypothesesGraph NODES"
-        structuredLearningTracker.addAppearanceNode(hypothesesGraph)
+        #structuredLearningTracker.addAppearanceNode(hypothesesGraph)
         structuredLearningTracker.hypothesesGraphTest(hypothesesGraph)
 
         # print "EXPORTING CROPS"
@@ -262,7 +277,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         elif lastTime == time-1:
             type =  "INTERMEDIATE"
         else:
-            print "SHOULD NOT GET HERE!"
+            print "ERROR: SHOULD NOT GET HERE!"
 
         firstTime = -1
         #scan following time frames for track
@@ -282,11 +297,11 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             if type ==  "INTERMEDIATE":
                 return "INTERMEDIATE"
             elif type != None:
-                return type,"<-----"
+                return type
             else:
                 print "Something is wrong!"
         else:
-            print "Should not get here!"
+            print "ERROR: Should not get here!"
 
     def _onTrackButtonPressed( self ):
         if not self.mainOperator.ObjectFeatures.ready():
