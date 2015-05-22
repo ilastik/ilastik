@@ -162,8 +162,9 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         print "building traxelStore", self.topLevelOperatorView.LabelImage.meta.shape[0], self.topLevelOperatorView.LabelImage.meta.shape[1],self.topLevelOperatorView.LabelImage.meta.shape[2],self.topLevelOperatorView.LabelImage.meta.shape[3]
 
+        time_range = range (0,self.topLevelOperatorView.LabelImage.meta.shape[0])
         traxelStore, empty_frame = self.mainOperator._generate_traxelstore(
-            range(0,2),#<--- TODO: change - only for testing: self.topLevelOperatorView.LabelImage.meta.shape[0]),#time_range
+            time_range,
             (0,self.topLevelOperatorView.LabelImage.meta.shape[1]),#x_range
             (0,self.topLevelOperatorView.LabelImage.meta.shape[2]),#y_range
             (0,self.topLevelOperatorView.LabelImage.meta.shape[3]),#z_range,
@@ -182,11 +183,28 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         print "building Hypotheses Graph"
         hypothesesGraph = consTracker.buildGraph(traxelStore)
 
+        print "building structuredLearningTracker"
+        structuredLearningTracker = pgmlink.StructuredLearningTracking(
+            hypothesesGraph,
+            4,#maxObj,
+            True,#sizeDependent,   # size_dependent_detection_prob
+            float(median_obj_size[0]), # median_object_size
+            float(30),#maxDist),
+            True,#withDivisions,
+            float(0.5),#divThreshold),
+            "none",  # detection_rf_filename
+            fieldOfView,
+            "none", # dump traxelstore,
+            pgmlink.ConsTrackingSolverType.CplexSolver)
+
+        print "update hypothesesGraph: labels"
+        #nodeTimestepMap = pgmlink.NodeTimestepMap(hypothesesGraph)
+        #nodeTraxelMap = hypothesesGraph.getNodeTraxelMap()#pgmlink.NodeTraxelMap(hypothesesGraph)
+
+        structuredLearningTracker.addLabels(hypothesesGraph)
+
         print "update hypothesesGraph: labels ---> adding APPEARANCE/TRANSITION/DISAPPEARANCE labels"
-        nodeTimestepMap = pgmlink.NodeTimestepMap(hypothesesGraph)
-        nodeTraxelMap = pgmlink.NodeTraxelMap(hypothesesGraph)
-
-
+        detectionProbabilities = self.mainOperator.DetectionProbabilities(time_range).wait()
         for cropKey in self.mainOperator.Annotations.value.keys():
             crop = self.mainOperator.Annotations.value[cropKey]
             print "cropKey, crop",cropKey, crop
@@ -204,17 +222,23 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                         print time, label, track, center
 
                         # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
-                        type = self._type(time, track, cropKey)
-                        print type
+                        type = self._type(time, track, cropKey) # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
 
-
-
-                        print "finding HypothesesGraph::Node for (time, label, track)=", time, label, track, "--->"
-                        for t in range(hypothesesGraph.earliest_timestep(),hypothesesGraph.latest_timestep()+1):
-                            print "HAppy", t
-
-                        #if type == "FIRST":
-                        #    hypothesesGraph.addAppearanceLabel()
+                        print type, label
+                        if type[0] == "FIRST":
+                            print "structuredLearningTracker.addFirstLabelS (time, label, detectionProbability)=", time, label, detectionProbabilities[time][label][1]
+                            structuredLearningTracker.addFirstLabels(hypothesesGraph, time, label, float(detectionProbabilities[time][label][1]))
+                        elif type[0] == "LAST":
+                            print "structuredLearningTracker.addLastLabelS (time, label, detectionProbability)=", time, label, detectionProbabilities[time][label][1]
+                            structuredLearningTracker.addLastLabels(hypothesesGraph, time, label, float(detectionProbabilities[time][label][1]))
+                            structuredLearningTracker.addArcLabel(hypothesesGraph, time, type[1], label, 1.0)
+                        elif type[0] == "SINGLETON":
+                            print "structuredLearningTracker.addSingletonLabelS (time, label, detectionProbability)=", time, label, detectionProbabilities[time][label][1]
+                            structuredLearningTracker.addSingletonLabels(hypothesesGraph, time, label, float(detectionProbabilities[time][label][1]))
+                        elif type[0] == "INTERMEDIATE":
+                            print "structuredLearningTracker.addIntermediateLabelS (time, label, detectionProbability)=", time, label, detectionProbabilities[time][label][1]
+                            structuredLearningTracker.addIntermediateLabels(hypothesesGraph, time, label, float(detectionProbabilities[time][label][1]))
+                            structuredLearningTracker.addArcLabel(hypothesesGraph, time, type[1], label, 1.0)
 
 
 
@@ -226,23 +250,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                     print division[1],"      : ", track, "--->", division[0][0]
                     print division[1],"      : ", track, "--->", division[0][1]
 
-        print "building structuredLearningTracker"
-        structuredLearningTracker = pgmlink.StructuredLearningTracking(
-            hypothesesGraph,
-            4,#maxObj,
-            True,#sizeDependent,   # size_dependent_detection_prob
-            float(median_obj_size[0]), # median_object_size
-            float(30),#maxDist),
-            True,#withDivisions,
-            float(0.5),#divThreshold),
-            "none",  # detection_rf_filename
-            fieldOfView,
-            "none", # dump traxelstore,
-            pgmlink.ConsTrackingSolverType.CplexSolver)
-
-        print "test iterate through hypothesesGraph NODES"
-        #structuredLearningTracker.addAppearanceNode(hypothesesGraph)
-        structuredLearningTracker.hypothesesGraphTest(hypothesesGraph)
+        #print "test iterate through hypothesesGraph NODES (C++ side)"
+        #structuredLearningTracker.hypothesesGraphTest(hypothesesGraph)
 
         # print "EXPORTING CROPS"
         # for key in self.mainOperator.Crops.value.keys():
@@ -257,18 +266,20 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         type = None
         if track == -1:
-            return "FALSE_DETECTION"
+            return ["FALSE_DETECTION"]
         elif time == 0:
             type = "FIRST"
 
         labels = self.mainOperator.Annotations.value[cropKey]["labels"]
         crop = self.mainOperator.Crops.value[cropKey]
         lastTime = -1
+        lastLabel = -1
         #scan preceeding time frames for track
         for t in range(crop["time"][0],time):
             for label in labels[t]:
                 if track in labels[t][label]:
                     lastTime = t
+                    lastLabel = label
 
         if lastTime == -1:
             type = "FIRST"
@@ -288,16 +299,16 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         if firstTime == -1:
             if type == "FIRST":
-                return "SINGLETON(FIRST_LAST)"
+                return ["SINGLETON(FIRST_LAST)"]
             else:
-                return "LAST"
+                return ["LAST", lastLabel]
         elif firstTime > time+1:
             print "ERROR: Your annotations are not complete. See time frame:", time+1
         elif firstTime == time+1:
             if type ==  "INTERMEDIATE":
-                return "INTERMEDIATE"
+                return ["INTERMEDIATE",lastLabel]
             elif type != None:
-                return type
+                return [type]
             else:
                 print "Something is wrong!"
         else:
