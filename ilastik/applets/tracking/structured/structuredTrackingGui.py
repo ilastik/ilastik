@@ -246,9 +246,15 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                 divisions = crop["divisions"]
                 for track in divisions.keys():
                     division = divisions[track]
-                    print "track, division, time", track, division, division[1]
-                    print division[1],"      : ", track, "--->", division[0][0]
-                    print division[1],"      : ", track, "--->", division[0][1]
+                    time = division[1]
+                    print "track, division:", track, division
+                    structuredLearningTracker.addDivisionLabel(hypothesesGraph, int(time), self.getLabel(cropKey, time, track), 1.0)
+                    structuredLearningTracker.addAppearanceLabel(hypothesesGraph, int(time), self.getLabel(cropKey, time, track), 0.0)
+                    
+                    print division[1],"      : ", track, self.getLabel(cropKey, time, track), "--->", division[0][0], self.getLabel(cropKey, time+1, division[0][0])
+                    structuredLearningTracker.addDisappearanceLabel(hypothesesGraph, int(time+1), self.getLabel(cropKey, time+1, division[0][0]), 1.0)
+                    print division[1],"      : ", track, self.getLabel(cropKey, time, track), "--->", division[0][1], self.getLabel(cropKey, time+1, division[0][1])
+                    structuredLearningTracker.addDisappearanceLabel(hypothesesGraph, int(time+1), self.getLabel(cropKey, time+1, division[0][1]), 1.0)
 
         #print "test iterate through hypothesesGraph NODES (C++ side)"
         #structuredLearningTracker.hypothesesGraphTest(hypothesesGraph)
@@ -261,6 +267,13 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         #
         #     print "exporting Crop to C++"
         #     structuredLearningTracker.exportCrop(fieldOfView)
+
+    def getLabel(self, cropKey, time, track):
+        labels = self.mainOperator.Annotations.value[cropKey]["labels"][time]
+        for label in labels.keys():
+            if self.mainOperator.Annotations.value[cropKey]["labels"][time][label] == set([track]):
+                return label
+        return False
 
     def _type(self, time, track, cropKey):
 
