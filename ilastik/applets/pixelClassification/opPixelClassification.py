@@ -344,6 +344,10 @@ class OpPixelClassification( Operator ):
             self.LabelColors.setValue( label_colors + default_colors[old_max:new_max] )
             self.PmapColors.setValue( pmap_colors + default_colors[old_max:new_max] )
 
+    def mergeLabels(self, from_label, into_label):
+        for laneIndex in range(len(self.InputImages)):
+            self.getLane( laneIndex ).opLabelPipeline.opLabelArray.mergeLabels(from_label, into_label)
+
 class OpLabelPipeline( Operator ):
     RawImage = InputSlot()
     LabelInput = InputSlot()

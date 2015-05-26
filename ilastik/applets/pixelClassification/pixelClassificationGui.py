@@ -288,6 +288,8 @@ class PixelClassificationGui(LabelingGui):
 
         self._currentlySavingPredictions = False
 
+        self.labelingDrawerUi.labelListView.support_merges = True
+
         self.labelingDrawerUi.liveUpdateButton.setEnabled(False)
         self.labelingDrawerUi.liveUpdateButton.setIcon( QIcon(ilastikIcons.Play) )
         self.labelingDrawerUi.liveUpdateButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
