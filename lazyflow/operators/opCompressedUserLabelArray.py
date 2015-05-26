@@ -77,6 +77,9 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
         Unlike using the deleteLabel slot, this function does not "shift down" all labels above this label value.
         """
         self._purge_label( label_value, False )
+
+    def mergeLabels(self, from_label, into_label):
+        self._purge_label(from_label, True, into_label)
     
     def setupOutputs(self):
         # Due to a temporary naming clash, pass our subclass blockshape to the superclass
@@ -128,12 +131,13 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
                 if self._label_to_purge > 0:
                     self._purge_label( self._label_to_purge, True )
     
-    def _purge_label(self, label_to_purge, decrement_remaining):
+    def _purge_label(self, label_to_purge, decrement_remaining, replacement_value=0):
         """
         Scan through all labeled pixels.
-        (1) Clear all pixels of the given value (set to 0)
-        (2) if decrement_remaining=True, decrement all labels above that 
-            value so the set of stored labels remains consecutive
+        (1) Reassign all pixels of the given value (set to replacement_value)
+        (2) If decrement_remaining=True, decrement all labels above that 
+            value so the set of stored labels remains consecutive.
+            Note that the decrement is performed AFTER replacement.
         """
         changed_block_rois = []
         #stored_block_rois = self.CleanBlocks.value
@@ -150,10 +154,10 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
 
             # Locate pixels to change
             matching_label_coords = numpy.nonzero( block == label_to_purge )
-            coords_to_decrement = block > label_to_purge
 
             # Change the data
-            block[matching_label_coords] = 0
+            block[matching_label_coords] = replacement_value
+            coords_to_decrement = block > label_to_purge
             if decrement_remaining:
                 block[coords_to_decrement] -= 1
             
