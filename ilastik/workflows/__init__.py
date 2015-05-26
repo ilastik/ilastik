@@ -33,7 +33,7 @@ except ImportError as e:
 try:
     import carving 
 except ImportError as e:
-    logger.warn( "Failed to import carving workflow; check cylemon dependency: " + str(e) )
+    logger.warn( "Failed to import carving workflow; check vigra dependency: " + str(e) )
 
 try:
     import tracking.manual

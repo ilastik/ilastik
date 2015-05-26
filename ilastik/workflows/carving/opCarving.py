@@ -35,8 +35,6 @@ from lazyflow.operators.valueProviders import OpValueCache
 from lazyflow.utility.timer import Timer
 from ilastik.applets.base.applet import DatasetConstraintError
 
-#carving
-from cylemon.segmentation import MSTSegmentor
 
 import logging
 logger = logging.getLogger(__name__)
@@ -203,8 +201,8 @@ class OpCarving(Operator):
         if self._mst is None:
             return
         with Timer() as timer:
-            self._done_lut = numpy.zeros(len(self._mst.objects.lut), dtype=numpy.int32)
-            self._done_seg_lut = numpy.zeros(len(self._mst.objects.lut), dtype=numpy.int32)
+            self._done_lut = numpy.zeros(self._mst.numNodes+1, dtype=numpy.int32)
+            self._done_seg_lut = numpy.zeros(self._mst.numNodes+1, dtype=numpy.int32)
             logger.info( "building 'done' luts" )
             for name, objectSupervoxels in self._mst.object_lut.iteritems():
                 if name == self._currObjectName:
@@ -217,9 +215,9 @@ class OpCarving(Operator):
     def dataIsStorable(self):
         if self._mst is None:
             return False
-        lut_seeds = self._mst.seeds.lut[:]
-        fg_seedNum = len(numpy.where(lut_seeds == 2)[0])
-        bg_seedNum = len(numpy.where(lut_seeds == 1)[0])
+        nodeSeeds = self._mst.gridSegmentor.getNodeSeeds()
+        fg_seedNum = len(numpy.where(nodeSeeds == 2)[0])
+        bg_seedNum = len(numpy.where(nodeSeeds == 1)[0])
         if not (fg_seedNum > 0 and bg_seedNum > 0):
             return False
         else:
@@ -291,7 +289,7 @@ class OpCarving(Operator):
         assert len(position3d) == 3
 
         #find the supervoxel that was clicked
-        sv = self._mst.regionVol[position3d]
+        sv = self._mst.supervoxelUint32[position3d]
         names = []
         for name, objectSupervoxels in self._mst.object_lut.iteritems():
             if numpy.sum(sv == objectSupervoxels) > 0:
@@ -313,12 +311,12 @@ class OpCarving(Operator):
         Clears the current labeling.
         """
         self._clearLabels()
-
-        lut_segmentation = self._mst.segmentation.lut[:]
-        lut_segmentation[:] = 0
-        lut_seeds = self._mst.seeds.lut[:]
-        lut_seeds[:] = 0
-        self.HasSegmentation.setValue(False)
+        self._mst.gridSegmentor.clearSeeds()
+        #lut_segmentation = self._mst.segmentation.lut[:]
+        #lut_segmentation[:] = 0
+        #lut_seeds = self._mst.seeds.lut[:]
+        #lut_seeds[:] = 0
+        #self.HasSegmentation.setValue(False)
 
         self.Trigger.setDirty(slice(None))
                 
@@ -336,30 +334,38 @@ class OpCarving(Operator):
         assert name in self._mst.bg_priority
         assert name in self._mst.no_bias_below
 
-        lut_segmentation = self._mst.segmentation.lut[:]
-        lut_objects = self._mst.objects.lut[:]
-        lut_seeds = self._mst.seeds.lut[:]
-        # clean seeds
-        lut_seeds[:] = 0
+        #lut_segmentation = self._mst.segmentation.lut[:]
+        #lut_objects = self._mst.objects.lut[:]
+        #lut_seeds = self._mst.seeds.lut[:]
+        ## clean seeds
+        #lut_seeds[:] = 0
 
         # set foreground and background seeds
-        fgVoxels = self._mst.object_seeds_fg_voxels[name]
-        bgVoxels = self._mst.object_seeds_bg_voxels[name]
+        fgVoxelsSeedPos = self._mst.object_seeds_fg_voxels[name]
+        bgVoxelsSeedPos = self._mst.object_seeds_bg_voxels[name]
+        fgArraySeedPos = numpy.array(fgVoxelsSeedPos)
+        bgArraySeedPos = numpy.array(bgVoxelsSeedPos)
+        self._mst.setSeeds(fgArraySeedPos, bgArraySeedPos);
 
-        #user-drawn seeds:
-        self._mst.seeds[fgVoxels] = 2
-        self._mst.seeds[bgVoxels] = 1
 
-        newSegmentation = numpy.ones(len(lut_objects), dtype=numpy.int32)
-        newSegmentation[ self._mst.object_lut[name] ] = 2
-        lut_segmentation[:] = newSegmentation
+        # load the actual segmentation
+        fgNodes = self._mst.object_lut[name] 
+
+        print len(fgNodes)
+        print fgNodes[0].dtype
+
+        self._mst.setResulFgObj(fgNodes[0])
+
+        #newSegmentation = numpy.ones(len(lut_objects), dtype=numpy.int32)
+        #newSegmentation[ self._mst.object_lut[name] ] = 2
+        #lut_segmentation[:] = newSegmentation
 
         self._setCurrObjectName(name)
         self.HasSegmentation.setValue(True)
 
         #now that 'name' is no longer part of the set of finished objects, rebuild the done overlay
         self._buildDone()
-        return (fgVoxels, bgVoxels)
+        return (fgVoxelsSeedPos, bgVoxelsSeedPos)
     
     def loadObject(self, name):
         logger.info( "want to load object with name = %s" % name )
@@ -432,9 +438,9 @@ class OpCarving(Operator):
         """
         Deletes an object called name.
         """
-        lut_seeds = self._mst.seeds.lut[:]
+        #lut_seeds = self._mst.seeds.lut[:]
         # clean seeds
-        lut_seeds[:] = 0
+        #lut_seeds[:] = 0
 
         del self._mst.object_lut[name]
         del self._mst.object_seeds_fg_voxels[name]
@@ -503,35 +509,20 @@ class OpCarving(Operator):
             else:
                 objNr = 1
 
-        #delete old object, if it exists
-        lut_objects = self._mst.objects.lut[:]
-        lut_objects[:] = numpy.where(lut_objects == objNr, 0, lut_objects)
+        sVseg  = self._mst.getSuperVoxelSeg()
+        sVseed = self._mst.getSuperVoxelSeeds() 
 
-        #save new object
-        lut_segmentation = self._mst.segmentation.lut[:]
-        lut_objects[:] = numpy.where(lut_segmentation == seed, objNr, lut_objects)
 
-        objectSupervoxels = numpy.where(lut_segmentation == seed)
-        self._mst.object_lut[name] = objectSupervoxels
 
-        #save object name with objNr
         self._mst.object_names[name] = objNr
 
-        lut_seeds = self._mst.seeds.lut[:]
-
-        # save object seeds
-        self._mst.object_seeds_fg[name] = numpy.where(lut_seeds == seed)[0]
-        self._mst.object_seeds_bg[name] = numpy.where(lut_seeds == 1)[0] #one is background=
-
-        # reset seeds
-        #self._mst.seeds[:] = numpy.int32(-1) #see segmentation.pyx: -1 means write zeros
-        # More efficient to set the lut directly:
-        self._mst.seeds.lut[:] = 0
-
-        #numpy.asarray([BackgroundPriority.value()], dtype=numpy.float32)
-        #numpy.asarray([NoBiasBelow.value()], dtype=numpy.int32)
         self._mst.bg_priority[name] = self.BackgroundPriority.value
         self._mst.no_bias_below[name] = self.NoBiasBelow.value
+
+        self._mst.objects[name] = numpy.where(sVseg == 2)
+        self._mst.object_lut[name] = numpy.where(sVseg == 2)
+
+     
 
         self._setCurrObjectName("<not saved yet>")
         self.HasSegmentation.setValue(False)
@@ -541,7 +532,7 @@ class OpCarving(Operator):
         
         #now that 'name' is no longer part of the set of finished objects, rebuild the done overlay
         self._buildDone()
-        
+            
         #self.updatePreprocessing()
 
 
@@ -581,8 +572,15 @@ class OpCarving(Operator):
         self.saveCurrentObjectAs(name)
         # Sparse label array automatically shifts label values down 1
         
+
+        sVseed = self._mst.getSuperVoxelSeeds() 
+        #fgVoxels = numpy.where(sVseed==2)
+        #bgVoxels = numpy.where(sVseed==1)
+
         fgVoxels, bgVoxels = self.get_label_voxels()
         
+
+
         self.attachVoxelLabelsToObject(name, fgVoxels=fgVoxels, bgVoxels=bgVoxels)
        
         self._clearLabels()
@@ -613,11 +611,12 @@ class OpCarving(Operator):
         sl = roi.toSlice()
         if slot == self.Segmentation:
             #avoid data being copied
-            temp = self._mst.segmentation[sl[1:4]]
+            temp = self._mst.getVoxelSegmentation(roi=roi)
             temp.shape = (1,) + temp.shape + (1,)
+            
         elif slot == self.Supervoxels:
             #avoid data being copied
-            temp = self._mst.regionVol[sl[1:4]]
+            temp = self._mst.supervoxelUint32[sl[1:4]]
             temp.shape = (1,) + temp.shape + (1,)
         elif slot  == self.DoneObjects:
             #avoid data being copied
@@ -625,7 +624,7 @@ class OpCarving(Operator):
                 result[0,:,:,:,0] = 0
                 return result
             else:
-                temp = self._done_lut[self._mst.regionVol[sl[1:4]]]
+                temp = self._done_lut[self._mst.supervoxelUint32[sl[1:4]]]
                 temp.shape = (1,) + temp.shape + (1,)
         elif slot  == self.DoneSegmentation:
             #avoid data being copied
@@ -633,7 +632,7 @@ class OpCarving(Operator):
                 result[0,:,:,:,0] = 0
                 return result
             else:
-                temp = self._done_seg_lut[self._mst.regionVol[sl[1:4]]]
+                temp = self._done_seg_lut[self._mst.supervoxelUint32[sl[1:4]]]
                 temp.shape = (1,) + temp.shape + (1,)
         elif slot == self.HintOverlay:
             if self._hints is None:
@@ -667,13 +666,14 @@ class OpCarving(Operator):
             assert self._mst is not None
 
             # Important: mst.seeds will requires erased values to be 255 (a.k.a -1)
-            value[:] = numpy.where(value == 100, 255, value)
-
+            #value[:] = numpy.where(value == 100, 255, value)
+            seedVal = value.max()
             with Timer() as timer:
                 logger.info( "Writing seeds to MST" )
                 if hasattr(key, '__len__'):
-                    self._mst.seeds[key[1:4]] = value
+                    self._mst.addSeeds(roi=roi, brushStroke=value.squeeze())
                 else:
+                    raise RuntimeError("when is this part of the code called")
                     self._mst.seeds[key] = value
             logger.info( "Writing seeds to MST took {} seconds".format( timer.seconds() ) )
 
@@ -703,12 +703,14 @@ class OpCarving(Operator):
             params["prios"] = [1.0, bgPrio, 1.0]
             params["uncertainty"] = self.UncertaintyType.value
             params["noBiasBelow"] = noBiasBelow
-            unaries =  numpy.zeros((self._mst.numNodes,labelCount+1), dtype=numpy.float32)
+            
+            unaries =  numpy.zeros((self._mst.numNodes+1,labelCount+1), dtype=numpy.float32)
             self._mst.run(unaries, **params)
             logger.info( " ... carving took %f sec." % (time.time()-t1) )
 
             self.Segmentation.setDirty(slice(None))
-            hasSeg = numpy.any(self._mst.segmentation.lut > 0 )
+            hasSeg = numpy.any(self._mst.hasSeg)
+            #hasSeg = numpy.any(self._mst.segmentation.lut > 0 )
             self.HasSegmentation.setValue(hasSeg)
             
         elif slot == self.MST:
