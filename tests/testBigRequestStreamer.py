@@ -150,6 +150,10 @@ class TestBigRequestStreamer(object):
         difference_mb = finished_mem_usage_mb - start_mem_usage_mb
         logger.debug( "Finished execution with memory usage at: {} MB ({} MB increase)".format( finished_mem_usage_mb, difference_mb ) )
 
+        # The ThreadPool._Worker loop has a local reference (next_task),
+        # so wait just a tic for the ThreadPool worker to cycle back to the top of its loop (and discard the reference)
+        time.sleep(0.1)
+
         # Collect
         gc.collect()
 
