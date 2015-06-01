@@ -96,6 +96,7 @@ class OpSplitRequestsBlockwise(Operator):
                     self.Output.stype.copy_data( result[roiToSlice(*output_roi)], request_result[roiToSlice(*roi_within_block)] )
                 req.notify_finished( partial(copy_request_result, output_roi, roi_within_block) )
             pool.add(req)
+            del req
         pool.wait()
     
     def propagateDirty(self, slot, subindex, roi):
