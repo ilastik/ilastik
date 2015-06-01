@@ -22,13 +22,6 @@ traceLogger = logging.getLogger('TRACE.' + __name__)
 class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
     
     withMergers = True
-    @threadRouted
-    def _setMergerLegend(self, labels, selection):   
-        for i in range(1,len(labels)+1):
-            if i <= selection:
-                labels[i-1].setVisible(True)
-            else:
-                labels[i-1].setVisible(False)
     
     def _loadUiFile(self):
         # Load the ui file (find it in our own directory)
@@ -93,19 +86,6 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             self._drawer.divThreshBox.hide()
             self._drawer.label_25.hide() # hide avg. obj size label
             self._drawer.avgSizeBox.hide()
-          
-        self.mergerLabels = [self._drawer.merg1,
-                             self._drawer.merg2,
-                             self._drawer.merg3,
-                             self._drawer.merg4,
-                             self._drawer.merg5,
-                             self._drawer.merg6,
-                             self._drawer.merg7]
-        for i in range(len(self.mergerLabels)):
-            self._labelSetStyleSheet(self.mergerLabels[i], self.mergerColors[i+1])
-        
-        self._onMaxObjectsBoxChanged()
-        self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)                
 
     @threadRouted
     def _onTimeoutBoxChanged(self, *args):
@@ -123,10 +103,7 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         if maxz != 0:
             maxBorder = min(maxBorder, maxz)
         self._drawer.bordWidthBox.setRange(0, maxBorder/2)
-        
-        
-    def _onMaxObjectsBoxChanged(self):
-        self._setMergerLegend(self.mergerLabels, self._drawer.maxObjectsBox.value())
+
         
     def _onTrackButtonPressed( self ):    
         if not self.mainOperator.ObjectFeatures.ready():
