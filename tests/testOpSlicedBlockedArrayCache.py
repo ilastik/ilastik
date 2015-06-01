@@ -276,6 +276,8 @@ class TestOpSlicedBlockedArrayCache(object):
         #### Repeat plain dirty test to ensure fixAtCurrent didn't mess up the block states.
   
         gotDirtyKeys = []
+        slicing = make_key[:, 0:50, 15:45, 0:10, :]
+        data = opCache.Output( slicing ).wait()
   
         # Change some of the input data and mark it dirty
         dirtykey = make_key[0:1, 10:11, 20:21, 0:3, 0:1]
@@ -285,19 +287,18 @@ class TestOpSlicedBlockedArrayCache(object):
         assert len(gotDirtyKeys) > 0
           
         # Should need access again.
-        slicing = make_key[:, 0:50, 15:45, 0:10, :]
+        opProvider.clear()
         data = opCache.Output( slicing ).wait()
         data = data.view(vigra.VigraArray)
         data.axistags = opCache.Output.meta.axistags
         assert (data == self.data[slicing]).all()
   
-        # The dirty data intersected 3*3*5 outerBlocks 
-        minAccess = oldAccessCount + 45
-        maxAccess = oldAccessCount + 200
-        assert opProvider.accessCount >= minAccess
+        # The dirty data intersected 1*1*2 outerBlocks 
+        minAccess = 2
+        maxAccess = 2
+        assert opProvider.accessCount >= minAccess, "{} <= {}".format(opProvider.accessCount, minAccess)
         assert opProvider.accessCount <= maxAccess, "{} <= {}".format(opProvider.accessCount, maxAccess)
-        oldAccessCount = opProvider.accessCount
- 
+
     def testFixAtCurrent2(self):
         opCache = self.opCache
  
@@ -595,34 +596,35 @@ class TestOpSlicedBlockedArrayCache_masked(object):
         assert opProvider.accessCount >= minAccess
         assert opProvider.accessCount <= maxAccess
         oldAccessCount = opProvider.accessCount
-
-        #####################
-
+  
+        #####################        
+  
         #### Repeat plain dirty test to ensure fixAtCurrent didn't mess up the block states.
-
+  
         gotDirtyKeys = []
-
+        slicing = make_key[:, 0:50, 15:45, 0:10, :]
+        data = opCache.Output( slicing ).wait()
+  
         # Change some of the input data and mark it dirty
         dirtykey = make_key[0:1, 10:11, 20:21, 0:3, 0:1]
         self.data[dirtykey] = 0.54321
         opProvider.Input.setDirty(dirtykey)
-
+  
         assert len(gotDirtyKeys) > 0
-
+          
         # Should need access again.
-        slicing = make_key[:, 0:50, 15:45, 0:10, :]
+        opProvider.clear()
         data = opCache.Output( slicing ).wait()
         data.axistags = opCache.Output.meta.axistags
         assert (data == self.data[slicing]).all()
         assert (data.mask == self.data.mask[slicing]).all()
         assert (data.fill_value == self.data.fill_value).all()
-
-        # The dirty data intersected 3*3*5 outerBlocks
-        minAccess = oldAccessCount + 45
-        maxAccess = oldAccessCount + 200
-        assert opProvider.accessCount >= minAccess
+  
+        # The dirty data intersected 1*1*2 outerBlocks 
+        minAccess = 2
+        maxAccess = 2
+        assert opProvider.accessCount >= minAccess, "{} <= {}".format(opProvider.accessCount, minAccess)
         assert opProvider.accessCount <= maxAccess, "{} <= {}".format(opProvider.accessCount, maxAccess)
-        oldAccessCount = opProvider.accessCount
 
     def testFixAtCurrent2(self):
         opCache = self.opCache

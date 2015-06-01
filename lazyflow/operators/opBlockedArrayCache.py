@@ -40,8 +40,11 @@ from lazyflow.operators.opCache import ObservableCache
 from lazyflow.operators.opArrayCache import OpArrayCache
 from lazyflow.operators.opCache import MemInfoNode
 
+from opRefactoredBlockedArrayCache import OpRefactoredBlockedArrayCache
 
-class OpBlockedArrayCache(Operator, ObservableCache):
+OpBlockedArrayCache = OpRefactoredBlockedArrayCache
+
+class OLD_OpBlockedArrayCache(Operator, ObservableCache):
     name = "OpBlockedArrayCache"
     description = ""
 
@@ -60,7 +63,7 @@ class OpBlockedArrayCache(Operator, ObservableCache):
     traceLogger = logging.getLogger("TRACE." + loggerName)
 
     def __init__(self, *args, **kwargs):
-        super(OpBlockedArrayCache, self).__init__( *args, **kwargs )
+        super(OLD_OpBlockedArrayCache, self).__init__( *args, **kwargs )
         self._configured = False
         self._fixed = False
         self._fixed_dirty_blocks = set()
