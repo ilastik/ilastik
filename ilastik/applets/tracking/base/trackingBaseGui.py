@@ -97,7 +97,7 @@ class TrackingBaseGui( LayerViewerGui ):
             if self.topLevelOperatorView.MergerCachedOutput.ready():
                 self.mergersrc = LazyflowSource( self.topLevelOperatorView.MergerCachedOutput )
             else:
-                self.mergersrc = LazyflowSource( self.topLevelOperatorView.ZeroOutput )
+                self.mergersrc = LazyflowSource( self.topLevelOperatorView.zeroProvider.Output )
 
             mergerLayer = ColortableLayer( self.mergersrc, ct )
             mergerLayer.name = "Merger"
