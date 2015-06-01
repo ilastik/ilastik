@@ -60,7 +60,7 @@ class DatasetInfoEditorWidget(QDialog):
     rejects one of the new settings, we'll see the exception it threw, and the dialog will not 
     accept the user's new settings.
     """
-    def __init__(self, parent, topLevelOperator, roleIndex, laneIndexes, defaultInfos={}):
+    def __init__(self, parent, topLevelOperator, roleIndex, laneIndexes, defaultInfos={}, show_axis_details=False):
         """
         :param topLevelOperator: The applet's OpMultiLaneDataSelectionGroup instance
         :param roleIndex: The role of the dataset(s) we're editing
@@ -75,6 +75,8 @@ class DatasetInfoEditorWidget(QDialog):
         self._roleIndex = roleIndex
         self._laneIndexes = laneIndexes
         assert len(laneIndexes) > 0
+        
+        self.show_axis_details = show_axis_details
 
         # We instantiate our own temporary operator for every input,
         # which we will use to experiment with the user's selections
@@ -114,6 +116,7 @@ class DatasetInfoEditorWidget(QDialog):
         self._setUpEventFilters()
 
         self.axesEdit.setEnabled( self._shouldEnableAxesEdit() )
+        self.axistagsEditorWidget.axistagsUpdated.connect( self._applyAxesToTempOps )
         
         self._initNormalizeDisplayCombo()
         self.normalizeDisplayComboBox.currentIndexChanged.connect( self._applyNormalizeDisplayToTempOps )
@@ -144,6 +147,8 @@ class DatasetInfoEditorWidget(QDialog):
         self._updateAxes()
         
         self._updateNickname()
+        
+        self.adjustSize()
 
     def rangeDisplay(self, box, val):
         drange = self._getCommonMetadataValue("drange")
@@ -397,8 +402,18 @@ class DatasetInfoEditorWidget(QDialog):
 
         if axiskeys is None:
             self.axesEdit.setText( "<multiple>" )
+            self.axistagsEditorWidget.setVisible(False)
+            self.axesDetailsLabel.setVisible(False)
         else:
             self.axesEdit.setText( axiskeys )
+            if self.axistagsEditorWidget.axistags is None:
+                self.axistagsEditorWidget.init(tags)
+            else:
+                self.axistagsEditorWidget.change_axis_order(axiskeys)
+
+        if not self.show_axis_details:
+            self.axistagsEditorWidget.setVisible(False)
+            self.axesDetailsLabel.setVisible(False)
 
     def _shouldEnableAxesEdit(self):
         # Enable IFF all datasets have the same number of axes.
@@ -458,11 +473,9 @@ class DatasetInfoEditorWidget(QDialog):
                     info = copy.copy( op.Dataset.value )
                     # Use new order, but keep the data from the old axis tags
                     # (for all axes that were kept)
-                    newTags = vigra.defaultAxistags(newAxisOrder)
-                    for tag in newTags:
-                        if tag.key in op.Image.meta.getAxisKeys():
-                            newTags[tag.key] = op.Image.meta.axistags[tag.key]
-                        
+                    #newTags = vigra.defaultAxistags(newAxisOrder)
+                    self.axistagsEditorWidget.change_axis_order(newAxisOrder)
+                    newTags = self.axistagsEditorWidget.axistags
                     info.axistags = newTags
                     op.Dataset.setValue( info )
                 self._error_fields.discard('Axis Order')
@@ -933,17 +946,60 @@ class DatasetInfoEditorWidget(QDialog):
             self._updateChannelDisplayCombo()
         
 
+if __name__ == "__main__":
+    from PyQt4.QtGui import QApplication
 
+    # Create a test data file.
+    test_data_path = '/tmp/testfile.h5'
+    test_project_path = '/tmp/tmp_project.ilp'
+    
+    def create_test_files():
+        tags = vigra.defaultAxistags("zyxc")
+        tags['x'].resolution = 1.0
+        tags['y'].resolution = 1.0
+        tags['z'].resolution = 45.0
+        tags['c'].description = 'intensity'
+        with h5py.File(test_data_path, 'w') as f:
+            f['zeros'] = numpy.zeros( (10, 100, 200, 1), dtype=numpy.uint8 )
+            f['zeros'].attrs['axistags'] = tags.toJSON()
+        
+        import ilastik_main
+        parsed_args, workflow_cmdline_args = ilastik_main.parser.parse_known_args()
+        parsed_args.new_project = test_project_path
+        parsed_args.workflow = "Pixel Classification"
+        parsed_args.headless = True
+    
+        shell = ilastik_main.main(parsed_args, workflow_cmdline_args)    
+        data_selection_applet = shell.workflow.dataSelectionApplet
+        
+        # To configure data selection, start with empty cmdline args and manually fill them in
+        data_selection_args, _ = data_selection_applet.parse_known_cmdline_args([])
+        data_selection_args.input_files = [test_data_path + '/zeros']
+        
+        # Configure 
+        data_selection_applet.configure_operator_with_parsed_args(data_selection_args)
+        
+        shell.projectManager.saveProject()        
+        return data_selection_applet
 
+    def open_test_files():
+        import ilastik_main
+        parsed_args, workflow_cmdline_args = ilastik_main.parser.parse_known_args()
+        parsed_args.project = test_project_path
+        parsed_args.headless = True
+    
+        shell = ilastik_main.main(parsed_args, workflow_cmdline_args)    
+        return shell.workflow.dataSelectionApplet
 
+    FORCE_CREATE = False
+    if not FORCE_CREATE and os.path.exists(test_data_path) and os.path.exists(test_project_path):
+        data_selection_applet = open_test_files()
+    else:
+        data_selection_applet = create_test_files()
 
-
-
-
-
-
-
-
-
-
-
+    app = QApplication([])
+    
+    dlg = DatasetInfoEditorWidget(None, data_selection_applet.topLevelOperator, 0, [0], show_axis_details=True)
+    dlg.show()
+    dlg.raise_()    
+    app.exec_()

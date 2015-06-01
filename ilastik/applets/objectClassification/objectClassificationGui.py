@@ -207,6 +207,8 @@ class ObjectClassificationGui(LabelingGui, ExportingGui):
             self.labelingDrawerUi.AddLabelButton.hide()
             self.labelingDrawerUi.AddLabelButton.clicked.disconnect()
 
+        self.badObjectBox = None
+
         self.checkEnableButtons()
 
     def menus(self):
@@ -841,50 +843,29 @@ class ObjectClassificationGui(LabelingGui, ExportingGui):
 
     @threadRouted
     def handleWarnings(self, *args, **kwargs):
+        """
+        handle incoming warning messages by opening a pop-up window
+        """
         # FIXME: dialog should not steal focus
+
+        # get warning from operator
         warning = self.op.Warnings[:].wait()
-        try:
-            box = self.badObjectBox
-        except AttributeError:
-            box = QMessageBox(QMessageBox.Warning,
-                              warning['title'],
-                              warning['text'],
-                              QMessageBox.NoButton,
-                              self)
-            box.setWindowModality(Qt.NonModal)
+
+        # log the warning message in any case
+        logger.warn(warning['text'])
+
+        # create dialog only once to prevent a pop-up window cascade
+        if self.badObjectBox is None:
+            box = BadObjectsDialog(warning, self)
             box.move(self.geometry().width(), 0)
+            self.badObjectBox = box
+        box = self.badObjectBox
         box.setWindowTitle(warning['title'])
         box.setText(warning['text'])
         box.setInformativeText(warning.get('info', ''))
         box.setDetailedText(warning.get('details', ''))
 
-        self.logBox(box)
         box.show()
-        self.badObjectBox = box
-
-    def logBox(self, box):
-        # log the warning message in any case
-        logger.warn(box.text())
-
-        # make a callback for printing the whole error to the log file
-        def printToLog(*args, **kwargs):
-            parts = []
-            for s in (box.text(), box.informativeText(), box.detailedText()):
-                if len(s) > 0:
-                    parts.append(encode_from_qstring(s))
-            msg = "\n".join(parts)
-            logger.warn(msg)
-
-        # make a button to connect to the logging callback
-        button = QPushButton(parent=box)
-        button.setText("Print Details To Log...")
-
-        box.addButton(QMessageBox.Close)
-        box.addButton(button, QMessageBox.ActionRole)
-        #HACK do not close the dialog when print is clicked
-        # => remove the 'close' callback
-        button.clicked.disconnect()
-        button.clicked.connect(printToLog)
 
     def get_raw_shape(self):
         """
@@ -900,3 +881,32 @@ class ObjectClassificationGui(LabelingGui, ExportingGui):
         :rtype: dict
         """
         return self.op.ComputedFeatureNames([]).wait()
+
+
+class BadObjectsDialog(QMessageBox):
+    def __init__(self, warning, parent):
+        super(BadObjectsDialog, self).__init__(QMessageBox.Warning,
+                                               warning['title'],
+                                               warning['text'],
+                                               QMessageBox.NoButton,
+                                               parent)
+        self.setWindowModality(Qt.NonModal)
+        # make a button to connect to the logging callback
+        button = QPushButton(parent=self)
+        button.setText("Print Details To Log...")
+
+        self.addButton(QMessageBox.Close)
+        self.addButton(button, QMessageBox.ActionRole)
+        # do not close the dialog when print is clicked
+        # => remove the 'close' callback
+        button.clicked.disconnect()
+        button.clicked.connect(self._printToLog)
+
+    def _printToLog(self, *args, **kwargs):
+        parts = []
+        for s in (self.text(), self.informativeText(), self.detailedText()):
+            if len(s) > 0:
+                parts.append(encode_from_qstring(s))
+        msg = "\n".join(parts)
+        logger.warn(msg)
+        

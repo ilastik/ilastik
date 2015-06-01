@@ -101,14 +101,6 @@ class ClassifierSelectionDlg(QDialog):
         classifiers["Parallel Random Forest (VIGRA)"] = ParallelVigraRfLazyflowClassifierFactory(100)
         
         try:
-            from iiboostLazyflowClassifier import IIBoostLazyflowClassifierFactory
-            classifiers["IIBoost"] = IIBoostLazyflowClassifierFactory(numStumps=2, debugOutput=True)
-            assert issubclass( type(classifiers["IIBoost"]), LazyflowPixelwiseClassifierFactoryABC )
-        except ImportError:
-            import warnings
-            warnings.warn("Couldn't import IIBoost.")
-        
-        try:
             from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
             from sklearn.naive_bayes import GaussianNB
             from sklearn.tree import DecisionTreeClassifier
@@ -268,7 +260,7 @@ class PixelClassificationGui(LabelingGui):
     ###########################################
     ###########################################
 
-    def __init__(self, parentApplet, topLevelOperatorView ):
+    def __init__(self, parentApplet, topLevelOperatorView, labelingDrawerUiPath=None ):
         self.parentApplet = parentApplet
         # Tell our base class which slots to monitor
         labelSlots = LabelingGui.LabelingSlots()
@@ -282,7 +274,8 @@ class PixelClassificationGui(LabelingGui):
         self.__cleanup_fns = []
 
         # We provide our own UI file (which adds an extra control for interactive mode)
-        labelingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
+        if labelingDrawerUiPath is None:
+            labelingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
 
         # Base class init
         super(PixelClassificationGui, self).__init__( parentApplet, labelSlots, topLevelOperatorView, labelingDrawerUiPath )
@@ -294,6 +287,8 @@ class PixelClassificationGui(LabelingGui):
         self.toggleInteractive( not self.topLevelOperatorView.FreezePredictions.value )
 
         self._currentlySavingPredictions = False
+
+        self.labelingDrawerUi.labelListView.support_merges = True
 
         self.labelingDrawerUi.liveUpdateButton.setEnabled(False)
         self.labelingDrawerUi.liveUpdateButton.setIcon( QIcon(ilastikIcons.Play) )
@@ -579,8 +574,9 @@ class PixelClassificationGui(LabelingGui):
                 self.labelingDrawerUi.labelListView.allowDelete = False
                 self.labelingDrawerUi.AddLabelButton.setEnabled( False )
             else:
-                self.labelingDrawerUi.labelListView.allowDelete = True
-                self.labelingDrawerUi.AddLabelButton.setEnabled( True )
+                num_label_classes = self._labelControlUi.labelListModel.rowCount()
+                self.labelingDrawerUi.labelListView.allowDelete = ( num_label_classes > self.minLabelNumber )
+                self.labelingDrawerUi.AddLabelButton.setEnabled( ( num_label_classes < self.maxLabelNumber ) )
         self.interactiveModeActive = checked
 
         self.topLevelOperatorView.FreezePredictions.setValue( not checked )

@@ -34,6 +34,9 @@ CMakeCache*
 *.cmake
 ilastik/applets/counting/cwrapper/Makefile
 
+# PyCharm project folder
+.idea
+
 # Vim swap files
 *.s[a-w][a-z]
 *.un~

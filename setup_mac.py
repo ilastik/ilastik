@@ -24,16 +24,22 @@ import sys
 from setuptools import setup, find_packages
 from ilastik import __version__
 
+
+# Running into recursion limit too quickly, which stops build.
+sys.setrecursionlimit(1500)
+
 APP = ['ilastik.py']
 DATA_FILES = []
 
 includes = [\
-                'h5py', 'h5py.defs', 'h5py.utils', 'h5py._proxy', 'h5py._errors',
+                'h5py', 'h5py.defs', 'h5py.utils', 'h5py._proxy', 'h5py._errors', 'h5py.h5ac', 'h5py._objects',
                 'PyQt4.pyqtconfig', 'PyQt4.uic','PyQt4.QtCore','PyQt4.QtGui',
                 'site', 'os',
                 'vtk',
+                'rank_filter', 'nanshe',
                 'vtk.vtkCommonPythonSIP',
                 'sklearn', 'sklearn.utils',
+                'skimage'
              ]
 
 # The py2app dependency walker finds this code, which is intended only for Python3.
@@ -62,80 +68,32 @@ package_data={'ilastik': ['ilastik-splash.png',
               '': ['*.ui']
               }
 
-class ilastik_recipe(object):
-    def check(self, dist, mf):
-        m = mf.findNode('ilastik')
-        if m is None:
-            return None
-        
-        # Don't put ilastik in the site-packages.zip file
-        return dict(
-            packages=['ilastik']
-        )
+class exclude_from_zipped_packages(object):
+    def __init__(self, module):
+        self.module = module
 
-class volumina_recipe(object):
     def check(self, dist, mf):
-        m = mf.findNode('volumina')
+        m = mf.findNode(self.module)
         if m is None:
             return None
 
-        # Don't put volumina in the site-packages.zip file
+        # Don't put the module in the site-packages.zip file
         return dict(
-            packages=['volumina']
+            packages=[self.module]
         )
 
-class lazyflow_recipe(object):
-    def check(self, dist, mf):
-        m = mf.findNode('lazyflow')
-        if m is None:
-            return None
-
-        # Don't put lazyflow in the site-packages.zip file
-        return dict(
-            packages=['lazyflow']
-        )
-
-class vtk_recipe(object):
-    def check(self, dist, mf):
-        m = mf.findNode('vtk')
-        if m is None:
-            return None
-
-        # Don't put vtk in the site-packages.zip file
-        return dict(
-            packages=['vtk']
-        )
-
-class sklearn_recipe(object):
-    def check(self, dist, mf):
-        m = mf.findNode('sklearn')
-        if m is None:
-            return None
-
-        # Don't put sklearn in the site-packages.zip file
-        return dict(
-            packages=['sklearn']
-        )
-
-class jsonschema_recipe(object):
-    def check(self, dist, mf):
-        m = mf.findNode('jsonschema')
-        if m is None:
-            return None
-
-        # Don't put jsonschema in the site-packages.zip file
-        return dict(
-            packages=['jsonschema']
-        )
-
+# Exclude various packages from the site-packages.zip file,
+#  since they don't import correctly if they're zipped.
 import py2app.recipes
-py2app.recipes.ilastik = ilastik_recipe()
-py2app.recipes.volumina = volumina_recipe()
-py2app.recipes.lazyflow = lazyflow_recipe()
-py2app.recipes.vtk = vtk_recipe()
-py2app.recipes.sklearn = sklearn_recipe()
-py2app.recipes.jsonschema = jsonschema_recipe()
+for module in ['ilastik', 'volumina', 'lazyflow', 'iiboost', 'vtk', 'sklearn', 'skimage', 'jsonschema']:
+    setattr( py2app.recipes, module, exclude_from_zipped_packages(module) )
 
+# Include nanshe if it's available.
+try:
+    import nanshe
+    py2app.recipes.nanshe = exclude_from_zipped_packages('nanshe')
+except ImportError:
+    pass
 
 ##
 ## The --include-meta-repo option is a special option added by this script.

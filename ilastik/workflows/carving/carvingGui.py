@@ -61,7 +61,7 @@ class CarvingGui(LabelingGui):
         #members
         self._doneSegmentationLayer = None
         self._showSegmentationIn3D = False
-        self._showUncertaintyLayer = False
+        #self._showUncertaintyLayer = False
         #end: members
 
         labelingSlots = LabelingGui.LabelingSlots()
@@ -103,7 +103,7 @@ class CarvingGui(LabelingGui):
         try:
             self.render = True
             self._shownObjects3D = {}
-            self._renderMgr = RenderingManager( self.editor.view3d )
+            self._renderMgr = RenderingManager( self.editor.view3d)
         except:
             self.render = False
 
@@ -120,43 +120,43 @@ class CarvingGui(LabelingGui):
 
         ## uncertainty
 
-        self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(False)
-        self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(False)
+        #self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(False)
+        #self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(False)
 
-        def onUncertaintyFGButton():
-            logger.debug( "uncertFG button clicked" )
-            pos = self.topLevelOperatorView.getMaxUncertaintyPos(label=2)
-            self.editor.posModel.slicingPos = (pos[0], pos[1], pos[2])
-        self.labelingDrawerUi.pushButtonUncertaintyFG.clicked.connect(onUncertaintyFGButton)
+        #def onUncertaintyFGButton():
+        #    logger.debug( "uncertFG button clicked" )
+        #    pos = self.topLevelOperatorView.getMaxUncertaintyPos(label=2)
+        #    self.editor.posModel.slicingPos = (pos[0], pos[1], pos[2])
+        #self.labelingDrawerUi.pushButtonUncertaintyFG.clicked.connect(onUncertaintyFGButton)
 
-        def onUncertaintyBGButton():
-            logger.debug( "uncertBG button clicked" )
-            pos = self.topLevelOperatorView.getMaxUncertaintyPos(label=1)
-            self.editor.posModel.slicingPos = (pos[0], pos[1], pos[2])
-        self.labelingDrawerUi.pushButtonUncertaintyBG.clicked.connect(onUncertaintyBGButton)
+        #def onUncertaintyBGButton():
+        #    logger.debug( "uncertBG button clicked" )
+        #    pos = self.topLevelOperatorView.getMaxUncertaintyPos(label=1)
+        #    self.editor.posModel.slicingPos = (pos[0], pos[1], pos[2])
+        #self.labelingDrawerUi.pushButtonUncertaintyBG.clicked.connect(onUncertaintyBGButton)
 
-        def onUncertaintyCombo(value):
-            if value == 0:
-                value = "none"
-                self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(False)
-                self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(False)
-                self._showUncertaintyLayer = False
-            else:
-                if value == 1:
-                    value = "localMargin"
-                elif value == 2:
-                    value = "exchangeCount"
-                elif value == 3:
-                    value = "gabow"
-                else:
-                    raise RuntimeError("unhandled case '%r'" % value)
-                self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(True)
-                self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(True)
-                self._showUncertaintyLayer = True
-                logger.debug( "uncertainty changed to %r" % value )
-            self.topLevelOperatorView.UncertaintyType.setValue(value)
-            self.updateAllLayers() #make sure that an added/deleted uncertainty layer is recognized
-        self.labelingDrawerUi.uncertaintyCombo.currentIndexChanged.connect(onUncertaintyCombo)
+        #def onUncertaintyCombo(value):
+        #    if value == 0:
+        #        value = "none"
+        #        self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(False)
+        #        self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(False)
+        #        self._showUncertaintyLayer = False
+        #    else:
+        #        if value == 1:
+        #            value = "localMargin"
+        #        elif value == 2:
+        #            value = "exchangeCount"
+        #        elif value == 3:
+        #            value = "gabow"
+        #        else:
+        #            raise RuntimeError("unhandled case '%r'" % value)
+        #        self.labelingDrawerUi.pushButtonUncertaintyFG.setEnabled(True)
+        #        self.labelingDrawerUi.pushButtonUncertaintyBG.setEnabled(True)
+        #        self._showUncertaintyLayer = True
+        #        logger.debug( "uncertainty changed to %r" % value )
+        #    self.topLevelOperatorView.UncertaintyType.setValue(value)
+        #    self.updateAllLayers() #make sure that an added/deleted uncertainty layer is recognized
+        #self.labelingDrawerUi.uncertaintyCombo.currentIndexChanged.connect(onUncertaintyCombo)
 
         ## background priority
         
@@ -200,30 +200,8 @@ class CarvingGui(LabelingGui):
         if hasattr( self.labelingDrawerUi, 'exportAllMeshesButton' ):
             self.labelingDrawerUi.exportAllMeshesButton.clicked.connect(self._exportAllObjectMeshes)
 
-        
-        def labelBackground():
-            self.selectLabel(0)
-        def labelObject():
-            self.selectLabel(1)
-
         self.labelingDrawerUi.labelListView.allowDelete = False
         self._labelControlUi.labelListModel.allowRemove(False)
-
-        bgToolTipObject = LabelListModel.EntryToolTipAdapter(self._labelControlUi.labelListModel, 0)
-        mgr.register( "1", ActionInfo( "Carving", 
-                                       "Select background label", 
-                                       "Select background label", 
-                                       labelBackground,
-                                       self.viewerControlWidget(),
-                                       bgToolTipObject ) )
-
-        fgToolTipObject = LabelListModel.EntryToolTipAdapter(self._labelControlUi.labelListModel, 1)
-        mgr.register( "2", ActionInfo( "Carving", 
-                                       "Select object label", 
-                                       "Select object label", 
-                                       labelObject,
-                                       self.viewerControlWidget(),
-                                       fgToolTipObject ) )
 
         def layerIndexForName(name):
             return self.layerstack.findMatchingIndex(lambda x: x.name == name)
@@ -521,9 +499,9 @@ class CarvingGui(LabelingGui):
         #  but that won't be correct for overlapping objects.
         mst = self.topLevelOperatorView.MST.value
         object_supervoxels = mst.object_lut[object_name]
-        object_lut = numpy.zeros(len(mst.objects.lut), dtype=numpy.int32)
+        object_lut = numpy.zeros(mst.nodeNum+1, dtype=numpy.int32)
         object_lut[object_supervoxels] = 1
-        supervoxel_volume = mst.regionVol
+        supervoxel_volume = mst.supervoxelUint32
         object_volume = object_lut[supervoxel_volume]
 
         # Run the mesh extractor
@@ -596,22 +574,24 @@ class CarvingGui(LabelingGui):
 
         op = self.topLevelOperatorView
         if not self._renderMgr.ready:
+            shape = op.InputData.meta.shape[1:4]
             self._renderMgr.setup(op.InputData.meta.shape[1:4])
 
         # remove nonexistent objects
         self._shownObjects3D = dict((k, v) for k, v in self._shownObjects3D.iteritems()
                                     if k in op.MST.value.object_lut.keys())
 
-        lut = numpy.zeros(len(op.MST.value.objects.lut), dtype=numpy.int32)
+        lut = numpy.zeros(op.MST.value.nodeNum+1, dtype=numpy.int32)
         for name, label in self._shownObjects3D.iteritems():
-            objectSupervoxels = op.MST.value.object_lut[name]
+            objectSupervoxels = op.MST.value.objects[name]
             lut[objectSupervoxels] = label
 
         if self._showSegmentationIn3D:
             # Add segmentation as label, which is green
-            lut[:] = numpy.where( op.MST.value.segmentation.lut == 2, self._segmentation_3d_label, lut )
-                    
-        self._renderMgr.volume = lut[op.MST.value.regionVol] # (Advanced indexing)
+            lut[:] = numpy.where( op.MST.value.getSuperVoxelSeg() == 2, self._segmentation_3d_label, lut )
+        import vigra
+        with vigra.Timer("remapping"):          
+            self._renderMgr.volume = lut[op.MST.value.supervoxelUint32] # (Advanced indexing)
         self._update_colors()
         self._renderMgr.update()
 
@@ -620,7 +600,7 @@ class CarvingGui(LabelingGui):
         ctable = self._doneSegmentationLayer.colorTable
 
         for name, label in self._shownObjects3D.iteritems():
-            color = QColor(ctable[op.MST.value.object_names[name]])
+            color = QColor(ctable[op.MST.value.objects[name]])
             color = (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0)
             self._renderMgr.setColor(label, color)
 
@@ -670,25 +650,24 @@ class CarvingGui(LabelingGui):
             self.editor.setLabelSink(labelsrc)
 
         #uncertainty
-        if self._showUncertaintyLayer:
-            uncert = self.topLevelOperatorView.Uncertainty
-            if uncert.ready():
-                colortable = []
-                for i in range(256-len(colortable)):
-                    r,g,b,a = i,0,0,i
-                    colortable.append(QColor(r,g,b,a).rgba())
-    
-                layer = ColortableLayer(LazyflowSource(uncert), colortable, direct=True)
-                layer.name = "Uncertainty"
-                layer.visible = True
-                layer.opacity = 0.3
-                layers.append(layer)
+        #if self._showUncertaintyLayer:
+        #    uncert = self.topLevelOperatorView.Uncertainty
+        #    if uncert.ready():
+        #        colortable = []
+        #        for i in range(256-len(colortable)):
+        #            r,g,b,a = i,0,0,i
+        #            colortable.append(QColor(r,g,b,a).rgba())
+        #        layer = ColortableLayer(LazyflowSource(uncert), colortable, direct=True)
+        #        layer.name = "Uncertainty"
+        #        layer.visible = True
+        #        layer.opacity = 0.3
+        #        layers.append(layer)
        
         #segmentation 
         seg = self.topLevelOperatorView.Segmentation
         
         #seg = self.topLevelOperatorView.MST.value.segmentation
-        #temp = self._done_lut[self.MST.value.regionVol[sl[1:4]]]
+        #temp = self._done_lut[self.MST.value.supervoxelUint32[sl[1:4]]]
         if seg.ready():
             #source = RelabelingArraySource(seg)
             #source.setRelabeling(numpy.arange(256, dtype=numpy.uint8))
