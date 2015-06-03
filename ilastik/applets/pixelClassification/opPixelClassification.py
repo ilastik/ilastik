@@ -551,10 +551,10 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
                        'x' : (256,256),
                        'c' : (100,100) }
 
-        blockDimsZ = { 't' : (1,1),
+        blockDimsZ = { 't' : (5,5),
                        'z' : (1,1),
-                       'y' : (256,256),
-                       'x' : (256,256),
+                       'y' : (1024,1024),
+                       'x' : (1024,1024),
                        'c' : (100,100) }
 
         innerBlockShapeX = tuple( blockDimsX[k][0] for k in axisOrder )
@@ -566,11 +566,11 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         innerBlockShapeZ = tuple( blockDimsZ[k][0] for k in axisOrder )
         outerBlockShapeZ = tuple( blockDimsZ[k][1] for k in axisOrder )
 
-        self.prediction_cache_gui.inputs["innerBlockShape"].setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
-        self.prediction_cache_gui.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
+        self.prediction_cache_gui.inputs["innerBlockShape"].setValue( (innerBlockShapeZ,) )
+        self.prediction_cache_gui.inputs["outerBlockShape"].setValue( (outerBlockShapeZ,) )
 
-        self.opUncertaintyCache.inputs["innerBlockShape"].setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
-        self.opUncertaintyCache.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
+        self.opUncertaintyCache.inputs["innerBlockShape"].setValue( (innerBlockShapeZ,) )
+        self.opUncertaintyCache.inputs["outerBlockShape"].setValue( (outerBlockShapeZ,) )
 
 
 class OpEnsembleMargin(Operator):

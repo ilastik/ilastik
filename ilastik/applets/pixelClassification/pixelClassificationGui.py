@@ -123,7 +123,7 @@ class ClassifierSelectionDlg(QDialog):
 
         # Debug classifiers        
         classifiers["(debug) Single-threaded Random Forest (VIGRA)"] = VigraRfLazyflowClassifierFactory(100)
-        classifiers["(debug) Pixelwise Random Forest (VIGRA)"] = VigraRfPixelwiseClassifierFactory(100)
+        classifiers["(debug) Pixelwise Random Forest (VIGRA)"] = VigraRfPixelwiseClassifierFactory(10)
         
         return classifiers
         
