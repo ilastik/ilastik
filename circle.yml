@@ -16,7 +16,7 @@ dependencies:
   override:
     - wget https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
     - bash Miniconda-latest-Linux-x86_64.sh -b
-    - ${CONDA_ROOT}/bin/conda create -y -n ${TEST_ENV_NAME} -c ilastik ilastik-deps-pc ilastik-meta
+    - ${CONDA_ROOT}/bin/conda create -y -n ${TEST_ENV_NAME} -c ilastik ilastik-everything-but-tracking
 
     # Replace packaged source with full git repo
     - rm -rf ${TEST_ENV_PREFIX}/ilastik-meta
