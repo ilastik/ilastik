@@ -274,6 +274,7 @@ class OpTrainClassifierFromFeatureVectors(Operator):
         self.Classifier.meta.classifier_factory = self.ClassifierFactory.value
 
     def execute(self, slot, subindex, roi, result):
+        channel_names = self.LabelAndFeatureMatrix.meta.channel_names
         labels_and_features = self.LabelAndFeatureMatrix.value
         featMatrix = labels_and_features[:,1:]
         labelsMatrix = labels_and_features[:,0:1].astype(numpy.uint32)
@@ -292,7 +293,7 @@ class OpTrainClassifierFromFeatureVectors(Operator):
             "".format( type(classifier_factory) )
 
         logger.debug("Training new classifier: {}".format( classifier_factory.description ))
-        classifier = classifier_factory.create_and_train( featMatrix, labelsMatrix[:,0] )
+        classifier = classifier_factory.create_and_train( featMatrix, labelsMatrix[:,0], channel_names )
         result[0] = classifier
         if classifier is not None:
             assert issubclass(type(classifier), LazyflowVectorwiseClassifierABC), \

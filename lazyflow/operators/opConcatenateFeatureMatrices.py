@@ -24,6 +24,7 @@ class OpConcatenateFeatureMatrices(Operator):
         self._dirty_slots = set()
         self.progressSignal = OrderedSignal()
         self._num_feature_channels = 0 # Not including the labels...
+        self._channel_names = []
 
     def setupOutputs(self):
         self.ConcatenatedOutput.meta.shape = (1,)
@@ -32,15 +33,24 @@ class OpConcatenateFeatureMatrices(Operator):
             return
         
         num_feature_channels = self.FeatureMatrices[0].meta.num_feature_channels
+        channel_names = self.FeatureMatrices[0].meta.channel_names
         for slot in self.FeatureMatrices:
             if slot.meta.num_feature_channels != num_feature_channels:
                 logger.debug("Input matrices have the wrong number of channels")
                 self.ConcatenatedOutput.meta.NOTREADY = True
-                return 
+                return
+            if slot.meta.channel_names != channel_names:
+                logger.debug("Input matrices have different channel names")
+                self.ConcatenatedOutput.meta.NOTREADY = True
+                return
         
         self.ConcatenatedOutput.meta.num_feature_channels = num_feature_channels
-        if num_feature_channels != self._num_feature_channels:
+        self.ConcatenatedOutput.meta.channel_names = channel_names
+        
+        if ( num_feature_channels != self._num_feature_channels or
+             channel_names != self._channel_names ):
             self._num_feature_channels = num_feature_channels
+            self._channel_names = channel_names
 
             # If the number of features changed, we want to notify downstream 
             #  caches that the old feature matrices are dirty.

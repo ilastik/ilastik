@@ -21,7 +21,7 @@ class LazyflowVectorwiseClassifierFactoryABC(object):
         return obj
 
     @abc.abstractmethod
-    def create_and_train(self, X, y):
+    def create_and_train(self, X, y, feature_names=None):
         """
         Create a new classifier and train it with the feature matrix X and label vector y.
         """
@@ -86,6 +86,14 @@ class LazyflowVectorwiseClassifierABC(object):
     def feature_count(self):
         """
         Return the number of features used to train this classifier.
+        """
+        raise NotImplementedError
+
+    @abc.abstractproperty
+    def feature_names(self):
+        """
+        Return a list of the names of the features used to train this classifier.
+        len(self.feature_names) == self.feature_count
         """
         raise NotImplementedError
 
