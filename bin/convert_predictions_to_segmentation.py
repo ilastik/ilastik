@@ -57,7 +57,7 @@ def all_dataset_internal_paths(f):
 if __name__ == "__main__":
     import sys
     import argparse
-    sys.argv += "/tmp/example_slice.h5/data /tmp/example_slice.h5/data --export_drange=(0,255) --output_format=png --pipeline_result_drange=(1,2)".split()
+    #sys.argv += "/tmp/example_slice.h5/data /tmp/example_slice.h5/data --export_drange=(0,255) --output_format=png --pipeline_result_drange=(1,2)".split()
     
     # Construct a parser with all the 'normal' export options, and add arg for prediction_image_paths.
     parser = DataExportApplet.make_cmdline_parser( argparse.ArgumentParser() )
