@@ -37,6 +37,15 @@ def convert_predictions_to_segmentation( input_paths, parsed_export_args ):
 
     for input_path in input_paths: 
         opReader.FilePath.setValue(input_path)
+
+        input_pathcomp = PathComponents(input_path)
+        opExport.OutputFilenameFormat.setValue(input_pathcomp.externalPath)
+
+        output_path = opExport.ExportPath.value
+        output_pathcomp = PathComponents( output_path )
+        output_pathcomp.filenameBase += "_Segmentation"
+        opExport.OutputFilenameFormat.setValue(output_pathcomp.externalPath)
+        
         print "Exporting results to : {}".format( opExport.ExportPath.value )    
         sys.stdout.write("Progress:")
         # Begin export
@@ -57,7 +66,7 @@ def all_dataset_internal_paths(f):
 if __name__ == "__main__":
     import sys
     import argparse
-    #sys.argv += "/tmp/example_slice.h5/data /tmp/example_slice.h5/data --export_drange=(0,255) --output_format=png --pipeline_result_drange=(1,2)".split()
+    sys.argv += "/tmp/example_slice.h5/data /tmp/example_slice2.h5/data --export_drange=(0,255) --output_format=png --pipeline_result_drange=(1,2)".split()
     
     # Construct a parser with all the 'normal' export options, and add arg for prediction_image_paths.
     parser = DataExportApplet.make_cmdline_parser( argparse.ArgumentParser() )
@@ -67,9 +76,10 @@ if __name__ == "__main__":
     
     # As a convenience, auto-determine the internal dataset path if possible.
     for index, input_path in enumerate(parsed_args.prediction_image_paths):
-        path_comp = PathComponents(input_path, os.getcwd())
-        if path_comp.extension in PathComponents.HDF5_EXTS and path_comp.internalDatasetName == "":
-            
+        path_comp = PathComponents(input_path, os.getcwd())        
+        if not parsed_args.output_internal_path:
+            parsed_args.output_internal_path = "segmentation"
+        if path_comp.extension in PathComponents.HDF5_EXTS and path_comp.internalDatasetName == "":            
             with h5py.File(path_comp.externalPath, 'r') as f:
                 all_internal_paths = all_dataset_internal_paths(f)
     
@@ -85,14 +95,6 @@ if __name__ == "__main__":
                                  "{}\n".format(input_path) +
                                  "Please specify the dataset name, e.g. /path/to/myfile.h5/internal/dataset_name\n")
                 sys.exit(1)
-
-    # As a convenience, if the user didn't explicitly specify an output file name, provide one for him.
-    if not parsed_args.output_filename_format:
-        output_path_comp = copy.copy(path_comp)
-        output_path_comp.filenameBase += "_Segmentation"
-        parsed_args.output_filename_format = output_path_comp.externalPath
-    if path_comp.extension in PathComponents.HDF5_EXTS and not parsed_args.output_internal_path:
-        parsed_args.output_internal_path = "segmentation"        
 
     sys.exit( convert_predictions_to_segmentation( parsed_args.prediction_image_paths, 
                                                    parsed_args ) )
