@@ -14,7 +14,7 @@ from iiboost import computeEigenVectorsOfHessianImage, computeIntegralImage
 from ilastik.applets.base.applet import DatasetConstraintError
 
 import logging
-logger = logging.getLogger(__file__)
+logger = logging.getLogger(__name__)
 
 # By default, we pre-select the features listed in the IIBoost paper.
 # (GGM from 1.0 - 5.0 and ST EVs from 1.0 - 5.0)
