@@ -23,6 +23,8 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpImageReader, OpBlockedArrayCache, OpMetadataInjector, OpSubRegion
 from opStreamingHdf5Reader import OpStreamingHdf5Reader
 from opNpyFileReader import OpNpyFileReader
+from opTiffReader import OpTiffReader
+from opTiffSequenceReader import OpTiffSequenceReader
 from lazyflow.operators.ioOperators import OpStackLoader, OpBlockwiseFilesetReader, OpRESTfulBlockwiseFilesetReader, OpCachedTiledVolumeReader
 from lazyflow.utility.jsonConfig import JsonConfigParser
 from lazyflow.utility.pathHelpers import isUrl
@@ -55,6 +57,7 @@ class OpInputDataReader(Operator):
     npyExts = ['npy']
     blockwiseExts = ['json']
     tiledExts = ['json']
+    tiffExts = ['tif', 'tiff']
     vigraImpexExts = vigra.impex.listExtensions().split()
     SupportedExtensions = h5Exts + npyExts + vigraImpexExts + blockwiseExts
     if _supports_dvid:
@@ -82,7 +85,7 @@ class OpInputDataReader(Operator):
 
     def __init__(self, *args, **kwargs):
         super(OpInputDataReader, self).__init__(*args, **kwargs)
-        self.internalOperator = None
+        self.internalOperators = []
         self.internalOutput = None
         self._file = None
 
@@ -112,32 +115,35 @@ class OpInputDataReader(Operator):
                 filePath = os.path.normpath(os.path.join(self.WorkingDirectory.value, filePath)).replace('\\','/')
 
         # Clean up before reconfiguring
-        if self.internalOperator is not None:
+        if self.internalOperators:
             self.Output.disconnect()
             self.opInjector.cleanUp()
-            self.internalOperator.cleanUp()
-            self.internalOperator = None
+            for op in self.internalOperators[::-1]:
+                op.cleanUp()
+            self.internalOperators = []
             self.internalOutput = None
         if self._file is not None:
             self._file.close()
 
         openFuncs = [ self._attemptOpenAsDvidVolume,
+                      self._attemptOpenAsTiffStack,
                       self._attemptOpenAsStack,
                       self._attemptOpenAsHdf5,
                       self._attemptOpenAsNpy,
                       self._attemptOpenAsBlockwiseFileset,
                       self._attemptOpenAsRESTfulBlockwiseFileset,
                       self._attemptOpenAsTiledVolume,
+                      self._attemptOpenAsTiff,
                       self._attemptOpenWithVigraImpex ]
 
         # Try every method of opening the file until one works.
         iterFunc = openFuncs.__iter__()
-        while self.internalOperator is None:
+        while not self.internalOperators:
             try:
                 openFunc = iterFunc.next()
             except StopIteration:
                 break
-            self.internalOperator, self.internalOutput = openFunc(filePath)
+            self.internalOperators, self.internalOutput = openFunc(filePath)
 
         if self.internalOutput is None:
             raise RuntimeError("Can't read " + filePath + " because it has an unrecognized format.")
@@ -165,13 +171,25 @@ class OpInputDataReader(Operator):
         # Directly connect our own output to the internal output
         self.Output.connect( self.opInjector.Output )
     
+    def _attemptOpenAsTiffStack(self, filePath):
+        if not ('*' in filePath or os.path.pathsep in filePath):
+            return ([], None)
+        
+        try:
+            opReader = OpTiffSequenceReader(parent=self)
+            opReader.GlobString.setValue(filePath)
+            return (opReader, opReader.Output)
+        except OpTiffSequenceReader.WrongFileTypeError as ex:
+            return ([], None)
+        
+    
     def _attemptOpenAsStack(self, filePath):
         if '*' in filePath or os.path.pathsep in filePath:
             stackReader = OpStackLoader(parent=self)
             stackReader.globstring.setValue(filePath)
-            return (stackReader, stackReader.stack)
+            return ([stackReader], stackReader.stack)
         else:
-            return (None, None)
+            return ([], None)
 
     def _attemptOpenAsHdf5(self, filePath):
         # Check for an hdf5 extension
@@ -183,7 +201,7 @@ class OpInputDataReader(Operator):
                 ext = x
 
         if ext is None:
-            return (None, None)
+            return ([], None)
 
         externalPath = filePath.split(ext)[0] + ext
         internalPath = filePath.split(ext)[1]
@@ -230,7 +248,7 @@ class OpInputDataReader(Operator):
             msg = "Error reading HDF5 File: {}\n{}".format(externalPath, e.msg)
             raise OpInputDataReader.DatasetReadError( msg )
 
-        return (h5Reader, h5Reader.OutputImage)
+        return ([h5Reader], h5Reader.OutputImage)
 
     def _attemptOpenAsNpy(self, filePath):
         fileExtension = os.path.splitext(filePath)[1].lower()
@@ -238,13 +256,13 @@ class OpInputDataReader(Operator):
 
         # Check for numpy extension
         if fileExtension not in OpInputDataReader.npyExts:
-            return (None, None)
+            return ([], None)
         else:
             try:
                 # Create an internal operator
                 npyReader = OpNpyFileReader(parent=self)
                 npyReader.FileName.setValue(filePath)
-                return (npyReader, npyReader.Output)
+                return ([npyReader], npyReader.Output)
             except OpNpyFileReader.DatasetReadError as e:
                 raise OpInputDataReader.DatasetReadError( *e.args )
 
@@ -259,7 +277,7 @@ class OpInputDataReader(Operator):
                 filetext = f.read()
                 hostname, uuid, dataname = filetext.splitlines()
             opDvidVolume = OpDvidVolume( hostname, uuid, dataname, transpose_axes=True, parent=self )
-            return opDvidVolume, opDvidVolume.Output
+            return [opDvidVolume], opDvidVolume.Output
         if '://' in filePath:
             url_format = "^protocol://hostname/api/node/uuid/dataname(\\?query_string)?"
             for field in ['protocol', 'hostname', 'uuid', 'dataname', 'query_string']:
@@ -274,10 +292,10 @@ class OpInputDataReader(Operator):
                         query_args = dict( map(lambda s: s.split('='), query_string.split('&')) )
                     opDvidVolume = OpDvidVolume( fields['hostname'], fields['uuid'], fields['dataname'], query_args,
                                                  transpose_axes=True, parent=self )
-                    return opDvidVolume, opDvidVolume.Output
+                    return [opDvidVolume], opDvidVolume.Output
                 except OpDvidVolume.DatasetReadError as e:
                     raise OpInputDataReader.DatasetReadError( *e.args )
-        return (None, None)
+        return ([], None)
 
     def _attemptOpenAsBlockwiseFileset(self, filePath):
         fileExtension = os.path.splitext(filePath)[1].lower()
@@ -288,12 +306,12 @@ class OpInputDataReader(Operator):
             try:
                 # This will raise a SchemaError if this is the wrong type of json config.
                 opReader.DescriptionFilePath.setValue( filePath )
-                return (opReader, opReader.Output)
+                return ([opReader], opReader.Output)
             except JsonConfigParser.SchemaError:
                 opReader.cleanUp()
             except OpBlockwiseFilesetReader.MissingDatasetError as e:
                 raise OpInputDataReader.DatasetReadError(*e.args)
-        return (None, None)
+        return ([], None)
 
     def _attemptOpenAsRESTfulBlockwiseFileset(self, filePath):
         fileExtension = os.path.splitext(filePath)[1].lower()
@@ -304,12 +322,12 @@ class OpInputDataReader(Operator):
             try:
                 # This will raise a SchemaError if this is the wrong type of json config.
                 opReader.DescriptionFilePath.setValue( filePath )
-                return (opReader, opReader.Output)
+                return ([opReader], opReader.Output)
             except JsonConfigParser.SchemaError:
                 opReader.cleanUp()
             except OpRESTfulBlockwiseFilesetReader.MissingDatasetError as e:
                 raise OpInputDataReader.DatasetReadError(*e.args)
-        return (None, None)
+        return ([], None)
 
     def _attemptOpenAsTiledVolume(self, filePath):
         fileExtension = os.path.splitext(filePath)[1].lower()
@@ -320,17 +338,41 @@ class OpInputDataReader(Operator):
             try:
                 # This will raise a SchemaError if this is the wrong type of json config.
                 opReader.DescriptionFilePath.setValue( filePath )
-                return (opReader, opReader.SpecifiedOutput)
+                return ([opReader], opReader.SpecifiedOutput)
             except JsonConfigParser.SchemaError:
                 opReader.cleanUp()
-        return (None, None)
+        return ([], None)
 
+    def _attemptOpenAsTiff(self, filePath):
+        fileExtension = os.path.splitext(filePath)[1].lower()
+        fileExtension = fileExtension.lstrip('.') # Remove leading dot
+
+        if fileExtension not in OpInputDataReader.tiffExts:
+            return ([], None)
+
+        if not os.path.exists(filePath):
+            raise OpInputDataReader.DatasetReadError("Input file does not exist: " + filePath)
+
+        opReader = OpTiffReader( parent=self )
+        opReader.Filepath.setValue(filePath)
+
+        page_shape = opReader.Output.meta.ideal_blockshape
+
+        # Cache the pages we read
+        opCache = OpBlockedArrayCache( parent=self )
+        opCache.fixAtCurrent.setValue( False )
+        opCache.innerBlockShape.setValue( page_shape )
+        opCache.outerBlockShape.setValue( page_shape )
+        opCache.Input.connect( opReader.Output )
+        
+        return ([opReader, opCache], opCache.Output)
+    
     def _attemptOpenWithVigraImpex(self, filePath):
         fileExtension = os.path.splitext(filePath)[1].lower()
         fileExtension = fileExtension.lstrip('.') # Remove leading dot
 
         if fileExtension not in OpInputDataReader.vigraImpexExts:
-            return (None, None)
+            return ([], None)
 
         if not os.path.exists(filePath):
             raise OpInputDataReader.DatasetReadError("Input file does not exist: " + filePath)
@@ -356,7 +398,7 @@ class OpInputDataReader(Operator):
         imageCache.outerBlockShape.setValue( cacheBlockShape ) 
         assert imageCache.Output.ready()
         
-        return (imageCache, imageCache.Output)
+        return ([vigraReader, imageCache], imageCache.Output)
 
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here because our output is directly connected..."
