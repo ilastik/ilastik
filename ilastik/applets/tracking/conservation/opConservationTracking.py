@@ -309,11 +309,20 @@ class OpConservationTracking(OpTrackingBase):
             return volume
         for old_id, new_ids in self.resolvedto[time].iteritems():
             for new_id in new_ids:
+                # TODO Reliable distinction between 2d and 3d?
+                if volume.shape[-1] == 1:
+                    # Assume we have 2d data: bind z to zero
+                    relabel_volume = volume[...,0]
+                else:
+                    # For 3d data use the whole volume
+                    relabel_volume = volume
+                # relabel
                 pgmlink.update_labelimage(
                     self.coordinate_map,
-                    volume[...,0],
+                    relabel_volume,
                     int(time),
                     int(new_id))
+
         return relabel(volume, self.label2color[time])
 
     def _setParameter(self, key, value, parameters, parameters_changed):
