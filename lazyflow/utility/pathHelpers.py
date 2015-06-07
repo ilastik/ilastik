@@ -61,7 +61,7 @@ class PathComponents(object):
             absPath, relPath = getPathVariants(totalPath, cwd)
             totalPath = absPath
 
-        #convention for Windows: use "/"
+        # convention for Windows: use "/"
         totalPath = totalPath.replace("\\","/")
 
         # For hdf5 paths, split into external, extension, and internal paths
@@ -235,7 +235,7 @@ class PathComponents(object):
 
 
 def areOnSameDrive(path1,path2):
-    #if one path is relative, assume they are on same drive
+    # if one path is relative, assume they are on same drive
     if isUrl(path1) or isUrl(path2):
         return False
     if not os.path.isabs(path1) or not os.path.isabs(path2):

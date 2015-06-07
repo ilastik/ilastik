@@ -445,8 +445,12 @@ class OpH5WriterBigDataset(Operator):
 
         tagged_maxshape = self.Image.meta.getTaggedShape()
         if 't' in tagged_maxshape:
-            # Assume that chunks should not span multiple t-slices
+            # Assume that chunks should not span multiple t-slices,
+            #  and channels are often handled separately, too.
             tagged_maxshape['t'] = 1
+
+        if 'c' in tagged_maxshape:
+            tagged_maxshape['c'] = 1
         
         self.chunkShape = determineBlockShape( tagged_maxshape.values(), 512000.0 / dtypeBytes )
 

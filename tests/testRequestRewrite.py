@@ -650,6 +650,10 @@ class TestRequest(object):
                     # not executed synchronously in this thread.
                     req.submit()
                 result = req.wait() + 1
+
+            # The ThreadPool._Worker loop has a local reference (next_task),
+            # so wait just a tic for the ThreadPool worker to cycle back to the top of its loop (and discard the reference)
+            time.sleep(0.01)
              
             # Note that we expect there to be 2X memory usage here:
             #  1x for our result and 1x for the child, which hasn't been cleaned up yet.
@@ -820,6 +824,10 @@ class TestRequestExceptions(object):
         req.submit()
         req.wait()
         del req
+        
+        # The ThreadPool._Worker loop has a local reference (next_task), 
+        # so wait just a tic for the ThreadPool worker to cycle back to the top of its loop (and discard the reference) 
+        time.sleep(0.1)
         assert w[0]() is None
     
      

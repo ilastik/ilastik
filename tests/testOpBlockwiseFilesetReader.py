@@ -50,6 +50,12 @@ class TestOpBlockwiseFilesetReader(object):
             # On windows, there are errors, and we make no attempt to solve them (at the moment).
             raise nose.SkipTest
         
+        try:
+            BlockwiseFileset._prepare_system()
+        except ValueError:
+            # If the system isn't configured to allow lots of open files, we can't run this test.
+            raise nose.SkipTest
+        
         testConfig = \
         """
         {

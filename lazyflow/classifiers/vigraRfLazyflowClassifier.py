@@ -1,6 +1,7 @@
 import os
 import tempfile
 import cPickle as pickle
+import collections
 
 import numpy
 import vigra
@@ -19,8 +20,8 @@ class VigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
         self._args = args
         self._kwargs = kwargs
     
-    def create_and_train(self, X, y):
-        logger.debug( 'training single-threaded vigra RF' )
+    def create_and_train(self, X, y, feature_names=None):
+        logger.debug( 'Training single-threaded vigra RF with feature importance' )
 
         # Save for future reference
         known_labels = numpy.unique(y)
@@ -33,14 +34,67 @@ class VigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
         assert X.ndim == 2
         assert len(X) == len(y)
         classifier = vigra.learning.RandomForest(*self._args, **self._kwargs)
-        classifier.learnRF(X, y)
+        
+        if feature_names is None:
+            oob = classifier.learnRFWithFeatureSelection(X, y)
+            named_importances = None
+        else:
+            assert len(feature_names) == X.shape[-1], \
+                "Training data has {} features, but you gave {} feature names" \
+                .format( X.shape[-1], len(feature_names) )
+            
+            oob, importances = classifier.learnRFWithFeatureSelection(X, y)
+            named_importances = collections.OrderedDict( zip( feature_names, importances ) )
 
-        return VigraRfLazyflowClassifier( classifier, known_labels )
+            importance_table = self.generate_importance_table( named_importances, sort=True )
+            logger.info("Feature Importance measurements during training:\n" + importance_table)
+
+        logger.info("OOB during training: {}".format( oob ))
+        return VigraRfLazyflowClassifier( classifier, known_labels, feature_names, oob, named_importances )
+
+    @classmethod
+    def generate_importance_table(cls, named_importances_dict, sort=True):
+        """
+        Return a string of the given importances dict, in csv format, 
+        but also with extra spaces for pretty-printing.
+        """
+        import csv
+        from StringIO import StringIO
+        CSV_FORMAT = { 'delimiter' : '\t', 'lineterminator' : '\n' }
+
+        feature_name_length = max( map(len, named_importances_dict.keys()) )
+
+        # See vigra/random_forest/rf_visitors.hxx, class VariableImportanceVisitor
+        n_classes = len(named_importances_dict.values()[0]) - 2
+        columns = [ "{: <{width}}".format("Feature Name", width=feature_name_length) ]
+        columns += [ "  Class #{}".format(i) for i in range(n_classes)]
+        columns += [ "   Overall" ]
+        columns += [ "      Gini" ]
+        
+        output = StringIO()
+        csv_writer = csv.writer(output, **CSV_FORMAT)
+        csv_writer.writerow( columns )
+
+        if sort:
+            # Sort by "overall" importance (column -2)
+            sorted_importances = sorted( named_importances_dict.items(),
+                                         key=lambda (k,v): v[-2] )
+            named_importances_dict = collections.OrderedDict( sorted_importances )
+
+        for feature_name, importances in named_importances_dict.items():
+            feature_name = "{: <{width}}".format(feature_name, width=feature_name_length)
+            importance_strings = map( lambda x: "{: .03f}".format(x), importances )
+            importance_strings = map( lambda s: "{: >10}".format(s), importance_strings )
+            csv_writer.writerow( [feature_name] + importance_strings )
+        return output.getvalue()
 
     @property
     def description(self):
         temp_rf = vigra.learning.RandomForest( *self._args, **self._kwargs )
         return "Vigra Random Forest ({} trees)".format( temp_rf.treeCount() )
+
+    def estimated_ram_usage_per_requested_predictionchannel(self):
+        return 4
 
     def __eq__(self, other):
         return (    isinstance(other, type(self))
@@ -55,9 +109,12 @@ class VigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
     """
     Adapt the vigra RandomForest class to the interface lazyflow expects.
     """
-    def __init__(self, vigra_rf, known_labels):
+    def __init__(self, vigra_rf, known_labels, feature_names, oob, importances=None):
         self._known_labels = known_labels
         self._vigra_rf = vigra_rf
+        self._feature_names = feature_names
+        self.oob = oob
+        self.importances = importances
     
     def predict_probabilities(self, X):
         logger.debug( 'predicting single-threaded vigra RF' )
@@ -70,6 +127,10 @@ class VigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
     @property
     def feature_count(self):
         return self._vigra_rf.featureCount()
+
+    @property
+    def feature_names(self):
+        return self._feature_names
 
     def serialize_hdf5(self, h5py_group):
         # Due to non-shared hdf5 dlls, vigra can't write directly to
@@ -84,6 +145,7 @@ class VigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
             h5py_group.copy(cacheFile['forest'], 'forest')
 
         h5py_group['known_labels'] = self._known_labels
+        h5py_group['feature_names'] = self._feature_names
         
         # This field is required for all classifiers
         h5py_group['pickled_type'] = pickle.dumps( type(self) )
@@ -100,10 +162,11 @@ class VigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
 
         forest = vigra.learning.RandomForest(cachePath, 'forest')
         known_labels = list(h5py_group['known_labels'][:])
+        feature_names = list(h5py_group['feature_names'][:])
 
         os.remove(cachePath)
         os.rmdir(tmpDir)
 
-        return VigraRfLazyflowClassifier( forest, known_labels )
+        return VigraRfLazyflowClassifier( forest, known_labels, feature_names, None, None )
 
 assert issubclass( VigraRfLazyflowClassifier, LazyflowVectorwiseClassifierABC )

@@ -95,9 +95,17 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
             try:
                 self.Output.stype.copy_data(result, self._block_data[block_roi])
                 return
-            except KeyError:
-                # Not yet stored: Request it now.
+            except KeyError: # Not yet stored: Request it now.
+
+                # We attach a special attribute to the array to allow the upstream operator
+                #  to optionally tell us not to bother caching the data.
                 self.Input(roi.start, roi.stop).writeInto(result).block()
+
+                if self.Input.meta.dontcache:
+                    # The upstream operator says not to bother caching the data.
+                    # (For example, see OpCacheFixer.)
+                    return
+                
                 block = result.copy()
                 with self._lock:
                     # Store the data.

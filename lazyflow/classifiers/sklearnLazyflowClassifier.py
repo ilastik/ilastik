@@ -21,7 +21,7 @@ class SklearnLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
         self._kwargs = kwargs
         self._classifier_type = classifier_type
 
-    def create_and_train(self, X, y):
+    def create_and_train(self, X, y, feature_names=None):
         X = numpy.asarray(X, numpy.float32)
         y = numpy.asarray(y, numpy.uint32)
 
@@ -38,7 +38,7 @@ class SklearnLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
             # Some sklearn classifiers don't have a 'classes_' attribute.
             known_classes = numpy.unique(y)
         
-        return SklearnLazyflowClassifier( sklearn_classifier, known_classes, X.shape[1] )
+        return SklearnLazyflowClassifier( sklearn_classifier, known_classes, X.shape[1], feature_names )
 
     @property
     def description(self):
@@ -56,15 +56,16 @@ assert issubclass( SklearnLazyflowClassifierFactory, LazyflowVectorwiseClassifie
 
 class SklearnLazyflowClassifier(LazyflowVectorwiseClassifierABC):
 
-    VERSION = 1 # Used for pickling compatibility
+    VERSION = 2 # Used for pickling compatibility
 
     class VersionIncompatibilityError(Exception):
         pass
 
-    def __init__(self, sklearn_classifier, known_classes, feature_count):
+    def __init__(self, sklearn_classifier, known_classes, feature_count, feature_names):
         self._sklearn_classifier = sklearn_classifier
         self._known_classes = known_classes
         self._feature_count = feature_count
+        self._feature_names = feature_names
 
         self.VERSION = SklearnLazyflowClassifier.VERSION
     
@@ -79,6 +80,10 @@ class SklearnLazyflowClassifier(LazyflowVectorwiseClassifierABC):
     @property
     def feature_count(self):
         return self._feature_count
+
+    @property
+    def feature_names(self):
+        return self._feature_names
 
     def serialize_hdf5(self, h5py_group):
         h5py_group['pickled_classifier'] = pickle.dumps( self )

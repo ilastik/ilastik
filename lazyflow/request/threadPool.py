@@ -199,11 +199,15 @@ class _Worker(threading.Thread):
         """
         # Keep trying until we get a job        
         with self.job_queue_condition:
+            if self.stopped:
+                return None
             next_task = self._pop_job()
 
             while next_task is None and not self.stopped:
                 # Wait for work to become available
                 self.job_queue_condition.wait()
+                if self.stopped:
+                    return None
                 next_task = self._pop_job()
 
         if not self.stopped:

@@ -7,7 +7,7 @@ import numpy
 import vigra
 import h5py
 
-from lazyflow.request import Request, RequestPool
+from lazyflow.request import Request, RequestPool, RequestLock
 from lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
 
 import logging
@@ -32,7 +32,7 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
         self._num_forests = num_forests or Request.global_thread_pool.num_workers
         self._num_forests = max(1, self._num_forests)
     
-    def create_and_train(self, X, y):
+    def create_and_train(self, X, y, feature_names=None):
         # Distribute trees as evenly as possible
         tree_counts = numpy.array( [self._num_trees // self._num_forests] * self._num_forests )
         tree_counts[:self._num_trees % self._num_forests] += 1
@@ -67,7 +67,10 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
         pool.wait()
 
         logger.info( "Training complete. Average OOB: {}".format( numpy.average(oobs) ) )
-        return ParallelVigraRfLazyflowClassifier( forests, oobs, known_labels )
+        return ParallelVigraRfLazyflowClassifier( forests, oobs, known_labels, feature_names )
+
+    def estimated_ram_usage_per_requested_predictionchannel(self):
+        return (Request.global_thread_pool.num_workers) * 4
 
     @property
     def description(self):
@@ -87,9 +90,10 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
     """
     Adapt the vigra RandomForest class to the interface lazyflow expects.
     """
-    def __init__(self, forests, oobs, known_labels):
+    def __init__(self, forests, oobs, known_labels, feature_names=None):
         self._known_labels = known_labels
         self._forests = forests
+        self._feature_names = feature_names
         
         # Note that oobs may not be in the same order as the forests.
         self._oobs = oobs
@@ -100,25 +104,29 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
         logger.debug( "Predicting with parallel vigra RF" )
         X = numpy.asarray(X, dtype=numpy.float32)
 
-        # Create a request for each forest        
-        reqs = []
+        # As each forest completes, aggregate results in a shared array.
+        # (Must put in a list so we can update it in this closure.)
+        total_predictions = [None]
+        prediction_lock = RequestLock()
+        def update_predictions(forest, forest_predictions):
+            forest_predictions *= forest.treeCount()
+            with prediction_lock:
+                if total_predictions[0] is None:
+                    total_predictions[0] = forest_predictions
+                else:
+                    total_predictions[0] += forest_predictions
+
+        # Create a request for each forest
+        pool = RequestPool()
         for forest in self._forests:
             req = Request( partial( forest.predictProbabilities, X ) )
-            reqs.append( req )
-
-        # Execute all requests in a pool        
-        pool = RequestPool()
-        for req in reqs:
+            req.notify_finished( partial(update_predictions, forest) )
             pool.add( req )
+        del req
         pool.wait()
 
-        # Aggregate the results
-        predictions = self._forests[0].treeCount() * reqs[0].result
-        for forest, req in zip(self._forests[1:], reqs[1:]):
-            predictions += forest.treeCount() * req.result
-
-        predictions /= self._num_trees
-        return predictions
+        total_predictions[0] /= self._num_trees
+        return total_predictions[0]
     
     @property
     def oobs(self):
@@ -127,6 +135,10 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
     @property
     def known_classes(self):
         return self._known_labels
+
+    @property
+    def feature_names(self):
+        return self._feature_names
 
     @property
     def feature_count(self):
@@ -155,6 +167,7 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
 
         h5py_group = parent_group[name]
         h5py_group['known_labels'] = self._known_labels
+        h5py_group['feature_names'] = self._feature_names
         
         # This field is required for all classifiers
         h5py_group['pickled_type'] = pickle.dumps( type(self) )
@@ -186,6 +199,12 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
             known_labels = range(1, forests[0].labelCount()+1 )
 
         try:
+            feature_names = list(h5py_group['feature_names'][:])
+        except KeyError:
+            # Older projects don't store feature names.
+            feature_names = None
+
+        try:
             oobs = list(h5py_group['oobs'][:])
         except KeyError:
             # Older projects didn't store the oobs.
@@ -195,6 +214,6 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
         os.remove(cachePath)
         os.rmdir(tmpDir)
 
-        return ParallelVigraRfLazyflowClassifier( forests, oobs, known_labels )
+        return ParallelVigraRfLazyflowClassifier( forests, oobs, known_labels, feature_names )
 
 assert issubclass( ParallelVigraRfLazyflowClassifier, LazyflowVectorwiseClassifierABC )

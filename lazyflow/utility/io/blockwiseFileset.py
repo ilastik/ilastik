@@ -167,7 +167,8 @@ class BlockwiseFileset(object):
             bfs = None
         return bfs
 
-    def _prepare_system(self):
+    @classmethod
+    def _prepare_system(cls):
         # None of this code is tested on Windows.
         # It might work, but you'll need to improve the unit tests to know for sure.
         assert platform.system() != 'Windows', "This code is all untested on Windows, and probably needs some modification before it will work."
@@ -179,6 +180,7 @@ class BlockwiseFileset(object):
         softlimit, hardlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
         softlimit = max( 4096, softlimit )
         resource.setrlimit(resource.RLIMIT_NOFILE, ( softlimit, hardlimit ))
+            
 
     def __init__( self, descriptionFilePath, mode='r', preparsedDescription=None ):
         """

@@ -15,7 +15,7 @@ from lazyflow.roi import roiToSlice
 
 # See 'main' section below for logging configuration.
 import logging
-logger = logging.getLogger(__file__)
+logger = logging.getLogger(__name__)
 
 ENABLE_SERVER_LOGGING = False
 
