@@ -6,14 +6,9 @@ machine:
     TEST_ENV_NAME: test-env
     TEST_ENV_PREFIX: /home/ubuntu/miniconda/envs/test-env
 
-## Customize checkout
-checkout:
-  override:
-    - echo "Skipping default checkout.  See dependencies section."
-
 ## Customize dependencies
 dependencies:
-  post:
+  override:
     - wget https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
     - bash Miniconda-latest-Linux-x86_64.sh -b
     - ${CONDA_ROOT}/bin/conda create -y -n ${TEST_ENV_NAME} -c ilastik ilastik-deps-pc-headless ilastik-meta
