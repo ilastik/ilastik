@@ -1,11 +1,11 @@
 import numpy
 
 try:
-    import tiffffile
+    from tifffile import TiffFile, TIFF_SAMPLE_DTYPES
 except ImportError:
     # Skimage supplies a copy of tifffile
-    import skimage.external.tifffile.tifffile_local as tifffile
-from tifffile import TiffFile, TIFF_SAMPLE_DTYPES
+    from skimage.external.tifffile.tifffile_local import\
+        TiffFile, TIFF_SAMPLE_DTYPES
 
 import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
