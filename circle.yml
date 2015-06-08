@@ -13,7 +13,7 @@ checkout:
 
 ## Customize dependencies
 dependencies:
-  override:
+  post:
     - wget https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
     - bash Miniconda-latest-Linux-x86_64.sh -b
     - ${CONDA_ROOT}/bin/conda create -y -n ${TEST_ENV_NAME} -c ilastik ilastik-deps-pc-headless ilastik-meta
@@ -24,6 +24,10 @@ dependencies:
     - cd ${TEST_ENV_PREFIX}/ilastik-meta && git submodule init
     - cd ${TEST_ENV_PREFIX}/ilastik-meta && git submodule update --recursive
     - cd ${TEST_ENV_PREFIX}/ilastik-meta && git submodule foreach "git checkout master"
+
+    # Replace lazyflow with the code in the current build (may not be master)
+    - rm -rf ${TEST_ENV_PREFIX}/ilastik-meta/lazyflow
+    - ln -s `pwd` ${TEST_ENV_PREFIX}/ilastik-meta/lazyflow
 
 ## Customize test commands
 test:
