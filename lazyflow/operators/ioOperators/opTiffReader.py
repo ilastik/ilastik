@@ -3,7 +3,14 @@ import numpy
 # Note: tifffile can also be imported from skimage.external.tifffile.tifffile_local,
 #       but we can't use that module because it is based on a version of tifffile that has a bug.
 #       (It doesn't properly import the tifffile.c extension module.)
-from tifffile import TiffFile, TIFF_SAMPLE_DTYPES
+#import skimage.external.tifffile.tifffile_local as tifffile
+
+import tifffile
+import _tifffile
+if tifffile.decodelzw != _tifffile.decodelzw:
+    import warnings
+    warnings.warn("tifffile C-extension is not working, probably due to a bug in tifffile._replace_by().\n"
+                  "TIFF decompression will be VERY SLOW.")
 
 import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -44,7 +51,7 @@ class OpTiffReader(Operator):
         if self._tiff_file is not None:
             self._tiff_file.close()
         self._filepath = self.Filepath.value
-        self._tiff_file = TiffFile(self._filepath)
+        self._tiff_file = tifffile.TiffFile(self._filepath)
 
         if len(self._tiff_file.series) > 1:
             raise RuntimeError("Don't know how to read TIFF files with more than one image series.")        
@@ -68,7 +75,7 @@ class OpTiffReader(Operator):
             # first_page.dtype refers to the type AFTER colormapping.
             # We want the original type.
             key = (first_page.sample_format, first_page.bits_per_sample)
-            dtype_code = self._dtype = TIFF_SAMPLE_DTYPES.get(key, None)
+            dtype_code = self._dtype = tifffile.TIFF_SAMPLE_DTYPES.get(key, None)
             
         # From the tifffile.TiffPage code:
         # -----
