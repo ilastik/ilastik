@@ -392,7 +392,8 @@ class OpH5WriterBigDataset(Operator):
     inputSlots = [InputSlot("hdf5File"), # Must be an already-open hdf5File (or group) for writing to
                   InputSlot("hdf5Path", stype = "string"),
                   InputSlot("Image"),
-                  InputSlot("CompressionEnabled", value=True)]
+                  InputSlot("CompressionEnabled", value=True),
+                  InputSlot("BatchSize", optional=True)]
 
     outputSlots = [OutputSlot("WriteImage")]
 
@@ -478,7 +479,10 @@ class OpH5WriterBigDataset(Operator):
                 self.d.write_direct(data.view(numpy.ndarray), dest_sel=slicing)
             else:
                 self.d[slicing] = data
-        requester = BigRequestStreamer( self.Image, roiFromShape( self.Image.meta.shape ) )
+        batch_size = None
+        if self.BatchSize.ready():
+            batch_size = self.BatchSize.value
+        requester = BigRequestStreamer( self.Image, roiFromShape( self.Image.meta.shape ), batchSize=batch_size )
         requester.resultSignal.subscribe( handle_block_result )
         requester.progressSignal.subscribe( self.progressSignal )
         requester.execute()            
