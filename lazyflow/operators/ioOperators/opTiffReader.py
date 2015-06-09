@@ -54,7 +54,8 @@ class OpTiffReader(Operator):
         self._tiff_file = tifffile.TiffFile(self._filepath)
 
         if len(self._tiff_file.series) > 1:
-            raise RuntimeError("Don't know how to read TIFF files with more than one image series.")        
+            raise RuntimeError("Don't know how to read TIFF files with more than one image series.\n"
+                               "(Your image has {} series".format( len(self._tiff_file.series) ))
         series = self._tiff_file.series[0]
         
         axes = series.axes
