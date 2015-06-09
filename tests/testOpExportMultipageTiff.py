@@ -31,7 +31,8 @@ import lazyflow.graph
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators.operators import OpArrayCache
 from lazyflow.operators.opArrayPiper import OpArrayPiper
-from lazyflow.operators.ioOperators import OpExportMultipageTiff, OpInputDataReader
+from lazyflow.operators.ioOperators import OpExportMultipageTiff
+from lazyflow.operators.ioOperators.opTiffReader import OpTiffReader
 
 import logging
 logger = logging.getLogger('tests.testOpMultipageTiff')
@@ -72,11 +73,10 @@ class TestOpMultipageTiff(object):
         # Run the export
         opExport.run_export()
 
-        opReader = OpInputDataReader( graph=self.graph )
-        opReader.FilePath.setValue( filepath )
+        opReader = OpTiffReader( graph=self.graph )
+        opReader.Filepath.setValue( filepath )
 
-        # The reader assumes xyzc order.
-        # We have to transpose the data before we compare.
+        # Re-order before comparing
         opReorderAxes = OpReorderAxes( graph=self.graph )
         opReorderAxes.AxisOrder.setValue( self._axisorder )
         opReorderAxes.Input.connect( opReader.Output )
@@ -85,8 +85,10 @@ class TestOpMultipageTiff(object):
         logger.debug("Expected shape={}".format( self.testData.shape ) )
         logger.debug("Read shape={}".format( readData.shape ) )
         
-        assert opReorderAxes.Output.meta.shape == self.testData.shape, "Exported files were of the wrong shape or number."
-        assert (opReorderAxes.Output[:].wait() == self.testData.view( numpy.ndarray )).all(), "Exported data was not correct"
+        assert opReorderAxes.Output.meta.shape == self.testData.shape, \
+            "Exported files were of the wrong shape or number."
+        assert (opReorderAxes.Output[:].wait() == self.testData.view( numpy.ndarray )).all(), \
+            "Exported data was not correct"
         
         # Cleanup
         opReorderAxes.cleanUp()
