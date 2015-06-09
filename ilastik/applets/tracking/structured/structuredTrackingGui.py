@@ -204,42 +204,44 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         structuredLearningTracker.addLabels(hypothesesGraph)
 
         print "update hypothesesGraph: labels ---> adding APPEARANCE/TRANSITION/DISAPPEARANCE labels"
-        detectionProbabilities = self.mainOperator.DetectionProbabilities(time_range).wait()
+        #detectionProbabilities = self.mainOperator.DetectionProbabilities(time_range).wait()
         for cropKey in self.mainOperator.Annotations.value.keys():
             crop = self.mainOperator.Annotations.value[cropKey]
-            print "cropKey, crop",cropKey, crop
+            print "..........................................cropKey, crop",cropKey, crop
 
             if "labels" in crop.keys():
                 labels = crop["labels"]
                 for time in labels.keys():
                     print "time, labels", time, labels[time]
                     for label in labels[time].keys():
-                        object = labels[time][label]
-                        track = object.pop() # This REMOVES an element of a set.
-                        object.add(track)
+                        cellSet = labels[time][label]
+                        print "===================================>",len(cellSet), cellSet
+                        track = cellSet.pop() # This REMOVES an element of a set.
+                        cellSet.add(track)
                         center = self.features[time]['Default features']['RegionCenter'][label]
+                        cellCount = len(cellSet)
 
                         print time, label, track, center
 
                         # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
-                        type = self._type(time, track, cropKey) # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
+                        type = self._type(cropKey, time, track) # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
 
                         print type, label
                         if type[0] == "FIRST":
-                            print "structuredLearningTracker.addFirstLabelS (time, label, detectionProbability)=", time, label, detectionProbabilities[time][label][1]
-                            structuredLearningTracker.addFirstLabels(hypothesesGraph, time, label, float(detectionProbabilities[time][label][1]))
+                            print "structuredLearningTracker.addFirstLabelS (time, label, cellCount)=", time, label, cellCount
+                            structuredLearningTracker.addFirstLabels(hypothesesGraph, time, int(label), float(cellCount))
                         elif type[0] == "LAST":
-                            print "structuredLearningTracker.addLastLabelS (time, label, detectionProbability)=", time, label, detectionProbabilities[time][label][1]
-                            structuredLearningTracker.addLastLabels(hypothesesGraph, time, label, float(detectionProbabilities[time][label][1]))
-                            structuredLearningTracker.addArcLabel(hypothesesGraph, time, type[1], label, 1.0)
+                            print "structuredLearningTracker.addLastLabelS (time, label, cellCount)=", time, label, cellCount
+                            structuredLearningTracker.addLastLabels(hypothesesGraph, time, int(label), float(cellCount))
+                            structuredLearningTracker.addArcLabel(hypothesesGraph, time-1, int(type[1]), int(label), 1.0)
                         elif type[0] == "SINGLETON":
                             print "structuredLearningTracker.addSingletonLabelS <--- NOTHING TO DO"
-                            # print "structuredLearningTracker.addSingletonLabelS (time, label, detectionProbability)=", time, label, detectionProbabilities[time][label][1]
-                            # structuredLearningTracker.addSingletonLabels(hypothesesGraph, time, label, float(detectionProbabilities[time][label][1]))
+                            # print "structuredLearningTracker.addSingletonLabelS (time, label, cellCount)=", time, label
+                            # structuredLearningTracker.addSingletonLabels(hypothesesGraph, time, label, float(cellCount))
                         elif type[0] == "INTERMEDIATE":
-                            print "structuredLearningTracker.addIntermediateLabelS (time, label, detectionProbability)=", time, label, detectionProbabilities[time][label][1]
-                            structuredLearningTracker.addIntermediateLabels(hypothesesGraph, time, label, float(detectionProbabilities[time][label][1]))
-                            structuredLearningTracker.addArcLabel(hypothesesGraph, time, type[1], label, 1.0)
+                            print "structuredLearningTracker.addIntermediateLabelS (time, label, cellCount)=", time, label, cellCount
+                            structuredLearningTracker.addIntermediateLabels(hypothesesGraph, time, int(label), float(cellCount))
+                            structuredLearningTracker.addArcLabel(hypothesesGraph, time-1, int(type[1]), int(label), 1.0)
 
 
 
@@ -247,15 +249,24 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                 divisions = crop["divisions"]
                 for track in divisions.keys():
                     division = divisions[track]
-                    time = division[1]
-                    print "track, division:", track, division
-                    structuredLearningTracker.addDivisionLabel(hypothesesGraph, int(time), self.getLabel(cropKey, time, track), 1.0)
-                    structuredLearningTracker.addAppearanceLabel(hypothesesGraph, int(time), self.getLabel(cropKey, time, track), 0.0)
+                    time = int(division[1])
 
+                    parent = self.getLabel(cropKey, time, track)
+                    print "track, division:", track, division
+                    structuredLearningTracker.addDivisionLabel(hypothesesGraph, time, parent, 1.0)
+                    structuredLearningTracker.addAppearanceLabel(hypothesesGraph, time, parent, 1.0)
+
+                    child0 = self.getLabel(cropKey, time+1, division[0][0])
                     print division[1],"      : ", track, self.getLabel(cropKey, time, track), "--->", division[0][0], self.getLabel(cropKey, time+1, division[0][0])
-                    structuredLearningTracker.addDisappearanceLabel(hypothesesGraph, int(time+1), self.getLabel(cropKey, time+1, division[0][0]), 1.0)
+                    structuredLearningTracker.addDisappearanceLabel(hypothesesGraph, time+1, child0, 1.0)
+                    structuredLearningTracker.addAppearanceLabel(hypothesesGraph, time+1, child0, 1.0)
+                    structuredLearningTracker.addArcLabel(hypothesesGraph, time, parent, child0, 1.0)
+
+                    child1 = self.getLabel(cropKey, time+1, division[0][1])
                     print division[1],"      : ", track, self.getLabel(cropKey, time, track), "--->", division[0][1], self.getLabel(cropKey, time+1, division[0][1])
-                    structuredLearningTracker.addDisappearanceLabel(hypothesesGraph, int(time+1), self.getLabel(cropKey, time+1, division[0][1]), 1.0)
+                    structuredLearningTracker.addDisappearanceLabel(hypothesesGraph, time+1, child1, 1.0)
+                    structuredLearningTracker.addAppearanceLabel(hypothesesGraph, time+1, child1, 1.0)
+                    structuredLearningTracker.addArcLabel(hypothesesGraph, time, parent, child1, 1.0)
 
         #print "test iterate through hypothesesGraph NODES (C++ side)"
         #structuredLearningTracker.hypothesesGraphTest(hypothesesGraph)
@@ -276,7 +287,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                 return label
         return False
 
-    def _type(self, time, track, cropKey):
+    def _type(self, cropKey, time, track):
 
         type = None
         if track == -1:

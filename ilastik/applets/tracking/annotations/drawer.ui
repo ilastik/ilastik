@@ -38,12 +38,12 @@
    <item row="1" column="0">
     <layout class="QVBoxLayout" name="verticalLayout_8">
      <item>
-      <widget class="QPushButton" name="deleteAnnotations">
+      <widget class="QPushButton" name="initializeAnnotations">
        <property name="enabled">
         <bool>true</bool>
        </property>
        <property name="text">
-        <string>Delete Annotations</string>
+        <string>Initialize Annotations</string>
        </property>
       </widget>
      </item>
@@ -390,17 +390,6 @@
     </layout>
    </item>
   </layout>
-  <zorder>cropListView</zorder>
-  <zorder>line_2</zorder>
-  <zorder>logOutput</zorder>
-  <zorder>line</zorder>
-  <zorder>label_2</zorder>
-  <zorder>divisionsList</zorder>
-  <zorder>line_3</zorder>
-  <zorder>line_5</zorder>
-  <zorder>line_6</zorder>
-  <zorder>line_4</zorder>
-  <zorder>deleteAnnotations</zorder>
  </widget>
  <customwidgets>
   <customwidget>

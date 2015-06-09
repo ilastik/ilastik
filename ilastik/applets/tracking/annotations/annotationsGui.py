@@ -75,7 +75,7 @@ class AnnotationsGui(LayerViewerGui):
         self._drawer.exportTifButton.pressed.connect(self._onExportTifButtonPressed)
         self._drawer.gotoLabel.pressed.connect(self._onGotoLabel)
         self._drawer.nextUnlabeledButton.pressed.connect(self._onNextUnlabeledPressed)
-        self._drawer.deleteAnnotations.pressed.connect(self._onDeleteAnnotations)
+        self._drawer.initializeAnnotations.pressed.connect(self._onInitializeAnnotations)
         self._drawer.saveAnnotations.pressed.connect(self._onSaveAnnotations)
 
         self.editor.showCropLines(True)
@@ -143,7 +143,7 @@ class AnnotationsGui(LayerViewerGui):
                                        self._onNextUnlabeledPressed,
                                        self,
                                        None ) )
-    def _onDeleteAnnotations(self):
+    def _onInitializeAnnotations(self):
 
         if self.topLevelOperatorView.Annotations.value != {}:
             print "WARNING: All your annotations will be lost! You can save the project, then save it under a new name and continue without loss of current annotations."
