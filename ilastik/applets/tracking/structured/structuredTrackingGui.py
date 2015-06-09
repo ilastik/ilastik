@@ -233,8 +233,9 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                             structuredLearningTracker.addLastLabels(hypothesesGraph, time, label, float(detectionProbabilities[time][label][1]))
                             structuredLearningTracker.addArcLabel(hypothesesGraph, time, type[1], label, 1.0)
                         elif type[0] == "SINGLETON":
-                            print "structuredLearningTracker.addSingletonLabelS (time, label, detectionProbability)=", time, label, detectionProbabilities[time][label][1]
-                            structuredLearningTracker.addSingletonLabels(hypothesesGraph, time, label, float(detectionProbabilities[time][label][1]))
+                            print "structuredLearningTracker.addSingletonLabelS <--- NOTHING TO DO"
+                            # print "structuredLearningTracker.addSingletonLabelS (time, label, detectionProbability)=", time, label, detectionProbabilities[time][label][1]
+                            # structuredLearningTracker.addSingletonLabels(hypothesesGraph, time, label, float(detectionProbabilities[time][label][1]))
                         elif type[0] == "INTERMEDIATE":
                             print "structuredLearningTracker.addIntermediateLabelS (time, label, detectionProbability)=", time, label, detectionProbabilities[time][label][1]
                             structuredLearningTracker.addIntermediateLabels(hypothesesGraph, time, label, float(detectionProbabilities[time][label][1]))
@@ -250,7 +251,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                     print "track, division:", track, division
                     structuredLearningTracker.addDivisionLabel(hypothesesGraph, int(time), self.getLabel(cropKey, time, track), 1.0)
                     structuredLearningTracker.addAppearanceLabel(hypothesesGraph, int(time), self.getLabel(cropKey, time, track), 0.0)
-                    
+
                     print division[1],"      : ", track, self.getLabel(cropKey, time, track), "--->", division[0][0], self.getLabel(cropKey, time+1, division[0][0])
                     structuredLearningTracker.addDisappearanceLabel(hypothesesGraph, int(time+1), self.getLabel(cropKey, time+1, division[0][0]), 1.0)
                     print division[1],"      : ", track, self.getLabel(cropKey, time, track), "--->", division[0][1], self.getLabel(cropKey, time+1, division[0][1])

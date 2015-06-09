@@ -75,7 +75,7 @@ class AnnotationsGui(LayerViewerGui):
         self._drawer.exportTifButton.pressed.connect(self._onExportTifButtonPressed)
         self._drawer.gotoLabel.pressed.connect(self._onGotoLabel)
         self._drawer.nextUnlabeledButton.pressed.connect(self._onNextUnlabeledPressed)
-        self._drawer.importCrops.pressed.connect(self._onImportCrops)
+        self._drawer.deleteAnnotations.pressed.connect(self._onDeleteAnnotations)
         self._drawer.saveAnnotations.pressed.connect(self._onSaveAnnotations)
 
         self.editor.showCropLines(True)
@@ -143,7 +143,7 @@ class AnnotationsGui(LayerViewerGui):
                                        self._onNextUnlabeledPressed,
                                        self,
                                        None ) )
-    def _onImportCrops(self):
+    def _onDeleteAnnotations(self):
 
         if self.topLevelOperatorView.Annotations.value != {}:
             print "WARNING: All your annotations will be lost! You can save the project, then save it under a new name and continue without loss of current annotations."
@@ -374,6 +374,7 @@ class AnnotationsGui(LayerViewerGui):
                     self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = self.topLevelOperatorView.divisions[parentTrack]
 
         self._setDirty(self.mainOperator.Annotations, range(self.mainOperator.TrackImage.meta.shape[0]))
+        print "Annotations---> ", self.mainOperator.Annotations.value
 
     def getLabel(self, time, track):
         for label in self.mainOperator.labels[time].keys():
