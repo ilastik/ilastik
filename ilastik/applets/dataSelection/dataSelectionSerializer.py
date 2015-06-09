@@ -221,11 +221,14 @@ class DataSelectionSerializer( AppletSerializer ):
             opWriter.hdf5File.setValue(projectFileHdf5)
             opWriter.hdf5Path.setValue(self.topGroupName + '/local_data/' + info.datasetId)
             opWriter.CompressionEnabled.setValue(False)
+            # We assume that the main bottleneck is the hard disk, 
+            #  so adding lots of threads to access it at once seems like a bad idea.
+            opWriter.BatchSize.setValue(1)
             opWriter.Image.connect( data_slot )
                 
             # Forward progress from the writer directly to our applet                
             opWriter.progressSignal.subscribe( self.progressSignal.emit )
-            
+
             success = opWriter.WriteImage.value
         finally:
             opWriter.cleanUp()
