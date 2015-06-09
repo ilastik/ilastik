@@ -55,10 +55,10 @@ class OpNpyFileReader(Operator):
         except:
             raise OpNpyFileReader.DatasetReadError( "Unable to open numpy dataset: {}".format( fileName ) )
 
-        axisorders = { 2 : 'xy',
-                       3 : 'xyz',
-                       4 : 'xyzc',
-                       5 : 'txyzc' }
+        axisorders = { 2 : 'yx',
+                       3 : 'zyx',
+                       4 : 'zyxc',
+                       5 : 'tzyxc' }
 
         shape = rawNumpyArray.shape
         ndims = len( shape )
@@ -69,7 +69,7 @@ class OpNpyFileReader(Operator):
         axisorder = axisorders[ndims]
         if ndims == 3 and shape[2] <= 4:
             # Special case: If the 3rd dim is small, assume it's 'c', not 'z'
-            axisorder = 'xyc'
+            axisorder = 'yxc'
 
         # Cast to vigra array
         self._rawVigraArray = rawNumpyArray.view(vigra.VigraArray)
