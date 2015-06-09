@@ -490,7 +490,7 @@ def getIntersectingBlocks( blockshape, roi, asarray=False ):
      [  0 -20]
      [  0   0]]
     """
-    assert len(blockshape) == len(roi[0]) == len(roi[1]), "blockshape and roi are mismatched."
+    assert len(blockshape) == len(roi[0]) == len(roi[1]), "blockshape and roi are mismatched: {} vs {}".format( blockshape, roi )
     roistart = TinyVector( roi[0] )
     roistop = TinyVector( roi[1] )
     blockshape = TinyVector( blockshape )
