@@ -27,6 +27,7 @@ import numpy
 import gc
 import platform
 from functools import partial
+import unittest
 import nose
 
 import psutil
@@ -50,7 +51,7 @@ TEST_WITH_SINGLE_THREADED_DEBUG_MODE = False
 if TEST_WITH_SINGLE_THREADED_DEBUG_MODE:
     Request.reset_thread_pool(0)
 
-class TestRequest(object):
+class TestRequest(unittest.TestCase):
  
     @traceLogged(traceLogger)
     def test_basic(self):
@@ -611,6 +612,7 @@ class TestRequest(object):
         with RequestLock() as lock:
             assert not lock.acquire(0)
  
+    @unittest.skipIf(os.getenv('CI', False), "CI environment detected: Skipping Request MemoryLeaks test")
     def testMemoryLeaks(self):
         """
         As requests become inaccessible, they should be freed immediately, along with any data they held.
