@@ -19,6 +19,7 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
+import os
 import gc
 import sys
 import time
@@ -26,6 +27,7 @@ import numpy
 import psutil
 import weakref  
 import threading
+import unittest
 from lazyflow.graph import Graph, Operator, OutputSlot
 from lazyflow.roi import roiToSlice
 from lazyflow.operators import OpArrayPiper
@@ -71,7 +73,7 @@ class OpNonsense( Operator ):
     def propagateDirty(self, slot, subindex, roi):
         pass
 
-class TestBigRequestStreamer(object):
+class TestBigRequestStreamer(unittest.TestCase):
 
     def testBasic(self):
         op = OpArrayPiper( graph=Graph() )
@@ -114,6 +116,7 @@ class TestBigRequestStreamer(object):
         
         logger.debug( "FINISHED" )
 
+    @unittest.skipIf(os.getenv('CI', False), "CI environment detected: Skipping BigRequestStreamer MemoryLeaks test")    
     def testForMemoryLeaks(self):
         """
         If the BigRequestStreamer doesn't clean requests as they complete, they'll take up too much memory.
