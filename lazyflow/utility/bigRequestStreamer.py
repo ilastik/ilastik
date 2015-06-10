@@ -154,11 +154,16 @@ class BigRequestStreamer(object):
 
         num_channels = 1
         tagged_shape = outputSlot.meta.getTaggedShape()
+        
+        # Generally, we don't want to split requests across channels.
         if 'c' in tagged_shape.keys():
             num_channels = tagged_shape['c']
             channel_index = tagged_shape.keys().index('c')
             input_shape = input_shape[:channel_index] + input_shape[channel_index+1:]
-            ideal_blockshape = ideal_blockshape[:channel_index] + ideal_blockshape[channel_index+1:]
+            if ideal_blockshape:
+                # Never enlarge 'ideal' in the channel dimension.
+                num_channels = ideal_blockshape[channel_index]
+                ideal_blockshape = ideal_blockshape[:channel_index] + ideal_blockshape[channel_index+1:]
 
         max_blockshape = input_shape
         num_threads = max(1, Request.global_thread_pool.num_workers)
