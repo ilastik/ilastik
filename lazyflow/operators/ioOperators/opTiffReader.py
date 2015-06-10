@@ -103,17 +103,9 @@ class OpTiffReader(Operator):
                 "If channels are in separate pages, then each page can't have multiple channels itself.\n"\
                 "(Don't know how to weave multi-channel pages together.)"
 
-        # Compute page_steps:
-        # Like "strides" except measured in full pages, 
-        #   i.e. steps from from one page index to the next.
-        # For example, if volume is TZCYX:
-        #      shape = (1000,7,5,200,200)
-        #      page_shape = (200,200)
-        #      non_page_shape = (1000,7,5)
-        #      self._page_shape = (35, 5, 1)
-        non_page_shape = shape[:-len(self._page_shape)]
-        self._page_steps = numpy.multiply.accumulate((non_page_shape[1:] + (1,))[::-1])[::-1]
-       
+        self._non_page_shape = shape[:-len(self._page_shape)]
+        assert shape == self._non_page_shape + self._page_shape
+        
         axes = axes.lower().replace('s', 'c')
         if 'i' in axes:
             for k in 'tzc':
@@ -127,7 +119,7 @@ class OpTiffReader(Operator):
         self.Output.meta.shape = shape
         self.Output.meta.axistags = vigra.defaultAxistags( axes )
         self.Output.meta.dtype = numpy.dtype(dtype_code).type
-        self.Output.meta.ideal_blockshape = ((1,) * len(non_page_shape)) + self._page_shape
+        self.Output.meta.ideal_blockshape = ((1,) * len(self._non_page_shape)) + self._page_shape
 
     def execute(self, slot, subindex, roi, result):
         num_page_axes = len(self._page_shape)
@@ -141,7 +133,7 @@ class OpTiffReader(Operator):
         page_index_roi_shape = page_index_roi[1] - page_index_roi[0]
         for roi_page_ndindex in numpy.ndindex(*page_index_roi_shape):
             tiff_page_ndindex = roi_page_ndindex + page_index_roi[0]
-            tiff_page_list_index = sum(tiff_page_ndindex * self._page_steps)
+            tiff_page_list_index = numpy.ravel_multi_index(tiff_page_ndindex, self._non_page_shape)
 
             logger.debug( "Reading page: {} = {}".format( tuple(tiff_page_ndindex), tiff_page_list_index ) )
             page = self._tiff_file.series[0].pages[tiff_page_list_index]
