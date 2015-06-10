@@ -32,6 +32,7 @@ import lazyflow.graph
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators.operators import OpArrayCache
 from lazyflow.operators.ioOperators import OpExportMultipageTiffSequence, OpStackLoader
+from lazyflow.operators.ioOperators.opTiffSequenceReader import OpTiffSequenceReader
 
 import sys
 import logging
@@ -73,13 +74,13 @@ class TestOpExportMultipageTiffSequence(object):
         globstring = self._stack_filepattern.format( slice_index=999 )
         globstring = globstring.replace('999', '*')
 
-        opReader = OpStackLoader( graph=self.graph )
-        opReader.globstring.setValue( globstring )
+        opReader = OpTiffSequenceReader( graph=self.graph )
+        opReader.GlobString.setValue( globstring )
 
         # (The OpStackLoader produces txyzc order.)
         opReorderAxes = OpReorderAxes( graph=self.graph )
         opReorderAxes.AxisOrder.setValue( self._axisorder )
-        opReorderAxes.Input.connect( opReader.stack )
+        opReorderAxes.Input.connect( opReader.Output )
         
         readData = opReorderAxes.Output[:].wait()
         logger.debug("Expected shape={}".format( self.testData.shape ) )

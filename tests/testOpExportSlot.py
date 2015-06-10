@@ -33,6 +33,7 @@ from lazyflow.roi import roiFromShape
 from lazyflow.operators.operators import OpArrayCache, OpArrayPiper
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators.ioOperators import OpInputDataReader, OpExportSlot, OpStackLoader
+from lazyflow.operators.ioOperators.opTiffSequenceReader import OpTiffSequenceReader
 
 try:
     import pydvid
@@ -241,13 +242,13 @@ class TestOpExportSlot(object):
         globstring = export_pattern.format( slice_index=999 )
         globstring = globstring.replace('999', '*')
 
-        opReader = OpStackLoader( graph=graph )
-        opReader.globstring.setValue( globstring )
+        opReader = OpTiffSequenceReader( graph=graph )
+        opReader.GlobString.setValue( globstring )
 
         # (The OpStackLoader produces txyzc order.)
         opReorderAxes = OpReorderAxes( graph=graph )
         opReorderAxes.AxisOrder.setValue( 'tzyxc' )
-        opReorderAxes.Input.connect( opReader.stack )
+        opReorderAxes.Input.connect( opReader.Output )
         
         assert opReorderAxes.Output.meta.shape == data.shape, "Exported files were of the wrong shape or number."
         assert (opReorderAxes.Output[:].wait() == data.view( numpy.ndarray )).all(), "Exported data was not correct"
