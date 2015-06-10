@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class VigraRfAdaptiveMaskPixelwiseClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     """
-    An implementation of LazyflowPixelwiseClassifierFactoryABC using a vigra RandomForest.
+    An implementation of LazyflowPixelwiseClassifierFactoryABC using a vigra RandomForest with adaptive masking.
     This exists for testing purposes only. (it is normally better to use the vector-wise 
     classifier so lazyflow can cache the feature matrices).
     This implementation is simple and un-optimized.
@@ -74,7 +74,13 @@ assert issubclass( VigraRfAdaptiveMaskPixelwiseClassifierFactory, LazyflowPixelw
 
 class VigraRfAdaptiveMaskPixelwiseClassifier(LazyflowPixelwiseClassifierABC):    
     """
-    Adapt the vigra RandomForest class to the interface lazyflow expects.
+    This class adapt the vigra RandomForest class to the interface expected by lazyflow, and implements pixel-wise adaptive masking for prediction. 
+    
+    TODO:
+    -Find an alternative to scipy binary dilation, since the running-time takes too long.
+    -Enable the user to set the parameters FRAME_SPAN, DILATION_RADIUS, and BACKGROUND_LABEL in the class constructor.
+    -Parallelize prediction. Right now it is single-threaded.
+    -Take into account the image borders with spatially-divided blocks. Right now masking only works with full frames.
     """
     def __init__(self, vigra_rf, known_labels):
         self._known_labels = known_labels
@@ -83,21 +89,21 @@ class VigraRfAdaptiveMaskPixelwiseClassifier(LazyflowPixelwiseClassifierABC):
     def predict_probabilities_pixelwise(self, X, axistags=None): 
         logger.debug( 'predicting PIXELWISE vigra RF' )
         
-        FRAME_SPAN = 10 
-        DILATION_RADIUS = 50
+        FRAME_SPAN = 10 # Number of frames to wait until the mask is recalculated  
+        DILATION_RADIUS = 50 # In pixels
         BACKGROUND_LABEL = 1  
         
         # Allocate memory for probability volume and mask    
-        prob_vol = numpy.zeros((X.shape[:-1]+(len(self._known_labels),) ))           
-        mask = numpy.ones(numpy.prod(X.shape[1:-1]))
+        prob_vol = numpy.zeros((X.shape[:-1]+(len(self._known_labels),) ), dtype=numpy.float32)           
+        mask = numpy.ones(numpy.prod(X.shape[1:-1]), dtype=numpy.bool)
         
         frm_cnt = 0
           
         for X_t in X:    
             if frm_cnt % FRAME_SPAN == 0 :
-                mask = numpy.ones(numpy.prod(X.shape[1:-1]))
+                mask = numpy.ones(numpy.prod(X.shape[1:-1]), dtype=numpy.bool)
             
-            prob_mat = numpy.zeros((numpy.prod(X.shape[1:-1]),len(self._known_labels)))
+            prob_mat = numpy.zeros((numpy.prod(X.shape[1:-1]),len(self._known_labels)), dtype=numpy.float32)
                          
             # Reshape the image into a 2D feature matrix
             mat_shape = (numpy.prod(X_t.shape[:-1]), X_t.shape[-1])
