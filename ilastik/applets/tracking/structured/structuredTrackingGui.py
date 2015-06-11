@@ -184,12 +184,13 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         hypothesesGraph = consTracker.buildGraph(traxelStore)
 
         print "building structuredLearningTracker"
+        sizeDependent = False
         structuredLearningTracker = pgmlink.StructuredLearningTracking(
             hypothesesGraph,
-            4,#maxObj,
-            True,#sizeDependent,   # size_dependent_detection_prob
+            1,#maxObj,
+            sizeDependent,   # size_dependent_detection_prob
             float(median_obj_size[0]), # median_object_size
-            float(30),#maxDist),
+            30,#maxDist,
             True,#withDivisions,
             float(0.5),#divThreshold),
             "none",  # detection_rf_filename
@@ -214,12 +215,12 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                 for time in labels.keys():
                     print "time, labels", time, labels[time]
                     for label in labels[time].keys():
-                        cellSet = labels[time][label]
-                        print "===================================>",len(cellSet), cellSet
-                        track = cellSet.pop() # This REMOVES an element of a set.
-                        cellSet.add(track)
+                        trackSet = labels[time][label]
+                        print "===================================>",len(trackSet), trackSet
+                        track = trackSet.pop() # This REMOVES an element of a set.
+                        trackSet.add(track)
                         center = self.features[time]['Default features']['RegionCenter'][label]
-                        cellCount = len(cellSet)
+                        trackCount = len(trackSet)
 
                         print time, label, track, center
 
@@ -228,19 +229,19 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
                         print type, label
                         if type[0] == "FIRST":
-                            print "structuredLearningTracker.addFirstLabelS (time, label, cellCount)=", time, label, cellCount
-                            structuredLearningTracker.addFirstLabels(hypothesesGraph, time, int(label), float(cellCount))
+                            print "structuredLearningTracker.addFirstLabelS (time, label, trackCount)=", time, label, trackCount
+                            structuredLearningTracker.addFirstLabels(hypothesesGraph, time, int(label), float(trackCount))
                         elif type[0] == "LAST":
-                            print "structuredLearningTracker.addLastLabelS (time, label, cellCount)=", time, label, cellCount
-                            structuredLearningTracker.addLastLabels(hypothesesGraph, time, int(label), float(cellCount))
+                            print "structuredLearningTracker.addLastLabelS (time, label, trackCount)=", time, label, trackCount
+                            structuredLearningTracker.addLastLabels(hypothesesGraph, time, int(label), float(trackCount))
                             structuredLearningTracker.addArcLabel(hypothesesGraph, time-1, int(type[1]), int(label), 1.0)
                         elif type[0] == "SINGLETON":
                             print "structuredLearningTracker.addSingletonLabelS <--- NOTHING TO DO"
-                            # print "structuredLearningTracker.addSingletonLabelS (time, label, cellCount)=", time, label
-                            # structuredLearningTracker.addSingletonLabels(hypothesesGraph, time, label, float(cellCount))
+                            # print "structuredLearningTracker.addSingletonLabelS (time, label, trackCount)=", time, label
+                            # structuredLearningTracker.addSingletonLabels(hypothesesGraph, time, label, float(trackCount))
                         elif type[0] == "INTERMEDIATE":
-                            print "structuredLearningTracker.addIntermediateLabelS (time, label, cellCount)=", time, label, cellCount
-                            structuredLearningTracker.addIntermediateLabels(hypothesesGraph, time, int(label), float(cellCount))
+                            print "structuredLearningTracker.addIntermediateLabelS (time, label, trackCount)=", time, label, trackCount
+                            structuredLearningTracker.addIntermediateLabels(hypothesesGraph, time, int(label), float(trackCount))
                             structuredLearningTracker.addArcLabel(hypothesesGraph, time-1, int(type[1]), int(label), 1.0)
 
 
@@ -267,6 +268,76 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                     structuredLearningTracker.addDisappearanceLabel(hypothesesGraph, time+1, child1, 1.0)
                     structuredLearningTracker.addAppearanceLabel(hypothesesGraph, time+1, child1, 1.0)
                     structuredLearningTracker.addArcLabel(hypothesesGraph, time, parent, child1, 1.0)
+
+        forbidden_cost = 0.0
+        ep_gap = 0.05
+        withTracklets=False
+        detectionWeight=10.0
+        divWeight=10.0
+        transWeight=10.0
+        disappearance_cost = 500.0
+        appearance_cost = 500.0
+        withMergerResolution=True
+        ndim=3
+        transition_parameter = 5.0
+        borderAwareWidth = 0.0
+
+        sigmas = pgmlink.VectorOfDouble()
+        for i in range(5):
+            sigmas.append(0.0)
+        uncertaintyParams = pgmlink.UncertaintyParameter(1, pgmlink.DistrId.PerturbAndMAP, sigmas)
+        print ".............................>", pgmlink.UncertaintyParameter()
+        #uncertaintyParams = float(pgmlink.UncertaintyParameter())
+
+        cplex_timeout=float(1e75)
+        transitionClassifier = None
+
+        # print "before track"
+        # structuredLearningTracker.track(
+        #     float(forbidden_cost),#0,       # forbidden_cost
+        #     float(ep_gap), # ep_gap
+        #     withTracklets,
+        #     detectionWeight,#10.0, # detection weight
+        #     divWeight,
+        #     transWeight,
+        #     disappearance_cost, # disappearance cost
+        #     appearance_cost, # appearance cost
+        #     withMergerResolution,
+        #     ndim,
+        #     transition_parameter,
+        #     borderAwareWidth,
+        #     True, #with_constraints
+        #     uncertaintyParams,
+        #     cplex_timeout,
+        #     transitionClassifier
+        # )
+        # print "after track"
+
+        structuredLearningTracker.initializeOpenGM(
+            hypothesesGraph,
+            float(forbidden_cost),#0,       # forbidden_cost
+            float(ep_gap), # ep_gap
+            withTracklets,
+            detectionWeight,#10.0, # detection weight
+            divWeight,
+            transWeight,
+            disappearance_cost, # disappearance cost
+            appearance_cost, # appearance cost
+            withMergerResolution,
+            ndim,
+            transition_parameter,
+            borderAwareWidth,
+            True, #with_constraints
+            uncertaintyParams,
+            cplex_timeout,
+            transitionClassifier)
+
+
+
+
+
+
+
 
         #print "test iterate through hypothesesGraph NODES (C++ side)"
         #structuredLearningTracker.hypothesesGraphTest(hypothesesGraph)
