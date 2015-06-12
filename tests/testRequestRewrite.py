@@ -678,6 +678,32 @@ class TestRequest(unittest.TestCase):
         logger.debug( "Finished test with memory usage delta at: {}".format( memory_increase ) )
         assert memory_increase < resultSize, "All requests are finished an inaccessible, but not all memory was released!"
  
+    def test_result_discarded(self):
+        """
+        After a request is deleted, its result should be discarded.
+        """
+        import weakref
+        from functools import partial
+        
+        def f():
+            return numpy.zeros( (10,), dtype=numpy.uint8 ) + 1
+        
+        w = [None]
+        def onfinish(r, result):
+            w[0] = weakref.ref(result)
+            
+        req = Request(f)
+        req.notify_finished( partial(onfinish, req) )
+        
+        req.submit()
+        req.wait()
+        del req
+        
+        # The ThreadPool._Worker loop has a local reference (next_task), 
+        # so wait just a tic for the ThreadPool worker to cycle back to the top of its loop (and discard the reference) 
+        time.sleep(0.1)
+        assert w[0]() is None
+     
     def testThreadPoolReset(self):
         num_workers = Request.global_thread_pool.num_workers
         Request.reset_thread_pool(num_workers=1)
@@ -699,7 +725,7 @@ class TestRequest(unittest.TestCase):
             # Set it back to what it was
             Request.reset_thread_pool(num_workers)
             print 'done'
- 
+
 class TestRequestExceptions(object):
     """
     Check for proper behavior when an exception is generated within a request:
@@ -805,33 +831,6 @@ class TestRequestExceptions(object):
         # Subscribing to notify_failed on a request that's already failed should call the failure handler immediately.
         req2.notify_failed( failure_handler )
         assert len(signaled_exceptions) == 3
-
-    def test_result_discarded(self):
-        """
-        After a request is deleted, its result should be discarded.
-        """
-        import weakref
-        from functools import partial
-        
-        def f():
-            return numpy.zeros( (10,), dtype=numpy.uint8 ) + 1
-        
-        w = [None]
-        def onfinish(r, result):
-            w[0] = weakref.ref(result)
-            
-        req = Request(f)
-        req.notify_finished( partial(onfinish, req) )
-        
-        req.submit()
-        req.wait()
-        del req
-        
-        # The ThreadPool._Worker loop has a local reference (next_task), 
-        # so wait just a tic for the ThreadPool worker to cycle back to the top of its loop (and discard the reference) 
-        time.sleep(0.1)
-        assert w[0]() is None
-    
      
 class TestRequestPool(object):
     """
