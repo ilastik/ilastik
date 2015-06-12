@@ -116,56 +116,6 @@ class TestBigRequestStreamer(unittest.TestCase):
         
         logger.debug( "FINISHED" )
 
-    @unittest.skipIf(os.getenv('CI', False), "CI environment detected: Skipping BigRequestStreamer MemoryLeaks test")    
-    def testForMemoryLeaks(self):
-        """
-        If the BigRequestStreamer doesn't clean requests as they complete, they'll take up too much memory.
-        
-        Edit: This test attempts to find memory issues indirectly, via psutil.virtual_memory().
-              That doesn't really work very well.  The new test below, test_results_discarded() is a better check.
-        """
-        
-        gc.collect()
-
-        vmem = psutil.virtual_memory()
-        start_mem_usage_mb = (vmem.total - vmem.available) / (1000*1000)
-        logger.debug( "Starting test with memory usage at: {} MB".format( start_mem_usage_mb ) )
-
-        op = OpNonsense( graph=Graph() )
-        def handleResult( roi, result ):
-            pass
-
-        def handleProgress( progress ):
-            #gc.collect()
-            logger.debug( "Progress update: {}".format( progress ) )
-            #vmem = psutil.virtual_memory()
-            #finished_mem_usage_mb = (vmem.total - vmem.available) / (1000*1000)
-            #difference_mb = finished_mem_usage_mb - start_mem_usage_mb
-            #logger.debug( "Progress update: {} with memory usage at: {} MB ({} MB increase)".format( progress, finished_mem_usage_mb, difference_mb ) )
-
-        batch = BigRequestStreamer(op.Output, [(0,0,0), (100,1000,1000)], (100,100,100) )
-        batch.resultSignal.subscribe( handleResult )
-        batch.progressSignal.subscribe( handleProgress )
-        batch.execute()
-
-        vmem = psutil.virtual_memory()
-        finished_mem_usage_mb = (vmem.total - vmem.available) / (1000*1000)
-        difference_mb = finished_mem_usage_mb - start_mem_usage_mb
-        logger.debug( "Finished execution with memory usage at: {} MB ({} MB increase)".format( finished_mem_usage_mb, difference_mb ) )
-
-        # The ThreadPool._Worker loop has a local reference (next_task),
-        # so wait just a tic for the ThreadPool worker to cycle back to the top of its loop (and discard the reference)
-        time.sleep(0.1)
-
-        # Collect
-        gc.collect()
-
-        vmem = psutil.virtual_memory()
-        finished_mem_usage_mb = (vmem.total - vmem.available) / (1000*1000)
-        difference_mb = finished_mem_usage_mb - start_mem_usage_mb
-        logger.debug( "Finished test with memory usage at: {} MB ({} MB increase)".format( finished_mem_usage_mb, difference_mb ) )
-        assert difference_mb < 200, "BigRequestStreamer seems to have memory leaks.  After executing, RAM usage increased by {}".format( difference_mb )
-
 def test_pool_results_discarded():
     """
     This test checks to make sure that result arrays are discarded in turn as the BigRequestStreamer executes.
