@@ -67,7 +67,8 @@ def init_user_mode_excepthook():
             if logfile_path:
                 msg += "\n (Advanced information about this error may be found in the log file: {})\n"\
                        "".format( logfile_path )
-            shell.postErrorMessage( exc_info[0].__name__, msg )
+            if shell:
+                shell.postErrorMessage( exc_info[0].__name__, msg )
         except:
             logger.error( "UNHANDLED EXCEPTION WHILE DISPLAYING AN ERROR TO THE USER:" )
             sio = StringIO.StringIO()

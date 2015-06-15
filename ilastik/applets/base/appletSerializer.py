@@ -52,11 +52,10 @@ def getOrCreateGroup(parentGroup, groupName):
 
 def deleteIfPresent(parentGroup, name):
     """Deletes parentGroup[name], if it exists."""
-
-    try:
+    # Check first. If we try to delete a non-existent key, 
+    # hdf5 will complain on the console.
+    if name in parentGroup:
         del parentGroup[name]
-    except KeyError:
-        pass
 
 def slicingToString(slicing):
     """Convert the given slicing into a string of the form

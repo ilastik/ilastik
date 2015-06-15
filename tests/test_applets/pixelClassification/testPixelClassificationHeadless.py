@@ -228,7 +228,7 @@ class TestPixelClassificationHeadless(object):
  
         # (The OpStackLoader produces txyzc order.)
         opReorderAxes = OpReorderAxes( graph=Graph() )
-        opReorderAxes.AxisOrder.setValue( 'txyzc' )
+        opReorderAxes.AxisOrder.setValue( 'tzyxc' )
         opReorderAxes.Input.connect( opReader.stack )
          
         readData = opReorderAxes.Output[:].wait()
