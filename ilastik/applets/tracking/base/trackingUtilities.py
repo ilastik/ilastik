@@ -49,7 +49,7 @@ def highlightMergers(volume, merger):
             if label in merger:
                 mp[label] = merger[label]
             else:
-                mp[label] = 1
+                mp[label] = 0
     return mp[volume]
 
 def get_dict_value(dic, key, default=[]):
@@ -77,6 +77,8 @@ def get_events_at(eventsVector, t):
     div = []
     mov = []
     res = []
+    merger = []
+    mult_mov = []
                 
     for event in eventsVector[t]:
         if event.type == pgmlink.EventType.Appearance:
@@ -87,6 +89,10 @@ def get_events_at(eventsVector, t):
             div.append((event.traxel_ids[0], event.traxel_ids[1], event.traxel_ids[2], event.energy))
         if event.type == pgmlink.EventType.Move:
             mov.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
+        if hasattr(pgmlink.EventType, "Merger") and event.type == pgmlink.EventType.Merger:                    
+            merger.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
+        if hasattr(pgmlink.EventType, "MultiFrameMove") and event.type == pgmlink.EventType.MultiFrameMove:                    
+            mult_mov.append((event.traxel_ids[0], event.traxel_ids[1], event.traxel_ids[2], event.energy))
         if hasattr(pgmlink.EventType, "ResolvedTo") and event.type == pgmlink.EventType.ResolvedTo:
             res.append(list(event.traxel_ids) + [event.energy])
 
@@ -96,6 +102,8 @@ def get_events_at(eventsVector, t):
     write_dict_value(events_at, "app", np.asarray(app))
     write_dict_value(events_at, "div", np.asarray(div))
     write_dict_value(events_at, "mov", np.asarray(mov))
+    write_dict_value(events_at, "merger", np.asarray(merger))
+    write_dict_value(events_at, "multiMove", np.asarray(mult_mov))
     write_dict_value(events_at, "res", np.asarray(res))
 
     return events_at
@@ -110,12 +118,15 @@ def write_events(events_at, directory, t, labelImage, mergers=None):
             app = []
             mov = []
             div = []
+            mult_movs = []
             res = []
         else:        
             dis = get_dict_value(events_at, "dis", [])
             app = get_dict_value(events_at, "app", [])
             mov = get_dict_value(events_at, "mov", [])
             div = get_dict_value(events_at, "div", [])
+            merger = get_dict_value(events_at, "merger", [])
+            mult_movs = get_dict_value(events_at, "multiMove", [])
             res = get_dict_value(events_at, "res", [])
         try:
             with LineageH5(fn, 'w-') as f_curr:
@@ -153,6 +164,16 @@ def write_events(events_at, directory, t, labelImage, mergers=None):
                     ds = tg.create_dataset("Splits", data=div[:, :-1], dtype=np.uint32, compression=1)
                     ds.attrs["Format"] = "ancestor (previous file), descendant (current file), descendant (current file)"    
                     ds = tg.create_dataset("Splits-Energy", data=div[:, -1], dtype=np.double, compression=1)
+                    ds.attrs["Format"] = "lower energy -> higher confidence"
+                if len(merger):
+                    ds = tg.create_dataset("Mergers", data=merger[:, :-1], dtype=np.uint32, compression=1)
+                    ds.attrs["Format"] = "descendant (current file), number of objects"
+                    ds = tg.create_dataset("Mergers-Energy", data=merger[:, -1], dtype=np.double, compression=1)
+                    ds.attrs["Format"] = "lower energy -> higher confidence"
+                if len(mult_movs):
+                    ds = tg.create_dataset("MultiFrameMoves", data=mult_movs[:, :-1], dtype=np.int32, compression=1)
+                    ds.attrs["Format"] = "from (given by timestep), to (current file), timestep"
+                    ds = tg.create_dataset("MultiFrameMoves-Energy", data=mult_movs[:, -1], dtype=np.double)
                     ds.attrs["Format"] = "lower energy -> higher confidence"
                 if len(res):
                     ds = tg.create_dataset("ResolvedMergers", data=res[:, :-1], dtype=np.uint32, compression=1)

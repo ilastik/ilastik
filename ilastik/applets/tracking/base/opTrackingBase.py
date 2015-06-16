@@ -65,6 +65,7 @@ class OpTrackingBase(Operator, ExportingOperator):
     def __init__(self, parent=None, graph=None):
         super(OpTrackingBase, self).__init__(parent=parent, graph=graph)
         self.label2color = []
+        self.mergers = []
         self.resolvedto = []
 
         self.track_id = None
@@ -191,6 +192,7 @@ class OpTrackingBase(Operator, ExportingOperator):
 
         label2color = []
         label2color.append({})
+        mergers = []
         resolvedto = []
         resolvedto.append({})
 
@@ -199,6 +201,7 @@ class OpTrackingBase(Operator, ExportingOperator):
         # handle start time offsets
         for i in range(time_range[0]):
             label2color.append({})
+            mergers.append({})
             resolvedto.append({})
 
         if export_mode:
@@ -209,15 +212,18 @@ class OpTrackingBase(Operator, ExportingOperator):
             app = get_dict_value(events[str(i - time_range[0] + 1)], "app", [])
             div = get_dict_value(events[str(i - time_range[0] + 1)], "div", [])
             mov = get_dict_value(events[str(i - time_range[0] + 1)], "mov", [])
+            merger = get_dict_value(events[str(i - time_range[0])], "merger", [])
             res = get_dict_value(events[str(i - time_range[0] + 1)], "res", [])
 
             logger.info(" {} dis at {}".format(len(dis), i))
             logger.info(" {} app at {}".format(len(app), i))
             logger.info(" {} div at {}".format(len(div), i))
             logger.info(" {} mov at {}".format(len(mov), i))
+            logger.info(" {} merger at {}".format(len(merger), i))
             logger.info(" {} res at {}".format(len(res), i))
 
             label2color.append({})
+            mergers.append({})
             moves_at = []
             resolvedto.append({})
 
@@ -266,6 +272,9 @@ class OpTrackingBase(Operator, ExportingOperator):
                     label2color[-1][int(e[1])] = ancestor_color
                     label2color[-1][int(e[2])] = ancestor_color
 
+            for e in merger:
+                mergers[-1][int(e[0])] = int(e[1])
+
             for e in res:
                 resolvedto[-1][int(e[0])] = [int(i) for i  in e[1:-1]]
                 # label the original object with the false detection label
@@ -295,6 +304,7 @@ class OpTrackingBase(Operator, ExportingOperator):
 
         self.label2color = label2color
         self.resolvedto = resolvedto
+        self.mergers = mergers
 
         self.Output._value = None
         self.Output.setDirty(slice(None))

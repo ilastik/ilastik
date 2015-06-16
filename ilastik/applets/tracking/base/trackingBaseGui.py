@@ -94,12 +94,23 @@ class TrackingBaseGui( LayerViewerGui ):
         ct[1] = QColor(128,128,128,255).rgba() # misdetections have id 1 and will be indicated by grey
 
         if "MergerOutput" in self.topLevelOperatorView.outputs:
+            parameters = self.mainOperator.Parameters.value
+
+            if 'withMergerResolution' in parameters.keys() and not parameters['withMergerResolution']:
+                print("Using merger colors")
+                merger_ct = colortables.create_default_8bit()
+                for i in range(7):
+                    merger_ct[i] = self.mergerColors[i].rgba()
+            else:
+                print("Using default colors")
+                merger_ct = ct
+
             if self.topLevelOperatorView.MergerCachedOutput.ready():
                 self.mergersrc = LazyflowSource( self.topLevelOperatorView.MergerCachedOutput )
             else:
                 self.mergersrc = LazyflowSource( self.topLevelOperatorView.zeroProvider.Output )
 
-            mergerLayer = ColortableLayer( self.mergersrc, ct )
+            mergerLayer = ColortableLayer( self.mergersrc, merger_ct )
             mergerLayer.name = "Merger"
             mergerLayer.visible = True
             layers.append(mergerLayer)
