@@ -144,7 +144,7 @@ def write_events(events_at, directory, t, labelImage, mergers=None):
                     ds.attrs["Format"] = "lower energy -> higher confidence"
                 if len(res):
                     ds = tg.create_dataset("ResolvedMergers", data=res[:, :-1], dtype=np.uint32, compression=1)
-                    ds.attrs["Format"] = "cell label (current file), new cell labels of resolved cells (current_file)"
+                    ds.attrs["Format"] = "old cell label (current file), new cell labels of resolved cells (current file)"
                     ds = tg.create_dataset("ResolvedMergers-Energy", data=res[:, -1], dtype=np.double, compression=1)
                     ds.attrs["Format"] = "lower energy -> higher confidence"
         except IOError:                    
