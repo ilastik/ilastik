@@ -4,7 +4,7 @@ from lazyflow.rtype import List
 from lazyflow.stype import Opaque
 import pgmlink
 from ilastik.applets.tracking.base.opTrackingBase import OpTrackingBase
-from ilastik.applets.tracking.base.trackingUtilities import relabel
+from ilastik.applets.tracking.base.trackingUtilities import relabel, highlightMergers
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 from ilastik.applets.tracking.base.trackingUtilities import get_events
 from lazyflow.operators.opCompressedCache import OpCompressedCache
@@ -27,6 +27,7 @@ class OpConservationTracking(OpTrackingBase):
     MergerCachedOutput = OutputSlot() # For the GUI (blockwise access)
     MergerOutput = OutputSlot()
     
+    CoordinateMap = OutputSlot()
 
     def __init__(self, parent=None, graph=None):
         super(OpConservationTracking, self).__init__(parent=parent, graph=graph)
@@ -37,9 +38,7 @@ class OpConservationTracking(OpTrackingBase):
         self.MergerCleanBlocks.connect(self._mergerOpCache.CleanBlocks)
         self.MergerOutputHdf5.connect(self._mergerOpCache.OutputHdf5)
         self.MergerCachedOutput.connect(self._mergerOpCache.Output)
-        
         self.tracker = None
-        self.coordinate_map = None
 
 
     def setupOutputs(self):
@@ -47,14 +46,17 @@ class OpConservationTracking(OpTrackingBase):
         self.MergerOutput.meta.assignFrom(self.LabelImage.meta)
 
         self._mergerOpCache.BlockShape.setValue( self._blockshape )
+        if not self.CoordinateMap.ready():
+            print("Initializing coordinate Map")
+            self.CoordinateMap.setValue(pgmlink.TimestepIdCoordinateMap())
     
     def execute(self, slot, subindex, roi, result):
-        result = super(OpConservationTracking, self).execute(slot, subindex, roi, result)
-        
-        if slot is self.MergerOutput:
-            result = np.zeros(tuple(roi.stop - roi.start), dtype=np.uint16)
+        if slot is self.Output:
+            print("Resolving mergers...")
+            original = np.zeros(result.shape)
+            original = super(OpConservationTracking, self).execute(slot, subindex, roi, original).copy() # recursive call to get properly labeled image
             parameters = self.Parameters.value
-            
+            result = self.LabelImage.get(roi).wait()
             trange = range(roi.start[0], roi.stop[0])
             for t in trange:
                 if ('time_range' in parameters
@@ -64,6 +66,23 @@ class OpConservationTracking(OpTrackingBase):
                 else:
                     result[t-roi.start[0],...][:] = 0
 
+            original[result != 0] = result[result != 0]
+            result = original
+
+        elif slot is self.MergerOutput:
+            result = self.LabelImage.get(roi).wait()
+            parameters = self.Parameters.value
+
+            trange = range(roi.start[0], roi.stop[0])
+            for t in trange:
+                if ('time_range' in parameters
+                        and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]
+                        and len(self.mergers) > t and len(self.mergers[t])):
+                    result[t-roi.start[0],...,0] = highlightMergers(result[t-roi.start[0],...,0], self.mergers[t])
+                else:
+                    result[t-roi.start[0],...][:] = 0
+        else:
+            result = super(OpConservationTracking, self).execute(slot, subindex, roi, result)
         return result
 
     def setInSlot(self, slot, subindex, roi, value):
@@ -224,15 +243,13 @@ class OpConservationTracking(OpTrackingBase):
                                             cplex_timeout)
             # extract the coordinates with the given event vector
             if withMergerResolution:
-                coordinate_map = pgmlink.TimestepIdCoordinateMap()
-                # TODO what should the variable withArmaCoordinates toggle?
-                # is this the intended use?
-                if withArmaCoordinates:
-                    coordinate_map.initialize()
+                # coordinate_map = pgmlink.TimestepIdCoordinateMap()
+                coordinate_map = self.CoordinateMap.value
+
                 self._get_merger_coordinates(coordinate_map,
                                              time_range,
                                              eventsVector)
-                self.coordinate_map = coordinate_map
+                self.CoordinateMap.setValue(coordinate_map)
 
                 eventsVector = self.tracker.resolve_mergers(eventsVector,
                                                 coordinate_map.get(),
@@ -303,10 +320,13 @@ class OpConservationTracking(OpTrackingBase):
                                                          int(size[idx,0]))
 
     def _relabelMergers(self, volume, time):
-        if self.coordinate_map is None:
+        if self.CoordinateMap.value.size() == 0:
+            print("Skipping merger relabling because coordinate map is empty")
             return volume
         if time >= len(self.resolvedto):
             return volume
+
+        coordinate_map = self.CoordinateMap.value
         for old_id, new_ids in self.resolvedto[time].iteritems():
             for new_id in new_ids:
                 # TODO Reliable distinction between 2d and 3d?
@@ -318,7 +338,7 @@ class OpConservationTracking(OpTrackingBase):
                     relabel_volume = volume
                 # relabel
                 pgmlink.update_labelimage(
-                    self.coordinate_map,
+                    coordinate_map,
                     relabel_volume,
                     int(time),
                     int(new_id))
