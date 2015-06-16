@@ -339,14 +339,10 @@ class OpTrackingBase(Operator, ExportingOperator):
                               max_traxel_id_at=None,
                               with_opt_correction=False,
                               with_coordinate_list=False,
-                              with_classifier_prior=False,
-                              coordinate_map=None):
+                              with_classifier_prior=False):
 
         if not self.Parameters.ready():
             raise Exception("Parameter slot is not ready")
-
-        if coordinate_map is not None and not with_coordinate_list:
-            coordinate_map.initialize()
 
         parameters = self.Parameters.value
         parameters['scales'] = [x_scale, y_scale, z_scale]
@@ -474,29 +470,6 @@ class OpTrackingBase(Operator, ExportingOperator):
                     obj_sizes.append(float(size))
 
                 ts.add(tr)
-
-                # add coordinate lists
-
-                if with_coordinate_list and coordinate_map is not None:  # store coordinates in arma::mat
-                    # generate roi: assume the following order: txyzc
-                    n_dim = len(rc[idx])
-                    roi = [0] * 5
-                    roi[0] = slice(int(t), int(t + 1))
-                    roi[1] = slice(int(lower[idx][0]), int(upper[idx][0] + 1))
-                    roi[2] = slice(int(lower[idx][1]), int(upper[idx][1] + 1))
-                    if n_dim == 3:
-                        roi[3] = slice(int(lower[idx][2]), int(upper[idx][2] + 1))
-                    else:
-                        assert n_dim == 2
-                    image_excerpt = self.LabelImage[roi].wait()
-                    if n_dim == 2:
-                        image_excerpt = image_excerpt[0, ..., 0, 0]
-                    elif n_dim == 3:
-                        image_excerpt = image_excerpt[0, ..., 0]
-                    else:
-                        raise Exception, "n_dim = %s instead of 2 or 3"
-
-                    pgmlink.extract_coordinates(coordinate_map, image_excerpt, lower[idx].astype(np.int64), tr)
 
             if len(filtered_labels_at) > 0:
                 filtered_labels[str(int(t) - time_range[0])] = filtered_labels_at
