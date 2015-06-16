@@ -779,7 +779,6 @@ class SerialPickleableSlot(SerialSlot):
             return super(SerialPickleableSlot, self).shouldSerialize(group)
 
     def _getValue(self, dset, slot):
-        print("Deserializing...")
         try:
             # first check that the version of the deserialized and the expected value are the same
             loaded_version = dset.attrs['version']

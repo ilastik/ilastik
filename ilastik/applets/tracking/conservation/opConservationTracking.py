@@ -47,12 +47,10 @@ class OpConservationTracking(OpTrackingBase):
 
         self._mergerOpCache.BlockShape.setValue( self._blockshape )
         if not self.CoordinateMap.ready():
-            print("Initializing coordinate Map")
             self.CoordinateMap.setValue(pgmlink.TimestepIdCoordinateMap())
     
     def execute(self, slot, subindex, roi, result):
         if slot is self.Output:
-            print("Resolving mergers...")
             original = np.zeros(result.shape)
             original = super(OpConservationTracking, self).execute(slot, subindex, roi, original).copy() # recursive call to get properly labeled image
             parameters = self.Parameters.value
