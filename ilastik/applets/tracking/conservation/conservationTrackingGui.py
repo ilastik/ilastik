@@ -23,13 +23,21 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
     
     withMergers = True
     @threadRouted
-    def _setMergerLegend(self, labels, selection):   
-        for i in range(1,len(labels)+1):
+    def _setMergerLegend(self, labels, selection):
+        param = self.topLevelOperatorView.Parameters.value
+        if 'withMergerResolution' in param.keys() and param['withMergerResolution']:
+            selection = 1
+
+        for i in range(2,len(labels)+1):
             if i <= selection:
                 labels[i-1].setVisible(True)
             else:
                 labels[i-1].setVisible(False)
-    
+
+        # hide merger legend if selection < 2
+        self._drawer.label_4.setVisible(selection > 1)
+        labels[0].setVisible(selection > 1)
+
     def _loadUiFile(self):
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
@@ -206,6 +214,11 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
                     disappearance_cost = disappearanceCost,
                     force_build_hypotheses_graph = False
                     )
+
+                # update showing the merger legend,
+                # as it might be (no longer) needed if merger resolving
+                # is disabled(enabled)
+                self._setMergerLegend(self.mergerLabels, self._drawer.maxObjectsBox.value())
             except Exception:           
                 ex_type, ex, tb = sys.exc_info()
                 traceback.print_tb(tb)            
