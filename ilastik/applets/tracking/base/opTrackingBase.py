@@ -205,6 +205,9 @@ class OpTrackingBase(Operator, ExportingOperator):
             resolvedto.append({})
 
         if export_mode:
+            extra_track_ids = {}
+            multi_move = {}
+            multi_move_next = {}
             divisions = []
 
         for i in time_range:
@@ -232,24 +235,39 @@ class OpTrackingBase(Operator, ExportingOperator):
 
             for e in app:
                 if successive_ids:
-                    label2color[-1][int(e[0])] = maxId
+                    label2color[-1][int(e[0])] = maxId  # in export mode, the label color is used as track ID
                     maxId += 1
                 else:
                     label2color[-1][int(e[0])] = np.random.randint(1, 255)
 
             for e in mov:
                 if export_mode:
+                    if e[1] in moves_to:
+                        multi_move.setdefault(i, {})
+                        multi_move[i][e[0]] = e[1]
+                        if len(moves_to[e[1]]) == 1:  # if we are just setting up this multi move
+                            multi_move[i][moves_to[e[1]][0]] = e[1]
+                        multi_move_next[(i, e[1])] = 0
                     moves_to.setdefault(e[1], [])
-                    moves_to[e[1]].append(e[0])
+                    moves_to[e[1]].append(e[0])  # moves_to[target] contains list of incoming object ids
 
+                # alternative way of appearance
                 if not label2color[-2].has_key(int(e[0])):
                     if successive_ids:
                         label2color[-2][int(e[0])] = maxId
                         maxId += 1
                     else:
                         label2color[-2][int(e[0])] = np.random.randint(1, 255)
+
+                # assign color of parent
                 label2color[-1][int(e[1])] = label2color[-2][int(e[0])]
                 moves_at.append(int(e[0]))
+
+                if export_mode:
+                    key = i - 1, e[0]
+                    if key in multi_move_next:  # captures mergers staying connected over longer time spans
+                        multi_move_next[key] = e[1]  # redirects output of last merger to target in this frame
+                        multi_move_next[(i, e[1])] = 0  # sets current end to zero (might be changed by above line in the future)
 
             for e in div:  # event(parent, child, child)
                 # if not label2color[-2].has_key(int(e[0])):
@@ -281,6 +299,11 @@ class OpTrackingBase(Operator, ExportingOperator):
                 label2color[-1][int(e[0])] = 1
 
         # last timestep
+        merger = get_dict_value(events[str(time_range[-1] - time_range[0] + 1)], "merger", [])
+        mergers.append({})
+        for e in merger:
+            mergers[-1][int(e[0])] = int(e[1])
+
         res = get_dict_value(events[str(time_range[-1] - time_range[0] + 1)], "res", [])
         resolvedto.append({})
         for e in res:
@@ -299,7 +322,7 @@ class OpTrackingBase(Operator, ExportingOperator):
         if export_mode:  # don't set fields when in export_mode
             self.track_id = label2color
             self.divisions = divisions
-            extra_track_ids = {}
+            self.extra_track_ids = extra_track_ids
             return label2color, extra_track_ids, divisions
 
         self.label2color = label2color
