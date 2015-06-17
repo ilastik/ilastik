@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>692</width>
-    <height>410</height>
+    <width>658</width>
+    <height>421</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -17,7 +17,7 @@
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>Image Export Options</string>
+   <string>Label Import Options</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
@@ -44,6 +44,26 @@
       <property name="bottomMargin">
        <number>6</number>
       </property>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <item>
+         <widget class="QLabel" name="filenameLabel1">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="text">
+           <string>Files:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="inputFilesComboBox"/>
+        </item>
+       </layout>
+      </item>
       <item>
        <widget class="SlotMetaInfoDisplayWidget" name="inputMetaInfoWidget" native="true"/>
       </item>
@@ -89,7 +109,7 @@
       </sizepolicy>
      </property>
      <property name="title">
-      <string>Insertion Point</string>
+      <string>Insertion Point and Mapping</string>
      </property>
      <property name="checkable">
       <bool>false</bool>
@@ -98,7 +118,7 @@
       <item>
        <widget class="QTableWidget" name="positionWidget">
         <property name="sizePolicy">
-         <sizepolicy hsizetype="MinimumExpanding" vsizetype="Expanding">
+         <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
           <horstretch>0</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
@@ -195,20 +215,48 @@
        </widget>
       </item>
       <item>
-       <spacer name="horizontalSpacer">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
+       <widget class="QTableWidget" name="mappingWidget">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="MinimumExpanding" vsizetype="Expanding">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
         </property>
-        <property name="sizeType">
-         <enum>QSizePolicy::Expanding</enum>
+        <property name="rowCount">
+         <number>1</number>
         </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>40</width>
-          <height>20</height>
-         </size>
+        <property name="columnCount">
+         <number>3</number>
         </property>
-       </spacer>
+        <attribute name="horizontalHeaderDefaultSectionSize">
+         <number>100</number>
+        </attribute>
+        <row>
+         <property name="text">
+          <string>#</string>
+         </property>
+        </row>
+        <column>
+         <property name="text">
+          <string>map</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>to</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>pixels</string>
+         </property>
+        </column>
+        <item row="0" column="0">
+         <property name="text">
+          <string/>
+         </property>
+        </item>
+       </widget>
       </item>
      </layout>
     </widget>
