@@ -20,65 +20,55 @@
 ###############################################################################
 
 #Python
-from functools import partial
 import collections
-import operator
-import time
 import os
 import numpy
-import vigra
-
-#Qt
-from PyQt4 import uic
-from PyQt4.QtCore import pyqtSignal, Qt, QEvent, QObject
-from PyQt4.QtGui import QDialog, QFileDialog, QMessageBox, QSpinBox, QTableWidget, QLabel
-
-#volumina
-from volumina.widgets.multiStepProgressDialog import MultiStepProgressDialog
 
 import logging
 logger = logging.getLogger(__name__)
-from volumina.utility import log_exception, PreferencesManager
 
-from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui
+#Qt
+from PyQt4 import uic
+from PyQt4.QtCore import Qt, QEvent
+from PyQt4.QtGui import QDialog, QDialogButtonBox, QMessageBox, QCheckBox, QSpinBox, QLabel
+
+# volumina
+from volumina.utility import PreferencesManager
 
 #lazyflow
 import lazyflow
-from lazyflow.graph import Graph
-from lazyflow.request import Request
 from lazyflow.roi import TinyVector, roiToSlice, roiFromShape
-from lazyflow.operators.ioOperators import OpInputDataReader, OpStackLoader
+from lazyflow.operators.ioOperators import OpInputDataReader
 from lazyflow.operators.opReorderAxes import OpReorderAxes
+from lazyflow.operators.valueProviders import OpOutputProvider
+
+# ilastik
+from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui
 
 
-def import_labeling_layer(layer, parent_widget=None):
+def import_labeling_layer(labelLayer, inputLabels, parent_widget=None):
     """
     Prompt the user for layer import settings, and perform the layer import.
+    :param labelLayer: The top label layer source
+    :param inputLabels: The label input slot
+    :param parent_widget: The Qt GUI parent object
     """
-    sourceTags = [True for l in layer.datasources]
-    for i, source in enumerate(layer.datasources):
-        if not hasattr(source, "dataSlot"):
-             sourceTags[i] = False
-    if not any(sourceTags):
-        raise RuntimeError("can not import to a non-lazyflow data source (layer=%r, datasource=%r)" % (type(layer), type(layer.datasources[0])) )
+    writeSeeds = inputLabels
+    assert isinstance(inputLabels, lazyflow.graph.Slot), "slot is of type %r" % (type(inputLabels))
+    opLabels = inputLabels.getRealOperator()
+    assert isinstance(opLabels, lazyflow.graph.Operator), "slot's operator is of type %r" % (type(opLabels))
 
-    dataSlots = [slot.dataSlot for (slot, isSlot) in
-                 zip(layer.datasources, sourceTags) if isSlot is True]
-    for slot in dataSlots:
-        assert isinstance(slot, lazyflow.graph.Slot), "slot is of type %r" % (type(slot))
-        assert isinstance(slot.getRealOperator(), lazyflow.graph.Operator), "slot's operator is of type %r" % (type(slot.getRealOperator()))
-
-    # TODO: *Finish* make generic, not carving specific, if possible?
-    opLabels = parent_widget._labelingSlots.labelInput.getRealOperator() #dataSlots[0].getRealOperator().parent
-    writeSeeds = parent_widget._labelingSlots.labelInput
-
-    # TODO: use ilastik.shell.projectManager to get project related path?
-    # Find the directory of the most recently opened image file
-    mostRecentImageFile = PreferencesManager().get( 'DataSelection', 'recent image' )
-    if mostRecentImageFile is not None:
-        defaultDirectory = os.path.split(mostRecentImageFile)[0]
+    # Find the directory of the most recently opened project
+    mostRecentProjectPath = PreferencesManager().get('shell', 'recently opened')
+    if mostRecentProjectPath:
+        defaultDirectory = os.path.split(mostRecentProjectPath)[0]
     else:
-        defaultDirectory = os.path.expanduser('~')
+        # Find the directory of the most recently opened image file
+        mostRecentImageFile = PreferencesManager().get( 'DataSelection', 'recent image' )
+        if mostRecentImageFile is not None:
+            defaultDirectory = os.path.split(mostRecentImageFile)[0]
+        else:
+            defaultDirectory = os.path.expanduser('~')
 
     fileNames = DataSelectionGui.getImageFileNamesToOpen(parent_widget, defaultDirectory)
     fileNames = map(str, fileNames)
@@ -95,210 +85,80 @@ def import_labeling_layer(layer, parent_widget=None):
 
     # The reader assumes xyzc order, so we must transpose the data.
     opReorderAxes = OpReorderAxes( parent=opImport )
+    opReorderAxes.AxisOrder.setValue(writeSeeds.meta.getAxisKeys())
     opReorderAxes.Input.connect( opImport.Output )
 
-    try:
+    # Create copy for MetaInfoWidget in LabelImportOptionsDlg
+    opWriteSeeds = OpOutputProvider(writeSeeds.value, writeSeeds.meta, parent=opLabels)
+    assert opWriteSeeds.Output.meta.shape == writeSeeds.meta.shape, "slot shapes do not match"
+    assert opWriteSeeds.Output.meta.dtype == writeSeeds.meta.dtype, "slot dtypes do not match"
+    assert opWriteSeeds.Output.meta.getAxisKeys() == writeSeeds.meta.getAxisKeys(), "slot axis keys do not match"
 
+    try:
         readData = opReorderAxes.Output[:].wait()
 
-        img_shape_diff = TinyVector(writeSeeds.meta.shape) - TinyVector(readData.shape)
-        is_img_subset = not any(map(lambda x: x < 0, img_shape_diff))
+        c_idx = writeSeeds.meta.getAxisKeys().index('c')
+        x_idx = writeSeeds.meta.getAxisKeys().index('x')
+        y_idx = writeSeeds.meta.getAxisKeys().index('y')
 
-        #expect import is subset
-        if not is_img_subset:
+        maxLabels = writeSeeds.meta.shape[c_idx] + 1
+        readLabels, readInv, readLabelCounts = numpy.unique(readData, return_inverse=True, return_counts=True)
+        labelInfo = (maxLabels, (readLabels, readLabelCounts))
+
+        imgShapeDiff = TinyVector(writeSeeds.meta.shape) - TinyVector(readData.shape)
+        # opCmmpressedUserLabelArray misrepresents the 'c' dimension as the the
+        # number of colours, but internally it is all mapped to a single dimension.
+        c_fixedMap = maxLabels == 1 and len(filter(lambda x: x > 0, readLabels)) == 1
+        imgShapeDiff[c_idx] = 1 if not c_fixedMap else 0
+        isImgSubset = not any(map(lambda x: x < 0, imgShapeDiff))
+
+        # Expect import is subset
+        if not isImgSubset:
             QMessageBox.critical(parent_widget, "Import shape too large",
                                              "Import shape is not a subset of original input stack.")
             return
 
-        # expect x, y shape to match original shape
-        if any(img_shape_diff[:3]) or any(img_shape_diff[-1:]):
+        # Expect x, y shape to match original shape
+        if imgShapeDiff[x_idx] or imgShapeDiff[y_idx]:
             QMessageBox.critical(parent_widget, "Shape does not match",
                                              "X,Y shape must match original input stack.")
             return
 
-        if any(img_shape_diff):
+        if any(imgShapeDiff):
             # User has choices: Use this dialog to collect settings
-            settingsDlg = LabelImportOptionsDlg( parent_widget, img_shape_diff, opReorderAxes.Output, writeSeeds )
+            settingsDlg = LabelImportOptionsDlg( parent_widget, imgShapeDiff,
+                                                 fileNames, opReorderAxes.Output,
+                                                 opWriteSeeds.Output, labelInfo )
             # If user didn't accept, exit now.
             if ( settingsDlg.exec_() == LabelImportOptionsDlg.Accepted ):
-                img_offset = settingsDlg.img_offset
+                imageOffsets = settingsDlg.imageOffsets
+                labelMapping = settingsDlg.labelMapping
             else:
                 return
         else:
-            img_offset = img_shape_diff
+            imageOffsets = imgShapeDiff
+            labelMapping = LabelImportOptionsDlg._defaultLabelMapping(labelInfo)
+
+        # Optimization if mapping is identity
+        if all(map(lambda (k,v): k == v, labelMapping.items())):
+            labelMapping = None
+
+        # Map input labels to output labels
+        if labelMapping:
+            readData = numpy.array([labelMapping[x] for x in readLabels], dtype=readData.dtype)[readInv].reshape(readData.shape)
 
         img_shape = roiFromShape(readData.shape)
-        img_start = TinyVector(img_shape[0]) + img_offset
-        img_end = TinyVector(img_shape[1]) + img_offset
+        img_start = TinyVector(img_shape[0]) + imageOffsets
+        img_end = TinyVector(img_shape[1]) + imageOffsets
         img_slice = roiToSlice(img_start, img_end)
 
-        # TODO: ensure that labels are cleared (optional setting)
-        #opCarving.clearCurrentLabeling()
-
         writeSeeds[img_slice] = readData[:]
-
-        #opCarving.Segmentation.setDirty()
-        #opCarving.Trigger.setDirty()
 
     finally:
         # Clean up our temporary operators
         opReorderAxes.cleanUp()
         opImport.cleanUp()
-
-
-"""
-    '''
-    # Alternate input UI (for image stacks)
-    stackDlg = StackFileSelectionWidget(parent_widget)
-    stackDlg.exec_()
-    if stackDlg.result() != QDialog.Accepted :
-        return
-    fileNames = stackDlg.selectedFiles
-    '''
-
-    '''
-    # For now, we require a single file
-    if len(fileNames) > 1:
-        QMessageBox.critical(parent_widget, "Too many files",
-                                         "Labels must be contained in a single hdf5 volume.")
-        return
-    '''
-
-    if len(fileNames) == 1:
-        '''
-        # Create an operator to do the work
-        opImport = OpInputDataReader( parent=opCarving )
-
-        opImport.WorkingDirectory.setValue(defaultDirectory)
-        opImport.FilePath.setValue(fileNames[0])
-
-        # The reader assumes xyzc order, so we must transpose the data.
-        opReorderAxes = OpReorderAxes( parent=opImport )
-        opReorderAxes.Input.connect( opImport.Output )
-        '''
-        '''
-        # Another Per-slice image import method
-        filename = fileNames[0]
-
-        imgs_count = vigra.impex.numberImages(filename)
-        for img_idx in range(imgs_count):
-            img = vigra.readImage(filename, dtype=dtype, index=img_idx)
-
-            img_shape = roiFromShape(img.shape)
-            img_slice = roiToSlice(img_shape[0], img_shape[1])
-
-            z = numpy.zeros(img_shape[1], dtype=dtype)
-            z[img_slice] = img[img_slice]
-
-            seedsSlice = (slice(0,1),) + (img_slice[0], img_slice[1], slice(img_idx, img_idx+1)) + (slice(0,1),)
-            opCarving.WriteSeeds[seedsSlice] = z[(numpy.newaxis,) + img_slice + (numpy.newaxis,)]
-
-        # Volume image import method
-        imgs_count = vigra.impex.numberImages(filename)
-        img = vigra.readVolume(filename, dtype=dtype)
-
-        img_shape = roiFromShape(img.shape)
-        img_slice = roiToSlice(img_shape[0], img_shape[1])
-
-        z = numpy.zeros(img_shape[1], dtype=dtype)
-        z[img_slice] = img[img_slice]
-
-        opCarving.WriteSeeds[(slice(0,1),) + img_slice] = z[(numpy.newaxis,) + img_slice]
-
-        '''
-    elif len(fileNames) > 1:
-        '''
-        # Create an operator to do the work
-        opImport = OpStackLoader( parent=opCarving )
-
-        opImport.globstring.setValue(os.path.pathsep.join(fileNames))
-
-        # The reader assumes xyzc order, so we must transpose the data.
-        opReorderAxes = OpReorderAxes( parent=opImport )
-        opReorderAxes.Input.connect( opImport.stack )
-        '''
-
-        '''
-        # Another Per-slice image import method
-        dtype = opCarving.WriteSeeds.meta.dtype
-        img_idx = 0
-
-        for filename in fileNames:
-            img = vigra.readImage(filename, dtype=dtype, index=0)
-
-            img_shape = roiFromShape(img.shape)
-            img_slice = roiToSlice(img_shape[0], img_shape[1])
-
-            z = numpy.zeros(img_shape[1], dtype=dtype)
-            z[img_slice] = img[img_slice]
-
-            seedSlice = (slice(0,1),) + (img_slice[0], img_slice[1], slice(img_idx, img_idx+1)) + (slice(0,1),)
-            opCarving.WriteSeeds[seedSlice] = z[(numpy.newaxis,) + img_slice + (numpy.newaxis,)]
-            img_idx += 1
-        '''
-    #else:
-    #    return # user cancelled
-"""
-
-
-#**************************************************************************
-# LabelImportHelper
-#**************************************************************************
-class LabelImportHelper(QObject):
-    """
-    Executes a layer export in the background, shows a progress dialog, and displays errors (if any).
-    """
-    # This signal is used to ensure that request 
-    #  callbacks are executed in the gui thread
-    _forwardingSignal = pyqtSignal( object )
-
-    def _handleForwardedCall(self, fn):
-        # Execute the callback
-        fn()
-    
-    def __init__(self, parent):
-        super( LabelImportHelper, self ).__init__(parent)
-        self._forwardingSignal.connect( self._handleForwardedCall )
-
-    def run(self, opImport):
-        """
-        Start the import and return immediately (after showing the progress dialog).
-        
-        :param opImport: The import object to execute.
-                         It must have a 'run_import()' method and a 'progressSignal' member.
-        """
-        progressDlg = MultiStepProgressDialog(parent=self.parent())
-        progressDlg.setNumberOfSteps(1)
-
-        def _forwardProgressToGui(progress):
-            self._forwardingSignal.emit( partial( progressDlg.setStepProgress, progress ) )
-
-        def _onFinishImport( *args ): # Also called on cancel
-            self._forwardingSignal.emit( progressDlg.finishStep )
-    
-        def _onFail( exc, exc_info ):
-            log_exception( logger, "Failed to import layer.", exc_info=exc_info )
-            msg = "Failed to import layer due to the following error:\n{}".format( exc )
-            self._forwardingSignal.emit( partial(QMessageBox.critical, self.parent(), "Import Failed", msg) )
-            self._forwardingSignal.emit( progressDlg.setFailed )
-
-        opImport.progressSignal.subscribe( _forwardProgressToGui )
-
-        # Use a request to execute in the background
-        req = Request( opImport.run_import )
-        req.notify_cancelled( _onFinishImport )
-        req.notify_finished( _onFinishImport )
-        req.notify_failed( _onFail )
-
-        # Allow cancel.
-        progressDlg.rejected.connect( req.cancel )
-
-        # Start the import
-        req.submit()
-
-        # Execute the progress dialog
-        # (We can block the thread here because the QDialog spins up its own event loop.)
-        progressDlg.exec_()
+        opWriteSeeds.cleanUp()
 
 
 #**************************************************************************
@@ -306,14 +166,16 @@ class LabelImportHelper(QObject):
 #**************************************************************************
 class LabelImportOptionsDlg(QDialog):
 
-    def __init__(self, parent, axisRanges, dataInputSlot, writeSeedsSlot):
+    def __init__(self, parent, axisRanges, srcInputFiles, dataInputSlot, writeSeedsSlot, labelInfo):
         """
         Constructor.
 
         :param parent: The parent widget
         :param axisRanges: A vector of per-axis maximum values.
+        :param srcInputFiles: A list of source file names.
         :param dataInputSlot: Slot with imported data
-        :param writeSeedsSlot: Slot for writing data to
+        :param writeSeedsSlot: Slot for writing data into
+        :param labelInfo: information about (max_labels, (read_labels, read_label_counts))
         """
         super( LabelImportOptionsDlg, self ).__init__(parent)
 
@@ -322,20 +184,55 @@ class LabelImportOptionsDlg(QDialog):
 
         self._axisRanges = axisRanges
         self._dataInputSlot = dataInputSlot
+        self._srcInputFiles = srcInputFiles
         self._writeSeedsSlot = writeSeedsSlot
+        self._labelInfo = labelInfo
 
-        self._okay_conditions = {}
-        self._boxes = collections.OrderedDict()
-        self.img_offset = [0] * len(axisRanges)
+        self._insert_position_boxes = collections.OrderedDict()
+        self._insert_mapping_boxes = collections.OrderedDict()
+
+        # Result values
+        self.imageOffsets = LabelImportOptionsDlg._defaultImageOffsets(axisRanges, srcInputFiles, dataInputSlot)
+        self.labelMapping = LabelImportOptionsDlg._defaultLabelMapping(labelInfo)
 
         # Init child widgets
         self._initMetaInfoWidgets()
-        self._initInsertPositionWidget()
-        # TODO: show list of files in input stack
-        # self._initSourceFilesList()
+        self._initInsertPositionMappingWidgets()
 
         # See self.eventFilter()
         self.installEventFilter(self)
+
+
+    @staticmethod
+    def _defaultImageOffsets(axisRanges, srcInputFiles, dataInputSlot):
+        img_offset = [0] * len(axisRanges)
+
+        # Note: Convenience setting of starting 'z' offset; assumes that filenames are
+        # numbered from 0, and they contain only a single number representing their index
+        if (srcInputFiles is not None):
+            inputAxes = dataInputSlot.meta.getAxisKeys()
+            z_idx = inputAxes.index('z')
+            filename_digits = filter(str.isdigit, os.path.basename(srcInputFiles[0]))
+            idx = int(filename_digits) if filename_digits else 0
+            img_offset[z_idx] = max(0, min(idx, axisRanges[z_idx]))
+
+        return img_offset
+
+    @staticmethod
+    def _defaultLabelMapping(labelInfo):
+        # Note: Default mapping prefers mapping
+        label_mapping = collections.defaultdict(int)
+
+        max_labels, read_labels_info = labelInfo
+        labels, label_counts = read_labels_info
+        label_idx = max_labels;
+
+        for i in reversed(labels):
+            label_mapping[i] = label_idx if i > 0 else 0
+            label_idx = max(0, label_idx - 1)
+
+        return label_mapping
+
 
     def eventFilter(self, watched, event):
         # Ignore 'enter' keypress events, since the user may just be entering settings.
@@ -346,11 +243,6 @@ class LabelImportOptionsDlg(QDialog):
             return True
         return False
 
-    def _set_okay_condition(self, name, status):
-        self._okay_conditions[name] = status
-        all_okay = all( self._okay_conditions.values() )
-        self.buttonBox.button(QDialogButtonBox.Ok).setEnabled( all_okay )
-
 
     #**************************************************************************
     # Input/Output Meta-info (display only)
@@ -358,40 +250,54 @@ class LabelImportOptionsDlg(QDialog):
     def _initMetaInfoWidgets(self):
         ## Input/output meta-info display widgets
         dataInputSlot = self._dataInputSlot
-        self.inputMetaInfoWidget.initSlot( dataInputSlot )
         writeSeedsSlot = self._writeSeedsSlot
+
+        self.inputMetaInfoWidget.initSlot( dataInputSlot )
         self.labelMetaInfoWidget.initSlot( writeSeedsSlot )
 
+        self._initSourceFilesList()
+
+
+    def _initSourceFilesList(self):
+        srcInputFiles = self._srcInputFiles
+        map(self.inputFilesComboBox.addItem, map(os.path.basename, srcInputFiles))
+
+
     #**************************************************************************
-    # Insertion Position
+    # Insertion Position / Mapping
     #**************************************************************************
-    def _initInsertPositionWidget(self):
+    def _initInsertPositionMappingWidgets(self):
         dataImportSlot = self._dataInputSlot
         inputAxes = dataImportSlot.meta.getAxisKeys()
 
-        shape = dataImportSlot.meta.shape
-
         axisRanges = self._axisRanges
-        insertPos = [0] * len(axisRanges)
         maxValues = axisRanges
 
-        self._initInsertPositionTableWithExtents(inputAxes, maxValues)
+        # Handle the 'c' axis separately
+        c_idx = inputAxes.index('c')
+        inputAxes_noC = inputAxes[:c_idx] + inputAxes[c_idx+1:]  # del(list(inputAxes)[c_idx])
+        maxValues_noC = maxValues[:c_idx] + maxValues[c_idx+1:]  # del(list(maxValues)[c_idx])
 
-        self.positionWidget.itemChanged.connect( self._handleItemChanged )
+        self._initInsertPositionTableWithExtents(inputAxes_noC, maxValues_noC)
+        self._initLabelMappingTableWithExtents(maxValues[c_idx])
 
     def _initInsertPositionTableWithExtents(self, axes, mx):
         positionTbl = self.positionWidget
 
-        positionTbl.setColumnCount( 2 )
-        positionTbl.setHorizontalHeaderLabels(["insert at", "max"])
-        positionTbl.resizeColumnsToContents()
-        tagged_insert = collections.OrderedDict( zip(axes, [0]*len(axes)) )
-        tagged_max = collections.OrderedDict( zip(axes, mx) )
-        self._tagged_insert = tagged_insert
-        positionTbl.setRowCount( len(tagged_insert) )
-        positionTbl.setVerticalHeaderLabels( tagged_insert.keys() )
+        tblHeaders = ["insert at", "max"]
 
-        self._boxes.clear()
+        positionTbl.setColumnCount(len(tblHeaders))
+        positionTbl.setHorizontalHeaderLabels(tblHeaders)
+        positionTbl.resizeColumnsToContents()
+
+        tagged_insert = collections.OrderedDict(zip(axes, self.imageOffsets))
+        tagged_max = collections.OrderedDict(zip(axes, mx))
+        self._tagged_insert = tagged_insert
+
+        positionTbl.setRowCount(len(tagged_insert))
+        positionTbl.setVerticalHeaderLabels(tagged_insert.keys())
+
+        self._insert_position_boxes.clear()
 
         for row, (axis_key, extent) in enumerate(tagged_max.items()):
             # Init min/max spinboxes
@@ -418,19 +324,94 @@ class LabelImportOptionsDlg(QDialog):
             positionTbl.setCellWidget( row, 0, insertBox )
             positionTbl.setCellWidget( row, 1, maxBox )
 
-            self._boxes[axis_key] = (insertBox, maxBox)
+            self._insert_position_boxes[axis_key] = (insertBox, maxBox)
 
         positionTbl.resizeColumnsToContents()
 
+    def _initLabelMappingTableWithExtents(self, max_labels):
+        mappingTbl = self.mappingWidget
+        max_labels, read_labels_info = self._labelInfo
+        labels, label_counts = read_labels_info
+        label_mapping = self.labelMapping
+
+        mappings = zip(labels, [label_mapping[i] for i in labels], label_counts)
+
+        tblHeaders = ["map", "to", "px count"]
+        mappingTbl.setColumnCount(len(tblHeaders))
+        mappingTbl.setHorizontalHeaderLabels(tblHeaders)
+        mappingTbl.resizeColumnsToContents()
+
+        mappingTbl.setRowCount( len(labels) )
+        mappingTbl.setVerticalHeaderLabels( map(lambda x: str(x), labels) )
+
+        self._insert_mapping_boxes.clear()
+
+        for row, (label_from, label_to, px_cnt) in enumerate(mappings):
+            enabledBox = QCheckBox(self)
+            mapToBox = QSpinBox(self)
+            pxCountBox = QLabel(str(px_cnt), self)
+
+            enabledBox.setChecked(label_to > 0)
+
+            mapToBox.setMinimum(1 if label_to else 0)
+            mapToBox.setMaximum(max_labels if label_to else 0)
+            mapToBox.setValue(label_to)
+            mapToBox.setEnabled(label_to > 0)
+
+            enabledBox.stateChanged.connect( self._updateMappingEnabled )
+            mapToBox.valueChanged.connect( self._updateMapping )
+
+            # TODO: pxCountBox shouldn't be in tab list (but it still is)
+            pxCountBox.setTextInteractionFlags(Qt.NoTextInteraction)
+            pxCountBox.setFocusPolicy(Qt.NoFocus)
+            pxCountBox.setEnabled(False)
+
+            mappingTbl.setCellWidget( row, 0, enabledBox )
+            mappingTbl.setCellWidget( row, 1, mapToBox )
+            mappingTbl.setCellWidget( row, 2, pxCountBox )
+
+            self._insert_mapping_boxes[label_from] = (enabledBox, mapToBox)
+
+        mappingTbl.resizeColumnsToContents()
+
+
+    #**************************************************************************
+    # Update Position / Mapping
+    #**************************************************************************
     def _updatePosition(self):
-        insert_boxes, max_boxes = zip( *self._boxes.values() )
-        box_inserts = map( QSpinBox.value, insert_boxes )
+        inputAxes = self._dataInputSlot.meta.getAxisKeys()
 
-        self.img_offset = box_inserts
+        for (k,v) in self._insert_position_boxes.items():
+            insertBox, _ = v
+            self.imageOffsets[inputAxes.index(k)] = insertBox.value()
 
-    def _handleItemChanged(self, item):
-        if len(self._boxes) == 0:
-            return
-        pos_boxes, max_boxes = zip( *self._boxes.values() )
+    def _updateMappingEnabled(self):
+        max_labels, _ = self._labelInfo
+
+        for (k,v) in self._insert_mapping_boxes.items():
+            enabledBox, mapToBox = v
+            enabled = enabledBox.isChecked()
+            if enabled:
+                label_to = mapToBox.value()
+                label_to = min(max(1, k if not label_to else label_to), max_labels)
+            else:
+                label_to = 0
+
+            self.labelMapping[k] = label_to
+
+            mapToBox.setMinimum(1 if label_to else 0)
+            mapToBox.setMaximum(max_labels if label_to else 0)
+            mapToBox.setValue(label_to)
+            mapToBox.setEnabled(label_to > 0)
+
+        enabledBoxes, _ = zip(*self._insert_mapping_boxes.values())
+        enableOk = any(map(QCheckBox.isChecked, enabledBoxes))
+
+        self.buttonBox.button(QDialogButtonBox.Ok).setEnabled(enableOk)
+
+    def _updateMapping(self):
+        for (k,v) in self._insert_mapping_boxes.items():
+            _, mapToBox = v
+            self.labelMapping[k] = mapToBox.value()
 
 
