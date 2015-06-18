@@ -140,12 +140,13 @@ class DataExportGui(QWidget):
 
         self.topLevelOperator.Inputs.notifyRemove( bind( handleLaneRemoved ) )
     
-    def _initAppletDrawerUic(self):
+    def _initAppletDrawerUic(self, drawerPath=None):
         """
         Load the ui file for the applet drawer, which we own.
         """
-        localDir = os.path.split(__file__)[0]
-        drawerPath = os.path.join( localDir, "dataExportDrawer.ui")
+        if drawerPath is None:
+            localDir = os.path.split(__file__)[0]
+            drawerPath = os.path.join( localDir, "dataExportDrawer.ui")
         self.drawer = uic.loadUi(drawerPath)
 
         self.drawer.settingsButton.clicked.connect( self._chooseSettings )
