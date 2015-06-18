@@ -8,8 +8,6 @@ from ilastik.applets.tracking.base.trackingUtilities import relabel, highlightMe
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 from ilastik.applets.tracking.base.trackingUtilities import get_events
 from lazyflow.operators.opCompressedCache import OpCompressedCache
-from lazyflow.roi import sliceToRoi
-
 
 import logging
 logger = logging.getLogger(__name__)
@@ -46,8 +44,6 @@ class OpConservationTracking(OpTrackingBase):
         self.MergerOutput.meta.assignFrom(self.LabelImage.meta)
 
         self._mergerOpCache.BlockShape.setValue( self._blockshape )
-        if not self.CoordinateMap.ready():
-            self.CoordinateMap.setValue(pgmlink.TimestepIdCoordinateMap())
     
     def execute(self, slot, subindex, roi, result):
         if slot is self.Output:
@@ -76,7 +72,10 @@ class OpConservationTracking(OpTrackingBase):
                 if ('time_range' in parameters
                         and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]
                         and len(self.mergers) > t and len(self.mergers[t])):
-                    result[t-roi.start[0],...,0] = highlightMergers(result[t-roi.start[0],...,0], self.mergers[t])
+                    if 'withMergerResolution' in parameters.keys() and parameters['withMergerResolution']:
+                        result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, True)
+                    else:
+                        result[t-roi.start[0],...,0] = highlightMergers(result[t-roi.start[0],...,0], self.mergers[t])
                 else:
                     result[t-roi.start[0],...][:] = 0
         else:
@@ -241,8 +240,7 @@ class OpConservationTracking(OpTrackingBase):
                                             cplex_timeout)
             # extract the coordinates with the given event vector
             if withMergerResolution:
-                # coordinate_map = pgmlink.TimestepIdCoordinateMap()
-                coordinate_map = self.CoordinateMap.value
+                coordinate_map = pgmlink.TimestepIdCoordinateMap()
 
                 self._get_merger_coordinates(coordinate_map,
                                              time_range,
@@ -317,14 +315,21 @@ class OpConservationTracking(OpTrackingBase):
                                                          idx,
                                                          int(size[idx,0]))
 
-    def _relabelMergers(self, volume, time):
+    def _relabelMergers(self, volume, time, onlyMergers=False):
         if self.CoordinateMap.value.size() == 0:
             print("Skipping merger relabling because coordinate map is empty")
-            return volume
+            if onlyMergers:
+                return np.zeros_like(volume)
+            else:
+                return volume
         if time >= len(self.resolvedto):
-            return volume
+            if onlyMergers:
+                return np.zeros_like(volume)
+            else:
+                return volume
 
         coordinate_map = self.CoordinateMap.value
+        valid_ids = []
         for old_id, new_ids in self.resolvedto[time].iteritems():
             for new_id in new_ids:
                 # TODO Reliable distinction between 2d and 3d?
@@ -340,6 +345,12 @@ class OpConservationTracking(OpTrackingBase):
                     relabel_volume,
                     int(time),
                     int(new_id))
+                valid_ids.append(new_id)
+
+        if onlyMergers:
+            # find indices of merger ids, set everything else to zero
+            idx = np.in1d(volume.ravel(), valid_ids).reshape(volume.shape)
+            volume[-idx] = 0
 
         return relabel(volume, self.label2color[time])
 
