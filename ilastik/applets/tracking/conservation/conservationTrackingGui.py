@@ -25,7 +25,10 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
     @threadRouted
     def _setMergerLegend(self, labels, selection):
         param = self.topLevelOperatorView.Parameters.value
-        if 'withMergerResolution' in param.keys() and param['withMergerResolution']:
+        if 'withMergerResolution' in param.keys():
+            if param['withMergerResolution']:
+                selection = 1
+        elif self._drawer.mergerResolutionBox.isChecked():
             selection = 1
 
         for i in range(2,len(labels)+1):
@@ -113,7 +116,8 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             self._labelSetStyleSheet(self.mergerLabels[i], self.mergerColors[i+1])
         
         self._onMaxObjectsBoxChanged()
-        self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)                
+        self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)
+        self._drawer.mergerResolutionBox.stateChanged.connect(self._onMaxObjectsBoxChanged)
 
     @threadRouted
     def _onTimeoutBoxChanged(self, *args):
@@ -278,22 +282,25 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             return
 
         try:
-            color = self.mainOperator.label2color[time][obj]
-            track = [self.mainOperator.track_id[time][obj]][0]
             extra = self.mainOperator.extra_track_ids
         except (IndexError, KeyError):
-            color = None
-            track = []
             extra = {}
 
         # if this is a resolved merger, find which of the merged IDs we actually clicked on
         if time in extra and obj in extra[time]:
-            tracks = [self.mainOperator.label2color[time][t] for t in extra[time][obj]]
-            color = [self.mainOperator.track_id[time][t] for t in extra[time][obj]]
+            colors = [self.mainOperator.label2color[time][t] for t in extra[time][obj]]
+            tracks = [self.mainOperator.track_id[time][t] for t in extra[time][obj]]
             selected_track = self.get_color(position5d)
-            idx = tracks.index(selected_track)
-            color = color[idx]
+            idx = colors.index(selected_track)
+            color = colors[idx]
             track = tracks[idx]
+        else:
+            try:
+                color = self.mainOperator.label2color[time][obj]
+                track = [self.mainOperator.track_id[time][obj]][0]
+            except (IndexError, KeyError):
+                color = None
+                track = []
 
         if track:
             children, parents = self.mainOperator.track_family(track)
