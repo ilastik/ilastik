@@ -76,9 +76,8 @@ def get_events_at(eventsVector, t):
     app = []
     div = []
     mov = []
-    res = []
+    res = {}
     merger = []
-    mult_mov = []
                 
     for event in eventsVector[t]:
         if event.type == pgmlink.EventType.Appearance:
@@ -92,7 +91,7 @@ def get_events_at(eventsVector, t):
         if hasattr(pgmlink.EventType, "Merger") and event.type == pgmlink.EventType.Merger:                    
             merger.append((event.traxel_ids[0], event.traxel_ids[1], event.energy))
         if hasattr(pgmlink.EventType, "ResolvedTo") and event.type == pgmlink.EventType.ResolvedTo:
-            res.append(list(event.traxel_ids) + [event.energy])
+            res[event.traxel_ids[0]] = np.asarray(list(event.traxel_ids[1:]) + [event.energy, ])
 
     # convert to ndarray for better indexing
     events_at = {}
@@ -101,7 +100,7 @@ def get_events_at(eventsVector, t):
     write_dict_value(events_at, "div", np.asarray(div))
     write_dict_value(events_at, "mov", np.asarray(mov))
     write_dict_value(events_at, "merger", np.asarray(merger))
-    write_dict_value(events_at, "res", np.asarray(res))
+    write_dict_value(events_at, "res", res)
 
     return events_at
 
@@ -116,15 +115,14 @@ def write_events(events_at, directory, t, labelImage, mergers=None):
             mov = []
             div = []
             merger = []
-            mult_movs = []
-            res = []
+            res = {}
         else:        
             dis = get_dict_value(events_at, "dis", [])
             app = get_dict_value(events_at, "app", [])
             mov = get_dict_value(events_at, "mov", [])
             div = get_dict_value(events_at, "div", [])
             merger = get_dict_value(events_at, "merger", [])
-            res = get_dict_value(events_at, "res", [])
+            res = get_dict_value(events_at, "res", {})
         try:
             with LineageH5(fn, 'w-') as f_curr:
                 # delete old label image
@@ -167,11 +165,12 @@ def write_events(events_at, directory, t, labelImage, mergers=None):
                     ds.attrs["Format"] = "descendant (current file), number of objects"
                     ds = tg.create_dataset("Mergers-Energy", data=merger[:, -1], dtype=np.double, compression=1)
                     ds.attrs["Format"] = "lower energy -> higher confidence"
-                if len(res):
-                    ds = tg.create_dataset("ResolvedMergers", data=res[:, :-1], dtype=np.uint32, compression=1)
-                    ds.attrs["Format"] = "old cell label (current file), new cell labels of resolved cells (current file)"
-                    ds = tg.create_dataset("ResolvedMergers-Energy", data=res[:, -1], dtype=np.double, compression=1)
-                    ds.attrs["Format"] = "lower energy -> higher confidence"
+                # TODO: fix saving different lengths
+                # if len(res):
+                #     ds = tg.create_dataset("ResolvedMergers", data=res[:, :-1], dtype=np.uint32, compression=1)
+                #     ds.attrs["Format"] = "old cell label (current file), new cell labels of resolved cells (current file)"
+                #     ds = tg.create_dataset("ResolvedMergers-Energy", data=res[:, -1], dtype=np.double, compression=1)
+                #     ds.attrs["Format"] = "lower energy -> higher confidence"
         except IOError:                    
             raise IOError("File " + str(fn) + " exists already. Please choose a different folder or delete the file(s).")
                 

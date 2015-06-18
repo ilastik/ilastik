@@ -261,6 +261,11 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
     def get_feature_names(self):
         return self.topLevelOperatorView.ComputedFeatureNames([]).wait()
 
+    def get_color(self, pos5d):
+        slicing = tuple(slice(i, i+1) for i in pos5d)
+        color = self.mainOperator.CachedOutput(slicing).wait()
+        return color.flat[0]
+
     def handleEditorRightClick(self, position5d, win_coord):
         debug = ilastik_config.getboolean("ilastik", "debug")
 
@@ -274,23 +279,30 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
 
         try:
             color = self.mainOperator.label2color[time][obj]
-            tracks = [self.mainOperator.track_id[time][obj]]
+            track = [self.mainOperator.track_id[time][obj]][0]
             extra = self.mainOperator.extra_track_ids
         except (IndexError, KeyError):
             color = None
-            tracks = []
+            track = []
             extra = {}
 
+        # if this is a resolved merger, find which of the merged IDs we actually clicked on
         if time in extra and obj in extra[time]:
-            tracks.extend(extra[time][obj])
-        if tracks:
-            children, parents = self.mainOperator.track_family(tracks[0])
+            tracks = [self.mainOperator.label2color[time][t] for t in extra[time][obj]]
+            color = [self.mainOperator.track_id[time][t] for t in extra[time][obj]]
+            selected_track = self.get_color(position5d)
+            idx = tracks.index(selected_track)
+            color = color[idx]
+            track = tracks[idx]
+
+        if track:
+            children, parents = self.mainOperator.track_family(track)
         else:
             children, parents = None, None
 
         menu = TitledMenu([
             "Object {} of lineage id {}".format(obj, color),
-            "Track ids: " + (", ".join(map(str, set(tracks))) or "None"),
+            "Track id: " + (str(track) or "None"),
         ])
 
         if not debug:

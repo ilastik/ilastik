@@ -216,7 +216,7 @@ class OpTrackingBase(Operator, ExportingOperator):
             div = get_dict_value(events[str(i - time_range[0] + 1)], "div", [])
             mov = get_dict_value(events[str(i - time_range[0] + 1)], "mov", [])
             merger = get_dict_value(events[str(i - time_range[0])], "merger", [])
-            res = get_dict_value(events[str(i - time_range[0] + 1)], "res", [])
+            res = get_dict_value(events[str(i - time_range[0] + 1)], "res", {})
 
             logger.info(" {} dis at {}".format(len(dis), i))
             logger.info(" {} app at {}".format(len(app), i))
@@ -293,10 +293,15 @@ class OpTrackingBase(Operator, ExportingOperator):
             for e in merger:
                 mergers[-1][int(e[0])] = int(e[1])
 
-            for e in res:
-                resolvedto[-1][int(e[0])] = [int(i) for i  in e[1:-1]]
+            for o, r in res.iteritems():
+                resolvedto[-1][int(o)] = [int(c) for c in r[:-1]]
                 # label the original object with the false detection label
-                label2color[-1][int(e[0])] = 1
+                label2color[-1][int(o)] = 1
+                mergers[-1][int(o)] = len(r[:-1])
+
+                if export_mode:
+                    extra_track_ids.setdefault(i + 1, {})
+                    extra_track_ids[i + 1][int(o)] = [int(c) for c in r[:-1]]
 
         # last timestep
         merger = get_dict_value(events[str(time_range[-1] - time_range[0] + 1)], "merger", [])
@@ -304,11 +309,17 @@ class OpTrackingBase(Operator, ExportingOperator):
         for e in merger:
             mergers[-1][int(e[0])] = int(e[1])
 
-        res = get_dict_value(events[str(time_range[-1] - time_range[0] + 1)], "res", [])
+        res = get_dict_value(events[str(time_range[-1] - time_range[0] + 1)], "res", {})
         resolvedto.append({})
-        for e in res:
-            resolvedto[-1][int(e[0])] = [int(i) for i in e[1:-1]]
-            label2color[-1][int(e[0])] = 1
+        if export_mode:
+            extra_track_ids[time_range[-1] + 1] = {}
+        for o, r in res.iteritems():
+            resolvedto[-1][int(o)] = [int(c) for c in r[:-1]]
+            label2color[-1][int(o)] = 1
+            mergers[-1][int(o)] = len(r[:-1])
+
+            if export_mode:
+                    extra_track_ids[-1][int(o)] = [int(c) for c in r[:-1]]
 
         # mark the filtered objects
         for i in filtered_labels.keys():
