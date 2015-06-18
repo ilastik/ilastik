@@ -29,13 +29,15 @@ class CountingDataExportApplet( DataExportApplet ):
     This a specialization of the generic data export applet that
     provides a special viewer for pixel classification predictions.
     """
-    def __init__( self, workflow, title, isBatch=False ):
+    def __init__( self, workflow, title, opCounting, isBatch=False ):
         # Our operator is a subclass of the generic data export operator
         self._topLevelOperator = OpMultiLaneWrapper( OpCountingDataExport, parent=workflow,
                                      promotedSlotNames=set(['RawData', 'Inputs', 'RawDatasetInfo', 'ConstraintDataset']) )
         self._gui = None
         self._title = title
         self._serializers = [ DataExportSerializer(self._topLevelOperator, title) ]
+
+        self.opCounting = opCounting
 
         # Base class init
         super(CountingDataExportApplet, self).__init__(workflow, title, isBatch)
