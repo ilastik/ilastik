@@ -21,14 +21,15 @@
 #Python
 from copy import copy, deepcopy
 import collections
-from collections import defaultdict
+from functools import partial
 
-#SciPy
+# SciPy
 import numpy as np
 import vigra.analysis
 
 #lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
+from lazyflow.request import Request, RequestPool
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List, SubRegion
 from lazyflow.roi import roiToSlice, sliceToRoi
@@ -549,20 +550,25 @@ class OpRegionFeatures(Operator):
         t_ind = self.RawVolume.meta.axistags.index('t')
         assert t_ind < len(self.RawVolume.meta.shape)
 
-        # loop over requested time slices
-        for res_t_ind, t in enumerate(xrange(roi.start[t_ind],
-                                             roi.stop[t_ind])):
-            
+        def compute_features_for_time_slice(res_t_ind, t):
             # Process entire spatial volume
             s = [slice(None) for i in range(len(self.RawVolume.meta.shape))]
             s[t_ind] = slice(t, t+1)
             s = tuple(s)
-            rawVolume = self.RawVolume[s].wait()
-            rawVolume = vigra.taggedView(
-                rawVolume, axistags=self.RawVolume.meta.axistags)
-            labelVolume = self.LabelVolume[s].wait()
-            labelVolume = vigra.taggedView(
-                labelVolume, axistags=self.LabelVolume.meta.axistags)
+
+            # Request in parallel
+            raw_req = self.RawVolume[s]
+            label_req = self.LabelVolume[s]
+
+            raw_req.submit()
+            label_req.submit()
+
+            # Get results
+            rawVolume = raw_req.wait()
+            labelVolume = label_req.wait()
+
+            rawVolume = vigra.taggedView(rawVolume, axistags=self.RawVolume.meta.axistags)
+            labelVolume = vigra.taggedView(labelVolume, axistags=self.LabelVolume.meta.axistags)
     
             # Convert to 4D (preserve axis order)
             axes4d = self.RawVolume.meta.getTaggedShape().keys()
@@ -570,8 +576,16 @@ class OpRegionFeatures(Operator):
             rawVolume = rawVolume.withAxes(*axes4d)
             labelVolume = labelVolume.withAxes(*axes4d)
             acc = self._extract(rawVolume, labelVolume)
-            result[res_t_ind] = acc
+            
+            # Copy into the result
+            result[res_t_ind] = acc            
+
+        # loop over requested time slices
+        pool = RequestPool()
+        for res_t_ind, t in enumerate(xrange(roi.start[t_ind], roi.stop[t_ind])):
+            pool.add( Request( partial(compute_features_for_time_slice, res_t_ind, t) ) )
         
+        pool.wait()
         return result
 
     def compute_extent(self, i, image, mincoords, maxcoords, axes, margin):
@@ -679,7 +693,7 @@ class OpRegionFeatures(Operator):
             return a
         
 
-        local_features = defaultdict(lambda: defaultdict(list))
+        local_features = collections.defaultdict(lambda: collections.defaultdict(list))
         margin = max_margin(feature_names)
         has_local_features = {}
         for plugin_name, feature_dict in feature_names.iteritems():
