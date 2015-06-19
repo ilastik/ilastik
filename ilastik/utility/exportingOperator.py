@@ -11,6 +11,7 @@ class ExportingOperator(object):
     """
     A Mixin for the Operators that can export h5/csv data
     """
+
     def export_object_data(self, settings, selected_features, gui=None):
         """
         Initialize progress displays and start the actual export in a new thread using the lazyflow.request framework
@@ -28,12 +29,25 @@ class ExportingOperator(object):
             progress_display = gui["dialog"]
             self.save_export_progress_dialog(progress_display)
 
-        export = partial(self.do_export, settings, selected_features, progress_display)  # ();return
+        export = partial(self.do_export, settings, selected_features, progress_display)
         request = Request(export)
-        request.notify_failed(gui["fail"] if gui is not None and "fail" in gui else self.export_failed)
+        if gui is not None:
+            if "fail" in gui:
+                request.notify_failed(gui["fail"])
+            if "ok" in gui:
+                request.notify_finished(gui["ok"])
+            if "cancel" in gui:
+                request.notify_cancelled(gui["cancel"])
+            if "unlock" in gui:
+                request.notify_cancelled(gui["unlock"])
+                request.notify_failed(gui["unlock"])
+                request.notify_finished(gui["unlock"])
+            if "lock" in gui:
+                lock = gui["lock"]
+                lock()
         request.notify_failed(self.export_failed)
-        request.notify_finished(gui["ok"] if gui is not None and "ok" in gui else self.export_finished)
-        request.notify_cancelled(gui["cancel"] if gui is not None and "cancel" in gui else self.export_cancelled)
+        request.notify_finished(self.export_finished)
+        request.notify_cancelled(self.export_cancelled)
         request.submit()
 
         if gui is not None and "dialog" in gui:
@@ -89,6 +103,14 @@ class ExportingGui(object):
     """
     A Mixin for the GUI that can export h5/csv data
     """
+
+    def get_exporting_operator(self, lane=0):
+        raise NotImplementedError
+
+    @property
+    def gui_applet(self):
+        raise NotImplementedError
+
     def show_export_dialog(self):
         """
         Shows the ExportObjectInfoDialog and calls the operators export_object_data method
@@ -100,7 +122,7 @@ class ExportingGui(object):
         dimensions = self.get_raw_shape()
         feature_names = self.get_feature_names()
 
-        dialog = ExportObjectInfoDialog(dimensions, feature_names)
+        dialog = ExportObjectInfoDialog(dimensions, feature_names, title=self.get_export_dialog_title())
         if not dialog.exec_():
             return
 
@@ -115,16 +137,18 @@ class ExportingGui(object):
             "dialog": progress,
             "ok": partial(progress.safe_popup, "information", "Information", "Export successful!"),
             "cancel": partial(progress.safe_popup, "information", "Information", "Export cancelled!"),
-            "fail": partial(progress.safe_popup, "critical", "Critical", "Export failed!")
+            "fail": partial(progress.safe_popup, "critical", "Critical", "Export failed!"),
+            "unlock": self.unlock_gui,
+            "lock": self.lock_gui
         }
-        self.topLevelOperatorView.export_object_data(settings, selected_features, gui)
+        self.get_exporting_operator().export_object_data(settings, selected_features, gui)
 
     def get_raw_shape(self):
         """
         Implement this to provide the shape of the raw image in the show_export_dialog method
         :return: the raw image's shape
 
-        e.g. return self.topLevelOperatorView.RawImage.meta.shape
+        e.g. return self.exportingOperator.RawImage.meta.shape
         """
         raise NotImplementedError
 
@@ -134,6 +158,17 @@ class ExportingGui(object):
         :return: the computed feature names
         :rtype: dict
 
-        e.g. return self.topLevelOperatorView.ComputedFeatureNames([]).wait()
+        e.g. return self.exportingOperator.ComputedFeatureNames([]).wait()
         """
+        raise NotImplementedError
+
+    def unlock_gui(self, *_):
+        self.gui_applet.busy = False
+        self.gui_applet.appletStateUpdateRequested.emit()
+
+    def lock_gui(self):
+        self.gui_applet.busy = True
+        self.gui_applet.appletStateUpdateRequested.emit()
+
+    def get_export_dialog_title(self):
         raise NotImplementedError
