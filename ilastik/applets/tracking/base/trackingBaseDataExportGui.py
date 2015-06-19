@@ -41,7 +41,12 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
         self._exporting_operator = None
 
     def get_feature_names(self):
-        return self.get_exporting_operator().ComputedFeatureNamesWithDivFeatures([]).wait()
+        op = self.get_exporting_operator()
+        try:
+            slot = op.ComputedFeatureNamesWithDivFeatures
+        except AttributeError:
+            slot = op.ComputedFeatureNames
+        return slot([]).wait()
 
     def get_exporting_operator(self, lane=0):
         return self._exporting_operator.getLane(lane)
