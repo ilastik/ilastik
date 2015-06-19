@@ -8,6 +8,8 @@ from ilastik.applets.tracking.base.trackingUtilities import relabel, highlightMe
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 from ilastik.applets.tracking.base.trackingUtilities import get_events
 from lazyflow.operators.opCompressedCache import OpCompressedCache
+import volumina.colortables as colortables
+from PyQt4.QtGui import QColor
 
 import logging
 logger = logging.getLogger(__name__)
@@ -27,6 +29,12 @@ class OpConservationTracking(OpTrackingBase):
     
     CoordinateMap = OutputSlot()
 
+    RelabeledInputHdf5 = InputSlot(optional=True)
+    RelabeledCleanBlocks = OutputSlot()
+    RelabeledOutputHdf5 = OutputSlot()
+    RelabeledCachedOutput = OutputSlot() # For the GUI (blockwise access)
+    RelabeledImage = OutputSlot()
+
     def __init__(self, parent=None, graph=None):
         super(OpConservationTracking, self).__init__(parent=parent, graph=graph)
 
@@ -36,22 +44,33 @@ class OpConservationTracking(OpTrackingBase):
         self.MergerCleanBlocks.connect(self._mergerOpCache.CleanBlocks)
         self.MergerOutputHdf5.connect(self._mergerOpCache.OutputHdf5)
         self.MergerCachedOutput.connect(self._mergerOpCache.Output)
+
+        self._relabeledOpCache = OpCompressedCache( parent=self )
+        self._relabeledOpCache.InputHdf5.connect(self.RelabeledInputHdf5)
+        self._relabeledOpCache.Input.connect(self.RelabeledImage)
+        self.RelabeledCleanBlocks.connect(self._relabeledOpCache.CleanBlocks)
+        self.RelabeledOutputHdf5.connect(self._relabeledOpCache.OutputHdf5)
+        self.RelabeledCachedOutput.connect(self._relabeledOpCache.Output)
         self.tracker = None
 
 
     def setupOutputs(self):
         super(OpConservationTracking, self).setupOutputs()
         self.MergerOutput.meta.assignFrom(self.LabelImage.meta)
+        self.RelabeledImage.meta.assignFrom(self.LabelImage.meta)
 
         self._mergerOpCache.BlockShape.setValue( self._blockshape )
+        self._relabeledOpCache.BlockShape.setValue( self._blockshape )
     
     def execute(self, slot, subindex, roi, result):
+        parameters = self.Parameters.value
+        trange = range(roi.start[0], roi.stop[0])
+        print("Execute called with block {} to {} for slot {}".format(roi.start, roi.stop, slot.name))
+
         if slot is self.Output:
             original = np.zeros(result.shape)
             original = super(OpConservationTracking, self).execute(slot, subindex, roi, original).copy() # recursive call to get properly labeled image
-            parameters = self.Parameters.value
             result = self.LabelImage.get(roi).wait()
-            trange = range(roi.start[0], roi.stop[0])
             for t in trange:
                 if ('time_range' in parameters
                         and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]
@@ -62,12 +81,8 @@ class OpConservationTracking(OpTrackingBase):
 
             original[result != 0] = result[result != 0]
             result = original
-
         elif slot is self.MergerOutput:
             result = self.LabelImage.get(roi).wait()
-            parameters = self.Parameters.value
-
-            trange = range(roi.start[0], roi.stop[0])
             for t in trange:
                 if ('time_range' in parameters
                         and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]
@@ -78,12 +93,20 @@ class OpConservationTracking(OpTrackingBase):
                         result[t-roi.start[0],...,0] = highlightMergers(result[t-roi.start[0],...,0], self.mergers[t])
                 else:
                     result[t-roi.start[0],...][:] = 0
-        else:
-            result = super(OpConservationTracking, self).execute(slot, subindex, roi, result)
+        elif slot is self.RelabeledImage:
+            result = self.LabelImage.get(roi).wait()
+            for t in trange:
+                if ('time_range' in parameters
+                        and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]
+                        and len(self.resolvedto) > t and len(self.resolvedto[t])
+                        and 'withMergerResolution' in parameters.keys() and parameters['withMergerResolution']):
+                        result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, False, True)
+        else:  # default bahaviour
+            result = super(OpConservationTracking, self).execute(slot, subindex, roi, result, False, True)
         return result
 
     def setInSlot(self, slot, subindex, roi, value):
-        assert slot == self.InputHdf5 or slot == self.MergerInputHdf5, "Invalid slot for setInSlot(): {}".format( slot.name )
+        assert slot == self.InputHdf5 or slot == self.MergerInputHdf5 or slot == self.RelabeledInputHdf5, "Invalid slot for setInSlot(): {}".format( slot.name )
 
     def track(self,
             time_range,
@@ -265,7 +288,15 @@ class OpConservationTracking(OpTrackingBase):
         events = get_events(eventsVector)
         self.Parameters.setValue(parameters, check_changed=False)
         self.EventsVector.setValue(events, check_changed=False)
-        
+        self.RelabeledImage.setDirty()
+        merger_layer_idx = self.parent.parent.trackingApplet._gui.currentGui().layerstack.findMatchingIndex(lambda x: x.name == "Merger")
+        tracking_layer_idx = self.parent.parent.trackingApplet._gui.currentGui().layerstack.findMatchingIndex(lambda x: x.name == "Tracking")
+        if 'withMergerResolution' in parameters.keys() and not parameters['withMergerResolution']:
+            self.parent.parent.trackingApplet._gui.currentGui().layerstack[merger_layer_idx].colorTable = \
+                self.parent.parent.trackingApplet._gui.currentGui().merger_colortable
+        else:
+            self.parent.parent.trackingApplet._gui.currentGui().layerstack[merger_layer_idx].colorTable = \
+                self.parent.parent.trackingApplet._gui.currentGui().tracking_colortable
 
     def propagateDirty(self, inputSlot, subindex, roi):
         super(OpConservationTracking, self).propagateDirty(inputSlot, subindex, roi)
@@ -315,7 +346,7 @@ class OpConservationTracking(OpTrackingBase):
                                                          idx,
                                                          int(size[idx,0]))
 
-    def _relabelMergers(self, volume, time, onlyMergers=False):
+    def _relabelMergers(self, volume, time, onlyMergers=False, noRelabeling=False):
         if self.CoordinateMap.value.size() == 0:
             print("Skipping merger relabling because coordinate map is empty")
             if onlyMergers:
@@ -352,7 +383,10 @@ class OpConservationTracking(OpTrackingBase):
             idx = np.in1d(volume.ravel(), valid_ids).reshape(volume.shape)
             volume[-idx] = 0
 
-        return relabel(volume, self.label2color[time])
+        if noRelabeling:
+            return volume
+        else:
+            return relabel(volume, self.label2color[time])
 
     def _setParameter(self, key, value, parameters, parameters_changed):
         if key in parameters.keys():

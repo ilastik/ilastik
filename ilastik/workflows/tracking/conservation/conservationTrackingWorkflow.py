@@ -184,7 +184,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         opDataExport.Inputs.resize(3)
         opDataExport.Inputs[0].connect( opTracking.Output )
         opDataExport.Inputs[1].connect( opTracking.MergerOutput )
-        opDataExport.Inputs[2].connect( opTracking.LabelImage )
+        opDataExport.Inputs[2].connect( opTracking.RelabeledImage )
         opDataExport.RawData.connect( op5Raw.Output )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
 

@@ -89,21 +89,21 @@ class TrackingBaseGui( LayerViewerGui ):
 
         # use same colortable for the following two generated layers: the merger
         # and the tracking layer
-        ct = colortables.create_random_16bit()
-        ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
-        ct[1] = QColor(128,128,128,255).rgba() # misdetections have id 1 and will be indicated by grey
+        self.tracking_colortable = colortables.create_random_16bit()
+        self.tracking_colortable[0] = QColor(0,0,0,0).rgba() # make 0 transparent
+        self.tracking_colortable[1] = QColor(128,128,128,255).rgba() # misdetections have id 1 and will be indicated by grey
+
+        self.merger_colortable = colortables.create_default_16bit()
+        for i in range(7):
+            self.merger_colortable[i] = self.mergerColors[i].rgba()
 
         if "MergerOutput" in self.topLevelOperatorView.outputs:
             parameters = self.mainOperator.Parameters.value
 
             if 'withMergerResolution' in parameters.keys() and not parameters['withMergerResolution']:
-                print("Using merger colors")
-                merger_ct = colortables.create_default_8bit()
-                for i in range(7):
-                    merger_ct[i] = self.mergerColors[i].rgba()
+                merger_ct = self.merger_colortable
             else:
-                print("Using default colors")
-                merger_ct = ct
+                merger_ct = self.tracking_colortable
 
             if self.topLevelOperatorView.MergerCachedOutput.ready():
                 self.mergersrc = LazyflowSource( self.topLevelOperatorView.MergerCachedOutput )
@@ -117,7 +117,7 @@ class TrackingBaseGui( LayerViewerGui ):
 
         if self.topLevelOperatorView.CachedOutput.ready():
             self.trackingsrc = LazyflowSource( self.topLevelOperatorView.CachedOutput )
-            trackingLayer = ColortableLayer( self.trackingsrc, ct )
+            trackingLayer = ColortableLayer( self.trackingsrc, self.tracking_colortable )
             trackingLayer.name = "Tracking"
             trackingLayer.visible = True
             trackingLayer.opacity = 1.0
@@ -125,22 +125,27 @@ class TrackingBaseGui( LayerViewerGui ):
         elif self.topLevelOperatorView.zeroProvider.Output.ready():
             # provide zeros while waiting for the tracking result
             self.trackingsrc = LazyflowSource( self.topLevelOperatorView.zeroProvider.Output )
-            trackingLayer = ColortableLayer( self.trackingsrc, ct )
+            trackingLayer = ColortableLayer( self.trackingsrc, self.tracking_colortable )
             trackingLayer.name = "Tracking"
             trackingLayer.visible = True
             trackingLayer.opacity = 1.0
             layers.append(trackingLayer)
 
-        if self.topLevelOperatorView.LabelImage.ready():
-            self.objectssrc = LazyflowSource( self.topLevelOperatorView.LabelImage )
-            ct = colortables.create_random_16bit()
-            ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
-            objLayer = ColortableLayer( self.objectssrc, ct )
-            objLayer.name = "Objects"
-            objLayer.opacity = 1.0
-            objLayer.visible = True
-            layers.append(objLayer)
-
+        if "RelabeledImage" in self.topLevelOperatorView.outputs:
+            if self.topLevelOperatorView.RelabeledCachedOutput.ready():
+                self.objectssrc = LazyflowSource( self.topLevelOperatorView.RelabeledCachedOutput )
+            else:
+                self.objectssrc = LazyflowSource( self.topLevelOperatorView.zeroProvider.Output )
+        else:
+            if self.topLevelOperatorView.LabelImage.ready():
+                self.objectssrc = LazyflowSource( self.topLevelOperatorView.LabelImage )
+        ct = colortables.create_random_16bit()
+        ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
+        objLayer = ColortableLayer( self.objectssrc, ct )
+        objLayer.name = "Objects"
+        objLayer.opacity = 1.0
+        objLayer.visible = True
+        layers.append(objLayer)
 
         if self.mainOperator.RawImage.ready():
             rawLayer = self.createStandardLayerFromSlot(self.mainOperator.RawImage)
