@@ -166,10 +166,11 @@ class OpConservationTracking(OpTrackingBase):
         self._setParameter('withArmaCoordinates', withArmaCoordinates, parameters, parameters_changed)
         self._setParameter('appearanceCost', appearance_cost, parameters, parameters_changed)
         self._setParameter('disappearanceCost', disappearance_cost, parameters, parameters_changed)
-        if self._graphBuildingParameterChanged(parameters_changed):
-            do_build_hypotheses_graph = True
-        else:
-            do_build_hypotheses_graph = force_build_hypotheses_graph
+        # if self._graphBuildingParameterChanged(parameters_changed):
+        #     do_build_hypotheses_graph = True
+        # else:
+        #     do_build_hypotheses_graph = force_build_hypotheses_graph
+        do_build_hypotheses_graph = True
 
         if cplex_timeout:
             parameters['cplex_timeout'] = cplex_timeout
