@@ -28,7 +28,6 @@ from ilastik.utility.exportingOperator import ExportingGui
 from ilastik.widgets.featureTableWidget import FeatureEntry
 from ilastik.widgets.featureDlg import FeatureDlg
 from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog
-from ilastik.applets.objectExtraction.opObjectExtraction import OpRegionFeatures3d
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 from ilastik.applets.objectClassification.opObjectClassification import OpObjectClassification
 

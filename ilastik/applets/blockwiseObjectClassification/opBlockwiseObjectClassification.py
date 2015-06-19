@@ -429,7 +429,7 @@ class OpBlockwiseObjectClassification( Operator ):
             elif k == 'c':
                 shape[i] = 1
             elif k == 't':
-                shape[i] = self.RawImage.meta.shape[i]
+                shape[i] = 1
             else:
                 assert False,  "Unknown axis key: '{}'".format( k )
         
