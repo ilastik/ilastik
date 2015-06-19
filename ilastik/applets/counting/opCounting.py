@@ -296,18 +296,7 @@ class OpCounting( Operator ):
         #self.SegmentationChannels.connect( self.opPredictionPipeline.SegmentationChannels )
         self.UncertaintyEstimate.connect( self.opPredictionPipeline.UncertaintyEstimate )
         self.Density.connect(self.opPredictionPipeline.CachedPredictionProbabilities)
-        
-
-        
-        
-        self.opVolumeSum = OpMultiLaneWrapper(OpVolumeOperator,parent=self, graph = self.graph )
-        self.opVolumeSum.Input.connect(self.Density)
-        self.opVolumeSum.Function.setValue(numpy.sum)
-        
-        
-        
-
-        self.OutputSum.connect(self.opVolumeSum.Output)
+        self.OutputSum.connect(self.opPredictionPipeline.OutputSum)
 
         def inputResizeHandler( slot, oldsize, newsize ):
             if ( newsize == 0 ):
@@ -513,6 +502,7 @@ class OpPredictionPipelineNoCache(Operator):
     
     HeadlessPredictionProbabilities = OutputSlot() # drange is 0.0 to 1.0
     #HeadlessUint8PredictionProbabilities = OutputSlot() # drange 0 to 255
+    OutputSum = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super( OpPredictionPipelineNoCache, self ).__init__( *args, **kwargs )
@@ -529,6 +519,10 @@ class OpPredictionPipelineNoCache(Operator):
         self.meaner.Input.connect(self.cacheless_predict.PMaps)
         self.HeadlessPredictionProbabilities.connect(self.meaner.Output)
 
+        self.opVolumeSum = OpVolumeOperator(parent=self)
+        self.opVolumeSum.Input.connect(self.meaner.Output)
+        self.opVolumeSum.Function.setValue(numpy.sum)
+        self.OutputSum.connect( self.opVolumeSum.Output )
 
         # Alternate headless output: uint8 instead of float.
         # Note that drange is automatically updated.        
@@ -596,7 +590,6 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.precomputed_predictions_gui.SlowInput.connect( self.meaner.Output )
         self.precomputed_predictions_gui.PrecomputedInput.connect( self.PredictionsFromDisk )
         self.CachedPredictionProbabilities.connect(self.precomputed_predictions_gui.Output)
-
 
     def setupOutputs(self):
         pass

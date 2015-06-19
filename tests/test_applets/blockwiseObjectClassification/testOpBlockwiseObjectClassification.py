@@ -24,6 +24,7 @@ import tempfile
 
 import numpy
 import vigra
+import h5py
 
 from lazyflow.graph import Graph
 from lazyflow.operators import Op5ifyer
@@ -43,6 +44,7 @@ logger = logging.getLogger("tests.testOpBlockwiseObjectClassification")
 # Test Trace
 traceLogger = logging.getLogger("TRACE." + logger.name)
 
+WRITE_DEBUG_IMAGES = False
 
 class TestOpBlockwiseObjectClassification(object):
     
@@ -136,7 +138,8 @@ class TestOpBlockwiseObjectClassification(object):
         self.test_volume_binary.axistags = vigra.defaultAxistags('xyz')
         
         name = writeToTempFile(self.test_volume_binary, prefix='binary_')
-        logger.debug("Wrote binary image to '{}'".format(name))
+        if name:
+            logger.debug("Wrote binary image to '{}'".format(name))
         
         # Gray: 0<=x<50
         # White: 50<=x<100
@@ -146,7 +149,8 @@ class TestOpBlockwiseObjectClassification(object):
         self.test_volume_intensity.axistags = vigra.defaultAxistags('xyz')
         
         name = writeToTempFile(self.test_volume_intensity, prefix='intensity_')
-        logger.debug("Wrote intensity image to '{}'".format(name))
+        if name:
+            logger.debug("Wrote intensity image to '{}'".format(name))
 
         graph = Graph()
         self.graph = graph
@@ -269,7 +273,8 @@ class TestOpBlockwiseObjectClassification(object):
         
     def logImage(self,data,prefix='logged_image'):
         name = writeToTempFile(data.view(vigra.VigraArray), prefix=prefix)
-        logger.debug("Wrote an image to {}".format(name))
+        if name:
+            logger.debug("Wrote an image to {}".format(name))
  
 def getlist(a, n=3):
     try:
@@ -298,19 +303,16 @@ def cubes(dimblock, dimcube, cubedist=20, cubeoffset=0):
 
 def writeToTempFile(data,pathInFile='volume',prefix='test_image_'):
     '''
-    writes a VigraArray to a random temporary file (disabled by default)
-    input: as to writeHDF5
-    output: filename
+    Writes the given 
     '''
-    #TODO remove before pull request
-    # comment to write to file
-    #return '/dev/null'
+    global WRITE_DEBUG_IMAGES
+    if not WRITE_DEBUG_IMAGES:
+        return None
     
     # we just need this to know where to place temp files, vigra needs a filename
-    f = tempfile.NamedTemporaryFile(prefix=prefix,suffix='.h5')
-    name = f.name
-    f.close()
-    vigra.impex.writeHDF5(data, name, pathInFile)
+    name = tempfile.mkdtemp()
+    with h5py.File(name, 'w') as f:
+        f.create_dataset(pathInFile, data=data)
     return name   
         
 

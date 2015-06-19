@@ -243,10 +243,8 @@ class ProjectManager(object):
             raise ProjectManager.SaveError( str(err) )
         finally:
             # save current time
-            try:
+            if "time" in self.currentProjectFile:
                 del self.currentProjectFile["time"]
-            except:
-                pass
             self.currentProjectFile.create_dataset("time", data = time.ctime())
             # Flush any changes we made to disk, but don't close the file.
             self.currentProjectFile.flush()
@@ -287,10 +285,8 @@ class ProjectManager(object):
                 raise ProjectManager.SaveError(str(err))
             finally:
                 # save current time
-                try:
+                if "time" in snapshotFile:
                     del snapshotFile["time"]
-                except:
-                    pass
                 snapshotFile.create_dataset("time", data = time.ctime())
 
                 # Flush any changes we made to disk, but don't close the file.

@@ -923,7 +923,7 @@ class DatasetInfoEditorWidget(QDialog):
                    info.axistags.index('c') >= len(info.axistags) or \
                    info.axistags['c'].description != newChannelDescription:
                     if info.axistags is None:
-                        info.axistags = op.Image.meta.axistags
+                        info.axistags = op.Image.meta.original_axistags
                     if info.axistags.index('c') < len(info.axistags):
                         info.axistags['c'].description = newChannelDescription
                     op.Dataset.setValue( info )
