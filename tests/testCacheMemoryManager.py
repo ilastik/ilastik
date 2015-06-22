@@ -36,8 +36,13 @@ from lazyflow.operators.cacheMemoryManager\
     import default_refresh_interval
 from lazyflow.operators.opCache import Cache
 from lazyflow.operators.opArrayCache import OpArrayCache
+from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
+
 from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 
+import logging
+logger = logging.getLogger("tests.testCacheMemoryManager")
+mgrLogger = logging.getLogger("lazyflow.operators.cacheMemoryManager")
 
 class NonRegisteredCache(object):
     def __init__(self, name):
@@ -114,7 +119,7 @@ class TestCacheMemoryManager(unittest.TestCase):
 
     def testCacheHandling(self):
         n, k = 10, 5
-        vol = np.random.randint(255, size=(n,)*5).astype(np.uint8)
+        vol = np.zeros((n,)*5, dtype=np.uint8)
         vol = vigra.taggedView(vol, axistags='txyzc')
 
         g = Graph()
@@ -148,3 +153,58 @@ class TestCacheMemoryManager(unittest.TestCase):
         cache.Output[...].wait()
         c = pipe.accessCount
         assert c > b, "did not clean up"
+
+    def testBlockedCacheHandling(self):
+        n, k = 10, 5
+        vol = np.zeros((n,)*5, dtype=np.uint8)
+        vol = vigra.taggedView(vol, axistags='txyzc')
+
+        g = Graph()
+        pipe = OpArrayPiperWithAccessCount(graph=g)
+        cache = OpBlockedArrayCache(graph=g)
+
+        mgr = CacheMemoryManager()
+
+        # restrict memory to 1 Byte
+        # note that 0 has a special meaning
+        lazyflow.AVAILABLE_RAM_MB = 0.000001
+
+        # set to frequent cleanup
+        mgr.setRefreshInterval(.01)
+        mgr.enable()
+
+        cache.outerBlockShape.setValue((k,)*5)
+        cache.Input.connect(pipe.Output)
+        pipe.Input.setValue(vol)
+
+        a = pipe.accessCount
+        cache.Output[...].wait()
+        b = pipe.accessCount
+        assert b > a, "did not cache"
+
+        # let the manager clean up
+        mgr.enable()
+        time.sleep(.5)
+        gc.collect()
+
+        cache.Output[...].wait()
+        c = pipe.accessCount
+        assert c > b, "did not clean up"
+
+
+if __name__ == "__main__":
+    # Set up logging for debug
+    logHandler = logging.StreamHandler( sys.stdout )
+    logger.addHandler( logHandler )
+    mgrLogger.addHandler( logHandler )
+
+    logger.setLevel( logging.DEBUG )
+    mgrLogger.setLevel( logging.DEBUG )
+
+    # Run nose
+    import sys
+    import nose
+    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+    ret = nose.run(defaultTest=__file__)
+    if not ret: sys.exit(1)
