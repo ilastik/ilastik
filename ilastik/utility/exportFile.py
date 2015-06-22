@@ -5,18 +5,39 @@ from vigra import AxisTags
 from lazyflow.utility import OrderedSignal
 from sys import stdout
 from zipfile import ZipFile
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class Default(object):
+    DivisionNames = {"names": ("timestep", "lineage_id", "parent_oid", "track_id", "child1_oid", "child_track1_id",
+                               "child2_oid", "child_track2_id")}
+    ManualDivMap = [1, 0, 1, 1, 1, 1, 1, 1]
+    KnimeId = {"names": ("object_id",)}
+    IlastikId = {"names": ("timestep", "labelimage_oid")}
+    Lineage = {"names": ("lineage_id",)}
+    LabelRoiPath = "/images/{}/labeling"
+    RawRoiPath = "/images/{}/raw"
+    RawPath = "/images/raw"
+    TrackColumnName = "track_id{}"
+    TimeColumnName = "timestep"
 
 
 def flatten_tracking_table(table, extra_table, obj_counts, max_tracks, t_range):
-    array = np.zeros(sum(obj_counts), ",".join(["i"] * max_tracks))
-    array.dtype.names = ["track%i" % i for i in xrange(1, max_tracks + 1)]
+    #array = np.zeros(sum(obj_counts), ",".join(["i"] * max_tracks))
+    #array.dtype.names = ["track%i" % i for i in xrange(1, max_tracks + 1)]
+    array = np.zeros(sum(obj_counts), [(Default.TrackColumnName.format(i), "i") for i in xrange(1, max_tracks + 1)])
     row = 0
     for i, count in enumerate(obj_counts):
         for o in xrange(1, count + 1):
             track = []
             if t_range[0] <= i <= t_range[1]:
                 if o in table[i]:
-                    track.append(table[i][o])
+                    if hasattr(table[i][o], "__iter__"):
+                        track.extend(table[i][o])
+                    else:
+                        track.append(table[i][o])
                     if i in extra_table and o in extra_table[i]:
                         track.extend(extra_table[i][o])
                 track = list(set(track))
@@ -50,8 +71,8 @@ def flatten_ilastik_feature_table(table, selection, signal):
     for cat_name, category in computed_feature[0].iteritems():
         for feat_name, feat_array in category.iteritems():
             if cat_name == "Default features" or \
-                                    feat_name not in feature_names and \
-                                    feat_name in selection:
+                    feat_name not in feature_names and \
+                    feat_name in selection:
                 feature_names.append(feat_name)
                 feature_cats.append(cat_name)
                 feature_channels.append((feat_array.shape[1]))
@@ -104,6 +125,7 @@ def objects_per_frame(labeling_image):
 
     for t in xrange(frames):
         yield data[t].max()
+        #yield len(np.unique(data[t]))
 
 
 def division_flatten_dict(divisions, dict_):
@@ -161,7 +183,7 @@ def create_slicing(axistags, dimensions, margin, feature_table):
         yields also the actual object id
     """
     assert margin >= 0, "Margin muss be greater than or equal to 0"
-    time = feature_table["timestep"].astype(np.int32)
+    time = feature_table[Default.TimeColumnName].astype(np.int32)
     minx = feature_table["Coord<Minimum>_0"].astype(np.int32)
     maxx = feature_table["Coord<Maximum>_0"].astype(np.int32)
     miny = feature_table["Coord<Minimum>_1"].astype(np.int32)
@@ -203,17 +225,6 @@ class Mode(object):
     IlastikFeatureTable = 2
     List = 3
     NumpyStructArray = 4
-
-
-class Default(object):
-    DivisionNames = {"names": ("timestep", "lineage_id", "parent_oid", "track_id", "child1_oid", "child_track1_id",
-                               "child2_oid", "child_track2_id")}
-    KnimeId = {"names": ("object_id",)}
-    IlastikId = {"names": ("timestep", "labelimage_oid")}
-    Lineage = {"names": ("lineage_id",)}
-    LabelRoiPath = "/images/{}/labeling"
-    RawRoiPath = "/images/{}/raw"
-    RawPath = "/images/raw"
 
 
 class ExportFile(object):
@@ -361,7 +372,7 @@ class ExportFile(object):
                     for file_name in file_names:
                         zip_file.write(file_name)
         self.ExportProgress(100)
-        print "exported %i tables" % count
+        logger.info("exported %i tables" % count)
 
     def _add_columns(self, table_name, columns):
         if table_name in self.table_dict.iterkeys():
@@ -412,7 +423,7 @@ class ProgressPrinter(object):
             self.__call__(p)
         if p == 100 and not self.first:
             self.first = True
-            print
+            stdout.write("\n")
 
 
 if __name__ == "__main__":

@@ -263,12 +263,22 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         return self.topLevelOperatorView.RawImage.meta.shape
 
     def get_feature_names(self):
+        params = self.topLevelOperatorView.Parameters
+        if params.value["withDivisions"] if params.ready() else False:
+            return self.topLevelOperatorView.ComputedFeatureNamesWithDivFeatures([]).wait()
         return self.topLevelOperatorView.ComputedFeatureNames([]).wait()
 
     def get_color(self, pos5d):
         slicing = tuple(slice(i, i+1) for i in pos5d)
         color = self.mainOperator.CachedOutput(slicing).wait()
         return color.flat[0]
+
+    @property
+    def gui_applet(self):
+        return self.applet
+
+    def get_export_dialog_title(self):
+        return "Export Tracking Information"
 
     def handleEditorRightClick(self, position5d, win_coord):
         debug = ilastik_config.getboolean("ilastik", "debug")

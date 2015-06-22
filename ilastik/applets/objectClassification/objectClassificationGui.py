@@ -28,7 +28,6 @@ from ilastik.utility.exportingOperator import ExportingGui
 from ilastik.widgets.featureTableWidget import FeatureEntry
 from ilastik.widgets.featureDlg import FeatureDlg
 from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog
-from ilastik.applets.objectExtraction.opObjectExtraction import OpRegionFeatures3d
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 from ilastik.applets.objectClassification.opObjectClassification import OpObjectClassification
 
@@ -882,7 +881,14 @@ class ObjectClassificationGui(LabelingGui, ExportingGui):
         """
         return self.op.ComputedFeatureNames([]).wait()
 
+    @property
+    def gui_applet(self):
+        return self.applet
 
+    def get_export_dialog_title(self):
+    	return "Export Object Information"
+    	
+        
 class BadObjectsDialog(QMessageBox):
     def __init__(self, warning, parent):
         super(BadObjectsDialog, self).__init__(QMessageBox.Warning,
@@ -909,4 +915,3 @@ class BadObjectsDialog(QMessageBox):
                 parts.append(encode_from_qstring(s))
         msg = "\n".join(parts)
         logger.warn(msg)
-        

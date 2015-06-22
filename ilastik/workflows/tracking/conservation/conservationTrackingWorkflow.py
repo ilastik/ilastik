@@ -67,6 +67,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         opTracking = self.trackingApplet.topLevelOperator
 
         self.dataExportApplet = TrackingBaseDataExportApplet(self, "Tracking Result Export")
+        self.dataExportApplet.set_exporting_operator(opTracking)
         
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.SelectionNames.setValue( ['Tracking Result', 'Merger Result', 'Object Identities'] )
@@ -176,7 +177,9 @@ class ConservationTrackingWorkflowBase( Workflow ):
         opTracking.RawImage.connect( op5Raw.Output )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
         opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeaturesVigra )
+        opTracking.ObjectFeaturesWithDivFeatures.connect( opObjExtraction.RegionFeaturesAll)
         opTracking.ComputedFeatureNames.connect( opObjExtraction.ComputedFeatureNamesVigra )
+        opTracking.ComputedFeatureNamesWithDivFeatures.connect( opObjExtraction.ComputedFeatureNamesAll )
         opTracking.DivisionProbabilities.connect( opDivDetection.Probabilities )
         opTracking.DetectionProbabilities.connect( opCellClassification.Probabilities )
         opTracking.NumLabels.connect( opCellClassification.NumLabels )
