@@ -464,6 +464,12 @@ class OpSingleChannelSelector(Operator):
         self.Output.meta.assignFrom(self.Input.meta)
         self.Output.meta.shape = outshape
 
+        ideal = self.Output.meta.ideal_blockshape
+        if ideal is not None and len(ideal) == len(inshape):
+            ideal = numpy.asarray(ideal, dtype=numpy.int)
+            ideal[channelAxis] = 1
+            self.Output.meta.ideal_blockshape = tuple(ideal)
+
         # Output can't be accessed unless the input has enough channels
         # We can't assert here because it's okay to configure this slot incorrectly as long as it is never accessed.
         # Because the order of callbacks isn't well defined, people may not disconnect this operator from its 
