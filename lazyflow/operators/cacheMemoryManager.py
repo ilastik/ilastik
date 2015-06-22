@@ -187,11 +187,11 @@ class CacheMemoryManager(threading.Thread):
         self._caches.add(cache)
         if isinstance(cache, ObservableCache):
             self._observable_caches.add(cache)
-        if (isinstance(cache, ManagedCache) and
-                not isinstance(cache, ManagedBlockedCache)):
-            self._managed_caches.add(cache)
+
         if isinstance(cache, ManagedBlockedCache):
             self._managed_blocked_caches.add(cache)
+        elif isinstance(cache, ManagedCache):
+            self._managed_caches.add(cache)
 
     def run(self):
         """
