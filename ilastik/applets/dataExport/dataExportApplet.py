@@ -86,7 +86,8 @@ class DataExportApplet( Applet ):
 
         return arg_parser
 
-    def parse_known_cmdline_args(self, cmdline_args, parsed_args=None):
+    @classmethod
+    def parse_known_cmdline_args(cls, cmdline_args, parsed_args=None):
         """
         Helper function for headless workflows.
         Parses commandline args that can be used to configure the ``DataExportApplet`` top-level operator 
@@ -98,7 +99,7 @@ class DataExportApplet( Applet ):
         """
         unused_args = []
         if parsed_args is None:
-            arg_parser = self.make_cmdline_parser()
+            arg_parser = cls.make_cmdline_parser()
             parsed_args, unused_args = arg_parser.parse_known_args(cmdline_args)
 
         # Replace '~' with home dir

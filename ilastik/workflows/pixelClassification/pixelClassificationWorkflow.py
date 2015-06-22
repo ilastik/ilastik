@@ -35,7 +35,6 @@ from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
 
-from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelectionNoCache
 from ilastik.applets.pixelClassification.opPixelClassification import OpPredictionPipelineNoCache
 
 from lazyflow.roi import TinyVector, fullSlicing
@@ -61,13 +60,13 @@ class PixelClassificationWorkflow(Workflow):
     def imageNameListSlot(self):
         return self.dataSelectionApplet.topLevelOperator.ImageName
 
-    def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, appendBatchOperators=True, *args, **kwargs):
+    def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, appendBatchOperators=True, supports_anisotropic_data=False, *args, **kwargs):
         # Create a graph to be shared by all operators
         graph = Graph()
         super( PixelClassificationWorkflow, self ).__init__( shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs )
         self._applets = []
         self._workflow_cmdline_args = workflow_cmdline_args
-
+        self.supports_anisotropic_data = supports_anisotropic_data
         # Parse workflow-specific command-line args
         parser = argparse.ArgumentParser()
         parser.add_argument('--filter', help="pixel feature filter implementation.", choices=['Original', 'Refactored', 'Interpolated'], default='Original')
@@ -99,20 +98,16 @@ class PixelClassificationWorkflow(Workflow):
 
         # Applets for training (interactive) workflow 
         self.projectMetadataApplet = ProjectMetadataApplet()
-        self.dataSelectionApplet = DataSelectionApplet( self,
-                                                        "Input Data",
-                                                        "Input Data",
-                                                        supportIlastik05Import=True,
-                                                        batchDataGui=False,
-                                                        instructionText=data_instructions )
+        
+        self.dataSelectionApplet = self.createDataSelectionApplet()
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         
         # see role constants, above
         opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Prediction Mask'] )
 
-        self.featureSelectionApplet = FeatureSelectionApplet(self, "Feature Selection", "FeatureSelections", self.filter_implementation)
+        self.featureSelectionApplet = self.createFeatureSelectionApplet()
 
-        self.pcApplet = PixelClassificationApplet( self, "PixelClassification" )
+        self.pcApplet = self.createPixelClassificationApplet()
         opClassify = self.pcApplet.topLevelOperator
 
         self.dataExportApplet = PixelClassificationDataExportApplet(self, "Prediction Export")
@@ -136,7 +131,13 @@ class PixelClassificationWorkflow(Workflow):
         self.batchResultsApplet = None
         if appendBatchOperators:
             # Create applets for batch workflow
-            self.batchInputApplet = DataSelectionApplet(self, "Batch Prediction Input Selections", "Batch Inputs", supportIlastik05Import=False, batchDataGui=True)
+            self.batchInputApplet = DataSelectionApplet(self, 
+                                                        "Batch Prediction Input Selections", 
+                                                        "Batch Inputs", 
+                                                        supportIlastik05Import=False, 
+                                                        batchDataGui=True, 
+                                                        show_axis_details=self.supports_anisotropic_data )
+
             self.batchResultsApplet = PixelClassificationDataExportApplet(self, "Batch Prediction Output Locations", isBatch=True)
     
             # Expose in shell        
@@ -153,6 +154,33 @@ class PixelClassificationWorkflow(Workflow):
     
         if unused_args:
             logger.warn("Unused command-line args: {}".format( unused_args ))
+
+    def createDataSelectionApplet(self):
+        data_instructions = "Select your input data using the 'Raw Data' tab shown on the right"
+        return DataSelectionApplet( self,
+                                    "Input Data",
+                                    "Input Data",
+                                    supportIlastik05Import=True,
+                                    batchDataGui=False,
+                                    instructionText=data_instructions,
+                                    show_axis_details=self.supports_anisotropic_data )
+
+
+    def createFeatureSelectionApplet(self):
+        """
+        Can be overridden by subclasses, if they want to return their own type of FeatureSelectionApplet.
+        NOTE: The applet returned here must have the same interface as the regular FeatureSelectionApplet.
+              (If it looks like a duck...)
+        """
+        return FeatureSelectionApplet(self, "Feature Selection", "FeatureSelections", self.filter_implementation)
+
+    def createPixelClassificationApplet(self):
+        """
+        Can be overridden by subclasses, if they want to return their own type of PixelClassificationApplet.
+        NOTE: The applet returned here must have the same interface as the regular PixelClassificationApplet.
+              (If it looks like a duck...)
+        """
+        return PixelClassificationApplet( self, "PixelClassification" )
 
     def connectLane(self, laneIndex):
         # Get a handle to each operator
@@ -214,7 +242,8 @@ class PixelClassificationWorkflow(Workflow):
         opBatchResults.ConstraintDataset.connect( opSelectFirstRole.Output )
         
         ## Create additional batch workflow operators
-        opBatchFeatures = OperatorWrapper( OpFeatureSelectionNoCache, operator_kwargs={'filter_implementation': self.filter_implementation}, parent=self, promotedSlotNames=['InputImage'] )
+        feature_operator_class = self.featureSelectionApplet.singleLaneOperatorClass
+        opBatchFeatures = OperatorWrapper( feature_operator_class, operator_kwargs={'filter_implementation': self.filter_implementation}, parent=self, promotedSlotNames=['InputImage'] )
         opBatchPredictionPipeline = OperatorWrapper( OpPredictionPipelineNoCache, parent=self )
         
         ## Connect Operators ##

@@ -29,7 +29,7 @@ from functools import partial
 import numpy
 from PyQt4 import uic
 from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QIcon, QColor, QShortcut, QKeySequence, QApplication
+from PyQt4.QtGui import QIcon, QColor, QApplication, QMessageBox
 
 # HCI
 from volumina.api import LazyflowSinkSource, ColortableLayer
@@ -84,7 +84,7 @@ class LabelingGui(LayerViewerGui):
         return self._minLabelNumber
     @minLabelNumber.setter
     def minLabelNumber(self, n):
-        self._minLabelNumer = n
+        self._minLabelNumber = n
         while self._labelControlUi.labelListModel.rowCount() < n:
             self._addNewLabel()
     @property
@@ -196,6 +196,25 @@ class LabelingGui(LayerViewerGui):
         _labelControlUi.labelListModel=model
         _labelControlUi.labelListModel.rowsRemoved.connect(self._onLabelRemoved)
         _labelControlUi.labelListModel.elementSelected.connect(self._onLabelSelected)
+
+        def handleLabelMergeRequested(from_row, from_name, into_row, into_name):
+            from_label = from_row+1
+            into_label = into_row+1
+            selection = QMessageBox.warning(self, "Merge labels?",
+                          "All '{}' brush strokes will be converted to '{}'.  Are you sure?"
+                          .format(from_name, into_name),
+                          QMessageBox.Ok | QMessageBox.Cancel)
+            if selection != QMessageBox.Ok:
+                return
+
+            # This only works if the top-level operator has a 'mergeLabels' function.
+            self.topLevelOperatorView.mergeLabels( from_label, into_label )
+
+            names = list(self._labelingSlots.labelNames.value)
+            names.pop(from_label-1)
+            self._labelingSlots.labelNames.setValue( names )
+
+        _labelControlUi.labelListView.mergeRequested.connect( handleLabelMergeRequested )
 
         # Connect Applet GUI to our event handlers
         if hasattr(_labelControlUi, "AddLabelButton"):

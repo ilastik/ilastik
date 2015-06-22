@@ -57,6 +57,12 @@ except ImportError as e:
     if ilastik.config.cfg.getboolean('ilastik', 'debug'):
         logger.warn( "Failed to import nanshe workflow. Check dependencies: " + str(e) )
 
+try:
+    import iiboostPixelClassification
+except ImportError as e:
+    logger.warn( "Failed to import the IIBoost Synapse detection workflow.  Check IIBoost dependency." )
+
+
 import examples.dataConversion
 
 # Examples

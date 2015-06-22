@@ -188,17 +188,9 @@ class OpPixelClassification( Operator ):
                 
         self.InputImages.notifyInserted( handleNewInputImage )
 
-        # If any feature image changes shape, we need to verify that the number of 
-        #  channels is consistent with the currently cached classifier
+        # If any feature image changes shape, we need to verify that the 
+        #  channels are consistent with the currently cached classifier
         # Otherwise, delete the currently cached classifier.
-        # FIXME: Technically, this doesn't go far enough.
-        #        This prevents the user from trying to use an old classifier with new features, 
-        #        but only if the number of features actually changed.  If the user changes the 
-        #        features, but the total number of feature channels stays the same, this method 
-        #        does not detect the change.  The old classifier can be used without raising 
-        #        exceptions, but of course the results will be garbage.  
-        #        Perhaps we should include the feature names in the metadata, and use that as 
-        #        the basis for whether or not the classifier must be discarded.
         def handleNewFeatureImage( multislot, index, *args ):
             def handleFeatureImageReady(slot):
                 def handleFeatureMetaChanged(slot):
@@ -206,8 +198,8 @@ class OpPixelClassification( Operator ):
                          self.classifier_cache.Output.ready() and 
                          slot.meta.shape is not None ):
                         classifier = self.classifier_cache.Output.value
-                        num_channels = slot.meta.shape[-1]
-                        if classifier and classifier.feature_count != num_channels:
+                        channel_names = slot.meta.channel_names
+                        if classifier and classifier.feature_names != channel_names:
                             self.classifier_cache.resetValue()
                 slot.notifyMetaChanged(handleFeatureMetaChanged)
             multislot[index].notifyReady(handleFeatureImageReady)
@@ -344,6 +336,10 @@ class OpPixelClassification( Operator ):
             self.LabelColors.setValue( label_colors + default_colors[old_max:new_max] )
             self.PmapColors.setValue( pmap_colors + default_colors[old_max:new_max] )
 
+    def mergeLabels(self, from_label, into_label):
+        for laneIndex in range(len(self.InputImages)):
+            self.getLane( laneIndex ).opLabelPipeline.opLabelArray.mergeLabels(from_label, into_label)
+
 class OpLabelPipeline( Operator ):
     RawImage = InputSlot()
     LabelInput = InputSlot()
@@ -367,7 +363,10 @@ class OpLabelPipeline( Operator ):
     
     def setupOutputs(self):
         tagged_shape = self.RawImage.meta.getTaggedShape()
+        # labels are created for one channel (i.e. the label) and only in the
+        # current time slice, so we can set both c and t to 1
         tagged_shape['c'] = 1
+        tagged_shape['t'] = 1
         
         # Aim for blocks that are roughly 1MB
         block_shape = determineBlockShape( tagged_shape.values(), 1e6 )

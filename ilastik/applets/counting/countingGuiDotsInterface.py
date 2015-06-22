@@ -40,7 +40,7 @@ from volumina.pixelpipeline.datasources import LazyflowSource
 from volumina.api import Viewer
 from volumina.layer import ColortableLayer
 from volumina.colortables import jet
-from volumina.brushingcontroler import BrushingControler,BrushingInterpreter
+from volumina.brushingcontroller import BrushingController,BrushingInterpreter
 
 import numpy as np
 import vigra
@@ -164,21 +164,21 @@ class QDot(QtGui.QGraphicsEllipseItem):
 
 class DotInterpreter(BrushingInterpreter):
     
-    def __init__( self, navigationControler, brushingControler):
+    def __init__( self, navigationController, brushingController):
         '''
         This class inherit for the brushing interpreter because
         when putting a dot we place a graphic item on top of an actual 
         brushing label of one pixel size which is needed to create an object density
         
         
-        :param navigationControler: A standard navigation controller handling mouse move
-        :param brushingControler: A standard brushing controller to handle serialization of the brush
+        :param navigationController: A standard navigation controller handling mouse move
+        :param brushingController: A standard brushing controller to handle serialization of the brush
         :param dotsController: A dots controller to rout user produced signal to Graphics Items
         '''
         
         
-        super(DotInterpreter,self).__init__(navigationControler,brushingControler)
-        self._posModel=navigationControler._model
+        super(DotInterpreter,self).__init__(navigationController,brushingController)
+        self._posModel=navigationController._model
         self._brushingModel=self._brushingCtrl._brushingModel
         #self._dotsController=dotsController
         
@@ -416,8 +416,8 @@ if __name__=="__main__":
     logger.debug( str(mainwin.centralWidget()) )    
      
      
-    BoxContr=DotController(mainwin.editor.imageScenes[2],mainwin.editor.brushingControler)
-    BoxInt=DotInterpreter(mainwin.editor.navCtrl,mainwin.editor.brushingControler,BoxContr)
+    BoxContr=DotController(mainwin.editor.imageScenes[2],mainwin.editor.brushingController)
+    BoxInt=DotInterpreter(mainwin.editor.navCtrl,mainwin.editor.brushingController,BoxContr)
     
     
 

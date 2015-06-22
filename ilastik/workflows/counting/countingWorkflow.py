@@ -67,7 +67,7 @@ class CountingWorkflow(Workflow):
         self.countingApplet = CountingApplet(workflow=self)
         opCounting = self.countingApplet.topLevelOperator
 
-        self.dataExportApplet = CountingDataExportApplet(self, "Density Export")
+        self.dataExportApplet = CountingDataExportApplet(self, "Density Export", opCounting)
         
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.PmapColors.connect(opCounting.PmapColors)
@@ -85,14 +85,6 @@ class CountingWorkflow(Workflow):
 
 
         if appendBatchOperators:
-            # Create applets for batch workflow
-            self.batchInputApplet = DataSelectionApplet(self, "Batch Prediction Input Selections", "BatchDataSelection", supportIlastik05Import=False, batchDataGui=True)
-            self.batchResultsApplet = CountingDataExportApplet(self, "Batch Prediction Output Locations", isBatch=True)
-    
-            # Expose in shell        
-            self._applets.append(self.batchInputApplet)
-            self._applets.append(self.batchResultsApplet)
-    
             # Connect batch workflow (NOT lane-based)
             self._initBatchWorkflow()
 
@@ -135,13 +127,7 @@ class CountingWorkflow(Workflow):
         opTrainingDataSelection = self.dataSelectionApplet.topLevelOperator
         opTrainingFeatures = self.featureSelectionApplet.topLevelOperator
         opClassify = self.countingApplet.topLevelOperator
-        
-        # Access the batch operators
-        opBatchInputs = self.batchInputApplet.topLevelOperator
-        opBatchResults = self.batchResultsApplet.topLevelOperator
-        
-        opBatchInputs.DatasetRoles.connect( opTrainingDataSelection.DatasetRoles )
-        
+                
         opSelectFirstLane = OperatorWrapper( OpSelectSubslot, parent=self )
         opSelectFirstLane.Inputs.connect( opTrainingDataSelection.ImageGroup )
         opSelectFirstLane.SubslotIndex.setValue(0)
@@ -149,12 +135,25 @@ class CountingWorkflow(Workflow):
         opSelectFirstRole = OpSelectSubslot( parent=self )
         opSelectFirstRole.Inputs.connect( opSelectFirstLane.Output )
         opSelectFirstRole.SubslotIndex.setValue(0)
-        
-        opBatchResults.ConstraintDataset.connect( opSelectFirstRole.Output )
-        
+
         ## Create additional batch workflow operators
         opBatchFeatures = OperatorWrapper( OpFeatureSelection, operator_kwargs={'filter_implementation':'Original'}, parent=self, promotedSlotNames=['InputImage'] )
         opBatchPredictionPipeline = OperatorWrapper( OpPredictionPipeline, parent=self )
+        
+        # Create applets for batch workflow
+        self.batchInputApplet = DataSelectionApplet(self, "Batch Prediction Input Selections", "BatchDataSelection", supportIlastik05Import=False, batchDataGui=True)
+        self.batchResultsApplet = CountingDataExportApplet(self, "Batch Prediction Output Locations", opBatchPredictionPipeline, isBatch=True)
+
+        # Expose in shell        
+        self._applets.append(self.batchInputApplet)
+        self._applets.append(self.batchResultsApplet)
+
+        opBatchInputs = self.batchInputApplet.topLevelOperator
+        opBatchResults = self.batchResultsApplet.topLevelOperator
+        
+        opBatchInputs.DatasetRoles.connect( opTrainingDataSelection.DatasetRoles )
+        opBatchResults.ConstraintDataset.connect( opSelectFirstRole.Output )
+        
         
         ## Connect Operators ##
         opTranspose = OpTransposeSlots( parent=self )
@@ -229,7 +228,7 @@ class CountingWorkflow(Workflow):
 
         self._shell.setAppletEnabled(self.featureSelectionApplet, input_ready)
         self._shell.setAppletEnabled(self.countingApplet, features_ready)
-        self._shell.setAppletEnabled(self.dataExportApplet, predictions_ready)
+        self._shell.setAppletEnabled(self.dataExportApplet, predictions_ready and not self.dataExportApplet.busy)
         
         # Training workflow must be fully configured before batch can be used
         self._shell.setAppletEnabled(self.batchInputApplet, predictions_ready)
