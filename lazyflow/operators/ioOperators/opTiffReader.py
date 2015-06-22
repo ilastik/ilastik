@@ -105,6 +105,7 @@ class OpTiffReader(Operator):
 
         self._non_page_shape = shape[:-len(self._page_shape)]
         assert shape == self._non_page_shape + self._page_shape
+        assert self._non_page_shape or len(pages) == 1
         
         axes = axes.lower().replace('s', 'c')
         if 'i' in axes:
@@ -132,11 +133,14 @@ class OpTiffReader(Operator):
         # Read each page out individually
         page_index_roi_shape = page_index_roi[1] - page_index_roi[0]
         for roi_page_ndindex in numpy.ndindex(*page_index_roi_shape):
-            tiff_page_ndindex = roi_page_ndindex + page_index_roi[0]
-            tiff_page_list_index = numpy.ravel_multi_index(tiff_page_ndindex, self._non_page_shape)
-
-            logger.debug( "Reading page: {} = {}".format( tuple(tiff_page_ndindex), tiff_page_list_index ) )
-            page = self._tiff_file.series[0].pages[tiff_page_list_index]
+            if self._non_page_shape:
+                tiff_page_ndindex = roi_page_ndindex + page_index_roi[0]
+                tiff_page_list_index = numpy.ravel_multi_index(tiff_page_ndindex, self._non_page_shape)
+                logger.debug( "Reading page: {} = {}".format( tuple(tiff_page_ndindex), tiff_page_list_index ) )
+                page = self._tiff_file.series[0].pages[tiff_page_list_index]
+            else:
+                # Only a single page
+                page = self._tiff_file.series[0].pages[0]
 
             # Apparently tifffile can't handle multi-threaded access
             with self._tiff_file_lock:            
