@@ -1,13 +1,6 @@
 import sys
 import os
 
-# Import opengm first if possible, to make sure it is included before vigra.
-# Otherwise the import fails and we will not get access to GraphCut thresholding
-try:
-    import opengm
-except:
-    pass
-
 import ilastik.config
 from ilastik.config import cfg as ilastik_config
 
@@ -56,6 +49,11 @@ def main( parsed_args, workflow_cmdline_args=[] ):
     # Extra initialization functions.
     # Called during app startup.
     init_funcs = []
+
+    # Import opengm first if possible, to make sure it is included before vigra.
+    # Otherwise the import fails and we will not get access to GraphCut thresholding
+    init_funcs.append( _import_opengm )
+    
     lazyflow_config_fn = _prepare_lazyflow_config( parsed_args )
     if lazyflow_config_fn:
         init_funcs.append( lazyflow_config_fn )    
@@ -185,6 +183,14 @@ def _validate_arg_compatibility( parsed_args ):
          parsed_args.exit_on_success ):
         sys.stderr.write("Some of the command-line options you provided are not supported in headless mode.  Exiting.")
         sys.exit(1)
+
+def _import_opengm( parsed_args ):
+    # Import opengm first if possible, to make sure it is included before vigra.
+    # Otherwise the import fails and we will not get access to GraphCut thresholding
+    try:
+        import opengm
+    except:
+        pass
 
 def _prepare_lazyflow_config( parsed_args ):
     # Check environment variable settings.
