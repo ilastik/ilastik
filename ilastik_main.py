@@ -1,6 +1,13 @@
 import sys
 import os
 
+# Import opengm first if possible, to make sure it is included before vigra.
+# Otherwise the import fails and we will not get access to GraphCut thresholding
+try:
+    import opengm
+except:
+    pass
+
 import ilastik.config
 from ilastik.config import cfg as ilastik_config
 
