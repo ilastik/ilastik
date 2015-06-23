@@ -20,17 +20,19 @@
 ###############################################################################
 #Python
 import sys
+from functools import partial
 
 #SciPy
 import numpy
 import vigra
 
 #lazyflow
-from lazyflow.roi import roiFromShape
+from lazyflow.roi import getIntersectingBlocks, getBlockBounds, roiToSlice, roiFromShape
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpArrayCache
-
+from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.utility.timer import Timer
+
+# ilastik
 from ilastik.applets.base.applet import DatasetConstraintError
 
 #carving Cython module
@@ -67,8 +69,8 @@ class OpFilter(Operator):
         for i in range(1,4):
             assert ax[i].isSpatial()
         assert ax[4].key == "c" and sh[4] == 1
-        
-        volume5d = self.Input.value
+
+        volume5d = self.Input(*(roi.start, roi.stop)).wait()
         sigma = self.Sigma.value
         volume = volume5d[0,:,:,:,0]
         result_view = result[0,:,:,:,0]
@@ -173,7 +175,8 @@ class OpSimpleWatershed(Operator):
         self.Output.meta.dtype = numpy.uint32
 
     def execute(self, slot, subindex, roi, result):
-        assert roi.stop - roi.start == self.Output.meta.shape, "Watershed must be run on the entire volume."
+        # TODO: remove
+        #assert roi.stop - roi.start == self.Output.meta.shape, "Watershed must be run on the entire volume."
         input_image = self.Input(roi.start, roi.stop).wait()
         volume_feat = input_image[0,...,0]
         result_view = result[0,...,0]
@@ -210,40 +213,50 @@ class OpMstSegmentorProvider(Operator):
         self.MST.meta.shape = (1,)
         self.MST.meta.dtype = object
 
-    def execute(self,slot,subindex,roi,result):
+    def execute(self,slot,subindex,unused_roi,result):
         assert slot == self.MST, "Invalid output slot: {}".format(slot.name)
 
         #first thing, show the user that we are waiting for computations to finish
         self.applet.progressSignal.emit(-1)
+        self.applet.progress = 0
+        def updateProgressBar(blk, max_blk, x):
+            #send signal iff progress is significant
+            p = int(((blk * 100) + x) / (max_blk * 100))
+            if p-self.applet.progress>=1 or p==100:
+                self.applet.progressSignal.emit(p)
+                self.applet.progress = p
+
+        block_shape = (1,512,512,512,1)
+        block_starts = getIntersectingBlocks( block_shape, roiFromShape(self.Image.meta.shape) )
+
+        newMst = None
+
         try:
-            volume_feat = self.Image( *roiFromShape( self.Image.meta.shape ) ).wait()
-            labelVolume = self.LabelImage( *roiFromShape( self.LabelImage.meta.shape ) ).wait()
+            block_count = len(block_starts)
+            for b_id, block in enumerate(block_starts):
+                features_roi = getBlockBounds(self.Image.meta.shape, block_shape, block)
+                labels_roi = getBlockBounds(self.LabelImage.meta.shape, block_shape, block)
 
-            self.applet.progress = 0
-            def updateProgressBar(x):
-                #send signal iff progress is significant
-                if x-self.applet.progress>1 or x==100:
-                    self.applet.progressSignal.emit(x)
-                    self.applet.progress = x
+                featureVolume = self.Image( *features_roi ).wait()
+                labelVolume = self.LabelImage( *labels_roi ).wait()
 
-           #mst= MSTSegmentor(labelVolume[0,...,0],
-           #                  numpy.asarray(volume_feat[0,...,0], numpy.float32),
-           #                  edgeWeightFunctor = "minimum",
-           #                  progressCallback = updateProgressBar)
-           ##mst.raw is not set here in order to avoid redundant data storage
-           #mst.raw = None
+                blkMst = WatershedSegmentor(labelVolume[0,...,0],numpy.asarray(featureVolume[0,...,0], numpy.float32),
+                              edgeWeightFunctor = "minimum",progressCallback = partial(updateProgressBar, b_id, block_count))
 
-            newMst = WatershedSegmentor(labelVolume[0,...,0],numpy.asarray(volume_feat[0,...,0], numpy.float32),
-                              edgeWeightFunctor = "minimum",progressCallback = updateProgressBar)
+                updateProgressBar(b_id, block_count, 50)
 
-            #Output is of shape 1
-            #result[0] = mst
-            newMst.raw = None
+                if newMst:
+                    newMst = blkMst
+                else:
+                    newMst = blkMst
+
             result[0] = newMst
-            return result
+            return result        
 
         finally:
+            updateProgressBar(b_id, block_count, 100)
             self.applet.progressSignal.emit(100)
+
 
     def propagateDirty(self, slot, subindex, roi):
         self.MST.setDirty(slice(None))
@@ -300,12 +313,12 @@ class OpPreprocessing(Operator):
         self._opFilterNormalize = OpNormalize255( parent=self )
         self._opFilterNormalize.Input.connect( self._opFilter.Output )
         
-        self._opFilterCache = OpArrayCache( parent=self )
-        
+        self._opFilterCache = OpBlockedArrayCache( parent=self )
+
         self._opWatershed = OpSimpleWatershed( parent=self )
         
-        self._opWatershedCache = OpArrayCache( parent=self )
-        
+        self._opWatershedCache = OpBlockedArrayCache( parent=self )
+
         self._opOverlayFilter = OpFilter( parent=self )
         self._opOverlayFilter.Input.connect( self.OverlayData )
         self._opOverlayFilter.Sigma.connect( self.Sigma )
@@ -324,7 +337,7 @@ class OpPreprocessing(Operator):
         self._opMstProvider.Image.connect( self._opFilterCache.Output )
         self._opMstProvider.LabelImage.connect( self._opWatershedCache.Output )
 
-        self._opWatershedSourceCache = OpArrayCache( parent=self )
+        self._opWatershedSourceCache = OpBlockedArrayCache( parent=self )
 
         #self.PreprocessedData.connect( self._opMstProvider.MST )
         
@@ -333,7 +346,7 @@ class OpPreprocessing(Operator):
         self.WatershedImage.connect( self._opWatershedCache.Output )
         
         self.InputData.notifyReady( self._checkConstraints )
-        
+
     def _checkConstraints(self, *args):
         slot = self.InputData
         numChannels = slot.meta.getTaggedShape()['c']
@@ -364,7 +377,12 @@ class OpPreprocessing(Operator):
         self.PreprocessedData.meta.shape = (1,)
         self.PreprocessedData.meta.dtype = object
 
-        self._opFilterCache.blockShape.setValue( self.InputData.meta.shape )
+        innerCacheBlockShape = (256,256,256,256,256)
+        outerCacheBlockShape = (512,512,512,512,512)
+
+        self._opFilterCache.fixAtCurrent.setValue(False)
+        self._opFilterCache.innerBlockShape.setValue( innerCacheBlockShape )
+        self._opFilterCache.outerBlockShape.setValue( outerCacheBlockShape )
         self._opFilterCache.Input.connect( self._opFilterNormalize.Output )
 
         # If the user's boundaries are dark, then invert the special watershed sources
@@ -388,12 +406,16 @@ class OpPreprocessing(Operator):
         else:
             assert False, "Unknown Watershed source option: {}".format( ws_source )
 
-        self._opWatershedSourceCache.blockShape.setValue( self.InputData.meta.shape )
+        self._opWatershedSourceCache.fixAtCurrent.setValue(False)
+        self._opWatershedSourceCache.innerBlockShape.setValue( innerCacheBlockShape )
+        self._opWatershedSourceCache.outerBlockShape.setValue( outerCacheBlockShape )
         self._opWatershedSourceCache.Input.connect( self._opWatershed.Input )
 
         self.WatershedSourceImage.connect( self._opWatershedSourceCache.Output )
 
-        self._opWatershedCache.blockShape.setValue( self._opWatershed.Output.meta.shape )
+        self._opWatershedCache.fixAtCurrent.setValue(False)
+        self._opWatershedCache.innerBlockShape.setValue( innerCacheBlockShape )
+        self._opWatershedCache.outerBlockShape.setValue( outerCacheBlockShape )
         self._opWatershedCache.Input.connect( self._opWatershed.Output )
 
 
@@ -401,7 +423,9 @@ class OpPreprocessing(Operator):
         assert slot == self.PreprocessedData, "Invalid output slot"
         if self._prepData[0] is not None and not self._dirty:
             return self._prepData
-        
+
+        self._opMstProvider.MST.ready()
+
         mst = self._opMstProvider.MST.value
         
         #save settings for reloading them if asked by user

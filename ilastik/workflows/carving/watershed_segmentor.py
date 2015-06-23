@@ -25,6 +25,11 @@ class WatershedSegmentor(object):
             self.volumeFeat = volume_feat.squeeze()
             if self.volumeFeat.ndim == 3:
                 self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
+
+                # TODO: Remove horrible hack -- ilastiktools/carving.hxx asserts that the min node range is 1
+                # Is that required?  Fix in ilastiktools / vigra
+                self.supervoxelUint32[0][0][0] = 1
+
                 self.gridSegmentor.preprocessing(self.supervoxelUint32,self.volumeFeat)
 
             elif self.volumeFeat.ndim == 2:
