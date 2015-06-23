@@ -65,8 +65,7 @@ class OpConservationTracking(OpTrackingBase):
     def execute(self, slot, subindex, roi, result):
         parameters = self.Parameters.value
         trange = range(roi.start[0], roi.stop[0])
-        print("Execute called with block {} to {} for slot {}".format(roi.start, roi.stop, slot.name))
-
+        
         if slot is self.Output:
             original = np.zeros(result.shape)
             original = super(OpConservationTracking, self).execute(slot, subindex, roi, original).copy() # recursive call to get properly labeled image
