@@ -63,10 +63,9 @@ class OpConservationTracking(OpTrackingBase):
         self._relabeledOpCache.BlockShape.setValue( self._blockshape )
     
     def execute(self, slot, subindex, roi, result):
-        parameters = self.Parameters.value
-        trange = range(roi.start[0], roi.stop[0])
-        
         if slot is self.Output:
+            parameters = self.Parameters.value
+            trange = range(roi.start[0], roi.stop[0])
             original = np.zeros(result.shape)
             original = super(OpConservationTracking, self).execute(slot, subindex, roi, original).copy() # recursive call to get properly labeled image
             result = self.LabelImage.get(roi).wait()
@@ -81,6 +80,8 @@ class OpConservationTracking(OpTrackingBase):
             original[result != 0] = result[result != 0]
             result = original
         elif slot is self.MergerOutput:
+            parameters = self.Parameters.value
+            trange = range(roi.start[0], roi.stop[0])
             result = self.LabelImage.get(roi).wait()
             for t in trange:
                 if ('time_range' in parameters
@@ -93,6 +94,8 @@ class OpConservationTracking(OpTrackingBase):
                 else:
                     result[t-roi.start[0],...][:] = 0
         elif slot is self.RelabeledImage:
+            parameters = self.Parameters.value
+            trange = range(roi.start[0], roi.stop[0])
             result = self.LabelImage.get(roi).wait()
             for t in trange:
                 if ('time_range' in parameters
@@ -101,7 +104,7 @@ class OpConservationTracking(OpTrackingBase):
                         and 'withMergerResolution' in parameters.keys() and parameters['withMergerResolution']):
                         result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, False, True)
         else:  # default bahaviour
-            result = super(OpConservationTracking, self).execute(slot, subindex, roi, result, False, True)
+            result = super(OpConservationTracking, self).execute(slot, subindex, roi, result)
         return result
 
     def setInSlot(self, slot, subindex, roi, value):
