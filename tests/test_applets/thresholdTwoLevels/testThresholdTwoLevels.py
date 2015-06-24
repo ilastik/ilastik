@@ -23,7 +23,7 @@ import vigra
 np = numpy
 
 from lazyflow.graph import Graph
-from lazyflow.operators import OpArrayPiper,
+from lazyflow.operators import OpArrayPiper
 from ilastik.applets.thresholdTwoLevels.opThresholdTwoLevels \
     import OpThresholdTwoLevels, OpSelectLabels
 
