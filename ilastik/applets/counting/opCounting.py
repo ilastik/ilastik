@@ -33,7 +33,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpValueCache, \
                                OpArrayCache, OpMultiArraySlicer2, \
                                OpPrecomputedInput, OpPixelOperator, OpMaxChannelIndicatorOperator, \
-                               Op5ifyer
+                               OpReorderAxes
 from lazyflow.operators.opDenseLabelArray import OpDenseLabelArray
 
 from lazyflow.request import Request, RequestPool
