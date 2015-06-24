@@ -34,6 +34,7 @@ class OpTiffSequenceReader(Operator):
 
     """
     GlobString = InputSlot()
+    SequenceAxis = InputSlot(optional=True) # The axis to stack across.
     Output = OutputSlot()
 
     class WrongFileTypeError( Exception ):
@@ -81,14 +82,20 @@ class OpTiffSequenceReader(Operator):
             logger.error(str(e))
             raise OpTiffSequenceReader.FileOpenError(file_paths[0])
 
-        # Pick an axis that doesn't already exist in each tiff            
-        for new_axis in 'tzc0':
-            if new_axis not in slice_axes:
-                break
-        if new_axis == '0':
-            # All axes used already.
-            # Stack across first existing axis
-            new_axis = slice_axes[0]            
+        if self.SequenceAxis.ready():
+            new_axis = self.SequenceAxis.value
+            assert len(new_axis) == 1
+            assert new_axis in 'tzyxc'
+        else:
+            # Try to pick an axis that doesn't already exist in each tiff
+            for new_axis in 'tzc0':
+                if new_axis not in slice_axes:
+                    break
+    
+            if new_axis == '0':
+                # All axes used already.
+                # Stack across first existing axis
+                new_axis = slice_axes[0]            
 
         self._opStacker.Images.resize(0)
         self._opStacker.Images.resize(num_files)

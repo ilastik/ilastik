@@ -65,8 +65,9 @@ class OpStackLoader(Operator):
     name = "Image Stack Reader"
     category = "Input"
 
-    inputSlots = [InputSlot("globstring", stype = "string")]
-    outputSlots = [OutputSlot("stack")]
+    globstring = InputSlot()
+    SequenceAxis = InputSlot(optional=True)
+    stack = OutputSlot()
 
     class FileOpenError( Exception ):
         def __init__(self, filename):
@@ -88,19 +89,35 @@ class OpStackLoader(Operator):
             logger.error(str(e))
             raise OpStackLoader.FileOpenError(self.fileNameList[0])
 
+
         slice_shape = self.info.getShape()
         X, Y, C = slice_shape
         if self.slices_per_file == 1:
-            # If this is a stack of 2D images, we assume xy slices stacked along z
+            if self.SequenceAxis.ready():
+                sequence_axis = self.SequenceAxis.value
+                assert sequence_axis in 'tz'
+            else:
+                sequence_axis = 'z'
+            # For stacks of 2D images, we assume xy slices
             Z = num_files
             shape = (Z, Y, X, C)
-            axistags = vigra.defaultAxistags('zyxc')
+            axistags = vigra.defaultAxistags(sequence_axis + 'yxc')
         else:
-            # If it's a stack of 3D volumes, we assume xyz blocks stacked along t
+            if self.SequenceAxis.ready():
+                sequence_axis = self.SequenceAxis.value
+                assert sequence_axis in 'tz'
+            else:
+                sequence_axis = 't'
+
+            stack_order = 'tzyxc'
+            if sequence_axis == 'z':
+                stack_order = 'ztyxc'
+
+            # For stacks of 3D volumes, we assume xyz blocks stacked along sequence_axis
             T = num_files
             Z = self.slices_per_file
             shape = (T, Z, Y, X, C)
-            axistags = vigra.defaultAxistags('tzyxc')
+            axistags = vigra.defaultAxistags(stack_order)
             
         self.stack.meta.shape = shape
         self.stack.meta.axistags = axistags
@@ -121,7 +138,7 @@ class OpStackLoader(Operator):
         
     def _execute_4d(self, roi, result):
         traceLogger.debug("OpStackLoader: Execute for: " + str(roi))
-        # roi is in zyxc order.
+        # roi is in zyxc order or tyxc order, depending on SequenceAxis
         z_start, y_start, x_start, c_start = roi.start
         z_stop, y_stop, x_stop, c_stop = roi.stop
 
@@ -139,7 +156,8 @@ class OpStackLoader(Operator):
         return result
 
     def _execute_5d(self, roi, result):
-        # roi is in tzyxc order.
+        # Technically, t and z might be switched depending on SequenceAxis.
+        # Beware these variable names for t/z might be misleading.
         t_start, z_start, y_start, x_start, c_start = roi.start
         t_stop, z_stop, y_stop, x_stop, c_stop = roi.stop
 
