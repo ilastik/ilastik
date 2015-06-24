@@ -175,6 +175,7 @@ class OpTrackingBase(Operator, ExportingOperator):
         assert slot == self.InputHdf5, "Invalid slot for setInSlot(): {}".format(slot.name)
 
     def _setLabel2Color(self, successive_ids=True, export_mode=False):
+        print "============================"
         if not self.EventsVector.ready() or not self.Parameters.ready() \
                 or not self.FilteredLabels.ready():
             return
@@ -296,6 +297,9 @@ class OpTrackingBase(Operator, ExportingOperator):
                     e_start = int(time_range[0] + e[2])
                     e_end = int(i)
                     track_id = label2color[time_range[0] + int(e[2])][int(e[0])]
+                    print "_________________"
+                    print "e_start = ", e_start
+                    print "e[0] = ", e[0]
                     double_object = multi_move[e_start][e[0]]
                     for t in xrange(e_start, e_end):
                         extra_track_ids.setdefault(t + 1, {})

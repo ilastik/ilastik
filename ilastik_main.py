@@ -234,11 +234,11 @@ def _monkey_patch_h5py(shell):
     h5py.Group.__getitem__ = new_dataset_getitem
 
     old_file_init = h5py.File.__init__
-    def new_file_init(f, name, mode=None, driver=None, libver=None, userblock_size=None, swmr=False, **kwds):
+    def new_file_init(f, name, mode=None, driver=None, libver=None, userblock_size=None, **kwds):#, swmr=False, **kwds):
         if isinstance(name, (str, buffer)) and (mode is None or mode == 'a'):
             if not os.path.exists(name):
                 mode = 'w'
-        old_file_init(f, name, mode, driver, libver, userblock_size, swmr, **kwds)
+        old_file_init(f, name, mode, driver, libver, userblock_size, **kwds)#, swmr, **kwds)
     h5py.File.__init__ = new_file_init
 
     old_attr_getitem = h5py._hl.attrs.AttributeManager.__getitem__

@@ -187,7 +187,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         sizeDependent = False
         structuredLearningTracker = pgmlink.StructuredLearningTracking(
             hypothesesGraph,
-            1,#maxObj,
+            3,#maxObj,
             sizeDependent,   # size_dependent_detection_prob
             float(median_obj_size[0]), # median_object_size
             30,#maxDist,
@@ -204,43 +204,43 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         structuredLearningTracker.addLabels(hypothesesGraph)
 
-        print "update hypothesesGraph: labels ---> adding APPEARANCE/TRANSITION/DISAPPEARANCE labels"
+        #print "update hypothesesGraph: labels ---> adding APPEARANCE/TRANSITION/DISAPPEARANCE labels"
         #detectionProbabilities = self.mainOperator.DetectionProbabilities(time_range).wait()
         for cropKey in self.mainOperator.Annotations.value.keys():
             crop = self.mainOperator.Annotations.value[cropKey]
-            print "..........................................cropKey, crop",cropKey, crop
+            #print "..........................................cropKey, crop",cropKey, crop
 
             if "labels" in crop.keys():
                 labels = crop["labels"]
                 for time in labels.keys():
-                    print "time, labels", time, labels[time]
+                    #print "time, labels", time, labels[time]
                     for label in labels[time].keys():
                         trackSet = labels[time][label]
-                        print "===================================>",len(trackSet), trackSet
+                        #print "===================================>",len(trackSet), trackSet
                         track = trackSet.pop() # This REMOVES an element of a set.
                         trackSet.add(track)
                         center = self.features[time]['Default features']['RegionCenter'][label]
                         trackCount = len(trackSet)
 
-                        print time, label, track, center
+                        #print time, label, track, center
 
                         # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
                         type = self._type(cropKey, time, track) # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
 
-                        print type, label
+                        #print type, label
                         if type[0] == "FIRST":
-                            print "structuredLearningTracker.addFirstLabelS (time, label, trackCount)=", time, label, trackCount
+                            #print "structuredLearningTracker.addFirstLabelS (time, label, trackCount)=", time, label, trackCount
                             structuredLearningTracker.addFirstLabels(hypothesesGraph, time, int(label), float(trackCount))
                         elif type[0] == "LAST":
-                            print "structuredLearningTracker.addLastLabelS (time, label, trackCount)=", time, label, trackCount
+                            #print "structuredLearningTracker.addLastLabelS (time, label, trackCount)=", time, label, trackCount
                             structuredLearningTracker.addLastLabels(hypothesesGraph, time, int(label), float(trackCount))
                             structuredLearningTracker.addArcLabel(hypothesesGraph, time-1, int(type[1]), int(label), 1.0)
-                        elif type[0] == "SINGLETON":
-                            print "structuredLearningTracker.addSingletonLabelS <--- NOTHING TO DO"
+                        #elif type[0] == "SINGLETON":
+                            #print "structuredLearningTracker.addSingletonLabelS <--- NOTHING TO DO"
                             # print "structuredLearningTracker.addSingletonLabelS (time, label, trackCount)=", time, label
                             # structuredLearningTracker.addSingletonLabels(hypothesesGraph, time, label, float(trackCount))
                         elif type[0] == "INTERMEDIATE":
-                            print "structuredLearningTracker.addIntermediateLabelS (time, label, trackCount)=", time, label, trackCount
+                            #print "structuredLearningTracker.addIntermediateLabelS (time, label, trackCount)=", time, label, trackCount
                             structuredLearningTracker.addIntermediateLabels(hypothesesGraph, time, int(label), float(trackCount))
                             structuredLearningTracker.addArcLabel(hypothesesGraph, time-1, int(type[1]), int(label), 1.0)
 
@@ -253,18 +253,18 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                     time = int(division[1])
 
                     parent = self.getLabel(cropKey, time, track)
-                    print "track, division:", track, division
+                    #print "track, division:", track, division
                     structuredLearningTracker.addDivisionLabel(hypothesesGraph, time, parent, 1.0)
                     structuredLearningTracker.addAppearanceLabel(hypothesesGraph, time, parent, 1.0)
 
                     child0 = self.getLabel(cropKey, time+1, division[0][0])
-                    print division[1],"      : ", track, self.getLabel(cropKey, time, track), "--->", division[0][0], self.getLabel(cropKey, time+1, division[0][0])
+                    #print division[1],"      : ", track, self.getLabel(cropKey, time, track), "--->", division[0][0], self.getLabel(cropKey, time+1, division[0][0])
                     structuredLearningTracker.addDisappearanceLabel(hypothesesGraph, time+1, child0, 1.0)
                     structuredLearningTracker.addAppearanceLabel(hypothesesGraph, time+1, child0, 1.0)
                     structuredLearningTracker.addArcLabel(hypothesesGraph, time, parent, child0, 1.0)
 
                     child1 = self.getLabel(cropKey, time+1, division[0][1])
-                    print division[1],"      : ", track, self.getLabel(cropKey, time, track), "--->", division[0][1], self.getLabel(cropKey, time+1, division[0][1])
+                    #print division[1],"      : ", track, self.getLabel(cropKey, time, track), "--->", division[0][1], self.getLabel(cropKey, time+1, division[0][1])
                     structuredLearningTracker.addDisappearanceLabel(hypothesesGraph, time+1, child1, 1.0)
                     structuredLearningTracker.addAppearanceLabel(hypothesesGraph, time+1, child1, 1.0)
                     structuredLearningTracker.addArcLabel(hypothesesGraph, time, parent, child1, 1.0)
@@ -272,13 +272,13 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         forbidden_cost = 0.0
         ep_gap = 0.05
         withTracklets=False
-        detectionWeight=10.0
-        divWeight=10.0
-        transWeight=10.0
-        disappearance_cost = 500.0
-        appearance_cost = 500.0
+        detectionWeight=11.0
+        divWeight=12.0
+        transWeight=13.0
+        disappearance_cost = 555.0
+        appearance_cost = 333.0
         withMergerResolution=True
-        ndim=3
+        ndim=2
         transition_parameter = 5.0
         borderAwareWidth = 0.0
 
@@ -286,8 +286,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         for i in range(5):
             sigmas.append(0.0)
         uncertaintyParams = pgmlink.UncertaintyParameter(1, pgmlink.DistrId.PerturbAndMAP, sigmas)
-        print ".............................>", pgmlink.UncertaintyParameter()
-        #uncertaintyParams = float(pgmlink.UncertaintyParameter())
 
         cplex_timeout=float(1e75)
         transitionClassifier = None
@@ -313,7 +311,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         # )
         # print "after track"
 
-        structuredLearningTracker.initializeOpenGM(
+        events = structuredLearningTracker.initializeOpenGM(
             hypothesesGraph,
             float(forbidden_cost),#0,       # forbidden_cost
             float(ep_gap), # ep_gap
@@ -339,8 +337,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
 
 
-        #print "test iterate through hypothesesGraph NODES (C++ side)"
-        #structuredLearningTracker.hypothesesGraphTest(hypothesesGraph)
+        # print "test iterate through hypothesesGraph NODES (C++ side)"
+        # structuredLearningTracker.hypothesesGraphTest(hypothesesGraph)
 
         # print "EXPORTING CROPS"
         # for key in self.mainOperator.Crops.value.keys():
