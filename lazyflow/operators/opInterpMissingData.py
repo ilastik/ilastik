@@ -26,7 +26,6 @@ import tempfile
 
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators.adaptors import Op5ifyer
 from lazyflow.stype import Opaque
 from lazyflow.rtype import SubRegion
 from lazyflow.request import Request, RequestPool

@@ -57,7 +57,6 @@ except:
     from opFilterLabels import OpFilterLabels
     from opColorizeLabels import OpColorizeLabels
     from opObjectFeatures import OpObjectFeatures
-    from adaptors import Op5ifyer
     from opCompressedCache import OpCompressedCache
     from opCompressedUserLabelArray import OpCompressedUserLabelArray
     from opLabelImage import OpLabelImage

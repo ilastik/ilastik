@@ -78,15 +78,15 @@ class OpStreamingHdf5Reader(Operator):
             assert ndims != 1, "OpStreamingHdf5Reader: Support for 1-D data not yet supported"
             assert ndims <= 5, "OpStreamingHdf5Reader: No support for data with more than 5 dimensions."
 
-            axisorders = { 2 : 'xy',
-                           3 : 'xyz',
-                           4 : 'xyzc',
-                           5 : 'txyzc' }
+            axisorders = { 2 : 'yx',
+                           3 : 'zyx',
+                           4 : 'zyxc',
+                           5 : 'tzyxc' }
     
             axisorder = axisorders[ndims]
             if ndims == 3 and dataset.shape[2] <= 4:
                 # Special case: If the 3rd dim is small, assume it's 'c', not 'z'
-                axisorder = 'xyc'
+                axisorder = 'yxc'
 
             axistags = vigra.defaultAxistags(axisorder)
 
