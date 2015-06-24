@@ -68,6 +68,8 @@ class StackFileSelectionWidget(QDialog):
         self.selectFilesRadioButton.setChecked(True)
         self._configureGui("files")
 
+        self.stackAcrossTButton.setChecked(True)
+
     def accept(self):
         self.patternEdit.removeEventFilter(self)
         super( StackFileSelectionWidget, self ).accept()
@@ -75,6 +77,12 @@ class StackFileSelectionWidget(QDialog):
     def reject(self):
         self.patternEdit.removeEventFilter(self)
         super( StackFileSelectionWidget, self ).reject()
+
+    @property
+    def sequence_axis(self):
+        if self.stackAcrossTButton.isChecked():
+            return 't'
+        return 'z'
 
     def _configureGui(self, mode):
         """

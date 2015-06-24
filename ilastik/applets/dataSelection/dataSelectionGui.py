@@ -727,6 +727,7 @@ class DataSelectionGui(QWidget):
         if stackDlg.result() != QDialog.Accepted :
             return
         files = stackDlg.selectedFiles
+        sequence_axis = stackDlg.sequence_axis
         if len(files) == 0:
             return
 
@@ -755,7 +756,7 @@ class DataSelectionGui(QWidget):
 
             # Serializer will update the operator for us, which will propagate to the GUI.
             try:
-                self.serializer.importStackAsLocalDataset( info )
+                self.serializer.importStackAsLocalDataset( info, sequence_axis )
                 try:
                     self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue(info)
                 except DatasetConstraintError as ex:
