@@ -47,21 +47,27 @@ def main( parsed_args, workflow_cmdline_args=[] ):
     _validate_arg_compatibility( parsed_args )
 
     # Extra initialization functions.
-    # Called during app startup.
-    init_funcs = []
+    # These are called during app startup, but before the shell is created.
+    preinit_funcs = []
+    preinit_funcs.append( _import_opengm ) # Must be first (or at least before vigra).
+    preinit_funcs.append( _monkey_patch_h5py )
+    
     lazyflow_config_fn = _prepare_lazyflow_config( parsed_args )
     if lazyflow_config_fn:
-        init_funcs.append( lazyflow_config_fn )    
+        preinit_funcs.append( lazyflow_config_fn )
 
-    init_funcs.append( _monkey_patch_h5py )
+    # More initialization functions.
+    # These will be called AFTER the shell is created.
+    # The shell is provided as a parameter to the function.
+    postinit_funcs = []
 
     load_fn = _prepare_auto_open_project( parsed_args )
     if load_fn:
-        init_funcs.append( load_fn )    
+        postinit_funcs.append( load_fn )
     
     create_fn = _prepare_auto_create_new_project( parsed_args )
     if create_fn:
-        init_funcs.append( create_fn )
+        postinit_funcs.append( create_fn )
 
     _enable_faulthandler()
     _init_excepthooks( parsed_args )
@@ -83,16 +89,22 @@ def main( parsed_args, workflow_cmdline_args=[] ):
         import ilastik
         dummy_module_dir = os.path.join( os.path.split(ilastik.__file__)[0], "headless_dummy_modules" )
         sys.path.insert(0, dummy_module_dir)
+
+        # Run pre-init
+        for f in preinit_funcs:
+            f()
         
         from ilastik.shell.headless.headlessShell import HeadlessShell
         shell = HeadlessShell( workflow_cmdline_args )
-        for f in init_funcs:
+
+        # Run post-init
+        for f in postinit_funcs:
             f(shell)
         return shell
     # Normal launch
     else:
         from ilastik.shell.gui.startShellGui import startShellGui
-        sys.exit(startShellGui(workflow_cmdline_args, eventcapture_mode, playback_args, *init_funcs))
+        sys.exit(startShellGui(workflow_cmdline_args, eventcapture_mode, playback_args, preinit_funcs, postinit_funcs))
 
 def _init_configfile( parsed_args ):
     # If the user provided a custom config path to use instead of the default .ilastikrc,
@@ -179,6 +191,14 @@ def _validate_arg_compatibility( parsed_args ):
         sys.stderr.write("Some of the command-line options you provided are not supported in headless mode.  Exiting.")
         sys.exit(1)
 
+def _import_opengm():
+    # Import opengm first if possible, to make sure it is included before vigra.
+    # Otherwise the import fails and we will not get access to GraphCut thresholding
+    try:
+        import opengm
+    except:
+        pass
+
 def _prepare_lazyflow_config( parsed_args ):
     # Check environment variable settings.
     n_threads = os.getenv("LAZYFLOW_THREADS", None)
@@ -198,7 +218,7 @@ def _prepare_lazyflow_config( parsed_args ):
     
     # Note that n_threads == 0 is valid and useful for debugging.
     if (n_threads is not None) or total_ram_mb:
-        def _configure_lazyflow_settings(shell):
+        def _configure_lazyflow_settings():
             import lazyflow
             import lazyflow.request
             if n_threads is not None:
@@ -214,7 +234,7 @@ def _prepare_lazyflow_config( parsed_args ):
         return _configure_lazyflow_settings
     return None
 
-def _monkey_patch_h5py(shell):
+def _monkey_patch_h5py():
     """
     This workaround avoids error messages from HDF5 when accessing non-existing
     files, datasets, and dataset attributes from non-main threads.
