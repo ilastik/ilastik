@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>1096</height>
+    <height>1147</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -607,7 +607,7 @@
      <item>
       <widget class="QCheckBox" name="mergerResolutionBox">
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If mergers are considered in the tracking (Max. Object per Merger &amp;gt; 1), this option will resolve original identities of objects after &amp;quot;demerging&amp;quot;. Note that this involves another optimization step which may take long.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If mergers are considered in the tracking (Max. Object per Merger &amp;gt; 1), this option will resolve original identities of objects after &amp;quot;demerging&amp;quot;. Note that this involves another optimization step which may take long. Assumes that the tracked objects are Gaussian-shaped.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
         <string>With Merger Resolution</string>
