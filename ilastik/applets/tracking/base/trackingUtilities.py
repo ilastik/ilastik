@@ -165,12 +165,11 @@ def write_events(events_at, directory, t, labelImage, mergers=None):
                     ds.attrs["Format"] = "descendant (current file), number of objects"
                     ds = tg.create_dataset("Mergers-Energy", data=merger[:, -1], dtype=np.double, compression=1)
                     ds.attrs["Format"] = "lower energy -> higher confidence"
-                # TODO: fix saving different lengths
-                # if len(res):
-                #     ds = tg.create_dataset("ResolvedMergers", data=res[:, :-1], dtype=np.uint32, compression=1)
-                #     ds.attrs["Format"] = "old cell label (current file), new cell labels of resolved cells (current file)"
-                #     ds = tg.create_dataset("ResolvedMergers-Energy", data=res[:, -1], dtype=np.double, compression=1)
-                #     ds.attrs["Format"] = "lower energy -> higher confidence"
+                if len(res):
+                    rg = tg.create_group("ResolvedMergers")
+                    rg.attrs["Format"] = "old cell label (current file), new cell labels of resolved cells (current file)"
+                    for k, v in res.iteritems():
+                        rg.create_dataset(k, data=v[:-1], dtype=np.uint32, compression=1)
         except IOError:                    
             raise IOError("File " + str(fn) + " exists already. Please choose a different folder or delete the file(s).")
                 

@@ -238,7 +238,7 @@ def _monkey_patch_h5py(shell):
         if isinstance(name, (str, buffer)) and (mode is None or mode == 'a'):
             if not os.path.exists(name):
                 mode = 'w'
-        old_file_init(f, name, mode, driver, libver, userblock_size, swmr, **kwds)
+        old_file_init(f, name, mode, driver, libver, userblock_size, **kwds)
     h5py.File.__init__ = new_file_init
 
     old_attr_getitem = h5py._hl.attrs.AttributeManager.__getitem__
