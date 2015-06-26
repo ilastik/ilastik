@@ -52,12 +52,14 @@ class OpConservationTracking(OpTrackingBase):
         self.RelabeledOutputHdf5.connect(self._relabeledOpCache.OutputHdf5)
         self.RelabeledCachedOutput.connect(self._relabeledOpCache.Output)
         self.tracker = None
+        self._ndim = 3
 
 
     def setupOutputs(self):
         super(OpConservationTracking, self).setupOutputs()
         self.MergerOutput.meta.assignFrom(self.LabelImage.meta)
         self.RelabeledImage.meta.assignFrom(self.LabelImage.meta)
+        self._ndim = 2 if self.LabelImage.meta.shape[3] == 1 else 3
 
         self._mergerOpCache.BlockShape.setValue( self._blockshape )
         self._relabeledOpCache.BlockShape.setValue( self._blockshape )
@@ -69,11 +71,12 @@ class OpConservationTracking(OpTrackingBase):
             original = np.zeros(result.shape)
             original = super(OpConservationTracking, self).execute(slot, subindex, roi, original).copy() # recursive call to get properly labeled image
             result = self.LabelImage.get(roi).wait()
+            pixel_offsets=roi.start[1:-1]  # offset only in pixels, not time and channel
             for t in trange:
                 if ('time_range' in parameters
                         and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]
                         and len(self.resolvedto) > t and len(self.resolvedto[t])):
-                    result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t)
+                    result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, pixel_offsets)
                 else:
                     result[t-roi.start[0],...][:] = 0
 
@@ -83,12 +86,13 @@ class OpConservationTracking(OpTrackingBase):
             parameters = self.Parameters.value
             trange = range(roi.start[0], roi.stop[0])
             result = self.LabelImage.get(roi).wait()
+            pixel_offsets=roi.start[1:-1]  # offset only in pixels, not time and channel
             for t in trange:
                 if ('time_range' in parameters
                         and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]
                         and len(self.mergers) > t and len(self.mergers[t])):
                     if 'withMergerResolution' in parameters.keys() and parameters['withMergerResolution']:
-                        result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, True)
+                        result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, pixel_offsets, True)
                     else:
                         result[t-roi.start[0],...,0] = highlightMergers(result[t-roi.start[0],...,0], self.mergers[t])
                 else:
@@ -97,12 +101,13 @@ class OpConservationTracking(OpTrackingBase):
             parameters = self.Parameters.value
             trange = range(roi.start[0], roi.stop[0])
             result = self.LabelImage.get(roi).wait()
+            pixel_offsets=roi.start[1:-1]  # offset only in pixels, not time and channel
             for t in trange:
                 if ('time_range' in parameters
                         and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]
                         and len(self.resolvedto) > t and len(self.resolvedto[t])
                         and 'withMergerResolution' in parameters.keys() and parameters['withMergerResolution']):
-                        result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, False, True)
+                        result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, pixel_offsets, False, True)
         else:  # default bahaviour
             result = super(OpConservationTracking, self).execute(slot, subindex, roi, result)
         return result
@@ -349,7 +354,7 @@ class OpConservationTracking(OpTrackingBase):
                                                          idx,
                                                          int(size[idx,0]))
 
-    def _relabelMergers(self, volume, time, onlyMergers=False, noRelabeling=False):
+    def _relabelMergers(self, volume, time, pixel_offsets=[0, 0, 0], onlyMergers=False, noRelabeling=False):
         if self.CoordinateMap.value.size() == 0:
             print("Skipping merger relabling because coordinate map is empty")
             if onlyMergers:
@@ -367,7 +372,7 @@ class OpConservationTracking(OpTrackingBase):
         for old_id, new_ids in self.resolvedto[time].iteritems():
             for new_id in new_ids:
                 # TODO Reliable distinction between 2d and 3d?
-                if volume.shape[-1] == 1:
+                if self._ndim == 2:
                     # Assume we have 2d data: bind z to zero
                     relabel_volume = volume[...,0]
                 else:
@@ -377,6 +382,7 @@ class OpConservationTracking(OpTrackingBase):
                 pgmlink.update_labelimage(
                     coordinate_map,
                     relabel_volume,
+                    np.array(pixel_offsets, dtype=np.int64),
                     int(time),
                     int(new_id))
                 valid_ids.append(new_id)
