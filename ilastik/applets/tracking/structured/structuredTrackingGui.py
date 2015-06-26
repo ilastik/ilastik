@@ -149,10 +149,10 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         fieldOfView = pgmlink.FieldOfView(float(0),float(0),float(0),float(0),float(self.topLevelOperatorView.LabelImage.meta.shape[0]),float(self.topLevelOperatorView.LabelImage.meta.shape[1]),float(self.topLevelOperatorView.LabelImage.meta.shape[2]),float(self.topLevelOperatorView.LabelImage.meta.shape[3]))
         consTracker = pgmlink.ConsTracking(
-            4,#maxObj,
+            3,#maxObj,
             True,#sizeDependent,   # size_dependent_detection_prob
             float(median_obj_size[0]), # median_object_size
-            float(30),#maxDist),
+            float(200),#maxDist),
             True,#withDivisions,
             float(0.5),#divThreshold),
             "none",  # detection_rf_filename
@@ -175,13 +175,13 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             median_object_size=median_obj_size,
             with_div=True,#withDivisions,
             with_opt_correction=False,#withOpticalCorrection,
-            with_classifier_prior=False)#withClassifierPrior)
+            with_classifier_prior=True)#withClassifierPrior)
 
         if empty_frame:
             raise Exception, 'cannot track frames with 0 objects, abort.'
 
         print "building Hypotheses Graph"
-        hypothesesGraph = consTracker.buildGraph(traxelStore)
+        hypothesesGraph = consTracker.build_hypo_graph(traxelStore)
 
         print "building structuredLearningTracker"
         sizeDependent = False
@@ -190,7 +190,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             3,#maxObj,
             sizeDependent,   # size_dependent_detection_prob
             float(median_obj_size[0]), # median_object_size
-            30,#maxDist,
+            200,#maxDist,
             True,#withDivisions,
             float(0.5),#divThreshold),
             "none",  # detection_rf_filename
@@ -202,7 +202,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         #nodeTimestepMap = pgmlink.NodeTimestepMap(hypothesesGraph)
         #nodeTraxelMap = hypothesesGraph.getNodeTraxelMap()#pgmlink.NodeTraxelMap(hypothesesGraph)
 
-        structuredLearningTracker.addLabels(hypothesesGraph)
+        structuredLearningTracker.addLabels()
 
         #print "update hypothesesGraph: labels ---> adding APPEARANCE/TRANSITION/DISAPPEARANCE labels"
         #detectionProbabilities = self.mainOperator.DetectionProbabilities(time_range).wait()
@@ -230,19 +230,19 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                         #print type, label
                         if type[0] == "FIRST":
                             #print "structuredLearningTracker.addFirstLabelS (time, label, trackCount)=", time, label, trackCount
-                            structuredLearningTracker.addFirstLabels(hypothesesGraph, time, int(label), float(trackCount))
+                            structuredLearningTracker.addFirstLabels(time, int(label), float(trackCount))
                         elif type[0] == "LAST":
                             #print "structuredLearningTracker.addLastLabelS (time, label, trackCount)=", time, label, trackCount
-                            structuredLearningTracker.addLastLabels(hypothesesGraph, time, int(label), float(trackCount))
-                            structuredLearningTracker.addArcLabel(hypothesesGraph, time-1, int(type[1]), int(label), 1.0)
+                            structuredLearningTracker.addLastLabels(time, int(label), float(trackCount))
+                            structuredLearningTracker.addArcLabel(time-1, int(type[1]), int(label), 1.0)
                         #elif type[0] == "SINGLETON":
                             #print "structuredLearningTracker.addSingletonLabelS <--- NOTHING TO DO"
                             # print "structuredLearningTracker.addSingletonLabelS (time, label, trackCount)=", time, label
                             # structuredLearningTracker.addSingletonLabels(hypothesesGraph, time, label, float(trackCount))
                         elif type[0] == "INTERMEDIATE":
                             #print "structuredLearningTracker.addIntermediateLabelS (time, label, trackCount)=", time, label, trackCount
-                            structuredLearningTracker.addIntermediateLabels(hypothesesGraph, time, int(label), float(trackCount))
-                            structuredLearningTracker.addArcLabel(hypothesesGraph, time-1, int(type[1]), int(label), 1.0)
+                            structuredLearningTracker.addIntermediateLabels(time, int(label), float(trackCount))
+                            structuredLearningTracker.addArcLabel(time-1, int(type[1]), int(label), 1.0)
 
 
 
@@ -254,20 +254,20 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
                     parent = self.getLabel(cropKey, time, track)
                     #print "track, division:", track, division
-                    structuredLearningTracker.addDivisionLabel(hypothesesGraph, time, parent, 1.0)
-                    structuredLearningTracker.addAppearanceLabel(hypothesesGraph, time, parent, 1.0)
+                    structuredLearningTracker.addDivisionLabel(time, parent, 1.0)
+                    structuredLearningTracker.addAppearanceLabel(time, parent, 1.0)
 
                     child0 = self.getLabel(cropKey, time+1, division[0][0])
                     #print division[1],"      : ", track, self.getLabel(cropKey, time, track), "--->", division[0][0], self.getLabel(cropKey, time+1, division[0][0])
-                    structuredLearningTracker.addDisappearanceLabel(hypothesesGraph, time+1, child0, 1.0)
-                    structuredLearningTracker.addAppearanceLabel(hypothesesGraph, time+1, child0, 1.0)
-                    structuredLearningTracker.addArcLabel(hypothesesGraph, time, parent, child0, 1.0)
+                    structuredLearningTracker.addDisappearanceLabel(time+1, child0, 1.0)
+                    structuredLearningTracker.addAppearanceLabel(time+1, child0, 1.0)
+                    structuredLearningTracker.addArcLabel(time, parent, child0, 1.0)
 
                     child1 = self.getLabel(cropKey, time+1, division[0][1])
                     #print division[1],"      : ", track, self.getLabel(cropKey, time, track), "--->", division[0][1], self.getLabel(cropKey, time+1, division[0][1])
-                    structuredLearningTracker.addDisappearanceLabel(hypothesesGraph, time+1, child1, 1.0)
-                    structuredLearningTracker.addAppearanceLabel(hypothesesGraph, time+1, child1, 1.0)
-                    structuredLearningTracker.addArcLabel(hypothesesGraph, time, parent, child1, 1.0)
+                    structuredLearningTracker.addDisappearanceLabel(time+1, child1, 1.0)
+                    structuredLearningTracker.addAppearanceLabel(time+1, child1, 1.0)
+                    structuredLearningTracker.addArcLabel(time, parent, child1, 1.0)
 
         forbidden_cost = 0.0
         ep_gap = 0.05
@@ -290,8 +290,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         cplex_timeout=float(1e75)
         transitionClassifier = None
 
-        # print "before track"
-        # structuredLearningTracker.track(
+        # print "before SLT track"
+        # structuredLearningTracker.track( # change to: .structuredLearning
         #     float(forbidden_cost),#0,       # forbidden_cost
         #     float(ep_gap), # ep_gap
         #     withTracklets,
@@ -309,10 +309,27 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         #     cplex_timeout,
         #     transitionClassifier
         # )
-        # print "after track"
+        # print "after SLT track"
+        #
+        # print float(forbidden_cost),float(ep_gap),withTracklets,detectionWeight,divWeight,transWeight,disappearance_cost, appearance_cost, withMergerResolution,\
+        #     ndim,transition_parameter,borderAwareWidth,True, uncertaintyParams,cplex_timeout,transitionClassifier
 
-        events = structuredLearningTracker.initializeOpenGM(
-            hypothesesGraph,
+        # consTracker = pgmlink.ConsTracking(
+        #     3,#maxObj,
+        #     sizeDependent,   # size_dependent_detection_prob
+        #     float(median_obj_size[0]), # median_object_size
+        #     200,#maxDist,
+        #     True,#withDivisions,
+        #     float(0.5),#divThreshold),
+        #     "none",  # detection_rf_filename
+        #     fieldOfView,
+        #     "none", # dump traxelstore,
+        #     pgmlink.ConsTrackingSolverType.CplexSolver)
+
+        print "building CONS Hypotheses Graph"
+        consHypothesesGraph = consTracker.build_hypo_graph(traxelStore)
+        print "before CONS track"
+        consTracker.track(
             float(forbidden_cost),#0,       # forbidden_cost
             float(ep_gap), # ep_gap
             withTracklets,
@@ -328,7 +345,26 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             True, #with_constraints
             uncertaintyParams,
             cplex_timeout,
-            transitionClassifier)
+            transitionClassifier
+        )
+        print "after CONS track"
+        # events = structuredLearningTracker.initializeOpenGM(
+        #     float(forbidden_cost),#0,       # forbidden_cost
+        #     float(ep_gap), # ep_gap
+        #     withTracklets,
+        #     detectionWeight,#10.0, # detection weight
+        #     divWeight,
+        #     transWeight,
+        #     disappearance_cost, # disappearance cost
+        #     appearance_cost, # appearance cost
+        #     withMergerResolution,
+        #     ndim,
+        #     transition_parameter,
+        #     borderAwareWidth,
+        #     True, #with_constraints
+        #     uncertaintyParams,
+        #     cplex_timeout,
+        #     transitionClassifier)
 
 
 
