@@ -5,11 +5,10 @@ from lazyflow.stype import Opaque
 import pgmlink
 from ilastik.applets.tracking.base.opTrackingBase import OpTrackingBase
 from ilastik.applets.tracking.base.trackingUtilities import relabel, highlightMergers
-from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key, OpRegionFeatures
 from ilastik.applets.tracking.base.trackingUtilities import get_events
 from lazyflow.operators.opCompressedCache import OpCompressedCache
-import volumina.colortables as colortables
-from PyQt4.QtGui import QColor
+from opRelabeledMergerFeatureExtraction import OpRelabeledMergerFeatureExtraction
 
 import logging
 logger = logging.getLogger(__name__)
@@ -413,3 +412,52 @@ class OpConservationTracking(OpTrackingBase):
             'withDivisions',
             'divThreshold']
         return any(parameters_changed[key] for key in rebuild_for_keys_changed)
+
+    def do_export(self, settings, selected_features, progress_slot):
+        """
+        Implements ExportOperator.do_export(settings, selected_features, progress_slot
+        Most likely called from ExportOperator.export_object_data
+        :param settings: the settings for the exporter, see
+        :param selected_features:
+        :param progress_slot:
+        :return:
+        """
+        with_divisions = self.Parameters.value["withDivisions"] if self.Parameters.ready() else False
+        with_merger_resolution = self.Parameters.value["withMergerResolution"] if self.Parameters.ready() else False
+
+        if with_divisions:
+            object_feature_slot = self.ObjectFeaturesWithDivFeatures
+        else:
+            object_feature_slot = self.ObjectFeatures
+
+        if with_merger_resolution:
+            label_image = self.RelabeledImage
+
+            # TODO: how do we merge the newly computed features with the previously stored ones?
+            opRelabeledRegionFeatures = self._setupRelabeledFeatureSlot(object_feature_slot)
+            object_feature_slot = opRelabeledRegionFeatures.RegionFeatures
+        else:
+            label_image = self.LabelImage
+
+        self._do_export_impl(settings, selected_features, progress_slot, object_feature_slot, label_image)
+
+        if with_merger_resolution:
+            opRelabeledRegionFeatures.cleanUp()
+
+
+    def _setupRelabeledFeatureSlot(self, original_feature_slot):
+        from ilastik.applets.trackingFeatureExtraction import config
+        # when exporting after merger resolving, the stored object features are not up to date for the relabeled objects
+        opRelabeledRegionFeatures = OpRelabeledMergerFeatureExtraction(parent=self)
+        opRelabeledRegionFeatures.RawImage.connect(self.RawImage)
+        opRelabeledRegionFeatures.LabelImage.connect(self.LabelImage)
+        opRelabeledRegionFeatures.RelabeledImage.connect(self.RelabeledImage)
+        opRelabeledRegionFeatures.OriginalRegionFeatures.connect(original_feature_slot)
+        opRelabeledRegionFeatures.ResolvedTo.setValue(self.resolvedto)
+
+        vigra_features = list((set(config.vigra_features)).union(config.selected_features_objectcount[config.features_vigra_name]))
+        feature_names_vigra = {}
+        feature_names_vigra[config.features_vigra_name] = { name: {} for name in vigra_features }
+        opRelabeledRegionFeatures.FeatureNames.setValue(feature_names_vigra)
+
+        return opRelabeledRegionFeatures

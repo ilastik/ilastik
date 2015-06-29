@@ -548,12 +548,22 @@ class OpTrackingBase(Operator, ExportingOperator):
         :param progress_slot:
         :return:
         """
+        with_divisions = self.Parameters.value["withDivisions"] if self.Parameters.ready() else False
+        if with_divisions:
+            object_feature_slot = self.ObjectFeaturesWithDivFeatures
+        else:
+            object_feature_slot = self.ObjectFeatures
+
+        self._do_export_impl(settings, selected_features, progress_slot, object_feature_slot, self.LabelImage)
+
+
+    def _do_export_impl(self, settings, selected_features, progress_slot, object_feature_slot, label_image_slot):
         from ilastik.utility.exportFile import objects_per_frame, ExportFile, ilastik_ids, Mode, Default, \
             flatten_dict, division_flatten_dict
 
         selected_features = list(selected_features)
         with_divisions = self.Parameters.value["withDivisions"] if self.Parameters.ready() else False
-        obj_count = list(objects_per_frame(self.LabelImage))
+        obj_count = list(objects_per_frame(label_image_slot))
         track_ids, extra_track_ids, divisions = self.export_track_ids()
         self._setLabel2Color()
         lineage = flatten_dict(self.label2color, obj_count)
@@ -571,10 +581,7 @@ class OpTrackingBase(Operator, ExportingOperator):
         export_file.add_columns("table", track_ids, Mode.IlastikTrackingTable,
                                 {"max": multi_move_max, "counts": obj_count, "extra ids": extra_track_ids,
                                  "range": t_range})
-        if with_divisions:
-            object_feature_slot = self.ObjectFeaturesWithDivFeatures
-        else:
-            object_feature_slot = self.ObjectFeatures
+
         export_file.add_columns("table", object_feature_slot, Mode.IlastikFeatureTable,
                                 {"selection": selected_features})
 
@@ -588,7 +595,7 @@ class OpTrackingBase(Operator, ExportingOperator):
                 logger.debug("No divisions occurred. Division Table will not be exported!")
 
         if settings["file type"] == "h5":
-            export_file.add_rois(Default.LabelRoiPath, self.LabelImage, "table", settings["margin"], "labeling")
+            export_file.add_rois(Default.LabelRoiPath, label_image_slot, "table", settings["margin"], "labeling")
             if settings["include raw"]:
                 export_file.add_image(Default.RawPath, self.RawImage)
             else:
