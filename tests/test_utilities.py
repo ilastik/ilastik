@@ -26,7 +26,7 @@ def fail_after_timeout( seconds ):
             raise TimeoutError(seconds)
 
         @functools.wraps(func)
-        def wrapper( *args, **kwargs ):
+        def fail_after_timeout_wrapper( *args, **kwargs ):
             assert threading.current_thread().name == "MainThread", \
                 "Non-Main-Thread detected: This decorator relies on the signal"\
                 " module, which may only be used from the MainThread"
@@ -45,8 +45,8 @@ def fail_after_timeout( seconds ):
                 # Restore old handler, clear alarm
                 signal.signal(signal.SIGALRM, old_handler)
                 signal.alarm(0)
-        wrapper.__wrapped__ = func # Emulate python 3 behavior of @functools.wraps
-        return wrapper
+        fail_after_timeout_wrapper.__wrapped__ = func # Emulate python 3 behavior of @functools.wraps
+        return fail_after_timeout_wrapper
     return decorator
 
 if __name__ == "__main__":

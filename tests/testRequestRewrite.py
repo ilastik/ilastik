@@ -27,6 +27,7 @@ import numpy
 import gc
 import platform
 from functools import partial
+import unittest
 import nose
 
 import psutil
@@ -50,7 +51,7 @@ TEST_WITH_SINGLE_THREADED_DEBUG_MODE = False
 if TEST_WITH_SINGLE_THREADED_DEBUG_MODE:
     Request.reset_thread_pool(0)
 
-class TestRequest(object):
+class TestRequest(unittest.TestCase):
  
     @traceLogged(traceLogger)
     def test_basic(self):
@@ -611,67 +612,32 @@ class TestRequest(object):
         with RequestLock() as lock:
             assert not lock.acquire(0)
  
-    def testMemoryLeaks(self):
+    def test_result_discarded(self):
         """
-        As requests become inaccessible, they should be freed immediately, along with any data they held.
-         
-        Note that objects within greenlet stack frames are not considered by the cyclical garbage collector,
-        so we MUST make sure that cycles between requests (e.g. parent/child and blocking/pending) 
-        are broken.  Preferably, requests should be deleted early as possible.
+        After a request is deleted, its result should be discarded.
         """
-        cur_process = psutil.Process(os.getpid())
-        def getMemoryUsage():
-            # Collect garbage first
-            gc.collect()
-            vmem = psutil.virtual_memory()
-            if 'Linux' in platform.platform():
-                return (vmem.total - vmem.available)
-            return (vmem.total - vmem.free)
- 
-        starting_usage = getMemoryUsage()
-        def getMemoryIncrease():
-            return getMemoryUsage() - starting_usage
- 
-        resultShape = (500,1000,1000)
-        resultSize = numpy.prod(resultShape)
-        def getBigArray(directExecute, recursionDepth):
-            """
-            Simulate the memory footprint of a series of computation steps.
-            """
-            logger.debug( "Usage delta before depth {}: {}".format(recursionDepth, getMemoryIncrease() ) )
- 
-            if recursionDepth == 0:
-                # A 500MB result
-                result = numpy.zeros(shape=resultShape, dtype=numpy.uint8)
-            else:
-                req = Request( partial(getBigArray, directExecute=directExecute, recursionDepth=recursionDepth-1) )
-                if not directExecute:
-                    # Force this request to be submitted to the thread pool,
-                    # not executed synchronously in this thread.
-                    req.submit()
-                result = req.wait() + 1
-             
-            # Note that we expect there to be 2X memory usage here:
-            #  1x for our result and 1x for the child, which hasn't been cleaned up yet.
-            memory_increase = getMemoryIncrease()
-            logger.debug( "Usage delta after depth {}: {}".format(recursionDepth, memory_increase ) )
-            assert memory_increase < 2.5*resultSize, "Memory from finished requests didn't get freed!"
-             
-            return result
- 
-        # Run tests via a separate function so its stack is cleaned up
-        def test_impl(directExecute):
-            rootReq = Request( partial( getBigArray, directExecute, recursionDepth=5 ) )
-            result = rootReq.wait()
-            assert (result == 5).all()
- 
-        test_impl(True)
-        test_impl(False)
- 
-        memory_increase = getMemoryIncrease()
-        logger.debug( "Finished test with memory usage delta at: {}".format( memory_increase ) )
-        assert memory_increase < resultSize, "All requests are finished an inaccessible, but not all memory was released!"
- 
+        import weakref
+        from functools import partial
+        
+        def f():
+            return numpy.zeros( (10,), dtype=numpy.uint8 ) + 1
+        
+        w = [None]
+        def onfinish(r, result):
+            w[0] = weakref.ref(result)
+            
+        req = Request(f)
+        req.notify_finished( partial(onfinish, req) )
+        
+        req.submit()
+        req.wait()
+        del req
+        
+        # The ThreadPool._Worker loop has a local reference (next_task), 
+        # so wait just a tic for the ThreadPool worker to cycle back to the top of its loop (and discard the reference) 
+        time.sleep(0.1)
+        assert w[0]() is None
+     
     def testThreadPoolReset(self):
         num_workers = Request.global_thread_pool.num_workers
         Request.reset_thread_pool(num_workers=1)
@@ -693,7 +659,7 @@ class TestRequest(object):
             # Set it back to what it was
             Request.reset_thread_pool(num_workers)
             print 'done'
- 
+
 class TestRequestExceptions(object):
     """
     Check for proper behavior when an exception is generated within a request:
@@ -799,29 +765,6 @@ class TestRequestExceptions(object):
         # Subscribing to notify_failed on a request that's already failed should call the failure handler immediately.
         req2.notify_failed( failure_handler )
         assert len(signaled_exceptions) == 3
-
-    def test_result_discarded(self):
-        """
-        After a request is deleted, its result should be discarded.
-        """
-        import weakref
-        from functools import partial
-        
-        def f():
-            return numpy.zeros( (10,), dtype=numpy.uint8 ) + 1
-        
-        w = [None]
-        def onfinish(r, result):
-            w[0] = weakref.ref(result)
-            
-        req = Request(f)
-        req.notify_finished( partial(onfinish, req) )
-        
-        req.submit()
-        req.wait()
-        del req
-        assert w[0]() is None
-    
      
 class TestRequestPool(object):
     """

@@ -21,7 +21,7 @@ class LazyflowVectorwiseClassifierFactoryABC(object):
         return obj
 
     @abc.abstractmethod
-    def create_and_train(self, X, y):
+    def create_and_train(self, X, y, feature_names=None):
         """
         Create a new classifier and train it with the feature matrix X and label vector y.
         """
@@ -33,6 +33,13 @@ class LazyflowVectorwiseClassifierFactoryABC(object):
         Return a human-readable description of this classifier.
         """
         raise NotImplementedError
+
+    def estimated_ram_usage_per_requested_predictionchannel(self):
+        """
+        Return the RAM (in bytes) needed by the classifier to run classification.
+        The amount of RAM should be relative to the number of output channels (label classes).
+        """
+        return 0
 
     @classmethod
     def __subclasshook__(cls, C):
@@ -79,6 +86,14 @@ class LazyflowVectorwiseClassifierABC(object):
     def feature_count(self):
         """
         Return the number of features used to train this classifier.
+        """
+        raise NotImplementedError
+
+    @abc.abstractproperty
+    def feature_names(self):
+        """
+        Return a list of the names of the features used to train this classifier.
+        len(self.feature_names) == self.feature_count
         """
         raise NotImplementedError
 
@@ -150,6 +165,13 @@ class LazyflowPixelwiseClassifierFactoryABC(object):
         Return a human-readable description of this classifier.
         """
         raise NotImplementedError
+
+    def estimated_ram_usage_per_requested_predictionchannel(self):
+        """
+        Return the RAM (in bytes) needed by the classifier to run classification.
+        The amount of RAM should be relative to the number of output channels (label classes).
+        """
+        return 0
 
     @classmethod
     def __subclasshook__(cls, C):

@@ -32,7 +32,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import TinyVector
 
 import logging
-logger = logging.getLogger(__file__)
+logger = logging.getLogger(__name__)
 
 def applyToElement(axistags, tagkey, tup, f):
     """

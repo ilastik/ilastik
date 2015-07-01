@@ -23,6 +23,7 @@
 #Python
 import os
 from collections import deque
+import itertools
 import math
 import traceback
 from functools import partial
@@ -266,6 +267,7 @@ class OpPixelFeaturesPresmoothed(Operator):
         featureCount = 0
         self.Features.resize( 0 )
         self.featureOutputChannels = []
+        channel_names = []
         #connect individual operators
         for i in range(dimRow):
             for j in range(dimCol):
@@ -279,6 +281,13 @@ class OpPixelFeaturesPresmoothed(Operator):
 
                     featureMeta = oparray[i][j].outputs["Output"].meta
                     featureChannels = featureMeta.shape[ featureMeta.axistags.index('c') ]
+
+                    if featureChannels == 1:
+                        channel_names.append( featureNameArray[i][j] )
+                    else:
+                        for feature_channel_index in range(featureChannels):
+                            channel_names.append( featureNameArray[i][j] + " [{}]".format(feature_channel_index) )
+                    
                     self.Features[featureCount-1].meta.assignFrom( featureMeta )
                     self.Features[featureCount-1].meta.axistags["c"].description = "" # Discard any semantics related to the input channels
                     self.featureOutputChannels.append( (channelCount, channelCount + featureChannels) )
@@ -300,6 +309,7 @@ class OpPixelFeaturesPresmoothed(Operator):
         self.Output.meta.assignFrom(self.Input.meta)
         self.Output.meta.dtype = numpy.float32
         self.Output.meta.axistags["c"].description = "" # Discard any semantics related to the input channels
+        self.Output.meta.channel_names = channel_names
         self.Output.meta.shape = self.Input.meta.shape[:-1] + (channelCount,)
         self.Output.meta.ideal_blockshape = self._get_ideal_blockshape()
         

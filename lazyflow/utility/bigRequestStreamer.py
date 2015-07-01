@@ -148,16 +148,29 @@ class BigRequestStreamer(object):
         Choose a blockshape using the slot metadata (if available) or an arbitrary guess otherwise.
         """
         input_shape = outputSlot.meta.shape
-        max_blockshape = input_shape
         ideal_blockshape = outputSlot.meta.ideal_blockshape
         ram_usage_per_requested_pixel = outputSlot.meta.ram_usage_per_requested_pixel
+
+        num_channels = 1
+        tagged_shape = outputSlot.meta.getTaggedShape()
         
+        # Generally, we don't want to split requests across channels.
+        if 'c' in tagged_shape.keys():
+            num_channels = tagged_shape['c']
+            channel_index = tagged_shape.keys().index('c')
+            input_shape = input_shape[:channel_index] + input_shape[channel_index+1:]
+            if ideal_blockshape:
+                # Never enlarge 'ideal' in the channel dimension.
+                num_channels = ideal_blockshape[channel_index]
+                ideal_blockshape = ideal_blockshape[:channel_index] + ideal_blockshape[channel_index+1:]
+
+        max_blockshape = input_shape
         num_threads = max(1, Request.global_thread_pool.num_workers)
         available_ram = Memory.getAvailableRamComputation()
         
         if ram_usage_per_requested_pixel is None:
             # Make a conservative guess: 2*(bytes for dtype) * (num channels) + (fudge factor=4)
-            ram_usage_per_requested_pixel = 2*outputSlot.meta.dtype().nbytes*outputSlot.meta.shape[-1] + 4
+            ram_usage_per_requested_pixel = 2*outputSlot.meta.dtype().nbytes*num_channels + 4
             logger.warn( "Unknown per-pixel RAM requirement.  Making a guess." )
 
         # Safety factor (fudge factor): Double the estimated RAM usage per pixel
@@ -168,24 +181,27 @@ class BigRequestStreamer(object):
         
         if ideal_blockshape is None:
             blockshape = determineBlockShape( input_shape, available_ram/(num_threads*ram_usage_per_requested_pixel) )
+            if 'c' in outputSlot.meta.getAxisKeys():
+                blockshape = blockshape[:channel_index] + (num_channels,) + blockshape[channel_index:]
             logger.warn( "Chose an arbitrary request blockshape {}".format( blockshape ) )
         else:
-            logger.info( "determining blockshape assuming available_ram is {}, split between {} threads"
-                               .format(Memory.format(available_ram), num_threads ) )
+            logger.info("determining blockshape assuming available_ram is {}"
+                        ", split between {} threads"
+                        .format(Memory.format(available_ram), num_threads))
             
             # By convention, ram_usage_per_requested_pixel refers to the ram used when requesting ALL channels of a 'pixel'
             # Therefore, we do not include the channel dimension in the blockshapes here.
-            blockshape = determine_optimal_request_blockshape( max_blockshape[:-1], 
-                                                               ideal_blockshape[:-1], 
+            blockshape = determine_optimal_request_blockshape( max_blockshape,
+                                                               ideal_blockshape,
                                                                ram_usage_per_requested_pixel, 
                                                                num_threads, 
                                                                available_ram )
-            blockshape += (outputSlot.meta.shape[-1],)
+            if 'c' in outputSlot.meta.getAxisKeys():
+                blockshape = blockshape[:channel_index] + (num_channels,) + blockshape[channel_index:]
             logger.info( "Chose blockshape: {}".format( blockshape ) )
-            fmt = Memory.format(ram_usage_per_requested_pixel * 
-                                numpy.prod( blockshape[:-1]))
-            logger.info("Estimated RAM usage per block is {}"
-                         .format(fmt))
+            fmt = Memory.format(ram_usage_per_requested_pixel *
+                                numpy.prod(blockshape[:-1]))
+            logger.info("Estimated RAM usage per block is {}".format(fmt))
 
         return blockshape
         

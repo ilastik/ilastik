@@ -29,7 +29,7 @@ import sys
 import lazyflow.graph
 
 import logging
-#logger = logging.getLogger(__file__)
+#logger = logging.getLogger(__name__)
 #logger.addHandler(logging.StreamHandler(sys.stdout))
 #logger.setLevel(logging.DEBUG)
 

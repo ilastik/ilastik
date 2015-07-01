@@ -3,24 +3,26 @@ import tempfile
 import cPickle as pickle
 
 import numpy
+import scipy.ndimage
 import vigra
 import h5py
 
 from lazyflowClassifier import LazyflowPixelwiseClassifierABC, LazyflowPixelwiseClassifierFactoryABC
+from lazyflow.utility import Timer
 
 import logging
 logger = logging.getLogger(__name__)
 
-class VigraRfPixelwiseClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
+class VigraRfAdaptiveMaskPixelwiseClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     """
-    An implementation of LazyflowPixelwiseClassifierFactoryABC using a vigra RandomForest.
+    An implementation of LazyflowPixelwiseClassifierFactoryABC using a vigra RandomForest with adaptive masking.
     This exists for testing purposes only. (it is normally better to use the vector-wise 
     classifier so lazyflow can cache the feature matrices).
     This implementation is simple and un-optimized.
     """
     VERSION = 1 # This is used to determine compatibility of pickled classifier factories.
                 # You must bump this if any instance members are added/removed/renamed.
-    
+                    
     def __init__(self, *args, **kwargs):
         self._args = args
         self._kwargs = kwargs
@@ -46,7 +48,7 @@ class VigraRfPixelwiseClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         classifier = vigra.learning.RandomForest(*self._args, **self._kwargs)
         classifier.learnRF(all_features, all_labels)
 
-        return VigraRfPixelwiseClassifier( classifier, known_labels )
+        return VigraRfAdaptiveMaskPixelwiseClassifier( classifier, known_labels )
 
     def get_halo_shape(self, data_axes):
         # No halo necessary, but since this classifier is for testing purposes, let's add one anyway.
@@ -68,26 +70,77 @@ class VigraRfPixelwiseClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-assert issubclass( VigraRfPixelwiseClassifierFactory, LazyflowPixelwiseClassifierFactoryABC )
+assert issubclass( VigraRfAdaptiveMaskPixelwiseClassifierFactory, LazyflowPixelwiseClassifierFactoryABC )
 
-class VigraRfPixelwiseClassifier(LazyflowPixelwiseClassifierABC):
+class VigraRfAdaptiveMaskPixelwiseClassifier(LazyflowPixelwiseClassifierABC):    
     """
-    Adapt the vigra RandomForest class to the interface lazyflow expects.
+    This class adapt the vigra RandomForest class to the interface expected by lazyflow, and implements pixel-wise adaptive masking for prediction. 
+    
+    TODO:
+    -Find an alternative to scipy binary dilation, since the running-time takes too long.
+    -Enable the user to set the parameters FRAME_SPAN, DILATION_RADIUS, and BACKGROUND_LABEL in the class constructor.
+    -Parallelize prediction. Right now it is single-threaded.
+    -Take into account the image borders with spatially-divided blocks. Right now masking only works with full frames.
     """
     def __init__(self, vigra_rf, known_labels):
         self._known_labels = known_labels
         self._vigra_rf = vigra_rf
     
-    def predict_probabilities_pixelwise(self, X, axistags=None):
+    def predict_probabilities_pixelwise(self, X, axistags=None): 
         logger.debug( 'predicting PIXELWISE vigra RF' )
         
-        # reshape the image into a 2D feature matrix
-        matrix_shape = (numpy.prod(X.shape[:-1]), X.shape[-1])
-        feature_matrix = numpy.reshape( X, matrix_shape )
-
-        # Run classifier
-        probabilities = self._vigra_rf.predictProbabilities( feature_matrix.view(numpy.ndarray) )
+        FRAME_SPAN = 10 # Number of frames to wait until the mask is recalculated  
+        DILATION_RADIUS = 50 # In pixels
+        BACKGROUND_LABEL = 1  
         
+        # Allocate memory for probability volume and mask    
+        prob_vol = numpy.zeros((X.shape[:-1]+(len(self._known_labels),) ), dtype=numpy.float32)           
+        mask = numpy.ones(numpy.prod(X.shape[1:-1]), dtype=numpy.bool)
+        
+        frm_cnt = 0
+          
+        for X_t in X:    
+            if frm_cnt % FRAME_SPAN == 0 :
+                mask = numpy.ones(numpy.prod(X.shape[1:-1]), dtype=numpy.bool)
+            
+            prob_mat = numpy.zeros((numpy.prod(X.shape[1:-1]),len(self._known_labels)), dtype=numpy.float32)
+                         
+            # Reshape the image into a 2D feature matrix
+            mat_shape = (numpy.prod(X_t.shape[:-1]), X_t.shape[-1])
+            feature_mat = numpy.reshape( X_t, mat_shape )     
+            
+            # Mask the feature matrix
+            feature_mat_masked = feature_mat[mask==1,:]
+
+            # Run classifier
+            prob_mat_masked = self._vigra_rf.predictProbabilities( feature_mat_masked.view(numpy.ndarray) )
+            
+            prob_mat[mask==1,:] = prob_mat_masked
+            prob_mat[mask==0,0] = 1.0 # Fill background
+            
+            prob_img = prob_mat.reshape((1,) + X_t.shape[:-1] + (prob_mat.shape[-1],) )   
+            
+            # Recalculate the mask every 20 frames
+            if frm_cnt % FRAME_SPAN == 0 :
+                predicted_labels = numpy.argmax(prob_img[0], axis=-1) + 1
+                prob_slice = (predicted_labels != BACKGROUND_LABEL).astype(numpy.bool)
+                
+                kernel = numpy.ones((DILATION_RADIUS*2+1), dtype=bool)
+                
+                with Timer() as morpho_timer:
+                    prob_slice_dilated = scipy.ndimage.morphology.binary_dilation(prob_slice, kernel[None, :])
+                    prob_slice_dilated = scipy.ndimage.morphology.binary_dilation(prob_slice_dilated, kernel[:, None])
+                
+                logger.debug( "[PROF] Morphology took {} ".format( morpho_timer.seconds()) )       
+                
+                mask = prob_slice_dilated.reshape(numpy.prod(prob_slice_dilated.shape))
+                
+                #vigra.impex.writeHDF5(prob_slice_dilated, 'mask.h5', 'data')  
+            
+            prob_vol[frm_cnt,:,:,:] = prob_img
+                                
+            frm_cnt = frm_cnt + 1          
+    
         # Reshape into an image.
         # Choose the prediction image shape carefully:
         #
@@ -95,11 +148,11 @@ class VigraRfPixelwiseClassifier(LazyflowPixelwiseClassifierABC):
         # So the number of prediction channels we got is the same as the number of known_classes
         # But if the classifier attempts to "help us out" by including channels for "missing" labels,
         #  then we want to just return the whole thing.
-        num_probability_channels = max( len(self.known_classes), probabilities.shape[-1] )
+        num_probability_channels = max( len(self.known_classes), prob_vol.shape[-1] )
 
         prediction_shape = X.shape[:-1] + (num_probability_channels,)
-        return numpy.reshape(probabilities, prediction_shape)
-    
+        return numpy.reshape(prob_vol, prediction_shape)
+
     @property
     def known_classes(self):
         return self._known_labels
@@ -146,6 +199,6 @@ class VigraRfPixelwiseClassifier(LazyflowPixelwiseClassifierABC):
         os.remove(cachePath)
         os.rmdir(tmpDir)
 
-        return VigraRfPixelwiseClassifier( forest, known_labels )
+        return VigraRfAdaptiveMaskPixelwiseClassifier( forest, known_labels )
 
-assert issubclass( VigraRfPixelwiseClassifier, LazyflowPixelwiseClassifierABC )
+assert issubclass( VigraRfAdaptiveMaskPixelwiseClassifier, LazyflowPixelwiseClassifierABC )

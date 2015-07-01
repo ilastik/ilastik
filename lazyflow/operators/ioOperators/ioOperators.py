@@ -65,8 +65,9 @@ class OpStackLoader(Operator):
     name = "Image Stack Reader"
     category = "Input"
 
-    inputSlots = [InputSlot("globstring", stype = "string")]
-    outputSlots = [OutputSlot("stack")]
+    globstring = InputSlot()
+    SequenceAxis = InputSlot(optional=True)
+    stack = OutputSlot()
 
     class FileOpenError( Exception ):
         def __init__(self, filename):
@@ -88,19 +89,35 @@ class OpStackLoader(Operator):
             logger.error(str(e))
             raise OpStackLoader.FileOpenError(self.fileNameList[0])
 
+
         slice_shape = self.info.getShape()
         X, Y, C = slice_shape
         if self.slices_per_file == 1:
-            # If this is a stack of 2D images, we assume xy slices stacked along z
+            if self.SequenceAxis.ready():
+                sequence_axis = self.SequenceAxis.value
+                assert sequence_axis in 'tz'
+            else:
+                sequence_axis = 'z'
+            # For stacks of 2D images, we assume xy slices
             Z = num_files
             shape = (Z, Y, X, C)
-            axistags = vigra.defaultAxistags('zyxc')
+            axistags = vigra.defaultAxistags(sequence_axis + 'yxc')
         else:
-            # If it's a stack of 3D volumes, we assume xyz blocks stacked along t
+            if self.SequenceAxis.ready():
+                sequence_axis = self.SequenceAxis.value
+                assert sequence_axis in 'tz'
+            else:
+                sequence_axis = 't'
+
+            stack_order = 'tzyxc'
+            if sequence_axis == 'z':
+                stack_order = 'ztyxc'
+
+            # For stacks of 3D volumes, we assume xyz blocks stacked along sequence_axis
             T = num_files
             Z = self.slices_per_file
             shape = (T, Z, Y, X, C)
-            axistags = vigra.defaultAxistags('tzyxc')
+            axistags = vigra.defaultAxistags(stack_order)
             
         self.stack.meta.shape = shape
         self.stack.meta.axistags = axistags
@@ -121,7 +138,7 @@ class OpStackLoader(Operator):
         
     def _execute_4d(self, roi, result):
         traceLogger.debug("OpStackLoader: Execute for: " + str(roi))
-        # roi is in zyxc order.
+        # roi is in zyxc order or tyxc order, depending on SequenceAxis
         z_start, y_start, x_start, c_start = roi.start
         z_stop, y_stop, x_stop, c_stop = roi.stop
 
@@ -139,7 +156,8 @@ class OpStackLoader(Operator):
         return result
 
     def _execute_5d(self, roi, result):
-        # roi is in tzyxc order.
+        # Technically, t and z might be switched depending on SequenceAxis.
+        # Beware these variable names for t/z might be misleading.
         t_start, z_start, y_start, x_start, c_start = roi.start
         t_stop, z_stop, y_stop, x_stop, c_stop = roi.stop
 
@@ -392,7 +410,8 @@ class OpH5WriterBigDataset(Operator):
     inputSlots = [InputSlot("hdf5File"), # Must be an already-open hdf5File (or group) for writing to
                   InputSlot("hdf5Path", stype = "string"),
                   InputSlot("Image"),
-                  InputSlot("CompressionEnabled", value=True)]
+                  InputSlot("CompressionEnabled", value=True),
+                  InputSlot("BatchSize", optional=True)]
 
     outputSlots = [OutputSlot("WriteImage")]
 
@@ -445,8 +464,12 @@ class OpH5WriterBigDataset(Operator):
 
         tagged_maxshape = self.Image.meta.getTaggedShape()
         if 't' in tagged_maxshape:
-            # Assume that chunks should not span multiple t-slices
+            # Assume that chunks should not span multiple t-slices,
+            #  and channels are often handled separately, too.
             tagged_maxshape['t'] = 1
+
+        if 'c' in tagged_maxshape:
+            tagged_maxshape['c'] = 1
         
         self.chunkShape = determineBlockShape( tagged_maxshape.values(), 512000.0 / dtypeBytes )
 
@@ -474,7 +497,10 @@ class OpH5WriterBigDataset(Operator):
                 self.d.write_direct(data.view(numpy.ndarray), dest_sel=slicing)
             else:
                 self.d[slicing] = data
-        requester = BigRequestStreamer( self.Image, roiFromShape( self.Image.meta.shape ) )
+        batch_size = None
+        if self.BatchSize.ready():
+            batch_size = self.BatchSize.value
+        requester = BigRequestStreamer( self.Image, roiFromShape( self.Image.meta.shape ), batchSize=batch_size )
         requester.resultSignal.subscribe( handle_block_result )
         requester.progressSignal.subscribe( self.progressSignal )
         requester.execute()            

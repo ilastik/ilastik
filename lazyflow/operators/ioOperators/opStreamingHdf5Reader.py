@@ -78,15 +78,15 @@ class OpStreamingHdf5Reader(Operator):
             assert ndims != 1, "OpStreamingHdf5Reader: Support for 1-D data not yet supported"
             assert ndims <= 5, "OpStreamingHdf5Reader: No support for data with more than 5 dimensions."
 
-            axisorders = { 2 : 'xy',
-                           3 : 'xyz',
-                           4 : 'xyzc',
-                           5 : 'txyzc' }
+            axisorders = { 2 : 'yx',
+                           3 : 'zyx',
+                           4 : 'zyxc',
+                           5 : 'tzyxc' }
     
             axisorder = axisorders[ndims]
             if ndims == 3 and dataset.shape[2] <= 4:
                 # Special case: If the 3rd dim is small, assume it's 'c', not 'z'
-                axisorder = 'xyc'
+                axisorder = 'yxc'
 
             axistags = vigra.defaultAxistags(axisorder)
 
@@ -103,11 +103,14 @@ class OpStreamingHdf5Reader(Operator):
             self.OutputImage.meta.drange = tuple( self._hdf5File[internalPath].attrs['drange'] )
         
         total_volume = numpy.prod(numpy.array(self._hdf5File[internalPath].shape))
-        if not self._hdf5File[internalPath].chunks and total_volume > 1e8:
+        chunks = self._hdf5File[internalPath].chunks
+        if not chunks and total_volume > 1e8:
             self.OutputImage.meta.inefficient_format = True
             logger.warn("This dataset ({}{}) is NOT chunked.  "
                         "Performance for 3D access patterns will be bad!"
                         .format( self._hdf5File.filename, internalPath ))
+        if chunks:
+            self.OutputImage.meta.ideal_blockshape = chunks
 
     def execute(self, slot, subindex, roi, result):
         t = time.time()

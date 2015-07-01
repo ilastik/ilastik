@@ -274,6 +274,7 @@ class OpTrainClassifierFromFeatureVectors(Operator):
         self.Classifier.meta.classifier_factory = self.ClassifierFactory.value
 
     def execute(self, slot, subindex, roi, result):
+        channel_names = self.LabelAndFeatureMatrix.meta.channel_names
         labels_and_features = self.LabelAndFeatureMatrix.value
         featMatrix = labels_and_features[:,1:]
         labelsMatrix = labels_and_features[:,0:1].astype(numpy.uint32)
@@ -292,7 +293,7 @@ class OpTrainClassifierFromFeatureVectors(Operator):
             "".format( type(classifier_factory) )
 
         logger.debug("Training new classifier: {}".format( classifier_factory.description ))
-        classifier = classifier_factory.create_and_train( featMatrix, labelsMatrix[:,0] )
+        classifier = classifier_factory.create_and_train( featMatrix, labelsMatrix[:,0], channel_names )
         result[0] = classifier
         if classifier is not None:
             assert issubclass(type(classifier), LazyflowVectorwiseClassifierABC), \
@@ -518,9 +519,11 @@ class OpVectorwiseClassifierPredict(Operator):
         # >> result array: 4 * N output_channels
         # >> (times 2 due to temporary variable)
         # >> input data allocation
-        ram_per_pixel = 4.0 * output_channels * 2 + self.Image.meta.dtype().nbytes * input_channels
-        ram_per_pixel = max( ram_per_pixel, self.Image.meta.ram_usage_per_requested_pixel )
-        self.PMaps.meta.ram_usage_per_requested_pixel = ram_per_pixel
+        classifier_factory = self.Classifier.meta.classifier_factory
+        classifier_ram_per_pixelchannel = classifier_factory.estimated_ram_usage_per_requested_predictionchannel()
+        classifier_ram_per_pixel = classifier_ram_per_pixelchannel * output_channels
+        feature_ram_per_pixel = max(self.Image.meta.dtype().nbytes, 4) * input_channels
+        self.PMaps.meta.ram_usage_per_requested_pixel = classifier_ram_per_pixel + feature_ram_per_pixel
 
     def execute(self, slot, subindex, roi, result):
         classifier = self.Classifier.value
@@ -551,7 +554,9 @@ class OpVectorwiseClassifierPredict(Operator):
 
         with Timer() as features_timer:
             input_data = self.Image[newKey].wait()
-        
+
+        input_data = numpy.asarray(input_data, numpy.float32)
+
         shape=input_data.shape
         prod = numpy.prod(shape[:-1])
         features = input_data.reshape((prod, shape[-1]))

@@ -20,7 +20,7 @@ class ThreadRequest(object):
     def wait(self):
         self.thr.join()    
 
-@fail_after_timeout(10)
+@fail_after_timeout(20)
 def test_RequestLock():
     assert Request.global_thread_pool.num_workers > 0, \
         "This test must be used with the real threadpool."
@@ -51,19 +51,36 @@ def test_RequestLock():
     status_thread.start()
     
     try:
-        _impl_test_lock(lockA, lockB, Request)
-    finally:
+        _impl_test_lock(lockA, lockB, Request, 1000)
+    except:
         log_request_system_status()
         running[0] = False
         status_thread.join()
+
+        global paused
+        paused = False
+
+        Request.reset_thread_pool(Request.global_thread_pool.num_workers)
+
+        if lockA.locked():
+            lockA.release()
+        if lockB.locked():
+            lockB.release()
+
+        raise
+
+    log_request_system_status()
+    running[0] = False
+    status_thread.join()
 
 def test_ThreadingLock():
     # As a sanity check that our test works properly,
     #  try running it with 'normal' locks.
     # The test should pass no matter which task & lock implementation we use.
-    _impl_test_lock(threading.Lock(), threading.Lock(), ThreadRequest)
+    _impl_test_lock(threading.Lock(), threading.Lock(), ThreadRequest, 100)
 
-def _impl_test_lock(lockA, lockB, task_class):
+paused = True
+def _impl_test_lock(lockA, lockB, task_class, num_tasks):
     """
     Simple test to start a lot of tasks that acquire/release the same two locks.
     
@@ -74,7 +91,8 @@ def _impl_test_lock(lockA, lockB, task_class):
     threading.Threads and Locks (as long as the API is adapted a bit to look 
     like Requests via ThreadRequest, above.)
     """
-    paused = True    
+    global paused
+    paused = True
     progressAB = [0,0]
 
     # Prepare
@@ -109,7 +127,7 @@ def _impl_test_lock(lockA, lockB, task_class):
             logger.debug('lockB.pending: {}'.format( len(lockB._pendingRequests)) )
     
     tasks = []
-    for _ in range(1000):
+    for _ in range(num_tasks):
         tasks.append( task_class(f1) )
         tasks.append( task_class(f2) )
         

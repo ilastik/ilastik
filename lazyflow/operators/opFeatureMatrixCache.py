@@ -83,6 +83,7 @@ class OpFeatureMatrixCache(Operator):
     
         self.LabelAndFeatureMatrix.meta.shape = (1,)
         self.LabelAndFeatureMatrix.meta.dtype = object
+        self.LabelAndFeatureMatrix.meta.channel_names = self.FeatureImage.meta.channel_names
         
         num_feature_channels = self.FeatureImage.meta.shape[-1]
         if num_feature_channels != self.LabelAndFeatureMatrix.meta.num_feature_channels:

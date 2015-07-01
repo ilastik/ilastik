@@ -277,6 +277,7 @@ class TestOpArrayCache(object):
             op.Input.connect(self.opProvider.Output)
             x = op.Output[...].wait()
             op.Input.disconnect()
+            self.opProvider.clear()
             r = weakref.ref(op)
             del op
             gc.collect()
