@@ -717,7 +717,7 @@ class CarvingGui(LabelingGui):
             layer = ColortableLayer(LazyflowSource(sv), colortable, direct=True)
             layer.name = "Supervoxels"
             layer.setToolTip("<html>This layer shows the partitioning of the input image into <b>supervoxels</b>. The carving " \
-                             "algorithm uses these tiny puzzle-piceces to piece together the segmentation of an " \
+                             "algorithm uses these tiny puzzle-pieces to piece together the segmentation of an " \
                              "object. Sometimes, supervoxels are too large and straddle two distinct objects " \
                              "(undersegmentation). In this case, it will be impossible to achieve the desired " \
                              "segmentation. This layer helps you to understand these cases.</html>")

@@ -199,8 +199,8 @@ class OpCarving(Operator):
         if self._mst is None:
             return
         with Timer() as timer:
-            self._done_lut = numpy.zeros(self._mst.numNodes+1, dtype=numpy.int32)
-            self._done_seg_lut = numpy.zeros(self._mst.numNodes+1, dtype=numpy.int32)
+            self._done_lut = numpy.zeros(self._mst.nodeNum+1, dtype=numpy.int32)
+            self._done_seg_lut = numpy.zeros(self._mst.nodeNum+1, dtype=numpy.int32)
             logger.info( "building 'done' luts" )
             for name, objectSupervoxels in self._mst.object_lut.iteritems():
                 if name == self._currObjectName:
@@ -623,6 +623,7 @@ class OpCarving(Operator):
             
         elif slot == self.Supervoxels:
             #avoid data being copied
+            # TODO: this assumes that supervoxels are allocated and calculated completely? -- fix
             temp = self._mst.supervoxelUint32[sl[1:4]]
             temp.shape = (1,) + temp.shape + (1,)
         elif slot  == self.DoneObjects:
@@ -711,7 +712,7 @@ class OpCarving(Operator):
             params["uncertainty"] = self.UncertaintyType.value
             params["noBiasBelow"] = noBiasBelow
             
-            unaries =  numpy.zeros((self._mst.numNodes+1,labelCount+1), dtype=numpy.float32)
+            unaries =  numpy.zeros((self._mst.nodeNum+1,labelCount+1), dtype=numpy.float32)
             self._mst.run(unaries, **params)
             logger.info( " ... carving took %f sec." % (time.time()-t1) )
 

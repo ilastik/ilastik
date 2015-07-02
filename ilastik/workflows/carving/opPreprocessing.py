@@ -41,6 +41,7 @@ from watershed_segmentor import WatershedSegmentor
 import logging
 logger = logging.getLogger(__name__)
 
+
 class OpFilter(Operator):
     HESSIAN_BRIGHT = 0
     HESSIAN_DARK = 1
@@ -177,6 +178,7 @@ class OpSimpleWatershed(Operator):
     def execute(self, slot, subindex, roi, result):
         # TODO: remove
         #assert roi.stop - roi.start == self.Output.meta.shape, "Watershed must be run on the entire volume."
+
         input_image = self.Input(roi.start, roi.stop).wait()
         volume_feat = input_image[0,...,0]
         result_view = result[0,...,0]
@@ -229,7 +231,7 @@ class OpMstSegmentorProvider(Operator):
         block_shape = (1,512,512,512,1)
         block_starts = getIntersectingBlocks( block_shape, roiFromShape(self.Image.meta.shape) )
 
-        newMst = None
+        mst = WatershedSegmentor()
 
         try:
             block_count = len(block_starts)
@@ -240,18 +242,13 @@ class OpMstSegmentorProvider(Operator):
                 featureVolume = self.Image( *features_roi ).wait()
                 labelVolume = self.LabelImage( *labels_roi ).wait()
 
-                blkMst = WatershedSegmentor(labelVolume[0,...,0],numpy.asarray(featureVolume[0,...,0], numpy.float32),
-                              edgeWeightFunctor = "minimum",progressCallback = partial(updateProgressBar, b_id, block_count))
+                mst.preprocess(labelVolume[0,...,0], numpy.asarray(featureVolume[0,...,0], numpy.float32))
+                           #, edgeWeightFunctor = "minimum",progressCallback = partial(updateProgressBar, b_id, block_count)
 
                 updateProgressBar(b_id, block_count, 50)
 
-                if newMst:
-                    newMst = blkMst
-                else:
-                    newMst = blkMst
-
-            result[0] = newMst
-            return result        
+            result[0] = mst
+            return result
 
         finally:
             updateProgressBar(b_id, block_count, 100)
@@ -419,7 +416,7 @@ class OpPreprocessing(Operator):
         self._opWatershedCache.Input.connect( self._opWatershed.Output )
 
 
-    def execute(self,slot,subindex,roi,result):
+    def execute(self,slot,subindex,unused_roi,result):
         assert slot == self.PreprocessedData, "Invalid output slot"
         if self._prepData[0] is not None and not self._dirty:
             return self._prepData
@@ -438,7 +435,6 @@ class OpPreprocessing(Operator):
         
         # copy over seeds, and saved objects
         if self._prepData[0] is not None:
-            #mst.seeds[:] = self._prepData[0].seeds[:]
             mst.object_lut = self._prepData[0].object_lut
             mst.object_names = self._prepData[0].object_names
             mst.object_seeds_bg_voxels = self._prepData[0].object_seeds_bg_voxels
