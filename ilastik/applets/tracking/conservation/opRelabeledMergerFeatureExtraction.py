@@ -177,9 +177,9 @@ class OpRelabeledMergerFeatureExtraction(Operator):
     @staticmethod
     def _merge_features(featuresA, featuresB, mapping):
         assert(featuresA.shape[1] == featuresB.shape[1], "Feature dimensions must match!")
-        max_label = max(mapping.keys())
-        assert(max_label > len(featuresA), "No new labels added? {} <= {}".format(max_label, len(featuresA)))
-        features = np.zeros((max_label + 1, featuresA.shape[1]), dtype=featuresA.dtype)
+        max_label = max(max(mapping.keys())+1, len(featuresA))
+
+        features = np.zeros((max_label, featuresA.shape[1]), dtype=featuresA.dtype)
         features[:len(featuresA), ...] = featuresA
 
         for k, v in mapping.iteritems():
