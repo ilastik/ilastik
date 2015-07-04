@@ -164,6 +164,13 @@ class Request( object ):
         Constructor.
         Postconditions: The request has the same cancelled status as its parent (the request that is creating this one).
         """
+
+        self._lock = threading.Lock() # NOT an RLock, since requests may share threads
+        self._sig_finished = SimpleSignal()
+        self._sig_cancelled = SimpleSignal()
+        self._sig_failed = SimpleSignal()
+        self._sig_execution_complete = SimpleSignal()
+
         # Workload
         self.fn = fn
 
@@ -204,13 +211,6 @@ class Request( object ):
                 # We acquire the same priority as our parent, plus our own sub-priority
                 current_request._max_child_priority += 1
                 self._priority = current_request._priority + [ current_request._max_child_priority ]
-
-        self._lock = threading.Lock() # NOT an RLock, since requests may share threads
-        self._sig_finished = SimpleSignal()
-        self._sig_cancelled = SimpleSignal()
-        self._sig_failed = SimpleSignal()
-        
-        self._sig_execution_complete = SimpleSignal()
 
     def __lt__(self, other):
         """
