@@ -30,6 +30,10 @@ import unittest
 
 import lazyflow
 from lazyflow.graph import Graph
+from lazyflow.roi import enlargeRoiForHalo, roiToSlice
+from lazyflow.rtype import SubRegion
+from lazyflow.request import Request
+from lazyflow.utility import BigRequestStreamer
 from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
 from lazyflow.utility import Memory
 from lazyflow.operators.cacheMemoryManager\
@@ -37,6 +41,9 @@ from lazyflow.operators.cacheMemoryManager\
 from lazyflow.operators.opCache import Cache
 from lazyflow.operators.opArrayCache import OpArrayCache
 from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
+from lazyflow.operators.opSplitRequestsBlockwise\
+    import OpSplitRequestsBlockwise
+from lazyflow.operators.vigraOperators import OpGaussianSmoothing
 
 from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 
@@ -65,6 +72,7 @@ class TestCacheMemoryManager(unittest.TestCase):
         mgr = CacheMemoryManager()
         mgr.setRefreshInterval(default_refresh_interval)
         mgr.enable()
+        Request.reset_thread_pool()
 
     def testAPIConformity(self):
         c = NonRegisteredCache("c")
@@ -189,8 +197,88 @@ class TestCacheMemoryManager(unittest.TestCase):
         c = pipe.accessCount
         assert c > b, "did not clean up"
 
+    def testBadMemoryConditions(self):
+        """
+        testBadMemoryConditions
+
+        This test is a proof of the proposition in 
+            https://github.com/ilastik/lazyflow/issue/185
+        which states that, given certain memory constraints, the cache
+        cleanup strategy in use is inefficient. An advanced strategy
+        should pass the test.
+        """
+
+        mgr = CacheMemoryManager()
+        mgr.setRefreshInterval(.01)
+        mgr.enable()
+
+        d = 2
+        tags = 'xy'
+
+        shape = (999,)*d
+        blockshape = (333,)*d
+
+        # restrict memory to all input + one block
+        # this should be enough for all computations to fit
+        r = np.prod(shape) + np.prod(blockshape)
+        r /= 1024.0**2
+        lazyflow.AVAILABLE_RAM_MB = r
+        Request.reset_thread_pool(num_workers=1)
+
+        x = np.zeros(shape, dtype=np.uint8)
+        x = vigra.taggedView(x, axistags=tags)
+
+        g = Graph()
+        pipe = OpArrayPiperWithAccessCount(graph=g)
+        pipe.Input.setValue(x)
+        pipe.Output.meta.ideal_blockshape = blockshape
+
+        # simulate BlockedArrayCache behaviour without caching
+        # cache = OpSplitRequestsBlockwise(True, graph=g)
+        # cache.BlockShape.setValue(blockshape)
+        # cache.Input.connect(pipe.Output)
+
+        cache = OpBlockedArrayCache(graph=g)
+        cache.Input.connect(pipe.Output)
+        cache.outerBlockShape.setValue(blockshape)
+
+        op = OpEnlarge(graph=g)
+        op.Input.connect(cache.Output)
+
+        split = OpSplitRequestsBlockwise(True, graph=g)
+        split.BlockShape.setValue(blockshape)
+        split.Input.connect(op.Output)
+
+        streamer = BigRequestStreamer(
+            split.Output, [(0,)*len(shape), shape])
+        streamer.execute()
+
+        # in the worst case, we have 4*4 + 4*6 + 9 = 49 requests to pipe
+        # in the best case, we have 9
+        np.testing.assert_equal(pipe.accessCount, 9)
+
+        
+class OpEnlarge(OpArrayPiperWithAccessCount):
+    delay = .1
+
+    def setupOutputs(self):
+        self.Output.meta.ram_usage_per_requested_pixel = 1
+        super(OpEnlarge, self).setupOutputs()
+
+    def execute(self, slot, subindex, roi, result):
+        sigma = 3.0
+        roi_with_halo, result_roi = enlargeRoiForHalo(
+            roi.start, roi.stop, self.Input.meta.shape, sigma,
+            return_result_roi=True)
+        start, stop = roi_with_halo
+        newroi = SubRegion(self.Input, start=start, stop=stop)
+        data = self.Input.get(newroi).wait()
+        time.sleep(self.delay)
+        result[:] = data[roiToSlice(*result_roi)]
+
 
 if __name__ == "__main__":
+    import sys
     # Set up logging for debug
     logHandler = logging.StreamHandler( sys.stdout )
     logger.addHandler( logHandler )
@@ -200,7 +288,6 @@ if __name__ == "__main__":
     mgrLogger.setLevel( logging.DEBUG )
 
     # Run nose
-    import sys
     import nose
     sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
     sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
