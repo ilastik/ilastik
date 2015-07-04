@@ -129,7 +129,7 @@ class TestCacheMemoryManager(unittest.TestCase):
         mgr = CacheMemoryManager()
 
         # disallow cache memory
-        Memory.setAvailableRamCaches(1)
+        Memory.setAvailableRamCaches(0)
 
         # set to frequent cleanup
         mgr.setRefreshInterval(.01)
@@ -164,9 +164,8 @@ class TestCacheMemoryManager(unittest.TestCase):
 
         mgr = CacheMemoryManager()
 
-        # restrict memory to 1 Byte
-        # note that 0 has a special meaning
-        lazyflow.AVAILABLE_RAM_MB = 0.000001
+        # restrict cache memory to 0 Byte
+        Memory.setAvailableRamCaches(0)
 
         # set to frequent cleanup
         mgr.setRefreshInterval(.01)
