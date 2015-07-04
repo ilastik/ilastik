@@ -44,6 +44,7 @@ class Memory(object):
         _physically_available_ram -= psutil.virtual_memory().wired
 
     _default_allowed_ram = _physically_available_ram
+    _default_cache_fraction = .25
     _allowed_ram = _default_allowed_ram
     _user_limits_specified = {'total': False,
                               'caches': False}
@@ -97,6 +98,12 @@ class Memory(object):
                             "physically available. Please check the"
                             "configuration.")
 
+        if cls._user_limits_specified['caches'] and \
+                cls._allowed_ram_caches > cls._allowed_ram:
+            logger.warn("User specified cache memory exceeds total RAM "
+                        "available, resetting to default")
+            cls._user_limits_specified['caches'] = False
+
     @classmethod
     def getAvailableRamCaches(cls):
         """
@@ -105,7 +112,7 @@ class Memory(object):
         if cls._user_limits_specified['caches']:
             return cls._allowed_ram_caches
         else:
-            return cls._allowed_ram / 4
+            return cls._allowed_ram * cls._default_cache_fraction
 
     @classmethod
     def setAvailableRamCaches(cls, ram):

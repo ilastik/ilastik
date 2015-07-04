@@ -199,7 +199,7 @@ class TestCacheMemoryManager(unittest.TestCase):
 
     def testBadMemoryConditions(self):
         """
-        testBadMemoryConditions
+        TestCacheMemoryManager.testBadMemoryConditions
 
         This test is a proof of the proposition in 
             https://github.com/ilastik/lazyflow/issue/185
@@ -218,11 +218,15 @@ class TestCacheMemoryManager(unittest.TestCase):
         shape = (999,)*d
         blockshape = (333,)*d
 
-        # restrict memory to all input + one block
-        # this should be enough for all computations to fit
-        r = np.prod(shape) + np.prod(blockshape)
-        r /= 1024.0**2
-        lazyflow.AVAILABLE_RAM_MB = r
+        # restrict memory for computation to one block (including fudge
+        # factor 2 of bigRequestStreamer)
+        cacheMem = np.prod(shape)
+        Memory.setAvailableRam(np.prod(blockshape)*2 + cacheMem)
+
+        # restrict cache memory to the whole volume
+        Memory.setAvailableRamCaches(cacheMem)
+
+        # to ease observation, do everything single threaded
         Request.reset_thread_pool(num_workers=1)
 
         x = np.zeros(shape, dtype=np.uint8)
