@@ -244,7 +244,7 @@ class TestOpValueCache(object):
             t.join()
 
 
-        numpy.testing.assert_equal(opCompute.executionCount, 1)
+        req = opCache.Output[:].wait()
         assert opCache._dirty == False
         assert opCache._request is None
         assert opCache.Output.value == 100
