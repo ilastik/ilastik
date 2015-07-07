@@ -25,6 +25,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import numpy
+import h5py
 
 from ilastik.config import cfg as ilastik_config
 
@@ -76,6 +77,7 @@ class PixelClassificationWorkflow(Workflow):
         parser.add_argument('--random-label-value', help="The label value to use injecting random labels", default=1, type=int)
         parser.add_argument('--random-label-count', help="The number of random labels to inject via --generate-random-labels", default=2000, type=int)
         parser.add_argument('--retrain', help="Re-train the classifier based on labels stored in project file, and re-save.", action="store_true")
+        parser.add_argument('--export-labels', help="Export all label volumes to disk.", action="store_true")
 
         # Parse the creation args: These were saved to the project file when this project was first created.
         parsed_creation_args, unused_args = parser.parse_known_args(project_creation_args)
@@ -89,6 +91,7 @@ class PixelClassificationWorkflow(Workflow):
         self.random_label_value = parsed_args.random_label_value
         self.random_label_count = parsed_args.random_label_count
         self.retrain = parsed_args.retrain
+        self.export_labels = parsed_args.export_labels
 
         if parsed_args.filter and parsed_args.filter != parsed_creation_args.filter:
             logger.error("Ignoring new --filter setting.  Filter implementation cannot be changed after initial project creation.")
@@ -414,6 +417,16 @@ class PixelClassificationWorkflow(Workflow):
 
             # store new classifier to project file
             projectManager.saveProject(force_all_save=False)
+
+        if self.export_labels:
+            opPixelClassification = self.pcApplet.topLevelOperator
+            for lane_index, label_slot in enumerate(opPixelClassification.LabelImages):
+                label_volume = label_slot[:].wait()
+                output_file = 'exported-labels-{}.h5'.format( lane_index )
+                logger.info("Exporting labels to " + output_file)
+                with h5py.File(output_file, 'w') as f:
+                    f.create_dataset('labels', data=label_volume, chunks=True, compression='gzip', compression_opts=2)
+                    f['labels'].attrs['axistags'] = label_slot.meta.axistags.toJSON()
 
         if self._headless and self._batch_input_args and self._batch_export_args:
             # Make sure we're using the up-to-date classifier.
