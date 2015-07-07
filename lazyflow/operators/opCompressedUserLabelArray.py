@@ -93,6 +93,7 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
         super( OpCompressedUserLabelArray, self ).setupOutputs()
         if self.Output.meta.NOTREADY:
             self.nonzeroBlocks.meta.NOTREADY = True
+            self.Projection2D.meta.NOTREADY = True
             return
         self.nonzeroBlocks.meta.dtype = object
         self.nonzeroBlocks.meta.shape = (1,)
