@@ -45,17 +45,16 @@ from lazyflow.operators.valueProviders import OpOutputProvider
 # ilastik
 from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui
 
-
-def import_labeling_layer(labelLayer, inputLabels, parent_widget=None):
+def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
     """
     Prompt the user for layer import settings, and perform the layer import.
     :param labelLayer: The top label layer source
-    :param inputLabels: The label input slot
+    :param labelingSlots: An instance of LabelingGui.LabelingSlots
     :param parent_widget: The Qt GUI parent object
     """
-    writeSeeds = inputLabels
-    assert isinstance(inputLabels, lazyflow.graph.Slot), "slot is of type %r" % (type(inputLabels))
-    opLabels = inputLabels.getRealOperator()
+    writeSeeds = labelingSlots.labelInput
+    assert isinstance(writeSeeds, lazyflow.graph.Slot), "slot is of type %r" % (type(writeSeeds))
+    opLabels = writeSeeds.getRealOperator()
     assert isinstance(opLabels, lazyflow.graph.Operator), "slot's operator is of type %r" % (type(opLabels))
 
     # Find the directory of the most recently opened project
@@ -82,6 +81,7 @@ def import_labeling_layer(labelLayer, inputLabels, parent_widget=None):
     opImport.WorkingDirectory.setValue(defaultDirectory)
     opImport.FilePath.setValue(fileNames[0] if len(fileNames) == 1 else
                                os.path.pathsep.join(fileNames))
+    assert opImport.Output.ready()
 
     # The reader assumes xyzc order, so we must transpose the data.
     opReorderAxes = OpReorderAxes( parent=opImport )
@@ -97,31 +97,26 @@ def import_labeling_layer(labelLayer, inputLabels, parent_widget=None):
     try:
         readData = opReorderAxes.Output[:].wait()
 
-        c_idx = writeSeeds.meta.getAxisKeys().index('c')
         x_idx = writeSeeds.meta.getAxisKeys().index('x')
         y_idx = writeSeeds.meta.getAxisKeys().index('y')
 
-        maxLabels = writeSeeds.meta.shape[c_idx] + 1
+        maxLabels = len(labelingSlots.labelNames.value)
         readLabels, readInv, readLabelCounts = numpy.unique(readData, return_inverse=True, return_counts=True)
         labelInfo = (maxLabels, (readLabels, readLabelCounts))
 
         imgShapeDiff = TinyVector(writeSeeds.meta.shape) - TinyVector(readData.shape)
-        # opCmmpressedUserLabelArray misrepresents the 'c' dimension as the the
-        # number of colours, but internally it is all mapped to a single dimension.
-        c_fixedMap = maxLabels == 1 and len(filter(lambda x: x > 0, readLabels)) == 1
-        imgShapeDiff[c_idx] = 1 if not c_fixedMap else 0
         isImgSubset = not any(map(lambda x: x < 0, imgShapeDiff))
 
         # Expect import is subset
         if not isImgSubset:
             QMessageBox.critical(parent_widget, "Import shape too large",
-                                             "Import shape is not a subset of original input stack.")
+                                 "Import shape is not a subset of original input stack.")
             return
 
         # Expect x, y shape to match original shape
         if imgShapeDiff[x_idx] or imgShapeDiff[y_idx]:
             QMessageBox.critical(parent_widget, "Shape does not match",
-                                             "X,Y shape must match original input stack.")
+                                 "X,Y shape must match original input stack.")
             return
 
         if any(imgShapeDiff):

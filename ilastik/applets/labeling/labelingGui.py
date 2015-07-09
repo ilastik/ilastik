@@ -806,7 +806,7 @@ class LabelingGui(LayerViewerGui):
             labellayer.ref_object = None
 
             labellayer.contexts.append(("Import...",
-                                        partial( import_labeling_layer, labellayer, self._labelingSlots.labelInput, self )))
+                                        partial( import_labeling_layer, labellayer, self._labelingSlots, self )))
 
             return labellayer, labelsrc
 
