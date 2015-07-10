@@ -23,8 +23,10 @@
 import collections
 import os
 import numpy
+import vigra
 
 import logging
+from lazyflow.operators import opArrayCache
 logger = logging.getLogger(__name__)
 
 #Qt
@@ -41,6 +43,8 @@ from lazyflow.roi import TinyVector, roiToSlice, roiFromShape
 from lazyflow.operators.ioOperators import OpInputDataReader
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators.valueProviders import OpOutputProvider
+from lazyflow.operators.opArrayCache import OpArrayCache
+from lazyflow.operators.valueProviders import OpMetadataInjector
 
 # ilastik
 from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui
@@ -75,85 +79,97 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
     if not fileNames:
         return
 
-    # Create an operator to do the work
-    opImport = OpInputDataReader( parent=opLabels )
+    # Initialize operators
+    opImport = OpInputDataReader( parent=opLabels.parent )
+    opCache = OpArrayCache( parent=opLabels.parent )
+    opMetadataInjector = OpMetadataInjector( parent=opLabels.parent )
+    opReorderAxes = OpReorderAxes( parent=opLabels.parent )
 
-    opImport.WorkingDirectory.setValue(defaultDirectory)
-    opImport.FilePath.setValue(fileNames[0] if len(fileNames) == 1 else
-                               os.path.pathsep.join(fileNames))
-    assert opImport.Output.ready()
-
-    # The reader assumes xyzc order, so we must transpose the data.
-    opReorderAxes = OpReorderAxes( parent=opImport )
-    opReorderAxes.AxisOrder.setValue(writeSeeds.meta.getAxisKeys())
-    opReorderAxes.Input.connect( opImport.Output )
-
-    # Create copy for MetaInfoWidget in LabelImportOptionsDlg
-    opWriteSeeds = OpOutputProvider(writeSeeds.value, writeSeeds.meta, parent=opLabels)
-    assert opWriteSeeds.Output.meta.shape == writeSeeds.meta.shape, "slot shapes do not match"
-    assert opWriteSeeds.Output.meta.dtype == writeSeeds.meta.dtype, "slot dtypes do not match"
-    assert opWriteSeeds.Output.meta.getAxisKeys() == writeSeeds.meta.getAxisKeys(), "slot axis keys do not match"
+    # Set up the pipeline as follows:
+    #
+    #   opImport --> opCache --> opMetadataInjector --------> opReorderAxes --(inject via setInSlot)--> labelInput
+    #                           /                            /
+    #   User-specified axisorder    labelInput.meta.axistags
 
     try:
-        readData = opReorderAxes.Output[:].wait()
-
-        x_idx = writeSeeds.meta.getAxisKeys().index('x')
-        y_idx = writeSeeds.meta.getAxisKeys().index('y')
-
+        opImport.WorkingDirectory.setValue(defaultDirectory)
+        opImport.FilePath.setValue(fileNames[0] if len(fileNames) == 1 else
+                                   os.path.pathsep.join(fileNames))
+        assert opImport.Output.ready()
+    
+        opCache.blockShape.setValue( opImport.Output.meta.shape )
+        opCache.Input.connect( opImport.Output )
+        assert opCache.Output.ready()
+    
+        # Load the data from file into our cache, and get the stats.
+        readData = opCache.Output[:].wait()
         maxLabels = len(labelingSlots.labelNames.value)
-        readLabels, readInv, readLabelCounts = numpy.unique(readData, return_inverse=True, return_counts=True)
-        labelInfo = (maxLabels, (readLabels, readLabelCounts))
-
-        imgShapeDiff = TinyVector(writeSeeds.meta.shape) - TinyVector(readData.shape)
-        isImgSubset = not any(map(lambda x: x < 0, imgShapeDiff))
+        unique_read_labels, readLabelCounts = numpy.unique(readData, return_counts=True)
+        labelInfo = (maxLabels, (unique_read_labels, readLabelCounts))
+        del readData
+    
+        # Ask the user how to interpret the data.
+        settingsDlg = LabelImportOptionsDlg( parent_widget,
+                                             fileNames, opImport.Output,
+                                             labelingSlots.labelInput, labelInfo )
+        dlg_result = settingsDlg.exec_()
+        if dlg_result != LabelImportOptionsDlg.Accepted:
+            return
+    
+        imageOffsets = settingsDlg.imageOffsets
+        labelMapping = settingsDlg.labelMapping
+        updated_axisorder = str(settingsDlg.axesEdit.text())
+    
+        metadata = opCache.Output.meta.copy()
+        metadata.axistags = vigra.defaultAxistags(updated_axisorder)
+    
+        # Change the interpretation of the file's axes
+        opMetadataInjector.Input.connect( opCache.Output )
+        opMetadataInjector.Metadata.setValue( metadata )
+    
+        # Transpose the axes for assignment to the labeling operator.
+        opReorderAxes.AxisOrder.setValue( writeSeeds.meta.getAxisKeys() )
+        opReorderAxes.Input.connect( opImport.Output )
 
         # Expect import is subset
-        if not isImgSubset:
+        if (TinyVector(opReorderAxes.Output.meta.shape) > writeSeeds.meta.shape).any():
             QMessageBox.critical(parent_widget, "Import shape too large",
                                  "Import shape is not a subset of original input stack.")
             return
 
         # Expect x, y shape to match original shape
-        if imgShapeDiff[x_idx] or imgShapeDiff[y_idx]:
+        labels_tagged_shape = labelingSlots.labelInput.meta.getTaggedShape()
+        file_tagged_shape = opReorderAxes.Output.meta.getTaggedShape()
+        if (  labels_tagged_shape['x'] != file_tagged_shape['x']
+           or labels_tagged_shape['y'] != file_tagged_shape['y'] ):
             QMessageBox.critical(parent_widget, "Shape does not match",
                                  "X,Y shape must match original input stack.")
             return
 
-        if any(imgShapeDiff):
-            # User has choices: Use this dialog to collect settings
-            settingsDlg = LabelImportOptionsDlg( parent_widget, imgShapeDiff,
-                                                 fileNames, opReorderAxes.Output,
-                                                 opWriteSeeds.Output, labelInfo )
-            # If user didn't accept, exit now.
-            if ( settingsDlg.exec_() == LabelImportOptionsDlg.Accepted ):
-                imageOffsets = settingsDlg.imageOffsets
-                labelMapping = settingsDlg.labelMapping
-            else:
-                return
-        else:
-            imageOffsets = imgShapeDiff
-            labelMapping = LabelImportOptionsDlg._defaultLabelMapping(labelInfo)
-
         # Optimization if mapping is identity
-        if all(map(lambda (k,v): k == v, labelMapping.items())):
+        if labelMapping.keys() == labelMapping.values():
             labelMapping = None
 
         # Map input labels to output labels
+        label_data = opReorderAxes.Output[:].wait()
         if labelMapping:
-            readData = numpy.array([labelMapping[x] for x in readLabels], dtype=readData.dtype)[readInv].reshape(readData.shape)
+            # There are other ways to do a relabeling (e.g skimage.segmentation.relabel_sequential)
+            # But this supports potentially huge values of unique_read_labels (in the billions),
+            # without needing GB of RAM.
+            mapping_indexes = numpy.searchsorted(unique_read_labels, label_data)
+            new_labels = numpy.array([labelMapping[x] for x in unique_read_labels])
+            label_data[:] = new_labels[mapping_indexes]
 
-        img_shape = roiFromShape(readData.shape)
-        img_start = TinyVector(img_shape[0]) + imageOffsets
-        img_end = TinyVector(img_shape[1]) + imageOffsets
-        img_slice = roiToSlice(img_start, img_end)
-
-        writeSeeds[img_slice] = readData[:]
+        label_roi = numpy.array( roiFromShape(opReorderAxes.Output.meta.shape) )
+        label_roi += imageOffsets
+        label_slice = roiToSlice(*label_roi)
+        writeSeeds[label_slice] = label_data
 
     finally:
-        # Clean up our temporary operators
         opReorderAxes.cleanUp()
+        opMetadataInjector.cleanUp()
+        opCache.cleanUp()
         opImport.cleanUp()
-        opWriteSeeds.cleanUp()
 
 
 #**************************************************************************
@@ -161,12 +177,11 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
 #**************************************************************************
 class LabelImportOptionsDlg(QDialog):
 
-    def __init__(self, parent, axisRanges, srcInputFiles, dataInputSlot, writeSeedsSlot, labelInfo):
+    def __init__(self, parent, srcInputFiles, dataInputSlot, writeSeedsSlot, labelInfo):
         """
         Constructor.
 
         :param parent: The parent widget
-        :param axisRanges: A vector of per-axis maximum values.
         :param srcInputFiles: A list of source file names.
         :param dataInputSlot: Slot with imported data
         :param writeSeedsSlot: Slot for writing data into
@@ -177,7 +192,8 @@ class LabelImportOptionsDlg(QDialog):
         localDir = os.path.split(__file__)[0]
         uic.loadUi( os.path.join( localDir, "dataImportOptionsDlg.ui" ), self)
 
-        self._axisRanges = axisRanges
+        # TODO: 
+        self._axisRanges = numpy.array(writeSeedsSlot.meta.shape) - dataInputSlot.meta.shape
         self._dataInputSlot = dataInputSlot
         self._srcInputFiles = srcInputFiles
         self._writeSeedsSlot = writeSeedsSlot
@@ -187,7 +203,7 @@ class LabelImportOptionsDlg(QDialog):
         self._insert_mapping_boxes = collections.OrderedDict()
 
         # Result values
-        self.imageOffsets = LabelImportOptionsDlg._defaultImageOffsets(axisRanges, srcInputFiles, dataInputSlot)
+        self.imageOffsets = LabelImportOptionsDlg._defaultImageOffsets(self._axisRanges, srcInputFiles, dataInputSlot)
         self.labelMapping = LabelImportOptionsDlg._defaultLabelMapping(labelInfo)
 
         # Init child widgets
@@ -262,10 +278,9 @@ class LabelImportOptionsDlg(QDialog):
     # Insertion Position / Mapping
     #**************************************************************************
     def _initInsertPositionMappingWidgets(self):
-        dataImportSlot = self._dataInputSlot
-        inputAxes = dataImportSlot.meta.getAxisKeys()
-
-        axisRanges = self._axisRanges
+        inputAxes = self._dataInputSlot.meta.getAxisKeys()
+        
+        axisRanges = list(self._axisRanges)
         maxValues = axisRanges
 
         # Handle the 'c' axis separately
