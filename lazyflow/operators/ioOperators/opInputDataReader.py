@@ -209,15 +209,30 @@ class OpInputDataReader(Operator):
         if not os.path.exists(externalPath):
             raise OpInputDataReader.DatasetReadError("Input file does not exist: " + externalPath)
 
-        # Can't set the internal path yet if we don't have one
-        assert internalPath != '', \
-            "When using hdf5, you must append the hdf5 internal path to the "\
-            "data set to your filename, e.g. myfile.h5/volume/data  "\
-            "No internal path provided for dataset in file: {}".format( externalPath )
-
         # Open the h5 file in read-only mode
         try:
             h5File = h5py.File(externalPath, 'r')
+        except OpInputDataReader.DatasetReadError:
+            raise
+        except Exception as e:
+            msg = "Unable to open HDF5 File: {}\n{}".format( externalPath, str(e) )
+            raise OpInputDataReader.DatasetReadError( msg )
+        else:
+            if internalPath == '':
+                possible_internal_paths = self._get_hdf5_dataset_names( h5File )
+                if len(possible_internal_paths) == 1:
+                    internalPath = possible_internal_paths[0]
+                elif len(possible_internal_paths) == 0:
+                    h5File.close() 
+                    msg = "HDF5 file contains no datasets: {}".format( externalPath )
+                    raise OpInputDataReader.DatasetReadError( msg )
+                else:
+                    h5File.close() 
+                    msg = "When using hdf5, you must append the hdf5 internal path to the "\
+                          "data set to your filename, e.g. myfile.h5/volume/data  "\
+                          "No internal path provided for dataset in file: {}".format( externalPath )
+                    raise OpInputDataReader.DatasetReadError( msg )
+                
             try:
                 compression_setting = h5File[internalPath].compression
             except Exception as e:
@@ -232,11 +247,7 @@ class OpInputDataReader(Operator):
             if compression_setting is not None and allow_multiprocess_hdf5:
                 h5File.close()                
                 h5File = MultiProcessHdf5File(externalPath, 'r')
-        except OpInputDataReader.DatasetReadError:
-            raise
-        except Exception as e:
-            msg = "Unable to open HDF5 File: {}\n{}".format( externalPath, str(e) )
-            raise OpInputDataReader.DatasetReadError( msg )
+
         self._file = h5File
 
         h5Reader = OpStreamingHdf5Reader(parent=self)
@@ -249,6 +260,19 @@ class OpInputDataReader(Operator):
             raise OpInputDataReader.DatasetReadError( msg )
 
         return ([h5Reader], h5Reader.OutputImage)
+
+    @staticmethod
+    def _get_hdf5_dataset_names( h5_file ):
+        """
+        Helper function for _attemptOpenAsHdf5().
+        Returns the name of all datasets in the file with at least 2 axes.
+        """
+        dataset_names = []
+        def accumulate_names(name, val):
+            if type(val) == h5py._hl.dataset.Dataset and 2 <= len(val.shape):
+                dataset_names.append( '/' + name )
+        h5_file.visititems(accumulate_names)
+        return dataset_names
 
     def _attemptOpenAsNpy(self, filePath):
         fileExtension = os.path.splitext(filePath)[1].lower()
