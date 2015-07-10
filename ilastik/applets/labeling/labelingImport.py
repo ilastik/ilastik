@@ -251,7 +251,10 @@ class LabelImportOptionsDlg(QDialog):
         self._dataInputSlot.notifyMetaChanged( self._initInsertPositionMappingWidgets )
 
     def closeEvent(self, e):
+        # Clean-up
         self._dataInputSlot.unregisterMetaChanged( self._initInsertPositionMappingWidgets )
+        self.inputMetaInfoWidget.initSlot(None)
+        self.labelMetaInfoWidget.initSlot(None)
 
     @staticmethod
     def _defaultImageOffsets(axisRanges, srcInputFiles, dataInputSlot):
