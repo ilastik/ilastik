@@ -262,8 +262,8 @@ class LabelImportOptionsDlg(QDialog):
 
         # Note: Convenience setting of starting 'z' offset; assumes that filenames are
         # numbered from 0, and they contain only a single number representing their index
-        if (srcInputFiles is not None):
-            inputAxes = dataInputSlot.meta.getAxisKeys()
+        inputAxes = dataInputSlot.meta.getAxisKeys()
+        if srcInputFiles is not None and 'z' in inputAxes:
             z_idx = inputAxes.index('z')
             filename_digits = filter(str.isdigit, os.path.basename(srcInputFiles[0]))
             idx = int(filename_digits) if filename_digits else 0
