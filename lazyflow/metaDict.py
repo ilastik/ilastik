@@ -79,6 +79,8 @@ class MetaDict(defaultdict):
         return MetaDict(dict.copy(self))
     
     def __eq__(self, other):
+        if other is None:
+            return False
         for k in set(self.keys() + other.keys()):
             if k.startswith('__') or k == 'NOTREADY':
                 continue
