@@ -61,23 +61,26 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
     opLabels = writeSeeds.getRealOperator()
     assert isinstance(opLabels, lazyflow.graph.Operator), "slot's operator is of type %r" % (type(opLabels))
 
-    # Find the directory of the most recently opened project
+
+    recentlyImported = PreferencesManager().get('labeling', 'recently imported')
     mostRecentProjectPath = PreferencesManager().get('shell', 'recently opened')
-    if mostRecentProjectPath:
+    mostRecentImageFile = PreferencesManager().get( 'DataSelection', 'recent image' )
+    if recentlyImported:
+        defaultDirectory = os.path.split(recentlyImported)[0]
+    elif mostRecentProjectPath:
         defaultDirectory = os.path.split(mostRecentProjectPath)[0]
+    elif mostRecentImageFile:
+        defaultDirectory = os.path.split(mostRecentImageFile)[0]
     else:
-        # Find the directory of the most recently opened image file
-        mostRecentImageFile = PreferencesManager().get( 'DataSelection', 'recent image' )
-        if mostRecentImageFile is not None:
-            defaultDirectory = os.path.split(mostRecentImageFile)[0]
-        else:
-            defaultDirectory = os.path.expanduser('~')
+        defaultDirectory = os.path.expanduser('~')
 
     fileNames = DataSelectionGui.getImageFileNamesToOpen(parent_widget, defaultDirectory)
     fileNames = map(str, fileNames)
 
     if not fileNames:
         return
+
+    PreferencesManager().set('labeling', 'recently imported', fileNames[0])
 
     # Initialize operators
     opImport = OpInputDataReader( parent=opLabels.parent )
