@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 #Qt
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QEvent
-from PyQt4.QtGui import QDialog, QDialogButtonBox, QMessageBox, QCheckBox, QSpinBox, QLabel, QValidator
+from PyQt4.QtGui import QDialog, QDialogButtonBox, QMessageBox, QCheckBox, QSpinBox, QLabel, QValidator, QProgressDialog, QApplication, QCloseEvent
 
 # volumina
 from volumina.utility import PreferencesManager
@@ -81,19 +81,19 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
 
     PreferencesManager().set('labeling', 'recently imported', fileNames[0])
 
-    # Initialize operators
-    opImport = OpInputDataReader( parent=opLabels.parent )
-    opCache = OpArrayCache( parent=opLabels.parent )
-    opMetadataInjector = OpMetadataInjector( parent=opLabels.parent )
-    opReorderAxes = OpReorderAxes( parent=opLabels.parent )
-
-    # Set up the pipeline as follows:
-    #
-    #   opImport --> opCache --> opMetadataInjector --------> opReorderAxes --(inject via setInSlot)--> labelInput
-    #                           /                            /
-    #   User-specified axisorder    labelInput.meta.axistags
-
     try:
+        # Initialize operators
+        opImport = OpInputDataReader( parent=opLabels.parent )
+        opCache = OpArrayCache( parent=opLabels.parent )
+        opMetadataInjector = OpMetadataInjector( parent=opLabels.parent )
+        opReorderAxes = OpReorderAxes( parent=opLabels.parent )
+    
+        # Set up the pipeline as follows:
+        #
+        #   opImport --> opCache --> opMetadataInjector --------> opReorderAxes --(inject via setInSlot)--> labelInput
+        #                           /                            /
+        #   User-specified axisorder    labelInput.meta.axistags
+    
         opImport.WorkingDirectory.setValue(defaultDirectory)
         opImport.FilePath.setValue(fileNames[0] if len(fileNames) == 1 else
                                    os.path.pathsep.join(fileNames))
@@ -111,8 +111,25 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
         # Transpose the axes for assignment to the labeling operator.
         opReorderAxes.AxisOrder.setValue( writeSeeds.meta.getAxisKeys() )
     
-        # Load the data from file into our cache, and get the stats.
-        readData = opCache.Output[:].wait()
+        # We'll show a little window with a busy indicator while the data is loading
+        busy_dlg = QProgressDialog(parent=parent_widget)
+        busy_dlg.setLabelText("Importing Label Data...")
+        busy_dlg.setCancelButton(None)
+        busy_dlg.setMinimum(100)
+        busy_dlg.setMaximum(100)
+        def close_busy_dlg(*args):
+            QApplication.postEvent(busy_dlg, QCloseEvent())
+    
+        # Load the data from file into our cache
+        # When it's done loading, close the progress dialog.
+        req = opCache.Output[:]
+        req.notify_finished( close_busy_dlg )
+        req.notify_failed( close_busy_dlg )
+        req.submit()
+        busy_dlg.exec_()
+
+        readData = req.result
+        
         maxLabels = len(labelingSlots.labelNames.value)
         unique_read_labels, readLabelCounts = numpy.unique(readData, return_counts=True)
         labelInfo = (maxLabels, (unique_read_labels, readLabelCounts))
@@ -232,6 +249,9 @@ class LabelImportOptionsDlg(QDialog):
         self.installEventFilter(self)
 
         self._dataInputSlot.notifyMetaChanged( self._initInsertPositionMappingWidgets )
+
+    def closeEvent(self, e):
+        self._dataInputSlot.unregisterMetaChanged( self._initInsertPositionMappingWidgets )
 
     @staticmethod
     def _defaultImageOffsets(axisRanges, srcInputFiles, dataInputSlot):
