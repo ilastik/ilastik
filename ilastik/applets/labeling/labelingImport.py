@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 #Qt
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QEvent
-from PyQt4.QtGui import QDialog, QDialogButtonBox, QMessageBox, QCheckBox, QSpinBox, QLabel
+from PyQt4.QtGui import QDialog, QDialogButtonBox, QMessageBox, QCheckBox, QSpinBox, QLabel, QValidator
 
 # volumina
 from volumina.utility import PreferencesManager
@@ -42,7 +42,6 @@ import lazyflow
 from lazyflow.roi import TinyVector, roiToSlice, roiFromShape
 from lazyflow.operators.ioOperators import OpInputDataReader
 from lazyflow.operators.opReorderAxes import OpReorderAxes
-from lazyflow.operators.valueProviders import OpOutputProvider
 from lazyflow.operators.opArrayCache import OpArrayCache
 from lazyflow.operators.valueProviders import OpMetadataInjector
 
@@ -103,6 +102,14 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
         opCache.blockShape.setValue( opImport.Output.meta.shape )
         opCache.Input.connect( opImport.Output )
         assert opCache.Output.ready()
+
+        opMetadataInjector.Input.connect( opCache.Output )
+        metadata = opCache.Output.meta.copy()
+        opMetadataInjector.Metadata.setValue( metadata )
+        opReorderAxes.Input.connect( opImport.Output )
+
+        # Transpose the axes for assignment to the labeling operator.
+        opReorderAxes.AxisOrder.setValue( writeSeeds.meta.getAxisKeys() )
     
         # Load the data from file into our cache, and get the stats.
         readData = opCache.Output[:].wait()
@@ -113,26 +120,31 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
     
         # Ask the user how to interpret the data.
         settingsDlg = LabelImportOptionsDlg( parent_widget,
-                                             fileNames, opImport.Output,
+                                             fileNames, opMetadataInjector.Output,
                                              labelingSlots.labelInput, labelInfo )
+
+        def handle_updated_axes():
+            # The user is specifying a new interpretation of the file's axes
+            updated_axisorder = str(settingsDlg.axesEdit.text())
+            metadata = opMetadataInjector.Metadata.value.copy()
+            metadata.axistags = vigra.defaultAxistags(updated_axisorder)
+            opMetadataInjector.Metadata.setValue( metadata )
+        settingsDlg.axesEdit.editingFinished.connect( handle_updated_axes )
+
         dlg_result = settingsDlg.exec_()
         if dlg_result != LabelImportOptionsDlg.Accepted:
             return
-    
-        imageOffsets = settingsDlg.imageOffsets
-        labelMapping = settingsDlg.labelMapping
-        updated_axisorder = str(settingsDlg.axesEdit.text())
-    
-        metadata = opCache.Output.meta.copy()
-        metadata.axistags = vigra.defaultAxistags(updated_axisorder)
-    
-        # Change the interpretation of the file's axes
-        opMetadataInjector.Input.connect( opCache.Output )
-        opMetadataInjector.Metadata.setValue( metadata )
-    
-        # Transpose the axes for assignment to the labeling operator.
-        opReorderAxes.AxisOrder.setValue( writeSeeds.meta.getAxisKeys() )
-        opReorderAxes.Input.connect( opImport.Output )
+
+        # Get user's chosen label mapping from dlg
+        labelMapping = settingsDlg.labelMapping    
+
+        # Get user's chosen offsets.
+        # Offsets in dlg only include the file axes, not the 5D axes expected by the label input,
+        # so expand them to full 5D 
+        axes_5d = opReorderAxes.Output.meta.getAxisKeys()
+        tagged_offsets = collections.OrderedDict( zip( axes_5d, [0]*len(axes_5d) ) )
+        tagged_offsets.update( dict( zip( opMetadataInjector.Output.meta.getAxisKeys(), settingsDlg.imageOffsets ) ) )
+        imageOffsets = tagged_offsets.values()
 
         # Expect import is subset
         if (TinyVector(opReorderAxes.Output.meta.shape) > writeSeeds.meta.shape).any():
@@ -196,7 +208,6 @@ class LabelImportOptionsDlg(QDialog):
         uic.loadUi( os.path.join( localDir, "dataImportOptionsDlg.ui" ), self)
 
         # TODO: 
-        self._axisRanges = numpy.array(writeSeedsSlot.meta.shape) - dataInputSlot.meta.shape
         self._dataInputSlot = dataInputSlot
         self._srcInputFiles = srcInputFiles
         self._writeSeedsSlot = writeSeedsSlot
@@ -206,16 +217,21 @@ class LabelImportOptionsDlg(QDialog):
         self._insert_mapping_boxes = collections.OrderedDict()
 
         # Result values
-        self.imageOffsets = LabelImportOptionsDlg._defaultImageOffsets(self._axisRanges, srcInputFiles, dataInputSlot)
+        output_tagged_shape = writeSeedsSlot.meta.getTaggedShape()
+        writeSeedsShape = map( lambda k: output_tagged_shape[k], dataInputSlot.meta.getAxisKeys() )
+        axisRanges = numpy.array(writeSeedsShape) - dataInputSlot.meta.shape
+        self.imageOffsets = LabelImportOptionsDlg._defaultImageOffsets(axisRanges, srcInputFiles, dataInputSlot)
         self.labelMapping = LabelImportOptionsDlg._defaultLabelMapping(labelInfo)
 
         # Init child widgets
+        self._initAxesEdit()
         self._initMetaInfoWidgets()
         self._initInsertPositionMappingWidgets()
 
         # See self.eventFilter()
         self.installEventFilter(self)
 
+        self._dataInputSlot.notifyMetaChanged( self._initInsertPositionMappingWidgets )
 
     @staticmethod
     def _defaultImageOffsets(axisRanges, srcInputFiles, dataInputSlot):
@@ -257,11 +273,56 @@ class LabelImportOptionsDlg(QDialog):
             return True
         return False
 
+    def _initAxesEdit(self):
+        expected_length = len(self._dataInputSlot.meta.getAxisKeys())
+
+        self.axesEdit.setText( "".join(self._dataInputSlot.meta.getAxisKeys()) )
+        self.axesEdit.setValidator( self._QAxesValidator(expected_length, self) )
+        
+        self.axesEdit.textChanged.connect(self._handleAxesEditChanged)
+    
+    def _handleAxesEditChanged(self):
+        state, _ = self.axesEdit.validator().validate( self.axesEdit.text(), 0 )
+        self.labelMetaInfoWidget.setEnabled( state == QValidator.Acceptable )
+        self.positionWidget.setEnabled( state == QValidator.Acceptable )
+        self.buttonBox.button(QDialogButtonBox.Ok).setEnabled( state == QValidator.Acceptable )
+        
+    class _QAxesValidator(QValidator):
+        def __init__(self, expected_length, parent=None):
+            super(LabelImportOptionsDlg._QAxesValidator, self).__init__( parent )
+            self.exepected_length = expected_length
+        
+        def validate(self, text, pos):
+            text = str(text)
+
+            # Remove repeats
+            seen = set()
+            uniqued_text = "".join([ x for x in text if not (x in seen or seen.add(x))])
+            if uniqued_text != text:
+                return QValidator.Invalid, min(pos, len(uniqued_text))
+            
+            # Only valid axis keys allowed
+            filtered_keys = filter(lambda k: k in 'txyzc', text)
+            filtered_text = "".join(filtered_keys)
+            if text != filtered_text:
+                return QValidator.Invalid, min(pos, len(filtered_text))
+            
+            # Must not be longer than the dimensions in the image
+            if len(text) > self.exepected_length:
+                return QValidator.Invalid, pos
+            
+            # Not ready until all axes specified
+            if len(text) < self.exepected_length:
+                return QValidator.Intermediate, pos
+            
+            # No problems.
+            return QValidator.Acceptable, pos
+    
 
     #**************************************************************************
     # Input/Output Meta-info (display only)
     #**************************************************************************
-    def _initMetaInfoWidgets(self):
+    def _initMetaInfoWidgets(self, *args):
         ## Input/output meta-info display widgets
         dataInputSlot = self._dataInputSlot
         writeSeedsSlot = self._writeSeedsSlot
@@ -280,19 +341,39 @@ class LabelImportOptionsDlg(QDialog):
     #**************************************************************************
     # Insertion Position / Mapping
     #**************************************************************************
-    def _initInsertPositionMappingWidgets(self):
-        inputAxes = self._dataInputSlot.meta.getAxisKeys()
+    def _initInsertPositionMappingWidgets(self, *args):
+        state, _ = self.axesEdit.validator().validate( self.axesEdit.text(), 0 )
+        self.positionWidget.setEnabled( state == QValidator.Acceptable )
+        if state != QValidator.Acceptable:
+            return
         
-        axisRanges = list(self._axisRanges)
-        maxValues = axisRanges
+        if not self._dataInputSlot.ready():
+            return
+
+        inputAxes = self._dataInputSlot.meta.getAxisKeys()
+        output_tagged_shape = self._writeSeedsSlot.meta.getTaggedShape()
+        writeSeedsShape = map( lambda k: output_tagged_shape[k], self._dataInputSlot.meta.getAxisKeys() )
+        axisRanges = numpy.array(writeSeedsShape) - self._dataInputSlot.meta.shape
+        maxValues = list(axisRanges)
 
         # Handle the 'c' axis separately
-        c_idx = inputAxes.index('c')
-        inputAxes_noC = inputAxes[:c_idx] + inputAxes[c_idx+1:]  # del(list(inputAxes)[c_idx])
-        maxValues_noC = maxValues[:c_idx] + maxValues[c_idx+1:]  # del(list(maxValues)[c_idx])
+        try:
+            c_idx = inputAxes.index('c')
+        except ValueError:
+            inputAxes_noC = inputAxes
+            maxValues_noC = maxValues
+        else:
+            inputAxes_noC = inputAxes[:c_idx] + inputAxes[c_idx+1:]  # del(list(inputAxes)[c_idx])
+            maxValues_noC = maxValues[:c_idx] + maxValues[c_idx+1:]  # del(list(maxValues)[c_idx])
 
         self._initInsertPositionTableWithExtents(inputAxes_noC, maxValues_noC)
-        self._initLabelMappingTableWithExtents(maxValues[c_idx])
+        self._initLabelMappingTableWithExtents()
+
+        if (axisRanges < 0).any():
+            self.positionWidget.setEnabled( False )
+
+        # The OK button should have the same status as the positionWidget
+        self.buttonBox.button(QDialogButtonBox.Ok).setEnabled( self.positionWidget.isEnabled() )
 
     def _initInsertPositionTableWithExtents(self, axes, mx):
         positionTbl = self.positionWidget
@@ -341,7 +422,7 @@ class LabelImportOptionsDlg(QDialog):
 
         positionTbl.resizeColumnsToContents()
 
-    def _initLabelMappingTableWithExtents(self, max_labels):
+    def _initLabelMappingTableWithExtents(self):
         mappingTbl = self.mappingWidget
         max_labels, read_labels_info = self._labelInfo
         labels, label_counts = read_labels_info
