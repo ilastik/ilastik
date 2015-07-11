@@ -159,7 +159,7 @@ class DataSelectionGui(QWidget):
         # It isn't an error -- it's used for control flow.
         pass
 
-    def __init__(self, parentApplet, dataSelectionOperator, serializer, instructionText, guiMode=GuiMode.Normal, max_lanes=None):
+    def __init__(self, parentApplet, dataSelectionOperator, serializer, instructionText, guiMode=GuiMode.Normal, max_lanes=None, show_axis_details=False):
         """
         Constructor.
         
@@ -174,6 +174,7 @@ class DataSelectionGui(QWidget):
         self.parentApplet = parentApplet
         self._max_lanes = max_lanes
         self._default_h5_volumes = {}
+        self.show_axis_details = show_axis_details
 
         self._viewerControls = QWidget()
         self.topLevelOperator = dataSelectionOperator
@@ -700,7 +701,7 @@ class DataSelectionGui(QWidget):
         """Open the dataset properties editor and return True if the new properties are acceptable."""
         defaultInfos = {}
         defaultInfos[laneIndex] = info
-        editorDlg = DatasetInfoEditorWidget(self, self.topLevelOperator, roleIndex, [laneIndex], defaultInfos)
+        editorDlg = DatasetInfoEditorWidget(self, self.topLevelOperator, roleIndex, [laneIndex], defaultInfos, show_axis_details=self.show_axis_details)
         dlg_state = editorDlg.exec_()
         return ( dlg_state == QDialog.Accepted )
 
@@ -726,6 +727,7 @@ class DataSelectionGui(QWidget):
         if stackDlg.result() != QDialog.Accepted :
             return
         files = stackDlg.selectedFiles
+        sequence_axis = stackDlg.sequence_axis
         if len(files) == 0:
             return
 
@@ -754,7 +756,7 @@ class DataSelectionGui(QWidget):
 
             # Serializer will update the operator for us, which will propagate to the GUI.
             try:
-                self.serializer.importStackAsLocalDataset( info )
+                self.serializer.importStackAsLocalDataset( info, sequence_axis )
                 try:
                     self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue(info)
                 except DatasetConstraintError as ex:
@@ -800,8 +802,9 @@ class DataSelectionGui(QWidget):
         self.parentApplet.appletStateUpdateRequested.emit()
 
     def editDatasetInfo(self, roleIndex, laneIndexes):
-        editorDlg = DatasetInfoEditorWidget(self, self.topLevelOperator, roleIndex, laneIndexes)
+        editorDlg = DatasetInfoEditorWidget(self, self.topLevelOperator, roleIndex, laneIndexes, show_axis_details=self.show_axis_details)
         editorDlg.exec_()
+        self.parentApplet.appletStateUpdateRequested.emit()
 
     def updateInternalPathVisiblity(self):
         for view in self._detailViewerWidgets:

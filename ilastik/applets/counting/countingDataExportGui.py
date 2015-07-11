@@ -18,7 +18,8 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtGui import QColor
+import os
+from PyQt4.QtGui import QColor, QMessageBox, QFileDialog
 
 from lazyflow.operators.generic import OpMultiArraySlicer2
 
@@ -27,7 +28,13 @@ from volumina import colortables
 from countingGui import countingColorTable
 
 from ilastik.utility import bind
+from ilastik.utility.gui import threadRouted
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
+
+from lazyflow.request import Request
+
+import logging
+logger = logging.getLogger(__name__)
 
 class CountingDataExportGui( DataExportGui ):
     """
@@ -35,6 +42,26 @@ class CountingDataExportGui( DataExportGui ):
     """
     def createLayerViewer(self, opLane):
         return CountingResultsViewer(self.parentApplet, opLane)
+
+    def _initAppletDrawerUic(self):
+        localDir = os.path.split(__file__)[0]
+        drawerPath = os.path.join( localDir, "dataExportDrawer.ui")
+        super( CountingDataExportGui, self )._initAppletDrawerUic(drawerPath)
+        self.drawer.exportAllObjectCountsButton.clicked.connect( self.exportObjectCountsToCsv )
+
+    def exportObjectCountsToCsv(self):
+        export_filepath = QFileDialog.getSaveFileName(parent=self, caption="Exported Object Counts", filter="*.csv")
+        if not export_filepath:
+            return
+        req = self.parentApplet.prepareExportObjectCountsToCsv( self.parentApplet, export_filepath )
+        req.notify_failed(self.handleFailedObjectCountExport)
+        req.submit()
+
+    @threadRouted
+    def handleFailedObjectCountExport(self, exception, exception_info):
+        msg = "Failed to export object counts:\n{}".format( exception )
+        log_exception( logger, msg, exception_info )
+        QMessageBox.critical(self, "Failed to export counts", msg)        
         
 class CountingResultsViewer(DataExportLayerViewerGui):
     

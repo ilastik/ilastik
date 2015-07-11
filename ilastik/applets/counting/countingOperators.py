@@ -74,7 +74,7 @@ class OpTrainCounter(Operator):
                   InputSlot("BackgroundLabels", level=1),
                   InputSlot("fixClassifier", stype="bool"),
                   InputSlot("nonzeroLabelBlocks", level=1),
-                  InputSlot("Sigma", stype = "float"), 
+                  InputSlot("Sigma", stype = "float", value=2.0), 
                   InputSlot("Epsilon",  stype = "float"), 
                   InputSlot("C",  stype = "float"), 
                   InputSlot("SelectedOption", stype = "object"),

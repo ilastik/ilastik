@@ -1,0 +1,30 @@
+## Customize the test machine
+machine:
+  # Add some environment variables
+  environment:
+    CONDA_ROOT: /home/ubuntu/miniconda
+    TEST_ENV_NAME: test-env
+    TEST_ENV_PREFIX: /home/ubuntu/miniconda/envs/test-env
+
+## Customize dependencies
+dependencies:
+  override:
+    - wget https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
+    - bash Miniconda-latest-Linux-x86_64.sh -b
+    - ${CONDA_ROOT}/bin/conda create -y -n ${TEST_ENV_NAME} -c ilastik ilastik-everything-but-tracking
+
+    # Replace packaged source with full git repo
+    - rm -rf ${TEST_ENV_PREFIX}/ilastik-meta
+    - git clone http://github.com/ilastik/ilastik-meta ${TEST_ENV_PREFIX}/ilastik-meta
+    - cd ${TEST_ENV_PREFIX}/ilastik-meta && git submodule init
+    - cd ${TEST_ENV_PREFIX}/ilastik-meta && git submodule update --recursive
+    - cd ${TEST_ENV_PREFIX}/ilastik-meta && git submodule foreach "git checkout master"
+
+    # Replace lazyflow with the code in the current build (may not be master)
+    - rm -rf ${TEST_ENV_PREFIX}/ilastik-meta/ilastik
+    - ln -s `pwd` ${TEST_ENV_PREFIX}/ilastik-meta/ilastik
+
+## Customize test commands
+test:
+  override:
+    - cd ${TEST_ENV_PREFIX}/ilastik-meta/ilastik/tests && PATH=${TEST_ENV_PREFIX}/bin:$PATH ./run_each_unit_test.sh

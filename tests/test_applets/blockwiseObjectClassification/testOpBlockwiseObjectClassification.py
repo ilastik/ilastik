@@ -24,9 +24,10 @@ import tempfile
 
 import numpy
 import vigra
+import h5py
 
 from lazyflow.graph import Graph
-from lazyflow.operators import Op5ifyer
+from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 from ilastik.applets import objectExtraction
 from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
@@ -43,6 +44,7 @@ logger = logging.getLogger("tests.testOpBlockwiseObjectClassification")
 # Test Trace
 traceLogger = logging.getLogger("TRACE." + logger.name)
 
+WRITE_DEBUG_IMAGES = False
 
 class TestOpBlockwiseObjectClassification(object):
     
@@ -136,7 +138,8 @@ class TestOpBlockwiseObjectClassification(object):
         self.test_volume_binary.axistags = vigra.defaultAxistags('xyz')
         
         name = writeToTempFile(self.test_volume_binary, prefix='binary_')
-        logger.debug("Wrote binary image to '{}'".format(name))
+        if name:
+            logger.debug("Wrote binary image to '{}'".format(name))
         
         # Gray: 0<=x<50
         # White: 50<=x<100
@@ -146,25 +149,26 @@ class TestOpBlockwiseObjectClassification(object):
         self.test_volume_intensity.axistags = vigra.defaultAxistags('xyz')
         
         name = writeToTempFile(self.test_volume_intensity, prefix='intensity_')
-        logger.debug("Wrote intensity image to '{}'".format(name))
+        if name:
+            logger.debug("Wrote intensity image to '{}'".format(name))
 
         graph = Graph()
         self.graph = graph
 
         # provide 5d input 
-        op5Raw = Op5ifyer( graph=graph )
-        op5Raw.input.setValue( self.test_volume_intensity )
+        op5Raw = OpReorderAxes( graph=graph )
+        op5Raw.Input.setValue( self.test_volume_intensity )
         self.rawSource = op5Raw
         
-        op5Binary = Op5ifyer( graph=graph )
-        op5Binary.input.setValue( self.test_volume_binary )
+        op5Binary = OpReorderAxes( graph=graph )
+        op5Binary.Input.setValue( self.test_volume_binary )
         self.binarySource = op5Binary
         
     def setUpObjExtraction(self):
         opObjectExtraction = OpObjectExtraction( graph=self.graph )
 
-        opObjectExtraction.RawImage.connect( self.rawSource.output )
-        opObjectExtraction.BinaryImage.connect( self.binarySource.output )
+        opObjectExtraction.RawImage.connect( self.rawSource.Output )
+        opObjectExtraction.BinaryImage.connect( self.binarySource.Output )
         opObjectExtraction.BackgroundLabels.setValue( [0] )
         opObjectExtraction.Features.setValue(self.testingFeatures)
         
@@ -183,11 +187,11 @@ class TestOpBlockwiseObjectClassification(object):
         
         # raw image data, i.e. cubes with intensity 1 or 1/2
         opObjectClassification.RawImages.resize(1)
-        opObjectClassification.RawImages[0].connect( self.rawSource.output )
+        opObjectClassification.RawImages[0].connect( self.rawSource.Output )
         
         # threshold images, i.e. cubes with intensity 1
         opObjectClassification.BinaryImages.resize(1)
-        opObjectClassification.BinaryImages.connect( self.binarySource.output )
+        opObjectClassification.BinaryImages.connect( self.binarySource.Output )
         
         # segmentation images from object extraction
         opObjectClassification.SegmentationImages.resize(1)
@@ -204,7 +208,7 @@ class TestOpBlockwiseObjectClassification(object):
         # STEP 2: simulate labeling
         
         object_volume = self.objExtraction.LabelImage[:].wait()
-        raw_5d = self.rawSource.output[:].wait()
+        raw_5d = self.rawSource.Output[:].wait()
 
         # Big: Starting at 0,20,40, etc.
         # Small: Starting at 10,30,50, etc.
@@ -269,7 +273,8 @@ class TestOpBlockwiseObjectClassification(object):
         
     def logImage(self,data,prefix='logged_image'):
         name = writeToTempFile(data.view(vigra.VigraArray), prefix=prefix)
-        logger.debug("Wrote an image to {}".format(name))
+        if name:
+            logger.debug("Wrote an image to {}".format(name))
  
 def getlist(a, n=3):
     try:
@@ -298,19 +303,16 @@ def cubes(dimblock, dimcube, cubedist=20, cubeoffset=0):
 
 def writeToTempFile(data,pathInFile='volume',prefix='test_image_'):
     '''
-    writes a VigraArray to a random temporary file (disabled by default)
-    input: as to writeHDF5
-    output: filename
+    Writes the given 
     '''
-    #TODO remove before pull request
-    # comment to write to file
-    #return '/dev/null'
+    global WRITE_DEBUG_IMAGES
+    if not WRITE_DEBUG_IMAGES:
+        return None
     
     # we just need this to know where to place temp files, vigra needs a filename
-    f = tempfile.NamedTemporaryFile(prefix=prefix,suffix='.h5')
-    name = f.name
-    f.close()
-    vigra.impex.writeHDF5(data, name, pathInFile)
+    name = tempfile.mkdtemp()
+    with h5py.File(name, 'w') as f:
+        f.create_dataset(pathInFile, data=data)
     return name   
         
 

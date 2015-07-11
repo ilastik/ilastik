@@ -38,7 +38,7 @@ class AddFileButton(QPushButton):
     three options:
 
         - Add separate image(s)
-        - Add 3D/4D volume from stack
+        - Add 3D/4D volume from sequence
         - Add DVID volume
     """
     addFilesRequested = pyqtSignal()
@@ -59,7 +59,7 @@ class AddFileButton(QPushButton):
         menu = QMenu(parent=self)
         menu.addAction("Add separate Image(s)...").triggered.\
                 connect(self.addFilesRequested.emit)
-        menu.addAction("Add a single 3D/4D Volume from Stack...").triggered.connect(
+        menu.addAction("Add a single 3D/4D Volume from Sequence...").triggered.connect(
                 self.addStackRequested.emit)
         
         if _supports_dvid:

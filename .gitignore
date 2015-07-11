@@ -52,3 +52,16 @@ cscope.out
 
 tests/recorded_test_cases/ObjectClassification/cube_objects_binary.npy
 tests/recorded_test_cases/ObjectClassification/cube_objects_raw.npy
+
+# mergetool backups
+*.py.BACKUP.*.py
+*.py.BASE.*.py
+*.py.LOCAL.*.py
+*.py.REMOTE.*.py
+*.py.orig.*.py
+
+# pycharm project settings folder
+.idea/
+
+
+
