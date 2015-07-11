@@ -43,7 +43,9 @@ class Memory(object):
         # assess available RAM more precisely
         _physically_available_ram -= psutil.virtual_memory().wired
 
-    _default_allowed_ram = _physically_available_ram
+    # keep 1GiB reserved for other apps 
+    # (systems with less than 1GiB RAM are not a target platform)
+    _default_allowed_ram = max(_physically_available_ram - 1024.0**3, 0)
     _default_cache_fraction = .25
     _allowed_ram = _default_allowed_ram
     _user_limits_specified = {'total': False,
