@@ -205,6 +205,7 @@ class TestOpValueCache(object):
         threads, even if one thread cancels its request.
         The OpValueCache must handle Request.InvalidRequestException errors correctly. 
         """
+        n = 20
         graph = lazyflow.graph.Graph()
         opCompute = TestOpValueCache.OpSlowComputation(graph=graph)
         opCache = OpValueCache(graph=graph)
@@ -212,10 +213,16 @@ class TestOpValueCache(object):
         opCompute.Input.setValue(100)
         opCache.Input.connect(opCompute.Output)
 
-        def checkOutput():
+        s = 0
+        while s in (0, n):
+            # don't want to cancel all requests
+            should_cancel = numpy.random.random(n) < .2
+            s = should_cancel.sum()
+
+        def checkOutput(i):
             req = opCache.Output[:]
             req.submit()
-            if random.random() < 0.2:
+            if should_cancel[i]:
                 value = req.wait()[0]
                 assert value == 100
             else:
@@ -226,8 +233,9 @@ class TestOpValueCache(object):
 
         # Create 20 threads, start them, and join them.
         threads = []
-        for i in range(20):
-            threads.append( threading.Thread(target=checkOutput) )
+        for i in range(n):
+            foo = partial(checkOutput, i)
+            threads.append( threading.Thread(target=foo) )
         
         for t in threads:
             t.start()
@@ -235,7 +243,12 @@ class TestOpValueCache(object):
         for t in threads:
             t.join()
 
+
+        req = opCache.Output[:].wait()
+        assert opCache._dirty == False
+        assert opCache._request is None
         assert opCache.Output.value == 100
+
 
 class TestOpZeroDefault(object):
     

@@ -93,6 +93,7 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
         super( OpCompressedUserLabelArray, self ).setupOutputs()
         if self.Output.meta.NOTREADY:
             self.nonzeroBlocks.meta.NOTREADY = True
+            self.Projection2D.meta.NOTREADY = True
             return
         self.nonzeroBlocks.meta.dtype = object
         self.nonzeroBlocks.meta.shape = (1,)
@@ -185,12 +186,12 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
             return super( OpCompressedUserLabelArray, self ).execute( slot, subindex, roi, destination )
 
     def _executeOutput(self, roi, destination):
-        assert len(roi.stop) == len(self.Input.meta.shape), \
-            "roi: {} has the wrong number of dimensions for Input shape: {}"\
-            "".format( roi, self.Input.meta.shape )
-        assert numpy.less_equal(roi.stop, self.Input.meta.shape).all(), \
-            "roi: {} is out-of-bounds for Input shape: {}"\
-            "".format( roi, self.Input.meta.shape )
+        assert len(roi.stop) == len(self.Output.meta.shape), \
+            "roi: {} has the wrong number of dimensions for Output shape: {}"\
+            "".format( roi, self.Output.meta.shape )
+        assert numpy.less_equal(roi.stop, self.Output.meta.shape).all(), \
+            "roi: {} is out-of-bounds for Output shape: {}"\
+            "".format( roi, self.Output.meta.shape )
         
         block_starts = getIntersectingBlocks( self._blockshape, (roi.start, roi.stop) )
         self._copyData(roi, destination, block_starts)
@@ -212,7 +213,7 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
         #  zyx = (1,256,256), then we know we're projecting along Z
         # If more than one axis has a width of 1, then we choose an 
         #  axis according to the following priority order: zyxt
-        tagged_input_shape = self.Input.meta.getTaggedShape()
+        tagged_input_shape = self.Output.meta.getTaggedShape()
         tagged_result_shape = collections.OrderedDict( zip( tagged_input_shape.keys(),
                                                             destination.shape ) )
         nonprojection_axes = []
@@ -239,7 +240,7 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
         # Now we know which axis we're projecting along.
         # Proceed with the projection, working blockwise to avoid unecessary work in unlabeled blocks
         
-        projection_axis_index = self.Input.meta.getAxisKeys().index(projection_axis_key)
+        projection_axis_index = self.Output.meta.getAxisKeys().index(projection_axis_key)
         projection_length = tagged_input_shape[projection_axis_key]
         input_roi = roi.copy()
         input_roi.start[projection_axis_index] = 0
@@ -364,7 +365,7 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
         pass
 
     def setInSlot(self, slot, subindex, roi, new_pixels):
-        if slot == self.Input:
+        if slot is self.Input:
             self._setInSlotInput(slot, subindex, roi, new_pixels)
         else:
             # We don't yet support the InputHdf5 slot in this function.
@@ -415,22 +416,23 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
         Returns: the max label found in the slot.
         """
         assert self._blockshape is not None
-        assert self.Input.meta.shape == slot.meta.shape
+        assert self.Output.meta.shape[:-1] == slot.meta.shape[:-1], \
+            "{} != {}".format( self.Output.meta.shape, slot.meta.shape )
         max_label = 0
 
         # Get logical blocking.
-        block_starts = getIntersectingBlocks( self._blockshape, roiFromShape(self.Input.meta.shape) )
+        block_starts = getIntersectingBlocks( self._blockshape, roiFromShape(self.Output.meta.shape) )
         block_starts = map( tuple, block_starts )
 
         # Write each block
         for block_start in block_starts:
-            block_roi = getBlockBounds( self.Input.meta.shape, self._blockshape, block_start )
+            block_roi = getBlockBounds( self.Output.meta.shape, self._blockshape, block_start )
             
             # Request the block data
             block_data = slot(*block_roi).wait()
             
             # Write into the array
-            subregion_roi = SubRegion(self.Input, *block_roi)
+            subregion_roi = SubRegion(self.Output, *block_roi)
             cleaned_block_data = self._setInSlotInput( self.Input, (), subregion_roi, block_data )
             
             max_label = max( max_label, cleaned_block_data.max() )
