@@ -163,27 +163,14 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
         tagged_offsets.update( dict( zip( opMetadataInjector.Output.meta.getAxisKeys(), settingsDlg.imageOffsets ) ) )
         imageOffsets = tagged_offsets.values()
 
-        # Expect import is subset
-        if (TinyVector(opReorderAxes.Output.meta.shape) > writeSeeds.meta.shape).any():
-            QMessageBox.critical(parent_widget, "Import shape too large",
-                                 "Import shape is not a subset of original input stack.")
-            return
-
-        # Expect x, y shape to match original shape
-        labels_tagged_shape = labelingSlots.labelInput.meta.getTaggedShape()
-        file_tagged_shape = opReorderAxes.Output.meta.getTaggedShape()
-        if (  labels_tagged_shape['x'] != file_tagged_shape['x']
-           or labels_tagged_shape['y'] != file_tagged_shape['y'] ):
-            QMessageBox.critical(parent_widget, "Shape does not match",
-                                 "X,Y shape must match original input stack.")
-            return
-
         # Optimization if mapping is identity
         if labelMapping.keys() == labelMapping.values():
             labelMapping = None
 
-        # Map input labels to output labels
+        # This will be fast (it's already cached)
         label_data = opReorderAxes.Output[:].wait()
+        
+        # Map input labels to output labels
         if labelMapping:
             # There are other ways to do a relabeling (e.g skimage.segmentation.relabel_sequential)
             # But this supports potentially huge values of unique_read_labels (in the billions),
@@ -244,15 +231,18 @@ class LabelImportOptionsDlg(QDialog):
         self._initAxesEdit()
         self._initMetaInfoWidgets()
         self._initInsertPositionMappingWidgets()
+        self._initWarningLabel()
 
         # See self.eventFilter()
         self.installEventFilter(self)
 
         self._dataInputSlot.notifyMetaChanged( self._initInsertPositionMappingWidgets )
+        self._dataInputSlot.notifyMetaChanged( self._initWarningLabel )
 
     def closeEvent(self, e):
         # Clean-up
         self._dataInputSlot.unregisterMetaChanged( self._initInsertPositionMappingWidgets )
+        self._dataInputSlot.unregisterMetaChanged( self._initWarningLabel )
         self.inputMetaInfoWidget.initSlot(None)
         self.labelMetaInfoWidget.initSlot(None)
 
@@ -373,13 +363,13 @@ class LabelImportOptionsDlg(QDialog):
         if not self._dataInputSlot.ready():
             return
 
-        inputAxes = self._dataInputSlot.meta.getAxisKeys()
         output_tagged_shape = self._writeSeedsSlot.meta.getTaggedShape()
         writeSeedsShape = map( lambda k: output_tagged_shape[k], self._dataInputSlot.meta.getAxisKeys() )
         axisRanges = numpy.array(writeSeedsShape) - self._dataInputSlot.meta.shape
         maxValues = list(axisRanges)
 
         # Handle the 'c' axis separately
+        inputAxes = self._dataInputSlot.meta.getAxisKeys()
         try:
             c_idx = inputAxes.index('c')
         except ValueError:
@@ -491,6 +481,17 @@ class LabelImportOptionsDlg(QDialog):
 
         mappingTbl.resizeColumnsToContents()
 
+    def _initWarningLabel(self, *args):
+        self.warningLabel.setText('<html><head/><body><p><span style=" color:#ff0000;">'
+                                  'Warning: Imported X/Y dimensions do not match your original dataset.'
+                                  '</span></p></body></html>')
+
+        tagged_import_dimensions = self._dataInputSlot.meta.getTaggedShape()
+        tagged_destination_dimensions = self._writeSeedsSlot.meta.getTaggedShape()
+        show_warning = (   tagged_import_dimensions['x'] != tagged_destination_dimensions['x']
+                        or tagged_import_dimensions['y'] != tagged_destination_dimensions['y'] )
+        self.warningLabel.setVisible( show_warning )
+        
 
     #**************************************************************************
     # Update Position / Mapping
