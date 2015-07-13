@@ -38,6 +38,7 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
         tree_counts[:self._num_trees % self._num_forests] += 1
         assert tree_counts.sum() == self._num_trees
         tree_counts = map(int, tree_counts)
+        tree_counts[:] = (tree_count for tree_count in tree_counts if tree_count != 0)
         
         logger.debug( "Training parallel vigra RF" )
         # Save for future reference
