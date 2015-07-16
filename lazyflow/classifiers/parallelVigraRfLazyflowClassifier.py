@@ -7,6 +7,7 @@ import numpy
 import vigra
 import h5py
 
+from lazyflow.utility import Timer
 from lazyflow.request import Request, RequestPool, RequestLock
 from lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
 
@@ -65,9 +66,10 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
             # save the oobs
             req.notify_finished( partial( oobs.__setitem__, i ) )
             pool.add( req )
-        pool.wait()
 
-        logger.info( "Training complete. Average OOB: {}".format( numpy.average(oobs) ) )
+        with Timer() as timer:
+            pool.wait()
+        logger.info( "Training completed in {} seconds. Average OOB: {}".format( timer.seconds(), numpy.average(oobs) ) )
         return ParallelVigraRfLazyflowClassifier( forests, oobs, known_labels, feature_names )
 
     def estimated_ram_usage_per_requested_predictionchannel(self):
