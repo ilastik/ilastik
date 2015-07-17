@@ -214,12 +214,12 @@ class OpTrackingBase(Operator, ExportingOperator):
             merger = get_dict_value(events[str(i - time_range[0])], "merger", [])
             multi = get_dict_value(events[str(i - time_range[0] + 1)], "multiMove", [])
 
-            logger.info(" {} dis at {}".format(len(dis), i))
-            logger.info(" {} app at {}".format(len(app), i))
-            logger.info(" {} div at {}".format(len(div), i))
-            logger.info(" {} mov at {}".format(len(mov), i))
-            logger.info(" {} merger at {}".format(len(merger), i))
-            logger.info(" {} multiMoves at {}\n".format(len(multi), i))
+            # logger.info(" {} dis at {}".format(len(dis), i))
+            # logger.info(" {} app at {}".format(len(app), i))
+            # logger.info(" {} div at {}".format(len(div), i))
+            # logger.info(" {} mov at {}".format(len(mov), i))
+            # logger.info(" {} merger at {}".format(len(merger), i))
+            # logger.info(" {} multiMoves at {}\n".format(len(multi), i))
 
             label2color.append({})
             mergers.append({})
@@ -437,7 +437,7 @@ class OpTrackingBase(Operator, ExportingOperator):
             if ct.size:
                 ct = ct[1:, ...]
 
-            logger.info("at timestep {}, {} traxels found".format(t, rc.shape[0]))
+            # logger.info("at timestep {}, {} traxels found".format(t, rc.shape[0]))
             count = 0
             filtered_labels_at = []
             for idx in range(rc.shape[0]):
