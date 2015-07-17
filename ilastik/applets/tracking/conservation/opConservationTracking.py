@@ -116,7 +116,7 @@ class OpConservationTracking(OpTrackingBase):
         parameters['withArmaCoordinates'] = withArmaCoordinates
         parameters['appearanceCost'] = appearance_cost
         parameters['disappearanceCost'] = disappearance_cost
-                
+
         if cplex_timeout:
             parameters['cplex_timeout'] = cplex_timeout
         else:
@@ -190,7 +190,7 @@ class OpConservationTracking(OpTrackingBase):
                                          "none", # dump traxelstore,
                                          pgmlink.ConsTrackingSolverType.CplexSolver
                                          )
-            self.tracker.buildGraph(ts)
+            g = self.tracker.buildGraph(ts)
 
         # create dummy uncertainty parameter object with just one iteration, so no perturbations at all (iter=0 -> MAP)
         sigmas = pgmlink.VectorOfDouble()
@@ -214,7 +214,24 @@ class OpConservationTracking(OpTrackingBase):
                                             True, #with_constraints
                                             uncertaintyParams,
                                             cplex_timeout,
-                                            None) # TransitionClassifier
+                                            None,
+                                            1,
+                                            False) # TransitionClassifier
+
+            # plot hypotheses graph
+            # self.tracker.plot_hypotheses_graph(
+            #                 g,
+            #                 "/Users/chaubold/Desktop/sabrina_mnd200_wt.dot",
+            #                 False, # with tracklets
+            #                 withDivisions, # with divisions
+            #                 10.0, # detection weight
+            #                 divWeight,
+            #                 transWeight,
+            #                 disappearance_cost, # disappearance cost
+            #                 appearance_cost, # appearance cost
+            #                 transition_parameter,
+            #                 borderAwareWidth
+            # )
 
             eventsVector = eventsVector[0] # we have a vector such that we could get a vector per perturbation
 
