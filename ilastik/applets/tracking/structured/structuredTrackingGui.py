@@ -5,6 +5,7 @@ import logging
 import sys
 import re
 import traceback
+import math
 from PyQt4.QtCore import pyqtSignal
 
 import pgmlink
@@ -16,6 +17,7 @@ from ilastik.utility.gui.titledMenu import TitledMenu
 from ilastik.utility.ipcProtocol import Protocol
 from ilastik.shell.gui.ipcManager import IPCFacade
 from ilastik.config import cfg as ilastik_config
+from ilastik.utility import bind
 
 from lazyflow.request.request import Request
 
@@ -75,6 +77,10 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         return self._drawer
 
     def initAppletDrawerUi(self):
+        self._previousCrop = -1
+        self._currentCrop = -1
+        self._currentCropName = ""
+
         super(StructuredTrackingGui, self).initAppletDrawerUi()
 
         self._allowedTimeoutInputRegEx = re.compile('^[0-9]*$')
@@ -91,7 +97,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             self._drawer.opticalBox.hide()
 
             self._drawer.maxDistBox.hide() # hide the maximal distance box
-            self._drawer.label_2.hide() # hie the maximal distance label
+            self._drawer.label_2.hide() # hide the maximal distance label
             self._drawer.label_5.hide() # hide division threshold label
             self._drawer.divThreshBox.hide()
             self._drawer.label_25.hide() # hide avg. obj size label
@@ -109,16 +115,64 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         
         self._onMaxObjectsBoxChanged()
         self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)                
-        self._drawer.ImportAnnotationsButton.clicked.connect(self._onImportAnnotationsButtonPressed)
+        #self._drawer.ImportAnnotationsButton.clicked.connect(self._onImportAnnotationsButtonPressed)
         self._drawer.StructuredLearningButton.clicked.connect(self._onRunStructuredLearningButtonPressed)
-        self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
+        self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()
+        #, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
 
+        self._drawer.divWeightBox.valueChanged.connect(self._onDivisionWeightBoxChanged)                
+        self._drawer.detWeightBox.valueChanged.connect(self._onDetectionWeightBoxChanged)                
+        self._drawer.transWeightBox.valueChanged.connect(self._onTransitionWeightBoxChanged)                
+        self._drawer.appearanceBox.valueChanged.connect(self._onAppearanceWeightBoxChanged)                
+        self._drawer.disappearanceBox.valueChanged.connect(self._onDisappearanceWeightBoxChanged)                
+
+        self._divisionWeight = self.topLevelOperatorView.DivisionWeight.value
+        self._detectionWeight = self.topLevelOperatorView.DetectionWeight.value
+        self._transitionWeight =self.topLevelOperatorView.TransitionWeight.value
+        self._appearanceWeight = self.topLevelOperatorView.AppearanceWeight.value
+        self._disappearanceWeight = self.topLevelOperatorView.DisappearanceWeight.value
+
+        self._drawer.detWeightBox.setValue(self._detectionWeight)
+        self._drawer.divWeightBox.setValue(self._divisionWeight)
+        self._drawer.transWeightBox.setValue(self._transitionWeight)
+        self._drawer.appearanceBox.setValue(self._appearanceWeight)
+        self._drawer.disappearanceBox.setValue(self._disappearanceWeight)
+
+        #self.topLevelOperatorView.Annotations.notifyReady( bind(self._updateAnnotationsFromOperator) )
+        #self.topLevelOperatorView.Labels.notifyReady( bind(self._updateLabelsFromOperator) )
+        #self.topLevelOperatorView.Divisions.notifyReady( bind(self._updateDivisionsFromOperator) )
+        
     @threadRouted
     def _onTimeoutBoxChanged(self, *args):
         inString = str(self._drawer.timeoutBox.text())
         if self._allowedTimeoutInputRegEx.match(inString) is None:
             self._drawer.timeoutBox.setText(inString.decode("utf8").encode("ascii", "replace")[:-1])
 
+    @threadRouted
+    def _onDivisionWeightBoxChanged(self, *args):
+        self._divisionWeight = self._drawer.divWeightBox.value()
+        self.topLevelOperatorView.DivisionWeight.setValue(self._divisionWeight)
+
+    @threadRouted
+    def _onDetectionWeightBoxChanged(self, *args):
+        self._detectionWeight = self._drawer.detWeightBox.value()
+        self.topLevelOperatorView.DetectionWeight.setValue(self._detectionWeight)
+
+    @threadRouted
+    def _onTransitionWeightBoxChanged(self, *args):
+        self._transitionWeight = self._drawer.transWeightBox.value()
+        self.topLevelOperatorView.TransitionWeight.setValue(self._transitionWeight)
+
+    @threadRouted
+    def _onAppearanceWeightBoxChanged(self, *args):
+        self._appearanceWeight = self._drawer.appearanceBox.value()
+        self.topLevelOperatorView.AppearanceWeight.setValue(self._appearanceWeight)
+
+    @threadRouted
+    def _onDisappearanceWeightBoxChanged(self, *args):
+        self._disappearanceWeight = self._drawer.disappearanceBox.value()
+        self.topLevelOperatorView.DisappearanceWeight.setValue(self._disappearanceWeight)
+        
     def _setRanges(self, *args):
         super(StructuredTrackingGui, self)._setRanges()
         maxx = self.topLevelOperatorView.LabelImage.meta.shape[1] - 1
@@ -130,28 +184,161 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             maxBorder = min(maxBorder, maxz)
         self._drawer.bordWidthBox.setRange(0, maxBorder/2)
         
-        
     def _onMaxObjectsBoxChanged(self):
         self._setMergerLegend(self.mergerLabels, self._drawer.maxObjectsBox.value())
         
-    def _onImportAnnotationsButtonPressed(self):
+    #def _updateAnnotationsFromOperator(self):
+    #    self.annotations = self.topLevelOperatorView.Annotations.value
+
+#    def _updateLabelsFromOperator(self):
+#        self.labels = self.topLevelOperatorView.Labels.wait()
+
+#    def _updateDivisionsFromOperator(self):
+#        self.divisions = self.topLevelOperatorView.Divisions.wait()
+
+    def initializeAnnotations(self):
+
+        #print " -------LABELS--slot----->",self.topLevelOperatorView.Labels.value
+        #print " -----DIVISIONS-slot----->",self.topLevelOperatorView.Divisions.value
+        #print " -------labels------->",self.topLevelOperatorView.labels
+        #print " -----divisions------>",self.topLevelOperatorView.divisions
+
+        #print " -------LABELS--slot----->",self.mainOperator.Labels.value
+        #print " -----DIVISIONS-slot----->",self.mainOperator.Divisions.value
+        #print " -------labels------->",self.mainOperator.labels
+        #print " -----divisions------>",self.mainOperator.divisions
+
+        for name in self.topLevelOperatorView.Crops.value.keys():
+            crop = self.topLevelOperatorView.Crops.value[name]
+
+            for time in range(crop["time"][0],crop["time"][1]+1):
+                if time in self.topLevelOperatorView.labels.keys():
+                    for label in self.topLevelOperatorView.labels[time].keys():
+                        lower = self.features[time][default_features_key]['Coord<Minimum>'][label]
+                        upper = self.features[time][default_features_key]['Coord<Maximum>'][label]
+
+                        addAnnotation = False
+                        if len(lower) == 2:
+                            if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
+                                crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1]:
+                                addAnnotation = True
+                        else:
+                            if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
+                                crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1] and \
+                                crop["starts"][2] <= upper[2] and lower[2] <= crop["stops"][2]:
+                                addAnnotation = True
+
+                        # timeUnicodeStr = unicode(str(time))
+                        # labelUnicodeStr = unicode(str(label))
+                        if addAnnotation:
+                            if name not in self.topLevelOperatorView.Annotations.value.keys():
+                                self.topLevelOperatorView.Annotations.value[name] = {}
+                            if "labels" not in self.topLevelOperatorView.Annotations.value[name].keys():
+                                self.topLevelOperatorView.Annotations.value[name]["labels"] = {}
+                            if time not in self.topLevelOperatorView.Annotations.value[name]["labels"].keys():
+                                self.topLevelOperatorView.Annotations.value[name]["labels"][time] = {}
+                            self.topLevelOperatorView.Annotations.value[name]["labels"][time][label] = self.topLevelOperatorView.labels[time][label]
+                            # if timeUnicodeStr not in self.topLevelOperatorView.Annotations.value[name]["labels"].keys():
+                            #     self.topLevelOperatorView.Annotations.value[name]["labels"][timeUnicodeStr] = {}
+                            # self.topLevelOperatorView.Annotations.value[name]["labels"][timeUnicodeStr][labelUnicodeStr] = self.topLevelOperatorView.labels[time][label]
+
+            for parentTrack in self.topLevelOperatorView.divisions.keys():
+                time = self.topLevelOperatorView.divisions[parentTrack][1]
+                child1Track = self.topLevelOperatorView.divisions[parentTrack][0][0]
+                child2Track = self.topLevelOperatorView.divisions[parentTrack][0][1]
+
+                parent = self.getLabel(time, parentTrack)
+                child1 = self.getLabel(time+1, child1Track)
+                child2 = self.getLabel(time+1, child2Track)
+
+                #if not (parent and child1 and child2):
+                #    print "WARNING:Your divisons and labels do not match for time ",time, " and parent track ", parentTrack,"(label ",parent," )!"
+                #else:
+                if (parent and child1 and child2):
+                    lowerParent = self.features[time][default_features_key]['Coord<Minimum>'][parent]
+                    upperParent = self.features[time][default_features_key]['Coord<Maximum>'][parent]
+
+                    lowerChild1 = self.features[time][default_features_key]['Coord<Minimum>'][child1]
+                    upperChild1 = self.features[time][default_features_key]['Coord<Maximum>'][child1]
+
+                    lowerChild2 = self.features[time][default_features_key]['Coord<Minimum>'][child2]
+                    upperChild2 = self.features[time][default_features_key]['Coord<Maximum>'][child2]
+
+                    addAnnotation = False
+                    if len(lowerParent) == 2:
+                        if (crop["time"][0] <= time and time <= crop["time"][1]+1) and \
+                            ((crop["starts"][0] <= upperParent[0] and lowerParent[0] <= crop["stops"][0] and \
+                            crop["starts"][1] <= upperParent[1] and lowerParent[1] <= crop["stops"][1]) or \
+                            ( crop["starts"][0] <= upperChild1[0] and lowerChild1[0] <= crop["stops"][0] and \
+                            crop["starts"][1] <= upperChild1[1] and lowerChild1[1] <= crop["stops"][1]) or \
+                            ( crop["starts"][0] <= upperChild2[0] and lowerChild2[0] <= crop["stops"][0] and \
+                            crop["starts"][1] <= upperChild2[1] and lowerChild2[1] <= crop["stops"][1])):
+                            addAnnotation = True
+                    else:
+                        if (crop["time"][0] <= time and time <= crop["time"][1]+1) and \
+                            ((crop["starts"][0] <= upperParent[0] and lowerParent[0] <= crop["stops"][0] and \
+                            crop["starts"][1] <= upperParent[1] and lowerParent[1] <= crop["stops"][1] and \
+                            crop["starts"][2] <= upperParent[2] and lowerParent[2] <= crop["stops"][2]) or \
+                            ( crop["starts"][0] <= upperChild1[0] and lowerChild1[0] <= crop["stops"][0] and \
+                            crop["starts"][1] <= upperChild1[1] and lowerChild1[1] <= crop["stops"][1] and \
+                            crop["starts"][2] <= upperChild1[2] and lowerChild1[2] <= crop["stops"][2]) or \
+                            ( crop["starts"][0] <= upperChild2[0] and lowerChild2[0] <= crop["stops"][0] and \
+                            crop["starts"][1] <= upperChild2[1] and lowerChild2[1] <= crop["stops"][1] and \
+                            crop["starts"][2] <= upperChild2[2] and lowerChild2[2] <= crop["stops"][2])):
+                            addAnnotation = True
+                    if addAnnotation:
+                        if name not in self.topLevelOperatorView.Annotations.value.keys():
+                            self.topLevelOperatorView.Annotations.value[name] = {}
+                        if "divisions" not in self.topLevelOperatorView.Annotations.value[name].keys():
+                            self.topLevelOperatorView.Annotations.value[name]["divisions"] = {}
+                        if parentTrack not in self.topLevelOperatorView.Annotations.value[name]["divisions"].keys():
+                            self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = {}
+                        self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = self.topLevelOperatorView.divisions[parentTrack]
+
+        #self._setDirty(self.topLevelOperatorView.Annotations, range(self.topLevelOperatorView.LabelImage.meta.shape[0]))
+
         self._annotations = self.mainOperator.Annotations.value
-        print "ImportAnnotations PRESSED annotations ",self._annotations
+        #print "Annotations---> ", self.mainOperator.Annotations.value
+
+    def getLabel(self, time, track):
+        for label in self.mainOperator.labels[time].keys():
+            if self.mainOperator.labels[time][label] == set([track]):
+                return label
+        return False
+
+#    def _setDirty(self, slot, timesteps):
+        #if slot is self.topLevelOperatorView.Annotations:
+        #    self.topLevelOperatorView.Annotations.setDirty([])
 
     def _onRunStructuredLearningButtonPressed(self):
 
-        self._onImportAnnotationsButtonPressed()
+        #print "RunStructuredLearningButton PRESSED Crops Slot", self.mainOperator.Crops.value
+        #print "RunStructuredLearningButton PRESSED Annotation Slot", self.mainOperator.Annotations.value
 
-        print "RunStructuredLearningButton PRESSED crops", self.mainOperator.Crops.value
 
-        print "building consTracker"
+        self.initializeAnnotations()
+
+
+
+
+
+        #print "RunStructuredLearningButton BEFORE Annotation Slot", self.mainOperator.Annotations.value
+        self._annotations = self.mainOperator.Annotations.value
+        #print "RunStructuredLearningButton AFTER Annotation Slot", self.mainOperator.Annotations.value
+        
+
+
+
+        #print "building consTracker"
         median_obj_size = [0]
 
         ndim=2 # READ FROM ilastik variable
+        maxObj=1
+
 
         fieldOfView = pgmlink.FieldOfView(float(0),float(0),float(0),float(0),float(self.topLevelOperatorView.LabelImage.meta.shape[0]),float(self.topLevelOperatorView.LabelImage.meta.shape[1]),float(self.topLevelOperatorView.LabelImage.meta.shape[2]),float(self.topLevelOperatorView.LabelImage.meta.shape[3]))
         consTracker = pgmlink.ConsTracking(
-            3,#maxObj,
+            maxObj,
             True,#sizeDependent,   # size_dependent_detection_prob
             float(median_obj_size[0]), # median_object_size
             float(200),#maxDist),
@@ -163,7 +350,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             pgmlink.ConsTrackingSolverType.CplexSolver,
             ndim) # ADD THIS PARAMETER TO CONSTRUCTOR CALLS
 
-        print "building traxelStore", self.topLevelOperatorView.LabelImage.meta.shape[0], self.topLevelOperatorView.LabelImage.meta.shape[1],self.topLevelOperatorView.LabelImage.meta.shape[2],self.topLevelOperatorView.LabelImage.meta.shape[3]
+        #print "building traxelStore", self.topLevelOperatorView.LabelImage.meta.shape[0], self.topLevelOperatorView.LabelImage.meta.shape[1],self.topLevelOperatorView.LabelImage.meta.shape[2],self.topLevelOperatorView.LabelImage.meta.shape[3]
 
         time_range = range (0,self.topLevelOperatorView.LabelImage.meta.shape[0])
         traxelStore, empty_frame = self.mainOperator._generate_traxelstore(
@@ -183,14 +370,14 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         if empty_frame:
             raise Exception, 'cannot track frames with 0 objects, abort.'
 
-        print "building cons Hypotheses Graph"
-        hypothesesGraph = consTracker.build_hypo_graph(traxelStore)
+        #print "building cons Hypotheses Graph"
+        hypothesesGraph = consTracker.buildGraph(traxelStore)
 
-        print "building structuredLearningTracker"
+        #print "building structuredLearningTracker"
         sizeDependent = False
         structuredLearningTracker = pgmlink.StructuredLearningTracking(
             hypothesesGraph,
-            3,#maxObj,
+            maxObj,
             sizeDependent,   # size_dependent_detection_prob
             float(median_obj_size[0]), # median_object_size
             200,#maxDist,
@@ -202,10 +389,10 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             pgmlink.ConsExplicitTrackingSolverType.CplexSolver,
             ndim)
 
-        print "update hypothesesGraph: labels"
+        #print "update hypothesesGraph: labels"
         structuredLearningTracker.addLabels()
 
-        print "update hypothesesGraph: labels ---> adding APPEARANCE/TRANSITION/DISAPPEARANCE labels"
+        #print "update hypothesesGraph: labels ---> adding APPEARANCE/TRANSITION/DISAPPEARANCE labels"
         #detectionProbabilities = self.mainOperator.DetectionProbabilities(time_range).wait()
         for cropKey in self.mainOperator.Annotations.value.keys():
             crop = self.mainOperator.Annotations.value[cropKey]
@@ -213,8 +400,9 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
             if "labels" in crop.keys():
                 labels = crop["labels"]
+                #print "******** labels",labels
                 for time in labels.keys():
-                    #print "time, labels", time, labels[time]
+                    #print "******** time, labels", time, labels[time]
                     for label in labels[time].keys():
                         trackSet = labels[time][label]
                         #print "===================================>",len(trackSet), trackSet
@@ -230,63 +418,63 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
                         #print type, label
                         if type[0] == "FIRST":
-                            print "LABELS.addFirstLabelS (time, label, cellCount)=", time, label, trackCount
+                            #print "LABELS.addFirstLabelS (time, label, cellCount)=", time, label, trackCount
                             structuredLearningTracker.addFirstLabels(time, int(label), float(trackCount))
                         elif type[0] == "LAST":
-                            print "LABELS.addLastLabelS (time, label, cellCount)=", time, label, trackCount
+                            #print "LABELS.addLastLabelS (time, label, cellCount)=", time, label, trackCount
                             structuredLearningTracker.addLastLabels(time, int(label), float(trackCount))
-                            print "LABELS.addARCLabel (startTime, startLabel, endLabel, cellCount)=", time-1, type[1], label, 1
+                            #print "LABELS.addARCLabel (startTime, startLabel, endLabel, cellCount)=", time-1, type[1], label, 1
                             structuredLearningTracker.addArcLabel(time-1, int(type[1]), int(label), 1.0)
                         #elif type[0] == "SINGLETON":
                             #print "structuredLearningTracker.addSingletonLabelS <--- NOTHING TO DO"
                             # print "structuredLearningTracker.addSingletonLabelS (time, label, trackCount)=", time, label
                             # structuredLearningTracker.addSingletonLabels(hypothesesGraph, time, label, float(trackCount))
                         elif type[0] == "INTERMEDIATE":
-                            print "LABELS.addIntermediateLabelS (time, label, cellCount)=", time, label, trackCount
+                            #print "LABELS.addIntermediateLabelS (time, label, cellCount)=", time, label, trackCount
                             structuredLearningTracker.addIntermediateLabels(time, int(label), float(trackCount))
-                            print "LABELS.addARCLabel (startTime, startLabel, endLabel, cellCount)=", time-1, type[1], label, 1
+                            #print "LABELS.addARCLabel (startTime, startLabel, endLabel, cellCount)=", time-1, type[1], label, 1
                             structuredLearningTracker.addArcLabel(time-1, int(type[1]), int(label), 1.0)
 
 
 
             if "divisions" in crop.keys():
                 divisions = crop["divisions"]
+                #print "divisions", divisions
                 for track in divisions.keys():
                     division = divisions[track]
                     time = int(division[1])
 
-                    parent = self.getLabel(cropKey, time, track)
-                    print "DIVISIONS.addDivisionLabel (time, label, cellCount)", time, parent, 1
+                    parent = int(self.getLabel(cropKey, time, track))
+                    #print "DIVISIONS.addDivisionLabel (time, label, cellCount)", time, parent, 1
                     structuredLearningTracker.addDivisionLabel(time, parent, 1.0)
-                    print "DIVISIONS.addAppearanceLabel (time, label, cellCount)", time, parent, 1
+                    #print "DIVISIONS.addAppearanceLabel (time, label, cellCount)", time, parent, 1
                     structuredLearningTracker.addAppearanceLabel(time, parent, 1.0)
 
-                    child0 = self.getLabel(cropKey, time+1, division[0][0])
-                    #print division[1],"      : ", track, self.getLabel(cropKey, time, track), "--->", division[0][0], self.getLabel(cropKey, time+1, division[0][0])
-                    print "DIVISIONS.addDisppearanceLabel (time, label, cellCount)", time+1, child0, 1
+                    child0 = int(self.getLabel(cropKey, time+1, division[0][0]))
+                    #print "DIVISIONS.addDisppearanceLabel (time, label, cellCount)", time+1, child0, 1
                     structuredLearningTracker.addDisappearanceLabel(time+1, child0, 1.0)
-                    print "DIVISIONS.addAppearanceLabel (time, label, cellCount)", time+1, child0, 1
+                    #print "DIVISIONS.addAppearanceLabel (time, label, cellCount)", time+1, child0, 1
                     structuredLearningTracker.addAppearanceLabel(time+1, child0, 1.0)
-                    print "LABELS.addARCLabel (startTime, startLabel, endLabel, cellCount)=", time, parent, child0, 1
+                    #print "LABELS.addARCLabel (startTime, startLabel, endLabel, cellCount)=", time, parent, child0, 1
                     structuredLearningTracker.addArcLabel(time, parent, child0, 1.0)
 
-                    child1 = self.getLabel(cropKey, time+1, division[0][1])
+                    child1 = int(self.getLabel(cropKey, time+1, division[0][1]))
                     #print division[1],"      : ", track, self.getLabel(cropKey, time, track), "--->", division[0][1], self.getLabel(cropKey, time+1, division[0][1])
-                    print "DIVISIONS.addDisppearanceLabel (time, label, cellCount)", time+1, child1, 1
+                    #print "DIVISIONS.addDisppearanceLabel (time, label, cellCount)", time+1, child1, 1
                     structuredLearningTracker.addDisappearanceLabel(time+1, child1, 1.0)
-                    print "DIVISIONS.addAppearanceLabel (time, label, cellCount)", time+1, child1, 1
+                    #print "DIVISIONS.addAppearanceLabel (time, label, cellCount)", time+1, child1, 1
                     structuredLearningTracker.addAppearanceLabel(time+1, child1, 1.0)
-                    print "LABELS.addARCLabel (startTime, startLabel, endLabel, cellCount)=", time, parent, child1, 1
+                    #print "LABELS.addARCLabel (startTime, startLabel, endLabel, cellCount)=", time, parent, child1, 1
                     structuredLearningTracker.addArcLabel(time, parent, child1, 1.0)
 
         forbidden_cost = 0.0
         ep_gap = 0.05
         withTracklets=False
-        detectionWeight=11.0
-        divWeight=12.0
-        transWeight=13.0
-        disappearance_cost = 555.0
-        appearance_cost = 333.0
+        #detectionWeight=11.0
+        #divWeight=12.0
+        #transWeight=13.0
+        #disappearance_cost = 555.0
+        #appearance_cost = 333.0
         withMergerResolution=True
         ndim=2
         transition_parameter = 5.0
@@ -305,30 +493,29 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         #
 
         # print "building CONS Hypotheses Graph"
-        # consHypothesesGraph = consTracker.build_hypo_graph(traxelStore)
+        # consHypothesesGraph = consTracker.buildGraph(traxelStore)
 
-
-
-
-
-
-
-
-
+        detectionWeight = self._detectionWeight
+        divWeight = self._divisionWeight
+        transWeight = self._transitionWeight
+        disappearance_cost = self._disappearanceWeight
+        appearance_cost = self._appearanceWeight
 
         # print "test iterate through hypothesesGraph NODES (C++ side)"
         #structuredLearningTracker.hypothesesGraphTest(hypothesesGraph)
 
-        print "EXPORTING CROPS"
+        #print "EXPORTING CROPS"
         for key in self.mainOperator.Crops.value.keys():
             crop = self.mainOperator.Crops.value[key]
-            print "PYTHON---->",crop
-            fieldOfView = pgmlink.FieldOfView(float(crop["time"][0]),float(crop["starts"][0]),float(crop["starts"][1]),float(crop["starts"][2]),float(crop["time"][1]),float(crop["stops"][0]),float(crop["stops"][1]),float(crop["stops"][2]))
+            #print "PYTHON---->",crop
+            fieldOfView = pgmlink.FieldOfView(
+                float(crop["time"][0]),float(crop["starts"][0]),float(crop["starts"][1]),float(crop["starts"][2]),
+                float(crop["time"][1]),float(crop["stops"][0]),float(crop["stops"][1]),float(crop["stops"][2]))
 
-            print "exporting Crop to C++"
+            #print "exporting Crop to C++"
             structuredLearningTracker.exportCrop(fieldOfView)
 
-        print "CREATING DATASET"
+        #print "Structured Learning"
         structuredLearningTracker.structuredLearning(
             float(forbidden_cost),#0,       # forbidden_cost
             float(ep_gap), # ep_gap
@@ -348,10 +535,48 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             transitionClassifier
         )
 
-        print "DONE with structured learning:"
-        for i in range(5):
-            print "ilaskit.python: weights = ", structuredLearningTracker.weights(i)
+        #print "DONE with structured learning:"
 
+        sltWeightNorm = 0
+        for i in range(5):
+            sltWeightNorm += structuredLearningTracker.weight(i) * structuredLearningTracker.weight(i)
+        sltWeightNorm = math.sqrt(sltWeightNorm);
+
+        #for i in range(5):
+            #print "tracking weights [",i,"]  = ", structuredLearningTracker.weight(i)
+
+        self._detectionWeight = structuredLearningTracker.weight(0)
+        self._divisionWeight = structuredLearningTracker.weight(1)
+        self._transitionWeight = structuredLearningTracker.weight(2)
+        self._appearanceWeight = structuredLearningTracker.weight(3)
+        self._disappearanceWeight = structuredLearningTracker.weight(4)
+
+        
+        #print "opengm struct-max-margin: detection weight = ", self._detectionWeight
+        #print "opengm struct-max-margin: division weight = ", self._divisionWeight
+        #print "opengm struct-max-margin: transition weight = ", self._transitionWeight
+        #print "opengm struct-max-margin: appearance weight = ", self._appearanceWeight
+        #print "opengm struct-max-margin: disappearance weight = ", self._disappearanceWeight
+
+        self._detectionWeight = math.exp(structuredLearningTracker.weight(0))
+        self._divisionWeight = math.exp(structuredLearningTracker.weight(1))
+        self._transitionWeight = math.exp(structuredLearningTracker.weight(2))
+        self._appearanceWeight = math.exp(structuredLearningTracker.weight(3))
+        self._disappearanceWeight = math.exp(structuredLearningTracker.weight(4))
+
+        self._drawer.detWeightBox.setValue(self._detectionWeight);
+        self._drawer.divWeightBox.setValue(self._divisionWeight);
+        self._drawer.transWeightBox.setValue(self._transitionWeight);
+        self._drawer.appearanceBox.setValue(self._appearanceWeight);
+        self._drawer.disappearanceBox.setValue(self._disappearanceWeight);
+
+        print "ilastik structured learning tracking"
+        print "ilastik structured learning tracking: detection weight = ", self._detectionWeight
+        print "ilastik structured learning tracking: division weight = ", self._divisionWeight
+        print "ilastik structured learning tracking: transition weight = ", self._transitionWeight
+        print "ilastik structured learning tracking: appearance weight = ", self._appearanceWeight
+        print "ilastik structured learning tracking: disappearance weight = ", self._disappearanceWeight
+        
 
         # print "______________________________________________________________________STRUCTURED LEARNING TRACKING INFERENCE MODEL"
         # structuredLearningTracker.track(
@@ -424,8 +649,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             print "ERROR: Your annotations are not complete. See time frame:", time-1
         elif lastTime == time-1:
             type =  "INTERMEDIATE"
-        else:
-            print "ERROR: SHOULD NOT GET HERE!"
+        #else:
+        #    print "ERROR: SHOULD NOT GET HERE!"
 
         firstTime = -1
         #scan following time frames for track
@@ -446,10 +671,10 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                 return ["INTERMEDIATE",lastLabel]
             elif type != None:
                 return [type]
-            else:
-                print "Something is wrong!"
-        else:
-            print "ERROR: Should not get here!"
+            #else:
+            #    print "ERROR: SHOULD NOT GET HERE!"
+        #else:
+        #    print "ERROR: SHOULD NOT GET HERE!"
 
     def _onTrackButtonPressed( self ):
         if not self.mainOperator.ObjectFeatures.ready():

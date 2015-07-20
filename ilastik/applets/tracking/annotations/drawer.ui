@@ -43,7 +43,7 @@
         <bool>true</bool>
        </property>
        <property name="text">
-        <string>Initialize Annotations</string>
+        <string>Initialize Training</string>
        </property>
       </widget>
      </item>
@@ -57,7 +57,7 @@
         <bool>true</bool>
        </property>
        <property name="text">
-        <string>Save Annotations</string>
+        <string>Save Training</string>
        </property>
       </widget>
      </item>

@@ -76,15 +76,15 @@ class StructuredTrackingWorkflow( Workflow ):
 
         self.objectExtractionApplet = ObjectExtractionApplet(name="Object Feature Computation",workflow=self, interactive=False)
 
-        self.annotationsApplet = AnnotationsApplet( workflow=self )
+        self.annotationsApplet = AnnotationsApplet( name="Training", workflow=self )
         opAnnotations = self.annotationsApplet.topLevelOperator
 
-        self.dataExportAnnotationsApplet = TrackingBaseDataExportApplet(self, "Annotations Export")
+        self.dataExportAnnotationsApplet = TrackingBaseDataExportApplet(self, "Training Export")
         opDataExportAnnotations = self.dataExportAnnotationsApplet.topLevelOperator
-        opDataExportAnnotations.SelectionNames.setValue( ['Annotations', 'Object Identities'] )
+        opDataExportAnnotations.SelectionNames.setValue( ['Training', 'Object Identities'] )
         opDataExportAnnotations.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
 
-        self.trackingApplet = StructuredTrackingApplet( workflow=self )
+        self.trackingApplet = StructuredTrackingApplet( name="Tracking - Structured Learning", workflow=self )
         opStructuredTracking = self.trackingApplet.topLevelOperator
 
         self.dataExportTrackingApplet = TrackingBaseDataExportApplet(self, "Tracking Result Export")
@@ -210,6 +210,8 @@ class StructuredTrackingWorkflow( Workflow ):
         opStructuredTracking.NumLabels.connect( opCellClassification.NumLabels )
         opStructuredTracking.Crops.connect (opCropSelection.Crops)
         opStructuredTracking.Annotations.connect (opAnnotations.Annotations)
+        opStructuredTracking.Labels.connect (opAnnotations.Labels)
+        opStructuredTracking.Divisions.connect (opAnnotations.Divisions)
 
         opDataTrackingExport.Inputs.resize(3)
         opDataTrackingExport.Inputs[0].connect( opStructuredTracking.Output )
@@ -264,6 +266,8 @@ class StructuredTrackingWorkflow( Workflow ):
         annotations_ready = features_ready and \
                            len(opAnnotations.Labels) > 0 and \
                            opAnnotations.Labels.ready() and \
+                           len(opAnnotations.Divisions) > 0 and \
+                           opAnnotations.Divisions.ready() and \
                            opAnnotations.TrackImage.ready()
 
         opStructuredTracking = self.trackingApplet.topLevelOperator

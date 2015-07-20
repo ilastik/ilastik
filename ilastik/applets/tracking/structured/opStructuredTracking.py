@@ -19,8 +19,10 @@ class OpStructuredTracking(OpTrackingBase):
     DivisionProbabilities = InputSlot(stype=Opaque, rtype=List)
     DetectionProbabilities = InputSlot(stype=Opaque, rtype=List)
     NumLabels = InputSlot()
-    Annotations = InputSlot(stype=Opaque)
     Crops = InputSlot()
+    Labels = InputSlot()
+    Divisions = InputSlot()
+    Annotations = InputSlot(stype=Opaque)
 
     # compressed cache for merger output
     MergerInputHdf5 = InputSlot(optional=True)
@@ -29,9 +31,21 @@ class OpStructuredTracking(OpTrackingBase):
     MergerCachedOutput = OutputSlot() # For the GUI (blockwise access)
     MergerOutput = OutputSlot()
 
+    DivisionWeight = OutputSlot()
+    DetectionWeight = OutputSlot()
+    TransitionWeight = OutputSlot()
+    AppearanceWeight = OutputSlot()
+    DisappearanceWeight = OutputSlot()
+
+
 
     def __init__(self, parent=None, graph=None):
+
         super(OpStructuredTracking, self).__init__(parent=parent, graph=graph)
+
+        self.labels = {}
+        self.divisions = {}
+        self.Annotations.setValue({})
 
         self._mergerOpCache = OpCompressedCache( parent=self )
         self._mergerOpCache.InputHdf5.connect(self.MergerInputHdf5)
@@ -43,6 +57,12 @@ class OpStructuredTracking(OpTrackingBase):
         self.tracker = None
         self._parent = parent
 
+        self.DivisionWeight.setValue(1)
+        self.DetectionWeight.setValue(1)
+        self.TransitionWeight.setValue(1)
+        self.AppearanceWeight.setValue(1)
+        self.DisappearanceWeight.setValue(1)
+
     def setupOutputs(self):
         super(OpStructuredTracking, self).setupOutputs()
         self.MergerOutput.meta.assignFrom(self.LabelImage.meta)
@@ -52,6 +72,12 @@ class OpStructuredTracking(OpTrackingBase):
     def execute(self, slot, subindex, roi, result):
         result = super(OpStructuredTracking, self).execute(slot, subindex, roi, result)
         
+        if slot is self.Labels:
+            result=self.Labels.wait()
+            
+        if slot is self.Divisions:
+            result=self.Divisions.wait()
+
         if slot is self.MergerOutput:
             result = self.LabelImage.get(roi).wait()
             parameters = self.Parameters.value
@@ -181,17 +207,18 @@ class OpStructuredTracking(OpTrackingBase):
 
         if(self.tracker == None or graph_building_parameter_changed):
             print '\033[94m' +"make new graph"+  '\033[0m'
-            self.tracker = pgmlink.ConsTracking(maxObj,
-                                         sizeDependent,   # size_dependent_detection_prob
-                                         float(median_obj_size[0]), # median_object_size
-                                         float(maxDist),
-                                         withDivisions,
-                                         float(divThreshold),
-                                         "none",  # detection_rf_filename
-                                         fov,
-                                         "none", # dump traxelstore,
-                                         pgmlink.ConsTrackingSolverType.CplexSolver
-                                         )
+            self.tracker = pgmlink.ConsTracking(
+                maxObj,
+                sizeDependent,   # size_dependent_detection_prob
+                float(median_obj_size[0]), # median_object_size
+                float(maxDist),
+                withDivisions,
+                float(divThreshold),
+                "none",  # detection_rf_filename
+                fov,
+                "none", # dump traxelstore,
+                pgmlink.ConsTrackingSolverType.CplexSolver,
+                ndim)
             self.tracker.buildGraph(ts)
 
         # create dummy uncertainty parameter object with just one iteration, so no perturbations at all (iter=0 -> MAP)

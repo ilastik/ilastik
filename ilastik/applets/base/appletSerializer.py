@@ -225,7 +225,6 @@ class SerialSlot(object):
             subgroup = group.create_group(name)
             for i, subslot in enumerate(slot):
                 subname = self.subname.format(i)
-                print " ----->",name, group
                 self._serialize(subgroup, subname, slot[i])
 
     def deserialize(self, group):

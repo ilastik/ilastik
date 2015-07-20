@@ -41,8 +41,8 @@ class OpAnnotations(Operator):
     Crops = InputSlot()
     
     TrackImage = OutputSlot()
-    Labels = OutputSlot(stype=Opaque, rtype=List)
-    Divisions = OutputSlot(stype=Opaque, rtype=List)
+    Labels = OutputSlot()
+    Divisions = OutputSlot()
     UntrackedImage = OutputSlot()
 
     Annotations = OutputSlot(stype=Opaque)
@@ -52,7 +52,9 @@ class OpAnnotations(Operator):
         self.labels = {}
         self.divisions = {}
 
-        self.Annotations.setValue({})
+        self.Annotations.setValue(dict())
+        self.Labels.setValue({})
+        self.Divisions.setValue({})
 
         self.RawImage.notifyReady( self._checkConstraints )
         self.BinaryImage.notifyReady( self._checkConstraints )
@@ -68,11 +70,18 @@ class OpAnnotations(Operator):
         self.Annotations.meta.dtype = object
         self.Annotations.meta.shape = (1,)
 
+        self.Labels.meta.dtype = object
+        self.Labels.meta.shape = self.LabelImage.meta.shape
+
+        #self.Divisions.meta.dtype = object
+        #self.Divisions.meta.shape = (1,)
+
 
     def initOutputs(self):
         self.TrackImage.meta.assignFrom(self.LabelImage.meta)
         self.UntrackedImage.meta.assignFrom(self.LabelImage.meta)
 
+        self.Labels.meta.assignFrom(self.LabelImage.meta)
         for t in range(self.LabelImage.meta.shape[0]):
             self.labels[t]={}
 
@@ -106,6 +115,7 @@ class OpAnnotations(Operator):
             
             
     def execute(self, slot, subindex, roi, result):
+        key = roi.toSlice()
         if slot is self.Divisions:
             result = {}
             for trackid in self.divisions.keys():
@@ -135,7 +145,6 @@ class OpAnnotations(Operator):
                     labels_at = self.labels[t]
                 result[t-roi.start[0],...,0] = self._relabelUntracked(result[t-roi.start[0],...,0], labels_at)
 
-        key = roi.toSlice()
         if slot.name == 'Annotations':
             annotations = self.Annotations[key].wait()
             result[...] = annotations
@@ -148,6 +157,14 @@ class OpAnnotations(Operator):
             self.divisions = {}
         elif slot.name == "Annotations":
             self.Annotations.setDirty( roi )
+        elif slot.name == "Labels":
+            self.Labels.setDirty( roi )
+        elif slot.name == "Divisions":
+            self.Divisions.setDirty( roi )
+        else:
+            self.Labels.setDirty( slice(None) )
+            self.Divisions.setDirty( slice(None) )
+            self.Annotations.setDirty( slice(None) )
 
     def _relabel(self, volume, replace):
         mp = np.arange(0, np.amax(volume) + 1, dtype=volume.dtype)

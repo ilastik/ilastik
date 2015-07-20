@@ -23,6 +23,7 @@ from PyQt4.QtGui import QColor
 
 import os
 import numpy
+from functools import partial
 
 import logging
 from lazyflow.rtype import SubRegion
@@ -37,6 +38,7 @@ from ilastik.utility import log_exception
 from ilastik.widgets.cropListView import Crop
 from ilastik.widgets.cropListModel import CropListModel
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
+from ilastik.utility import bind
 
 import volumina.colortables as colortables
 from volumina.api import LazyflowSource, GrayscaleLayer, ColortableLayer
@@ -100,7 +102,7 @@ class AnnotationsGui(LayerViewerGui):
     def _initShortcuts(self):
         mgr = ShortcutManager()
         ActionInfo = ShortcutManager.ActionInfo
-        shortcutGroupName = "Tracking Annotations"
+        shortcutGroupName = "Training"
 
         mgr.register( "d", ActionInfo( shortcutGroupName,
                                        "Mark Division Event",
@@ -226,6 +228,20 @@ class AnnotationsGui(LayerViewerGui):
 
         self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
         self._initAnnotations()
+
+        self.__cleanup_fns = []
+        self.topLevelOperatorView.Labels.notifyDirty( bind(self._updateLabels) )
+        self.__cleanup_fns.append( partial( self.topLevelOperatorView.Labels.unregisterDirty, bind(self._updateLabels) ) )
+
+    def stopAndCleanUp(self):
+        super(AnnotationsGui, self).stopAndCleanUp()
+
+        for fn in self.__cleanup_fns:
+            fn()
+
+    def _updateLabels(self):
+        pass #xxx: to do
+
 
     def _cropListViewInit(self):
         if self.topLevelOperatorView.Crops.value != {}:
@@ -374,7 +390,7 @@ class AnnotationsGui(LayerViewerGui):
                     self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = self.topLevelOperatorView.divisions[parentTrack]
 
         self._setDirty(self.mainOperator.Annotations, range(self.mainOperator.TrackImage.meta.shape[0]))
-        print "Annotations---> ", self.mainOperator.Annotations.value
+        #print "Annotations---> ", self.mainOperator.Annotations.value
 
     def getLabel(self, time, track):
         for label in self.mainOperator.labels[time].keys():
