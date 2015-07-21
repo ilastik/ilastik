@@ -75,7 +75,7 @@ class TestPixelClassificationHeadless(object):
         if cls.using_random_data:
             removeFiles += [ TestPixelClassificationHeadless.SAMPLE_DATA ]
 
-        for f in removeFiles:        
+        for f in removeFiles:
             try:
                 os.remove(f)
             except:
@@ -201,12 +201,13 @@ class TestPixelClassificationHeadless(object):
         #args.append( "--sys_tmp_dir=/tmp" )
  
         # Batch export options
+        args.append( '--export_source=Simple Segmentation' )
         args.append( '--output_format=png sequence' ) # If we were actually launching from the command line, 'png sequence' would be in quotes...
-        args.append( "--output_filename_format={dataset_dir}/{nickname}_prediction_z{slice_index}.png" )
+        args.append( "--output_filename_format={dataset_dir}/{nickname}_segmentation_z{slice_index}.png" )
         args.append( "--export_dtype=uint8" )
         args.append( "--output_axis_order=zxyc" )
          
-        args.append( "--pipeline_result_drange=(0.0,1.0)" )
+        args.append( "--pipeline_result_drange=(0,2)" )
         args.append( "--export_drange=(0,255)" )
  
         args.append( "--cutout_subregion=[(0,50,50,0,0), (1, 150, 150, 50, 2)]" )
@@ -219,7 +220,7 @@ class TestPixelClassificationHeadless(object):
         # This will execute the batch mode script
         self.ilastik_startup.main()
  
-        output_path = self.SAMPLE_DATA[:-4] + "_prediction_z{slice_index}.png"
+        output_path = self.SAMPLE_DATA[:-4] + "_segmentation_z{slice_index}.png"
         globstring = output_path.format( slice_index=999 )
         globstring = globstring.replace('999', '*')
  

@@ -366,7 +366,8 @@ class OpLabelPipeline( Operator ):
         # labels are created for one channel (i.e. the label) and only in the
         # current time slice, so we can set both c and t to 1
         tagged_shape['c'] = 1
-        tagged_shape['t'] = 1
+        if 't' in tagged_shape:
+            tagged_shape['t'] = 1
         
         # Aim for blocks that are roughly 1MB
         block_shape = determineBlockShape( tagged_shape.values(), 1e6 )

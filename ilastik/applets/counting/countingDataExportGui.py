@@ -27,7 +27,7 @@ from volumina.api import LazyflowSource, ColortableLayer
 from volumina import colortables
 from countingGui import countingColorTable
 
-from ilastik.utility import bind, log_exception
+from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
 
@@ -47,41 +47,21 @@ class CountingDataExportGui( DataExportGui ):
         localDir = os.path.split(__file__)[0]
         drawerPath = os.path.join( localDir, "dataExportDrawer.ui")
         super( CountingDataExportGui, self )._initAppletDrawerUic(drawerPath)
-        self.drawer.exportAllObjectCountsButton.clicked.connect( self.exportObjectCounts )
+        self.drawer.exportAllObjectCountsButton.clicked.connect( self.exportObjectCountsToCsv )
 
-    def exportObjectCounts(self):
-        opCounting = self.parentApplet.opCounting
+    def exportObjectCountsToCsv(self):
         export_filepath = QFileDialog.getSaveFileName(parent=self, caption="Exported Object Counts", filter="*.csv")
         if not export_filepath:
             return
-
-        self.parentApplet.busy = True
-        self.parentApplet.appletStateUpdateRequested.emit()
-
-        def _exportObjectCounts():
-            num_files = len(self.topLevelOperator.RawDatasetInfo)
-
-            with open(export_filepath, 'w') as export_file:
-                for lane_index, (info_slot, sum_slot) in enumerate(zip(self.topLevelOperator.RawDatasetInfo, opCounting.OutputSum)):
-                    self.parentApplet.progressSignal.emit(100.0*lane_index/num_files)
-                    nickname = info_slot.value.nickname
-                    object_count = sum_slot[:].wait()[0]
-                    export_file.write(nickname + "," + str(object_count) + "\n")
-
-            self.parentApplet.busy = False
-            self.parentApplet.progressSignal.emit(100)
-            self.parentApplet.appletStateUpdateRequested.emit()
-
-        req = Request(_exportObjectCounts)
-        req.notify_failed( self.handleFailedObjectCountExport )
+        req = self.parentApplet.prepareExportObjectCountsToCsv( self.parentApplet, export_filepath )
+        req.notify_failed(self.handleFailedObjectCountExport)
         req.submit()
 
     @threadRouted
     def handleFailedObjectCountExport(self, exception, exception_info):
         msg = "Failed to export object counts:\n{}".format( exception )
         log_exception( logger, msg, exception_info )
-        QMessageBox.critical(self, "Failed to export counts", msg)
-        
+        QMessageBox.critical(self, "Failed to export counts", msg)        
         
 class CountingResultsViewer(DataExportLayerViewerGui):
     

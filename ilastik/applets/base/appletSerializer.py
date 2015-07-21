@@ -610,13 +610,17 @@ class SerialCountingSlot(SerialSlot):
             self.name = slot.name
         if self.subname is None:
             self.subname = "wrapper{:04d}"
-        self._bind(cache.Output)
+
+        # We want to bind to the INPUT, not Output:
+        # - if the input becomes dirty, we want to make sure the cache is deleted
+        # - if the input becomes dirty and then the cache is reloaded, we'll save the classifier.
+        self._bind(cache.Input)
 
     def _serialize(self, group, name, slot):
         if self.cache._dirty:
             return
 
-        classifier_forests = self.cache._value
+        classifier_forests = self.cache.Output.value
 
         # Classifier can be None if there isn't any training data yet.
         if classifier_forests is None:

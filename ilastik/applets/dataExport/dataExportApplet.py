@@ -84,6 +84,8 @@ class DataExportApplet( Applet ):
         arg_parser.add_argument( '--output_filename_format', help='Output file path, including special placeholders, e.g. /tmp/results_t{t_start}-t{t_stop}.h5', required=False )
         arg_parser.add_argument( '--output_internal_path', help='Specifies dataset name within an hdf5 dataset (applies to hdf5 output only), e.g. /volume/data', required=False )
 
+        arg_parser.add_argument( '--export_source', help='The data to export.  See the dropdown list on the Data Export page for choices.', required=False )
+
         return arg_parser
 
     @classmethod
@@ -189,6 +191,18 @@ class DataExportApplet( Applet ):
         # Disconnect the special 'transaction' slot to prevent these 
         #  settings from triggering many calls to setupOutputs.
         opDataExport.TransactionSlot.disconnect()
+
+        if parsed_args.export_source is not None:
+            source_choices = opDataExport.SelectionNames.value
+            source_choices = map(str.lower, source_choices)
+            export_source = parsed_args.export_source.lower()
+            try:
+                source_index = source_choices.index(export_source)
+            except ValueError:
+                raise Exception("Invalid option for --export_source: '{}'\n"
+                                "Valid options are: {}".format( parsed_args.export_source, source_choices ))
+            else:
+                opDataExport.InputSelection.setValue( source_index )
 
         if parsed_args.cutout_subregion:
             opDataExport.RegionStart.setValue( parsed_args.cutout_subregion[0] )

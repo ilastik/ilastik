@@ -33,7 +33,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpValueCache, \
                                OpArrayCache, OpMultiArraySlicer2, \
                                OpPrecomputedInput, OpPixelOperator, OpMaxChannelIndicatorOperator, \
-                               Op5ifyer
+                               OpReorderAxes
 from lazyflow.operators.opDenseLabelArray import OpDenseLabelArray
 
 from lazyflow.request import Request, RequestPool
@@ -111,7 +111,7 @@ class OpVolumeOperator(Operator):
 class OpUpperBound(Operator):
     name = "OpUpperBound"
     description = "Calculate the upper bound of the data for correct normalization of the output"
-    inputSlots = [InputSlot("Sigma", stype = "float")]
+    inputSlots = [InputSlot("Sigma", stype = "float", value=2.0)]
     outputSlots = [OutputSlot("UpperBound")]
 
     def setupOutputs(self):
@@ -269,7 +269,7 @@ class OpCounting( Operator ):
         self.opTrain.inputs['Images'].connect( self.CachedFeatureImages )
         self.opTrain.inputs["nonzeroLabelBlocks"].connect( self.opLabelPipeline.nonzeroBlocks )
         self.opTrain.inputs['fixClassifier'].setValue( True )
-        self.opTrain.inputs["UpperBound"].connect(self.UpperBound)
+        self.opTrain.inputs["UpperBound"].connect(self.opUpperBound.UpperBound)
 
         # Hook up the Classifier Cache
         # The classifier is cached here to allow serializers to force in
