@@ -80,7 +80,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._previousCrop = -1
         self._currentCrop = -1
         self._currentCropName = ""
-
+        
         super(StructuredTrackingGui, self).initAppletDrawerUi()
 
         self._allowedTimeoutInputRegEx = re.compile('^[0-9]*$')
@@ -113,8 +113,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         for i in range(len(self.mergerLabels)):
             self._labelSetStyleSheet(self.mergerLabels[i], self.mergerColors[i+1])
         
-        self._onMaxObjectsBoxChanged()
-        self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)                
+        self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)
         #self._drawer.ImportAnnotationsButton.clicked.connect(self._onImportAnnotationsButtonPressed)
         self._drawer.StructuredLearningButton.clicked.connect(self._onRunStructuredLearningButtonPressed)
         self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()
@@ -141,6 +140,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         self._maxNumObj = self.topLevelOperatorView.MaxNumObjOut.value
         self._drawer.maxObjectsBox.setValue(self.topLevelOperatorView.MaxNumObjOut.value)
+        self._onMaxObjectsBoxChanged()
+        self._drawer.maxObjectsBox.setReadOnly(True)
 
         #self.topLevelOperatorView.Annotations.notifyReady( bind(self._updateAnnotationsFromOperator) )
         #self.topLevelOperatorView.Labels.notifyReady( bind(self._updateLabelsFromOperator) )
@@ -192,13 +193,11 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             maxBorder = min(maxBorder, maxz)
         self._drawer.bordWidthBox.setRange(0, maxBorder/2)
         
-    @threadRouted
-    def _onMaxObjectsBoxChanged(self, *args):
+    #@threadRouted
+    def _onMaxObjectsBoxChanged(self):#, *args):
         self._setMergerLegend(self.mergerLabels, self._drawer.maxObjectsBox.value())
         self._maxNumObj = self._drawer.maxObjectsBox.value()
-        print "-----------------0-----------self.topLevelOperatorView.MaxNumObjOut---------------------->",self.topLevelOperatorView.MaxNumObjOut.value
-        #self.topLevelOperatorView.MaxNumObjOut.setValue(self._maxNumObj)
-        #print "-----------------1-----------self.topLevelOperatorView.MaxNumObjOut---------------------->",self.topLevelOperatorView.MaxNumObjOut.value
+        self.topLevelOperatorView.MaxNumObjOut.setValue(self._maxNumObj)
 
     #def _updateAnnotationsFromOperator(self):
     #    self.annotations = self.topLevelOperatorView.Annotations.value
