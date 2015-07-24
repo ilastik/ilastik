@@ -99,7 +99,7 @@ class TrackingBaseGui( LayerViewerGui ):
 
             mergerLayer = ColortableLayer( self.mergersrc, ct )
             mergerLayer.name = "Merger"
-            mergerLayer.visible = True
+            mergerLayer.visible = False
             layers.append(mergerLayer)
 
         ct = colortables.create_random_16bit()
@@ -113,6 +113,7 @@ class TrackingBaseGui( LayerViewerGui ):
             trackingLayer.visible = True
             trackingLayer.opacity = 1.0
             layers.append(trackingLayer)
+
         elif self.topLevelOperatorView.zeroProvider.Output.ready():
             # provide zeros while waiting for the tracking result
             self.trackingsrc = LazyflowSource( self.topLevelOperatorView.zeroProvider.Output )
@@ -129,7 +130,7 @@ class TrackingBaseGui( LayerViewerGui ):
             objLayer = ColortableLayer( self.objectssrc, ct )
             objLayer.name = "Objects"
             objLayer.opacity = 1.0
-            objLayer.visible = True
+            objLayer.visible = False
             layers.append(objLayer)
 
 

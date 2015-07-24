@@ -124,6 +124,7 @@ class OpObjectClassification(Operator, ExportingOperator,MultiLaneOperatorABC):
     LabelColors = OutputSlot()
     PmapColors = OutputSlot()
 
+    MaxNumObj = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super(OpObjectClassification, self).__init__(*args, **kwargs)
@@ -234,6 +235,8 @@ class OpObjectClassification(Operator, ExportingOperator,MultiLaneOperatorABC):
             self.opPredict.LabelsCount.setValue( numClasses )
             self.opTrain.LabelsCount.setValue( numClasses )
             self.NumLabels.setValue( numClasses )
+            self.MaxNumObj.setValue ( numClasses - 1)
+
         self.LabelNames.notifyDirty( _updateNumClasses )
 
         self.LabelNames.setValue( [] )
@@ -333,6 +336,8 @@ class OpObjectClassification(Operator, ExportingOperator,MultiLaneOperatorABC):
 
     def setupOutputs(self):
         self.Warnings.meta.shape = (1,)
+        self.CachedProbabilities.meta.assignFrom(self.BinaryImages.meta)
+
         axisOrder = [ tag.key for tag in self.RawImages[0].meta.axistags ]
 
         blockDimsX = { 't' : (1,1),
@@ -366,6 +371,9 @@ class OpObjectClassification(Operator, ExportingOperator,MultiLaneOperatorABC):
         self.opPredictionImageCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
         self.opProbChannelsImageCache.innerBlockShape.setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
         self.opProbChannelsImageCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
+
+        #self.NumLabels.setValue( len(self.LabelNames.value) )
+        self.MaxNumObj.setValue( len(self.LabelNames.value) - 1)
 
     def setInSlot(self, slot, subindex, roi, value):
         pass

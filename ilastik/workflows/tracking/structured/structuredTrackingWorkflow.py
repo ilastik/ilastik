@@ -212,6 +212,7 @@ class StructuredTrackingWorkflow( Workflow ):
         opStructuredTracking.Annotations.connect (opAnnotations.Annotations)
         opStructuredTracking.Labels.connect (opAnnotations.Labels)
         opStructuredTracking.Divisions.connect (opAnnotations.Divisions)
+        opStructuredTracking.MaxNumObj.connect (opCellClassification.MaxNumObj)
 
         opDataTrackingExport.Inputs.resize(3)
         opDataTrackingExport.Inputs[0].connect( opStructuredTracking.Output )

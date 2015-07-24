@@ -38,7 +38,7 @@
       <string notr="true"/>
      </property>
      <property name="text">
-      <string>Run Structured Learning</string>
+      <string>Learn Weights</string>
      </property>
     </widget>
    </item>
@@ -51,7 +51,7 @@
       </sizepolicy>
      </property>
      <property name="text">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Structured Learning Parameters:&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Structured Learning Weights:&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
     </widget>
    </item>
@@ -61,7 +61,7 @@
       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The weight to&lt;span style=&quot; font-weight:600;&quot;&gt; balance division probabilities&lt;/span&gt; against transitions and detections. High values (≥10) give more weight to the division classifier, low values (≤10) will weigh the transition and detection probabilities higher than the division probabilities.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="text">
-      <string>Detection Weight</string>
+      <string>Detection</string>
      </property>
     </widget>
    </item>
@@ -87,7 +87,7 @@
       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The weight to&lt;span style=&quot; font-weight:600;&quot;&gt; balance division probabilities&lt;/span&gt; against transitions and detections. High values (≥10) give more weight to the division classifier, low values (≤10) will weigh the transition and detection probabilities higher than the division probabilities.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="text">
-      <string>Division Weight</string>
+      <string>Division</string>
      </property>
     </widget>
    </item>
@@ -113,7 +113,7 @@
       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The weight to&lt;span style=&quot; font-weight:600;&quot;&gt; balance transition probabilities&lt;/span&gt; against divisions and detections. High values (≥10) will make transitions overrule division and detection probabilities, low values (≤10) will weigh detection and division classifier higher than transition probabilities.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="text">
-      <string>Transition Weight</string>
+      <string>Transition</string>
      </property>
     </widget>
    </item>
@@ -139,7 +139,7 @@
       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Costs to allow one object to &lt;span style=&quot; font-weight:600;&quot;&gt;appear&lt;/span&gt;, i.e. to start a new track other than at the beginning of the time range or the borders of the field of view. High values (≥500) forbid object appearances if possible.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="text">
-      <string>Appearance Cost</string>
+      <string>Appearance</string>
      </property>
     </widget>
    </item>
@@ -165,7 +165,7 @@
       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Costs to allow one object to &lt;span style=&quot; font-weight:600;&quot;&gt;disappear&lt;/span&gt;, i.e. to terminate an existing track other than at the end of the time range or the borders of the field of view. High values (≥500) forbid object disappearances if possible.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="text">
-      <string>Disappearance Cost</string>
+      <string>Disappearance</string>
      </property>
     </widget>
    </item>
@@ -198,7 +198,7 @@
       <string notr="true"/>
      </property>
      <property name="text">
-      <string>Run Tracking</string>
+      <string>Tracking</string>
      </property>
     </widget>
    </item>

@@ -125,6 +125,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._drawer.transWeightBox.valueChanged.connect(self._onTransitionWeightBoxChanged)                
         self._drawer.appearanceBox.valueChanged.connect(self._onAppearanceWeightBoxChanged)                
         self._drawer.disappearanceBox.valueChanged.connect(self._onDisappearanceWeightBoxChanged)                
+        self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)
 
         self._divisionWeight = self.topLevelOperatorView.DivisionWeight.value
         self._detectionWeight = self.topLevelOperatorView.DetectionWeight.value
@@ -138,6 +139,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._drawer.appearanceBox.setValue(self._appearanceWeight)
         self._drawer.disappearanceBox.setValue(self._disappearanceWeight)
 
+        self._maxNumObj = self.topLevelOperatorView.MaxNumObj.value
+
         #self.topLevelOperatorView.Annotations.notifyReady( bind(self._updateAnnotationsFromOperator) )
         #self.topLevelOperatorView.Labels.notifyReady( bind(self._updateLabelsFromOperator) )
         #self.topLevelOperatorView.Divisions.notifyReady( bind(self._updateDivisionsFromOperator) )
@@ -147,6 +150,10 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         inString = str(self._drawer.timeoutBox.text())
         if self._allowedTimeoutInputRegEx.match(inString) is None:
             self._drawer.timeoutBox.setText(inString.decode("utf8").encode("ascii", "replace")[:-1])
+
+    @threadRouted
+    def _onMaxObjectsBoxChanged(self, *args):
+        self._maxNumObj = self._drawer.maxObjectsBox.value()
 
     @threadRouted
     def _onDivisionWeightBoxChanged(self, *args):
@@ -332,9 +339,16 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         #print "building consTracker"
         median_obj_size = [0]
 
-        ndim=2 # READ FROM ilastik variable
-        maxObj=1
+        from_z = self._drawer.from_z.value()
+        to_z = self._drawer.to_z.value()
+        ndim=3
+        if (to_z - from_z == 0):
+            ndim=2
 
+        maxObj=self._maxNumObj
+
+        print "----maxObj--->", maxObj
+        print "----ndim--->", ndim
 
         fieldOfView = pgmlink.FieldOfView(float(0),float(0),float(0),float(0),float(self.topLevelOperatorView.LabelImage.meta.shape[0]),float(self.topLevelOperatorView.LabelImage.meta.shape[1]),float(self.topLevelOperatorView.LabelImage.meta.shape[2]),float(self.topLevelOperatorView.LabelImage.meta.shape[3]))
         consTracker = pgmlink.ConsTracking(
@@ -348,7 +362,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             fieldOfView,
             "none", # dump traxelstore,
             pgmlink.ConsTrackingSolverType.CplexSolver,
-            ndim) # ADD THIS PARAMETER TO CONSTRUCTOR CALLS
+            ndim)
 
         #print "building traxelStore", self.topLevelOperatorView.LabelImage.meta.shape[0], self.topLevelOperatorView.LabelImage.meta.shape[1],self.topLevelOperatorView.LabelImage.meta.shape[2],self.topLevelOperatorView.LabelImage.meta.shape[3]
 

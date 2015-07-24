@@ -23,6 +23,7 @@ class OpStructuredTracking(OpTrackingBase):
     Labels = InputSlot()
     Divisions = InputSlot()
     Annotations = InputSlot(stype=Opaque)
+    MaxNumObj = InputSlot()
 
     # compressed cache for merger output
     MergerInputHdf5 = InputSlot(optional=True)
@@ -62,6 +63,8 @@ class OpStructuredTracking(OpTrackingBase):
         self.TransitionWeight.setValue(1)
         self.AppearanceWeight.setValue(1)
         self.DisappearanceWeight.setValue(1)
+
+        #self.MaxNumObj.setValue(1)
 
     def setupOutputs(self):
         super(OpStructuredTracking, self).setupOutputs()
