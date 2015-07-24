@@ -139,7 +139,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._drawer.appearanceBox.setValue(self._appearanceWeight)
         self._drawer.disappearanceBox.setValue(self._disappearanceWeight)
 
-        self._maxNumObj = self.topLevelOperatorView.MaxNumObj.value
+        self._maxNumObj = self.topLevelOperatorView.MaxNumObjOut.value
+        self._drawer.maxObjectsBox.setValue(self.topLevelOperatorView.MaxNumObjOut.value)
 
         #self.topLevelOperatorView.Annotations.notifyReady( bind(self._updateAnnotationsFromOperator) )
         #self.topLevelOperatorView.Labels.notifyReady( bind(self._updateLabelsFromOperator) )
@@ -151,9 +152,9 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         if self._allowedTimeoutInputRegEx.match(inString) is None:
             self._drawer.timeoutBox.setText(inString.decode("utf8").encode("ascii", "replace")[:-1])
 
-    @threadRouted
-    def _onMaxObjectsBoxChanged(self, *args):
-        self._maxNumObj = self._drawer.maxObjectsBox.value()
+#    @threadRouted
+#    def _onMaxObjectsBoxChanged(self, *args):
+#        self._maxNumObj = self._drawer.maxObjectsBox.value()
 
     @threadRouted
     def _onDivisionWeightBoxChanged(self, *args):
@@ -191,9 +192,14 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             maxBorder = min(maxBorder, maxz)
         self._drawer.bordWidthBox.setRange(0, maxBorder/2)
         
-    def _onMaxObjectsBoxChanged(self):
+    @threadRouted
+    def _onMaxObjectsBoxChanged(self, *args):
         self._setMergerLegend(self.mergerLabels, self._drawer.maxObjectsBox.value())
-        
+        self._maxNumObj = self._drawer.maxObjectsBox.value()
+        print "-----------------0-----------self.topLevelOperatorView.MaxNumObjOut---------------------->",self.topLevelOperatorView.MaxNumObjOut.value
+        #self.topLevelOperatorView.MaxNumObjOut.setValue(self._maxNumObj)
+        #print "-----------------1-----------self.topLevelOperatorView.MaxNumObjOut---------------------->",self.topLevelOperatorView.MaxNumObjOut.value
+
     #def _updateAnnotationsFromOperator(self):
     #    self.annotations = self.topLevelOperatorView.Annotations.value
 

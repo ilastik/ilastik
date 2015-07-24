@@ -125,7 +125,7 @@ class StructuredTrackingSerializer(AppletSerializer):
                   SerialSlot(topLevelOperator.TransitionWeight),
                   SerialSlot(topLevelOperator.AppearanceWeight),
                   SerialSlot(topLevelOperator.DisappearanceWeight),
-                  SerialSlot(topLevelOperator.MaxNumObj)
+                  SerialSlot(topLevelOperator.MaxNumObjOut)
         ]
     
         if 'MergerOutput' in topLevelOperator.outputs:

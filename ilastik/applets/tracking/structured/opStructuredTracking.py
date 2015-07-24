@@ -37,6 +37,7 @@ class OpStructuredTracking(OpTrackingBase):
     TransitionWeight = OutputSlot()
     AppearanceWeight = OutputSlot()
     DisappearanceWeight = OutputSlot()
+    MaxNumObjOut = OutputSlot()
 
 
 
@@ -64,7 +65,7 @@ class OpStructuredTracking(OpTrackingBase):
         self.AppearanceWeight.setValue(1)
         self.DisappearanceWeight.setValue(1)
 
-        #self.MaxNumObj.setValue(1)
+        self.MaxNumObjOut.setValue(-999)
 
     def setupOutputs(self):
         super(OpStructuredTracking, self).setupOutputs()
