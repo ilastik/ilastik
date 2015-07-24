@@ -25,7 +25,9 @@ import vigra
 
 # Lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
-from lazyflow.operators import OpVigraLabelVolume, OpMultiArraySlicer2, OpMultiArrayStacker
+from lazyflow.operators import OpMultiArraySlicer2, OpMultiArrayStacker
+from lazyflow.operators.opVigraLabelVolume\
+    import _OpVigraLabelVolume as OpVigraLabelVolume
 from lazyflow.utility.helpers import warn_deprecated
 
 
@@ -162,7 +164,8 @@ class _OpLabelImage(Operator):
 class OpLabelImage(_OpLabelImage):
     def __init__(self, *args, **kwargs):
         warn_deprecated("OpLabelImage is deprecated,"
-                        " use OpLabelVolume instead")
+                        " use OpLabelVolume instead",
+                        stacklevel=2)
         super(OpLabelImage, self).__init__(*args, **kwargs)
 
 

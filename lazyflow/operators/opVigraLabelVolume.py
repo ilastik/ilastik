@@ -111,7 +111,8 @@ class _OpVigraLabelVolume(Operator):
 class OpVigraLabelVolume(_OpVigraLabelVolume):
     def __init__(self, *args, **kwargs):
         warn_deprecated("Usage of OpVigraLabelVolume is deprecated,"
-                        " use OpLabelVolume instead!")
+                        " use OpLabelVolume instead!",
+                        stacklevel=2)
         super(OpVigraLabelVolume, self).__init__(*args, **kwargs)
 
 
