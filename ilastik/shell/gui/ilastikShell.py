@@ -1025,6 +1025,7 @@ class IlastikShell(QMainWindow):
         # Add all of the applet bar's items to the toolbox widget
         controlName = app.name
         controlGuiWidget = app.getMultiLaneGui().appletDrawer()
+        assert isinstance(controlGuiWidget, QWidget), "Not a widget: {}".format( controlGuiWidget )
 
         stackedWidget = QStackedWidget()
         stackedWidget.addWidget(controlGuiWidget)
@@ -1100,7 +1101,10 @@ class IlastikShell(QMainWindow):
         newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath, workflow_class,
                                                                self._workflow_cmdline_args, h5_file_kwargs)
         self._loadProject(newProjectFile, newProjectFilePath, workflow_class, readOnly=False)
-        self.projectManager.saveProject()
+        
+        # If load failed, projectManager is None 
+        if self.projectManager:
+            self.projectManager.saveProject()
 
     def getProjectPathToCreate(self, defaultPath=None, caption="Create Ilastik Project"):
         """
