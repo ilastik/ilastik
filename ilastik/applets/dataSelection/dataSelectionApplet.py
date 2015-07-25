@@ -85,7 +85,8 @@ class DataSelectionApplet( Applet ):
         return self._serializableItems
 
 
-    def parse_known_cmdline_args(self, cmdline_args):
+    @classmethod
+    def parse_known_cmdline_args(cls, cmdline_args, role_names):
         """
         Helper function for headless workflows.
         Parses command-line args that can be used to configure the ``DataSelectionApplet`` top-level operator 
@@ -102,11 +103,10 @@ class DataSelectionApplet( Applet ):
 
         See also: :py:meth:`configure_operator_with_parsed_args()`.
         """
-        role_names = self.topLevelOperator.DatasetRoles.value
         arg_parser = argparse.ArgumentParser()
         if role_names:
             for role_name in role_names:
-                arg_name = self._role_name_to_arg_name(role_name)
+                arg_name = cls._role_name_to_arg_name(role_name)
                 arg_parser.add_argument('--' + arg_name, nargs='+', help='List of input files for the {} role'.format( role_name ))
         
         # Finally, a catch-all for role 0 (if the workflow only has one role, there's no need to provide role names
@@ -122,7 +122,7 @@ class DataSelectionApplet( Applet ):
         # Check for errors: Do all input files exist?
         all_input_paths = list(parsed_args.input_files)
         for role_name in role_names:
-            arg_name = self._role_name_to_arg_name(role_name)
+            arg_name = cls._role_name_to_arg_name(role_name)
             role_paths = getattr(parsed_args, arg_name)
             if role_paths:
                 all_input_paths += role_paths
@@ -145,24 +145,19 @@ class DataSelectionApplet( Applet ):
 
         return parsed_args, unused_args
 
-    def _role_name_to_arg_name(self, role_name):
+    @classmethod
+    def _role_name_to_arg_name(cls, role_name):
         arg_name = role_name
         arg_name = arg_name.lower()
         arg_name = arg_name.replace(' ', '_').replace('-', '_')
         return arg_name
 
-    def configure_operator_with_parsed_args(self, parsed_args):
-        """
-        Helper function for headless workflows.
-        Configures this applet's top-level operator according to the settings provided in ``parsed_args``.
-        
-        :param parsed_args: Must be an ``argparse.Namespace`` as returned by :py:meth:`parse_known_cmdline_args()`.
-        """
-        role_names = self.topLevelOperator.DatasetRoles.value
+    @classmethod
+    def role_paths_from_parsed_args(cls, parsed_args, role_names):
         role_paths = collections.OrderedDict()
         if role_names:
             for role_index, role_name in enumerate(role_names):
-                arg_name = self._role_name_to_arg_name(role_name)
+                arg_name = cls._role_name_to_arg_name(role_name)
                 input_paths = getattr(parsed_args, arg_name)
                 role_paths[role_index] = input_paths
 
@@ -179,6 +174,26 @@ class DataSelectionApplet( Applet ):
                                     + role_args_str )
             role_paths = { 0 : parsed_args.input_files }
 
+        # As far as this parser is concerned, all roles except the first are optional.
+        # (Workflows that require the other roles are responsible for raising an error themselves.)
+        for role_index in range(1,len(role_names)):
+            # Fill in None for missing files
+            if role_index not in role_paths:
+                role_paths[role_index] = []
+            num_missing = len(role_paths[0]) - len(role_paths[role_index])
+            role_paths[role_index] += [None] * num_missing
+        return role_paths        
+
+    def configure_operator_with_parsed_args(self, parsed_args):
+        """
+        Helper function for headless workflows.
+        Configures this applet's top-level operator according to the settings provided in ``parsed_args``.
+        
+        :param parsed_args: Must be an ``argparse.Namespace`` as returned by :py:meth:`parse_known_cmdline_args()`.
+        """
+        role_names = self.topLevelOperator.DatasetRoles.value
+        role_paths = self.role_paths_from_parsed_args(parsed_args, role_names)
+
         for role_index, input_paths in role_paths.items():
             # If the user doesn't want image stacks to be copied into the project file,
             #  we generate hdf5 volumes in a temporary directory and use those files instead.        
@@ -186,27 +201,7 @@ class DataSelectionApplet( Applet ):
                 import tempfile
                 input_paths = self.convertStacksToH5( input_paths, tempfile.gettempdir() )
             
-            input_infos = []
-            for p in input_paths:
-                info = DatasetInfo()
-                info.location = DatasetInfo.Location.FileSystem
-                info.filePath = p
-    
-                comp = PathComponents(p)
-    
-                # Convert all (non-url) paths to absolute 
-                # (otherwise they are relative to the project file, which probably isn't what the user meant)        
-                if not isUrl(p):
-                    comp.externalPath = os.path.abspath(comp.externalPath)
-                    info.filePath = comp.totalPath()
-                info.nickname = comp.filenameBase
-                
-                # Remove globstring syntax.
-                if '*' in info.nickname:
-                    info.nickname = info.nickname.replace('*', '')
-                if os.path.pathsep in info.nickname:
-                    info.nickname = PathComponents(info.nickname.split(os.path.pathsep)[0]).fileNameBase
-                input_infos.append(info)
+            input_infos = map( self.create_default_headless_dataset_info, input_paths )
     
             opDataSelection = self.topLevelOperator
             existing_lanes = len(opDataSelection.DatasetGroup)
@@ -225,7 +220,33 @@ class DataSelectionApplet( Applet ):
                 logger.warn("*******************************************************************************************")
                 logger.warn("Some of your input data is stored in a format that is not efficient for 3D access patterns.")
                 logger.warn("Performance may suffer as a result.  For best performance, use a chunked HDF5 volume.")                
-                logger.warn("*******************************************************************************************")
+                logger.warn("*******************************************************************************************")        
+
+    @classmethod
+    def create_default_headless_dataset_info(cls, filepath):
+        """
+        filepath may be a globstring or a full hdf5 path+dataset 
+        """
+        comp = PathComponents(filepath)
+        nickname = comp.filenameBase
+        
+        # Remove globstring syntax.
+        if '*' in nickname:
+            nickname = nickname.replace('*', '')
+        if os.path.pathsep in nickname:
+            nickname = PathComponents(nickname.split(os.path.pathsep)[0]).fileNameBase
+
+        info = DatasetInfo()
+        info.location = DatasetInfo.Location.FileSystem
+        info.nickname = nickname
+        info.filePath = filepath
+        # Convert all (non-url) paths to absolute 
+        # (otherwise they are relative to the project file, which probably isn't what the user meant)
+        if not isUrl(filepath):
+            comp.externalPath = os.path.abspath(comp.externalPath)
+            info.filePath = comp.totalPath()
+        return info
+        
 
     @classmethod
     def convertStacksToH5(cls, filePaths, stackVolumeCacheDir):
