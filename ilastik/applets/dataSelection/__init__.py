@@ -19,3 +19,4 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from dataSelectionApplet import OpMultiLaneDataSelectionGroup, DataSelectionApplet
+from opDataSelection import OpDataSelectionGroup
