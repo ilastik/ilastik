@@ -64,6 +64,7 @@ class PixelClassificationWorkflow(Workflow):
         # Create a graph to be shared by all operators
         graph = Graph()
         super( PixelClassificationWorkflow, self ).__init__( shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs )
+        self.stored_classifer = None
         self._applets = []
         self._workflow_cmdline_args = workflow_cmdline_args
         self.supports_anisotropic_data = supports_anisotropic_data
@@ -183,6 +184,21 @@ class PixelClassificationWorkflow(Workflow):
         """
         return PixelClassificationApplet( self, "PixelClassification" )
 
+    def prepareForNewLane(self, laneIndex):
+        """
+        Overridden from Workflow base class.
+        Called immediately before a new lane is added to the workflow.
+        """
+        # When the new lane is added, dirty notifications will propagate throughout the entire graph.
+        # This means the classifier will be marked 'dirty' even though it is still usable.
+        # Before that happens, let's store the classifier, so we can restore it at the end of connectLane(), below.
+        opPixelClassification = self.pcApplet.topLevelOperator
+        if opPixelClassification.classifier_cache.Output.ready() and \
+           not opPixelClassification.classifier_cache._dirty:
+            self.stored_classifer = opPixelClassification.classifier_cache.Output.value
+        else:
+            self.stored_classifer = None
+        
     def connectLane(self, laneIndex):
         # Get a handle to each operator
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
@@ -216,6 +232,12 @@ class PixelClassificationWorkflow(Workflow):
         opDataExport.Inputs[3].connect( opClassify.FeatureImages )
         for slot in opDataExport.Inputs:
             assert slot.partner is not None
+
+        # Restore classifier we saved in prepareForNewLane() (if any)
+        if self.stored_classifer: 
+            opClassify.classifier_cache.forceValue(self.stored_classifer)
+            # Release reference
+            self.stored_classifer = None
 
     def _initBatchWorkflow(self):
         """
