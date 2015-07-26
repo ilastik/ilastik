@@ -140,13 +140,15 @@ class ObjectClassificationWorkflow(Workflow):
             self.opDataSelectionBatch = self.dataSelectionAppletBatch.topLevelOperator
             
             if self.input_types == 'raw':
-                self.opDataSelectionBatch.DatasetRoles.setValue(['Raw Data'])
+                role_names = ['Raw Data']
             elif self.input_types == 'raw+binary':
-                self.opDataSelectionBatch.DatasetRoles.setValue(['Raw Data', 'Binary Data'])
+                role_names = ['Raw Data', 'Binary Data']
             elif self.input_types == 'raw+pmaps':
-                self.opDataSelectionBatch.DatasetRoles.setValue(['Raw Data', 'Prediction Maps'])
+                role_names = ['Raw Data', 'Prediction Maps']
             else:
                 assert False, "Unknown object classification subclass type."
+            self.opDataSelectionBatch.DatasetRoles.setValue(role_names)
+
     
             self.blockwiseObjectClassificationApplet = BlockwiseObjectClassificationApplet(
                 self, "Blockwise Object Classification", "Blockwise Object Classification")
@@ -181,7 +183,7 @@ class ObjectClassificationWorkflow(Workflow):
 
                 # We parse the export setting args first.  All remaining args are considered input files by the input applet.
                 self._batch_export_args, unused_args = self.batchExportApplet.parse_known_cmdline_args( unused_args )
-                self._batch_input_args, unused_args = self.dataSelectionAppletBatch.parse_known_cmdline_args( unused_args )
+                self._batch_input_args, unused_args = self.dataSelectionAppletBatch.parse_known_cmdline_args( unused_args, role_names )
 
         if unused_args:
             warnings.warn("Unused command-line args: {}".format( unused_args ))

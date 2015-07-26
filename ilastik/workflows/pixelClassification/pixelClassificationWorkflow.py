@@ -103,7 +103,8 @@ class PixelClassificationWorkflow(Workflow):
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         
         # see role constants, above
-        opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Prediction Mask'] )
+        role_names = ['Raw Data', 'Prediction Mask']
+        opDataSelection.DatasetRoles.setValue( role_names )
 
         self.featureSelectionApplet = self.createFeatureSelectionApplet()
 
@@ -150,7 +151,7 @@ class PixelClassificationWorkflow(Workflow):
             if unused_args:
                 # We parse the export setting args first.  All remaining args are considered input files by the input applet.
                 self._batch_export_args, unused_args = self.batchResultsApplet.parse_known_cmdline_args( unused_args )
-                self._batch_input_args, unused_args = self.batchInputApplet.parse_known_cmdline_args( unused_args )
+                self._batch_input_args, unused_args = self.batchInputApplet.parse_known_cmdline_args( unused_args, role_names )
     
         if unused_args:
             logger.warn("Unused command-line args: {}".format( unused_args ))
