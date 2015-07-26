@@ -328,7 +328,9 @@ class SerialListSlot(SerialSlot):
         try:
             subgroup = group[self.name]
         except:
-            warnings.warn("Deserialization: Could not locate value for slot '{}'.  Skipping.".format( self.name ))
+            if logger.isEnabledFor(logging.DEBUG):
+                # Only show this warning when debugging serialization
+                warnings.warn("Deserialization: Could not locate value for slot '{}'.  Skipping.".format( self.name ))
             return
         if 'isEmpty' in subgroup.attrs and subgroup.attrs['isEmpty']:
             self.inslot.setValue( self._iterable([]) )
