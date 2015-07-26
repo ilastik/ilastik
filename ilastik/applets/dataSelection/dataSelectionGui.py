@@ -651,7 +651,7 @@ class DataSelectionGui(QWidget):
         opTop = self.topLevelOperator
         for lane_index in range(startingLane, endingLane+1):
             output_slot = opTop.ImageGroup[lane_index][roleIndex]
-            if output_slot.meta.prefer_2d:
+            if output_slot.meta.prefer_2d and 'z' in output_slot.meta.axistags:
                 shape = numpy.array(output_slot.meta.shape)
                 total_volume = numpy.prod(shape)
                 
