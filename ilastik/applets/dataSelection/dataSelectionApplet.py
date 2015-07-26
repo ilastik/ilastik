@@ -201,18 +201,20 @@ class DataSelectionApplet( Applet ):
                 import tempfile
                 input_paths = self.convertStacksToH5( input_paths, tempfile.gettempdir() )
             
-            input_infos = map( self.create_default_headless_dataset_info, input_paths )
+            input_infos = [ self.create_default_headless_dataset_info(p) if p else None 
+                            for p in input_paths ]
     
             opDataSelection = self.topLevelOperator
             existing_lanes = len(opDataSelection.DatasetGroup)
             opDataSelection.DatasetGroup.resize( max(len(input_infos), existing_lanes) )
             for lane_index, info in enumerate(input_infos):
-                opDataSelection.DatasetGroup[lane_index][role_index].setValue( info )
+                if info:
+                    opDataSelection.DatasetGroup[lane_index][role_index].setValue( info )
             
             need_warning = False
             for lane_index in range(len(input_infos)):
                 output_slot = opDataSelection.ImageGroup[lane_index][role_index]
-                if output_slot.meta.prefer_2d:
+                if output_slot.ready() and output_slot.meta.prefer_2d and 'z' in output_slot.meta.axistags:
                     need_warning = True
                     break
 
@@ -264,45 +266,46 @@ class DataSelectionApplet( Applet ):
         
         filePaths = list(filePaths)
         for i, path in enumerate(filePaths):
-            if '*' in path:
-                globstring = path
-    
-                # Embrace paranoia:
-                # We want to make sure we never re-use a stale cache file for a new dataset,
-                #  even if the dataset is located in the same location as a previous one and has the same globstring!
-                # Create a sha-1 of the file name and modification date.
-                sha = hashlib.sha1()
-                files = [k.replace('\\', '/') for k in glob.glob( path )]
-                for f in files:
-                    sha.update(f)
-                    sha.update(pickle.dumps(os.stat(f).st_mtime))
-                stackFile = sha.hexdigest() + '.h5'
-                stackPath = os.path.join( stackVolumeCacheDir, stackFile ).replace('\\', '/')
+            if not path or '*' not in path:
+                continue
+            globstring = path
+
+            # Embrace paranoia:
+            # We want to make sure we never re-use a stale cache file for a new dataset,
+            #  even if the dataset is located in the same location as a previous one and has the same globstring!
+            # Create a sha-1 of the file name and modification date.
+            sha = hashlib.sha1()
+            files = [k.replace('\\', '/') for k in glob.glob( path )]
+            for f in files:
+                sha.update(f)
+                sha.update(pickle.dumps(os.stat(f).st_mtime))
+            stackFile = sha.hexdigest() + '.h5'
+            stackPath = os.path.join( stackVolumeCacheDir, stackFile ).replace('\\', '/')
+            
+            # Overwrite original path
+            filePaths[i] = stackPath + "/volume/data"
+
+            # Generate the hdf5 if it doesn't already exist
+            if os.path.exists(stackPath):
+                logger.info( "Using previously generated hdf5 volume for stack {}".format(path) )
+                logger.info( "Volume path: {}".format(filePaths[i]) )
+            else:
+                logger.info( "Generating hdf5 volume for stack {}".format(path) )
+                logger.info( "Volume path: {}".format(filePaths[i]) )
+
+                if not os.path.exists( stackVolumeCacheDir ):
+                    os.makedirs( stackVolumeCacheDir )
                 
-                # Overwrite original path
-                filePaths[i] = stackPath + "/volume/data"
-    
-                # Generate the hdf5 if it doesn't already exist
-                if os.path.exists(stackPath):
-                    logger.info( "Using previously generated hdf5 volume for stack {}".format(path) )
-                    logger.info( "Volume path: {}".format(filePaths[i]) )
-                else:
-                    logger.info( "Generating hdf5 volume for stack {}".format(path) )
-                    logger.info( "Volume path: {}".format(filePaths[i]) )
-    
-                    if not os.path.exists( stackVolumeCacheDir ):
-                        os.makedirs( stackVolumeCacheDir )
+                with h5py.File(stackPath) as f:
+                    # Configure the conversion operator
+                    opWriter = OpStackToH5Writer( graph=Graph() )
+                    opWriter.hdf5Group.setValue(f)
+                    opWriter.hdf5Path.setValue("volume/data")
+                    opWriter.GlobString.setValue(globstring)
                     
-                    with h5py.File(stackPath) as f:
-                        # Configure the conversion operator
-                        opWriter = OpStackToH5Writer( graph=Graph() )
-                        opWriter.hdf5Group.setValue(f)
-                        opWriter.hdf5Path.setValue("volume/data")
-                        opWriter.GlobString.setValue(globstring)
-                        
-                        # Initiate the write
-                        success = opWriter.WriteImage.value
-                        assert success, "Something went wrong when generating an hdf5 file from an image sequence."
+                    # Initiate the write
+                    success = opWriter.WriteImage.value
+                    assert success, "Something went wrong when generating an hdf5 file from an image sequence."
             
         return filePaths
 

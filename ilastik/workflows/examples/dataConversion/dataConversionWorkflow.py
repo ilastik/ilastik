@@ -69,7 +69,8 @@ class DataConversionWorkflow(Workflow):
                                                        force5d=False)
 
         opDataSelection = self.dataSelectionApplet.topLevelOperator
-        opDataSelection.DatasetRoles.setValue( ["Input Data"] )
+        role_names = ["Input Data"]
+        opDataSelection.DatasetRoles.setValue( role_names )
 
         self.dataExportApplet = DataExportApplet(self, "Data Export")
 
@@ -86,8 +87,8 @@ class DataConversionWorkflow(Workflow):
         self._data_input_args = None
         self._data_export_args = None
         if workflow_cmdline_args:
-            self._data_input_args, unused_args = self.dataSelectionApplet.parse_known_cmdline_args( workflow_cmdline_args )
             self._data_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args( unused_args )
+            self._data_input_args, unused_args = self.dataSelectionApplet.parse_known_cmdline_args( workflow_cmdline_args, role_names )
             if unused_args:
                 logger.warn("Unused command-line args: {}".format( unused_args ))
 
