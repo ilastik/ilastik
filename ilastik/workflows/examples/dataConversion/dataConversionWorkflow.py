@@ -100,7 +100,7 @@ class DataConversionWorkflow(Workflow):
         the workflow inputs and output settings.
         """
         # Configure the batch data selection operator.
-        if self._data_input_args and self._data_input_args.input_files:
+        if self._data_input_args and (self._data_input_args.unspecified_input_files or self._data_input_args.input_data):
             self.dataSelectionApplet.configure_operator_with_parsed_args( self._data_input_args )
         
         # Configure the data export operator.

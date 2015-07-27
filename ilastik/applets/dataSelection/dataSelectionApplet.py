@@ -110,17 +110,40 @@ class DataSelectionApplet( Applet ):
                 arg_parser.add_argument('--' + arg_name, nargs='+', help='List of input files for the {} role'.format( role_name ))
         
         # Finally, a catch-all for role 0 (if the workflow only has one role, there's no need to provide role names
-        arg_parser.add_argument('input_files', nargs='*', help='List of input files to process.')
+        arg_parser.add_argument('unspecified_input_files', nargs='*', help='List of input files to process.')
             
         arg_parser.add_argument('--preconvert_stacks', help="Convert image stacks to temporary hdf5 files before loading them.", action='store_true', default=False)
         parsed_args, unused_args = arg_parser.parse_known_args(cmdline_args)
 
-        for i, path in enumerate( parsed_args.input_files ):
-            # Replace '~' with home dir
-            parsed_args.input_files[i] = os.path.expanduser( path )
+        if parsed_args.unspecified_input_files:
+            # We allow the file list to go to the 'default' role, 
+            # but only if no other roles were explicitly configured.
+            arg_names = map(cls._role_name_to_arg_name, role_names)
+            for arg_name in arg_names:
+                if getattr(parsed_args, arg_name):
+                    # FIXME: This error message could be more helpful.
+                    role_args = map( self._role_name_to_arg_name, role_names )
+                    role_args = map( lambda s: '--' + s, role_args )
+                    role_args_str = ", ".join( role_args )
+                    raise Exception("Invalid command line arguments: All roles must be configured explicitly.\n"
+                                    "Use the following flags to specify which files are matched with which inputs:\n"
+                                    + role_args_str )
+            
+            # Relocate to the 'default' role
+            arg_name = cls._role_name_to_arg_name(role_names[0])
+            setattr(parsed_args, arg_name, parsed_args.unspecified_input_files)
+            parsed_args.unspecified_input_files = None
+
+        # Replace '~' with home dir
+        for role_name in role_names:
+            arg_name = cls._role_name_to_arg_name(role_name)
+            paths_for_role = getattr(parsed_args, arg_name)
+            if paths_for_role:
+                for i, path in enumerate( paths_for_role ):
+                    paths_for_role[i] = os.path.expanduser( path )            
         
         # Check for errors: Do all input files exist?
-        all_input_paths = list(parsed_args.input_files)
+        all_input_paths = []
         for role_name in role_names:
             arg_name = cls._role_name_to_arg_name(role_name)
             role_paths = getattr(parsed_args, arg_name)
@@ -155,24 +178,10 @@ class DataSelectionApplet( Applet ):
     @classmethod
     def role_paths_from_parsed_args(cls, parsed_args, role_names):
         role_paths = collections.OrderedDict()
-        if role_names:
-            for role_index, role_name in enumerate(role_names):
-                arg_name = cls._role_name_to_arg_name(role_name)
-                input_paths = getattr(parsed_args, arg_name)
-                role_paths[role_index] = input_paths
-
-        if parsed_args.input_files:
-            # We allow the file list to go to the 'default' role, but only if no other roles were explicitly configured.
-            for role_index, input_paths in role_paths.items():
-                if input_paths:
-                    # FIXME: This error message could be more helpful.
-                    role_args = map( self._role_name_to_arg_name, role_names )
-                    role_args = map( lambda s: '--' + s, role_args )
-                    role_args_str = ", ".join( role_args )
-                    raise Exception("Invalid command line arguments: All roles must be configured explicitly.\n"
-                                    "Use the following flags to specify which files are matched with which inputs:\n"
-                                    + role_args_str )
-            role_paths = { 0 : parsed_args.input_files }
+        for role_index, role_name in enumerate(role_names):
+            arg_name = cls._role_name_to_arg_name(role_name)
+            input_paths = getattr(parsed_args, arg_name)
+            role_paths[role_index] = input_paths or []
 
         # As far as this parser is concerned, all roles except the first are optional.
         # (Workflows that require the other roles are responsible for raising an error themselves.)

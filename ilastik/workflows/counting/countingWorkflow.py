@@ -234,7 +234,7 @@ class CountingWorkflow(Workflow):
         (This workflow's headless mode supports only batch mode for now.)
         """
         # Configure the batch data selection operator.
-        if self._batch_input_args and (self._batch_input_args.input_files or self._batch_input_args.raw_data):
+        if self._batch_input_args and (self._batch_input_args.unspecified_input_files or self._batch_input_args.raw_data):
             self.batchInputApplet.configure_operator_with_parsed_args( self._batch_input_args )
         
         # Configure the data export operator.

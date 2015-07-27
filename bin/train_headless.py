@@ -111,7 +111,7 @@ data_selection_applet = shell.workflow.dataSelectionApplet
 
 # To configure data selection, start with empty cmdline args and manually fill them in
 data_selection_args, _ = data_selection_applet.parse_known_cmdline_args([])
-data_selection_args.input_files = RAW_DATA_FILEPATHS
+data_selection_args.raw_data = RAW_DATA_FILEPATHS
 data_selection_args.preconvert_stacks = True
 
 # Configure 
