@@ -1614,6 +1614,12 @@ class IlastikShell(QMainWindow):
                 # Therefore, only disable the title button of a drawer if it isn't already selected.
                 if self.appletBar.currentIndex() != applet_index:
                     self.appletBar.setItemEnabled(applet_index, enabled)
+                else:
+                    # Disable the children individually.
+                    drawer = applet.getMultiLaneGui().appletDrawer()
+                    for child in drawer.children():
+                        if isinstance(child, QWidget):
+                            child.setEnabled(enabled)
 
 
 assert issubclass(IlastikShell, ShellABC), "IlastikShell does not satisfy the generic shell interface!"
