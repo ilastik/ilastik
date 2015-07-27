@@ -53,7 +53,7 @@ class BatchProcessingApplet( Applet ):
         role_path_dict = self.dataSelectionApplet.role_paths_from_parsed_args(parsed_args, role_names)
         self.run_export(role_path_dict)
 
-    def run_export(self, role_path_dict):
+    def run_export(self, role_path_dict ):
         """
         Run the export for each dataset listed in role_path_dict, 
         which must be a dict of {role_index : path_list}.
@@ -68,25 +68,33 @@ class BatchProcessingApplet( Applet ):
         prepareForNewLane() and connectLane() logic, which ensures that we get a fresh new lane that's 
         ready to process data.
         """
-        assert isinstance(role_path_dict, OrderedDict)
-        template_infos = self._get_template_dataset_infos()
-        # Invert dict from [role][batch_index] -> path to a list-of-tuples, indexed by batch_index: 
-        # [ (role-1-path, role-2-path, ...),
-        #   (role-1-path, role-2-path,...) ]
-        paths_by_batch_index = zip( *role_path_dict.values() )
-
-        for batch_dataset_index, role_input_paths in enumerate(paths_by_batch_index):
-            # Add a lane to the end of the workflow for batch processing
-            # (Expanding OpDataSelection by one has the effect of expanding the whole workflow.)
-            dataset_group_slot = self.dataSelectionApplet.topLevelOperator.DatasetGroup
-            dataset_group_slot.resize( len(dataset_group_slot)+1 )
-            batch_lane_index = len(dataset_group_slot)-1
-            try:
-                # Now use the new lane to export the batch results for the current file.
-                self._run_export_with_empty_batch_lane(role_input_paths, batch_lane_index, template_infos)
-            finally:
-                # Remove the batch lane.  See docstring above for explanation.
-                dataset_group_slot.resize( len(dataset_group_slot)-1 )
+        self.progressSignal.emit(0)
+        try:
+            assert isinstance(role_path_dict, OrderedDict)
+            template_infos = self._get_template_dataset_infos()
+            # Invert dict from [role][batch_index] -> path to a list-of-tuples, indexed by batch_index: 
+            # [ (role-1-path, role-2-path, ...),
+            #   (role-1-path, role-2-path,...) ]
+            paths_by_batch_index = zip( *role_path_dict.values() )
+    
+            for batch_dataset_index, role_input_paths in enumerate(paths_by_batch_index):
+                # Add a lane to the end of the workflow for batch processing
+                # (Expanding OpDataSelection by one has the effect of expanding the whole workflow.)
+                dataset_group_slot = self.dataSelectionApplet.topLevelOperator.DatasetGroup
+                dataset_group_slot.resize( len(dataset_group_slot)+1 )
+                batch_lane_index = len(dataset_group_slot)-1
+                try:
+                    def emit_progress(dataset_percent):
+                        overall_progress = (batch_dataset_index + dataset_percent/100.0)/len(paths_by_batch_index)
+                        self.progressSignal.emit(100*overall_progress)
+    
+                    # Now use the new lane to export the batch results for the current file.
+                    self._run_export_with_empty_batch_lane(role_input_paths, batch_lane_index, template_infos, emit_progress)
+                finally:
+                    # Remove the batch lane.  See docstring above for explanation.
+                    dataset_group_slot.resize( len(dataset_group_slot)-1 )
+        finally:
+            self.progressSignal.emit(100)
 
     def _get_template_dataset_infos(self):
         """
@@ -105,7 +113,7 @@ class BatchProcessingApplet( Applet ):
                 template_infos[role_index] = None
         return template_infos
     
-    def _run_export_with_empty_batch_lane(self, role_input_paths, batch_lane_index, template_infos):
+    def _run_export_with_empty_batch_lane(self, role_input_paths, batch_lane_index, template_infos, progress_callback):
         """
         Configure the fresh batch lane with the given input files, and export the results.
         """
@@ -138,4 +146,5 @@ class BatchProcessingApplet( Applet ):
         
         # Finally, run the export
         logger.info("Exporting to {}".format( opDataExportBatchlaneView.ExportPath.value ))
+        opDataExportBatchlaneView.progressSignal.subscribe(progress_callback)
         opDataExportBatchlaneView.run_export()
