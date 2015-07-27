@@ -252,9 +252,13 @@ class RoiRequestBatch( object ):
             self._condition.notify()
     
     def _handleCancelledRequest(self, roi):
-        # This class doesn't yet support request cancellation.
-        raise NotImplementedError
-    
+        # I can't think of a use-case for cancelling our child requests independent of our 
+        assert Request.current_request_is_cancelled(), \
+            "You can cancel the parent request of this batch request action,"\
+            " but you can't cancel the child requests independently."
+        with self._condition:
+            self._condition.notify()
+
 if __name__ == "__main__":
     import doctest
     doctest.testmod()
