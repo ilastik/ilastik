@@ -1,0 +1,1 @@
+from batchProcessingApplet import BatchProcessingApplet
