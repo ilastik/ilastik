@@ -15,13 +15,12 @@ class BatchProcessingApplet( Applet ):
     It has no 'top-level operator'.  Instead, it manipulates the workflow's DataSelection and DataExport operators. 
     """
     def __init__( self, workflow, title, dataSelectionApplet, dataExportApplet):
-        Applet.__init__( self, "Batch Processing" )
+        super(BatchProcessingApplet, self).__init__( "Batch Processing", syncWithImageIndex=False )
         self.workflow = workflow
         self.dataSelectionApplet = dataSelectionApplet
         self.dataExportApplet = dataExportApplet
-        self._gui = None # Created on first access
-
         assert isinstance(self.dataSelectionApplet.topLevelOperator, OpMultiLaneDataSelectionGroup)
+        self._gui = None # Created on first access
 
     def getMultiLaneGui(self):
         if self._gui is None:
@@ -46,9 +45,18 @@ class BatchProcessingApplet( Applet ):
         parsed_args, unused_args = DataSelectionApplet.parse_known_cmdline_args(cmdline_args, role_names)
         return parsed_args, unused_args
 
-    def run_export(self, parsed_args):
+    def run_export_from_parsed_args(self, parsed_args):
         """
-        Run the export for each dataset listed parsed_args (we use the same parser as DataSelectionApplet).
+        Run the export for each dataset listed in parsed_args (we use the same parser as DataSelectionApplet).
+        """
+        role_names = self.dataSelectionApplet.topLevelOperator.DatasetRoles.value
+        role_path_dict = self.dataSelectionApplet.role_paths_from_parsed_args(parsed_args, role_names)
+        self.run_export(role_path_dict)
+
+    def run_export(self, role_path_dict):
+        """
+        Run the export for each dataset listed in role_path_dict, 
+        which must be a dict of {role_index : path_list}.
 
         For each dataset:
             1. Append a lane to the workflow
@@ -60,10 +68,8 @@ class BatchProcessingApplet( Applet ):
         prepareForNewLane() and connectLane() logic, which ensures that we get a fresh new lane that's 
         ready to process data.
         """
-        template_infos = self._get_template_dataset_infos()
-        role_names = self.dataSelectionApplet.topLevelOperator.DatasetRoles.value
-        role_path_dict = self.dataSelectionApplet.role_paths_from_parsed_args(parsed_args, role_names)
         assert isinstance(role_path_dict, OrderedDict)
+        template_infos = self._get_template_dataset_infos()
         # Invert dict from [role][batch_index] -> path to a list-of-tuples, indexed by batch_index: 
         # [ (role-1-path, role-2-path, ...),
         #   (role-1-path, role-2-path,...) ]

@@ -254,10 +254,14 @@ class PixelClassificationWorkflow(Workflow):
         # Don't let the user do that.
         live_update_active = not opPixelClassification.FreezePredictions.value
         
-        self._shell.setAppletEnabled(self.dataSelectionApplet, not live_update_active)
-        self._shell.setAppletEnabled(self.featureSelectionApplet, input_ready and not live_update_active)
-        self._shell.setAppletEnabled(self.pcApplet, features_ready)
-        self._shell.setAppletEnabled(self.dataExportApplet, predictions_ready)
+        # The user isn't allowed to touch anything while batch processing is running.
+        batch_processing_busy = self.batchProcessingApplet.busy
+        
+        self._shell.setAppletEnabled(self.dataSelectionApplet, not live_update_active and not batch_processing_busy)
+        self._shell.setAppletEnabled(self.featureSelectionApplet, input_ready and not live_update_active and not batch_processing_busy)
+        self._shell.setAppletEnabled(self.pcApplet, features_ready and not batch_processing_busy)
+        self._shell.setAppletEnabled(self.dataExportApplet, predictions_ready and not batch_processing_busy)
+        self._shell.setAppletEnabled(self.batchProcessingApplet, predictions_ready and not batch_processing_busy)
 
         if self.batchProcessingApplet is not None:
             # Training workflow must be fully configured before batch can be used
@@ -269,6 +273,7 @@ class PixelClassificationWorkflow(Workflow):
         busy |= self.dataSelectionApplet.busy
         busy |= self.featureSelectionApplet.busy
         busy |= self.dataExportApplet.busy
+        busy |= self.batchProcessingApplet.busy
         self._shell.enableProjectChanges( not busy )
 
     def getHeadlessOutputSlot(self, slotId):
@@ -328,7 +333,7 @@ class PixelClassificationWorkflow(Workflow):
 
         if self._headless and self._batch_input_args and self._batch_export_args:
             logger.info("Beginning Batch Processing")
-            self.batchProcessingApplet.run_export(self._batch_input_args)
+            self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
             logger.info("Completed Batch Processing")
 
     def _print_labels_by_slice(self, search_value):
