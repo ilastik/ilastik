@@ -22,13 +22,15 @@ import os
 import logging
 from collections import OrderedDict
 from functools import partial
+from PyQt4.QtCore import QTimer
 logger = logging.getLogger(__name__)
 
-from PyQt4.QtGui import QWidget, QTabWidget, QVBoxLayout, QPushButton, QHBoxLayout, \
+from PyQt4.QtGui import QApplication, QWidget, QTabWidget, QVBoxLayout, QPushButton, QHBoxLayout, \
                         QLabel, QSpacerItem, QSizePolicy, QListWidget, QMessageBox
 
 from lazyflow.request import Request
 from volumina.utility import PreferencesManager
+from ilastik.utility import log_exception
 from ilastik.utility.gui import ThreadRouter, threadRouted
 from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui # We borrow the file selection window function.
 
@@ -67,10 +69,11 @@ class BatchProcessingGui( QTabWidget ):
         super(BatchProcessingGui, self).__init__()
         self.batchApplet = parentApplet
         self.threadRouter = ThreadRouter(self) # For using @threadRouted
+        self._drawer = None
         self.initMainUi()
         self.initAppletDrawerUi()
         self.export_req = None
-         
+
     def initMainUi(self):
         role_names = self.batchApplet.dataSelectionApplet.topLevelOperator.DatasetRoles.value
         self.list_widgets = []
@@ -83,7 +86,7 @@ class BatchProcessingGui( QTabWidget ):
             button_layout.addWidget(select_button)
             button_layout.addSpacerItem( QSpacerItem(0,0,hPolicy=QSizePolicy.Expanding) )
             button_layout.addWidget(clear_button)
-            button_layout.setContentsMargins(0, 0, 0, 0)            
+            button_layout.setContentsMargins(0, 0, 0, 0)
             
             button_layout_widget = QWidget()
             button_layout_widget.setLayout(button_layout)
@@ -93,44 +96,45 @@ class BatchProcessingGui( QTabWidget ):
             list_widget.setSizePolicy( QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding) )
             self.list_widgets.append( list_widget )
 
-            layout = QVBoxLayout()
-            layout.setContentsMargins(0, 0, 0, 0)            
-            layout.addWidget( button_layout_widget )
-            layout.addWidget( list_widget )
+            tab_layout = QVBoxLayout()
+            tab_layout.setContentsMargins(0, 0, 0, 0)
+            tab_layout.addWidget( button_layout_widget )
+            tab_layout.addWidget( list_widget )
             
             layout_widget = QWidget(parent=self)
-            layout_widget.setLayout(layout)
+            layout_widget.setLayout(tab_layout)
             self.addTab(layout_widget, role_name)
 
     def initAppletDrawerUi(self):
-        self._drawer = QWidget(parent=self)
         instructions_label = QLabel("Select the input files for batch processing\n"
                                     "using the controls on the right.\n"
                                     "\n"
                                     "The results will be exported according\n"
                                     "to the same settings you chose in the\n"
                                     "interactive export page above.")
+
         export_button = QPushButton("Process all files", clicked=self.run_export)
         cancel_button = QPushButton("Cancel processing", clicked=self.cancel_batch_processing)
         cancel_button.setVisible(False)
+        self.cancel_button = cancel_button
 
         layout = QVBoxLayout()
         layout.addWidget(instructions_label)
         layout.addWidget(export_button)
         layout.addWidget(cancel_button)
 
+        self._drawer = QWidget(parent=self)
         self._drawer.setLayout(layout)
-        self.cancel_button = cancel_button
-        
 
     def select_files(self, role_index):
+        preference_name = 'recent-dir-role-{}'.format(role_index)
         recent_processing_directory = PreferencesManager().get( 'BatchProcessing', 
-                                                                'recent-dir-role-{}'.format(role_index), 
+                                                                preference_name, 
                                                                 default=os.path.normpath('~') )
         file_paths = DataSelectionGui.getImageFileNamesToOpen(self, recent_processing_directory)
         if file_paths:
             recent_processing_directory = os.path.dirname(file_paths[0])
-            PreferencesManager().set( 'BatchProcessing', 'recent-dir-role-{}'.format(role_index), recent_processing_directory )
+            PreferencesManager().set( 'BatchProcessing', preference_name, recent_processing_directory )
         
             self.list_widgets[role_index].clear()
             self.list_widgets[role_index].addItems(file_paths)
@@ -153,7 +157,7 @@ class BatchProcessingGui( QTabWidget ):
             if len(role_path_dict[role_index]) < num_datasets:
                 role_path_dict[role_index] += [None] * (num_datasets-len(role_path_dict[role_index]))
 
-        # Run the export
+        # Run the export in a separate thread
         export_req = Request(partial(self.batchApplet.run_export, role_path_dict))
         export_req.notify_failed(self.handle_batch_processing_failure)
         export_req.notify_finished(self.handle_batch_processing_finished)
@@ -164,9 +168,9 @@ class BatchProcessingGui( QTabWidget ):
         self.batchApplet.appletStateUpdateRequested.emit()
         self.cancel_button.setVisible(True)
 
-        self.setEnabled(False)
-        self._drawer.setEnabled(False)
-        self.cancel_button.setEnabled(True)
+        # Queue an event to re-enable the cancel button after the workflow has 
+        # disabled all the other widgets due to the appletStateUpdateRequested signal.
+        QTimer.singleShot(0, partial(self.cancel_button.setEnabled, True) )
 
         # Start the export        
         export_req.submit()

@@ -261,11 +261,9 @@ class PixelClassificationWorkflow(Workflow):
         self._shell.setAppletEnabled(self.featureSelectionApplet, input_ready and not live_update_active and not batch_processing_busy)
         self._shell.setAppletEnabled(self.pcApplet, features_ready and not batch_processing_busy)
         self._shell.setAppletEnabled(self.dataExportApplet, predictions_ready and not batch_processing_busy)
-        self._shell.setAppletEnabled(self.batchProcessingApplet, predictions_ready and not batch_processing_busy)
 
         if self.batchProcessingApplet is not None:
-            # Training workflow must be fully configured before batch can be used
-            self._shell.setAppletEnabled(self.batchProcessingApplet, predictions_ready)
+            self._shell.setAppletEnabled(self.batchProcessingApplet, predictions_ready and not batch_processing_busy)
     
         # Lastly, check for certain "busy" conditions, during which we 
         #  should prevent the shell from closing the project.
