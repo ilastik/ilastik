@@ -275,11 +275,11 @@ class OperatorWrapper(Operator):
         for oslot in self.outputs.values():
             oslot.removeSlot(index, length)
 
-        for islot in self.inputs.values():
-            islot.removeSlot(index, length)
+        for key, outerSlot in self.inputs.items():
+            if outerSlot.name in self.promotedSlotNames:
+                outerSlot.removeSlot(index, length)
 
         op.cleanUp()
-        length = len(self.innerOperators)
 
     def _setupOutputs(self):
         pass
