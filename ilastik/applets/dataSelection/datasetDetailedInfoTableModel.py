@@ -26,6 +26,7 @@ from volumina.utility import decode_to_qstring
 
 from lazyflow.utility import PathComponents, isUrl
 from ilastik.utility import bind
+from ilastik.utility.gui import ThreadRouter, threadRouted
 from opDataSelection import DatasetInfo
 
 from dataLaneSummaryTableModel import rowOfButtonsProxy
@@ -48,50 +49,73 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
         """
         # super does not work here in Python 2.x, decorated class confuses it
         QAbstractItemModel.__init__(self, parent)
+        self.threadRouter = ThreadRouter(self)
+        
         self._op = topLevelOperator
         self._roleIndex = roleIndex
+        self._currently_inserting = False
+        self._currently_removing = False
 
-        def handleNewLane( multislot, laneIndex):
-            assert multislot is self._op.DatasetGroup
-            self.beginInsertRows( QModelIndex(), laneIndex, laneIndex )
-            self.endInsertRows()
+        self._op.DatasetGroup.notifyInsert( self.prepareForNewLane )  # pre
+        self._op.DatasetGroup.notifyInserted( self.handleNewLane )    # post
 
-            def handleDatasetInfoChanged(slot):
-                # Get the row of this slot
-                laneSlot = slot.operator
-                if laneSlot is None or laneSlot.operator is None: # This can happen during disconnect
-                    return
-                try:
-                    laneIndex = laneSlot.operator.index( laneSlot )
-                except ValueError:
-                    # If the slot doesn't exist in the lane, 
-                    #  then this dataset is in the process of being removed.
-                    return
-                firstIndex = self.createIndex(laneIndex, 0)
-                lastIndex = self.createIndex(laneIndex, self.columnCount()-1)
-                self.dataChanged.emit(firstIndex, lastIndex)
-            
-            def handleNewDatasetInserted(slot, index):
-                if index == self._roleIndex:
-                    datasetMultiSlot[self._roleIndex].notifyDirty( bind(handleDatasetInfoChanged) )
-                    datasetMultiSlot[self._roleIndex].notifyDisconnect( bind(handleDatasetInfoChanged) )
-
-            for laneIndex, datasetMultiSlot in enumerate( self._op.DatasetGroup ):
-                datasetMultiSlot.notifyInserted( bind(handleNewDatasetInserted) )
-                if self._roleIndex < len(datasetMultiSlot):
-                    handleNewDatasetInserted(datasetMultiSlot, self._roleIndex)
-
-        self._op.DatasetGroup.notifyInserted( bind(handleNewLane) )
-
-        def handleLaneRemoved( multislot, laneIndex ):
-            assert multislot is self._op.DatasetGroup
-            self.beginRemoveRows( QModelIndex(), laneIndex, laneIndex )
-            self.endRemoveRows()
-        self._op.DatasetGroup.notifyRemoved( bind(handleLaneRemoved) )
+        self._op.DatasetGroup.notifyRemove( self.handleLaneRemove )   # pre
+        self._op.DatasetGroup.notifyRemoved( self.handleLaneRemoved ) # post
 
         # Any lanes that already exist must be added now.        
         for laneIndex, slot in enumerate(self._op.DatasetGroup):
-            handleNewLane( self._op.DatasetGroup, laneIndex )
+            self.handleNewLane( self._op.DatasetGroup, laneIndex )
+
+    @threadRouted
+    def prepareForNewLane(self, multislot, laneIndex, *args):
+        assert multislot is self._op.DatasetGroup
+        self.beginInsertRows( QModelIndex(), laneIndex, laneIndex )
+        self._currently_inserting = True            
+
+    @threadRouted
+    def handleNewLane(self, multislot, laneIndex, *args):
+        assert multislot is self._op.DatasetGroup
+        self.endInsertRows()
+        self._currently_inserting = False
+
+        for laneIndex, datasetMultiSlot in enumerate( self._op.DatasetGroup ):
+            datasetMultiSlot.notifyInserted( bind(self.handleNewDatasetInserted) )
+            if self._roleIndex < len(datasetMultiSlot):
+                self.handleNewDatasetInserted(datasetMultiSlot, self._roleIndex)
+    
+    @threadRouted
+    def handleLaneRemove( self, multislot, laneIndex, *args ):
+        assert multislot is self._op.DatasetGroup
+        self.beginRemoveRows( QModelIndex(), laneIndex, laneIndex )
+        self._currently_removing = True
+
+    @threadRouted
+    def handleLaneRemoved( self, multislot, laneIndex, *args ):
+        assert multislot is self._op.DatasetGroup
+        self.endRemoveRows()
+        self._currently_removing = False
+
+    @threadRouted
+    def handleDatasetInfoChanged(self, slot):
+        # Get the row of this slot
+        laneSlot = slot.operator
+        if laneSlot is None or laneSlot.operator is None: # This can happen during disconnect
+            return
+        try:
+            laneIndex = laneSlot.operator.index( laneSlot )
+        except ValueError:
+            # If the slot doesn't exist in the lane, 
+            #  then this dataset is in the process of being removed.
+            return
+        firstIndex = self.createIndex(laneIndex, 0)
+        lastIndex = self.createIndex(laneIndex, self.columnCount()-1)
+        self.dataChanged.emit(firstIndex, lastIndex)
+    
+    @threadRouted
+    def handleNewDatasetInserted(self, slot, index):
+        if index == self._roleIndex:
+            slot[self._roleIndex].notifyDirty( bind(self.handleDatasetInfoChanged) )
+            slot[self._roleIndex].notifyDisconnect( bind(self.handleDatasetInfoChanged) )
 
     def isEditable(self, row):
         return self._op.DatasetGroup[row][self._roleIndex].ready()
@@ -116,9 +140,9 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
     
     def columnCount(self, parent=QModelIndex()):
         return DatasetDetailedInfoColumn.NumColumns
-    
+
     def rowCount(self, parent=QModelIndex()):
-        return len( self._op.ImageGroup )
+        return len( self._op.DatasetGroup )
     
     def data(self, index, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:

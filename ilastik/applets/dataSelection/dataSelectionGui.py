@@ -48,11 +48,10 @@ from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.base.applet import DatasetConstraintError
 
 from opDataSelection import OpDataSelection, DatasetInfo
-from dataLaneSummaryTableModel import DataLaneSummaryTableModel 
+from dataLaneSummaryTableModel import DataLaneSummaryTableModel
 from datasetInfoEditorWidget import DatasetInfoEditorWidget
 from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget
-from datasetDetailedInfoTableModel import DatasetDetailedInfoColumn, \
-        DatasetDetailedInfoTableModel
+from datasetDetailedInfoTableModel import DatasetDetailedInfoColumn, DatasetDetailedInfoTableModel
 from datasetDetailedInfoTableView import DatasetDetailedInfoTableView
 
 try:
@@ -146,9 +145,9 @@ class DataSelectionGui(QWidget):
                 warnings.warn("DataSelectionGui.imageLaneAdded(): length of dataset multislot out of sync with laneindex [%s != %s + 1]" % (len(self.topLevelOperator.DatasetGroup), laneIndex))
 
     def imageLaneRemoved(self, laneIndex, finalLength):
-        # We assume that there's nothing to do here because THIS GUI initiated the lane removal
-        if self.guiMode != GuiMode.Batch:
-            assert len(self.topLevelOperator.DatasetGroup) == finalLength
+        # There's nothing to do here because the GUI already 
+        #  handles operator resizes via slot callbacks.
+        pass
 
     ###########################################
     ###########################################
@@ -187,16 +186,16 @@ class DataSelectionGui(QWidget):
         
         self._viewerControlWidgetStack = QStackedWidget(self)
 
-        def handleImageRemoved(multislot, index, finalLength):
+        def handleImageRemove(multislot, index, finalLength):
             # Remove the viewer for this dataset
-            imageSlot = self.topLevelOperator.Image[index]
-            if imageSlot in self.volumeEditors.keys():
-                editor = self.volumeEditors[imageSlot]
+            datasetSlot = self.topLevelOperator.DatasetGroup[index]
+            if datasetSlot in self.volumeEditors.keys():
+                editor = self.volumeEditors[datasetSlot]
                 self.viewerStack.removeWidget( editor )
                 self._viewerControlWidgetStack.removeWidget( editor.viewerControlWidget() )
                 editor.stopAndCleanUp()
 
-        self.topLevelOperator.Image.notifyRemove( bind( handleImageRemoved ) )
+        self.topLevelOperator.DatasetGroup.notifyRemove( bind( handleImageRemove ) )
         
         opWorkflow = self.topLevelOperator.parent
         assert hasattr(opWorkflow.shell, 'onSaveProjectActionTriggered'), \
@@ -223,6 +222,7 @@ class DataSelectionGui(QWidget):
         self._drawer = uic.loadUi(localDir+"/dataSelectionDrawer.ui")
         self._drawer.instructionLabel.setText( instructionText )
 
+    @threadRouted
     def _initTableViews(self):
         self.fileInfoTabWidget.setTabText( 0, "Summary" )
         self.laneSummaryTableView.setModel( DataLaneSummaryTableModel(self, self.topLevelOperator) )
@@ -237,9 +237,12 @@ class DataSelectionGui(QWidget):
             if self._max_lanes:
                 viewer.setEnabled( self._findFirstEmptyLane(role_index) < self._max_lanes )
 
-        def _handle_lane_added( button, role_index, slot, lane_index ):
-            slot[lane_index][role_index].notifyReady( bind(_update_button_status, button, role_index) )
-            slot[lane_index][role_index].notifyUnready( bind(_update_button_status, button, role_index) )
+        def _handle_lane_added( button, role_index, lane_slot, lane_index ):
+            def _handle_role_slot_added( role_slot, added_slot_index, *args ):
+                if added_slot_index == role_index:
+                    role_slot.notifyReady( bind(_update_button_status, button, role_index) )
+                    role_slot.notifyUnready( bind(_update_button_status, button, role_index) )
+            lane_slot[lane_index].notifyInserted( _handle_role_slot_added )
 
         self._retained = [] # Retain menus so they don't get deleted
         self._detailViewerWidgets = []
@@ -317,15 +320,11 @@ class DataSelectionGui(QWidget):
 
         # Remove in reverse order so row numbers remain consistent
         for row in reversed(sorted(rows)):
-            # Remove from the GUI
-            self.laneSummaryTableView.model().removeRow(row)
-            # Remove from the operator
+            # Remove lanes from the operator.
+            # The table model will notice the changes and update the rows accordingly.
             finalSize = len(self.topLevelOperator.DatasetGroup) - 1
             self.topLevelOperator.DatasetGroup.removeSlot(row, finalSize)
     
-            # The gui and the operator should be in sync (model has one extra row for the button row)
-            assert self.laneSummaryTableView.model().rowCount() == len(self.topLevelOperator.DatasetGroup)+1
-
     @threadRouted
     def showDataset(self, laneIndex, roleIndex=None):
         if self._cleaning_up:
@@ -336,13 +335,12 @@ class DataSelectionGui(QWidget):
         
         assert threading.current_thread().name == "MainThread"
         
-        if laneIndex >= len(self.topLevelOperator.Image):
+        if laneIndex >= len(self.topLevelOperator.DatasetGroup):
             return
-        imageSlot = self.topLevelOperator.Image[laneIndex]
+        datasetSlot = self.topLevelOperator.DatasetGroup[laneIndex]
 
         # Create if necessary
-        if imageSlot not in self.volumeEditors.keys():
-            
+        if datasetSlot not in self.volumeEditors.keys():
             class DatasetViewer(LayerViewerGui):
                 def moveToTop(self, roleIndex):
                     opLaneView = self.topLevelOperatorView
@@ -380,12 +378,12 @@ class DataSelectionGui(QWidget):
             # Maximize the x-y view by default.
             layerViewer.volumeEditorWidget.quadview.ensureMaximized(2)
 
-            self.volumeEditors[imageSlot] = layerViewer
+            self.volumeEditors[datasetSlot] = layerViewer
             self.viewerStack.addWidget( layerViewer )
             self._viewerControlWidgetStack.addWidget( layerViewer.viewerControlWidget() )
 
         # Show the right one
-        viewer = self.volumeEditors[imageSlot]
+        viewer = self.volumeEditors[datasetSlot]
         displayedRole = self.fileInfoTabWidget.currentIndex()
         viewer.moveToTop(displayedRole)
         self.viewerStack.setCurrentWidget( viewer )
