@@ -36,7 +36,7 @@ class VigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
         classifier = vigra.learning.RandomForest(*self._args, **self._kwargs)
         
         if feature_names is None:
-            oob = classifier.learnRFWithFeatureSelection(X, y)
+            oob = classifier.learnRF(X, y)
             named_importances = None
         else:
             assert len(feature_names) == X.shape[-1], \
