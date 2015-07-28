@@ -4,6 +4,8 @@ from collections import OrderedDict
 import logging
 logger = logging.getLogger(__name__)
 
+from lazyflow.request import Request
+from ilastik.utility import log_exception
 from ilastik.applets.base.applet import Applet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.dataSelection.opDataSelection import DatasetInfo, OpMultiLaneDataSelectionGroup
@@ -76,23 +78,32 @@ class BatchProcessingApplet( Applet ):
             # [ (role-1-path, role-2-path, ...),
             #   (role-1-path, role-2-path,...) ]
             paths_by_batch_index = zip( *role_path_dict.values() )
-    
+
+            batch_lane_index = len(self.dataSelectionApplet.topLevelOperator)
             for batch_dataset_index, role_input_paths in enumerate(paths_by_batch_index):
                 # Add a lane to the end of the workflow for batch processing
                 # (Expanding OpDataSelection by one has the effect of expanding the whole workflow.)
-                dataset_group_slot = self.dataSelectionApplet.topLevelOperator.DatasetGroup
-                dataset_group_slot.resize( len(dataset_group_slot)+1 )
-                batch_lane_index = len(dataset_group_slot)-1
+                self.dataSelectionApplet.topLevelOperator.addLane( batch_lane_index )
                 try:
+                    # The above setup can take a long time for a big workflow.
+                    # If the user has ALREADY cancelled, quit now instead of waiting for the first request to begin.
+                    Request.raise_if_cancelled()
+                    
                     def emit_progress(dataset_percent):
                         overall_progress = (batch_dataset_index + dataset_percent/100.0)/len(paths_by_batch_index)
                         self.progressSignal.emit(100*overall_progress)
-    
+
                     # Now use the new lane to export the batch results for the current file.
                     self._run_export_with_empty_batch_lane(role_input_paths, batch_lane_index, template_infos, emit_progress)
                 finally:
                     # Remove the batch lane.  See docstring above for explanation.
-                    dataset_group_slot.resize( len(dataset_group_slot)-1 )
+                    try:
+                        self.dataSelectionApplet.topLevelOperator.removeLane( batch_lane_index, batch_lane_index )
+                    except Request.CancellationException:
+                        log_exception(logger)
+                        # If you see this, something went wrong in a graph setup operation.
+                        raise RuntimeError("Encountered an unexpected CancellationException while removing the batch lane.")
+                    assert len(self.dataSelectionApplet.topLevelOperator.DatasetGroup) == batch_lane_index
         finally:
             self.progressSignal.emit(100)
 
