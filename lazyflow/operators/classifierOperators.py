@@ -184,9 +184,10 @@ class OpTrainPixelwiseClassifierBlocked(Operator):
         if len(image_data_blocks) == 0:
             result[0] = None
         else:
+            channel_names = self.Images[0].meta.channel_names
             axistags = self.Images[0].meta.axistags
-            logger.debug("Training new classifier: {}".format( classifier_factory.description ))
-            classifier = classifier_factory.create_and_train_pixelwise( image_data_blocks, label_data_blocks, axistags )
+            logger.debug("Training new pixelwise classifier: {}".format( classifier_factory.description ))
+            classifier = classifier_factory.create_and_train_pixelwise( image_data_blocks, label_data_blocks, axistags, channel_names )
             result[0] = classifier
             if classifier is not None:
                 assert issubclass(type(classifier), LazyflowPixelwiseClassifierABC), \

@@ -25,7 +25,7 @@ class VigraRfPixelwiseClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         self._args = args
         self._kwargs = kwargs
     
-    def create_and_train_pixelwise(self, feature_images, label_images, axistags=None):
+    def create_and_train_pixelwise(self, feature_images, label_images, axistags=None, feature_names=None):
         logger.debug( 'training pixel-wise vigra RF' )
         
         all_features = numpy.ndarray( shape=(0, feature_images[0].shape[-1]), dtype=numpy.float32 )
@@ -46,7 +46,7 @@ class VigraRfPixelwiseClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         classifier = vigra.learning.RandomForest(*self._args, **self._kwargs)
         classifier.learnRF(all_features, all_labels)
 
-        return VigraRfPixelwiseClassifier( classifier, known_labels )
+        return VigraRfPixelwiseClassifier( classifier, known_labels, feature_names )
 
     def get_halo_shape(self, data_axes):
         # No halo necessary, but since this classifier is for testing purposes, let's add one anyway.
@@ -74,9 +74,10 @@ class VigraRfPixelwiseClassifier(LazyflowPixelwiseClassifierABC):
     """
     Adapt the vigra RandomForest class to the interface lazyflow expects.
     """
-    def __init__(self, vigra_rf, known_labels):
+    def __init__(self, vigra_rf, known_labels, feature_names):
         self._known_labels = known_labels
         self._vigra_rf = vigra_rf
+        self._feature_names = feature_names
     
     def predict_probabilities_pixelwise(self, X, axistags=None):
         logger.debug( 'predicting PIXELWISE vigra RF' )
@@ -108,6 +109,10 @@ class VigraRfPixelwiseClassifier(LazyflowPixelwiseClassifierABC):
     def feature_count(self):
         return self._vigra_rf.featureCount()
 
+    @property
+    def feature_names(self):
+        return self._feature_names
+    
     def get_halo_shape(self, data_axes):
         # No halo necessary, but since this classifier is for testing purposes, let's add one anyway.
         halo = tuple(range( len(data_axes)-1 ))
@@ -126,6 +131,7 @@ class VigraRfPixelwiseClassifier(LazyflowPixelwiseClassifierABC):
             h5py_group.copy(cacheFile['forest'], 'forest')
 
         h5py_group['known_labels'] = self._known_labels
+        h5py_group['feature_names'] = self._feature_names
         
         # This field is required for all classifiers
         h5py_group['pickled_type'] = pickle.dumps( type(self) )
@@ -142,10 +148,11 @@ class VigraRfPixelwiseClassifier(LazyflowPixelwiseClassifierABC):
 
         forest = vigra.learning.RandomForest(cachePath, 'forest')
         known_labels = list(h5py_group['known_labels'][:])
+        feature_names = list(h5py_group['feature_names'][:])
 
         os.remove(cachePath)
         os.rmdir(tmpDir)
 
-        return VigraRfPixelwiseClassifier( forest, known_labels )
+        return VigraRfPixelwiseClassifier( forest, known_labels, feature_names )
 
 assert issubclass( VigraRfPixelwiseClassifier, LazyflowPixelwiseClassifierABC )

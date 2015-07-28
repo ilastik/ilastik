@@ -37,7 +37,7 @@ class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         self._args = args
         self._kwargs = kwargs
     
-    def create_and_train_pixelwise(self, feature_images, label_images, axistags=None):
+    def create_and_train_pixelwise(self, feature_images, label_images, axistags=None, feature_names=None):
         """
         feature_images: A sequence of ND images.  See note above regarding required structure.  
                         Last axis must be channel.
@@ -113,7 +113,7 @@ class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
 
         model.trainWithChannels( raw_images, hev_images, converted_labels, integral_images, z_anisotropy_factor, self.num_stumps, *self._args, **self._kwargs )
 
-        return IIBoostLazyflowClassifier( model, known_labels, feature_count=len(integral_images[0]) )
+        return IIBoostLazyflowClassifier( model, known_labels, feature_count=len(integral_images[0]), feature_names=feature_names )
 
     def get_halo_shape(self, data_axes):
         # Carlos says a hard-coded halo of 50 voxels should suffice.
@@ -141,10 +141,11 @@ class IIBoostLazyflowClassifier(LazyflowPixelwiseClassifierABC):
     """
     Adapt the IIBoost classifier to the interface lazyflow expects.    
     """
-    def __init__(self, model, known_labels, feature_count):
+    def __init__(self, model, known_labels, feature_count, feature_names):
         self._known_labels = known_labels
         self._model = model
         self._feature_count = feature_count
+        self._feature_names = feature_names
     
     def predict_probabilities_pixelwise(self, input_image, axistags=None):
         """
@@ -220,6 +221,10 @@ class IIBoostLazyflowClassifier(LazyflowPixelwiseClassifierABC):
     def feature_count(self):
         return self._feature_count
 
+    @property
+    def feature_names(self):
+        return self._feature_names
+
     def get_halo_shape(self, data_axes):
         # Carlos says a hard-coded halo of 50 voxels should suffice.
         halo_shape = (50,) * (len(data_axes)-1)
@@ -229,6 +234,7 @@ class IIBoostLazyflowClassifier(LazyflowPixelwiseClassifierABC):
     def serialize_hdf5(self, h5py_group):
         h5py_group['known_labels'] = self._known_labels
         h5py_group['feature_count'] = self._feature_count
+        h5py_group['feature_names'] = self._feature_names
         
         # This field is required for all classifiers
         h5py_group['pickled_type'] = pickle.dumps( type(self) )
@@ -244,7 +250,8 @@ class IIBoostLazyflowClassifier(LazyflowPixelwiseClassifierABC):
                 
         known_labels = list(h5py_group['known_labels'][:])
         feature_count = h5py_group['feature_count'][()]
-        return IIBoostLazyflowClassifier(model, known_labels, feature_count)
+        feature_names = list(h5py_group['feature_names'][:])
+        return IIBoostLazyflowClassifier(model, known_labels, feature_count, feature_names)
 
 # This assertion should pass if lazyflow is available.
 from lazyflow.classifiers import LazyflowPixelwiseClassifierABC
