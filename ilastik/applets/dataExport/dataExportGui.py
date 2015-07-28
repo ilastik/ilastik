@@ -30,7 +30,7 @@ from lazyflow.graph import Slot
 
 from ilastik.utility import bind, log_exception
 from lazyflow.utility import PathComponents
-from ilastik.utility.gui import ThreadRouter, threadRouted, ThunkEvent, ThunkEventHandler
+from ilastik.utility.gui import ThreadRouter, threadRouted, ThunkEvent, ThunkEventHandler, threadRoutedWithRouter
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
@@ -102,6 +102,7 @@ class DataExportGui(QWidget):
         self.parentApplet = parentApplet
         self.progressSignal = parentApplet.progressSignal
         
+        @threadRoutedWithRouter(self.threadRouter)
         def handleNewDataset( multislot, index ):
             # Make room in the GUI table
             self.batchOutputTableWidget.insertRow( index )
@@ -122,7 +123,8 @@ class DataExportGui(QWidget):
             handleNewDataset( self.topLevelOperator.ExportPath, i )
             if subslot.ready():
                 self.updateTableForSlot(subslot)
-    
+
+        @threadRoutedWithRouter(self.threadRouter)
         def handleLaneRemoved( multislot, index, finalLength ):
             if self.batchOutputTableWidget.rowCount() <= finalLength:
                 return
@@ -155,6 +157,7 @@ class DataExportGui(QWidget):
         self.drawer.deleteAllButton.clicked.connect( self.deleteAllResults )
         self.drawer.deleteAllButton.setIcon( QIcon(ilastikIcons.Clear) )
         
+        @threadRoutedWithRouter(self.threadRouter)
         def _handleNewSelectionNames( *args ):
             input_names = self.topLevelOperator.SelectionNames.value
             self.drawer.inputSelectionCombo.addItems( input_names )
