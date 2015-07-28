@@ -145,6 +145,43 @@ def _impl_test_lock(lockA, lockB, task_class, num_tasks):
     lockB.release()
     logger.debug("DONE")
 
+def test_cancellation_behavior():
+    """
+    If a request is cancelled while it was waiting on a lock, 
+    it should raise the CancellationException.
+    """
+    lock = RequestLock()
+    lock.acquire()
+    def f():
+        try:
+            with lock:
+                assert False
+        except Request.CancellationException:
+            pass
+        else:
+            assert False
+            
+    finished = [False]
+    cancelled = [False]
+    failed = [False]
+    def handle_finished(result):
+        finished[0] = True
+    def handle_cancelled():
+        cancelled[0] = True
+    def handle_failed(*args):
+        failed[0] = True
+    req = Request(f)
+    req.notify_finished( handle_finished )
+    req.notify_failed( handle_failed )
+    req.notify_cancelled( handle_cancelled )
+
+    req.submit()
+    req.cancel()
+    time.sleep(0.1)
+    lock.release()
+    time.sleep(0.1)
+    assert not finished[0] and not failed[0] and cancelled[0]
+
 if __name__ == "__main__":
     import sys
     sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
