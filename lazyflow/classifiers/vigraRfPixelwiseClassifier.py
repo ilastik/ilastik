@@ -144,7 +144,7 @@ class VigraRfPixelwiseClassifier(LazyflowPixelwiseClassifierABC):
         tmpDir = tempfile.mkdtemp()
         cachePath = os.path.join(tmpDir, 'tmp_classifier_cache.h5').replace('\\', '/')
         with h5py.File(cachePath, 'w') as cacheFile:
-            cacheFile.copy(h5py_group, 'forest')
+            cacheFile.copy(h5py_group['forest'], 'forest')
 
         forest = vigra.learning.RandomForest(cachePath, 'forest')
         known_labels = list(h5py_group['known_labels'][:])
