@@ -529,8 +529,7 @@ class Request( object ):
         If we have to wait, suspend the current request instead of blocking the whole worker thread.
         """
         # Before we suspend the current request, check to see if it's been cancelled since it last blocked
-        if current_request.cancelled:
-            raise Request.CancellationException()
+        Request.raise_if_cancelled()
 
         if current_request == self:
             # It's usually nonsense for a request to wait for itself,
@@ -588,8 +587,7 @@ class Request( object ):
 
         # Now we're back (no longer suspended)
         # Was the current request cancelled while it was waiting for us?
-        if current_request.cancelled:
-            raise Request.CancellationException()
+        Request.raise_if_cancelled()
         
         # Are we back because we failed?
         if self.exception is not None:
@@ -876,8 +874,7 @@ class RequestLock(object):
 
             # Now we're back (no longer suspended)
             # Was the current request cancelled while it was waiting for the lock?
-            if current_request.cancelled:
-                raise Request.CancellationException()
+            Request.raise_if_cancelled()
 
         # Guaranteed to own _modelLock now (see release()).
         return True
