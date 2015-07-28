@@ -25,8 +25,9 @@ class OrderedSignal(object):
     """
     A simple callback mechanism that ensures callbacks occur in the same order as subscription.
     """
-    def __init__(self):
+    def __init__(self, hide_cancellation_exceptions=False):
         self.callbacks = OrderedDict()
+        self.hide_cancellation_exceptions = hide_cancellation_exceptions
 
     def subscribe(self, fn, **kwargs):
         """
@@ -69,8 +70,15 @@ class OrderedSignal(object):
         """
         Emit the signal.  Calls each callback in the subscription list, in order, with the specified arguments.
         """
+        from lazyflow.request import Request # Late import to work around circular dependency
         for f, kw in self.callbacks.items():
-            f(*args, **kw)
+            try:
+                f(*args, **kw)
+            except Request.CancellationException:
+                # We cannot allow graph setup operations to fail due to 
+                # cancellation exceptions from our client functions.
+                if not self.hide_cancellation_exceptions:
+                    raise
 
     def clean(self):
         self.callbacks = OrderedDict()

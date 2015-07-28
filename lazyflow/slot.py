@@ -214,18 +214,19 @@ class Slot(object):
         self.stype = stype(self)
         self.nonlane = nonlane
 
-        self._sig_changed = OrderedSignal()
-        self._sig_value_changed = OrderedSignal()
-        self._sig_ready = OrderedSignal()
-        self._sig_unready = OrderedSignal()
-        self._sig_dirty = OrderedSignal()
-        self._sig_connect = OrderedSignal()
-        self._sig_disconnect = OrderedSignal()
-        self._sig_resize = OrderedSignal()
-        self._sig_resized = OrderedSignal()
-        self._sig_remove = OrderedSignal()
-        self._sig_removed = OrderedSignal()
-        self._sig_inserted = OrderedSignal()
+        self._sig_changed = OrderedSignal(hide_cancellation_exceptions=True)
+        self._sig_value_changed = OrderedSignal(hide_cancellation_exceptions=True)
+        self._sig_ready = OrderedSignal(hide_cancellation_exceptions=True)
+        self._sig_unready = OrderedSignal(hide_cancellation_exceptions=True)
+        self._sig_dirty = OrderedSignal(hide_cancellation_exceptions=True)
+        self._sig_connect = OrderedSignal(hide_cancellation_exceptions=True)
+        self._sig_disconnect = OrderedSignal(hide_cancellation_exceptions=True)
+        self._sig_resize = OrderedSignal(hide_cancellation_exceptions=True)
+        self._sig_resized = OrderedSignal(hide_cancellation_exceptions=True)
+        self._sig_remove = OrderedSignal(hide_cancellation_exceptions=True)
+        self._sig_removed = OrderedSignal(hide_cancellation_exceptions=True)
+        self._sig_insert = OrderedSignal(hide_cancellation_exceptions=True)
+        self._sig_inserted = OrderedSignal(hide_cancellation_exceptions=True)
 
         self._resizing = False
 
