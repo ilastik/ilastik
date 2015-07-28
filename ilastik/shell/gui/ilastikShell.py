@@ -1519,7 +1519,11 @@ class IlastikShell(QMainWindow):
                 if response == QMessageBox.Cancel:
                     return False
                 elif response == QMessageBox.Save:
-                    self.onSaveProjectActionTriggered()
+                    saveThread = self.onSaveProjectActionTriggered()
+                    # The save action is performed in a different thread,
+                    # But we're shutting down right now.
+                    # Just block here for the save to complete before we continue to shut down.
+                    saveThread.join()
         try:
             from eventcapture.eventRecordingApp import EventRecordingApp
 
