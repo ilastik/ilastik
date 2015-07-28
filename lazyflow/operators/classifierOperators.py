@@ -114,6 +114,26 @@ class OpTrainPixelwiseClassifierBlocked(Operator):
     def __init__(self, *args, **kwargs):
         super(OpTrainPixelwiseClassifierBlocked, self).__init__(*args, **kwargs)
         self.progressSignal = OrderedSignal()
+
+        # Normally, lane removal does not trigger a dirty notification.
+        # But in this case, if the lane contained any label data whatsoever,
+        #  the classifier needs to be marked dirty.
+        # We know which slots contain (or contained) label data because they have
+        # been 'touched' at some point (they became dirty at some point).
+        self._touched_slots = set()
+        def handle_new_lane( multislot, index, newlength ):
+            def handle_dirty_lane( slot, roi ):
+                self._touched_slots.add(slot)
+            multislot[index].notifyDirty( handle_dirty_lane )
+        self.Labels.notifyInserted( handle_new_lane )
+
+        def handle_remove_lane( multislot, index, newlength ):
+            # If the lane we're removing contained
+            # label data, then mark the downstream dirty
+            if multislot[index] in self._touched_slots:
+                self.Classifier.setDirty()
+                self._touched_slots.remove(multislot[index])
+        self.Labels.notifyRemove( handle_remove_lane )
     
     def setupOutputs(self):
         for slot in list(self.Images) + list(self.Labels):

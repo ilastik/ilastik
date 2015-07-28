@@ -26,6 +26,26 @@ class OpConcatenateFeatureMatrices(Operator):
         self._num_feature_channels = 0 # Not including the labels...
         self._channel_names = []
 
+        # Normally, lane removal does not trigger a dirty notification.
+        # But in this case, if the lane contained any label data whatsoever,
+        #  the classifier needs to be marked dirty.
+        # We know which slots contain (or contained) label data because they have
+        # been 'touched' at some point (they became dirty at some point).
+        self._touched_slots = set()
+        def handle_new_lane( multislot, index, newlength ):
+            def handle_dirty_lane( slot, roi ):
+                self._touched_slots.add(slot)
+            multislot[index].notifyDirty( handle_dirty_lane )
+        self.FeatureMatrices.notifyInserted( handle_new_lane )
+
+        def handle_remove_lane( multislot, index, newlength ):
+            # If the lane we're removing contained
+            # label data, then mark the downstream dirty
+            if multislot[index] in self._touched_slots:
+                self.ConcatenatedOutput.setDirty()
+                self._touched_slots.remove(multislot[index])
+        self.FeatureMatrices.notifyRemove( handle_remove_lane )
+
     def setupOutputs(self):
         self.ConcatenatedOutput.meta.shape = (1,)
         self.ConcatenatedOutput.meta.dtype = object
