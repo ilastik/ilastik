@@ -341,9 +341,19 @@ class Slot(object):
         """
         self._sig_removed.subscribe(function, **kwargs)
 
+    def notifyInsert(self, function, **kwargs):
+        """
+        calls the corresponding function BEFORE a slot has been added
+        first argument of the function is the slot
+        second argument is the old size and the third
+        argument is the new size
+        the keyword arguments follow
+        """
+        self._sig_insert.subscribe(function, **kwargs)
+
     def notifyInserted(self, function, **kwargs):
         """
-        calls the corresponding function after a slot has been added
+        calls the corresponding function AFTER a slot has been added
         first argument of the function is the slot
         second argument is the old size and the third
         argument is the new size
@@ -416,6 +426,12 @@ class Slot(object):
         unregister a removed callback
         """
         self._sig_removed.unsubscribe(function)
+
+    def unregisterInsert(self, function):
+        """
+        unregister a insert callback
+        """
+        self._sig_insert.unsubscribe(function)
 
     def unregisterInserted(self, function):
         """
@@ -675,6 +691,9 @@ class Slot(object):
         """
         if len(self) >= finalsize:
             return self[position]
+
+        # call after insert callbacks
+        self._sig_insert(self, position, finalsize)
 
         slot =  self._insertNew(position)
         operator_name = '<NO OPERATOR>'
