@@ -22,9 +22,9 @@ import os
 import logging
 from collections import OrderedDict
 from functools import partial
-from PyQt4.QtCore import QTimer
 logger = logging.getLogger(__name__)
 
+from PyQt4.QtCore import QTimer
 from PyQt4.QtGui import QApplication, QWidget, QTabWidget, QVBoxLayout, QPushButton, QHBoxLayout, \
                         QLabel, QSpacerItem, QSizePolicy, QListWidget, QMessageBox
 
@@ -77,6 +77,8 @@ class BatchProcessingGui( QTabWidget ):
     def initMainUi(self):
         role_names = self.batchApplet.dataSelectionApplet.topLevelOperator.DatasetRoles.value
         self.list_widgets = []
+        
+        # Create a tab for each role
         for role_index, role_name in enumerate(role_names):
             select_button = QPushButton("Select " + role_name + " Files...", 
                                         clicked=partial(self.select_files, role_index) )
@@ -113,19 +115,18 @@ class BatchProcessingGui( QTabWidget ):
                                     "to the same settings you chose in the\n"
                                     "interactive export page above.")
 
-        export_button = QPushButton("Process all files", clicked=self.run_export)
-        cancel_button = QPushButton("Cancel processing", clicked=self.cancel_batch_processing)
-        cancel_button.setVisible(False)
-        self.cancel_button = cancel_button
+        self.run_button = QPushButton("Process all files", clicked=self.run_export)
+        self.cancel_button = QPushButton("Cancel processing", clicked=self.cancel_batch_processing)
+        self.cancel_button.setVisible(False)
 
         layout = QVBoxLayout()
         layout.addWidget(instructions_label)
-        layout.addWidget(export_button)
-        layout.addWidget(cancel_button)
+        layout.addWidget(self.run_button)
+        layout.addWidget(self.cancel_button)
 
         self._drawer = QWidget(parent=self)
         self._drawer.setLayout(layout)
-
+        
     def select_files(self, role_index):
         preference_name = 'recent-dir-role-{}'.format(role_index)
         recent_processing_directory = PreferencesManager().get( 'BatchProcessing', 
@@ -167,10 +168,7 @@ class BatchProcessingGui( QTabWidget ):
         self.batchApplet.busy = True
         self.batchApplet.appletStateUpdateRequested.emit()
         self.cancel_button.setVisible(True)
-
-        # Queue an event to re-enable the cancel button after the workflow has 
-        # disabled all the other widgets due to the appletStateUpdateRequested signal.
-        QTimer.singleShot(0, partial(self.cancel_button.setEnabled, True) )
+        self.run_button.setEnabled(False)
 
         # Start the export        
         export_req.submit()
@@ -180,23 +178,19 @@ class BatchProcessingGui( QTabWidget ):
         self.export_req.cancel()
 
     @threadRouted
-    def handle_batch_processing_failure(self, exc, exc_info):
-        msg = "Error encountered during batch processing:\n{}".format( exc )
-        log_exception( logger, msg, exc_info )
-        QMessageBox.critical(self, "Batch Processing Error", msg)
-        self.export_req = None
-        self.cancel_button.setVisible(False)
-        self.setEnabled(True)
-        self._drawer.setEnabled(True)
-
-    @threadRouted
     def handle_batch_processing_finished(self, *args):
         self.batchApplet.busy = False
         self.batchApplet.appletStateUpdateRequested.emit()
         self.export_req = None
         self.cancel_button.setVisible(False)
-        self.setEnabled(True)
-        self._drawer.setEnabled(True)
+        self.run_button.setEnabled(True)
+
+    @threadRouted
+    def handle_batch_processing_failure(self, exc, exc_info):
+        msg = "Error encountered during batch processing:\n{}".format( exc )
+        log_exception( logger, msg, exc_info )
+        QMessageBox.critical(self, "Batch Processing Error", msg)
+        self.handle_batch_processing_finished()
 
     @threadRouted
     def handle_batch_processing_cancelled(self):
