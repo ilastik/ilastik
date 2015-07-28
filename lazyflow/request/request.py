@@ -1012,7 +1012,11 @@ class SimpleRequestCondition(object):
         #self.__exit__ = self._debug_condition.__exit__        
 
     def __enter__(self):
-        return self._ownership_lock.__enter__()
+        try:
+            return self._ownership_lock.__enter__()
+        except Request.CancellationException:
+            self._notify_nocheck()
+            raise
         
     def __exit__(self, *args):
         self._ownership_lock.__exit__(*args)
@@ -1061,7 +1065,12 @@ class SimpleRequestCondition(object):
         .. note:: It is okay to call this from more than one request in parallel.
         """
         assert self._ownership_lock.locked(), "Forbidden to call SimpleRequestCondition.notify() unless you own the condition."
+        self._notify_nocheck()
 
+    def _notify_nocheck(self):
+        """
+        Notify anyone waiting, without checking that the lock is actually owned.
+        """
         # Release the waiter for anyone currently waiting
         if self._waiter_lock.locked():
             self._waiter_lock.release()
