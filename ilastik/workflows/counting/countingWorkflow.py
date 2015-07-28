@@ -48,6 +48,7 @@ class CountingWorkflow(Workflow):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
         if 'graph' in kwargs: del kwargs['graph']
         super( CountingWorkflow, self ).__init__( shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs )
+        self.stored_classifer = None
 
         # Parse workflow-specific command-line args
         parser = argparse.ArgumentParser()
@@ -118,6 +119,21 @@ class CountingWorkflow(Workflow):
     def imageNameListSlot(self):
         return self.dataSelectionApplet.topLevelOperator.ImageName
 
+    def prepareForNewLane(self, laneIndex):
+        """
+        Overridden from Workflow base class.
+        Called immediately before a new lane is added to the workflow.
+        """
+        # When the new lane is added, dirty notifications will propagate throughout the entire graph.
+        # This means the classifier will be marked 'dirty' even though it is still usable.
+        # Before that happens, let's store the classifier, so we can restore it at the end of connectLane(), below.
+        opCounting = self.countingApplet.topLevelOperator
+        if opCounting.classifier_cache.Output.ready() and \
+           not opCounting.classifier_cache._dirty:
+            self.stored_classifer = opCounting.classifier_cache.Output.value
+        else:
+            self.stored_classifer = None
+
     def connectLane(self, laneIndex):
         ## Access applet operators
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
@@ -140,6 +156,12 @@ class CountingWorkflow(Workflow):
         opDataExport.RawData.connect( opData.ImageGroup[0] )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
         opDataExport.ConstraintDataset.connect( opData.ImageGroup[0] )
+
+        # Restore classifier we saved in prepareForNewLane() (if any)
+        if self.stored_classifer is not None:
+            opCounting.classifier_cache.forceValue(self.stored_classifer)
+            # Release reference
+            self.stored_classifer = None
 
     def _initBatchWorkflow(self):
         """
