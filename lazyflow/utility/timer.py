@@ -19,7 +19,7 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
-from time import sleep
+import time
 import datetime
 import functools
 import logging
@@ -80,7 +80,7 @@ class Timer(object):
         assert not self.paused
         remaining = seconds - self.seconds()
         if remaining > 0:
-            sleep( remaining )
+            time.sleep( remaining )
 
 def timed(func):
     """
@@ -135,13 +135,14 @@ def timeLogged(logger, level=logging.DEBUG):
 
     """
     def _timelogged(func):
-        f = timed(func)
-        @functools.wraps(f)
+        @functools.wraps(func)
         def wrapper(*args, **kwargs):
+            start = time.time()
             try:
-                return f(*args, **kwargs)
+                return func(*args, **kwargs)
             finally:
-                logger.log( level, "{} execution took {} seconds".format( f.__name__, f.prev_run_timer.seconds() ) )
+                stop = time.time()
+                logger.log( level, "{} execution took {} seconds".format( func.__name__, stop - start ) )
         return wrapper
     return _timelogged
 
