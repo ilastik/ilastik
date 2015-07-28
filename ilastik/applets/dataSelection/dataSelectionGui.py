@@ -222,7 +222,6 @@ class DataSelectionGui(QWidget):
         self._drawer = uic.loadUi(localDir+"/dataSelectionDrawer.ui")
         self._drawer.instructionLabel.setText( instructionText )
 
-    @threadRouted
     def _initTableViews(self):
         self.fileInfoTabWidget.setTabText( 0, "Summary" )
         self.laneSummaryTableView.setModel( DataLaneSummaryTableModel(self, self.topLevelOperator) )
