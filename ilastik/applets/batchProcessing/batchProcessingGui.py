@@ -151,7 +151,7 @@ class BatchProcessingGui( QTabWidget ):
         num_datasets = len(role_path_dict[0])
 
         for role_index, list_widget in enumerate(self.list_widgets[1:], start=1):
-            role_path_dict[role_index] = BatchProcessingGui.get_all_item_strings(self.list_widgets[0])
+            role_path_dict[role_index] = BatchProcessingGui.get_all_item_strings(self.list_widgets[role_index])
             assert len(role_path_dict[role_index]) <= num_datasets, \
                 "Too many files given for role: '{}'".format( role_names[role_index] )
             if len(role_path_dict[role_index]) < num_datasets:
