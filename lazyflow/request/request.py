@@ -862,6 +862,7 @@ class RequestLock(object):
             # Try to get it immediately.
             got_it = self._modelLock.acquire(False)
             if not blocking:
+                Request.raise_if_cancelled()
                 return got_it
             if not got_it:
                 # We have to wait.  Add ourselves to the list of waiters.
