@@ -310,10 +310,10 @@ class Request( object ):
 
         try:
             # Notify callbacks (one or the other, not both)
-            if self.cancelled:
-                self._sig_cancelled()
-            elif self.exception is not None:
+            if self.exception is not None:
                 self._sig_failed( self.exception, self.exception_info )
+            elif self.cancelled:
+                self._sig_cancelled()
             else:
                 self._sig_finished(self._result)
 
