@@ -143,8 +143,19 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._onMaxObjectsBoxChanged()
         self._drawer.maxObjectsBox.setReadOnly(True)
 
+        #print " 0 in initAppletDrawerUI - reading labels", self.topLevelOperatorView.labels
+        print " 0 in initAppletDrawerUI - reading Labels", self.topLevelOperatorView.Labels.value
+        #if self.topLevelOperatorView.LabelsOut.value == {}:
+        #    print "====33"
+
+        self.topLevelOperatorView.labels = self.topLevelOperatorView.Labels.value
+
+        #else:
+        #    print "====44"
+        #    self.topLevelOperatorView.labels = self.topLevelOperatorView.LabelsOut.value
+        print " 1 in initAppletDrawerUI - setting labels", self.topLevelOperatorView.labels
         #self.topLevelOperatorView.Annotations.notifyReady( bind(self._updateAnnotationsFromOperator) )
-        #self.topLevelOperatorView.Labels.notifyReady( bind(self._updateLabelsFromOperator) )
+        self.topLevelOperatorView.Labels.notifyReady( bind(self._updateLabelsFromOperator) )
         #self.topLevelOperatorView.Divisions.notifyReady( bind(self._updateDivisionsFromOperator) )
         
     @threadRouted
@@ -202,8 +213,9 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
     #def _updateAnnotationsFromOperator(self):
     #    self.annotations = self.topLevelOperatorView.Annotations.value
 
-#    def _updateLabelsFromOperator(self):
-#        self.labels = self.topLevelOperatorView.Labels.wait()
+    def _updateLabelsFromOperator(self):
+        print "_updateLabelsFromOperator"
+        self.labels = self.topLevelOperatorView.Labels.wait()
 
 #    def _updateDivisionsFromOperator(self):
 #        self.divisions = self.topLevelOperatorView.Divisions.wait()
@@ -327,10 +339,15 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         #print "RunStructuredLearningButton PRESSED Crops Slot", self.mainOperator.Crops.value
         #print "RunStructuredLearningButton PRESSED Annotation Slot", self.mainOperator.Annotations.value
 
+        #self.topLevelOperatorView.labels = self.mainOperator.Labels.value
 
         self.initializeAnnotations()
 
 
+        print "mainOperator Labels = ", self.mainOperator.Labels.value
+        print "topLevelOperatorView Labels = ", self.topLevelOperatorView.Labels.value
+        print "mainOperator labels = ", self.mainOperator.labels
+        print "topLevelOperatorView labels = ", self.topLevelOperatorView.labels
 
 
 
@@ -596,7 +613,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         print "ilastik structured learning tracking: appearance weight = ", self._appearanceWeight
         print "ilastik structured learning tracking: disappearance weight = ", self._disappearanceWeight
         
-
+        print "mainOperator labels = ", self.mainOperator.labels
+        print "topLevelOperatorView labels = ", self.topLevelOperatorView.labels
         # print "______________________________________________________________________STRUCTURED LEARNING TRACKING INFERENCE MODEL"
         # structuredLearningTracker.track(
         #     float(forbidden_cost),#0,       # forbidden_cost

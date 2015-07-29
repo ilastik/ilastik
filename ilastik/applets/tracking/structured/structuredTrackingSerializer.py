@@ -62,6 +62,7 @@ class SerialLabelsSlot(SerialSlot):
         innerops = mainOperator.innerOperators
         for i, op in enumerate(innerops):
             gr = getOrCreateGroup(group, str(i))
+            print " in SerialLabelsSlot", op.labels
             for t in op.labels.keys():
                 t_gr = getOrCreateGroup(gr, str(t))
                 for oid in op.labels[t].keys():
@@ -118,8 +119,8 @@ class StructuredTrackingSerializer(AppletSerializer):
                   SerialDictSlot(topLevelOperator.EventsVector, transform=str, selfdepends=True),
                   SerialDictSlot(topLevelOperator.FilteredLabels, transform=str, selfdepends=True),
                   #SerialDictSlot(operator.Annotations),
-                  SerialDivisionsSlot(topLevelOperator.Divisions),
-                  SerialLabelsSlot(topLevelOperator.Labels),
+                  SerialDivisionsSlot(topLevelOperator.DivisionsOut),
+                  SerialLabelsSlot(topLevelOperator.LabelsOut),
                   SerialSlot(topLevelOperator.DivisionWeight),
                   SerialSlot(topLevelOperator.DetectionWeight),
                   SerialSlot(topLevelOperator.TransitionWeight),

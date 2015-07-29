@@ -90,6 +90,13 @@ class AnnotationsGui(LayerViewerGui):
 
         self._cropListViewInit()
 
+        print "labels in ANNOTATIONS :", self.topLevelOperatorView.labels
+        print "divisions in ANNOTATIONS :", self.topLevelOperatorView.divisions
+        self.topLevelOperatorView.Labels.setValue(self.topLevelOperatorView.labels)
+        self.topLevelOperatorView.Divisions.setValue(self.topLevelOperatorView.divisions)
+        print "Labels in ANNOTATIONS :", self.topLevelOperatorView.Labels.value
+        print "Divisions in ANNOTATIONS :", self.topLevelOperatorView.Divisions.value
+
     def updateTime(self):
         delta = self.topLevelOperatorView.Crops[self._drawer.cropListModel[self._drawer.cropListModel.selectedRow()].name][0][0] - self.editor.posModel.time
         if delta > 0:
@@ -298,6 +305,11 @@ class AnnotationsGui(LayerViewerGui):
     def _initAnnotations(self):
         for name in self.topLevelOperatorView.Crops.value.keys():
             self._onSaveAnnotations(name=name)
+
+        self.topLevelOperatorView.Labels.setValue(self.topLevelOperatorView.labels)
+        self.topLevelOperatorView.Divisions.setValue(self.topLevelOperatorView.divisions)
+        #self._setDirty(self.mainOperator.Labels, range(self.mainOperator.TrackImage.meta.shape[0]))
+        #self._setDirty(self.mainOperator.Divisions, range(self.mainOperator.TrackImage.meta.shape[0]))
 
     def _onSaveAnnotations(self, name=""):
         if name == "":

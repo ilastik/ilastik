@@ -38,6 +38,8 @@ class OpStructuredTracking(OpTrackingBase):
     AppearanceWeight = OutputSlot()
     DisappearanceWeight = OutputSlot()
     MaxNumObjOut = OutputSlot()
+    LabelsOut = OutputSlot()
+    DivisionsOut = OutputSlot()
 
 
 
@@ -45,9 +47,12 @@ class OpStructuredTracking(OpTrackingBase):
 
         super(OpStructuredTracking, self).__init__(parent=parent, graph=graph)
 
+        print "...................................................> in init OpStructuredTracking"
         self.labels = {}
         self.divisions = {}
         self.Annotations.setValue({})
+        self.LabelsOut.setValue({})
+        self.DivisionsOut.setValue({})
 
         self._mergerOpCache = OpCompressedCache( parent=self )
         self._mergerOpCache.InputHdf5.connect(self.MergerInputHdf5)
@@ -65,7 +70,7 @@ class OpStructuredTracking(OpTrackingBase):
         self.AppearanceWeight.setValue(1)
         self.DisappearanceWeight.setValue(1)
 
-        self.MaxNumObjOut.setValue(-999)
+        self.MaxNumObjOut.setValue(1)
 
     def setupOutputs(self):
         super(OpStructuredTracking, self).setupOutputs()
@@ -73,11 +78,23 @@ class OpStructuredTracking(OpTrackingBase):
 
         self._mergerOpCache.BlockShape.setValue( self._blockshape )
     
+        self.LabelsOut.meta.dtype = object
+        self.LabelsOut.meta.shape = self.LabelImage.meta.shape
+
+    def initOutputs(self):
+        self.LabelsOut.meta.assignFrom(self.LabelImage.meta)
+        self.DivisionsOut.meta.assignFrom(self.LabelImage.meta)
+
+        for t in range(self.LabelImage.meta.shape[0]):
+            self.labels[t]={}
+
     def execute(self, slot, subindex, roi, result):
         result = super(OpStructuredTracking, self).execute(slot, subindex, roi, result)
         
         if slot is self.Labels:
+            print " in execute Labels"
             result=self.Labels.wait()
+            #self.labels = self.Labels.value
             
         if slot is self.Divisions:
             result=self.Divisions.wait()
