@@ -205,15 +205,15 @@ class BatchProcessingGui( QTabWidget ):
     def handle_batch_processing_failure(self, exc, exc_info):
         msg = "Error encountered during batch processing:\n{}".format( exc )
         log_exception( logger, msg, exc_info )
-        QMessageBox.critical(self, "Batch Processing Error", msg)
         self.handle_batch_processing_finished()
         self.handle_batch_processing_complete()
+        QMessageBox.critical(self, "Batch Processing Error", msg)
 
     @threadRouted
     def handle_batch_processing_cancelled(self):
-        QMessageBox.information(self, "Batch Processing Cancelled.", "Batch Processing Cancelled.")
         self.handle_batch_processing_finished()
         self.handle_batch_processing_complete()
+        QMessageBox.information(self, "Batch Processing Cancelled.", "Batch Processing Cancelled.")
 
     @staticmethod
     def get_all_item_strings(list_widget):
