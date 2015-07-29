@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>285</width>
-    <height>318</height>
+    <width>283</width>
+    <height>270</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -29,27 +29,53 @@
    <item>
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
-      <widget class="QGroupBox" name="groupBox_3">
-       <property name="title">
-        <string>Export Source</string>
-       </property>
-       <layout class="QVBoxLayout" name="verticalLayout_5">
-        <item>
-         <widget class="QComboBox" name="inputSelectionCombo"/>
-        </item>
-       </layout>
-      </widget>
-     </item>
-     <item>
       <widget class="QGroupBox" name="groupBox_2">
        <property name="title">
         <string>Export Settings</string>
        </property>
        <layout class="QVBoxLayout" name="verticalLayout_4">
         <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_2">
+          <item>
+           <widget class="QLabel" name="label_2">
+            <property name="text">
+             <string>Source:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="inputSelectionCombo">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
          <widget class="QPushButton" name="settingsButton">
           <property name="text">
-           <string>Choose Settings...</string>
+           <string>Choose Export Image Settings...</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="selectCsvButton">
+          <property name="text">
+           <string>Select CSV Export Location...</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="csvLocationLabel">
+          <property name="text">
+           <string>&lt;csv location not set&gt;</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
           </property>
          </widget>
         </item>
@@ -61,7 +87,7 @@
        <property name="title">
         <string>Actions</string>
        </property>
-       <layout class="QVBoxLayout" name="verticalLayout_2">
+       <layout class="QHBoxLayout" name="horizontalLayout">
         <item>
          <widget class="QPushButton" name="exportAllButton">
           <property name="toolTip">
@@ -79,22 +105,6 @@
           </property>
           <property name="text">
            <string>Delete All</string>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </widget>
-     </item>
-     <item>
-      <widget class="QGroupBox" name="groupBox_4">
-       <property name="title">
-        <string>Object Counts</string>
-       </property>
-       <layout class="QVBoxLayout" name="verticalLayout_6">
-        <item>
-         <widget class="QPushButton" name="selectCsvButton">
-          <property name="text">
-           <string>Select CSV Export Location...</string>
           </property>
          </widget>
         </item>

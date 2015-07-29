@@ -48,33 +48,30 @@ class CountingDataExportGui( DataExportGui ):
         drawerPath = os.path.join( localDir, "dataExportDrawer.ui")
         super( CountingDataExportGui, self )._initAppletDrawerUic(drawerPath)
         self.drawer.selectCsvButton.clicked.connect( self.select_csv_export_location )
-        self.csv_export_file = None
+        
+        self.topLevelOperator.CsvFilepath.notifyDirty( self._update_csv_label )
+        self.topLevelOperator.CsvFilepath.notifyReady( self._update_csv_label )
+        self.topLevelOperator.CsvFilepath.notifyUnready( self._update_csv_label )
+        self._update_csv_label()
+
+    def stopAndCleanUp(self):
+        self.topLevelOperator.CsvFilepath.unregisterDirty( self._update_csv_label )
+        self.topLevelOperator.CsvFilepath.unregisterReady( self._update_csv_label )
+        self.topLevelOperator.CsvFilepath.unregisterUnready( self._update_csv_label )
+        super(CountingDataExportGui, self).stopAndCleanUp(self)
 
     def select_csv_export_location(self):
-        self.csv_export_path = QFileDialog.getSaveFileName(parent=self, caption="Exported Object Counts", filter="*.csv")
+        csv_export_path = QFileDialog.getSaveFileName(parent=self, caption="Exported Object Counts", filter="*.csv")
+        if csv_export_path:
+            self.topLevelOperator.CsvFilepath.setValue( str(csv_export_path) )
+            
 
-    def exportSlots(self, laneViewList ):
-        """
-        Overridden from base class DataExportGui
-        """
-        if not self.csv_export_path:
-            super( CountingDataExportGui, self ).exportSlots(laneViewList)
+    def _update_csv_label(self, *args):
+        slot = self.topLevelOperator.CsvFilepath
+        if slot.ready():
+            self.drawer.csvLocationLabel.setText( slot.value )
         else:
-            try:
-                self.csv_export_file = open(self.csv_export_path, 'w')
-                
-                # Export results.  Our postProcessLane() function will be called to write csv results.
-                super( CountingDataExportGui, self ).exportSlots(laneViewList)
-            finally:
-                self.csv_export_file.close()
-                self.csv_export_file = None
-    
-    def postProcessLane(self, lane_index):
-        """
-        Overridden from base class DataExportGui
-        """
-        if self.csv_export_file:
-            self.parentApplet.write_csv_results(self.csv_export_file, lane_index)
+            self.drawer.csvLocationLabel.setText( "" )
 
 class CountingResultsViewer(DataExportLayerViewerGui):
     

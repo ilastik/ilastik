@@ -30,7 +30,7 @@ from ilastik.applets.featureSelection import FeatureSelectionApplet
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
 from ilastik.applets.counting import CountingApplet, CountingDataExportApplet
 from ilastik.applets.counting.opCounting import OpPredictionPipeline
-from ilastik.applets.counting.countingBatchProcessingApplet import CountingBatchProcessingApplet
+from ilastik.applets.batchProcessing import BatchProcessingApplet
 
 from lazyflow.roi import TinyVector
 from lazyflow.graph import Graph, OperatorWrapper
@@ -81,6 +81,11 @@ class CountingWorkflow(Workflow):
 
         self.dataExportApplet = CountingDataExportApplet(self, "Density Export", opCounting)
         
+        # Customization hooks
+        self.dataExportApplet.prepare_for_entire_export = self.prepare_for_entire_export
+        self.dataExportApplet.post_process_lane_export = self.post_process_lane_export
+        self.dataExportApplet.post_process_entire_export = self.post_process_entire_export
+        
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.PmapColors.connect(opCounting.PmapColors)
         opDataExport.LabelNames.connect(opCounting.LabelNames)
@@ -95,16 +100,13 @@ class CountingWorkflow(Workflow):
         self._applets.append(self.countingApplet)
         self._applets.append(self.dataExportApplet)
 
-
         self._batch_input_args = None
         self._batch_export_args = None
         if appendBatchOperators:
-            self.batchProcessingApplet = CountingBatchProcessingApplet(self.dataExportApplet,
-                                                                       self, 
-                                                                       "Batch Processing", 
-                                                                       self.dataSelectionApplet, 
-                                                                       self.dataExportApplet)
-    
+            self.batchProcessingApplet = BatchProcessingApplet( self, 
+                                                                "Batch Processing", 
+                                                                self.dataSelectionApplet, 
+                                                                self.dataExportApplet )
             self._applets.append(self.batchProcessingApplet)
             if unused_args:
                 # We parse the export setting args first.  All remaining args are considered input files by the input applet.
@@ -175,30 +177,49 @@ class CountingWorkflow(Workflow):
         the workflow for batch mode and export all results.
         (This workflow's headless mode supports only batch mode for now.)
         """
-        # Configure the batch data selection operator.
+        # Headless batch mode.
         if self._headless and self._batch_input_args and self._batch_export_args:
-            if not (self._batch_input_args.unspecified_input_files or self._batch_input_args.raw_data):
-                raise RuntimeError("No batch input files provided.")
-            self.batchInputApplet.configure_operator_with_parsed_args( self._batch_input_args )
             self.dataExportApplet.configure_operator_with_parsed_args( self._batch_export_args )
+
+            # If the user provided a csv_path via the command line,
+            # overwrite the setting in the counting export operator.
+            csv_path = self.parsed_counting_workflow_args.csv_export_file
+            if csv_path:
+                self.dataExportApplet.topLevelOperator.CsvFilepath.setValue(csv_path)
 
             if self.countingApplet.topLevelOperator.classifier_cache._dirty:
                 logger.warn("Your project file has no classifier.  "
                             "A new classifier will be trained for this run.")
                 
             logger.info("Beginning Batch Processing")
-            csv_path = self.parsed_counting_workflow_args.csv_export_file
-            if not csv_path:
-                # Export images only
-                self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
-            else:
-                # Export images and csv results
-                logger.info( "Exporting Object Counts to {}".format(csv_path) )
-                with open(csv_path, 'w') as csv_file:
-                    self.batchProcessingApplet.run_export_from_parsed_args(
-                       self._batch_input_args, 
-                       lane_postprocessing_callback=partial(self.dataExportApplet.write_csv_results(csv_file)) )
+            self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
             logger.info("Completed Batch Processing")
+    
+    def prepare_for_entire_export(self):
+        """
+        Customization hook for data export (including batch mode).
+        """
+        # Create a new CSV file to write object counts into.
+        self.csv_export_file = None
+        if self.dataExportApplet.topLevelOperator.CsvFilepath.ready():
+            csv_path = self.dataExportApplet.topLevelOperator.CsvFilepath.value
+            logger.info("Exporting object counts to CSV: " + csv_path)
+            self.csv_export_file = open(csv_path, 'w')
+    
+    def post_process_lane_export(self, lane_index):
+        """
+        Customization hook for data export (including batch mode).
+        """
+        # Write the object counts for this lane as a line in the CSV file.
+        if self.csv_export_file:
+            self.dataExportApplet.write_csv_results(self.csv_export_file, lane_index)
+        
+    def post_process_entire_export(self):
+        """
+        Customization hook for data export (including batch mode).
+        """
+        if self.csv_export_file:
+            self.csv_export_file.close()
 
     def handleAppletStateUpdateRequested(self):
         """

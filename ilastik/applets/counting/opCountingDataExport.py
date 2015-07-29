@@ -23,6 +23,8 @@ from ilastik.applets.dataExport.opDataExport import OpDataExport
 from ilastik.applets.base.applet import DatasetConstraintError
 
 class OpCountingDataExport( OpDataExport ):
+    CsvFilepath = InputSlot(optional=True) # The export location.
+    
     # Add these additional input slots, to be used by the GUI.
     PmapColors = InputSlot()
     LabelNames = InputSlot()

@@ -21,6 +21,7 @@
 from opCountingDataExport import OpCountingDataExport
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from ilastik.applets.dataExport.dataExportSerializer import DataExportSerializer
+from ilastik.applets.base.appletSerializer import SerialSlot
 
 from ilastik.utility import OpMultiLaneWrapper, log_exception
 from lazyflow.request import Request 
@@ -39,7 +40,9 @@ class CountingDataExportApplet( DataExportApplet ):
                                      promotedSlotNames=set(['RawData', 'Inputs', 'RawDatasetInfo', 'ConstraintDataset']) )
         self._gui = None
         self._title = title
-        self._serializers = [ DataExportSerializer(self._topLevelOperator, title) ]
+        self._serializers = [ DataExportSerializer(self._topLevelOperator,
+                                                   title,
+                                                   [ SerialSlot(self._topLevelOperator.CsvFilepath) ]) ]
 
         self.opCounting = opCounting
 
@@ -71,5 +74,3 @@ class CountingDataExportApplet( DataExportApplet ):
         nickname = info_slot.value.nickname
         object_count = sum_slot[:].wait()[0]
         export_file.write(nickname + "," + str(object_count) + "\n")
-
-        
