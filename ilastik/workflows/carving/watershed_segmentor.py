@@ -57,6 +57,8 @@ class WatershedSegmentor(object):
         print seg
         self.hasSeg = True
 
+    def clearSegmentation(self):
+        self.gridSegmentor.clearSegmentation()
 
     def addSeeds(self, roi, brushStroke):
         roiBegin  = roi.start[1:4]

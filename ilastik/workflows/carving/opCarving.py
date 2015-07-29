@@ -345,6 +345,9 @@ class OpCarving(Operator):
         bgVoxelsSeedPos = self._mst.object_seeds_bg_voxels[name]
         fgArraySeedPos = numpy.array(fgVoxelsSeedPos)
         bgArraySeedPos = numpy.array(bgVoxelsSeedPos)
+
+        print "fgArraySeedPos",fgArraySeedPos.shape,fgArraySeedPos.dtype
+        print "bgArraySeedPos",bgArraySeedPos.shape,bgArraySeedPos.dtype
         self._mst.setSeeds(fgArraySeedPos, bgArraySeedPos);
 
 
@@ -531,8 +534,13 @@ class OpCarving(Operator):
         self.AllObjectNames.meta.shape = (len(objects),)
         
         #now that 'name' is no longer part of the set of finished objects, rebuild the done overlay
+        
         self._buildDone()
-            
+        #self._clearLabels()
+        #self._mst.clearSegmentation()
+        #self.clearCurrentLabeling()
+        #self._mst.gridSegmentor.clearSeeds()
+        #self.Trigger.setDirty(slice(None))
         #self.updatePreprocessing()
 
 
@@ -589,6 +597,11 @@ class OpCarving(Operator):
         self.Trigger.setDirty(slice(None))
         
         self._dirtyObjects.add(name)
+
+        self._mst.gridSegmentor.clearSeeds()
+
+        self._mst.clearSegmentation()
+        self.clearCurrentLabeling()
 
 
     def getMaxUncertaintyPos(self, label):
