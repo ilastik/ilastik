@@ -115,11 +115,6 @@ class PixelClassificationWorkflow(Workflow):
         opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
         opDataExport.SelectionNames.setValue( self.EXPORT_NAMES )        
 
-        self.batchProcessingApplet = BatchProcessingApplet(self, 
-                                                           "Batch Processing", 
-                                                           self.dataSelectionApplet, 
-                                                           self.dataExportApplet)
-
         # Expose for shell
         self._applets.append(self.projectMetadataApplet)
         self._applets.append(self.dataSelectionApplet)
@@ -130,6 +125,11 @@ class PixelClassificationWorkflow(Workflow):
         self._batch_input_args = None
         self._batch_export_args = None
         if appendBatchOperators:
+            self.batchProcessingApplet = BatchProcessingApplet(self, 
+                                                               "Batch Processing", 
+                                                               self.dataSelectionApplet, 
+                                                               self.dataExportApplet)
+    
             self._applets.append(self.batchProcessingApplet)
             if unused_args:
                 # We parse the export setting args first.  All remaining args are considered input files by the input applet.
