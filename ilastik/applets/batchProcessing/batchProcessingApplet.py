@@ -47,15 +47,15 @@ class BatchProcessingApplet( Applet ):
         parsed_args, unused_args = DataSelectionApplet.parse_known_cmdline_args(cmdline_args, role_names)
         return parsed_args, unused_args
 
-    def run_export_from_parsed_args(self, parsed_args, lane_preprocessing_callback=None, lane_postprocessing_callback=None):
+    def run_export_from_parsed_args(self, parsed_args):
         """
         Run the export for each dataset listed in parsed_args (we use the same parser as DataSelectionApplet).
         """
         role_names = self.dataSelectionApplet.topLevelOperator.DatasetRoles.value
         role_path_dict = self.dataSelectionApplet.role_paths_from_parsed_args(parsed_args, role_names)
-        self.run_export(role_path_dict, lane_preprocessing_callback, lane_postprocessing_callback)
+        self.run_export(role_path_dict)
 
-    def run_export(self, role_path_dict, lane_preprocessing_callback=None, lane_postprocessing_callback=None ):
+    def run_export(self, role_path_dict ):
         """
         Run the export for each dataset listed in role_path_dict, 
         which must be a dict of {role_index : path_list}.
@@ -82,6 +82,9 @@ class BatchProcessingApplet( Applet ):
             #   (role-1-path, role-2-path,...) ]
             paths_by_batch_index = zip( *role_path_dict.values() )
 
+            # Call customization hook
+            self.dataExportApplet.prepare_for_entire_export()
+
             batch_lane_index = len(self.dataSelectionApplet.topLevelOperator)
             for batch_dataset_index, role_input_paths in enumerate(paths_by_batch_index):
                 # Add a lane to the end of the workflow for batch processing
@@ -100,12 +103,7 @@ class BatchProcessingApplet( Applet ):
                     self._run_export_with_empty_batch_lane( role_input_paths,
                                                             batch_lane_index,
                                                             template_infos,
-                                                            emit_progress,
-                                                            lane_preprocessing_callback )
-                    
-                    if lane_postprocessing_callback:
-                        lane_postprocessing_callback(batch_lane_index)
-                        
+                                                            emit_progress )
                 finally:
                     # Remove the batch lane.  See docstring above for explanation.
                     try:
@@ -115,6 +113,10 @@ class BatchProcessingApplet( Applet ):
                         # If you see this, something went wrong in a graph setup operation.
                         raise RuntimeError("Encountered an unexpected CancellationException while removing the batch lane.")
                     assert len(self.dataSelectionApplet.topLevelOperator.DatasetGroup) == batch_lane_index
+
+            # Call customization hook
+            self.dataExportApplet.post_process_entire_export()
+            
         finally:
             self.progressSignal.emit(100)
 
@@ -135,7 +137,7 @@ class BatchProcessingApplet( Applet ):
                 template_infos[role_index] = None
         return template_infos
     
-    def _run_export_with_empty_batch_lane(self, role_input_paths, batch_lane_index, template_infos, progress_callback, lane_preprocessing_callback):
+    def _run_export_with_empty_batch_lane(self, role_input_paths, batch_lane_index, template_infos, progress_callback):
         """
         Configure the fresh batch lane with the given input files, and export the results.
         """
@@ -161,15 +163,18 @@ class BatchProcessingApplet( Applet ):
             # Apply to the data selection operator
             opDataSelectionBatchLaneView.DatasetGroup[role_index].setValue(info)
 
-        if lane_preprocessing_callback:
-            lane_preprocessing_callback(batch_lane_index)
-
         # Make sure nothing went wrong
         opDataExportBatchlaneView = self.dataExportApplet.topLevelOperator.getLane( batch_lane_index )
         assert opDataExportBatchlaneView.ImageToExport.ready()
         assert opDataExportBatchlaneView.ExportPath.ready()
         
+        # Call customization hook
+        self.dataExportApplet.prepare_lane_for_export(batch_lane_index)
+
         # Finally, run the export
         logger.info("Exporting to {}".format( opDataExportBatchlaneView.ExportPath.value ))
         opDataExportBatchlaneView.progressSignal.subscribe(progress_callback)
         opDataExportBatchlaneView.run_export()
+
+        # Call customization hook
+        self.dataExportApplet.post_process_lane_export(batch_lane_index)

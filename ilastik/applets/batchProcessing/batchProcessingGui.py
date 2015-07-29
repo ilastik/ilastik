@@ -160,7 +160,7 @@ class BatchProcessingGui( QTabWidget ):
                 role_path_dict[role_index] += [None] * (num_datasets-len(role_path_dict[role_index]))
 
         # Run the export in a separate thread
-        export_req = Request(partial(self.parentApplet.run_export, role_path_dict, self.post_process_lane))
+        export_req = Request(partial(self.parentApplet.run_export, role_path_dict))
         export_req.notify_failed(self.handle_batch_processing_failure)
         export_req.notify_finished(self.handle_batch_processing_finished)
         export_req.notify_cancelled(self.handle_batch_processing_cancelled)
@@ -173,13 +173,6 @@ class BatchProcessingGui( QTabWidget ):
 
         # Start the export        
         export_req.submit()
-
-    def post_process_lane(self, lane_index):
-        """
-        Post-process the given lane.
-        Can be overridden in subclasses.
-        """
-        pass
 
     def handle_batch_processing_complete(self):
         """

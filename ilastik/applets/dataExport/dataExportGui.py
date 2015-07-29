@@ -363,6 +363,9 @@ class DataExportGui(QWidget):
             def signalFileProgress(slotIndex, percent):
                 self.progressSignal.emit( (100*slotIndex + percent) / len(laneViewList) ) 
 
+            # Client hook
+            self.parentApplet.prepare_for_entire_export()
+
             for i, opLaneView in enumerate(laneViewList):
                 lane_index = self.topLevelOperator.innerOperators.index(opLaneView)
                 logger.debug("Exporting result {}".format(i))
@@ -372,8 +375,14 @@ class DataExportGui(QWidget):
                 slotProgressSignal.subscribe( partial(signalFileProgress, i) )
 
                 try:
+                    # Client hook
+                    self.parentApplet.prepare_lane_for_export(lane_index)
+
+                    # Export the image
                     opLaneView.run_export()
-                    self.postProcessLane(lane_index)
+                    
+                    # Client hook
+                    self.parentApplet.post_process_lane_export(lane_index)
                 except Exception as ex:
                     if opLaneView.ExportPath.ready():
                         msg = "Failed to generate export file: \n"
@@ -387,6 +396,9 @@ class DataExportGui(QWidget):
 
                 # We're finished with this file. 
                 self.progressSignal.emit( 100*(i+1)/float(len(laneViewList)) )
+
+            # Client hook
+            self.parentApplet.post_process_entire_export()
                 
             # Ensure the shell knows we're really done.
             self.progressSignal.emit(100)

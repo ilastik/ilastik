@@ -67,6 +67,21 @@ class DataExportApplet( Applet ):
             self._gui = DataExportGui( self, self.topLevelOperator )
         return self._gui
 
+    # The following functions act as hooks for subclasses to override or clients to 
+    # monkey-patch for custom behavior before/during/after an export is performed.
+    # (The GUI and/or batch applet will call them at the appropriate time.)
+    def prepare_for_entire_export(self):
+        """Called before the entire export process starts"""
+        pass
+    def prepare_lane_for_export(self, lane_index):
+        """Called before each lane is exported."""
+        pass
+    def post_process_lane_export(self, lane_index):
+        """Called immediately after each lane is exported."""
+        pass
+    def post_process_entire_export(self):
+        """Called after the entire export process finishes."""
+
     @classmethod
     def make_cmdline_parser(cls, starting_parser=None):
         arg_parser = starting_parser or argparse.ArgumentParser()
