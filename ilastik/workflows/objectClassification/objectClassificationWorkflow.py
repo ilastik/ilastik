@@ -628,8 +628,15 @@ class ObjectClassificationWorkflow(Workflow):
         cumulated_readyness = cumulated_readyness and object_features_ready
         self._shell.setAppletEnabled(self.objectClassificationApplet, cumulated_readyness)
 
-        object_classification_ready = \
-            self.objectClassificationApplet.predict_enabled
+        opObjectClassification = self.objectClassificationApplet.topLevelOperator
+        invalid_classifier = opObjectClassification.classifier_cache.fixAtCurrent.value and \
+                             opObjectClassification.classifier_cache.Output.ready() and\
+                             opObjectClassification.classifier_cache.Output.value is None
+
+        invalid_classifier |= not opObjectClassification.NumLabels.ready() or \
+                              opObjectClassification.NumLabels.value < 2
+
+        object_classification_ready = object_features_ready and not invalid_classifier
 
         cumulated_readyness = cumulated_readyness and object_classification_ready
         self._shell.setAppletEnabled(self.dataExportApplet, cumulated_readyness)

@@ -93,11 +93,6 @@ class ObjectClassificationGui(LabelingGui, ExportingGui):
     def centralWidget(self):
         return self
 
-    def appletDrawers(self):
-        # Get the labeling drawer from the base class
-        labelingDrawer = super(ObjectClassificationGui, self).appletDrawers()[0][1]
-        return [("Training", labelingDrawer)]
-
     def stopAndCleanUp(self):
         # Unsubscribe to all signals
         for fn in self.__cleanup_fns:
@@ -195,6 +190,9 @@ class ObjectClassificationGui(LabelingGui, ExportingGui):
         # enable/disable buttons logic
         self.op.ObjectFeatures.notifyDirty(bind(self.checkEnableButtons))
         self.__cleanup_fns.append( partial( op.ObjectFeatures.unregisterDirty, bind(self.checkEnableButtons) ) )
+
+        self.op.NumLabels.notifyReady(bind(self.checkEnableButtons))
+        self.__cleanup_fns.append( partial( op.NumLabels.unregisterReady, bind(self.checkEnableButtons) ) )
 
         self.op.NumLabels.notifyDirty(bind(self.checkEnableButtons))
         self.__cleanup_fns.append( partial( op.NumLabels.unregisterDirty, bind(self.checkEnableButtons) ) )
@@ -347,7 +345,6 @@ class ObjectClassificationGui(LabelingGui, ExportingGui):
         self.allowDeleteLastLabelOnly(False or self.op.AllowDeleteLastLabelOnly([]).wait()[0])
 
         self.op._predict_enabled = predict_enabled
-        self.applet.predict_enabled = predict_enabled
         self.applet.appletStateUpdateRequested.emit()
 
     def initAppletDrawerUi(self):
