@@ -47,22 +47,35 @@ class CountingDataExportGui( DataExportGui ):
         localDir = os.path.split(__file__)[0]
         drawerPath = os.path.join( localDir, "dataExportDrawer.ui")
         super( CountingDataExportGui, self )._initAppletDrawerUic(drawerPath)
-        self.drawer.exportAllObjectCountsButton.clicked.connect( self.exportObjectCountsToCsv )
+        self.drawer.selectCsvButton.clicked.connect( self.select_csv_export_location )
+        self.csv_export_file = None
 
-    def exportObjectCountsToCsv(self):
-        export_filepath = QFileDialog.getSaveFileName(parent=self, caption="Exported Object Counts", filter="*.csv")
-        if not export_filepath:
-            return
-        req = self.parentApplet.prepareExportObjectCountsToCsv( self.parentApplet, export_filepath )
-        req.notify_failed(self.handleFailedObjectCountExport)
-        req.submit()
+    def select_csv_export_location(self):
+        self.csv_export_path = QFileDialog.getSaveFileName(parent=self, caption="Exported Object Counts", filter="*.csv")
 
-    @threadRouted
-    def handleFailedObjectCountExport(self, exception, exception_info):
-        msg = "Failed to export object counts:\n{}".format( exception )
-        log_exception( logger, msg, exception_info )
-        QMessageBox.critical(self, "Failed to export counts", msg)        
-        
+    def exportSlots(self, laneViewList ):
+        """
+        Overridden from base class DataExportGui
+        """
+        if not self.csv_export_path:
+            super( CountingDataExportGui, self ).exportSlots(laneViewList)
+        else:
+            try:
+                self.csv_export_file = open(self.csv_export_path, 'w')
+                
+                # Export results.  Our postProcessLane() function will be called to write csv results.
+                super( CountingDataExportGui, self ).exportSlots(laneViewList)
+            finally:
+                self.csv_export_file.close()
+                self.csv_export_file = None
+    
+    def postProcessLane(self, lane_index):
+        """
+        Overridden from base class DataExportGui
+        """
+        if self.csv_export_file:
+            self.parentApplet.write_csv_results(self.csv_export_file, lane_index)
+
 class CountingResultsViewer(DataExportLayerViewerGui):
     
     def __init__(self, *args, **kwargs):

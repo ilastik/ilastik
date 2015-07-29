@@ -92,9 +92,9 @@
        </property>
        <layout class="QVBoxLayout" name="verticalLayout_6">
         <item>
-         <widget class="QPushButton" name="exportAllObjectCountsButton">
+         <widget class="QPushButton" name="selectCsvButton">
           <property name="text">
-           <string>Export All Object Counts</string>
+           <string>Select CSV Export Location...</string>
           </property>
          </widget>
         </item>
