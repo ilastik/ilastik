@@ -67,7 +67,7 @@ class BatchProcessingGui( QTabWidget ):
     
     def __init__(self, parentApplet):
         super(BatchProcessingGui, self).__init__()
-        self.batchApplet = parentApplet
+        self.parentApplet = parentApplet
         self.threadRouter = ThreadRouter(self) # For using @threadRouted
         self._drawer = None
         self.initMainUi()
@@ -75,7 +75,7 @@ class BatchProcessingGui( QTabWidget ):
         self.export_req = None
 
     def initMainUi(self):
-        role_names = self.batchApplet.dataSelectionApplet.topLevelOperator.DatasetRoles.value
+        role_names = self.parentApplet.dataSelectionApplet.topLevelOperator.DatasetRoles.value
         self.list_widgets = []
         
         # Create a tab for each role
@@ -120,6 +120,7 @@ class BatchProcessingGui( QTabWidget ):
         self.cancel_button.setVisible(False)
 
         layout = QVBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(instructions_label)
         layout.addWidget(self.run_button)
         layout.addWidget(self.cancel_button)
@@ -144,7 +145,7 @@ class BatchProcessingGui( QTabWidget ):
         self.list_widgets[role_index].clear()
     
     def run_export(self):
-        role_names = self.batchApplet.dataSelectionApplet.topLevelOperator.DatasetRoles.value
+        role_names = self.parentApplet.dataSelectionApplet.topLevelOperator.DatasetRoles.value
 
         # Prepare file lists in an OrderedDict
         role_path_dict = OrderedDict()
@@ -159,19 +160,33 @@ class BatchProcessingGui( QTabWidget ):
                 role_path_dict[role_index] += [None] * (num_datasets-len(role_path_dict[role_index]))
 
         # Run the export in a separate thread
-        export_req = Request(partial(self.batchApplet.run_export, role_path_dict))
+        export_req = Request(partial(self.parentApplet.run_export, role_path_dict, self.post_process_lane))
         export_req.notify_failed(self.handle_batch_processing_failure)
         export_req.notify_finished(self.handle_batch_processing_finished)
         export_req.notify_cancelled(self.handle_batch_processing_cancelled)
         self.export_req = export_req
 
-        self.batchApplet.busy = True
-        self.batchApplet.appletStateUpdateRequested.emit()
+        self.parentApplet.busy = True
+        self.parentApplet.appletStateUpdateRequested.emit()
         self.cancel_button.setVisible(True)
         self.run_button.setEnabled(False)
 
         # Start the export        
         export_req.submit()
+
+    def post_process_lane(self, lane_index):
+        """
+        Post-process the given lane.
+        Can be overridden in subclasses.
+        """
+        pass
+
+    def handle_batch_processing_complete(self):
+        """
+        Called after batch processing completes, no matter how it finished (failed, cancelled, whatever).
+        Can be overridden in subclasses.
+        """
+        pass
 
     def cancel_batch_processing(self):
         assert self.export_req, "No export is running, how were you able to press 'cancel'?"
@@ -179,11 +194,12 @@ class BatchProcessingGui( QTabWidget ):
 
     @threadRouted
     def handle_batch_processing_finished(self, *args):
-        self.batchApplet.busy = False
-        self.batchApplet.appletStateUpdateRequested.emit()
+        self.parentApplet.busy = False
+        self.parentApplet.appletStateUpdateRequested.emit()
         self.export_req = None
         self.cancel_button.setVisible(False)
         self.run_button.setEnabled(True)
+        self.handle_batch_processing_complete()
 
     @threadRouted
     def handle_batch_processing_failure(self, exc, exc_info):
@@ -191,11 +207,13 @@ class BatchProcessingGui( QTabWidget ):
         log_exception( logger, msg, exc_info )
         QMessageBox.critical(self, "Batch Processing Error", msg)
         self.handle_batch_processing_finished()
+        self.handle_batch_processing_complete()
 
     @threadRouted
     def handle_batch_processing_cancelled(self):
         QMessageBox.information(self, "Batch Processing Cancelled.", "Batch Processing Cancelled.")
         self.handle_batch_processing_finished()
+        self.handle_batch_processing_complete()
 
     @staticmethod
     def get_all_item_strings(list_widget):

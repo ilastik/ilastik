@@ -55,7 +55,7 @@ class BatchProcessingApplet( Applet ):
         role_path_dict = self.dataSelectionApplet.role_paths_from_parsed_args(parsed_args, role_names)
         self.run_export(role_path_dict)
 
-    def run_export(self, role_path_dict ):
+    def run_export(self, role_path_dict, lane_postprocessing_callback=None ):
         """
         Run the export for each dataset listed in role_path_dict, 
         which must be a dict of {role_index : path_list}.
@@ -69,6 +69,9 @@ class BatchProcessingApplet( Applet ):
         By appending/removing the batch lane for EACH dataset we process, we trigger the workflow's usual 
         prepareForNewLane() and connectLane() logic, which ensures that we get a fresh new lane that's 
         ready to process data.
+        
+        After each lane is processed, the given post-processing callback will be executed.
+        signature: lane_postprocessing_callback(batch_lane_index)
         """
         self.progressSignal.emit(0)
         try:
@@ -95,6 +98,10 @@ class BatchProcessingApplet( Applet ):
 
                     # Now use the new lane to export the batch results for the current file.
                     self._run_export_with_empty_batch_lane(role_input_paths, batch_lane_index, template_infos, emit_progress)
+                    
+                    if lane_postprocessing_callback:
+                        lane_postprocessing_callback(batch_lane_index)
+                        
                 finally:
                     # Remove the batch lane.  See docstring above for explanation.
                     try:
