@@ -346,17 +346,13 @@ class OpCarving(Operator):
         fgArraySeedPos = numpy.array(fgVoxelsSeedPos)
         bgArraySeedPos = numpy.array(bgVoxelsSeedPos)
 
-        print "fgArraySeedPos",fgArraySeedPos.shape,fgArraySeedPos.dtype
-        print "bgArraySeedPos",bgArraySeedPos.shape,bgArraySeedPos.dtype
         self._mst.setSeeds(fgArraySeedPos, bgArraySeedPos);
 
 
         # load the actual segmentation
         fgNodes = self._mst.object_lut[name] 
 
-        print len(fgNodes)
-        print fgNodes[0].dtype
-
+    
         self._mst.setResulFgObj(fgNodes[0])
 
         #newSegmentation = numpy.ones(len(lut_objects), dtype=numpy.int32)
