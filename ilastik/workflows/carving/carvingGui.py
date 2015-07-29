@@ -590,8 +590,8 @@ class CarvingGui(LabelingGui):
             # Add segmentation as label, which is green
             lut[:] = numpy.where( op.MST.value.getSuperVoxelSeg() == 2, self._segmentation_3d_label, lut )
         import vigra
-        with vigra.Timer("remapping"):          
-            self._renderMgr.volume = lut[op.MST.value.supervoxelUint32] # (Advanced indexing)
+        #with vigra.Timer("remapping"):          
+        self._renderMgr.volume = lut[op.MST.value.supervoxelUint32] # (Advanced indexing)
         self._update_colors()
         self._renderMgr.update()
 
