@@ -344,7 +344,7 @@ class DataExportGui(QWidget):
 
         # Reconnect now that we're finished
         self.batchOutputTableWidget.itemSelectionChanged.connect(self.handleTableSelectionChange)
-        
+
     def exportSlots(self, laneViewList ):
         try:
             # Set the busy flag so the workflow knows not to allow 
@@ -364,6 +364,7 @@ class DataExportGui(QWidget):
                 self.progressSignal.emit( (100*slotIndex + percent) / len(laneViewList) ) 
 
             for i, opLaneView in enumerate(laneViewList):
+                lane_index = self.topLevelOperator.innerOperators.index(opLaneView)
                 logger.debug("Exporting result {}".format(i))
 
                 # If the operator provides a progress signal, use it.
@@ -372,6 +373,7 @@ class DataExportGui(QWidget):
 
                 try:
                     opLaneView.run_export()
+                    self.postProcessLane(lane_index)
                 except Exception as ex:
                     if opLaneView.ExportPath.ready():
                         msg = "Failed to generate export file: \n"
@@ -402,6 +404,13 @@ class DataExportGui(QWidget):
             QApplication.instance().postEvent( self, ThunkEvent( partial(self.setEnabledIfAlive, self, True) ) )
 
 
+    def postProcessLane(self, lane_index):
+        """
+        Called immediately after the result for each lane is exported.
+        Can be overridden by subclasses for post-processing purposes.
+        """
+        pass
+        
     @threadRouted
     def showExportError(self, msg):
         QMessageBox.critical(self, "Failed to export", msg )
