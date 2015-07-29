@@ -47,15 +47,15 @@ class BatchProcessingApplet( Applet ):
         parsed_args, unused_args = DataSelectionApplet.parse_known_cmdline_args(cmdline_args, role_names)
         return parsed_args, unused_args
 
-    def run_export_from_parsed_args(self, parsed_args):
+    def run_export_from_parsed_args(self, parsed_args, lane_preprocessing_callback=None, lane_postprocessing_callback=None):
         """
         Run the export for each dataset listed in parsed_args (we use the same parser as DataSelectionApplet).
         """
         role_names = self.dataSelectionApplet.topLevelOperator.DatasetRoles.value
         role_path_dict = self.dataSelectionApplet.role_paths_from_parsed_args(parsed_args, role_names)
-        self.run_export(role_path_dict)
+        self.run_export(role_path_dict, lane_preprocessing_callback, lane_postprocessing_callback)
 
-    def run_export(self, role_path_dict, lane_postprocessing_callback=None ):
+    def run_export(self, role_path_dict, lane_preprocessing_callback=None, lane_postprocessing_callback=None ):
         """
         Run the export for each dataset listed in role_path_dict, 
         which must be a dict of {role_index : path_list}.
@@ -97,7 +97,11 @@ class BatchProcessingApplet( Applet ):
                         self.progressSignal.emit(100*overall_progress)
 
                     # Now use the new lane to export the batch results for the current file.
-                    self._run_export_with_empty_batch_lane(role_input_paths, batch_lane_index, template_infos, emit_progress)
+                    self._run_export_with_empty_batch_lane( role_input_paths,
+                                                            batch_lane_index,
+                                                            template_infos,
+                                                            emit_progress,
+                                                            lane_preprocessing_callback )
                     
                     if lane_postprocessing_callback:
                         lane_postprocessing_callback(batch_lane_index)
@@ -131,7 +135,7 @@ class BatchProcessingApplet( Applet ):
                 template_infos[role_index] = None
         return template_infos
     
-    def _run_export_with_empty_batch_lane(self, role_input_paths, batch_lane_index, template_infos, progress_callback):
+    def _run_export_with_empty_batch_lane(self, role_input_paths, batch_lane_index, template_infos, progress_callback, lane_preprocessing_callback):
         """
         Configure the fresh batch lane with the given input files, and export the results.
         """
@@ -156,6 +160,9 @@ class BatchProcessingApplet( Applet ):
 
             # Apply to the data selection operator
             opDataSelectionBatchLaneView.DatasetGroup[role_index].setValue(info)
+
+        if lane_preprocessing_callback:
+            lane_preprocessing_callback(batch_lane_index)
 
         # Make sure nothing went wrong
         opDataExportBatchlaneView = self.dataExportApplet.topLevelOperator.getLane( batch_lane_index )
