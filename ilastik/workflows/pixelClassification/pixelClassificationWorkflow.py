@@ -123,6 +123,7 @@ class PixelClassificationWorkflow(Workflow):
         self._applets.append(self.dataExportApplet)
         
         self.dataExportApplet.prepare_for_entire_export = self.prepare_for_entire_export
+        self.dataExportApplet.post_process_entire_export = self.post_process_entire_export
 
         self._batch_input_args = None
         self._batch_export_args = None
@@ -341,7 +342,7 @@ class PixelClassificationWorkflow(Workflow):
             self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
             logger.info("Completed Batch Processing")
 
-    def prepare_for_entire_export():
+    def prepare_for_entire_export(self):
         self.freeze_status = self.pcApplet.topLevelOperator.FreezePredictions.value
         self.pcApplet.topLevelOperator.FreezePredictions.setValue(False)
 
