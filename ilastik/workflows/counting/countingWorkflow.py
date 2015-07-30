@@ -140,6 +140,17 @@ class CountingWorkflow(Workflow):
         else:
             self.stored_classifer = None
 
+    def handleNewLanesAdded(self):
+        """
+        Overridden from Workflow base class.
+        Called immediately after a new lane is added to the workflow and initialized.
+        """
+        # Restore classifier we saved in prepareForNewLane() (if any)
+        if self.stored_classifer is not None:
+            self.countingApplet.topLevelOperator.classifier_cache.forceValue(self.stored_classifer)
+            # Release reference
+            self.stored_classifer = None
+
     def connectLane(self, laneIndex):
         ## Access applet operators
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
@@ -162,12 +173,6 @@ class CountingWorkflow(Workflow):
         opDataExport.RawData.connect( opData.ImageGroup[0] )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
         opDataExport.ConstraintDataset.connect( opData.ImageGroup[0] )
-
-        # Restore classifier we saved in prepareForNewLane() (if any)
-        if self.stored_classifer is not None:
-            opCounting.classifier_cache.forceValue(self.stored_classifer)
-            # Release reference
-            self.stored_classifer = None
 
     def onProjectLoaded(self, projectManager):
         """

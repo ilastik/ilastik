@@ -168,6 +168,10 @@ class BatchProcessingApplet( Applet ):
         assert opDataExportBatchlaneView.ImageToExport.ready()
         assert opDataExportBatchlaneView.ExportPath.ready()
         
+        # New lanes were added.
+        # Give the workflow a chance to restore anything that was unecessarily invalidated (e.g. classifiers)
+        self.workflow.handleNewLanesAdded()
+        
         # Call customization hook
         self.dataExportApplet.prepare_lane_for_export(batch_lane_index)
 

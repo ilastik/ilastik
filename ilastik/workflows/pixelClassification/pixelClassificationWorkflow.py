@@ -183,6 +183,17 @@ class PixelClassificationWorkflow(Workflow):
         else:
             self.stored_classifer = None
         
+    def handleNewLanesAdded(self):
+        """
+        Overridden from Workflow base class.
+        Called immediately after a new lane is added to the workflow and initialized.
+        """
+        # Restore classifier we saved in prepareForNewLane() (if any)
+        if self.stored_classifer:
+            self.pcApplet.topLevelOperator.classifier_cache.forceValue(self.stored_classifer)
+            # Release reference
+            self.stored_classifer = None
+
     def connectLane(self, laneIndex):
         # Get a handle to each operator
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
@@ -216,12 +227,6 @@ class PixelClassificationWorkflow(Workflow):
         opDataExport.Inputs[3].connect( opClassify.FeatureImages )
         for slot in opDataExport.Inputs:
             assert slot.partner is not None
-
-        # Restore classifier we saved in prepareForNewLane() (if any)
-        if self.stored_classifer:
-            opClassify.classifier_cache.forceValue(self.stored_classifer)
-            # Release reference
-            self.stored_classifer = None
 
     def handleAppletStateUpdateRequested(self):
         """

@@ -214,6 +214,24 @@ class ObjectClassificationWorkflow(Workflow):
         else:
             self.stored_object_classifer = None
 
+    def handleNewLanesAdded(self):
+        """
+        If new lanes were added, then we invalidated our classifiers unecessarily.
+        Here, we can restore the classifer so it doesn't need to be retrained.
+        """
+        # If we have stored classifiers, restore them into the workflow now.
+        if self.stored_pixel_classifer:
+            opPixelClassification = self.pcApplet.topLevelOperator
+            opPixelClassification.classifier_cache.forceValue(self.stored_pixel_classifer)
+            # Release reference
+            self.stored_pixel_classifer = None
+
+        if self.stored_object_classifer:
+            opObjectClassification = self.objectClassificationApplet.topLevelOperator
+            opObjectClassification.classifier_cache.forceValue(self.stored_object_classifer)
+            # Release reference
+            self.stored_object_classifer = None
+
     def connectLane(self, laneIndex):
         rawslot, binaryslot = self.connectInputs(laneIndex)
 
@@ -257,19 +275,6 @@ class ObjectClassificationWorkflow(Workflow):
         opBlockwiseObjectClassification.LabelsCount.connect(opObjClassification.NumLabels)
         opBlockwiseObjectClassification.SelectedFeatures.connect(opObjClassification.SelectedFeatures)
         
-        # If we have stored classifiers, restore them into the workflow now.
-        if self.stored_pixel_classifer:
-            opPixelClassification = self.pcApplet.topLevelOperator
-            opPixelClassification.classifier_cache.forceValue(self.stored_pixel_classifer)
-            # Release reference
-            self.stored_pixel_classifer = None
-
-        if self.stored_object_classifer:
-            opObjectClassification = self.objectClassificationApplet.topLevelOperator
-            opObjectClassification.classifier_cache.forceValue(self.stored_object_classifer)
-            # Release reference
-            self.stored_object_classifer = None
-
     def onProjectLoaded(self, projectManager):
         if not self._headless:
             return

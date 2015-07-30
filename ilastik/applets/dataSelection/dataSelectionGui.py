@@ -475,6 +475,9 @@ class DataSelectionGui(QWidget):
             # Something went wrong.
             return
 
+        # If we're only adding new lanes, NOT modifying existing lanes...
+        adding_only = startingLane == len(self.topLevelOperator)
+
         # Create a list of DatasetInfos
         try:
             infos = self._createDatasetInfos(roleIndex, fileNames, rois)
@@ -493,6 +496,11 @@ class DataSelectionGui(QWidget):
     
             # If we succeeded in adding all images, show the first one.
             self.showDataset(startingLane, roleIndex)
+
+        # Notify the workflow that we just added some new lanes.
+        if adding_only:
+            workflow = self.parentApplet.topLevelOperator.parent
+            workflow.handleNewLanesAdded()
 
         # Notify the workflow that something that could affect applet readyness has occurred.
         self.parentApplet.appletStateUpdateRequested.emit()

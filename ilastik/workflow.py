@@ -95,6 +95,17 @@ class Workflow( Operator ):
         """
         pass
 
+    def handleNewLanesAdded(self):
+        """
+        Called immediately after a new lane is fully initialized with data.
+        If a workflow wants to restore state previously saved in prepareForNewLane(),
+        this is the place to do it.
+        
+        This function must be called by any code that can add new lanes to the workflow and initialize them.
+        That happens in only two places: The DataSelectionGui, and the BatchProcessingApplet.
+        """
+        pass
+
     def onProjectLoaded(self, projectManager):
         """
         Called by the project manager after the project is loaded (deserialized).
