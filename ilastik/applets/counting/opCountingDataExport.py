@@ -28,5 +28,9 @@ class OpCountingDataExport( OpDataExport ):
     LabelNames = InputSlot()
     UpperBound = InputSlot()
 
+    CsvFilepath = InputSlot(optional=True) # The export location.
     
+    def propagateDirty(self, slot, subindex, roi):
+        if slot is self.CsvFilepath:
             return
+        super( OpCountingDataExport, self ).propagateDirty(slot, subindex, roi)
