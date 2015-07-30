@@ -169,7 +169,7 @@ def write_events(events_at, directory, t, labelImage, mergers=None):
                     rg = tg.create_group("ResolvedMergers")
                     rg.attrs["Format"] = "old cell label (current file), new cell labels of resolved cells (current file)"
                     for k, v in res.iteritems():
-                        rg.create_dataset(k, data=v[:-1], dtype=np.uint32, compression=1)
+                        rg.create_dataset(str(k), data=v[:-1], dtype=np.uint32, compression=1)
         except IOError:                    
             raise IOError("File " + str(fn) + " exists already. Please choose a different folder or delete the file(s).")
                 
