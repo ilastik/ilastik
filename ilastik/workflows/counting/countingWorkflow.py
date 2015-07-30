@@ -75,7 +75,6 @@ class CountingWorkflow(Workflow):
                                                              "Feature Selection",
                                                              "FeatureSelections")
 
-        #self.pcApplet = PixelClassificationApplet(self, "PixelClassification")
         self.countingApplet = CountingApplet(workflow=self)
         opCounting = self.countingApplet.topLevelOperator
 
@@ -172,7 +171,6 @@ class CountingWorkflow(Workflow):
         opDataExport.Inputs[0].connect( opCounting.HeadlessPredictionProbabilities )
         opDataExport.RawData.connect( opData.ImageGroup[0] )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
-        opDataExport.ConstraintDataset.connect( opData.ImageGroup[0] )
 
     def onProjectLoaded(self, projectManager):
         """
