@@ -11,8 +11,15 @@ class ExportingOperator(object):
     """
     A Mixin for the Operators that can export h5/csv data
     """
+    
+    def configure_table_export_settings(settings, selected_features):
+        raise NotImplementedError
 
-    def export_object_data(self, settings, selected_features, gui=None):
+    def get_table_export_settings(self):
+        raise NotImplementedError
+        return settings, selected_features
+
+    def export_object_data(self, lane_index, show_gui=False, filename_suffix=""):
         """
         Initialize progress displays and start the actual export in a new thread using the lazyflow.request framework
         :param settings: the settings from the GUI export dialog
@@ -22,14 +29,29 @@ class ExportingOperator(object):
         :param gui: the Progress bar and callbacks for finish/fail/cancel see ExportingGui.show_export_dialog
         :type gui: dict
         """
+        settings, selected_features = self.get_table_export_settings()
+
         self.save_export_progress_dialog(None)
-        if gui is None or "dialog" not in gui:
+        if not show_gui:
             progress_display = ProgressPrinter("Export Progress", xrange(100, -1, -5), 2)
+            gui = None
         else:
+            from ilastik.widgets.progressDialog import ProgressDialog
+            progress = ProgressDialog(["Feature Data", "Labeling Rois", "Raw Image", "Exporting"])
+            progress.set_busy(True)
+            progress.show()
+            gui = {
+                "dialog": progress,
+                "ok": partial(progress.safe_popup, "information", "Information", "Export successful!"),
+                "cancel": partial(progress.safe_popup, "information", "Information", "Export cancelled!"),
+                "fail": partial(progress.safe_popup, "critical", "Critical", "Export failed!"),
+                "unlock": self.unlock_gui,
+                "lock": self.lock_gui
+            }
             progress_display = gui["dialog"]
             self.save_export_progress_dialog(progress_display)
 
-        export = partial(self.do_export, settings, selected_features, progress_display)
+        export = partial(self.do_export, settings, selected_features, progress_display, lane_index, filename_suffix)
         request = Request(export)
         if gui is not None:
             if "fail" in gui:
@@ -52,6 +74,8 @@ class ExportingOperator(object):
 
         if gui is not None and "dialog" in gui:
             progress_display.cancel.connect(request.cancel)
+
+        return request
 
     @staticmethod
     def export_failed(_, exc_info):
@@ -127,21 +151,10 @@ class ExportingGui(object):
             return
 
         settings = dialog.settings()
-        selected_features = dialog.checked_features()
+        selected_features = list(dialog.checked_features()) # returns a generator, but that's inconvenient because it can't be serialized.
 
-        from ilastik.widgets.progressDialog import ProgressDialog
-        progress = ProgressDialog(["Feature Data", "Labeling Rois", "Raw Image", "Exporting"])
-        progress.set_busy(True)
-        progress.show()
-        gui = {
-            "dialog": progress,
-            "ok": partial(progress.safe_popup, "information", "Information", "Export successful!"),
-            "cancel": partial(progress.safe_popup, "information", "Information", "Export cancelled!"),
-            "fail": partial(progress.safe_popup, "critical", "Critical", "Export failed!"),
-            "unlock": self.unlock_gui,
-            "lock": self.lock_gui
-        }
-        self.get_exporting_operator().export_object_data(settings, selected_features, gui)
+        return settings, selected_features
+        #self.get_exporting_operator().export_object_data(settings, selected_features, gui)
 
     def get_raw_shape(self):
         """

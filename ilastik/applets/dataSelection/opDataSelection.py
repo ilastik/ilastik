@@ -80,6 +80,23 @@ class DatasetInfo(object):
         "axistags" : str,
         "subvolume_roi" : RoiTuple()
     }
+    
+    def __str__(self):
+        s = "{ "
+        s += "filepath: {},\n".format(self.filePath)
+        s += "location: {}\n".format( {DatasetInfo.Location.FileSystem: "FileSystem", DatasetInfo.Location.ProjectInternal: "ProjectInternal"}[self.location] )
+        s += "nickname: {},\n".format( self.nickname )
+        if self.axistags:
+            s +="axistags: {},\n".format(self.axistags)
+        if self.drange:
+            s += "drange: {},\n".format( self.drange )
+        s += "normalizeDisplay: {}\n".format( self.normalizeDisplay )
+        if self.fromstack:
+            s += "fromstack: {}\n".format( self.fromstack )
+        if self.subvolume_roi:
+            s += "subvolume_roi: {},\n".format( self.subvolume_roi )
+        s += " }\n"
+        return s
 
     def updateFromJson(self, namespace):
         """

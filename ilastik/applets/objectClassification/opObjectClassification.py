@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+import os
 import numpy
 import numpy.lib.recfunctions as rfn
 import vigra
@@ -47,7 +48,7 @@ logger = logging.getLogger(__name__)
 
 MISSING_VALUE = 0
 
-class OpObjectClassification(Operator, ExportingOperator,MultiLaneOperatorABC):
+class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
     """The top-level operator for object classification.
 
     Most functionality is handled by specialized operators such as
@@ -93,7 +94,7 @@ class OpObjectClassification(Operator, ExportingOperator,MultiLaneOperatorABC):
 
     # for reading from disk
     InputProbabilities = InputSlot(level=1, stype=Opaque, rtype=List, optional=True)
-
+    
     ################
     # Output slots #
     ################
@@ -124,6 +125,22 @@ class OpObjectClassification(Operator, ExportingOperator,MultiLaneOperatorABC):
     LabelColors = OutputSlot()
     PmapColors = OutputSlot()
 
+    # Use a slot for storing the export settings in the project file.
+    ExportSettings = OutputSlot()
+    # Override functions ExportingOperator mixin
+    def configure_table_export_settings(self, settings, selected_features):
+        self.ExportSettings.setValue( (settings, selected_features) )
+    def get_table_export_settings(self):
+        if self.ExportSettings.ready() and self.ExportSettings.value:
+            (settings, selected_features) = self.ExportSettings.value
+            return (settings, selected_features)
+        else:
+            return None, None
+
+    def execute(self, slot, subindex, roi, result):
+        assert slot is self.ExportSettings, \
+            "Should be no need to execute this slot: {}".format( slot.name )
+        result[0] = numpy.array(None, None)
 
     def __init__(self, *args, **kwargs):
         super(OpObjectClassification, self).__init__(*args, **kwargs)
@@ -239,6 +256,7 @@ class OpObjectClassification(Operator, ExportingOperator,MultiLaneOperatorABC):
         self.LabelNames.setValue( [] )
         self.LabelColors.setValue( [] )
         self.PmapColors.setValue( [] )
+        self.ExportSettings.setValue( [] )
 
         self.opStackProbabilities = OperatorWrapper( OpMultiArrayStacker, parent=self )
         self.opStackProbabilities.Images.connect( self.opProbChannelsImageCache.Output )
@@ -716,7 +734,7 @@ class OpObjectClassification(Operator, ExportingOperator,MultiLaneOperatorABC):
         """
         self.export_progress_dialog = dialog
 
-    def do_export(self, settings, selected_features, progress_slot):
+    def do_export(self, settings, selected_features, progress_slot, lane_index, filename_suffix=""):
         """
         Implements ExportOperator.do_export(settings, selected_features, progress_slot
         Most likely called from ExportOperator.export_object_data
@@ -727,25 +745,30 @@ class OpObjectClassification(Operator, ExportingOperator,MultiLaneOperatorABC):
         """
         from ilastik.utility.exportFile import objects_per_frame, ExportFile, ilastik_ids, Mode, Default
 
-        label_image = self.SegmentationImages[0]
+        label_image = self.SegmentationImages[lane_index]
         obj_count = list(objects_per_frame(label_image))
         ids = ilastik_ids(obj_count)
 
-        export_file = ExportFile(settings["file path"])
+        file_path = settings["file path"]
+        if filename_suffix:
+            path, ext = os.path.splitext(file_path)
+            file_path = path + "-" + filename_suffix + ext
+
+        export_file = ExportFile(file_path)
         export_file.ExportProgress.subscribe(progress_slot)
         export_file.InsertionProgress.subscribe(progress_slot)
 
         export_file.add_columns("table", range(sum(obj_count)), Mode.List, Default.KnimeId)
         export_file.add_columns("table", list(ids), Mode.List, Default.IlastikId)
-        export_file.add_columns("table", self.ObjectFeatures[0], Mode.IlastikFeatureTable,
+        export_file.add_columns("table", self.ObjectFeatures[lane_index], Mode.IlastikFeatureTable,
                                 {"selection": selected_features})
 
         if settings["file type"] == "h5":
             export_file.add_rois(Default.LabelRoiPath, label_image, "table", settings["margin"], "labeling")
             if settings["include raw"]:
-                export_file.add_image(Default.RawPath, self.RawImages[0])
+                export_file.add_image(Default.RawPath, self.RawImages[lane_index])
             else:
-                export_file.add_rois(Default.RawRoiPath, self.RawImages[0], "table", settings["margin"])
+                export_file.add_rois(Default.RawRoiPath, self.RawImages[lane_index], "table", settings["margin"])
         export_file.write_all(settings["file type"], settings["compression"])
 
         export_file.ExportProgress.unsubscribe(progress_slot)

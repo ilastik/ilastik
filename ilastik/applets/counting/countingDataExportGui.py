@@ -47,22 +47,32 @@ class CountingDataExportGui( DataExportGui ):
         localDir = os.path.split(__file__)[0]
         drawerPath = os.path.join( localDir, "dataExportDrawer.ui")
         super( CountingDataExportGui, self )._initAppletDrawerUic(drawerPath)
-        self.drawer.exportAllObjectCountsButton.clicked.connect( self.exportObjectCountsToCsv )
-
-    def exportObjectCountsToCsv(self):
-        export_filepath = QFileDialog.getSaveFileName(parent=self, caption="Exported Object Counts", filter="*.csv")
-        if not export_filepath:
-            return
-        req = self.parentApplet.prepareExportObjectCountsToCsv( self.parentApplet, export_filepath )
-        req.notify_failed(self.handleFailedObjectCountExport)
-        req.submit()
-
-    @threadRouted
-    def handleFailedObjectCountExport(self, exception, exception_info):
-        msg = "Failed to export object counts:\n{}".format( exception )
-        log_exception( logger, msg, exception_info )
-        QMessageBox.critical(self, "Failed to export counts", msg)        
+        self.drawer.selectCsvButton.clicked.connect( self.select_csv_export_location )
         
+        self.topLevelOperator.CsvFilepath.notifyDirty( self._update_csv_label )
+        self.topLevelOperator.CsvFilepath.notifyReady( self._update_csv_label )
+        self.topLevelOperator.CsvFilepath.notifyUnready( self._update_csv_label )
+        self._update_csv_label()
+
+    def stopAndCleanUp(self):
+        self.topLevelOperator.CsvFilepath.unregisterDirty( self._update_csv_label )
+        self.topLevelOperator.CsvFilepath.unregisterReady( self._update_csv_label )
+        self.topLevelOperator.CsvFilepath.unregisterUnready( self._update_csv_label )
+        super(CountingDataExportGui, self).stopAndCleanUp()
+
+    def select_csv_export_location(self):
+        csv_export_path = QFileDialog.getSaveFileName(parent=self, caption="Exported Object Counts", filter="*.csv")
+        if csv_export_path:
+            self.topLevelOperator.CsvFilepath.setValue( str(csv_export_path) )
+            
+
+    def _update_csv_label(self, *args):
+        slot = self.topLevelOperator.CsvFilepath
+        if slot.ready():
+            self.drawer.csvLocationLabel.setText( slot.value )
+        else:
+            self.drawer.csvLocationLabel.setText( "" )
+
 class CountingResultsViewer(DataExportLayerViewerGui):
     
     def __init__(self, *args, **kwargs):

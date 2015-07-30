@@ -98,6 +98,28 @@ class OpTrainCounter(Operator):
         self.Classifier.meta.dtype = object
         self.Classifier.meta.shape = (self.numRegressors,)
 
+        # Normally, lane removal does not trigger a dirty notification.
+        # But in this case, if the lane contained any label data whatsoever,
+        #  the classifier needs to be marked dirty.
+        # We know which slots contain (or contained) label data because they have
+        # been 'touched' at some point (they became dirty at some point).
+        self._touched_slots = set()
+        def handle_new_lane( multislot, index, newlength ):
+            def handle_dirty_lane( slot, roi ):
+                self._touched_slots.add(slot)
+            multislot[index].notifyDirty( handle_dirty_lane )
+        self.ForegroundLabels.notifyInserted( handle_new_lane )
+        self.BackgroundLabels.notifyInserted( handle_new_lane )
+
+        def handle_remove_lane( multislot, index, newlength ):
+            # If the lane we're removing contained
+            # label data, then mark the downstream dirty
+            if multislot[index] in self._touched_slots:
+                self.Classifier.setDirty()
+                self._touched_slots.remove(multislot[index])
+        self.ForegroundLabels.notifyRemove( handle_remove_lane )
+        self.BackgroundLabels.notifyRemove( handle_remove_lane )
+
     def initInputs(self, params):
         fix = False
         if self.fixClassifier.ready():

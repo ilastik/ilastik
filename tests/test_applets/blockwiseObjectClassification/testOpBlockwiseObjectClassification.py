@@ -201,7 +201,7 @@ class TestOpBlockwiseObjectClassification(object):
         opObjectClassification.ObjectFeatures[0].connect( self.objExtraction.RegionFeatures )
         
         opObjectClassification.SelectedFeatures.setValue(self.testingFeatures)
-        opObjectClassification.ComputedFeatureNames.connect(self.objExtraction.ComputedFeatureNames)
+        opObjectClassification.ComputedFeatureNames.connect(self.objExtraction.Features)
         
         opObjectClassification.LabelsAllowedFlags.setValues( [True] )
         

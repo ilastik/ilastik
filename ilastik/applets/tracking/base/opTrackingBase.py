@@ -64,6 +64,18 @@ class OpTrackingBase(Operator, ExportingOperator):
 
     Output = OutputSlot()
 
+    # Use a slot for storing the export settings in the project file.
+    ExportSettings = OutputSlot()
+    # Override functions ExportingOperator mixin
+    def configure_table_export_settings(self, settings, selected_features):
+        self.ExportSettings.setValue( (settings, selected_features) )
+    def get_table_export_settings(self):
+        if self.ExportSettings.ready():
+            (settings, selected_features) = self.ExportSettings.value
+            return (settings, selected_features)
+        else:
+            return None, None
+
     def __init__(self, parent=None, graph=None):
         super(OpTrackingBase, self).__init__(parent=parent, graph=graph)
         self.label2color = []
@@ -559,7 +571,7 @@ class OpTrackingBase(Operator, ExportingOperator):
         """
         self.export_progress_dialog = dialog
 
-    def do_export(self, settings, selected_features, progress_slot):
+    def do_export(self, settings, selected_features, progress_slot, lane_index):
         """
         Implements ExportOperator.do_export(settings, selected_features, progress_slot
         Most likely called from ExportOperator.export_object_data
@@ -568,6 +580,8 @@ class OpTrackingBase(Operator, ExportingOperator):
         :param progress_slot:
         :return:
         """
+        assert lane_index == 0, "This has only been tested in tracking workflows with a single image."
+
         from ilastik.utility.exportFile import objects_per_frame, ExportFile, ilastik_ids, Mode, Default, \
             flatten_dict, division_flatten_dict
 

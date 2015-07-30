@@ -64,10 +64,13 @@ class ObjectClassificationDataExportGui( DataExportGui, ExportingGui ):
         group.setLayout(QVBoxLayout())
         self.drawer.layout().addWidget(group)
 
-        btn = QPushButton("Configure and export", group)
-        btn.clicked.connect(self.show_export_dialog)
+        btn = QPushButton("Configure Feature Table Export", group)
+        btn.clicked.connect(self.configure_table_export)
         group.layout().addWidget(btn)
-        
+
+    def configure_table_export(self):
+        settings, selected_features = self.show_export_dialog()
+        self._exporting_operator.configure_table_export_settings( settings, selected_features )
 
 def _createDefault16ColorColorTable():
     colors = []
