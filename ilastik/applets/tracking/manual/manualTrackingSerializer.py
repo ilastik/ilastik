@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.appletSerializer import AppletSerializer,\
-    SerialSlot, deleteIfPresent, getOrCreateGroup
+    SerialSlot, deleteIfPresent, getOrCreateGroup, SerialPickledValueSlot
 
 class SerialDivisionsSlot(SerialSlot):
     def serialize(self, group):
@@ -95,6 +95,7 @@ class ManualTrackingSerializer(AppletSerializer):
     def __init__(self, operator, projectFileGroupName):
         slots = [ #SerialSlot(operator.TrackImage),
                    SerialDivisionsSlot(operator.Divisions),
-                   SerialLabelsSlot(operator.Labels)]
+                   SerialLabelsSlot(operator.Labels),
+                   SerialPickledValueSlot(operator.ExportSettings)]
     
         super(ManualTrackingSerializer, self ).__init__(projectFileGroupName, slots=slots)

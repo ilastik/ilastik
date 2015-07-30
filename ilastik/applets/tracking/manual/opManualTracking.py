@@ -51,6 +51,18 @@ class OpManualTracking(Operator, ExportingOperator):
     Divisions = OutputSlot(stype=Opaque, rtype=List)
     UntrackedImage = OutputSlot()
 
+    # Use a slot for storing the export settings in the project file.
+    ExportSettings = OutputSlot()
+    # Override functions ExportingOperator mixin
+    def configure_table_export_settings(self, settings, selected_features):
+        self.ExportSettings.setValue( (settings, selected_features) )
+    def get_table_export_settings(self):
+        if self.ExportSettings.ready():
+            (settings, selected_features) = self.ExportSettings.value
+            return (settings, selected_features)
+        else:
+            return None, None
+
     def __init__(self, parent=None, graph=None):
         super(OpManualTracking, self).__init__(parent=parent, graph=graph)
         self.labels = {}
@@ -202,7 +214,7 @@ class OpManualTracking(Operator, ExportingOperator):
                 return oid
         raise ValueError("TID {} at t={} not found!".format(tid, t))
 
-    def do_export(self, settings, selected_features, progress_slot):
+    def do_export(self, settings, selected_features, progress_slot, lane_index):
         """
         Implements ExportOperator.do_export(settings, selected_features, progress_slot
         Most likely called from ExportOperator.export_object_data
@@ -211,6 +223,8 @@ class OpManualTracking(Operator, ExportingOperator):
         :param progress_slot:
         :return:
         """
+        assert lane_index == 0, "This has only been tested in tracking workflows with a single image."
+
         obj_count = list(objects_per_frame(self.LabelImage))  # slow
         divisions = self.divisions
         t_range = (0, self.LabelImage.meta.shape[self.LabelImage.meta.axistags.index("t")])
