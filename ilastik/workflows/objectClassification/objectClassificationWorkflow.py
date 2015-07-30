@@ -337,12 +337,13 @@ class ObjectClassificationWorkflow(Workflow):
                 filename_suffix = raw_dataset_info.nickname
             else:
                 filename_suffix = str(lane_index)
-            self.objectClassificationApplet.topLevelOperator.export_object_data(
-                lane_index, 
-                # FIXME: Even in non-headless mode, we can't show the gui because we're running in a non-main thread.
-                #        That's not a huge deal, because there's still a progress bar for the overall export.
-                show_gui=False, 
-                filename_suffix=filename_suffix)
+            req = self.objectClassificationApplet.topLevelOperator.export_object_data(
+                        lane_index, 
+                        # FIXME: Even in non-headless mode, we can't show the gui because we're running in a non-main thread.
+                        #        That's not a huge deal, because there's still a progress bar for the overall export.
+                        show_gui=False, 
+                        filename_suffix=filename_suffix)
+            req.wait()
          
     def _record_array_to_csv(self, record_array, filename):
         """

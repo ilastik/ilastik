@@ -75,6 +75,8 @@ class ExportingOperator(object):
         if gui is not None and "dialog" in gui:
             progress_display.cancel.connect(request.cancel)
 
+        return request
+
     @staticmethod
     def export_failed(_, exc_info):
         """
