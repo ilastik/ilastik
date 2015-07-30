@@ -23,7 +23,6 @@ from PyQt4 import uic
 from PyQt4.QtCore import pyqtSignal, pyqtSlot, Qt, QObject, pyqtBoundSignal
 from PyQt4.QtGui import QFileDialog
 from ilastik.shell.gui.ipcManager import IPCFacade, Protocol
-from ilastik.utility.exportingOperator import ExportingGui
 
 from ilastik.widgets.featureTableWidget import FeatureEntry
 from ilastik.widgets.featureDlg import FeatureDlg
@@ -80,7 +79,7 @@ class FeatureSubSelectionDialog(FeatureSelectionDialog):
         self.ui.label_2.setVisible(False)
         self.ui.label_z.setVisible(False)
 
-class ObjectClassificationGui(LabelingGui, ExportingGui):
+class ObjectClassificationGui(LabelingGui):
     """A subclass of LabelingGui for labeling objects.
 
     Handles labeling objects, viewing the predicted results, and
@@ -210,7 +209,7 @@ class ObjectClassificationGui(LabelingGui, ExportingGui):
 
     def menus(self):
         m = QMenu("&Export", self.volumeEditorWidget)
-        m.addAction("Export Object Information").triggered.connect(self.show_export_dialog)
+        #m.addAction("Export Object Information").triggered.connect(self.show_export_dialog)
         if ilastik_config.getboolean("ilastik", "debug"):
             m.addAction("Export All Label Info").triggered.connect( self.exportLabelInfo )
             m.addAction("Import New Label Info").triggered.connect( self.importLabelInfo )
@@ -862,21 +861,6 @@ class ObjectClassificationGui(LabelingGui, ExportingGui):
         box.setDetailedText(warning.get('details', ''))
 
         box.show()
-
-    def get_raw_shape(self):
-        """
-        Implements the ExportingGUI.get_raw_shape
-        :return: the raw shape
-        """
-        return self.op.RawImages.meta.shape
-
-    def get_feature_names(self):
-        """
-        Implements the ExportingGUI.get_feature_names
-        :return: the feature names
-        :rtype: dict
-        """
-        return self.op.ComputedFeatureNames([]).wait()
 
     @property
     def gui_applet(self):
