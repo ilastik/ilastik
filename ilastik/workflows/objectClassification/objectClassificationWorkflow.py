@@ -152,6 +152,7 @@ class ObjectClassificationWorkflow(Workflow):
         self._batch_export_args = None
         self._batch_input_args = None
         self._export_args = None
+        self.batchProcessingApplet = None
         if self.batch:
             self.batchProcessingApplet = BatchProcessingApplet(self, 
                                                                "Batch Processing", 
@@ -250,7 +251,7 @@ class ObjectClassificationWorkflow(Workflow):
 
         opObjClassification.SegmentationImages.connect(opObjExtraction.LabelImage)
         opObjClassification.ObjectFeatures.connect(opObjExtraction.RegionFeatures)
-        opObjClassification.ComputedFeatureNames.connect(opObjExtraction.ComputedFeatureNames)
+        opObjClassification.ComputedFeatureNames.connect(opObjExtraction.Features)
 
         # Data Export connections
         opDataExport.RawData.connect( opData.ImageGroup[0] )
@@ -492,17 +493,15 @@ class ObjectClassificationWorkflow(Workflow):
         # batch input
         # batch prediction export
 
+        self._shell.setAppletEnabled(self.dataSelectionApplet, not self.batchProcessingApplet.busy)
+
         cumulated_readyness = upstream_ready
+        cumulated_readyness &= not self.batchProcessingApplet.busy # Nothing can be touched while batch mode is executing.
+
         self._shell.setAppletEnabled(self.objectExtractionApplet, cumulated_readyness)
 
-        if len(self.objectExtractionApplet.topLevelOperator.ComputedFeatureNames) == 0:
-            object_features_ready = False
-        else:
-            object_features_ready = True
-            for slot in self.objectExtractionApplet.topLevelOperator.ComputedFeatureNames:
-                object_features_ready = object_features_ready and len(slot.value) > 0
-        #object_features_ready = self.objectExtractionApplet.topLevelOperator.RegionFeatures.ready()
-
+        object_features_ready = ( self.objectExtractionApplet.topLevelOperator.Features.ready()
+                                  and len(self.objectExtractionApplet.topLevelOperator.Features.value) > 0 )
         cumulated_readyness = cumulated_readyness and object_features_ready
         self._shell.setAppletEnabled(self.objectClassificationApplet, cumulated_readyness)
 
@@ -626,6 +625,8 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         """
         input_ready = self._inputReady(1)
         cumulated_readyness = input_ready
+
+        cumulated_readyness &= not self.batchProcessingApplet.busy # Nothing can be touched while batch mode is executing.
 
         opFeatureSelection = self.featureSelectionApplet.topLevelOperator
         featureOutput = opFeatureSelection.OutputImage
@@ -751,6 +752,7 @@ class ObjectClassificationWorkflowPrediction(ObjectClassificationWorkflow):
         """
         input_ready = self._inputReady(2)
         cumulated_readyness = input_ready
+        cumulated_readyness &= not self.batchProcessingApplet.busy # Nothing can be touched while batch mode is executing.
         self._shell.setAppletEnabled(self.thresholdingApplet, cumulated_readyness)
 
         thresholding_ready = True  # is that so?
