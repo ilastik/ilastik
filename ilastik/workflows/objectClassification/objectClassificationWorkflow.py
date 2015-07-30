@@ -172,11 +172,11 @@ class ObjectClassificationWorkflow(Workflow):
                 self._batch_input_args, unused_args = self.batchProcessingApplet.parse_known_cmdline_args( unused_args )
 
                 # For backwards compatibility, translate these special args into the standard syntax
-                if export_arg_parser.export_object_prediction_img:
+                if self._export_args.export_object_prediction_img:
                     self._batch_input_args.export_source = "Object Predictions"
-                if export_arg_parser.export_object_probability_img:
+                if self._export_args.export_object_probability_img:
                     self._batch_input_args.export_source = "Object Probabilities"
-                if export_arg_parser.export_pixel_probability_img:
+                if self._export_args.export_pixel_probability_img:
                     self._batch_input_args.export_source = "Pixel Probabilities"
 
 
