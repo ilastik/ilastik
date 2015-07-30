@@ -404,6 +404,9 @@ class AnnotationsGui(LayerViewerGui):
         self._setDirty(self.mainOperator.Annotations, range(self.mainOperator.TrackImage.meta.shape[0]))
         #print "Annotations---> ", self.mainOperator.Annotations.value
 
+        #self._setDirty(self.mainOperator.Labels, range(self.mainOperator.TrackImage.meta.shape[0]))
+        #self._setDirty(self.mainOperator.Divisions, range(self.mainOperator.TrackImage.meta.shape[0]))
+
     def getLabel(self, time, track):
         for label in self.mainOperator.labels[time].keys():
             if self.mainOperator.labels[time][label] == set([track]):
