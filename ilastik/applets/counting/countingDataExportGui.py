@@ -58,7 +58,7 @@ class CountingDataExportGui( DataExportGui ):
         self.topLevelOperator.CsvFilepath.unregisterDirty( self._update_csv_label )
         self.topLevelOperator.CsvFilepath.unregisterReady( self._update_csv_label )
         self.topLevelOperator.CsvFilepath.unregisterUnready( self._update_csv_label )
-        super(CountingDataExportGui, self).stopAndCleanUp(self)
+        super(CountingDataExportGui, self).stopAndCleanUp()
 
     def select_csv_export_location(self):
         csv_export_path = QFileDialog.getSaveFileName(parent=self, caption="Exported Object Counts", filter="*.csv")
