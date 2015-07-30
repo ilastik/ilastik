@@ -202,7 +202,7 @@ class CountingWorkflow(Workflow):
         """
         Customization hook for data export (including batch mode).
         """
-        self.freeze_status = self.pcApplet.topLevelOperator.FreezePredictions.value
+        self.freeze_status = self.countingApplet.topLevelOperator.FreezePredictions.value
         self.countingApplet.topLevelOperator.FreezePredictions.setValue(False)
         # Create a new CSV file to write object counts into.
         self.csv_export_file = None
