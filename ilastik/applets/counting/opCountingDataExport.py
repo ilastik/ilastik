@@ -18,19 +18,19 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from lazyflow.graph import InputSlot
+from lazyflow.graph import InputSlot, OutputSlot
 from ilastik.applets.dataExport.opDataExport import OpDataExport
 from ilastik.applets.base.applet import DatasetConstraintError
 
 class OpCountingDataExport( OpDataExport ):
-    CsvFilepath = InputSlot(optional=True) # The export location.
-    
     # Add these additional input slots, to be used by the GUI.
     PmapColors = InputSlot()
     LabelNames = InputSlot()
     UpperBound = InputSlot()
     ConstraintDataset = InputSlot() # Any dataset from the training workflow, which we'll use for 
                                     #   comparison purposes when checking dataset constraints.
+
+    CsvFilepath = OutputSlot() # The export location.
     
     def __init__(self,*args,**kwargs):
         super(OpCountingDataExport, self).__init__(*args, **kwargs)
