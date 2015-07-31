@@ -257,7 +257,7 @@ class AnnotationsGui(LayerViewerGui):
         if self.topLevelOperatorView.Crops.value != {}:
             self._drawer.cropListModel=CropListModel()
             crops = self.topLevelOperatorView.Crops.value
-            for key in crops:
+            for key in sorted(crops):
                 newRow = self._drawer.cropListModel.rowCount()
 
 
