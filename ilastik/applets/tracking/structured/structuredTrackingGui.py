@@ -36,22 +36,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             else:
                 labels[i-1].setVisible(False)
     
-    def __init__(self, parentApplet, topLevelOperatorView):
-        """
-        """
-        self._initColors()
-
-        self.topLevelOperatorView = topLevelOperatorView
-        super(TrackingBaseGui, self).__init__(parentApplet, topLevelOperatorView)
-        self.mainOperator = topLevelOperatorView
-
-        if self.mainOperator.LabelImage.meta.shape:
-            self.editor.dataShape = self.mainOperator.LabelImage.meta.shape
-
-        # get the applet reference from the workflow (needed for the progressSignal)
-        self.applet = self.mainOperator.parent.parent.trackingApplet
-
-
     def _loadUiFile(self):
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
@@ -255,15 +239,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
     def initializeAnnotations(self):
 
-        #print " -------LABELS--slot----->",self.topLevelOperatorView.Labels.value
-        #print " -----DIVISIONS-slot----->",self.topLevelOperatorView.Divisions.value
-        #print " -------labels------->",self.operator.labels
-        #print " -----divisions------>",self.operator.divisions
-
-        #print " -------LABELS--slot----->",self.mainOperator.Labels.value
-        #print " -----DIVISIONS-slot----->",self.mainOperator.Divisions.value
-        #print " -------labels------->",self.mainOperator.labels
-        #print " -----divisions------>",self.mainOperator.divisions
+        print " -------labels------->",self.operator.labels
+        print " -----divisions------>",self.operator.divisions
 
         for name in self.topLevelOperatorView.Crops.value.keys():
             crop = self.topLevelOperatorView.Crops.value[name]
@@ -358,8 +335,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         #print "Annotations---> ", self.mainOperator.Annotations.value
 
     def getLabel(self, time, track):
-        for label in self.mainOperator.labels[time].keys():
-            if self.mainOperator.labels[time][label] == set([track]):
+        for label in self.operator.labels[time].keys():
+            if self.operator.labels[time][label] == set([track]):
                 return label
         return False
 
@@ -369,40 +346,19 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
     def _onRunStructuredLearningButtonPressed(self):
 
-        #print "RunStructuredLearningButton PRESSED Crops Slot", self.mainOperator.Crops.value
-        #print "RunStructuredLearningButton PRESSED Annotation Slot", self.mainOperator.Annotations.value
-
         #self.operator.labels = self.mainOperator.Labels.value
 
         self.initializeAnnotations()
 
 
-        print "mainOperator Labels = ", self.mainOperator.Labels.value
-        print "topLevelOperatorView Labels = ", self.topLevelOperatorView.Labels.value
-
-        self.mainOperator.LabelsOut.setValue(self.mainOperator.Labels.value)
-        self.topLevelOperatorView.LabelsOut.setValue(self.topLevelOperatorView.Labels.value)
-        self.mainOperator.DivisionsOut.setValue(self.mainOperator.Divisions.value)
-        self.topLevelOperatorView.DivisionsOut.setValue(self.topLevelOperatorView.Divisions.value)
-
-        print "mainOperator LabelsOut = ", self.mainOperator.LabelsOut.value
-        print "topLevelOperatorView LabelsOut = ", self.topLevelOperatorView.LabelsOut.value
-
-        #self._setDirty(self.topLevelOperatorView.LabelsOut,[])
-
-        self.mainOperator.labels = self.mainOperator.LabelsOut.value
-        self.operator.labels = self.topLevelOperatorView.LabelsOut.value
-        self.mainOperator.divisions = self.mainOperator.DivisionsOut.value
-        self.operator.divisions = self.topLevelOperatorView.DivisionsOut.value
-
-        print "mainOperator labels = ", self.mainOperator.labels
-        print "topLevelOperatorView labels = ", self.operator.labels
+        print "Operator labels = ", self.operator.labels
+        print "Operator divisions = ", self.operator.divisions
 
 
 
-        #print "RunStructuredLearningButton BEFORE Annotation Slot", self.mainOperator.Annotations.value
+        print "RunStructuredLearningButton BEFORE Annotation Slot", self.mainOperator.Annotations.value
         self._annotations = self.mainOperator.Annotations.value
-        #print "RunStructuredLearningButton AFTER Annotation Slot", self.mainOperator.Annotations.value
+        print "RunStructuredLearningButton AFTER Annotation Slot", self.mainOperator.Annotations.value
         
 
 
@@ -662,9 +618,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         print "ilastik structured learning tracking: appearance weight = ", self._appearanceWeight
         print "ilastik structured learning tracking: disappearance weight = ", self._disappearanceWeight
         
-        print "mainOperator = ", self.mainOperator
-        print "mainOperator labels = ", self.mainOperator.labels
-        print "topLevelOperatorView = ", self.topLevelOperatorView
         print "operator labels = ", self.operator.labels
         print "operator divisions = ", self.operator.divisions
 
