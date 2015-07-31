@@ -28,16 +28,13 @@ class SerialDivisionsSlot(SerialSlot):
         group = getOrCreateGroup(group, self.name)
         mainOperator = self.slot.getRealOperator()
         innerops = mainOperator.innerOperators
-        print "--->SerialDivisionsSlot ", self.name, "   mainOperator>", mainOperator, "<     innerops>", innerops
         for i, op in enumerate(innerops):
             dset = []
-            print "in SerialDivisionsSlot divisions op--->", op, "   op.divisions --->", op.divisions, "<---"
             for trackid in op.divisions.keys():
                 (children, t_parent) = op.divisions[trackid]
                 dset.append([trackid, children[0], children[1], t_parent])
             if len(dset) > 0:
                 group.create_dataset(name=str(i), data=dset)
-                print "serializing i= ", i, "      dset= ", dset
         self.dirty = False
 
     def deserialize(self, group):
@@ -52,9 +49,7 @@ class SerialDivisionsSlot(SerialSlot):
             divisions = {}
             for row in dset:
                 divisions[row[0]] = ([row[1],row[2]], row[3])
-                print "DE serializing row= ", row[0],row[1],row[2],row[3]
             op.divisions = divisions
-            print " op=", op, "op.divisions=", op.divisions
         self.dirty = False
         
 class SerialLabelsSlot(SerialSlot):
@@ -65,10 +60,8 @@ class SerialLabelsSlot(SerialSlot):
         group = getOrCreateGroup(group, self.name)
         mainOperator = self.slot.getRealOperator()
         innerops = mainOperator.innerOperators
-        print "===>SerialLabelsSlot ", self.name, "   mainOperator>", mainOperator, "<     innerops>",innerops,"<"
         for i, op in enumerate(innerops):
             gr = getOrCreateGroup(group, str(i))
-            print " in SerialLabelsSlot op---->",op,"    op.labels--->", op.labels, "<---"
             for t in op.labels.keys():
                 t_gr = getOrCreateGroup(gr, str(t))
                 for oid in op.labels[t].keys():
@@ -76,7 +69,6 @@ class SerialLabelsSlot(SerialSlot):
                     dset = list(l)
                     if len(dset) > 0:
                         t_gr.create_dataset(name=str(oid), data=dset)
-                        print "serializing oid= ", oid, "      dset= ", dset
         self.dirty = False
 
     def deserialize(self, group):
@@ -94,9 +86,7 @@ class SerialLabelsSlot(SerialSlot):
                 t_gr = gr[str(t)]
                 for oid in t_gr.keys():
                     labels[int(t)][int(oid)] = set(t_gr[oid])
-                    print "DE serializing label= ", int(t),int(oid),t_gr[oid]
             op.labels = labels
-            print " op=", op, "op.labels=", op.labels
         self.dirty = False
         
 class StructuredTrackingSerializer(AppletSerializer):
@@ -119,8 +109,6 @@ class StructuredTrackingSerializer(AppletSerializer):
 #                                     mainOperator.MergerCleanBlocks,
 #                                     name="MergerCachedOutput"),
 #                          )
-
-        print "---------------------------------------------->",topLevelOperator.LabelsOut
 
         slots = [ SerialDictSlot(topLevelOperator.Parameters, selfdepends=True),
                  SerialHdf5BlockSlot(topLevelOperator.OutputHdf5,

@@ -251,7 +251,6 @@ class CropSelectionGui(CroppingGui):
                              super(CropSelectionGui, self).getNextCropName)
 
     def getNextCropColor(self):
-        print "--->getNextCropColor"
         return self._getNext(
             self.topLevelOperatorView.CropColors,
             super(CropSelectionGui, self).getNextCropColor,
@@ -319,6 +318,8 @@ class CropSelectionGui(CroppingGui):
             self._renderMgr.setColor(crop, color)
 
     def newCrop(self):
+        print ".......................................................NEW CROP IN", self.topLevelOperatorView.Crops.value
+
         self.apply_gui_settings_to_operator()
         #self.apply_operator_settings_to_gui()
         print "newCrop"
@@ -327,17 +328,18 @@ class CropSelectionGui(CroppingGui):
         selectedRow = ncrops-1
         color1 = self._cropControlUi.cropListModel[selectedRow].brushColor()
         color2 = self._cropControlUi.cropListModel[selectedRow].pmapColor()
-        self.topLevelOperatorView.Crops.value[self._cropControlUi.cropListModel[selectedRow].name] = {
-            "time": (self.topLevelOperatorView.MinValueT.value, self.topLevelOperatorView.MaxValueT.value),
-            "starts": self.editor.cropModel.get_roi_3d()[0],
-            "stops": self.editor.cropModel.get_roi_3d()[1],
-            "cropColor": (color1.red(), color1.green(),color1.blue()),
-            "pmapColor": (color2.red(), color2.green(),color2.blue())
+        self.topLevelOperatorView.Crops.value[unicode(self._cropControlUi.cropListModel[selectedRow].name)] = {
+            unicode("time"): (self.topLevelOperatorView.MinValueT.value, self.topLevelOperatorView.MaxValueT.value),
+            unicode("starts"): self.editor.cropModel.get_roi_3d()[0],
+            unicode("stops"): self.editor.cropModel.get_roi_3d()[1],
+            unicode("cropColor"): (color1.red(), color1.green(),color1.blue()),
+            unicode("pmapColor"): (color2.red(), color2.green(),color2.blue())
         }
 
         # Make the new crop selected
         #self.topLevelOperatorView.CropNames.value = self.topLevelOperatorView.CropNames.value.append(self._cropControlUi.cropListModel[selectedRow].name)
         self._cropControlUi.cropListModel.select(selectedRow)
+        print "___________________________________________________________NEW CROP OUT", self.topLevelOperatorView.Crops.value
 
     def setCrop(self):
         self.apply_gui_settings_to_operator()
@@ -357,7 +359,13 @@ class CropSelectionGui(CroppingGui):
                 self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
         #self.topLevelOperatorView.Crops.setValue(self._crops)
         #self.setCropListView()
+        #self._setDirty(self.topLevelOperatorView.Crops,[])
         print "CROP SAVED", self.topLevelOperatorView.Crops.value
+
+    def _setDirty(self, slot, timesteps):
+        print "______________________________________________________________in _setDirty cropSelectionGUI"
+        if slot is self.topLevelOperatorView.Crops:
+            self.topLevelOperatorView.Crops.setDirty([])
 
     def getNextCropName(self):
         return "Crop {}".format(self._maxCropNumUsed+1)

@@ -271,10 +271,11 @@ class CroppingGui(LayerViewerGui):
         self.toolButtons = None
 
     def _initCropListView(self):
+        print "................................._initCropListView", sorted(self.topLevelOperatorView.Crops.value)
         if self.topLevelOperatorView.Crops.value != {}:
             self._cropControlUi.cropListModel=CropListModel()
             crops = self.topLevelOperatorView.Crops.value
-            for key in crops:
+            for key in sorted(crops):
                 newRow = self._cropControlUi.cropListModel.rowCount()
                 crop = Crop(
                         key,
@@ -300,6 +301,7 @@ class CroppingGui(LayerViewerGui):
 
 
     def onCropListDataChanged(self, topLeft, bottomRight):
+        print ",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,, in onCropListDataChanged"
         """Handle changes to the crop list selections."""
         firstRow = topLeft.row()
         lastRow  = bottomRight.row()
@@ -460,6 +462,7 @@ class CroppingGui(LayerViewerGui):
         return True
 
     def _updateCropList(self):
+        print ";;;;;;;;;;;;;;;;;;;;;;;;;;;;; in _updateCropList"
         """
         This function is called when the number of crops has changed without our knowledge.
         We need to add/remove crops until we have the right number
@@ -468,7 +471,7 @@ class CroppingGui(LayerViewerGui):
         # (Or the number of the crops the user has added.)
         #names = self._croppingSlots.cropNames.value
         #numCrops = len(self._croppingSlots.cropNames.value)
-        names = self.topLevelOperatorView.Crops.value.keys()
+        names = sorted(self.topLevelOperatorView.Crops.value.keys())
         numCrops = len(names)
 
         # Add rows until we have the right number

@@ -251,6 +251,9 @@ class AnnotationsGui(LayerViewerGui):
 
 
     def _cropListViewInit(self):
+
+        print " START self.topLevelOperatorView.Crops.value",self.topLevelOperatorView.Crops.value
+
         if self.topLevelOperatorView.Crops.value != {}:
             self._drawer.cropListModel=CropListModel()
             crops = self.topLevelOperatorView.Crops.value
@@ -281,6 +284,9 @@ class AnnotationsGui(LayerViewerGui):
             tagged_shape = rawImageSlot.meta.getTaggedShape()
             self.editor.posModel.shape5D = [tagged_shape['t'],tagged_shape['x'],tagged_shape['y'],tagged_shape['z'],tagged_shape['c']]
             self.editor.navCtrl.changeTimeRelative(self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[0].name]["time"][0] - self.editor.posModel.time)
+
+        print " END self.topLevelOperatorView.Crops.value",self.topLevelOperatorView.Crops.value
+
 
     def _onMetaChanged( self, slot ):
         if slot is self.mainOperator.LabelImage:

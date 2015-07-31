@@ -47,7 +47,6 @@ class OpStructuredTracking(OpTrackingBase):
 
         super(OpStructuredTracking, self).__init__(parent=parent, graph=graph)
 
-        print "...................................................> in init OpStructuredTracking"
         self.labels = {}
         self.divisions = {}
         self.Annotations.setValue({})
@@ -78,7 +77,6 @@ class OpStructuredTracking(OpTrackingBase):
 
         self._mergerOpCache.BlockShape.setValue( self._blockshape )
     
-        print "================================================>>> setupOutputs"
         for t in range(self.LabelImage.meta.shape[0]):
             if t not in self.labels.keys():
                 self.labels[t]={}
@@ -93,7 +91,6 @@ class OpStructuredTracking(OpTrackingBase):
         self.LabelsOut.meta.assignFrom(self.LabelImage.meta)
         self.DivisionsOut.meta.assignFrom(self.LabelImage.meta)
 
-        print "================================================>>> initOutputs"
         for t in range(self.LabelImage.meta.shape[0]):
             self.labels[t]={}
 
@@ -101,22 +98,18 @@ class OpStructuredTracking(OpTrackingBase):
         result = super(OpStructuredTracking, self).execute(slot, subindex, roi, result)
         
         if slot is self.Labels:
-            print " in execute Labels"
             result=self.Labels.wait()
             #self.labels = self.Labels.value
             
         if slot is self.LabelsOut:
-            print " in execute LabelsOut"
             result = {}
             for t in self.labels.keys():
                 result[t] = self.labels[t]
 
         if slot is self.Divisions:
-            print " in execute Divisions"
             result=self.Divisions.wait()
 
         if slot is self.DivisionsOut:
-            print " in execute DivisionsOut"
             result = {}
             for trackid in self.divisions.keys():
                 (children, t_parent) = self.divisions[trackid]
