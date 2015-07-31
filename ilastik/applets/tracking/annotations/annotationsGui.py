@@ -90,12 +90,8 @@ class AnnotationsGui(LayerViewerGui):
 
         self._cropListViewInit()
 
-        print "labels in ANNOTATIONS :", self.topLevelOperatorView.labels
-        print "divisions in ANNOTATIONS :", self.topLevelOperatorView.divisions
         self.topLevelOperatorView.Labels.setValue(self.topLevelOperatorView.labels)
         self.topLevelOperatorView.Divisions.setValue(self.topLevelOperatorView.divisions)
-        print "Labels in ANNOTATIONS :", self.topLevelOperatorView.Labels.value
-        print "Divisions in ANNOTATIONS :", self.topLevelOperatorView.Divisions.value
 
     def updateTime(self):
         delta = self.topLevelOperatorView.Crops[self._drawer.cropListModel[self._drawer.cropListModel.selectedRow()].name][0][0] - self.editor.posModel.time
@@ -238,7 +234,9 @@ class AnnotationsGui(LayerViewerGui):
 
         self.__cleanup_fns = []
         self.topLevelOperatorView.Labels.notifyDirty( bind(self._updateLabels) )
+        self.topLevelOperatorView.Crops.notifyDirty( bind(self._cropListViewInit) )
         self.__cleanup_fns.append( partial( self.topLevelOperatorView.Labels.unregisterDirty, bind(self._updateLabels) ) )
+        self.__cleanup_fns.append( partial( self.topLevelOperatorView.Crops.unregisterDirty, bind(self._cropListViewInit) ) )
 
     def stopAndCleanUp(self):
         super(AnnotationsGui, self).stopAndCleanUp()

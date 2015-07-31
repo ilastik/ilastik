@@ -171,14 +171,8 @@ class CroppingGui(LayerViewerGui):
         self._colorTable16 = self._createDefault16ColorColorTable()
         self._programmaticallyRemovingCrops = False
 
-        #if drawerUiPath is None:
-        #    # Default ui file
-        #    drawerUiPath = os.path.split(__file__)[0] + '/croppingDrawer.ui'
-        #    print "I am locating file here:",drawerUiPath
         self._initCropUic(drawerUiPath)
 
-        #self._crops = dict()
-        #self._currentCrop = 0
         self._maxCropNumUsed = 0
 
         self._allowDeleteLastCropOnly = False
@@ -188,8 +182,6 @@ class CroppingGui(LayerViewerGui):
                                           topLevelOperatorView,
                                           [croppingSlots.cropInput, croppingSlots.cropOutput],
                                           crosshair=crosshair)
-        #self.editor.cropModel.set_roi_3d([(0,0,0),(self.editor.dataShape[1],self.editor.dataShape[2],self.editor.dataShape[3])])
-
         self._croppingSlots.cropEraserValue.setValue(self.editor.brushingModel.erasingNumber)
 
         # Register for thunk events (easy UI calls from non-GUI threads)
@@ -271,7 +263,6 @@ class CroppingGui(LayerViewerGui):
         self.toolButtons = None
 
     def _initCropListView(self):
-        print "................................._initCropListView", sorted(self.topLevelOperatorView.Crops.value)
         if self.topLevelOperatorView.Crops.value != {}:
             self._cropControlUi.cropListModel=CropListModel()
             crops = self.topLevelOperatorView.Crops.value
@@ -301,7 +292,6 @@ class CroppingGui(LayerViewerGui):
 
 
     def onCropListDataChanged(self, topLeft, bottomRight):
-        print ",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,, in onCropListDataChanged"
         """Handle changes to the crop list selections."""
         firstRow = topLeft.row()
         lastRow  = bottomRight.row()
@@ -462,7 +452,6 @@ class CroppingGui(LayerViewerGui):
         return True
 
     def _updateCropList(self):
-        print ";;;;;;;;;;;;;;;;;;;;;;;;;;;;; in _updateCropList"
         """
         This function is called when the number of crops has changed without our knowledge.
         We need to add/remove crops until we have the right number
@@ -496,7 +485,6 @@ class CroppingGui(LayerViewerGui):
             self._cropControlUi.AddCropButton.setEnabled(numCrops < self.maxCropNumber)
 
     def _addNewCrop(self):
-        print "_addNewCrop"
         QApplication.setOverrideCursor(Qt.WaitCursor)
         """
         Add a new crop to the crop list GUI control.
@@ -552,7 +540,6 @@ class CroppingGui(LayerViewerGui):
         #self._gui_enableCropping(e)
 
         QApplication.restoreOverrideCursor()
-        print "out _addNewCrop"
 
     def getNextCropName(self):
         """

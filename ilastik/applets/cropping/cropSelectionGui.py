@@ -187,9 +187,6 @@ class CropSelectionGui(CroppingGui):
         #    _cropControlUi.AddCropButton.clicked.connect( bind(self._addNewCrop) )
         #_cropControlUi.cropListModel.dataChanged.connect(self.onCropListDataChanged)
 
-    #def setCropListView(self):
-    #    print "in setCropListView =====>", self.topLevelOperatorView.Crops.value
-
     def onColorsChanged(self, index):
         color = self._cropControlUi.cropListView._table.model().data(index,Qt.EditRole)[0]
         self.topLevelOperatorView.Crops.value[self._cropControlUi.cropListModel[index.row()].name]["cropColor"] = (color.red(),color.green(),color.blue())
@@ -359,7 +356,7 @@ class CropSelectionGui(CroppingGui):
                 self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
         #self.topLevelOperatorView.Crops.setValue(self._crops)
         #self.setCropListView()
-        #self._setDirty(self.topLevelOperatorView.Crops,[])
+        self._setDirty(self.topLevelOperatorView.Crops,[])
         print "CROP SAVED", self.topLevelOperatorView.Crops.value
 
     def _setDirty(self, slot, timesteps):
