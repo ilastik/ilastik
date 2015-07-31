@@ -245,7 +245,7 @@ class AnnotationsGui(LayerViewerGui):
             fn()
 
     def _updateLabels(self):
-        pass #xxx: to do
+        pass
 
 
     def _cropListViewInit(self):
@@ -682,7 +682,11 @@ class AnnotationsGui(LayerViewerGui):
             t = position5d[0]
     
             res = self._addObjectToTrack(activeTrack,oid,t)
+
             if res == -1:
+                return
+            elif res == -2:
+                self._setPosModel(time=self.editor.posModel.time + 1)
                 return
             
             self._setDirty(self.mainOperator.TrackImage, [t])
@@ -901,9 +905,16 @@ class AnnotationsGui(LayerViewerGui):
                 return -1
         else:
             for tracklist in self.mainOperator.labels[t].values():
-                if activeTrack in tracklist:                    
-                    self._criticalMessage("Error: There is already an object with this track id in this time step")            
-                    return -1
+                if activeTrack in tracklist:
+                    print "self.topLevelOperatorView.Crops.value[self._currentCropName][time][1]",self.topLevelOperatorView.Crops.value[self._currentCropName]["time"][1]
+                    if activeTrack not in self.mainOperator.labels[t][oid]:
+                        self._criticalMessage("Error: There is already an object with this track id in this time step.")
+                        return -1
+                    elif t == self.topLevelOperatorView.Crops.value[self._currentCropName]["time"][1]:
+                        self._criticalMessage("Error: You have reached the last time frame in this crop.")
+                        return -1
+                    else:
+                        return -2
         
         if self.misdetIdx in self.mainOperator.labels[t][oid]:
             self._criticalMessage("Error: This object is already marked as a misdetection. Cannot mark it as part of a track.")            
