@@ -71,7 +71,8 @@ class OpAnnotations(Operator):
         self.Annotations.meta.shape = (1,)
 
         self.Labels.meta.dtype = object
-        self.Labels.meta.shape = (1,)#self.LabelImage.meta.shape
+        self.Labels.meta.shape = self.LabelImage.meta.shape
+
         self.Divisions.meta.dtype = object
         self.Divisions.meta.shape = (1,)
 
