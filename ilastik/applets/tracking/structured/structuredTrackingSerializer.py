@@ -123,15 +123,15 @@ class StructuredTrackingSerializer(AppletSerializer):
                   SerialDictSlot(topLevelOperator.EventsVector, transform=str, selfdepends=True),
                   SerialDictSlot(topLevelOperator.FilteredLabels, transform=str, selfdepends=True),
                   #SerialDictSlot(operator.Annotations),
-                  SerialDivisionsSlot(topLevelOperator.DivisionsOut),
-                  SerialLabelsSlot(topLevelOperator.LabelsOut),
+                  #SerialDivisionsSlot(topLevelOperator.DivisionsOut),
+                  #SerialLabelsSlot(topLevelOperator.LabelsOut),
                   SerialSlot(topLevelOperator.DivisionWeight),
                   SerialSlot(topLevelOperator.DetectionWeight),
                   SerialSlot(topLevelOperator.TransitionWeight),
                   SerialSlot(topLevelOperator.AppearanceWeight),
                   SerialSlot(topLevelOperator.DisappearanceWeight),
-                  SerialSlot(topLevelOperator.MaxNumObjOut),
-                  SerialDictSlot(topLevelOperator.CropsOut)
+                  SerialSlot(topLevelOperator.MaxNumObjOut)#,
+                  #SerialDictSlot(topLevelOperator.CropsOut)
         ]
     
         if 'MergerOutput' in topLevelOperator.outputs:
