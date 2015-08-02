@@ -20,6 +20,80 @@
 ###############################################################################
 from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialDictSlot, deleteIfPresent, getOrCreateGroup
 
+class SerialAnnotationsSlot(SerialSlot):
+    def serialize(self, group):
+        if not self.shouldSerialize(group):
+            return
+        deleteIfPresent(group, self.name)
+        group = getOrCreateGroup(group, self.name)
+        mainOperator = self.slot.getRealOperator()
+        innerops = mainOperator.innerOperators
+        for i, op in enumerate(innerops):
+            gr = getOrCreateGroup(group, str(i))
+            print "ANNOTATIONS -----> op.Annotations.value",op.Annotations.value
+            for cropKey in op.Annotations.value.keys():
+                print "crop=",cropKey
+                crop_gr = getOrCreateGroup(gr, str(cropKey))
+
+                labels_gr = getOrCreateGroup(crop_gr, str("labels"))
+                for t in op.Annotations.value[cropKey]["labels"].keys():
+                    print "time=",t
+                    t_gr = getOrCreateGroup(labels_gr, str(t))
+                    for oid in op.Annotations.value[cropKey]["labels"][t].keys():
+                        print "oid=",oid
+                        l = op.Annotations.value[cropKey]["labels"][t][oid]
+                        dset = list(l)
+                        if len(dset) > 0:
+                            t_gr.create_dataset(name=str(oid), data=dset)
+
+                print "END LABELS"
+                divisions_gr = getOrCreateGroup(crop_gr, str("divisions"))
+                dset = []
+                for trackid in op.Annotations.value[cropKey]["divisions"].keys():
+                    (children, t_parent) = op.Annotations.value[cropKey]["divisions"][trackid]
+                    dset.append([trackid, children[0], children[1], t_parent])
+                if len(dset) > 0:
+                    divisions_gr.create_dataset(name=str(i), data=dset)
+
+                print "END DIVISIONS"
+        self.dirty = False
+
+    def deserialize(self, group):
+        if not self.name in group:
+            return
+        mainOperator = self.slot.getRealOperator()
+        innerops = mainOperator.innerOperators
+        opgroup = group[self.name]
+        for inner in opgroup.keys():
+            gr = opgroup[inner]
+            op = innerops[int(inner)]
+            annotations = {}
+
+
+            for cropKey in gr.keys():
+                print "crop=",cropKey
+                crop_gr = gr[cropKey]
+                annotations[cropKey] = {}
+
+                labels_gr = crop_gr["labels"]
+                annotations[cropKey]["labels"] = {}
+                for t in labels_gr.keys():
+                    annotations[cropKey]["labels"][int(t)] = {}
+                    t_gr = labels_gr[str(t)]
+                    for oid in t_gr.keys():
+                        annotations[cropKey]["labels"][int(t)][int(oid)] = set(t_gr[oid])
+
+                divisions_gr = crop_gr["divisions"]
+                annotations[cropKey]["divisions"] = {}
+                for divKey in divisions_gr.keys():
+                    dset = divisions_gr[divKey]
+                    annotations[cropKey]["divisions"] = {}
+                    for row in dset:
+                        annotations[cropKey]["divisions"][row[0]] = ([row[1],row[2]], row[3])
+
+            op.Annotations.setValue(annotations)
+        self.dirty = False
+
 class SerialDivisionsSlot(SerialSlot):
     def serialize(self, group):
         if not self.shouldSerialize(group):
@@ -44,14 +118,14 @@ class SerialDivisionsSlot(SerialSlot):
         innerops = mainOperator.innerOperators
         opgroup = group[self.name]
         for inner in opgroup.keys():
-            dset = opgroup[inner]            
+            dset = opgroup[inner]
             op = innerops[int(inner)]
             divisions = {}
             for row in dset:
                 divisions[row[0]] = ([row[1],row[2]], row[3])
             op.divisions = divisions
         self.dirty = False
-        
+
 class SerialLabelsSlot(SerialSlot):
     def serialize(self, group):
         if not self.shouldSerialize(group):
@@ -62,6 +136,7 @@ class SerialLabelsSlot(SerialSlot):
         innerops = mainOperator.innerOperators
         for i, op in enumerate(innerops):
             gr = getOrCreateGroup(group, str(i))
+            print "ANNOTATIONS -----> op.labels",op.labels
             for t in op.labels.keys():
                 t_gr = getOrCreateGroup(gr, str(t))
                 for oid in op.labels[t].keys():
@@ -92,7 +167,7 @@ class SerialLabelsSlot(SerialSlot):
 class AnnotationsSerializer(AppletSerializer):
     
     def __init__(self, operator, projectFileGroupName):
-        slots = [ #SerialDictSlot(operator.Annotations),
+        slots = [ SerialAnnotationsSlot(operator.Annotations),
                   SerialDivisionsSlot(operator.Divisions),
                   SerialLabelsSlot(operator.Labels)]
     

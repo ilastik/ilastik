@@ -22,8 +22,10 @@ from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, 
 
 class SerialDivisionsSlot(SerialSlot):
     def serialize(self, group):
-        if not self.shouldSerialize(group):
-            return
+        print "0 SerialDivisionsSlot",self.name
+        #if not self.shouldSerialize(group):
+        #    return
+        print "1 SerialDivisionsSlot",self.name
         deleteIfPresent(group, self.name)
         group = getOrCreateGroup(group, self.name)
         mainOperator = self.slot.getRealOperator()
@@ -54,13 +56,16 @@ class SerialDivisionsSlot(SerialSlot):
         
 class SerialLabelsSlot(SerialSlot):
     def serialize(self, group):
-        if not self.shouldSerialize(group):
-            return
+        print "0 SerialLabelsSlot",self.name
+        #if not self.shouldSerialize(group):
+        #    return
+        print "1 SerialLabelsSlot"
         deleteIfPresent(group, self.name)
         group = getOrCreateGroup(group, self.name)
         mainOperator = self.slot.getRealOperator()
         innerops = mainOperator.innerOperators
         for i, op in enumerate(innerops):
+            print "op.labels",op.labels
             gr = getOrCreateGroup(group, str(i))
             for t in op.labels.keys():
                 t_gr = getOrCreateGroup(gr, str(t))
@@ -125,7 +130,8 @@ class StructuredTrackingSerializer(AppletSerializer):
                   SerialSlot(topLevelOperator.TransitionWeight),
                   SerialSlot(topLevelOperator.AppearanceWeight),
                   SerialSlot(topLevelOperator.DisappearanceWeight),
-                  SerialSlot(topLevelOperator.MaxNumObjOut)
+                  SerialSlot(topLevelOperator.MaxNumObjOut),
+                  SerialDictSlot(topLevelOperator.CropsOut)
         ]
     
         if 'MergerOutput' in topLevelOperator.outputs:

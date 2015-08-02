@@ -40,6 +40,7 @@ class OpStructuredTracking(OpTrackingBase):
     MaxNumObjOut = OutputSlot()
     LabelsOut = OutputSlot(stype=Opaque, rtype=List)
     DivisionsOut = OutputSlot(stype=Opaque, rtype=List)
+    CropsOut = OutputSlot()
 
 
 
@@ -52,6 +53,7 @@ class OpStructuredTracking(OpTrackingBase):
         self.Annotations.setValue({})
         self.LabelsOut.setValue({})
         self.DivisionsOut.setValue({})
+        self.CropsOut.setValue({})
 
         self._mergerOpCache = OpCompressedCache( parent=self )
         self._mergerOpCache.InputHdf5.connect(self.MergerInputHdf5)
@@ -76,7 +78,8 @@ class OpStructuredTracking(OpTrackingBase):
         self.MergerOutput.meta.assignFrom(self.LabelImage.meta)
 
         self._mergerOpCache.BlockShape.setValue( self._blockshape )
-    
+
+        print "in setupOutputs labels = ....{}", self.labels
         for t in range(self.LabelImage.meta.shape[0]):
             if t not in self.labels.keys():
                 self.labels[t]={}
@@ -85,12 +88,17 @@ class OpStructuredTracking(OpTrackingBase):
         self.LabelsOut.meta.shape = self.LabelImage.meta.shape
 
         self.DivisionsOut.meta.dtype = object
-        self.DivisionsOut.meta.shape = (1,)#self.LabelImage.meta.shape
+        self.DivisionsOut.meta.shape = (1,)
+
+        self.CropsOut.meta.dtype = object
+        self.CropsOut.meta.shape = (1,)
 
     def initOutputs(self):
         self.LabelsOut.meta.assignFrom(self.LabelImage.meta)
         self.DivisionsOut.meta.assignFrom(self.LabelImage.meta)
+        self.CropsOut.meta.assignFrom(self.LabelImage.meta)
 
+        print "in initOutputs {}.......{}"
         for t in range(self.LabelImage.meta.shape[0]):
             self.labels[t]={}
 
@@ -98,10 +106,12 @@ class OpStructuredTracking(OpTrackingBase):
         result = super(OpStructuredTracking, self).execute(slot, subindex, roi, result)
         
         if slot is self.Labels:
+            print "in execute Labels"
             result=self.Labels.wait()
             #self.labels = self.Labels.value
             
         if slot is self.LabelsOut:
+            print "in execute LabelsOut"
             result = {}
             for t in self.labels.keys():
                 result[t] = self.labels[t]
@@ -115,6 +125,9 @@ class OpStructuredTracking(OpTrackingBase):
                 (children, t_parent) = self.divisions[trackid]
                 result[trackid] = (children, t_parent)
             return result
+
+        if slot is self.CropsOut:
+            result = self.Crops.value
 
         if slot is self.MergerOutput:
             result = self.LabelImage.get(roi).wait()

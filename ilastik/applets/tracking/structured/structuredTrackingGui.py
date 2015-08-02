@@ -36,6 +36,21 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             else:
                 labels[i-1].setVisible(False)
     
+    def __init__(self, parentApplet, topLevelOperatorView):
+        """
+        """
+        self._initColors()
+
+        self.topLevelOperatorView = topLevelOperatorView
+        super(TrackingBaseGui, self).__init__(parentApplet, topLevelOperatorView)
+        self.mainOperator = topLevelOperatorView
+
+        if self.mainOperator.LabelImage.meta.shape:
+            self.editor.dataShape = self.mainOperator.LabelImage.meta.shape
+
+        # get the applet reference from the workflow (needed for the progressSignal)
+        self.applet = self.mainOperator.parent.parent.trackingApplet
+
     def _loadUiFile(self):
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
@@ -156,12 +171,19 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._onMaxObjectsBoxChanged()
         self._drawer.maxObjectsBox.setReadOnly(True)
 
+
         self.topLevelOperatorView.Labels.notifyReady( bind(self._updateLabelsFromOperator) )
         self.topLevelOperatorView.Divisions.notifyReady( bind(self._updateDivisionsFromOperator) )
+        self.topLevelOperatorView.Crops.notifyReady( bind(self._updateCropsFromOperator) )
+        self.topLevelOperatorView.CropsOut.notifyDirty( bind(self._updateCropsOutFromOperator) )
 
 
-
-
+        #if self.operator.LabelsOut.value != {}:
+        #    print "setting-labels from---------------------------------------LabelsOut"
+        #    self.operator.labels = self.operator.LabelsOut.value
+        #else:
+        #    print "setting-labels from---------------------------------------Labels"
+        self.operator.labels = self.operator.Labels.value
         print " 0 in initAppletDrawerUI - reading LabelsOut", self.operator.LabelsOut.value
         print " 0 in initAppletDrawerUI - reading Labels", self.operator.Labels.value
         print " 0 in initAppletDrawerUI - reading labels", self.operator.labels
@@ -170,6 +192,14 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         print " 0 in initAppletDrawerUI - reading Divisions", self.operator.Divisions.value
         print " 0 in initAppletDrawerUI - reading divisions", self.operator.divisions
 
+        self._crops = self.topLevelOperatorView.CropsOut.value
+
+        self.topLevelOperatorView.CropsOut.setValue(self.topLevelOperatorView.Crops.value)
+
+        print "in initAppletDrawerUi self._crops",self._crops
+        print "in initAppletDrawerUi self.topLevelOperatorView.CropsOut.value",self.topLevelOperatorView.CropsOut.value
+        self.initializeAnnotations()
+        #print "Annotations---> ", self.topLevelOperatorView.Annotations.value
 
         #self.topLevelOperatorView.Annotations.notifyReady( bind(self._updateAnnotationsFromOperator) )
         #self.topLevelOperatorView.Divisions.notifyReady( bind(self._updateDivisionsFromOperator) )
@@ -229,28 +259,59 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
     #def _updateAnnotationsFromOperator(self):
     #    self.annotations = self.topLevelOperatorView.Annotations.value
 
+    @threadRouted
     def _updateLabelsFromOperator(self):
-        print "_updateLabelsFromOperator"
+        print "---$$$$$$$$$$$$$$$$$$$$$---------------------->_updateLabelsFromOperator",self.operator.labels[4]
         self.operator.labels = self.topLevelOperatorView.Labels.wait()
+        self._setDirty(self.operator.LabelsOut,range(self.mainOperator.TrackImage.meta.shape[0]))
 
+    @threadRouted
     def _updateDivisionsFromOperator(self):
-        print "_updateDivisionsFromOperator"
+        print "---$$$$$$$$$$$$$$$$$$$$$---------------------->_updateDivisionsFromOperator"
         self.operator.divisions = self.topLevelOperatorView.Divisions.wait()
+        self._setDirty(self.operator.DivisionsOut,[])
+
+    @threadRouted
+    def _updateCropsFromOperator(self):
+        print "---$$$$$$$$$$$$$$$$$$$$$---------------------->START _updateCropsFromOperator", self._crops
+        self._crops = self.topLevelOperatorView.Crops.wait()
+        self._setDirty(self.operator.CropsOut,[])
+        self._setDirty(self.operator.LabelsOut,range(self.mainOperator.TrackImage.meta.shape[0]))
+        self._setDirty(self.operator.DivisionsOut,[])
+        print "---$$$$$$$$$$$$$$$$$$$$$---------------------->END   _updateCropsFromOperator", self._crops
+
+    @threadRouted
+    def _updateCropsOutFromOperator(self):
+        print "---$$$$$$$$$$$$$$$$$$$$$---------------------->labels      _updateCropsOutFromOperator", self.operator.labels
+        print "---$$$$$$$$$$$$$$$$$$$$$---------------------->divisions   _updateCropsOutFromOperator", self.operator.divisions
+
 
     def initializeAnnotations(self):
 
-        print " -------labels------->",self.operator.labels
-        print " -----divisions------>",self.operator.divisions
+        self._crops = self.topLevelOperatorView.Crops.value
+        print "in initializeAnnotations self._crops",self._crops
 
-        for name in self.topLevelOperatorView.Crops.value.keys():
-            crop = self.topLevelOperatorView.Crops.value[name]
+        self.divisions= self.operator.Divisions.value
+        self.labels= self.operator.Labels.value
+        print " 0 in initializeAnnotations - reading labels", self.operator.labels
+        print " 0 in initializeAnnotations - reading divisions", self.operator.divisions
+        print "Annotations--initializeAnnotations-> ", self.topLevelOperatorView.Annotations.value
+        for name in self._crops.keys():
+            crop = self._crops[name]
 
+            #print "CCCCCCCCCCCCCCCCCCCCCCCCCROP:", name,
             for time in range(crop["time"][0],crop["time"][1]+1):
                 if time in self.operator.labels.keys():
                     for label in self.operator.labels[time].keys():
                         lower = self.features[time][default_features_key]['Coord<Minimum>'][label]
                         upper = self.features[time][default_features_key]['Coord<Maximum>'][label]
 
+                        #print "t lower upper", time, lower, upper
+                        if name not in self.topLevelOperatorView.Annotations.value.keys():
+                            self.topLevelOperatorView.Annotations.value[name] = {}
+                        if "labels" not in self.topLevelOperatorView.Annotations.value[name].keys():
+                            self.topLevelOperatorView.Annotations.value[name]["labels"] = {}
+                        #print "starts/stops",crop["starts"],crop["stops"]
                         addAnnotation = False
                         if len(lower) == 2:
                             if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
@@ -262,16 +323,18 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                                 crop["starts"][2] <= upper[2] and lower[2] <= crop["stops"][2]:
                                 addAnnotation = True
 
-                        # timeUnicodeStr = unicode(str(time))
-                        # labelUnicodeStr = unicode(str(label))
+                        #print ">",label
                         if addAnnotation:
-                            if name not in self.topLevelOperatorView.Annotations.value.keys():
-                                self.topLevelOperatorView.Annotations.value[name] = {}
-                            if "labels" not in self.topLevelOperatorView.Annotations.value[name].keys():
-                                self.topLevelOperatorView.Annotations.value[name]["labels"] = {}
+#                            if name not in self.topLevelOperatorView.Annotations.value.keys():
+#                                self.topLevelOperatorView.Annotations.value[name] = {}
+#                            if "labels" not in self.topLevelOperatorView.Annotations.value[name].keys():
+#                                self.topLevelOperatorView.Annotations.value[name]["labels"] = {}
                             if time not in self.topLevelOperatorView.Annotations.value[name]["labels"].keys():
                                 self.topLevelOperatorView.Annotations.value[name]["labels"][time] = {}
                             self.topLevelOperatorView.Annotations.value[name]["labels"][time][label] = self.operator.labels[time][label]
+
+                            #print "---------->",self.topLevelOperatorView.Annotations.value[name]["labels"][time][label]
+
                             # if timeUnicodeStr not in self.topLevelOperatorView.Annotations.value[name]["labels"].keys():
                             #     self.topLevelOperatorView.Annotations.value[name]["labels"][timeUnicodeStr] = {}
                             # self.topLevelOperatorView.Annotations.value[name]["labels"][timeUnicodeStr][labelUnicodeStr] = self.operator.labels[time][label]
@@ -298,6 +361,10 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                     lowerChild2 = self.features[time][default_features_key]['Coord<Minimum>'][child2]
                     upperChild2 = self.features[time][default_features_key]['Coord<Maximum>'][child2]
 
+                    if name not in self.topLevelOperatorView.Annotations.value.keys():
+                        self.topLevelOperatorView.Annotations.value[name] = {}
+                    if "divisions" not in self.topLevelOperatorView.Annotations.value[name].keys():
+                        self.topLevelOperatorView.Annotations.value[name]["divisions"] = {}
                     addAnnotation = False
                     if len(lowerParent) == 2:
                         if (crop["time"][0] <= time and time <= crop["time"][1]+1) and \
@@ -321,18 +388,20 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                             crop["starts"][2] <= upperChild2[2] and lowerChild2[2] <= crop["stops"][2])):
                             addAnnotation = True
                     if addAnnotation:
-                        if name not in self.topLevelOperatorView.Annotations.value.keys():
-                            self.topLevelOperatorView.Annotations.value[name] = {}
-                        if "divisions" not in self.topLevelOperatorView.Annotations.value[name].keys():
-                            self.topLevelOperatorView.Annotations.value[name]["divisions"] = {}
+#                        if name not in self.topLevelOperatorView.Annotations.value.keys():
+#                            self.topLevelOperatorView.Annotations.value[name] = {}
+#                        if "divisions" not in self.topLevelOperatorView.Annotations.value[name].keys():
+#                            self.topLevelOperatorView.Annotations.value[name]["divisions"] = {}
                         if parentTrack not in self.topLevelOperatorView.Annotations.value[name]["divisions"].keys():
                             self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = {}
                         self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = self.operator.divisions[parentTrack]
 
         #self._setDirty(self.topLevelOperatorView.Annotations, range(self.topLevelOperatorView.LabelImage.meta.shape[0]))
 
-        self._annotations = self.mainOperator.Annotations.value
-        #print "Annotations---> ", self.mainOperator.Annotations.value
+        self._annotations = self.topLevelOperatorView.Annotations.value
+        print "Annotations--initializeAnnotations-> ", self.topLevelOperatorView.Annotations.value
+        print "labels--initializeAnnotations-> ", self.operator.labels
+        print "divisionss--initializeAnnotations-> ", self.operator.divisions
 
     def getLabel(self, time, track):
         for label in self.operator.labels[time].keys():
@@ -344,6 +413,12 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         if slot is self.topLevelOperatorView.LabelsOut:
             self.topLevelOperatorView.LabelsOut.setDirty(timesteps)
 
+        if slot is self.topLevelOperatorView.DivisionsOut:
+            self.topLevelOperatorView.DivisionsOut.setDirty(timesteps)
+
+        if slot is self.topLevelOperatorView.CropsOut:
+            self.topLevelOperatorView.CropsOut.setDirty(timesteps)
+
     def _onRunStructuredLearningButtonPressed(self):
 
         #self.operator.labels = self.mainOperator.Labels.value
@@ -351,14 +426,15 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self.initializeAnnotations()
 
 
-        print "Operator labels = ", self.operator.labels
-        print "Operator divisions = ", self.operator.divisions
+        #print "Operator labels = ", self.operator.labels
+        #print "Operator divisions = ", self.operator.divisions
 
 
 
+        print "RunStructuredLearningButton BEFORE self._crops", self._crops
         print "RunStructuredLearningButton BEFORE Annotation Slot", self.mainOperator.Annotations.value
         self._annotations = self.mainOperator.Annotations.value
-        print "RunStructuredLearningButton AFTER Annotation Slot", self.mainOperator.Annotations.value
+        #print "RunStructuredLearningButton AFTER Annotation Slot", self.mainOperator.Annotations.value
         
 
 
@@ -546,8 +622,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         #structuredLearningTracker.hypothesesGraphTest(hypothesesGraph)
 
         #print "EXPORTING CROPS"
-        for key in self.mainOperator.Crops.value.keys():
-            crop = self.mainOperator.Crops.value[key]
+        for key in self._crops.keys():
+            crop = self._crops[key]
             #print "PYTHON---->",crop
             fieldOfView = pgmlink.FieldOfView(
                 float(crop["time"][0]),float(crop["starts"][0]),float(crop["starts"][1]),float(crop["starts"][2]),
@@ -618,8 +694,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         print "ilastik structured learning tracking: appearance weight = ", self._appearanceWeight
         print "ilastik structured learning tracking: disappearance weight = ", self._disappearanceWeight
         
-        print "operator labels = ", self.operator.labels
-        print "operator divisions = ", self.operator.divisions
+        #print "operator labels = ", self.operator.labels
+        #print "operator divisions = ", self.operator.divisions
 
         # print "______________________________________________________________________STRUCTURED LEARNING TRACKING INFERENCE MODEL"
         # structuredLearningTracker.track(
@@ -661,6 +737,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         # )
 
     def getLabelInCrop(self, cropKey, time, track):
+        print "cropKey",cropKey
         labels = self.mainOperator.Annotations.value[cropKey]["labels"][time]
         for label in labels.keys():
             if self.mainOperator.Annotations.value[cropKey]["labels"][time][label] == set([track]):
@@ -676,7 +753,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             type = "FIRST"
 
         labels = self.mainOperator.Annotations.value[cropKey]["labels"]
-        crop = self.mainOperator.Crops.value[cropKey]
+        print "self._crops",self._crops
+        crop = self._crops[cropKey]
         lastTime = -1
         lastLabel = -1
         #scan preceeding time frames for track

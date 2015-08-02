@@ -322,6 +322,14 @@ class AnnotationsGui(LayerViewerGui):
         else:
             crop = self.topLevelOperatorView.Crops.value[name]
 
+        #print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>self.topLevelOperatorView.labels", self.topLevelOperatorView.labels
+        #print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXself.topLevelOperatorView.divisions",self.topLevelOperatorView.divisions
+
+
+        if name not in self.topLevelOperatorView.Annotations.value.keys():
+            self.topLevelOperatorView.Annotations.value[name] = {}
+        if "labels" not in self.topLevelOperatorView.Annotations.value[name].keys():
+            self.topLevelOperatorView.Annotations.value[name]["labels"] = {}
         for time in range(crop["time"][0],crop["time"][1]+1):
             if time in self.topLevelOperatorView.labels.keys():
                 for label in self.topLevelOperatorView.labels[time].keys():
@@ -342,10 +350,6 @@ class AnnotationsGui(LayerViewerGui):
                     # timeUnicodeStr = unicode(str(time))
                     # labelUnicodeStr = unicode(str(label))
                     if addAnnotation:
-                        if name not in self.topLevelOperatorView.Annotations.value.keys():
-                            self.topLevelOperatorView.Annotations.value[name] = {}
-                        if "labels" not in self.topLevelOperatorView.Annotations.value[name].keys():
-                            self.topLevelOperatorView.Annotations.value[name]["labels"] = {}
                         if time not in self.topLevelOperatorView.Annotations.value[name]["labels"].keys():
                             self.topLevelOperatorView.Annotations.value[name]["labels"][time] = {}
                         self.topLevelOperatorView.Annotations.value[name]["labels"][time][label] = self.topLevelOperatorView.labels[time][label]
@@ -353,6 +357,10 @@ class AnnotationsGui(LayerViewerGui):
                         #     self.topLevelOperatorView.Annotations.value[name]["labels"][timeUnicodeStr] = {}
                         # self.topLevelOperatorView.Annotations.value[name]["labels"][timeUnicodeStr][labelUnicodeStr] = self.topLevelOperatorView.labels[time][label]
 
+        if name not in self.topLevelOperatorView.Annotations.value.keys():
+            self.topLevelOperatorView.Annotations.value[name] = {}
+        if "divisions" not in self.topLevelOperatorView.Annotations.value[name].keys():
+            self.topLevelOperatorView.Annotations.value[name]["divisions"] = {}
         for parentTrack in self.topLevelOperatorView.divisions.keys():
             time = self.topLevelOperatorView.divisions[parentTrack][1]
             child1Track = self.topLevelOperatorView.divisions[parentTrack][0][0]
@@ -397,16 +405,17 @@ class AnnotationsGui(LayerViewerGui):
                         crop["starts"][2] <= upperChild2[2] and lowerChild2[2] <= crop["stops"][2])):
                         addAnnotation = True
                 if addAnnotation:
-                    if name not in self.topLevelOperatorView.Annotations.value.keys():
-                        self.topLevelOperatorView.Annotations.value[name] = {}
-                    if "divisions" not in self.topLevelOperatorView.Annotations.value[name].keys():
-                        self.topLevelOperatorView.Annotations.value[name]["divisions"] = {}
                     if parentTrack not in self.topLevelOperatorView.Annotations.value[name]["divisions"].keys():
                         self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = {}
                     self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = self.topLevelOperatorView.divisions[parentTrack]
 
         self._setDirty(self.mainOperator.Annotations, range(self.mainOperator.TrackImage.meta.shape[0]))
-        #print "Annotations---> ", self.mainOperator.Annotations.value
+        #self._setDirty(self.mainOperator.Labels, range(self.mainOperator.TrackImage.meta.shape[0]))
+        self._setDirty(self.mainOperator.Labels, [])
+        self._setDirty(self.mainOperator.Divisions, [])
+        print "Annotations----------------------------------> ", self.mainOperator.Annotations.value
+        print "labels----------------------------------> ", self.mainOperator.labels
+        print "divisions----------------------------------> ", self.mainOperator.divisions
 
         #self._setDirty(self.mainOperator.Labels, range(self.mainOperator.TrackImage.meta.shape[0]))
         #self._setDirty(self.mainOperator.Divisions, range(self.mainOperator.TrackImage.meta.shape[0]))
