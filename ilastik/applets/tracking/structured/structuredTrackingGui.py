@@ -103,7 +103,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
 
 
-        self.realOperator = self.topLevelOperatorView.LabelsOut.getRealOperator()
+        self.realOperator = self.topLevelOperatorView.Labels.getRealOperator()
         for i, op in enumerate(self.realOperator.innerOperators):
             self.operator = op
 
@@ -167,15 +167,11 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._onMaxObjectsBoxChanged()
         self._drawer.maxObjectsBox.setReadOnly(True)
 
-
         self.topLevelOperatorView.Labels.notifyReady( bind(self._updateLabelsFromOperator) )
         self.topLevelOperatorView.Divisions.notifyReady( bind(self._updateDivisionsFromOperator) )
         self.topLevelOperatorView.Crops.notifyReady( bind(self._updateCropsFromOperator) )
 
         self.operator.labels = self.operator.Labels.value
-        self._crops = self.topLevelOperatorView.CropsOut.value
-        self.topLevelOperatorView.CropsOut.setValue(self.topLevelOperatorView.Crops.value)
-
         self.initializeAnnotations()
 
     @threadRouted
@@ -183,10 +179,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         inString = str(self._drawer.timeoutBox.text())
         if self._allowedTimeoutInputRegEx.match(inString) is None:
             self._drawer.timeoutBox.setText(inString.decode("utf8").encode("ascii", "replace")[:-1])
-
-#    @threadRouted
-#    def _onMaxObjectsBoxChanged(self, *args):
-#        self._maxNumObj = self._drawer.maxObjectsBox.value()
 
     @threadRouted
     def _onDivisionWeightBoxChanged(self, *args):
@@ -224,31 +216,27 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             maxBorder = min(maxBorder, maxz)
         self._drawer.bordWidthBox.setRange(0, maxBorder/2)
         
-    #@threadRouted
-    def _onMaxObjectsBoxChanged(self):#, *args):
+    def _onMaxObjectsBoxChanged(self):
         self._setMergerLegend(self.mergerLabels, self._drawer.maxObjectsBox.value())
         self._maxNumObj = self._drawer.maxObjectsBox.value()
         self.topLevelOperatorView.MaxNumObjOut.setValue(self._maxNumObj)
 
-    #def _updateAnnotationsFromOperator(self):
-    #    self.annotations = self.topLevelOperatorView.Annotations.value
-
     @threadRouted
     def _updateLabelsFromOperator(self):
         self.operator.labels = self.topLevelOperatorView.Labels.wait()
-        self._setDirty(self.operator.LabelsOut,range(self.mainOperator.TrackImage.meta.shape[0]))
+        #self._setDirty(self.operator.LabelsOut,range(self.mainOperator.TrackImage.meta.shape[0]))
 
     @threadRouted
     def _updateDivisionsFromOperator(self):
         self.operator.divisions = self.topLevelOperatorView.Divisions.wait()
-        self._setDirty(self.operator.DivisionsOut,[])
+        #self._setDirty(self.operator.DivisionsOut,[])
 
     @threadRouted
     def _updateCropsFromOperator(self):
         self._crops = self.topLevelOperatorView.Crops.wait()
-        self._setDirty(self.operator.CropsOut,[])
-        self._setDirty(self.operator.LabelsOut,range(self.mainOperator.TrackImage.meta.shape[0]))
-        self._setDirty(self.operator.DivisionsOut,[])
+        #self._setDirty(self.operator.CropsOut,[])
+        #self._setDirty(self.operator.LabelsOut,range(self.mainOperator.TrackImage.meta.shape[0]))
+        #self._setDirty(self.operator.DivisionsOut,[])
 
     def initializeAnnotations(self):
 
@@ -256,86 +244,86 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         self.divisions= self.operator.Divisions.value
         self.labels= self.operator.Labels.value
-        for name in self._crops.keys():
-            crop = self._crops[name]
+        # for name in self._crops.keys():
+        #     crop = self._crops[name]
+        #
+        #     for time in range(crop["time"][0],crop["time"][1]+1):
+        #         if time in self.operator.labels.keys():
+        #             for label in self.operator.labels[time].keys():
+        #                 lower = self.features[time][default_features_key]['Coord<Minimum>'][label]
+        #                 upper = self.features[time][default_features_key]['Coord<Maximum>'][label]
+        #
+        #                 if name not in self.topLevelOperatorView.Annotations.value.keys():
+        #                     self.topLevelOperatorView.Annotations.value[name] = {}
+        #                 if "labels" not in self.topLevelOperatorView.Annotations.value[name].keys():
+        #                     self.topLevelOperatorView.Annotations.value[name]["labels"] = {}
+        #                 addAnnotation = False
+        #                 if len(lower) == 2:
+        #                     if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
+        #                         crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1]:
+        #                         addAnnotation = True
+        #                 else:
+        #                     if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
+        #                         crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1] and \
+        #                         crop["starts"][2] <= upper[2] and lower[2] <= crop["stops"][2]:
+        #                         addAnnotation = True
+        #
+        #                 if addAnnotation:
+        #                     if time not in self.topLevelOperatorView.Annotations.value[name]["labels"].keys():
+        #                         self.topLevelOperatorView.Annotations.value[name]["labels"][time] = {}
+        #                     self.topLevelOperatorView.Annotations.value[name]["labels"][time][label] = self.operator.labels[time][label]
+        #
+        #     for parentTrack in self.operator.divisions.keys():
+        #         time = self.operator.divisions[parentTrack][1]
+        #         child1Track = self.operator.divisions[parentTrack][0][0]
+        #         child2Track = self.operator.divisions[parentTrack][0][1]
+        #
+        #         parent = self.getLabel(time, parentTrack)
+        #         child1 = self.getLabel(time+1, child1Track)
+        #         child2 = self.getLabel(time+1, child2Track)
+        #
+        #         if (parent and child1 and child2):
+        #             lowerParent = self.features[time][default_features_key]['Coord<Minimum>'][parent]
+        #             upperParent = self.features[time][default_features_key]['Coord<Maximum>'][parent]
+        #
+        #             lowerChild1 = self.features[time][default_features_key]['Coord<Minimum>'][child1]
+        #             upperChild1 = self.features[time][default_features_key]['Coord<Maximum>'][child1]
+        #
+        #             lowerChild2 = self.features[time][default_features_key]['Coord<Minimum>'][child2]
+        #             upperChild2 = self.features[time][default_features_key]['Coord<Maximum>'][child2]
+        #
+        #             if name not in self.topLevelOperatorView.Annotations.value.keys():
+        #                 self.topLevelOperatorView.Annotations.value[name] = {}
+        #             if "divisions" not in self.topLevelOperatorView.Annotations.value[name].keys():
+        #                 self.topLevelOperatorView.Annotations.value[name]["divisions"] = {}
+        #             addAnnotation = False
+        #             if len(lowerParent) == 2:
+        #                 if (crop["time"][0] <= time and time <= crop["time"][1]+1) and \
+        #                     ((crop["starts"][0] <= upperParent[0] and lowerParent[0] <= crop["stops"][0] and \
+        #                     crop["starts"][1] <= upperParent[1] and lowerParent[1] <= crop["stops"][1]) or \
+        #                     ( crop["starts"][0] <= upperChild1[0] and lowerChild1[0] <= crop["stops"][0] and \
+        #                     crop["starts"][1] <= upperChild1[1] and lowerChild1[1] <= crop["stops"][1]) or \
+        #                     ( crop["starts"][0] <= upperChild2[0] and lowerChild2[0] <= crop["stops"][0] and \
+        #                     crop["starts"][1] <= upperChild2[1] and lowerChild2[1] <= crop["stops"][1])):
+        #                     addAnnotation = True
+        #             else:
+        #                 if (crop["time"][0] <= time and time <= crop["time"][1]+1) and \
+        #                     ((crop["starts"][0] <= upperParent[0] and lowerParent[0] <= crop["stops"][0] and \
+        #                     crop["starts"][1] <= upperParent[1] and lowerParent[1] <= crop["stops"][1] and \
+        #                     crop["starts"][2] <= upperParent[2] and lowerParent[2] <= crop["stops"][2]) or \
+        #                     ( crop["starts"][0] <= upperChild1[0] and lowerChild1[0] <= crop["stops"][0] and \
+        #                     crop["starts"][1] <= upperChild1[1] and lowerChild1[1] <= crop["stops"][1] and \
+        #                     crop["starts"][2] <= upperChild1[2] and lowerChild1[2] <= crop["stops"][2]) or \
+        #                     ( crop["starts"][0] <= upperChild2[0] and lowerChild2[0] <= crop["stops"][0] and \
+        #                     crop["starts"][1] <= upperChild2[1] and lowerChild2[1] <= crop["stops"][1] and \
+        #                     crop["starts"][2] <= upperChild2[2] and lowerChild2[2] <= crop["stops"][2])):
+        #                     addAnnotation = True
+        #             if addAnnotation:
+        #                 if parentTrack not in self.topLevelOperatorView.Annotations.value[name]["divisions"].keys():
+        #                     self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = {}
+        #                 self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = self.operator.divisions[parentTrack]
 
-            for time in range(crop["time"][0],crop["time"][1]+1):
-                if time in self.operator.labels.keys():
-                    for label in self.operator.labels[time].keys():
-                        lower = self.features[time][default_features_key]['Coord<Minimum>'][label]
-                        upper = self.features[time][default_features_key]['Coord<Maximum>'][label]
-
-                        if name not in self.topLevelOperatorView.Annotations.value.keys():
-                            self.topLevelOperatorView.Annotations.value[name] = {}
-                        if "labels" not in self.topLevelOperatorView.Annotations.value[name].keys():
-                            self.topLevelOperatorView.Annotations.value[name]["labels"] = {}
-                        addAnnotation = False
-                        if len(lower) == 2:
-                            if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
-                                crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1]:
-                                addAnnotation = True
-                        else:
-                            if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
-                                crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1] and \
-                                crop["starts"][2] <= upper[2] and lower[2] <= crop["stops"][2]:
-                                addAnnotation = True
-
-                        if addAnnotation:
-                            if time not in self.topLevelOperatorView.Annotations.value[name]["labels"].keys():
-                                self.topLevelOperatorView.Annotations.value[name]["labels"][time] = {}
-                            self.topLevelOperatorView.Annotations.value[name]["labels"][time][label] = self.operator.labels[time][label]
-
-            for parentTrack in self.operator.divisions.keys():
-                time = self.operator.divisions[parentTrack][1]
-                child1Track = self.operator.divisions[parentTrack][0][0]
-                child2Track = self.operator.divisions[parentTrack][0][1]
-
-                parent = self.getLabel(time, parentTrack)
-                child1 = self.getLabel(time+1, child1Track)
-                child2 = self.getLabel(time+1, child2Track)
-
-                if (parent and child1 and child2):
-                    lowerParent = self.features[time][default_features_key]['Coord<Minimum>'][parent]
-                    upperParent = self.features[time][default_features_key]['Coord<Maximum>'][parent]
-
-                    lowerChild1 = self.features[time][default_features_key]['Coord<Minimum>'][child1]
-                    upperChild1 = self.features[time][default_features_key]['Coord<Maximum>'][child1]
-
-                    lowerChild2 = self.features[time][default_features_key]['Coord<Minimum>'][child2]
-                    upperChild2 = self.features[time][default_features_key]['Coord<Maximum>'][child2]
-
-                    if name not in self.topLevelOperatorView.Annotations.value.keys():
-                        self.topLevelOperatorView.Annotations.value[name] = {}
-                    if "divisions" not in self.topLevelOperatorView.Annotations.value[name].keys():
-                        self.topLevelOperatorView.Annotations.value[name]["divisions"] = {}
-                    addAnnotation = False
-                    if len(lowerParent) == 2:
-                        if (crop["time"][0] <= time and time <= crop["time"][1]+1) and \
-                            ((crop["starts"][0] <= upperParent[0] and lowerParent[0] <= crop["stops"][0] and \
-                            crop["starts"][1] <= upperParent[1] and lowerParent[1] <= crop["stops"][1]) or \
-                            ( crop["starts"][0] <= upperChild1[0] and lowerChild1[0] <= crop["stops"][0] and \
-                            crop["starts"][1] <= upperChild1[1] and lowerChild1[1] <= crop["stops"][1]) or \
-                            ( crop["starts"][0] <= upperChild2[0] and lowerChild2[0] <= crop["stops"][0] and \
-                            crop["starts"][1] <= upperChild2[1] and lowerChild2[1] <= crop["stops"][1])):
-                            addAnnotation = True
-                    else:
-                        if (crop["time"][0] <= time and time <= crop["time"][1]+1) and \
-                            ((crop["starts"][0] <= upperParent[0] and lowerParent[0] <= crop["stops"][0] and \
-                            crop["starts"][1] <= upperParent[1] and lowerParent[1] <= crop["stops"][1] and \
-                            crop["starts"][2] <= upperParent[2] and lowerParent[2] <= crop["stops"][2]) or \
-                            ( crop["starts"][0] <= upperChild1[0] and lowerChild1[0] <= crop["stops"][0] and \
-                            crop["starts"][1] <= upperChild1[1] and lowerChild1[1] <= crop["stops"][1] and \
-                            crop["starts"][2] <= upperChild1[2] and lowerChild1[2] <= crop["stops"][2]) or \
-                            ( crop["starts"][0] <= upperChild2[0] and lowerChild2[0] <= crop["stops"][0] and \
-                            crop["starts"][1] <= upperChild2[1] and lowerChild2[1] <= crop["stops"][1] and \
-                            crop["starts"][2] <= upperChild2[2] and lowerChild2[2] <= crop["stops"][2])):
-                            addAnnotation = True
-                    if addAnnotation:
-                        if parentTrack not in self.topLevelOperatorView.Annotations.value[name]["divisions"].keys():
-                            self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = {}
-                        self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = self.operator.divisions[parentTrack]
-
-        self._annotations = self.topLevelOperatorView.Annotations.value
+        #self._annotations = self.topLevelOperatorView.Annotations.value
 
     def getLabel(self, time, track):
         for label in self.operator.labels[time].keys():
@@ -343,20 +331,20 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                 return label
         return False
 
-    def _setDirty(self, slot, timesteps):
-        if slot is self.topLevelOperatorView.LabelsOut:
-            self.topLevelOperatorView.LabelsOut.setDirty(timesteps)
+    #def _setDirty(self, slot, timesteps):
+        #if slot is self.topLevelOperatorView.LabelsOut:
+        #    self.topLevelOperatorView.LabelsOut.setDirty(timesteps)
 
-        if slot is self.topLevelOperatorView.DivisionsOut:
-            self.topLevelOperatorView.DivisionsOut.setDirty(timesteps)
+        #if slot is self.topLevelOperatorView.DivisionsOut:
+        #    self.topLevelOperatorView.DivisionsOut.setDirty(timesteps)
 
-        if slot is self.topLevelOperatorView.CropsOut:
-            self.topLevelOperatorView.CropsOut.setDirty(timesteps)
+        #if slot is self.topLevelOperatorView.CropsOut:
+        #    self.topLevelOperatorView.CropsOut.setDirty(timesteps)
 
     def _onRunStructuredLearningButtonPressed(self):
 
         self.initializeAnnotations()
-        self._annotations = self.mainOperator.Annotations.value
+        #self._annotations = self.mainOperator.Annotations.value
         median_obj_size = [0]
 
         from_z = self._drawer.from_z.value()

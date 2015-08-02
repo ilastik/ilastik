@@ -65,20 +65,6 @@ class CropSelectionGui(CroppingGui):
         # Base class
         super(CropSelectionGui, self).stopAndCleanUp()
 
-    #def viewerControlWidget(self):
-    #    return self._viewerControlUi
-
-#    @property
-#    def crops(self):
-#        return self._crops
-#
-#    @crops.setter
-#    def crops(self,cropList):
-#        self._crops = cropList
-
-
-
-
     def __init__(self, parentApplet, topLevelOperatorView):
         """
         """
@@ -533,8 +519,6 @@ class CropSelectionGui(CroppingGui):
 
         self.topLevelOperatorView.MinValueZ.setValue(minValueZ)
         self.topLevelOperatorView.MaxValueZ.setValue(maxValueZ+1)
-
-        #self.topLevelOperatorView.Crops.setValue(self._crops)
 
     def setupLayers(self):
         """
