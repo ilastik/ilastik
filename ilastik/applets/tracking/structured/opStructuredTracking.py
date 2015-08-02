@@ -38,11 +38,6 @@ class OpStructuredTracking(OpTrackingBase):
     AppearanceWeight = OutputSlot()
     DisappearanceWeight = OutputSlot()
     MaxNumObjOut = OutputSlot()
-    #LabelsOut = OutputSlot(stype=Opaque, rtype=List)
-    #DivisionsOut = OutputSlot(stype=Opaque, rtype=List)
-    #CropsOut = OutputSlot()
-
-
 
     def __init__(self, parent=None, graph=None):
 
@@ -51,9 +46,6 @@ class OpStructuredTracking(OpTrackingBase):
         self.labels = {}
         self.divisions = {}
         self.Annotations.setValue({})
-        #self.LabelsOut.setValue({})
-        #self.DivisionsOut.setValue({})
-        #self.CropsOut.setValue({})
 
         self._mergerOpCache = OpCompressedCache( parent=self )
         self._mergerOpCache.InputHdf5.connect(self.MergerInputHdf5)
@@ -83,20 +75,6 @@ class OpStructuredTracking(OpTrackingBase):
             if t not in self.labels.keys():
                 self.labels[t]={}
 
-        #self.LabelsOut.meta.dtype = object
-        #self.LabelsOut.meta.shape = self.LabelImage.meta.shape
-
-        #self.DivisionsOut.meta.dtype = object
-        #self.DivisionsOut.meta.shape = (1,)
-
-        #self.CropsOut.meta.dtype = object
-        #self.CropsOut.meta.shape = (1,)
-
-    def initOutputs(self):
-        #self.LabelsOut.meta.assignFrom(self.LabelImage.meta)
-        #self.DivisionsOut.meta.assignFrom(self.LabelImage.meta)
-        #self.CropsOut.meta.assignFrom(self.LabelImage.meta)
-
         for t in range(self.LabelImage.meta.shape[0]):
             self.labels[t]={}
 
@@ -105,25 +83,9 @@ class OpStructuredTracking(OpTrackingBase):
         
         if slot is self.Labels:
             result=self.Labels.wait()
-            #self.labels = self.Labels.value
-            
-        #if slot is self.LabelsOut:
-        #    result = {}
-        #    for t in self.labels.keys():
-        #        result[t] = self.labels[t]
 
         if slot is self.Divisions:
             result=self.Divisions.wait()
-
-        #if slot is self.DivisionsOut:
-        #    result = {}
-        #    for trackid in self.divisions.keys():
-        #        (children, t_parent) = self.divisions[trackid]
-        #        result[trackid] = (children, t_parent)
-        #    return result
-
-        #if slot is self.CropsOut:
-        #    result = self.Crops.value
 
         if slot is self.MergerOutput:
             result = self.LabelImage.get(roi).wait()
@@ -336,29 +298,16 @@ class OpStructuredTracking(OpTrackingBase):
                     and self.NumLabels.value > 1:
                 self.parent.parent.trackingApplet._gui.currentGui()._drawer.maxObjectsBox.setValue(self.NumLabels.value-1)
 
-        #elif slot.name == "LabelsOut":
-        #    self.LabelsOut.setDirty( roi )
-        #elif slot.name == "DivisionsOut":
-        #    self.DivisionsOut.setDirty( roi )
-        #else:
-            #self.LabelsOut.setDirty( slice(None) )
-            #self.DivisionsOut.setDirty( slice(None) )
-            #self.Annotations.setDirty( slice(None) )
-
     def _get_merger_coordinates(self, coordinate_map, time_range, eventsVector):
-        # fetch features
         feats = self.ObjectFeatures(time_range).wait()
-        # iterate over all timesteps
         for t in feats.keys():
             rc = feats[t][default_features_key]['RegionCenter']
             lower = feats[t][default_features_key]['Coord<Minimum>']
             upper = feats[t][default_features_key]['Coord<Maximum>']
             size = feats[t][default_features_key]['Count']
             for event in eventsVector[t]:
-                # check for merger events
                 if event.type == pgmlink.EventType.Merger:
                     idx = event.traxel_ids[0]
-                    # generate roi: assume the following order: txyzc
                     n_dim = len(rc[idx])
                     roi = [0]*5
                     roi[0] = slice(int(t), int(t+1))

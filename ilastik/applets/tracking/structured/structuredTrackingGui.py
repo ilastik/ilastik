@@ -1,12 +1,10 @@
 from PyQt4 import uic, QtGui
-from PyQt4.QtGui import *
 import os
 import logging
 import sys
 import re
 import traceback
 import math
-from PyQt4.QtCore import pyqtSignal
 
 import pgmlink
 
@@ -18,7 +16,6 @@ from ilastik.utility.ipcProtocol import Protocol
 from ilastik.shell.gui.ipcManager import IPCFacade
 from ilastik.config import cfg as ilastik_config
 from ilastik.utility import bind
-from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 
 from lazyflow.request.request import Request
 
@@ -48,11 +45,9 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         if self.mainOperator.LabelImage.meta.shape:
             self.editor.dataShape = self.mainOperator.LabelImage.meta.shape
 
-        # get the applet reference from the workflow (needed for the progressSignal)
         self.applet = self.mainOperator.parent.parent.trackingApplet
 
     def _loadUiFile(self):
-        # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
         
@@ -97,11 +92,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._currentCrop = -1
         self._currentCropName = ""
         
-
         super(StructuredTrackingGui, self).initAppletDrawerUi()
-
-
-
 
         self.realOperator = self.topLevelOperatorView.Labels.getRealOperator()
         for i, op in enumerate(self.realOperator.innerOperators):
@@ -120,28 +111,28 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             assert not self._drawer.opticalBox.isChecked()
             self._drawer.opticalBox.hide()
 
-            self._drawer.maxDistBox.hide() # hide the maximal distance box
-            self._drawer.label_2.hide() # hide the maximal distance label
-            self._drawer.label_5.hide() # hide division threshold label
+            self._drawer.maxDistBox.hide()
+            self._drawer.label_2.hide()
+            self._drawer.label_5.hide()
             self._drawer.divThreshBox.hide()
-            self._drawer.label_25.hide() # hide avg. obj size label
+            self._drawer.label_25.hide()
             self._drawer.avgSizeBox.hide()
           
-        self.mergerLabels = [self._drawer.merg1,
-                             self._drawer.merg2,
-                             self._drawer.merg3,
-                             self._drawer.merg4,
-                             self._drawer.merg5,
-                             self._drawer.merg6,
-                             self._drawer.merg7]
+        self.mergerLabels = [
+            self._drawer.merg1,
+            self._drawer.merg2,
+            self._drawer.merg3,
+            self._drawer.merg4,
+            self._drawer.merg5,
+            self._drawer.merg6,
+            self._drawer.merg7]
+
         for i in range(len(self.mergerLabels)):
             self._labelSetStyleSheet(self.mergerLabels[i], self.mergerColors[i+1])
         
         self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)
-        #self._drawer.ImportAnnotationsButton.clicked.connect(self._onImportAnnotationsButtonPressed)
         self._drawer.StructuredLearningButton.clicked.connect(self._onRunStructuredLearningButtonPressed)
         self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()
-        #, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
 
         self._drawer.divWeightBox.valueChanged.connect(self._onDivisionWeightBoxChanged)                
         self._drawer.detWeightBox.valueChanged.connect(self._onDetectionWeightBoxChanged)                
@@ -224,106 +215,20 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
     @threadRouted
     def _updateLabelsFromOperator(self):
         self.operator.labels = self.topLevelOperatorView.Labels.wait()
-        #self._setDirty(self.operator.LabelsOut,range(self.mainOperator.TrackImage.meta.shape[0]))
 
     @threadRouted
     def _updateDivisionsFromOperator(self):
         self.operator.divisions = self.topLevelOperatorView.Divisions.wait()
-        #self._setDirty(self.operator.DivisionsOut,[])
 
     @threadRouted
     def _updateCropsFromOperator(self):
         self._crops = self.topLevelOperatorView.Crops.wait()
-        #self._setDirty(self.operator.CropsOut,[])
-        #self._setDirty(self.operator.LabelsOut,range(self.mainOperator.TrackImage.meta.shape[0]))
-        #self._setDirty(self.operator.DivisionsOut,[])
 
     def initializeAnnotations(self):
 
         self._crops = self.topLevelOperatorView.Crops.value
-
         self.divisions= self.operator.Divisions.value
         self.labels= self.operator.Labels.value
-        # for name in self._crops.keys():
-        #     crop = self._crops[name]
-        #
-        #     for time in range(crop["time"][0],crop["time"][1]+1):
-        #         if time in self.operator.labels.keys():
-        #             for label in self.operator.labels[time].keys():
-        #                 lower = self.features[time][default_features_key]['Coord<Minimum>'][label]
-        #                 upper = self.features[time][default_features_key]['Coord<Maximum>'][label]
-        #
-        #                 if name not in self.topLevelOperatorView.Annotations.value.keys():
-        #                     self.topLevelOperatorView.Annotations.value[name] = {}
-        #                 if "labels" not in self.topLevelOperatorView.Annotations.value[name].keys():
-        #                     self.topLevelOperatorView.Annotations.value[name]["labels"] = {}
-        #                 addAnnotation = False
-        #                 if len(lower) == 2:
-        #                     if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
-        #                         crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1]:
-        #                         addAnnotation = True
-        #                 else:
-        #                     if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
-        #                         crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1] and \
-        #                         crop["starts"][2] <= upper[2] and lower[2] <= crop["stops"][2]:
-        #                         addAnnotation = True
-        #
-        #                 if addAnnotation:
-        #                     if time not in self.topLevelOperatorView.Annotations.value[name]["labels"].keys():
-        #                         self.topLevelOperatorView.Annotations.value[name]["labels"][time] = {}
-        #                     self.topLevelOperatorView.Annotations.value[name]["labels"][time][label] = self.operator.labels[time][label]
-        #
-        #     for parentTrack in self.operator.divisions.keys():
-        #         time = self.operator.divisions[parentTrack][1]
-        #         child1Track = self.operator.divisions[parentTrack][0][0]
-        #         child2Track = self.operator.divisions[parentTrack][0][1]
-        #
-        #         parent = self.getLabel(time, parentTrack)
-        #         child1 = self.getLabel(time+1, child1Track)
-        #         child2 = self.getLabel(time+1, child2Track)
-        #
-        #         if (parent and child1 and child2):
-        #             lowerParent = self.features[time][default_features_key]['Coord<Minimum>'][parent]
-        #             upperParent = self.features[time][default_features_key]['Coord<Maximum>'][parent]
-        #
-        #             lowerChild1 = self.features[time][default_features_key]['Coord<Minimum>'][child1]
-        #             upperChild1 = self.features[time][default_features_key]['Coord<Maximum>'][child1]
-        #
-        #             lowerChild2 = self.features[time][default_features_key]['Coord<Minimum>'][child2]
-        #             upperChild2 = self.features[time][default_features_key]['Coord<Maximum>'][child2]
-        #
-        #             if name not in self.topLevelOperatorView.Annotations.value.keys():
-        #                 self.topLevelOperatorView.Annotations.value[name] = {}
-        #             if "divisions" not in self.topLevelOperatorView.Annotations.value[name].keys():
-        #                 self.topLevelOperatorView.Annotations.value[name]["divisions"] = {}
-        #             addAnnotation = False
-        #             if len(lowerParent) == 2:
-        #                 if (crop["time"][0] <= time and time <= crop["time"][1]+1) and \
-        #                     ((crop["starts"][0] <= upperParent[0] and lowerParent[0] <= crop["stops"][0] and \
-        #                     crop["starts"][1] <= upperParent[1] and lowerParent[1] <= crop["stops"][1]) or \
-        #                     ( crop["starts"][0] <= upperChild1[0] and lowerChild1[0] <= crop["stops"][0] and \
-        #                     crop["starts"][1] <= upperChild1[1] and lowerChild1[1] <= crop["stops"][1]) or \
-        #                     ( crop["starts"][0] <= upperChild2[0] and lowerChild2[0] <= crop["stops"][0] and \
-        #                     crop["starts"][1] <= upperChild2[1] and lowerChild2[1] <= crop["stops"][1])):
-        #                     addAnnotation = True
-        #             else:
-        #                 if (crop["time"][0] <= time and time <= crop["time"][1]+1) and \
-        #                     ((crop["starts"][0] <= upperParent[0] and lowerParent[0] <= crop["stops"][0] and \
-        #                     crop["starts"][1] <= upperParent[1] and lowerParent[1] <= crop["stops"][1] and \
-        #                     crop["starts"][2] <= upperParent[2] and lowerParent[2] <= crop["stops"][2]) or \
-        #                     ( crop["starts"][0] <= upperChild1[0] and lowerChild1[0] <= crop["stops"][0] and \
-        #                     crop["starts"][1] <= upperChild1[1] and lowerChild1[1] <= crop["stops"][1] and \
-        #                     crop["starts"][2] <= upperChild1[2] and lowerChild1[2] <= crop["stops"][2]) or \
-        #                     ( crop["starts"][0] <= upperChild2[0] and lowerChild2[0] <= crop["stops"][0] and \
-        #                     crop["starts"][1] <= upperChild2[1] and lowerChild2[1] <= crop["stops"][1] and \
-        #                     crop["starts"][2] <= upperChild2[2] and lowerChild2[2] <= crop["stops"][2])):
-        #                     addAnnotation = True
-        #             if addAnnotation:
-        #                 if parentTrack not in self.topLevelOperatorView.Annotations.value[name]["divisions"].keys():
-        #                     self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = {}
-        #                 self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = self.operator.divisions[parentTrack]
-
-        #self._annotations = self.topLevelOperatorView.Annotations.value
 
     def getLabel(self, time, track):
         for label in self.operator.labels[time].keys():
@@ -331,20 +236,9 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                 return label
         return False
 
-    #def _setDirty(self, slot, timesteps):
-        #if slot is self.topLevelOperatorView.LabelsOut:
-        #    self.topLevelOperatorView.LabelsOut.setDirty(timesteps)
-
-        #if slot is self.topLevelOperatorView.DivisionsOut:
-        #    self.topLevelOperatorView.DivisionsOut.setDirty(timesteps)
-
-        #if slot is self.topLevelOperatorView.CropsOut:
-        #    self.topLevelOperatorView.CropsOut.setDirty(timesteps)
-
     def _onRunStructuredLearningButtonPressed(self):
 
         self.initializeAnnotations()
-        #self._annotations = self.mainOperator.Annotations.value
         median_obj_size = [0]
 
         from_z = self._drawer.from_z.value()
@@ -355,17 +249,26 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         maxObj=self._maxNumObj
 
-        fieldOfView = pgmlink.FieldOfView(float(0),float(0),float(0),float(0),float(self.topLevelOperatorView.LabelImage.meta.shape[0]),float(self.topLevelOperatorView.LabelImage.meta.shape[1]),float(self.topLevelOperatorView.LabelImage.meta.shape[2]),float(self.topLevelOperatorView.LabelImage.meta.shape[3]))
+        fieldOfView = pgmlink.FieldOfView(
+            float(0),
+            float(0),
+            float(0),
+            float(0),
+            float(self.topLevelOperatorView.LabelImage.meta.shape[0]),
+            float(self.topLevelOperatorView.LabelImage.meta.shape[1]),
+            float(self.topLevelOperatorView.LabelImage.meta.shape[2]),
+            float(self.topLevelOperatorView.LabelImage.meta.shape[3]))
+
         consTracker = pgmlink.ConsTracking(
             maxObj,
-            True,#sizeDependent,   # size_dependent_detection_prob
-            float(median_obj_size[0]), # median_object_size
-            float(200),#maxDist),
-            True,#withDivisions,
-            float(0.5),#divThreshold),
-            "none",  # detection_rf_filename
+            True,
+            float(median_obj_size[0]),
+            float(200),
+            True,
+            float(0.5),
+            "none",
             fieldOfView,
-            "none", # dump traxelstore,
+            "none",
             pgmlink.ConsTrackingSolverType.CplexSolver,
             ndim)
 
@@ -380,24 +283,27 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             1.0,# y_scale
             1.0,# z_scale,
             median_object_size=median_obj_size,
-            with_div=True,#withDivisions,
-            with_opt_correction=False,#withOpticalCorrection,
-            with_classifier_prior=True)#withClassifierPrior)
+            with_div=True,
+            with_opt_correction=False,
+            with_classifier_prior=True)
 
         if empty_frame:
             raise Exception, 'cannot track frames with 0 objects, abort.'
 
         hypothesesGraph = consTracker.buildGraph(traxelStore)
 
+        maxDist = 200
+        withDivisions = True
         sizeDependent = False
+        divThreshold = float(0.5)
         structuredLearningTracker = pgmlink.StructuredLearningTracking(
             hypothesesGraph,
             maxObj,
-            sizeDependent,   # size_dependent_detection_prob
-            float(median_obj_size[0]), # median_object_size
-            200,#maxDist,
-            True,#withDivisions,
-            float(0.5),#divThreshold),
+            sizeDependent,
+            float(median_obj_size[0]),
+            maxDist,
+            withDivisions,
+            divThreshold,
             "none",  # detection_rf_filename
             fieldOfView,
             "none", # dump traxelstore,
@@ -506,7 +412,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         #    sltWeightNorm += structuredLearningTracker.weight(i) * structuredLearningTracker.weight(i)
         #sltWeightNorm = math.sqrt(sltWeightNorm)
 
-
         #self._detectionWeight = structuredLearningTracker.weight(0)
         #self._divisionWeight = structuredLearningTracker.weight(1)
         #self._transitionWeight = structuredLearningTracker.weight(2)
@@ -540,7 +445,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         return False
 
     def _type(self, cropKey, time, track):
-
+        # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
         type = None
         if track == -1:
             return ["FALSE_DETECTION"]
