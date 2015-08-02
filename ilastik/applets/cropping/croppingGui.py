@@ -491,7 +491,6 @@ class CroppingGui(LayerViewerGui):
         Return the new number of crops in the control.
         """
         color = self.getNextCropColor()
-        print "color=",color
         crop = Crop( self.getNextCropName(), self.get_roi_4d(), color,
                        pmapColor=self.getNextPmapColor(),
                    )

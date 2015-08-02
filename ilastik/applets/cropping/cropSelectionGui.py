@@ -315,11 +315,7 @@ class CropSelectionGui(CroppingGui):
             self._renderMgr.setColor(crop, color)
 
     def newCrop(self):
-        print ".......................................................NEW CROP IN", self.topLevelOperatorView.Crops.value
-
         self.apply_gui_settings_to_operator()
-        #self.apply_operator_settings_to_gui()
-        print "newCrop"
         self._addNewCrop()
         ncrops = self._cropControlUi.cropListModel.rowCount()
         selectedRow = ncrops-1
@@ -332,11 +328,7 @@ class CropSelectionGui(CroppingGui):
             unicode("cropColor"): (color1.red(), color1.green(),color1.blue()),
             unicode("pmapColor"): (color2.red(), color2.green(),color2.blue())
         }
-
-        # Make the new crop selected
-        #self.topLevelOperatorView.CropNames.value = self.topLevelOperatorView.CropNames.value.append(self._cropControlUi.cropListModel[selectedRow].name)
         self._cropControlUi.cropListModel.select(selectedRow)
-        print "___________________________________________________________NEW CROP OUT", self.topLevelOperatorView.Crops.value
 
     def setCrop(self):
         self.apply_gui_settings_to_operator()
@@ -354,13 +346,9 @@ class CropSelectionGui(CroppingGui):
             cropMidPos = [(b+a)/2 for [a,b] in self.editor.cropModel._crop_extents]
             for i in range(3):
                 self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
-        #self.topLevelOperatorView.Crops.setValue(self._crops)
-        #self.setCropListView()
         self._setDirty(self.topLevelOperatorView.Crops,[])
-        print "CROP SAVED", self.topLevelOperatorView.Crops.value
 
     def _setDirty(self, slot, timesteps):
-        print "______________________________________________________________in _setDirty cropSelectionGUI"
         if slot is self.topLevelOperatorView.Crops:
             self.topLevelOperatorView.Crops.setDirty([])
 
@@ -368,11 +356,9 @@ class CropSelectionGui(CroppingGui):
         return "Crop {}".format(self._maxCropNumUsed+1)
 
     def getNextCropColor(self):
-        print "===> getNextCropColor"
         """
         Return a QColor to use for the next crop.
         """
-        #numCrops = len(self._cropControlUi.cropListModel)
         numCrops = self._maxCropNumUsed+1
         if numCrops >= len(self._colorTable16)-1:
             # If the color table isn't large enough to handle all our crops,

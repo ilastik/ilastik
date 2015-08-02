@@ -250,8 +250,6 @@ class AnnotationsGui(LayerViewerGui):
 
     def _cropListViewInit(self):
 
-        print " START self.topLevelOperatorView.Crops.value",self.topLevelOperatorView.Crops.value
-
         if self.topLevelOperatorView.Crops.value != {}:
             self._drawer.cropListModel=CropListModel()
             crops = self.topLevelOperatorView.Crops.value
@@ -267,8 +265,6 @@ class AnnotationsGui(LayerViewerGui):
                 )
 
                 self._drawer.cropListModel.insertRow( newRow, crop )
-                #model.setData(model.index(count,model.ColumnID.Name), key )
-                #model.setData(model.index(count,model.ColumnID.Color), crops[key][2] )
 
             self._drawer.cropListModel.elementSelected.connect(self._onCropSelected)
 
@@ -282,9 +278,6 @@ class AnnotationsGui(LayerViewerGui):
             tagged_shape = rawImageSlot.meta.getTaggedShape()
             self.editor.posModel.shape5D = [tagged_shape['t'],tagged_shape['x'],tagged_shape['y'],tagged_shape['z'],tagged_shape['c']]
             self.editor.navCtrl.changeTimeRelative(self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[0].name]["time"][0] - self.editor.posModel.time)
-
-        print " END self.topLevelOperatorView.Crops.value",self.topLevelOperatorView.Crops.value
-
 
     def _onMetaChanged( self, slot ):
         if slot is self.mainOperator.LabelImage:
@@ -410,15 +403,8 @@ class AnnotationsGui(LayerViewerGui):
                     self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = self.topLevelOperatorView.divisions[parentTrack]
 
         self._setDirty(self.mainOperator.Annotations, range(self.mainOperator.TrackImage.meta.shape[0]))
-        #self._setDirty(self.mainOperator.Labels, range(self.mainOperator.TrackImage.meta.shape[0]))
         self._setDirty(self.mainOperator.Labels, [])
         self._setDirty(self.mainOperator.Divisions, [])
-        print "Annotations----------------------------------> ", self.mainOperator.Annotations.value
-        print "labels----------------------------------> ", self.mainOperator.labels
-        print "divisions----------------------------------> ", self.mainOperator.divisions
-
-        #self._setDirty(self.mainOperator.Labels, range(self.mainOperator.TrackImage.meta.shape[0]))
-        #self._setDirty(self.mainOperator.Divisions, range(self.mainOperator.TrackImage.meta.shape[0]))
 
     def getLabel(self, time, track):
         for label in self.mainOperator.labels[time].keys():
@@ -915,7 +901,6 @@ class AnnotationsGui(LayerViewerGui):
         else:
             for tracklist in self.mainOperator.labels[t].values():
                 if activeTrack in tracklist:
-                    print "self.topLevelOperatorView.Crops.value[self._currentCropName][time][1]",self.topLevelOperatorView.Crops.value[self._currentCropName]["time"][1]
                     if activeTrack not in self.mainOperator.labels[t][oid]:
                         self._criticalMessage("Error: There is already an object with this track id in this time step.")
                         return -1

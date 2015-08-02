@@ -22,10 +22,6 @@ from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, 
 
 class SerialDivisionsSlot(SerialSlot):
     def serialize(self, group):
-        print "0 SerialDivisionsSlot",self.name
-        #if not self.shouldSerialize(group):
-        #    return
-        print "1 SerialDivisionsSlot",self.name
         deleteIfPresent(group, self.name)
         group = getOrCreateGroup(group, self.name)
         mainOperator = self.slot.getRealOperator()
@@ -56,16 +52,11 @@ class SerialDivisionsSlot(SerialSlot):
         
 class SerialLabelsSlot(SerialSlot):
     def serialize(self, group):
-        print "0 SerialLabelsSlot",self.name
-        #if not self.shouldSerialize(group):
-        #    return
-        print "1 SerialLabelsSlot"
         deleteIfPresent(group, self.name)
         group = getOrCreateGroup(group, self.name)
         mainOperator = self.slot.getRealOperator()
         innerops = mainOperator.innerOperators
         for i, op in enumerate(innerops):
-            print "op.labels",op.labels
             gr = getOrCreateGroup(group, str(i))
             for t in op.labels.keys():
                 t_gr = getOrCreateGroup(gr, str(t))
@@ -97,24 +88,6 @@ class SerialLabelsSlot(SerialSlot):
 class StructuredTrackingSerializer(AppletSerializer):
     
     def __init__(self, topLevelOperator, projectFileGroupName):
-#        slots = [ SerialDictSlot(Operator.Parameters, selfdepends=True),
-#                  SerialHdf5BlockSlot(mainOperator.OutputHdf5,
-#                                     mainOperator.InputHdf5,
-#                                     mainOperator.CleanBlocks,
-#                                     name="CachedOutput"),
-#                  SerialDictSlot(mainOperator.EventsVector, transform=str, selfdepends=True),
-#                  SerialDictSlot(mainOperator.FilteredLabels, transform=str, selfdepends=True),
-#                  #SerialDictSlot(operator.Annotations),
-#                  SerialDivisionsSlot(operator.Divisions),
-#                  SerialLabelsSlot(operator.Labels)]
-#    
-#        if 'MergerOutput' in mainOperator.outputs:
-#            slots.append(SerialHdf5BlockSlot(mainOperator.MergerOutputHdf5,
-#                                     mainOperator.MergerInputHdf5,
-#                                     mainOperator.MergerCleanBlocks,
-#                                     name="MergerCachedOutput"),
-#                          )
-
         slots = [ SerialDictSlot(topLevelOperator.Parameters, selfdepends=True),
                  SerialHdf5BlockSlot(topLevelOperator.OutputHdf5,
                                      topLevelOperator.InputHdf5,
@@ -122,16 +95,12 @@ class StructuredTrackingSerializer(AppletSerializer):
                                      name="CachedOutput"),
                   SerialDictSlot(topLevelOperator.EventsVector, transform=str, selfdepends=True),
                   SerialDictSlot(topLevelOperator.FilteredLabels, transform=str, selfdepends=True),
-                  #SerialDictSlot(operator.Annotations),
-                  #SerialDivisionsSlot(topLevelOperator.DivisionsOut),
-                  #SerialLabelsSlot(topLevelOperator.LabelsOut),
                   SerialSlot(topLevelOperator.DivisionWeight),
                   SerialSlot(topLevelOperator.DetectionWeight),
                   SerialSlot(topLevelOperator.TransitionWeight),
                   SerialSlot(topLevelOperator.AppearanceWeight),
                   SerialSlot(topLevelOperator.DisappearanceWeight),
-                  SerialSlot(topLevelOperator.MaxNumObjOut)#,
-                  #SerialDictSlot(topLevelOperator.CropsOut)
+                  SerialSlot(topLevelOperator.MaxNumObjOut)
         ]
     
         if 'MergerOutput' in topLevelOperator.outputs:

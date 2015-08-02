@@ -79,7 +79,6 @@ class OpStructuredTracking(OpTrackingBase):
 
         self._mergerOpCache.BlockShape.setValue( self._blockshape )
 
-        print "in setupOutputs labels = ....{}", self.labels
         for t in range(self.LabelImage.meta.shape[0]):
             if t not in self.labels.keys():
                 self.labels[t]={}
@@ -98,7 +97,6 @@ class OpStructuredTracking(OpTrackingBase):
         self.DivisionsOut.meta.assignFrom(self.LabelImage.meta)
         self.CropsOut.meta.assignFrom(self.LabelImage.meta)
 
-        print "in initOutputs {}.......{}"
         for t in range(self.LabelImage.meta.shape[0]):
             self.labels[t]={}
 
@@ -106,12 +104,10 @@ class OpStructuredTracking(OpTrackingBase):
         result = super(OpStructuredTracking, self).execute(slot, subindex, roi, result)
         
         if slot is self.Labels:
-            print "in execute Labels"
             result=self.Labels.wait()
             #self.labels = self.Labels.value
             
         if slot is self.LabelsOut:
-            print "in execute LabelsOut"
             result = {}
             for t in self.labels.keys():
                 result[t] = self.labels[t]

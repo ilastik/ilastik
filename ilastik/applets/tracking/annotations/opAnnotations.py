@@ -63,7 +63,6 @@ class OpAnnotations(Operator):
         self.TrackImage.meta.assignFrom(self.LabelImage.meta)
         self.UntrackedImage.meta.assignFrom(self.LabelImage.meta)
 
-        print "in setupOutputs opAnnotations .....................................................................{}"
         for t in range(self.LabelImage.meta.shape[0]):
             if t not in self.labels.keys():
                 self.labels[t]={}
@@ -82,7 +81,6 @@ class OpAnnotations(Operator):
         self.TrackImage.meta.assignFrom(self.LabelImage.meta)
         self.UntrackedImage.meta.assignFrom(self.LabelImage.meta)
 
-        print "in initOutputs opAnnotations     {}......................{}"
         self.Labels.meta.assignFrom(self.LabelImage.meta)
         for t in range(self.LabelImage.meta.shape[0]):
             self.labels[t]={}
@@ -126,7 +124,6 @@ class OpAnnotations(Operator):
             return result
          
         if slot is self.Labels:
-            print "in execute Labels opAnnotations"
             result = {}
             for t in self.labels.keys():
                 result[t] = self.labels[t]
@@ -156,13 +153,11 @@ class OpAnnotations(Operator):
         
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.LabelImage:
-            print "=======================================================in propagateDirty opAnnotations LabelImage"
             self.labels = {}
             self.divisions = {}
         elif slot.name == "Annotations":
             self.Annotations.setDirty( roi )
         elif slot.name == "Labels":
-            print "=====================================================================================in propagateDirty opAnnotations Labels"
             self.Labels.setDirty( roi )
         elif slot.name == "Divisions":
             self.Divisions.setDirty( roi )

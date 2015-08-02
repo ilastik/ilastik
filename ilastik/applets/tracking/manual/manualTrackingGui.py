@@ -129,8 +129,6 @@ class ManualTrackingGui(LayerViewerGui):
         super(ManualTrackingGui, self).__init__(parentApplet, topLevelOperatorView)
         
         self.mainOperator = topLevelOperatorView
-        print "=====================================================self.mainOperator        >",self.mainOperator
-        print "=====================================================self.topLevelOperatorView>",self.topLevelOperatorView
         # get the applet reference from the workflow (needed for the progressSignal)
         self.applet = self.mainOperator.parent.parent.trackingApplet
         

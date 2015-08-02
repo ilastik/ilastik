@@ -30,23 +30,18 @@ class SerialAnnotationsSlot(SerialSlot):
         innerops = mainOperator.innerOperators
         for i, op in enumerate(innerops):
             gr = getOrCreateGroup(group, str(i))
-            print "ANNOTATIONS -----> op.Annotations.value",op.Annotations.value
             for cropKey in op.Annotations.value.keys():
-                print "crop=",cropKey
                 crop_gr = getOrCreateGroup(gr, str(cropKey))
 
                 labels_gr = getOrCreateGroup(crop_gr, str("labels"))
                 for t in op.Annotations.value[cropKey]["labels"].keys():
-                    print "time=",t
                     t_gr = getOrCreateGroup(labels_gr, str(t))
                     for oid in op.Annotations.value[cropKey]["labels"][t].keys():
-                        print "oid=",oid
                         l = op.Annotations.value[cropKey]["labels"][t][oid]
                         dset = list(l)
                         if len(dset) > 0:
                             t_gr.create_dataset(name=str(oid), data=dset)
 
-                print "END LABELS"
                 divisions_gr = getOrCreateGroup(crop_gr, str("divisions"))
                 dset = []
                 for trackid in op.Annotations.value[cropKey]["divisions"].keys():
@@ -54,8 +49,6 @@ class SerialAnnotationsSlot(SerialSlot):
                     dset.append([trackid, children[0], children[1], t_parent])
                 if len(dset) > 0:
                     divisions_gr.create_dataset(name=str(i), data=dset)
-
-                print "END DIVISIONS"
         self.dirty = False
 
     def deserialize(self, group):
@@ -71,7 +64,6 @@ class SerialAnnotationsSlot(SerialSlot):
 
 
             for cropKey in gr.keys():
-                print "crop=",cropKey
                 crop_gr = gr[cropKey]
                 annotations[cropKey] = {}
 
@@ -136,7 +128,6 @@ class SerialLabelsSlot(SerialSlot):
         innerops = mainOperator.innerOperators
         for i, op in enumerate(innerops):
             gr = getOrCreateGroup(group, str(i))
-            print "ANNOTATIONS -----> op.labels",op.labels
             for t in op.labels.keys():
                 t_gr = getOrCreateGroup(gr, str(t))
                 for oid in op.labels[t].keys():
