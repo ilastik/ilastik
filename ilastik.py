@@ -30,6 +30,10 @@ def _clean_paths( ilastik_dir ):
     for k in ['/ilastik/lazyflow', '/ilastik/volumina', '/ilastik/ilastik']:
         pythonpath.append(ilastik_dir + k.replace('/', os.path.sep))
     sys.path = pythonpath
+
+    print " "
+    print " ilastik PATH variables"
+    print "pythonpath",pythonpath
     
     if sys.platform.startswith('win'):
         # empty PATH except for gurobi and CPLEX and add ilastik's installation paths
@@ -53,11 +57,18 @@ def _clean_paths( ilastik_dir ):
             path.append(ilastik_dir + k.replace('/', os.path.sep))
         os.environ['LD_LIBRARY_PATH'] = os.pathsep.join(reversed(path))
 
+        print "os.environ['LD_LIBRARY_PATH']",os.environ['LD_LIBRARY_PATH']
+
 def main():
     if "--clean_paths" in sys.argv:
         this_path = os.path.dirname(__file__)
         ilastik_dir = os.path.abspath(os.path.join(this_path, "..%s.." % os.path.sep))
         _clean_paths( ilastik_dir )
+        print "this_path",this_path
+        print "ilastik_dir",ilastik_dir
+        print "os.path.dirname(__file__)=",os.path.dirname(__file__)
+        print "os.path.abspath(os.path.join(this_path, .... os.path.sep))",os.path.abspath(os.path.join(os.path.dirname(__file__), "..%s.." % os.path.sep))
+        print " "
 
     import ilastik_main
     parsed_args, workflow_cmdline_args = ilastik_main.parser.parse_known_args()
