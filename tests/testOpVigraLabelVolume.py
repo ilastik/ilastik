@@ -22,7 +22,8 @@
 import numpy
 import vigra
 from lazyflow.graph import Graph
-from lazyflow.operators import OpVigraLabelVolume
+from lazyflow.operators.opVigraLabelVolume\
+    import _OpVigraLabelVolume as OpVigraLabelVolume
 from lazyflow.utility.slicingtools import sl, slicing2shape
 
 class TestOpVigraLabelVolume(object):

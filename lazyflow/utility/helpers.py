@@ -23,8 +23,9 @@ import os,numpy,itertools,copy
 from lazyflow.roi import TinyVector, roiToSlice
 import warnings
 
-def warn_deprecated( msg ):
-    warnings.warn( "DEPRECATION WARNING: " + msg )
+def warn_deprecated(msg, stacklevel=0):
+    warnings.warn("DEPRECATION WARNING: " + msg,
+                  stacklevel=stacklevel+2)
 
 # deprecation warning decorator
 def deprecated( fn ):

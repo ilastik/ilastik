@@ -20,10 +20,11 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 from lazyflow.graph import InputSlot, OutputSlot
-from lazyflow.operators import OpLabelImage, OpCompressedCache, Operator
+from lazyflow.operators import OpCompressedCache, Operator
+from lazyflow.operators.opLabelImage import _OpLabelImage as OpLabelImage
 from lazyflow.utility.helpers import warn_deprecated
 
-class OpCachedLabelImage(Operator):
+class _OpCachedLabelImage(Operator):
     """
     Combines OpLabelImage with OpCompressedCache, and provides a default block shape.
     """
@@ -48,8 +49,7 @@ class OpCachedLabelImage(Operator):
     #                                                         --> CleanBlocks
     
     def __init__(self, *args, **kwargs):
-        warn_deprecated("OpCachedLabelImage is deprecated, use OpLabelVolume instead")
-        super(OpCachedLabelImage, self).__init__(*args, **kwargs)
+        super(_OpCachedLabelImage, self).__init__(*args, **kwargs)
         
         # Hook up the labeler
         self._opLabelImage = OpLabelImage( parent=self )
@@ -101,3 +101,10 @@ class OpCachedLabelImage(Operator):
         # Our Input slots are directly fed into the cache, 
         #  so all calls to __setitem__ are forwarded automatically 
             
+
+class OpCachedLabelImage(_OpCachedLabelImage):
+    def __init__(self, *args, **kwargs):
+        warn_deprecated("OpCachedLabelImage is deprecated,"
+                        " use OpLabelVolume instead",
+                        stacklevel=2)
+        super(OpCachedLabelImage, self).__init__(*args, **kwargs)
