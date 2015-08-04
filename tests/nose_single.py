@@ -22,43 +22,6 @@ import sys
 import nose
 import threading
 
-# Copied from ilastik_main.py
-def _monkey_patch_h5py():
-    """
-    This workaround avoids error messages from HDF5 when accessing non-existing
-    files, datasets, and dataset attributes from non-main threads.
-
-    See also:
-    - https://github.com/h5py/h5py/issues/580
-    - https://github.com/h5py/h5py/issues/582
-    """
-    import os
-    import h5py
-
-    old_dataset_getitem = h5py.Group.__getitem__
-    def new_dataset_getitem(group, key):
-        if key not in group:
-            raise KeyError("Unable to open object (Object '{}' doesn't exist)".format( key ))
-        return old_dataset_getitem(group, key)
-    h5py.Group.__getitem__ = new_dataset_getitem
-
-    old_file_init = h5py.File.__init__
-    def new_file_init(f, name, mode=None, driver=None, libver=None, userblock_size=None, swmr=False, **kwds):
-        if isinstance(name, (str, buffer)) and (mode is None or mode == 'a'):
-            if not os.path.exists(name):
-                mode = 'w'
-        old_file_init(f, name, mode, driver, libver, userblock_size, swmr, **kwds)
-    h5py.File.__init__ = new_file_init
-
-    old_attr_getitem = h5py._hl.attrs.AttributeManager.__getitem__
-    def new_attr_getitem(attrs, key):
-        if key not in attrs:
-            raise KeyError("Can't open attribute (Can't locate attribute: '{}')".format(key))
-        return old_attr_getitem(attrs, key)
-    h5py._hl.attrs.AttributeManager.__getitem__ = new_attr_getitem
-
-_monkey_patch_h5py()
-
 from helpers import mainThreadHelpers
 
 # For some mysterious reason, we need to make sure that volumina.api gets imported 
