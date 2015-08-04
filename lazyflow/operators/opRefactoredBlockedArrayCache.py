@@ -71,6 +71,7 @@ class OpRefactoredBlockedArrayCache(Operator, ManagedBlockedCache):
 
         # This member is used by tests that check RAM usage.
         self.setup_ram_context = RamMeasurementContext()
+        self.registerWithMemoryManager()
         
     def setupOutputs(self):
         pass

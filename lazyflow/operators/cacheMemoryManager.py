@@ -20,67 +20,24 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 
-#Python
+# Python
 import gc
-import os
-import time
 import threading
 import weakref
-import platform
 import functools
 import atexit
 
+
+# lazyflow
+from lazyflow.utility import OrderedSignal
+from lazyflow.utility import Singleton
+from lazyflow.utility import PriorityQueue
+from lazyflow.utility import log_exception
+from lazyflow.utility import Memory
+
+
 import logging
 logger = logging.getLogger(__name__)
-
-#external dependencies
-import psutil
-
-#lazyflow
-from lazyflow.utility import OrderedSignal, Singleton, PriorityQueue, log_exception
-import lazyflow
-
-this_process = psutil.Process(os.getpid())
-
-
-def memoryUsage():
-    """
-    get current memory usage in bytes
-    """
-    return this_process.memory_info().rss
-
-
-def memoryUsagePercentage():
-    """
-    get the percentage of (memory in use) / (allowed memory use)
-    
-    Note: the return value is obviously non-negative, but if the user specified
-    memory limit is smaller than the amount of memory actually available, this
-    value can be larger than 1.
-    """
-    return (memoryUsage() * 100.0) / getAvailableRamBytes()
-
-
-def getAvailableRamBytes():
-    """
-    get the amount of memory, in bytes, that lazyflow is allowed to use
-    
-    Note: When a user specified setting (e.g. via .ilastikrc) is not available,
-    the function will try to estimate how much memory is available after
-    subtracting known overhead. Overhead estimation is currently only available
-    on Mac.
-    """
-    if "Darwin" in platform.system():
-        # only Mac and BSD have the wired attribute, which we can use to
-        # assess available RAM more precisely
-        ram = psutil.virtual_memory().total - psutil.virtual_memory().wired
-    else:
-        ram = psutil.virtual_memory().total
-    if lazyflow.AVAILABLE_RAM_MB > 0:
-        # AVAILABLE_RAM_MB is the total RAM the user wants us to limit ourselves to.
-        ram = min(ram, lazyflow.AVAILABLE_RAM_MB * 1024**2)
-    return ram
-
 
 default_refresh_interval = 5
 
@@ -91,34 +48,32 @@ class CacheMemoryManager(threading.Thread):
 
     The cache memory manager is a background thread that observes caches
     in use and cleans them up when the total memory consumption by the
-    process exceeds the limit defined by `lazyflow.AVAILABLE_RAM_MB`.
-    See the definition of the cache interfaces (opCache.py) to get an
-    overview over the possible caches. 
+    process exceeds the limit defined by the `lazyflow.utility.Memory`
+    class. See the definition of the cache interfaces (opCache.py) to
+    get an overview over the possible caches. 
 
     Usage:
-    This manager is a singleton - just call its constructor somewhere and you
-    will get a reference to the *only* running memory management thread.
+    This manager is a singleton - just call its constructor somewhere
+    and you will get a reference to the *only* running memory management
+    thread.
 
     Interface:
     The manager provides a signal you can subscribe to
-    >>> writeFunction = lambda x: sys.stdout.write("total mem: {}".format(x))
-    >>> mgr = ArrayCacheManager()
+    >>> def writeFunction(x): print("total mem: {}".format(x))
+    >>> mgr = CacheMemoryManager()
     >>> mgr.totalCacheMemory.subscribe(writeFunction)
-    which emits the size of all observable caches, combined, in regular intervals.
+    which emits the size of all observable caches, combined, in regular
+    intervals.
 
-    The update interval (for the signal and for automated cache release) can
-    be set with a call to a class method
-    >>> ArrayCacheManager().setRefreshInterval(5)
+    The update interval (for the signal and for automated cache release)
+    can be set with a call to a class method
+    >>> CacheMemoryManager().setRefreshInterval(5)
     the interval is measured in seconds. Each change of refresh interval
     triggers cleanup.
     """
     __metaclass__ = Singleton
 
     totalCacheMemory = OrderedSignal()
-
-    loggingName = __name__ + ".CacheMemoryManager"
-    logger = logging.getLogger(loggingName)
-    traceLogger = logging.getLogger("TRACE." + loggingName)
 
     def __init__(self):
         threading.Thread.__init__(self)
@@ -135,11 +90,11 @@ class CacheMemoryManager(threading.Thread):
         self._disabled = False
         self._refresh_interval = default_refresh_interval
 
-        # maximum percentage of *allowed memory* used
-        self._max_usage = 85
-        # target usage percentage
-        self._target_usage = 70
-        self._last_usage = memoryUsagePercentage()
+        # maximum fraction of *allowed memory* used
+        self._max_usage = 1.0
+        # target usage fraction
+        self._target_usage = .90
+
         self._stopped = False
         self.start()
         atexit.register(self.stop)
@@ -222,8 +177,9 @@ class CacheMemoryManager(threading.Thread):
             cache = None
 
             # check current memory state
-            current_usage_percentage = memoryUsagePercentage()
-            if current_usage_percentage <= self._max_usage:
+            cache_memory = Memory.getAvailableRamCaches()
+
+            if total <= self._max_usage * cache_memory:
                 return
 
             # === we need a cache cleanup ===
@@ -242,25 +198,33 @@ class CacheMemoryManager(threading.Thread):
             c = None
             caches = None
 
-            if current_usage_percentage > self._target_usage and len(q) > 0:
-                current_usage_percentage = memoryUsagePercentage()
-                self.logger.debug("Memory usage is: {}%".format(100*current_usage_percentage))
-                
-            while current_usage_percentage > self._target_usage and len(q) > 0:
-                t, info, cleanupFun = q.pop()
-                self.logger.debug("Cleaning up {}".format(info))
-                cleanupFun()
-                current_usage_percentage = memoryUsagePercentage()
+            msg = "Caches are using {} memory".format(
+                Memory.format(total))
+            if cache_memory > 0:
+                 msg += " ({:.1f}% of allowed)".format(
+                    total*100.0/cache_memory)
+            logger.debug(msg)
 
+            while (total > self._target_usage * cache_memory
+                   and len(q) > 0):
+                t, info, cleanupFun = q.pop()
+                mem = cleanupFun()
+                logger.debug("Cleaned up {} ({})".format(
+                    info, Memory.format(mem)))
+                total -= mem
+            gc.collect()
             # don't keep a reference until next loop iteration
             cleanupFun = None
             q = None
 
-            self.logger.debug(
-                "Done cleaning up, memory usage is now at "
-                "{}%".format(100*current_usage_percentage))
+            msg = ("Done cleaning up, cache memory usage is now at "
+                   "{}".format(Memory.format(total)))
+            if cache_memory > 0:
+                 msg += " ({:.1f}% of allowed)".format(
+                    total*100.0/cache_memory)
+            logger.debug(msg)
         except:
-            log_exception(self.logger)
+            log_exception(logger)
 
     def _wait(self):
         """

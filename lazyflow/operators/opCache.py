@@ -43,8 +43,8 @@ class Cache(object):
         environment like ilastik)
       * automated statistics and tests
 
-    Caches are automatically added to the CacheMemoryManager instance if
-    the constructor of this mixin is called via super().
+    Almost all caches will want to call self.registerWithMemoryManager()
+    to be handled by the cache memory manager thread.
 
     WARNING: If you plan to do time consuming operations in your
     __init__, be sure to make all cache API methods threadsafe. A cache

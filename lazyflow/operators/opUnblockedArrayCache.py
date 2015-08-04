@@ -53,9 +53,7 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
     def __init__(self, *args, **kwargs):
         super( OpUnblockedArrayCache, self ).__init__(*args, **kwargs)
         self._lock = RequestLock()
-        self._block_data = {}
-        self._block_locks = {}
-        self._last_access_times = collections.defaultdict(float)
+        self._resetBlocks()
 
         # Now that we're initialized, it's safe to register with the memory manager
         self.registerWithMemoryManager()
@@ -170,9 +168,7 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
 
     def freeMemory(self):
         used = self.usedMemory()
-        with self._lock:
-            self._block_data = {}
-            self._block_locks = {}
+        self._resetBlocks()
         return used
 
     def freeBlock(self, key):
@@ -184,7 +180,14 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
             mem = block.size * bytes_per_pixel
             del self._block_data[key]
             del self._block_locks[key]
+            del self._last_access_times[key]
             return mem
 
     def freeDirtyMemory(self):
         return 0.0
+
+    def _resetBlocks(self):
+        with self._lock:
+            self._block_data = {}
+            self._block_locks = {}
+            self._last_access_times = collections.defaultdict(float)

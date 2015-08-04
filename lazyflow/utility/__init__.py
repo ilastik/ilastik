@@ -19,6 +19,7 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
+from memory import Memory
 import helpers
 import jsonConfig
 import slicingtools
