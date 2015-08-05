@@ -153,8 +153,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._drawer.appearanceBox.setValue(self._appearanceWeight)
         self._drawer.disappearanceBox.setValue(self._disappearanceWeight)
 
-        self._maxNumObj = self.topLevelOperatorView.MaxNumObjOut.value
-        self._drawer.maxObjectsBox.setValue(self.topLevelOperatorView.MaxNumObjOut.value)
+        self._maxNumObj = self.topLevelOperatorView.MaxNumObj.value
+        self._drawer.maxObjectsBox.setValue(self.topLevelOperatorView.MaxNumObj.value)
         self._onMaxObjectsBoxChanged()
         self._drawer.maxObjectsBox.setReadOnly(True)
 
@@ -170,6 +170,11 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         inString = str(self._drawer.timeoutBox.text())
         if self._allowedTimeoutInputRegEx.match(inString) is None:
             self._drawer.timeoutBox.setText(inString.decode("utf8").encode("ascii", "replace")[:-1])
+
+    def _onMaxNumObjChanged(self):
+        self._maxNumObj = self.topLevelOperatorView.MaxNumObj.value
+        self._setMergerLegend(self.mergerLabels, self._maxNumObj)
+        self._drawer.maxObjectsBox.setValue(self._maxNumObj)
 
     @threadRouted
     def _onDivisionWeightBoxChanged(self, *args):
