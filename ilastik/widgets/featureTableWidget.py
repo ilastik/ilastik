@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ###############################################################################
 #   ilastik: interactive learning and segmentation toolkit
 #
@@ -26,6 +27,7 @@ from PyQt4.QtGui import QVBoxLayout, QLabel, QPixmap, QPainter, \
 from PyQt4.QtCore import Qt, QRect, QSize, QEvent, QPoint, pyqtSignal
 
 import numpy
+from volumina.utility import decode_to_qstring
 
 class FeatureEntry:
     def __init__(self, name):
@@ -102,11 +104,12 @@ class FeatureTableWidgetVHeader(QTableWidgetItem):
 # FeatureTableWidgetHHeader
 #===============================================================================
 class FeatureTableWidgetHHeader(QTableWidgetItem):
-    def __init__(self, sigma, name=None):
+    def __init__(self, sigma, window_size, name=None):
         QTableWidgetItem.__init__(self)
         # init
         # ------------------------------------------------
         self.sigma = sigma
+        self.window_size = window_size
         self.pixmapSize = QSize(61, 61)
         if not name:
             self.setNameAndBrush(self.sigma)
@@ -119,7 +122,9 @@ class FeatureTableWidgetHHeader(QTableWidgetItem):
         
     def setNameAndBrush(self, sigma, color=Qt.black):
         self.sigma = sigma
-        self.setText("%.1f" % self.sigma)
+        self.setText(decode_to_qstring("σ=%.1fpx" % self.sigma, 'utf-8')) # This file is encoded as utf-8, so this string should be decoded as such.
+        total_window = (1 + 2 * int(self.sigma * self.window_size + 0.5) )
+        self.setToolTip( "sigma = {:.1f} pixels, window diameter = {:.1f}".format(self.sigma, total_window) )
         font = QFont() 
         font.setPointSize(10)
         font.setBold(True)
@@ -408,7 +413,7 @@ class FeatureTableWidget(QTableWidget):
                     result.append([self.verticalHeaderItem(r).vHeaderName, str(self.horizontalHeaderItem(c).sigma)])
         return result
     
-    def createTableForFeatureDlg(self, featureGroups, sigmas, text=None):
+    def createTableForFeatureDlg(self, featureGroups, sigmas, window_size, text=None):
         """
         featureGroups: A list with schema: [ (groupName1, [entry, entry...]),
                                              (groupName2, [entry, entry...]), ... ]
@@ -418,7 +423,7 @@ class FeatureTableWidget(QTableWidget):
         self._featureGroupMapping = featureGroups
         if self._sigmaList is None:
             raise RuntimeError("No sigmas set!")
-        self._addHHeader(text)
+        self._addHHeader(window_size, text)
         if self._featureGroupMapping is None:
             raise RuntimeError("No featuregroups set!")
         self._addVHeader()
@@ -573,13 +578,13 @@ class FeatureTableWidget(QTableWidget):
             item.setSelected(False)
 
     
-    def _addHHeader(self, text):
+    def _addHHeader(self, window_size, text=None):
         self.setColumnCount(len(self._sigmaList))
         for c in range(len(self._sigmaList)):
             if not text:
-                hHeader = FeatureTableWidgetHHeader(self._sigmaList[c])
+                hHeader = FeatureTableWidgetHHeader(self._sigmaList[c], window_size)
             else:
-                hHeader = FeatureTableWidgetHHeader(self._sigmaList[c], text[c])
+                hHeader = FeatureTableWidgetHHeader(self._sigmaList[c], window_size, text[c])
             self.setHorizontalHeaderItem(c, hHeader)
 
     
@@ -721,8 +726,10 @@ if __name__ == '__main__':
     t = FeatureTableWidget()
     t.createTableForFeatureDlg( \
         (("Color", [FeatureEntry("Banana")] ), ("Edge",  [FeatureEntry("Mango"), FeatureEntry("Cherry")] )),
-        [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0])
+        [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0],
+        3.5)
     t.show()
+    t.raise_()
     app.exec_()
 
 

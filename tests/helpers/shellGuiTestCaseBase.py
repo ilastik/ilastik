@@ -32,7 +32,7 @@ from PyQt4.QtGui import QMouseEvent, QApplication, QPixmap, qApp
 import ilastik.config
 from ilastik.shell.gui.startShellGui import launchShell
 from ilastik.utility.gui.threadRouter import ThreadRouter
-from tests.helpers.mainThreadHelpers import wait_for_main_func, run_in_main_thread
+from mainThreadHelpers import wait_for_main_func, run_in_main_thread
 
 from ilastik.ilastik_logging import default_config
 default_config.init(output_mode=default_config.OutputMode.CONSOLE)
@@ -122,7 +122,7 @@ class ShellGuiTestCaseBase(object):
             QApplication.setAttribute(Qt.AA_DontUseNativeMenuBar, True)
 
         # Use the thread router to launch the shell in the app thread
-        ShellGuiTestCaseBase.threadRouter.routeToParent.emit( partial(launchShell, None, initTest ) )
+        ShellGuiTestCaseBase.threadRouter.routeToParent.emit( partial(launchShell, None, [], [initTest] ) )
         init_complete.wait()
 
     @classmethod

@@ -84,6 +84,28 @@ class Workflow( Operator ):
         """
         raise NotImplementedError
     
+    def prepareForNewLane(self, laneIndex):
+        """
+        Workflows may override this method to prepare for a new 
+        lane, before the new lane is actually inserted.
+
+        For example they may copy cache states that will be invalidated by 
+        the insertion of the new lane, and restore those caches at the end 
+        of connectLane().
+        """
+        pass
+
+    def handleNewLanesAdded(self):
+        """
+        Called immediately after a new lane is fully initialized with data.
+        If a workflow wants to restore state previously saved in prepareForNewLane(),
+        this is the place to do it.
+        
+        This function must be called by any code that can add new lanes to the workflow and initialize them.
+        That happens in only two places: The DataSelectionGui, and the BatchProcessingApplet.
+        """
+        pass
+
     def onProjectLoaded(self, projectManager):
         """
         Called by the project manager after the project is loaded (deserialized).
@@ -104,6 +126,9 @@ class Workflow( Operator ):
             server.send(name, data)
         except Exception, e:
             logger.error("Failed sending message to server '%s': %s" % (name, e))
+
+    def postprocessClusterSubResult(self, roi, result, blockwise_fileset):
+        pass
 
     ##################
     # Public methods #
@@ -150,6 +175,16 @@ class Workflow( Operator ):
         # Clean up the graph as usual.
         super(Workflow, self).cleanUp()
 
+    def menus(self):
+        """
+            Returns an iterable of QMenus to be added to the GUI
+
+            Returns:
+                iterable:       QMenus to be added to the GUI
+        """
+
+        return []
+
     @classmethod
     def getSubclass(cls, name):
         for subcls in cls.all_subclasses:
@@ -179,6 +214,8 @@ class Workflow( Operator ):
         """
         A new image lane is being added to the workflow.  Add a new lane to each applet and hook it up.
         """
+        self.prepareForNewLane(index)
+
         for a in self.applets:
             if a.syncWithImageIndex and a.topLevelOperator is not None:
                 a.topLevelOperator.addLane(index)

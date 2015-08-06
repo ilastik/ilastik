@@ -28,6 +28,7 @@
 import os
 import sys
 import numpy
+import vigra
 from PyQt4.QtGui import QApplication
 from lazyflow.operators import OpPixelFeaturesPresmoothed
 
@@ -238,6 +239,8 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
   
             # Make sure the labels were added to the label array operator
             labelData = opPix.LabelImages[0][:].wait()
+            labelData = vigra.taggedView( labelData, opPix.LabelImages[0].meta.axistags )
+            labelData = labelData.withAxes('xy')
             center = (numpy.array(labelData.shape[:-1]))/2 + 1
             
             true_idx = numpy.array([center + dot for dot in dot_start_list])
@@ -335,12 +338,14 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
             # Set the brush size
             # Draw background
             gui.currentGui()._labelControlUi.labelListModel.select(1)
-            gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
+            gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(3)
             
             self.strokeMouseFromCenter( imgView, self.LABEL_START,self.LABEL_STOP)
             
             #The background in this configuration should override the dots
             labelData = opPix.LabelImages[0][:].wait()
+            labelData = vigra.taggedView( labelData, opPix.LabelImages[0].meta.axistags )
+            labelData = labelData.withAxes('xy')
             assert labelData.max() == 2, "Max label value was {}".format( labelData.max() )
             
             assert numpy.sum(labelData[labelData==1]) == 2, "Number of foreground dots was {}".format(
@@ -349,10 +354,12 @@ class TestObjectCountingGui(ShellGuiTestCaseBase):
 
             #Now select eraser            
             gui.currentGui()._labelControlUi.eraserToolButton.click()
-            gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(0)
+            gui.currentGui()._labelControlUi.brushSizeComboBox.setCurrentIndex(3)
             self.strokeMouseFromCenter( imgView, self.LABEL_ERASE_START,self.LABEL_ERASE_STOP)
             
             labelData = opPix.LabelImages[0][:].wait()
+            labelData = vigra.taggedView( labelData, opPix.LabelImages[0].meta.axistags )
+            labelData = labelData.withAxes('xy')
             assert numpy.sum(labelData[labelData==1]) == 1, "Number of foreground dots was {}".format(
                 numpy.sum(labelData[labelData==1]) )
             

@@ -28,6 +28,16 @@ class PixelClassificationApplet( StandardApplet ):
     """
     def __init__( self, workflow, projectFileGroupName ):
         self._topLevelOperator = OpPixelClassification( parent=workflow )
+        
+        def on_classifier_changed(slot, roi):
+            if self._topLevelOperator.classifier_cache.Output.ready() and \
+               self._topLevelOperator.classifier_cache.fixAtCurrent.value is True and \
+               self._topLevelOperator.classifier_cache.Output.value is None:
+                # When the classifier is deleted (e.g. because the number of features has changed,
+                #  then notify the workflow. (Export applet should be disabled.)
+                self.appletStateUpdateRequested.emit()
+        self._topLevelOperator.classifier_cache.Output.notifyDirty( on_classifier_changed )
+        
         super(PixelClassificationApplet, self).__init__( "Training" )
 
         # We provide two independent serializing objects:

@@ -57,8 +57,8 @@ class FeatureDlg(QDialog):
         """Populate the table of selected features with the provided matrix."""
         self.featureTableWidget.setSelectedFeatureBoolMatrix(newMatrix)
     
-    def createFeatureTable(self, features, sigmas, brushNames=None):
-        self.featureTableWidget.createTableForFeatureDlg(features, sigmas, brushNames)
+    def createFeatureTable(self, features, sigmas, window_size, brushNames=None):
+        self.featureTableWidget.createTableForFeatureDlg(features, sigmas, window_size, brushNames)
     
     def setImageToPreView(self, image):
         self.preView.setVisible(image is not None)

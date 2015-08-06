@@ -226,10 +226,6 @@ class CountingSerializer(AppletSerializer):
                                  name='LabelSets',
                                  subname='labels{:0}',
                                  selfdepends=False),
-                 SerialCountingSlot(operator.Classifier,
-                                      operator.classifier_cache,
-                                      name="CountingWrappers",
-                                      subname="wrapper{:04d}"),
                  self.predictionSlot, 
                  SerialBoxSlot(operator.opTrain.BoxConstraintRois,operator.opTrain,
                               name="Rois",
@@ -237,9 +233,12 @@ class CountingSerializer(AppletSerializer):
                  SerialBoxSlot(operator.opTrain.BoxConstraintValues,operator.opTrain,
                               name="Values",
                                subname="values{:04d}"),
-                SerialBoxSlot(operator.boxViewer.rois, operator.boxViewer,
+                 SerialBoxSlot(operator.boxViewer.rois, operator.boxViewer,
                               name="ViewRois",
-                              subname="viewrois{:04d}")
+                              subname="viewrois{:04d}"),
+                 SerialCountingSlot(operator.Classifier,
+                                      operator.classifier_cache,
+                                      name="CountingWrappers")
                 ]
                 
 

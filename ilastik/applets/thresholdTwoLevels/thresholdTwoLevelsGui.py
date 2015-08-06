@@ -54,7 +54,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
     def __init__(self, *args, **kwargs):
         self.__cleanup_fns = []
         super( ThresholdTwoLevelsGui, self ).__init__(*args, **kwargs)
-        self._channelColors = self._createDefault16ColorColorTable()
+        self._defaultInputchannelColors = self._createDefault16ColorColorTable()
 
         self._onInputMetaChanged()
 
@@ -105,7 +105,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
 
     def _connectCallbacks(self):
         self.topLevelOperatorView.InputImage.notifyMetaChanged(bind(self._onInputMetaChanged))
-        self._drawer.applyButton.clicked.connect(bind(self._onApplyButtonClicked))
+        self._drawer.applyButton.clicked.connect(self._onApplyButtonClicked)
         self._drawer.tabWidget.currentChanged.connect(bind(self._onTabCurrentChanged))
 
 
@@ -185,7 +185,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         # avoid 'kernel longer than line' errors
         shape = self.topLevelOperatorView.InputImage.meta.getTaggedShape()
         for ax in [item for item in 'xyz' if item in shape and shape[item] > 1]:
-            req_sigma = np.floor(shape[ax]/2-1)
+            req_sigma = np.floor(shape[ax]/3)
             if block_shape_dict[ax] > req_sigma:
                 mexBox = QMessageBox()
                 mexBox.setText("The sigma value {} for dimension '{}'"
@@ -304,11 +304,20 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             outputLayer.setToolTip("Results of thresholding and size filter")
             layers.append(outputLayer)
 
+        if op.InputChannelColors.ready():
+            input_channel_colors = map(lambda (r,g,b): QColor(r,g,b), op.InputChannelColors.value)
+        else:
+            input_channel_colors = map(QColor, self._defaultInputchannelColors)
         for channel, channelProvider in enumerate(self._channelProviders):
+            slot_drange = channelProvider.Output.meta.drange
+            if slot_drange is not None:
+                drange = slot_drange
+            else:
+                drange = (0.0, 1.0)
             channelSrc = LazyflowSource(channelProvider.Output)
             inputChannelLayer = AlphaModulatedLayer(
-                channelSrc, tintColor=QColor(self._channelColors[channel]),
-                range=(0.0, 1.0), normalize=(0.0, 1.0))
+                channelSrc, tintColor=input_channel_colors[channel],
+                range=drange, normalize=drange)
             inputChannelLayer.opacity = 0.5
             inputChannelLayer.visible = True
             inputChannelLayer.name = "Input Channel " + str(channel)

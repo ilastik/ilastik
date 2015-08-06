@@ -188,7 +188,7 @@ class OpTrackingFeatureExtraction(Operator):
         self.ObjectCenterImage.connect(self._objectExtraction.ObjectCenterImage)
         self.LabelImage.connect(self._objectExtraction.LabelImage)
         self.BlockwiseRegionFeaturesVigra.connect(self._objectExtraction.BlockwiseRegionFeatures)     
-        self.ComputedFeatureNamesVigra.connect(self._objectExtraction.ComputedFeatureNames)
+        self.ComputedFeatureNamesVigra.connect(self._objectExtraction.Features)
         self.RegionFeaturesVigra.connect(self._objectExtraction.RegionFeatures)    
                 
         self._opDivFeats.LabelImage.connect(self.LabelImage)

@@ -20,7 +20,9 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from opDataSelection import OpDataSelection, DatasetInfo
-from lazyflow.operators.ioOperators import OpStackToH5Writer, OpH5WriterBigDataset
+from lazyflow.operators.ioOperators import OpStackLoader, OpH5WriterBigDataset
+from lazyflow.operators.ioOperators.opTiffReader import OpTiffReader
+from lazyflow.operators.ioOperators.opTiffSequenceReader import OpTiffSequenceReader
 
 import os
 import vigra
@@ -179,7 +181,7 @@ class DataSelectionSerializer( AppletSerializer ):
 
         self._dirty = False
 
-    def importStackAsLocalDataset(self, info):
+    def importStackAsLocalDataset(self, info, sequence_axis='t'):
         """
         Add the given stack data to the project file as a local dataset.
         Does not update the topLevelOperator.
@@ -188,36 +190,51 @@ class DataSelectionSerializer( AppletSerializer ):
                      Note: info.filePath must be a str which lists the stack files, delimited with os.path.pathsep
                      Note: info will be MODIFIED by this function.  Use the modified info when assigning it to a dataset.
         """
+        self.progressSignal.emit(0)
+        
+        projectFileHdf5 = self.topLevelOperator.ProjectFile.value
+
+        globstring = info.filePath
+        info.location = DatasetInfo.Location.ProjectInternal
+        firstPathParts = PathComponents(info.filePath.split(os.path.pathsep)[0])
+        info.filePath = firstPathParts.externalDirectory + '/??' + firstPathParts.extension
+        info.fromstack = True
+
+        # Use absolute path
+        cwd = self.topLevelOperator.WorkingDirectory
+        if os.path.pathsep not in globstring and not os.path.isabs(globstring):
+            globstring = os.path.normpath( os.path.join(cwd, globstring) )
+
+        if firstPathParts.extension.lower() in OpTiffReader.TIFF_EXTS:
+            # Special loader for TIFFs
+            opLoader = OpTiffSequenceReader( parent=self.topLevelOperator.parent )
+            opLoader.SequenceAxis.setValue(sequence_axis)
+            opLoader.GlobString.setValue(globstring)
+            data_slot = opLoader.Output
+        else:
+            # All other sequences (e.g. pngs, jpegs, etc.)
+            opLoader = OpStackLoader( parent=self.topLevelOperator.parent )
+            opLoader.SequenceAxis.setValue(sequence_axis)
+            opLoader.globstring.setValue(globstring)
+            data_slot = opLoader.stack
+
         try:
-            self.progressSignal.emit(0)
-            
-            projectFileHdf5 = self.topLevelOperator.ProjectFile.value
-            topGroup = getOrCreateGroup(projectFileHdf5, self.topGroupName)
-            localDataGroup = getOrCreateGroup(topGroup, 'local_data')
-
-            globstring = info.filePath
-            info.location = DatasetInfo.Location.ProjectInternal
-            firstPathParts = PathComponents(info.filePath.split(os.path.pathsep)[0])
-            info.filePath = firstPathParts.externalDirectory + '/??' + firstPathParts.extension
-            info.fromstack = True
-
-            # Use absolute path
-            cwd = self.topLevelOperator.WorkingDirectory
-            if os.path.pathsep not in globstring and not os.path.isabs(globstring):
-                globstring = os.path.normpath( os.path.join(cwd, globstring) )
-            
-            opWriter = OpStackToH5Writer(parent=self.topLevelOperator.parent, graph=self.topLevelOperator.graph)
-            opWriter.hdf5Group.setValue(localDataGroup)
-            opWriter.hdf5Path.setValue(info.datasetId)
-            opWriter.GlobString.setValue(globstring)
+            opWriter = OpH5WriterBigDataset(parent=self.topLevelOperator.parent)
+            opWriter.hdf5File.setValue(projectFileHdf5)
+            opWriter.hdf5Path.setValue(self.topGroupName + '/local_data/' + info.datasetId)
+            opWriter.CompressionEnabled.setValue(False)
+            # We assume that the main bottleneck is the hard disk, 
+            #  so adding lots of threads to access it at once seems like a bad idea.
+            opWriter.BatchSize.setValue(1)
+            opWriter.Image.connect( data_slot )
                 
             # Forward progress from the writer directly to our applet                
             opWriter.progressSignal.subscribe( self.progressSignal.emit )
-            
+
             success = opWriter.WriteImage.value
-            
         finally:
             opWriter.cleanUp()
+            opLoader.cleanUp()
             self.progressSignal.emit(100)
 
         return success
@@ -267,6 +284,7 @@ class DataSelectionSerializer( AppletSerializer ):
         working_dir = self.topLevelOperator.WorkingDirectory.value
         self.topLevelOperator.WorkingDirectory.disconnect()
         
+        missing_role_warning_issued = False
         for laneIndex, (_, laneGroup) in enumerate( sorted(infoDir.items()) ):
             
             # BACKWARDS COMPATIBILITY:
@@ -280,13 +298,23 @@ class DataSelectionSerializer( AppletSerializer ):
                 self.topLevelOperator.DatasetGroup[laneIndex][0].setValue(datasetInfo)
             else:
                 for roleName, infoGroup in sorted(laneGroup.items()):
-                    roleIndex = workflow_role_names.index( roleName )
                     datasetInfo, dirty = self._readDatasetInfo(infoGroup, localDataGroup, projectFilePath, headless)
                     force_dirty |= dirty
     
                     # Give the new info to the operator
                     if datasetInfo is not None:
-                        self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue(datasetInfo)
+                        try:
+                            # Look up the STORED role name in the workflow operator's list of roles. 
+                            roleIndex = workflow_role_names.index( roleName )
+                        except ValueError:
+                            if not missing_role_warning_issued:
+                                msg = 'Your project file contains a dataset for "{}", but the current '\
+                                      'workflow has no use for it. The stored dataset will be ignored.'\
+                                      .format( roleName )
+                                logger.error(msg)
+                                missing_role_warning_issued = True
+                        else:
+                            self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue(datasetInfo)
 
         # Finish the 'transaction' as described above.
         self.topLevelOperator.WorkingDirectory.setValue( working_dir )

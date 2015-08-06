@@ -114,11 +114,9 @@ class FeatureSelectionSerializer(AppletSerializer):
 
                 self.topLevelOperator.SelectionMatrix.setValue(newMatrix)
                 
-        try:
+        if 'FeatureListFilename' in topGroup:
             ffl = topGroup['FeatureListFilename'].value
             self.topLevelOperator.FeatureListFilename.setValue(ffl)
-        except KeyError:
-            pass
 
         self._dirty = False
 

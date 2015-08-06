@@ -38,7 +38,7 @@ class TestFeatureSelectionSerializer(object):
                 pass
     
         # Create an empty project
-        with h5py.File(testProjectName) as testProject:
+        with h5py.File(testProjectName, 'w') as testProject:
             testProject.create_dataset("ilastikVersion", data="1.0.0")
             
             # Create an operator to work with and give it some input
@@ -87,6 +87,8 @@ class TestFeatureSelectionSerializer(object):
         os.remove(testProjectName)
 
 if __name__ == "__main__":
+    import sys
     import nose
-    nose.run(defaultTest=__file__, env={'NOSE_NOCAPTURE' : 1})
-
+    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+    nose.run(defaultTest=__file__)

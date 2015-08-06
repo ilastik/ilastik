@@ -20,7 +20,7 @@
 ###############################################################################
 #lazyflow
 from lazyflow.graph import Graph
-from lazyflow.operators.adaptors import Op5ifyer
+from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 #ilastik
 from ilastik.workflow import Workflow
@@ -97,14 +97,14 @@ class CarvingWorkflow(Workflow):
         opCarvingLane = self.carvingApplet.topLevelOperator.getLane(laneIndex)
         
         opCarvingLane.connectToPreprocessingApplet(self.preprocessingApplet)
-        op5 = Op5ifyer(parent=self)
-        op5.order.setValue("txyzc")
-        op5.input.connect(opData.Image)
+        op5 = OpReorderAxes(parent=self)
+        op5.AxisOrder.setValue("txyzc")
+        op5.Input.connect(opData.Image)
 
         ## Connect operators
-        opPreprocessing.InputData.connect(op5.output)
+        opPreprocessing.InputData.connect(op5.Output)
         #opCarvingTopLevel.RawData.connect(op5.output)
-        opCarvingLane.InputData.connect(op5.output)
+        opCarvingLane.InputData.connect(op5.Output)
         opCarvingLane.FilteredInputData.connect(opPreprocessing.FilteredImage)
         opCarvingLane.MST.connect(opPreprocessing.PreprocessedData)
         opCarvingLane.UncertaintyType.setValue("none")

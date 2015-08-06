@@ -69,6 +69,7 @@ class ManualTrackingWorkflow( Workflow ):
         self.trackingApplet = ManualTrackingApplet( workflow=self )
         opTracking = self.trackingApplet.topLevelOperator
         self.dataExportApplet = TrackingBaseDataExportApplet(self, "Tracking Result Export")
+        self.dataExportApplet.set_exporting_operator(opTracking)
         
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.SelectionNames.setValue( ['Manual Tracking', 'Object Identities'] )
@@ -107,7 +108,8 @@ class ManualTrackingWorkflow( Workflow ):
         opTracking.RawImage.connect( op5Raw.Output )
         opTracking.BinaryImage.connect( op5Binary.Output )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
-        opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeatures )        
+        opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeatures )
+        opTracking.ComputedFeatureNames.connect(opObjExtraction.Features)
 
         opDataExport.Inputs.resize(2)
         opDataExport.Inputs[0].connect( opTracking.TrackImage )

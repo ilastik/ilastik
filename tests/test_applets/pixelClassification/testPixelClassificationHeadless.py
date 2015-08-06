@@ -75,7 +75,7 @@ class TestPixelClassificationHeadless(object):
         if cls.using_random_data:
             removeFiles += [ TestPixelClassificationHeadless.SAMPLE_DATA ]
 
-        for f in removeFiles:        
+        for f in removeFiles:
             try:
                 os.remove(f)
             except:
@@ -148,6 +148,10 @@ class TestPixelClassificationHeadless(object):
         labels2 = 2 * numpy.ones(slicing2shape(slicing2), dtype=numpy.uint8)
         opPixelClass.LabelInputs[0][slicing2] = labels2
 
+        # Train the classifier
+        opPixelClass.FreezePredictions.setValue(False)
+        _ = opPixelClass.Classifier.value
+
         # Save and close
         shell.projectManager.saveProject()
         del shell
@@ -159,17 +163,17 @@ class TestPixelClassificationHeadless(object):
         #       See if __name__ == __main__ section, below.
         args = "--project=" + self.PROJECT_FILE
         args += " --headless"
+        
         #args += " --sys_tmp_dir=/tmp"
 
         # Batch export options
         args += " --output_format=hdf5"
         args += " --output_filename_format={dataset_dir}/{nickname}_prediction.h5"
         args += " --output_internal_path=volume/pred_volume"
-        args += " --raw_data" # (Specifying the role name like this is optional for pixel classification, unless we are also using a mask...)
+        args += " --raw_data"
         args += " " + self.SAMPLE_DATA
-        if ilastik_config.getboolean('ilastik', 'debug'):
-            args += " --prediction_mask" # (Specifying the role name like this is optional for pixel classification)
-            args += " " + self.SAMPLE_MASK
+        args += " --prediction_mask"
+        args += " " + self.SAMPLE_MASK
 
         sys.argv = ['ilastik.py'] # Clear the existing commandline args so it looks like we're starting fresh.
         sys.argv += args.split()
@@ -197,12 +201,13 @@ class TestPixelClassificationHeadless(object):
         #args.append( "--sys_tmp_dir=/tmp" )
  
         # Batch export options
+        args.append( '--export_source=Simple Segmentation' )
         args.append( '--output_format=png sequence' ) # If we were actually launching from the command line, 'png sequence' would be in quotes...
-        args.append( "--output_filename_format={dataset_dir}/{nickname}_prediction_z{slice_index}.png" )
+        args.append( "--output_filename_format={dataset_dir}/{nickname}_segmentation_z{slice_index}.png" )
         args.append( "--export_dtype=uint8" )
         args.append( "--output_axis_order=zxyc" )
          
-        args.append( "--pipeline_result_drange=(0.0,1.0)" )
+        args.append( "--pipeline_result_drange=(0,2)" )
         args.append( "--export_drange=(0,255)" )
  
         args.append( "--cutout_subregion=[(0,50,50,0,0), (1, 150, 150, 50, 2)]" )
@@ -215,7 +220,7 @@ class TestPixelClassificationHeadless(object):
         # This will execute the batch mode script
         self.ilastik_startup.main()
  
-        output_path = self.SAMPLE_DATA[:-4] + "_prediction_z{slice_index}.png"
+        output_path = self.SAMPLE_DATA[:-4] + "_segmentation_z{slice_index}.png"
         globstring = output_path.format( slice_index=999 )
         globstring = globstring.replace('999', '*')
  
@@ -224,7 +229,7 @@ class TestPixelClassificationHeadless(object):
  
         # (The OpStackLoader produces txyzc order.)
         opReorderAxes = OpReorderAxes( graph=Graph() )
-        opReorderAxes.AxisOrder.setValue( 'txyzc' )
+        opReorderAxes.AxisOrder.setValue( 'tzyxc' )
         opReorderAxes.Input.connect( opReader.stack )
          
         readData = opReorderAxes.Output[:].wait()
@@ -238,16 +243,12 @@ class TestPixelClassificationHeadless(object):
         opReader.cleanUp()
 
 if __name__ == "__main__":
-    print 'hola'
     #make the program quit on Ctrl+C
     import signal
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     import sys
     import nose
-    print 'yep...'
-#     sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
-#     sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
-    print 'okay...'
-    print "__file__ is", __file__
+    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
     nose.run(defaultTest=__file__)

@@ -29,7 +29,7 @@ from functools import partial
 import numpy
 from PyQt4 import uic
 from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QIcon, QColor, QShortcut, QKeySequence, QApplication
+from PyQt4.QtGui import QIcon, QColor, QApplication, QMessageBox
 
 # HCI
 from volumina.api import LazyflowSinkSource, ColortableLayer
@@ -42,6 +42,9 @@ from ilastik.widgets.labelListModel import LabelListModel
 from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThunkEventHandler, threadRouted
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+
+from ilastik.applets.labeling.labelingImport import import_labeling_layer
+
 
 # Loggers
 logger = logging.getLogger(__name__)
@@ -84,7 +87,7 @@ class LabelingGui(LayerViewerGui):
         return self._minLabelNumber
     @minLabelNumber.setter
     def minLabelNumber(self, n):
-        self._minLabelNumer = n
+        self._minLabelNumber = n
         while self._labelControlUi.labelListModel.rowCount() < n:
             self._addNewLabel()
     @property
@@ -196,6 +199,25 @@ class LabelingGui(LayerViewerGui):
         _labelControlUi.labelListModel=model
         _labelControlUi.labelListModel.rowsRemoved.connect(self._onLabelRemoved)
         _labelControlUi.labelListModel.elementSelected.connect(self._onLabelSelected)
+
+        def handleLabelMergeRequested(from_row, from_name, into_row, into_name):
+            from_label = from_row+1
+            into_label = into_row+1
+            selection = QMessageBox.warning(self, "Merge labels?",
+                          "All '{}' brush strokes will be converted to '{}'.  Are you sure?"
+                          .format(from_name, into_name),
+                          QMessageBox.Ok | QMessageBox.Cancel)
+            if selection != QMessageBox.Ok:
+                return
+
+            # This only works if the top-level operator has a 'mergeLabels' function.
+            self.topLevelOperatorView.mergeLabels( from_label, into_label )
+
+            names = list(self._labelingSlots.labelNames.value)
+            names.pop(from_label-1)
+            self._labelingSlots.labelNames.setValue( names )
+
+        _labelControlUi.labelListView.mergeRequested.connect( handleLabelMergeRequested )
 
         # Connect Applet GUI to our event handlers
         if hasattr(_labelControlUi, "AddLabelButton"):
@@ -311,16 +333,54 @@ class LabelingGui(LayerViewerGui):
                                        self.labelingDrawerUi.eraserToolButton.click,
                                        self.labelingDrawerUi.eraserToolButton,
                                        self.labelingDrawerUi.eraserToolButton ) )
+
+        mgr.register( ",", ActionInfo( shortcutGroupName,
+                                       "Decrease Brush Size",
+                                       "Decrease Brush Size",
+                                       partial(self._tweakBrushSize, False),
+                                       self.labelingDrawerUi.brushSizeComboBox,
+                                       self.labelingDrawerUi.brushSizeComboBox ) )
+
+        mgr.register( ".", ActionInfo( shortcutGroupName,
+                                       "Increase Brush Size",
+                                       "Increase Brush Size",
+                                       partial(self._tweakBrushSize, True),
+                                       self.labelingDrawerUi.brushSizeComboBox,
+                                       self.labelingDrawerUi.brushSizeComboBox ) )
+
         if hasattr(self.labelingDrawerUi, "thresToolButton"):
             mgr.register( "t", ActionInfo( shortcutGroupName,
                                            "Window Leveling",
-                                           "<p>Window Leveling can be used to adjust the data range used for visualization. Pressing the left mouse button while moving the mouse back and forth changes the window width (data range). Moving the mouse in the left-right plane changes the window mean. Pressing the right mouse button leads to an automatic range adjustment.",
+                                           "<p>Window Leveling can be used to adjust the data range used for visualization. Pressing the left mouse button while moving the mouse back and forth changes the window width (data range). Moving the mouse in the left-right plane changes the window mean. Pressing the right mouse button resets the view back to the original data.",
                                            self.labelingDrawerUi.thresToolButton.click,
                                            self.labelingDrawerUi.thresToolButton,
                                            self.labelingDrawerUi.thresToolButton ) )
         
 
         self._labelShortcuts = []
+
+    def _tweakBrushSize(self, increase):
+        """
+        Increment or decrement the paint brush size or eraser size (depending on which is currently selected).
+        
+        increase: Bool. If True, increment.  Otherwise, decrement.
+        """
+        if self._toolId == Tool.Erase:
+            if increase:
+                self.eraserSizeIndex += 1
+                self.eraserSizeIndex = min(len(self.brushSizes)-1, self.eraserSizeIndex)
+            else:
+                self.eraserSizeIndex -=1
+                self.eraserSizeIndex = max(0, self.eraserSizeIndex)
+            self._changeInteractionMode(Tool.Erase)
+        else:
+            if increase:
+                self.paintBrushSizeIndex += 1
+                self.paintBrushSizeIndex = min(len(self.brushSizes)-1, self.paintBrushSizeIndex)
+            else:
+                self.paintBrushSizeIndex -=1
+                self.paintBrushSizeIndex = max(0, self.paintBrushSizeIndex)
+            self._changeInteractionMode(Tool.Paint)
 
     def _updateLabelShortcuts(self):
         numShortcuts = len(self._labelShortcuts)
@@ -744,6 +804,9 @@ class LabelingGui(LayerViewerGui):
             labellayer = ColortableLayer(labelsrc, colorTable = self._colorTable16, direct=direct )
             labellayer.name = "Labels"
             labellayer.ref_object = None
+
+            labellayer.contexts.append(("Import...",
+                                        partial( import_labeling_layer, labellayer, self._labelingSlots, self )))
 
             return labellayer, labelsrc
 

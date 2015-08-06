@@ -19,5 +19,5 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 import default_config
-from default_config import LOGFILE_PATH
+from default_config import DEFAULT_LOGFILE_PATH, get_logfile_path
 from loggingHelpers import updateFromConfigFile, startUpdateInterval, stopUpdates

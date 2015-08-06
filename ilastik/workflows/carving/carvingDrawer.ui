@@ -232,7 +232,7 @@
      </property>
     </widget>
    </item>
-   <item>
+<!--    <item>
     <widget class="QLabel" name="label_9">
      <property name="font">
       <font>
@@ -244,8 +244,8 @@
       <string>Uncertainty:</string>
      </property>
     </widget>
-   </item>
-   <item>
+   </item> -->
+<!--    <item>
     <widget class="QComboBox" name="uncertaintyCombo">
      <item>
       <property name="text">
@@ -263,8 +263,8 @@
       </property>
      </item>
     </widget>
-   </item>
-   <item>
+   </item> -->
+<!--    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
       <widget class="QPushButton" name="pushButtonUncertaintyFG">
@@ -287,7 +287,7 @@
       </widget>
      </item>
     </layout>
-   </item>
+   </item> -->
    <item>
     <widget class="QLabel" name="label_7">
      <property name="font">

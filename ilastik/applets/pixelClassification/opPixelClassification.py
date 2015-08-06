@@ -59,7 +59,7 @@ class OpPixelClassification( Operator ):
     CachedFeatureImages = InputSlot(level=1) # Cached feature data.
 
     FreezePredictions = InputSlot(stype='bool')
-    ClassifierFactory = InputSlot(value=ParallelVigraRfLazyflowClassifierFactory(10, 10))
+    ClassifierFactory = InputSlot(value=ParallelVigraRfLazyflowClassifierFactory(100))
 
     PredictionsFromDisk = InputSlot(optional=True, level=1)
 
@@ -188,6 +188,24 @@ class OpPixelClassification( Operator ):
                 
         self.InputImages.notifyInserted( handleNewInputImage )
 
+        # If any feature image changes shape, we need to verify that the 
+        #  channels are consistent with the currently cached classifier
+        # Otherwise, delete the currently cached classifier.
+        def handleNewFeatureImage( multislot, index, *args ):
+            def handleFeatureImageReady(slot):
+                def handleFeatureMetaChanged(slot):
+                    if ( self.classifier_cache.fixAtCurrent.value and
+                         self.classifier_cache.Output.ready() and 
+                         slot.meta.shape is not None ):
+                        classifier = self.classifier_cache.Output.value
+                        channel_names = slot.meta.channel_names
+                        if classifier and classifier.feature_names != channel_names:
+                            self.classifier_cache.resetValue()
+                slot.notifyMetaChanged(handleFeatureMetaChanged)
+            multislot[index].notifyReady(handleFeatureImageReady)
+                
+        self.FeatureImages.notifyInserted( handleNewFeatureImage )
+
         def handleNewMaskImage( multislot, index, *args ):
             def handleInputReady(slot):
                 self._checkConstraints( index )
@@ -233,6 +251,9 @@ class OpPixelClassification( Operator ):
         """
         Ensure that all input images have the same number of channels.
         """
+        if not self.InputImages[laneIndex].ready():
+            return
+
         thisLaneTaggedShape = self.InputImages[laneIndex].meta.getTaggedShape()
 
         # Find a different lane and use it for comparison
@@ -286,6 +307,39 @@ class OpPixelClassification( Operator ):
     def getLane(self, laneIndex):
         return OperatorSubView(self, laneIndex)
 
+    def importLabels(self, laneIndex, slot):
+        # Load the data into the cache
+        new_max = self.getLane( laneIndex ).opLabelPipeline.opLabelArray.ingestData( slot )
+
+        # Add to the list of label names if there's a new max label
+        old_names = self.LabelNames.value
+        old_max = len(old_names)
+        if new_max > old_max:
+            new_names = old_names + map( lambda x: "Label {}".format(x), 
+                                         range(old_max+1, new_max+1) )
+            self.LabelNames.setValue(new_names)
+
+            # Make some default colors, too
+            default_colors = [(255,0,0),
+                              (0,255,0),
+                              (0,0,255),
+                              (255,255,0),
+                              (255,0,255),
+                              (0,255,255),
+                              (128,128,128),
+                              (255, 105, 180),
+                              (255, 165, 0),
+                              (240, 230, 140) ]
+            label_colors = self.LabelColors.value
+            pmap_colors = self.PmapColors.value
+            
+            self.LabelColors.setValue( label_colors + default_colors[old_max:new_max] )
+            self.PmapColors.setValue( pmap_colors + default_colors[old_max:new_max] )
+
+    def mergeLabels(self, from_label, into_label):
+        for laneIndex in range(len(self.InputImages)):
+            self.getLane( laneIndex ).opLabelPipeline.opLabelArray.mergeLabels(from_label, into_label)
+
 class OpLabelPipeline( Operator ):
     RawImage = InputSlot()
     LabelInput = InputSlot()
@@ -309,7 +363,11 @@ class OpLabelPipeline( Operator ):
     
     def setupOutputs(self):
         tagged_shape = self.RawImage.meta.getTaggedShape()
+        # labels are created for one channel (i.e. the label) and only in the
+        # current time slice, so we can set both c and t to 1
         tagged_shape['c'] = 1
+        if 't' in tagged_shape:
+            tagged_shape['t'] = 1
         
         # Aim for blocks that are roughly 1MB
         block_shape = determineBlockShape( tagged_shape.values(), 1e6 )
@@ -334,7 +392,6 @@ class OpPredictionPipelineNoCache(Operator):
     FeatureImages = InputSlot()
     PredictionMask = InputSlot(optional=True)
     Classifier = InputSlot()
-    FreezePredictions = InputSlot()
     PredictionsFromDisk = InputSlot( optional=True )
     NumClasses = InputSlot()
     
@@ -419,6 +476,7 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
     This operator extends the cacheless prediction pipeline above with additional outputs for the GUI.
     (It uses caches for these outputs, and has an extra input for cached features.)
     """        
+    FreezePredictions = InputSlot()
     CachedFeatureImages = InputSlot()
 
     PredictionProbabilities = OutputSlot()
@@ -478,21 +536,21 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         axisOrder = [ tag.key for tag in self.FeatureImages.meta.axistags ]
 
         blockDimsX = { 't' : (1,1),
-                       'z' : (128,256),
-                       'y' : (128,256),
+                       'z' : (256,256),
+                       'y' : (256,256),
                        'x' : (1,1),
                        'c' : (100, 100) }
 
         blockDimsY = { 't' : (1,1),
-                       'z' : (128,256),
+                       'z' : (256,256),
                        'y' : (1,1),
-                       'x' : (128,256),
+                       'x' : (256,256),
                        'c' : (100,100) }
 
         blockDimsZ = { 't' : (1,1),
                        'z' : (1,1),
-                       'y' : (128,256),
-                       'x' : (128,256),
+                       'y' : (256,256),
+                       'x' : (256,256),
                        'c' : (100,100) }
 
         innerBlockShapeX = tuple( blockDimsX[k][0] for k in axisOrder )
@@ -556,6 +614,7 @@ class OpEnsembleMargin(Operator):
         return result 
 
     def propagateDirty(self, inputSlot, subindex, roi):
+        roi = roi.copy()
         chanAxis = self.Input.meta.axistags.index('c')
         roi.start[chanAxis] = 0
         roi.stop[chanAxis] = 1

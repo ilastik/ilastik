@@ -38,7 +38,7 @@ class DataSelectionApplet( Applet ):
     
     DEFAULT_INSTRUCTIONS = "Use the controls shown to the right to add image files to this workflow."
     
-    def __init__(self, workflow, title, projectFileGroupName, supportIlastik05Import=False, batchDataGui=False, force5d=False, instructionText=DEFAULT_INSTRUCTIONS, max_lanes=None):
+    def __init__(self, workflow, title, projectFileGroupName, supportIlastik05Import=False, batchDataGui=False, force5d=False, instructionText=DEFAULT_INSTRUCTIONS, max_lanes=None, show_axis_details=False):
         self.__topLevelOperator = OpMultiLaneDataSelectionGroup(parent=workflow, force5d=force5d)
         super(DataSelectionApplet, self).__init__( title, syncWithImageIndex=False )
 
@@ -52,6 +52,7 @@ class DataSelectionApplet( Applet ):
         self._title = title
         self._max_lanes = max_lanes
         self.busy = False
+        self.show_axis_details = show_axis_details
 
     #
     # GUI
@@ -65,7 +66,8 @@ class DataSelectionApplet( Applet ):
                                           self._serializableItems[0],
                                           self._instructionText,
                                           guiMode,
-                                          self._max_lanes )
+                                          self._max_lanes, 
+                                          self.show_axis_details )
         return self._gui
 
     #
@@ -83,7 +85,8 @@ class DataSelectionApplet( Applet ):
         return self._serializableItems
 
 
-    def parse_known_cmdline_args(self, cmdline_args):
+    @classmethod
+    def parse_known_cmdline_args(cls, cmdline_args, role_names):
         """
         Helper function for headless workflows.
         Parses command-line args that can be used to configure the ``DataSelectionApplet`` top-level operator 
@@ -100,27 +103,49 @@ class DataSelectionApplet( Applet ):
 
         See also: :py:meth:`configure_operator_with_parsed_args()`.
         """
-        role_names = self.topLevelOperator.DatasetRoles.value
         arg_parser = argparse.ArgumentParser()
         if role_names:
             for role_name in role_names:
-                arg_name = self._role_name_to_arg_name(role_name)
+                arg_name = cls._role_name_to_arg_name(role_name)
                 arg_parser.add_argument('--' + arg_name, nargs='+', help='List of input files for the {} role'.format( role_name ))
         
         # Finally, a catch-all for role 0 (if the workflow only has one role, there's no need to provide role names
-        arg_parser.add_argument('input_files', nargs='*', help='List of input files to process.')
+        arg_parser.add_argument('unspecified_input_files', nargs='*', help='List of input files to process.')
             
         arg_parser.add_argument('--preconvert_stacks', help="Convert image stacks to temporary hdf5 files before loading them.", action='store_true', default=False)
         parsed_args, unused_args = arg_parser.parse_known_args(cmdline_args)
 
-        for i, path in enumerate( parsed_args.input_files ):
-            # Replace '~' with home dir
-            parsed_args.input_files[i] = os.path.expanduser( path )
+        if parsed_args.unspecified_input_files:
+            # We allow the file list to go to the 'default' role, 
+            # but only if no other roles were explicitly configured.
+            arg_names = map(cls._role_name_to_arg_name, role_names)
+            for arg_name in arg_names:
+                if getattr(parsed_args, arg_name):
+                    # FIXME: This error message could be more helpful.
+                    role_args = map( self._role_name_to_arg_name, role_names )
+                    role_args = map( lambda s: '--' + s, role_args )
+                    role_args_str = ", ".join( role_args )
+                    raise Exception("Invalid command line arguments: All roles must be configured explicitly.\n"
+                                    "Use the following flags to specify which files are matched with which inputs:\n"
+                                    + role_args_str )
+            
+            # Relocate to the 'default' role
+            arg_name = cls._role_name_to_arg_name(role_names[0])
+            setattr(parsed_args, arg_name, parsed_args.unspecified_input_files)
+            parsed_args.unspecified_input_files = None
+
+        # Replace '~' with home dir
+        for role_name in role_names:
+            arg_name = cls._role_name_to_arg_name(role_name)
+            paths_for_role = getattr(parsed_args, arg_name)
+            if paths_for_role:
+                for i, path in enumerate( paths_for_role ):
+                    paths_for_role[i] = os.path.expanduser( path )            
         
         # Check for errors: Do all input files exist?
-        all_input_paths = list(parsed_args.input_files)
+        all_input_paths = []
         for role_name in role_names:
-            arg_name = self._role_name_to_arg_name(role_name)
+            arg_name = cls._role_name_to_arg_name(role_name)
             role_paths = getattr(parsed_args, arg_name)
             if role_paths:
                 all_input_paths += role_paths
@@ -143,11 +168,42 @@ class DataSelectionApplet( Applet ):
 
         return parsed_args, unused_args
 
-    def _role_name_to_arg_name(self, role_name):
+    @classmethod
+    def _role_name_to_arg_name(cls, role_name):
         arg_name = role_name
         arg_name = arg_name.lower()
         arg_name = arg_name.replace(' ', '_').replace('-', '_')
         return arg_name
+
+    @classmethod
+    def role_paths_from_parsed_args(cls, parsed_args, role_names):
+        role_paths = collections.OrderedDict()
+        for role_index, role_name in enumerate(role_names):
+            arg_name = cls._role_name_to_arg_name(role_name)
+            input_paths = getattr(parsed_args, arg_name)
+            role_paths[role_index] = input_paths or []
+
+        # As far as this parser is concerned, all roles except the first are optional.
+        # (Workflows that require the other roles are responsible for raising an error themselves.)
+        for role_index in range(1,len(role_names)):
+            # Fill in None for missing files
+            if role_index not in role_paths:
+                role_paths[role_index] = []
+            num_missing = len(role_paths[0]) - len(role_paths[role_index])
+            role_paths[role_index] += [None] * num_missing
+        return role_paths        
+
+        role_paths = self.role_paths_from_parsed_args(parsed_args, role_names)
+
+        # As far as this parser is concerned, all roles except the first are optional.
+        # (Workflows that require the other roles are responsible for raising an error themselves.)
+        for role_index in range(1,len(role_names)):
+            # Fill in None for missing files
+            if role_index not in role_paths:
+                role_paths[role_index] = []
+            num_missing = len(role_paths[0]) - len(role_paths[role_index])
+            role_paths[role_index] += [None] * num_missing
+        return role_paths        
 
     def configure_operator_with_parsed_args(self, parsed_args):
         """
@@ -157,25 +213,7 @@ class DataSelectionApplet( Applet ):
         :param parsed_args: Must be an ``argparse.Namespace`` as returned by :py:meth:`parse_known_cmdline_args()`.
         """
         role_names = self.topLevelOperator.DatasetRoles.value
-        role_paths = collections.OrderedDict()
-        if role_names:
-            for role_index, role_name in enumerate(role_names):
-                arg_name = self._role_name_to_arg_name(role_name)
-                input_paths = getattr(parsed_args, arg_name)
-                role_paths[role_index] = input_paths
-
-        if parsed_args.input_files:
-            # We allow the file list to go to the 'default' role, but only if no other roles were explicitly configured.
-            for role_index, input_paths in role_paths.items():
-                if input_paths:
-                    # FIXME: This error message could be more helpful.
-                    role_args = map( self._role_name_to_arg_name, role_names )
-                    role_args = map( lambda s: '--' + s, role_args )
-                    role_args_str = ", ".join( role_args )
-                    raise Exception("Invalid command line arguments: All roles must be configured explicitly.\n"
-                                    "Use the following flags to specify which files are matched with which inputs:\n"
-                                    + role_args_str )
-            role_paths = { 0 : parsed_args.input_files }
+        role_paths = self.role_paths_from_parsed_args(parsed_args, role_names)
 
         for role_index, input_paths in role_paths.items():
             # If the user doesn't want image stacks to be copied into the project file,
@@ -184,38 +222,20 @@ class DataSelectionApplet( Applet ):
                 import tempfile
                 input_paths = self.convertStacksToH5( input_paths, tempfile.gettempdir() )
             
-            input_infos = []
-            for p in input_paths:
-                info = DatasetInfo()
-                info.location = DatasetInfo.Location.FileSystem
-                info.filePath = p
-    
-                comp = PathComponents(p)
-    
-                # Convert all (non-url) paths to absolute 
-                # (otherwise they are relative to the project file, which probably isn't what the user meant)        
-                if not isUrl(p):
-                    comp.externalPath = os.path.abspath(comp.externalPath)
-                    info.filePath = comp.totalPath()
-                info.nickname = comp.filenameBase
-                
-                # Remove globstring syntax.
-                if '*' in info.nickname:
-                    info.nickname = info.nickname.replace('*', '')
-                if os.path.pathsep in info.nickname:
-                    info.nickname = PathComponents(info.nickname.split(os.path.pathsep)[0]).fileNameBase
-                input_infos.append(info)
+            input_infos = [ self.create_default_headless_dataset_info(p) if p else None 
+                            for p in input_paths ]
     
             opDataSelection = self.topLevelOperator
             existing_lanes = len(opDataSelection.DatasetGroup)
             opDataSelection.DatasetGroup.resize( max(len(input_infos), existing_lanes) )
             for lane_index, info in enumerate(input_infos):
-                opDataSelection.DatasetGroup[lane_index][role_index].setValue( info )
+                if info:
+                    opDataSelection.DatasetGroup[lane_index][role_index].setValue( info )
             
             need_warning = False
             for lane_index in range(len(input_infos)):
                 output_slot = opDataSelection.ImageGroup[lane_index][role_index]
-                if output_slot.meta.prefer_2d:
+                if output_slot.ready() and output_slot.meta.prefer_2d and 'z' in output_slot.meta.axistags:
                     need_warning = True
                     break
 
@@ -223,7 +243,33 @@ class DataSelectionApplet( Applet ):
                 logger.warn("*******************************************************************************************")
                 logger.warn("Some of your input data is stored in a format that is not efficient for 3D access patterns.")
                 logger.warn("Performance may suffer as a result.  For best performance, use a chunked HDF5 volume.")                
-                logger.warn("*******************************************************************************************")
+                logger.warn("*******************************************************************************************")        
+
+    @classmethod
+    def create_default_headless_dataset_info(cls, filepath):
+        """
+        filepath may be a globstring or a full hdf5 path+dataset 
+        """
+        comp = PathComponents(filepath)
+        nickname = comp.filenameBase
+        
+        # Remove globstring syntax.
+        if '*' in nickname:
+            nickname = nickname.replace('*', '')
+        if os.path.pathsep in nickname:
+            nickname = PathComponents(nickname.split(os.path.pathsep)[0]).fileNameBase
+
+        info = DatasetInfo()
+        info.location = DatasetInfo.Location.FileSystem
+        info.nickname = nickname
+        info.filePath = filepath
+        # Convert all (non-url) paths to absolute 
+        # (otherwise they are relative to the project file, which probably isn't what the user meant)
+        if not isUrl(filepath):
+            comp.externalPath = os.path.abspath(comp.externalPath)
+            info.filePath = comp.totalPath()
+        return info
+        
 
     @classmethod
     def convertStacksToH5(cls, filePaths, stackVolumeCacheDir):
@@ -241,45 +287,46 @@ class DataSelectionApplet( Applet ):
         
         filePaths = list(filePaths)
         for i, path in enumerate(filePaths):
-            if '*' in path:
-                globstring = path
-    
-                # Embrace paranoia:
-                # We want to make sure we never re-use a stale cache file for a new dataset,
-                #  even if the dataset is located in the same location as a previous one and has the same globstring!
-                # Create a sha-1 of the file name and modification date.
-                sha = hashlib.sha1()
-                files = [k.replace('\\', '/') for k in glob.glob( path )]
-                for f in files:
-                    sha.update(f)
-                    sha.update(pickle.dumps(os.stat(f).st_mtime))
-                stackFile = sha.hexdigest() + '.h5'
-                stackPath = os.path.join( stackVolumeCacheDir, stackFile ).replace('\\', '/')
+            if not path or '*' not in path:
+                continue
+            globstring = path
+
+            # Embrace paranoia:
+            # We want to make sure we never re-use a stale cache file for a new dataset,
+            #  even if the dataset is located in the same location as a previous one and has the same globstring!
+            # Create a sha-1 of the file name and modification date.
+            sha = hashlib.sha1()
+            files = [k.replace('\\', '/') for k in glob.glob( path )]
+            for f in files:
+                sha.update(f)
+                sha.update(pickle.dumps(os.stat(f).st_mtime))
+            stackFile = sha.hexdigest() + '.h5'
+            stackPath = os.path.join( stackVolumeCacheDir, stackFile ).replace('\\', '/')
+            
+            # Overwrite original path
+            filePaths[i] = stackPath + "/volume/data"
+
+            # Generate the hdf5 if it doesn't already exist
+            if os.path.exists(stackPath):
+                logger.info( "Using previously generated hdf5 volume for stack {}".format(path) )
+                logger.info( "Volume path: {}".format(filePaths[i]) )
+            else:
+                logger.info( "Generating hdf5 volume for stack {}".format(path) )
+                logger.info( "Volume path: {}".format(filePaths[i]) )
+
+                if not os.path.exists( stackVolumeCacheDir ):
+                    os.makedirs( stackVolumeCacheDir )
                 
-                # Overwrite original path
-                filePaths[i] = stackPath + "/volume/data"
-    
-                # Generate the hdf5 if it doesn't already exist
-                if os.path.exists(stackPath):
-                    logger.info( "Using previously generated hdf5 volume for stack {}".format(path) )
-                    logger.info( "Volume path: {}".format(filePaths[i]) )
-                else:
-                    logger.info( "Generating hdf5 volume for stack {}".format(path) )
-                    logger.info( "Volume path: {}".format(filePaths[i]) )
-    
-                    if not os.path.exists( stackVolumeCacheDir ):
-                        os.makedirs( stackVolumeCacheDir )
+                with h5py.File(stackPath) as f:
+                    # Configure the conversion operator
+                    opWriter = OpStackToH5Writer( graph=Graph() )
+                    opWriter.hdf5Group.setValue(f)
+                    opWriter.hdf5Path.setValue("volume/data")
+                    opWriter.GlobString.setValue(globstring)
                     
-                    with h5py.File(stackPath) as f:
-                        # Configure the conversion operator
-                        opWriter = OpStackToH5Writer( graph=Graph() )
-                        opWriter.hdf5Group.setValue(f)
-                        opWriter.hdf5Path.setValue("volume/data")
-                        opWriter.GlobString.setValue(globstring)
-                        
-                        # Initiate the write
-                        success = opWriter.WriteImage.value
-                        assert success, "Something went wrong when generating an hdf5 file from an image sequence."
+                    # Initiate the write
+                    success = opWriter.WriteImage.value
+                    assert success, "Something went wrong when generating an hdf5 file from an image sequence."
             
         return filePaths
 

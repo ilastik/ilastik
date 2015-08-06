@@ -23,7 +23,7 @@ import logging.config
 import warnings
 import loggingHelpers
 
-LOGFILE_PATH = os.path.expanduser("~/.ilastik_log.txt")
+DEFAULT_LOGFILE_PATH = os.path.expanduser("~/.ilastik_log.txt")
 
 class OutputMode:
     CONSOLE = 0
@@ -31,7 +31,17 @@ class OutputMode:
     BOTH = 2
     LOGFILE_WITH_CONSOLE_ERRORS = 3
 
-def get_default_config(prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ERRORS):
+def get_logfile_path():
+    root_handlers = logging.getLogger().handlers
+    for handler in root_handlers:
+        if isinstance(handler, logging.FileHandler):
+            return handler.baseFilename
+    return None
+    
+def get_default_config( prefix="", 
+                        output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ERRORS, 
+                        logfile_path=DEFAULT_LOGFILE_PATH):
+
     if output_mode == OutputMode.CONSOLE:
         root_handlers = ["console", "console_warn"]
         warnings_module_handlers = ["console_warnings_module"]
@@ -115,7 +125,7 @@ def get_default_config(prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ER
             "rotating_file":{
                 "level":"DEBUG",
                 "class":"logging.handlers.RotatingFileHandler",
-                "filename" : LOGFILE_PATH,
+                "filename" : logfile_path,
                 "maxBytes":20e6, # 20 MB
                 "backupCount":5,
                 "formatter":"verbose",
@@ -136,8 +146,12 @@ def get_default_config(prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ER
     
             # When copying to a json file, remember to remove comments and change True/False to true/false
             "__main__":                                                 { "level":"INFO" },
+            "ilastik_main":                                             { "level":"INFO" },
             "thread_start":                                             { "level":"INFO" },
             "lazyflow":                                                 { "level":"INFO" },
+            "lazyflow.request":                                         { "level":"INFO" },
+            "lazyflow.request.RequestLock":                             { "level":"INFO" },
+            "lazyflow.request.SimpleRequestCondition":                  { "level":"INFO" },
             "lazyflow.graph":                                           { "level":"INFO" },
             "lazyflow.graph.Slot":                                      { "level":"INFO" },
             "lazyflow.operators":                                       { "level":"INFO" },
@@ -145,15 +159,17 @@ def get_default_config(prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ER
             "lazyflow.operators.ioOperators":                           { "level":"INFO" },
             "lazyflow.operators.opVigraWatershed":                      { "level":"INFO" },
             "lazyflow.operators.ioOperators.opRESTfulVolumeReader":     { "level":"INFO" },
-            "lazyflow.operators.operators.OpArrayCache":                { "level":"INFO" },
-            "lazyflow.operators.operators.ArrayCacheMemoryMgr":         { "level":"INFO" },
+            "lazyflow.operators.opArrayCache.OpArrayCache":             { "level":"INFO" },
+            "lazyflow.operators.cacheMemoryManager.CacheMemoryManager": { "level":"INFO" },
             "lazyflow.operators.vigraOperators":                        { "level":"INFO" },
             "lazyflow.operators.ioOperators.ioOperators.OpH5WriterBigDataset":   { "level":"INFO" },
             "lazyflow.operators.classifierOperators":                   { "level":"INFO" },
             "lazyflow.operators.opCompressedCache":                     { "level":"INFO" },
             "lazyflow.utility.io.RESTfulVolume":                        { "level":"INFO" },
+            "lazyflow.utility.io.tiledVolume":                          { "level":"INFO" },
             "lazyflow.operators.opFeatureMatrixCache":                  { "level":"INFO" },
             "lazyflow.operators.opConcatenateFeatureMatrices":          { "level":"INFO" },
+            "lazyflow.utility.roiRequestBatch":                         { "level":"INFO" },
             "lazyflow.utility.bigRequestStreamer":                      { "level":"INFO" },
             "ilastik":                                                  { "level":"INFO" },
             "ilastik.clusterOps":                                       { "level":"INFO" },
@@ -168,8 +184,12 @@ def get_default_config(prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ER
             "ilastik.applets.splitBodyCarving":                         { "level":"INFO" },
             "ilastik.shell":                                            { "level":"INFO" },
             "ilastik.shell.projectManager":                             { "level":"INFO" },
+            "ilastik.shell.gui.ipcManager":                             { "level":"INFO" },
             "ilastik.workflows":                                        { "level":"INFO" },
             "ilastik.widgets":                                          { "level":"INFO" },
+            "ilastik.utility":                                          { "level":"INFO" },
+            "ilastik.utility.exportingOperator":                        { "level":"INFO" },
+            "ilastik.utility.exportFile":                               { "level":"INFO" },
             "workflows":                                                { "level":"INFO" },
             "volumina":                                                 { "level":"INFO" },
             "volumina.pixelpipeline":                                   { "level":"INFO" },
@@ -200,9 +220,13 @@ def get_default_config(prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ER
     }
     return default_log_config
 
-def init(format_prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ERRORS):
+def init(format_prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ERRORS, logfile_path=DEFAULT_LOGFILE_PATH):
+    if output_mode == "/dev/null":
+        assert output_mode != OutputMode.LOGFILE, "Must enable a logging mode."
+        output_mode = OutputMode.CONSOLE
+
     # Start with the default
-    logging.config.dictConfig( get_default_config( format_prefix, output_mode ) )
+    logging.config.dictConfig( get_default_config( format_prefix, output_mode, logfile_path ) )
     
     # Update from the user's customizations
     loggingHelpers.updateFromConfigFile()

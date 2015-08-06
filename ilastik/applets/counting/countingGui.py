@@ -39,7 +39,7 @@ from ilastik.widgets.labelListView import Label
 from ilastik.widgets.boxListModel import BoxListModel,BoxLabel
 from ilastik.widgets.labelListModel import LabelListModel
 from lazyflow.rtype import SubRegion
-from volumina.navigationControler import NavigationInterpreter
+from volumina.navigationController import NavigationInterpreter
 
 # ilastik
 from ilastik.utility import bind
@@ -47,8 +47,8 @@ from ilastik.utility.gui import threadRouted
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.applets.base.applet import ShellRequest
-from lazyflow.operators.adaptors import Op5ifyer
-from ilastik.applets.counting.countingGuiDotsInterface import DotCrosshairController,DotInterpreter, DotController
+from lazyflow.operators.opReorderAxes import OpReorderAxes
+from ilastik.applets.counting.countingGuiDotsInterface import DotCrosshairController,DotInterpreter
 from ilastik.applets.base.appletSerializer import SerialListSlot
 from PyQt4 import QtGui
 
@@ -201,9 +201,9 @@ class CountingGui(LabelingGui):
 
 
         self.dotcrosshairController=DotCrosshairController(self.editor.brushingModel,self.editor.imageViews)
-        self.editor.crosshairControler=self.dotcrosshairController
-        #self.dotController=DotController(self.editor.imageScenes[2],self.editor.brushingControler)
-        self.editor.brushingInterpreter = DotInterpreter(self.editor.navCtrl,self.editor.brushingControler)
+        self.editor.crosshairController=self.dotcrosshairController
+        #self.dotController=DotController(self.editor.imageScenes[2],self.editor.brushingController)
+        self.editor.brushingInterpreter = DotInterpreter(self.editor.navCtrl,self.editor.brushingController)
         self.dotInterpreter=self.editor.brushingInterpreter
 
 
@@ -256,10 +256,10 @@ class CountingGui(LabelingGui):
         self.labelingDrawerUi.DensityButton.clicked.connect(self.updateSum)
 
         mainwin=self
-        self.density5d=Op5ifyer(graph=self.op.graph, parent=self.op.parent) #
+        self.density5d=OpReorderAxes(graph=self.op.graph, parent=self.op.parent) #
 
-        self.density5d.input.connect(self.op.Density)
-        self.boxController=BoxController(mainwin.editor,self.density5d.output,self.labelingDrawerUi.boxListModel)
+        self.density5d.Input.connect(self.op.Density)
+        self.boxController=BoxController(mainwin.editor,self.density5d.Output,self.labelingDrawerUi.boxListModel)
         self.boxInterpreter=BoxInterpreter(mainwin.editor.navInterpret,mainwin.editor.posModel,self.boxController,mainwin.centralWidget())
 
         self.navigationInterpreterDefault=self.editor.navInterpret
@@ -432,7 +432,7 @@ class CountingGui(LabelingGui):
 
         sigma = self._labelControlUi.SigmaBox.value()
 
-        self.editor.crosshairControler.setSigma(sigma)
+        self.editor.crosshairController.setSigma(sigma)
         #2 * the maximal value of a gaussian filter, to allow some leeway for overlapping
         self.op.opTrain.Sigma.setValue(sigma)
         self.op.opUpperBound.Sigma.setValue(sigma)
@@ -1036,7 +1036,7 @@ class CountingGui(LabelingGui):
         Implement the GUI's response to the user selecting a new tool.
         """
         QApplication.restoreOverrideCursor()
-        for v in self.editor.crosshairControler._imageViews:
+        for v in self.editor.crosshairController._imageViews:
                     v._crossHairCursor.enabled=True
 
 
@@ -1113,7 +1113,7 @@ class CountingGui(LabelingGui):
 
                 self.setCursor(Qt.CrossCursor)
                 self._labelControlUi.labelListModel.clearSelectionModel()
-                for v in self.editor.crosshairControler._imageViews:
+                for v in self.editor.crosshairController._imageViews:
                     v._crossHairCursor.enabled=False
 
                 #self.setOverrideCursor(Qt.CrossCursor)

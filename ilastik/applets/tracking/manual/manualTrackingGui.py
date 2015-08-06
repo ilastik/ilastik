@@ -38,13 +38,14 @@ from ilastik.utility import log_exception
 import volumina.colortables as colortables
 from volumina.api import LazyflowSource, GrayscaleLayer, ColortableLayer
 from volumina.utility import ShortcutManager
+from ilastik.utility.exportingOperator import ExportingGui
 
 from ilastik.config import cfg as ilastik_config
 
 from volumina.utility import encode_from_qstring
     
 
-class ManualTrackingGui(LayerViewerGui):
+class ManualTrackingGui(LayerViewerGui, ExportingGui):
 
     def appletDrawer( self ):
         return self._drawer
@@ -133,8 +134,6 @@ class ManualTrackingGui(LayerViewerGui):
         # get the applet reference from the workflow (needed for the progressSignal)
         self.applet = self.mainOperator.parent.parent.trackingApplet
         
-        if self.mainOperator.LabelImage.meta.shape:
-            self.editor.dataShape = self.mainOperator.LabelImage.meta.shape
         self.mainOperator.LabelImage.notifyMetaChanged( self._onMetaChanged)
         self.mainOperator.LabelImage.notifyDirty( self._reset )
         
@@ -248,9 +247,6 @@ class ManualTrackingGui(LayerViewerGui):
             rawLayer.name = "Raw"        
             layers.insert( len(layers), rawLayer )   
         
-        
-        if self.topLevelOperatorView.LabelImage.meta.shape:
-            self.editor.dataShape = self.topLevelOperatorView.LabelImage.meta.shape    
         
         self.topLevelOperatorView.RawImage.notifyReady( self._onReady )
         self.topLevelOperatorView.RawImage.notifyMetaChanged( self._onMetaChanged )
@@ -429,7 +425,7 @@ class ManualTrackingGui(LayerViewerGui):
         activeTrack = self._getActiveTrack()
         
         trackids = []
-        if oid in self.mainOperator.labels[t].keys():
+        if t in self.mainOperator.labels.keys() and oid in self.mainOperator.labels[t].keys():
             for l in self.mainOperator.labels[t][oid]:
                 trackids.append(l)
         
@@ -1264,4 +1260,27 @@ class ManualTrackingGui(LayerViewerGui):
         for b in buttons:
             if exceptButtons is None or b not in exceptButtons:
                 b.setEnabled(enable)
-        
+
+    def menus(self):
+        menu_list = []
+        if ilastik_config.getboolean("ilastik", "debug"):
+            menu_list.append(QtGui.QMenu("&Export", self.volumeEditorWidget))
+            menu_list[-1].addAction("Export Tracking Information").triggered.connect(self.show_export_dialog)
+
+        return menu_list
+
+    def get_raw_shape(self):
+        return self.topLevelOperatorView.RawImage.meta.shape
+
+    def get_feature_names(self):
+        return self.topLevelOperatorView.ComputedFeatureNames([]).wait()
+
+    def get_export_dialog_title(self):
+        return "Export Tracking Information"
+
+    def get_exporting_operator(self, lane=0):
+        return self.topLevelOperatorView
+
+    @property
+    def gui_applet(self):
+        return self.applet

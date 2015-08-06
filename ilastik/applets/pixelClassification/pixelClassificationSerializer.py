@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 import numpy
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialClassifierSlot, SerialBlockSlot, SerialListSlot, SerialPickledSlot
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialClassifierSlot, SerialBlockSlot, SerialListSlot, SerialClassifierFactorySlot
 
 import logging
 logger = logging.getLogger(__name__) 
@@ -44,7 +44,7 @@ class PixelClassificationSerializer(AppletSerializer):
                                  subname='labels{:03d}',
                                  selfdepends=False,
                                  shrink_to_bb=True),
-                 SerialPickledSlot(operator.ClassifierFactory),
+                 SerialClassifierFactorySlot(operator.ClassifierFactory),
                  self._serialClassifierSlot ]
 
         super(PixelClassificationSerializer, self).__init__(projectFileGroupName, slots, operator)
@@ -70,7 +70,10 @@ class PixelClassificationSerializer(AppletSerializer):
                     data = block[:]
                     all_labels.update( numpy.unique(data) )
 
-            max_label = max(all_labels)
+            if all_labels:
+                max_label = max(all_labels)
+            else:
+                max_label = 0
             
             label_names = []
             for i in range(max_label):

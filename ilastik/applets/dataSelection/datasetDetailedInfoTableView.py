@@ -374,12 +374,9 @@ class DatasetDetailedInfoTableView(QTableView):
 
         # If the user double-clicked an empty table,
         #  we behave as if she clicked the "add file" button.
-        if self.model().rowCount() == 0:
+        if row == self.model().rowCount()-1 or row == -1:
             # In this case -1 means "append a row"
             self.replaceWithFileRequested.emit(-1)
-            return
-
-        if not ( 0 <= col < self.model().columnCount() and 0 <= row < self.model().rowCount() ):
             return
 
         if self.model().isEditable(row):

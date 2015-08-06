@@ -29,7 +29,9 @@ logger = logging.getLogger(__name__)
 
 #PyQt
 from PyQt4 import uic
-from PyQt4.QtGui import QWidget, QStackedWidget, QMessageBox, QFileDialog, QDialog
+from PyQt4.QtCore import Qt
+from PyQt4.QtGui import QWidget, QStackedWidget, QMessageBox, QFileDialog, \
+                        QDialog, QVBoxLayout, QLabel, QComboBox, QDialogButtonBox
 
 #lazyflow
 from lazyflow.request import Request
@@ -46,11 +48,10 @@ from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.base.applet import DatasetConstraintError
 
 from opDataSelection import OpDataSelection, DatasetInfo
-from dataLaneSummaryTableModel import DataLaneSummaryTableModel 
+from dataLaneSummaryTableModel import DataLaneSummaryTableModel
 from datasetInfoEditorWidget import DatasetInfoEditorWidget
 from ilastik.widgets.stackFileSelectionWidget import StackFileSelectionWidget
-from datasetDetailedInfoTableModel import DatasetDetailedInfoColumn, \
-        DatasetDetailedInfoTableModel
+from datasetDetailedInfoTableModel import DatasetDetailedInfoColumn, DatasetDetailedInfoTableModel
 from datasetDetailedInfoTableView import DatasetDetailedInfoTableView
 
 try:
@@ -71,6 +72,31 @@ class GuiMode():
     Normal = 0
     Batch = 1
 
+
+class H5VolumeSelectionDlg(QDialog):
+    """
+    A window to ask the user to choose between multiple HDF5 datasets in a single file.
+    """
+    def __init__(self, datasetNames, parent):
+        super(H5VolumeSelectionDlg, self).__init__(parent)                        
+        label = QLabel( "Your HDF5 File contains multiple image volumes.\n"
+                        "Please select the one you would like to open." )
+        
+        self.combo = QComboBox()
+        for name in datasetNames:
+            self.combo.addItem(name)
+        
+        buttonbox = QDialogButtonBox( Qt.Horizontal, parent=self )
+        buttonbox.setStandardButtons( QDialogButtonBox.Ok | QDialogButtonBox.Cancel )
+        buttonbox.accepted.connect( self.accept )
+        buttonbox.rejected.connect( self.reject )
+        
+        layout = QVBoxLayout()
+        layout.addWidget( label )
+        layout.addWidget( self.combo )
+        layout.addWidget( buttonbox )
+        
+        self.setLayout(layout)
 
 class DataSelectionGui(QWidget):
     """
@@ -101,6 +127,7 @@ class DataSelectionGui(QWidget):
                 detailWidget.selectRow(imageIndex)
 
     def stopAndCleanUp(self):
+        self._cleaning_up = True
         for editor in self.volumeEditors.values():
             self.viewerStack.removeWidget( editor )
             self._viewerControlWidgetStack.removeWidget( editor.viewerControlWidget() )
@@ -118,14 +145,20 @@ class DataSelectionGui(QWidget):
                 warnings.warn("DataSelectionGui.imageLaneAdded(): length of dataset multislot out of sync with laneindex [%s != %s + 1]" % (len(self.topLevelOperator.DatasetGroup), laneIndex))
 
     def imageLaneRemoved(self, laneIndex, finalLength):
-        # We assume that there's nothing to do here because THIS GUI initiated the lane removal
-        if self.guiMode != GuiMode.Batch:
-            assert len(self.topLevelOperator.DatasetGroup) == finalLength
+        # There's nothing to do here because the GUI already 
+        #  handles operator resizes via slot callbacks.
+        pass
 
     ###########################################
     ###########################################
 
-    def __init__(self, parentApplet, dataSelectionOperator, serializer, instructionText, guiMode=GuiMode.Normal, max_lanes=None):
+    class UserCancelledError(Exception):
+        # This exception type is raised when the user cancels the 
+        #  addition of dataset files in the middle of the process somewhere.
+        # It isn't an error -- it's used for control flow.
+        pass
+
+    def __init__(self, parentApplet, dataSelectionOperator, serializer, instructionText, guiMode=GuiMode.Normal, max_lanes=None, show_axis_details=False):
         """
         Constructor.
         
@@ -136,9 +169,11 @@ class DataSelectionGui(QWidget):
         :param max_lanes: The maximum number of lanes that the user is permitted to add to this workflow.  If ``None``, there is no maximum.
         """
         super(DataSelectionGui, self).__init__()
-        
+        self._cleaning_up = False
         self.parentApplet = parentApplet
         self._max_lanes = max_lanes
+        self._default_h5_volumes = {}
+        self.show_axis_details = show_axis_details
 
         self._viewerControls = QWidget()
         self.topLevelOperator = dataSelectionOperator
@@ -151,16 +186,16 @@ class DataSelectionGui(QWidget):
         
         self._viewerControlWidgetStack = QStackedWidget(self)
 
-        def handleImageRemoved(multislot, index, finalLength):
+        def handleImageRemove(multislot, index, finalLength):
             # Remove the viewer for this dataset
-            imageSlot = self.topLevelOperator.Image[index]
-            if imageSlot in self.volumeEditors.keys():
-                editor = self.volumeEditors[imageSlot]
+            datasetSlot = self.topLevelOperator.DatasetGroup[index]
+            if datasetSlot in self.volumeEditors.keys():
+                editor = self.volumeEditors[datasetSlot]
                 self.viewerStack.removeWidget( editor )
                 self._viewerControlWidgetStack.removeWidget( editor.viewerControlWidget() )
                 editor.stopAndCleanUp()
 
-        self.topLevelOperator.Image.notifyRemove( bind( handleImageRemoved ) )
+        self.topLevelOperator.DatasetGroup.notifyRemove( bind( handleImageRemove ) )
         
         opWorkflow = self.topLevelOperator.parent
         assert hasattr(opWorkflow.shell, 'onSaveProjectActionTriggered'), \
@@ -201,9 +236,12 @@ class DataSelectionGui(QWidget):
             if self._max_lanes:
                 viewer.setEnabled( self._findFirstEmptyLane(role_index) < self._max_lanes )
 
-        def _handle_lane_added( button, role_index, slot, lane_index ):
-            slot[lane_index][role_index].notifyReady( bind(_update_button_status, button, role_index) )
-            slot[lane_index][role_index].notifyUnready( bind(_update_button_status, button, role_index) )
+        def _handle_lane_added( button, role_index, lane_slot, lane_index ):
+            def _handle_role_slot_added( role_slot, added_slot_index, *args ):
+                if added_slot_index == role_index:
+                    role_slot.notifyReady( bind(_update_button_status, button, role_index) )
+                    role_slot.notifyUnready( bind(_update_button_status, button, role_index) )
+            lane_slot[lane_index].notifyInserted( _handle_role_slot_added )
 
         self._retained = [] # Retain menus so they don't get deleted
         self._detailViewerWidgets = []
@@ -281,30 +319,27 @@ class DataSelectionGui(QWidget):
 
         # Remove in reverse order so row numbers remain consistent
         for row in reversed(sorted(rows)):
-            # Remove from the GUI
-            self.laneSummaryTableView.model().removeRow(row)
-            # Remove from the operator
+            # Remove lanes from the operator.
+            # The table model will notice the changes and update the rows accordingly.
             finalSize = len(self.topLevelOperator.DatasetGroup) - 1
             self.topLevelOperator.DatasetGroup.removeSlot(row, finalSize)
     
-            # The gui and the operator should be in sync (model has one extra row for the button row)
-            assert self.laneSummaryTableView.model().rowCount() == len(self.topLevelOperator.DatasetGroup)+1
-
     @threadRouted
     def showDataset(self, laneIndex, roleIndex=None):
+        if self._cleaning_up:
+            return
         if laneIndex == -1:
             self.viewerStack.setCurrentIndex(0)
             return
         
         assert threading.current_thread().name == "MainThread"
         
-        if laneIndex >= len(self.topLevelOperator.Image):
+        if laneIndex >= len(self.topLevelOperator.DatasetGroup):
             return
-        imageSlot = self.topLevelOperator.Image[laneIndex]
+        datasetSlot = self.topLevelOperator.DatasetGroup[laneIndex]
 
         # Create if necessary
-        if imageSlot not in self.volumeEditors.keys():
-            
+        if datasetSlot not in self.volumeEditors.keys():
             class DatasetViewer(LayerViewerGui):
                 def moveToTop(self, roleIndex):
                     opLaneView = self.topLevelOperatorView
@@ -342,12 +377,12 @@ class DataSelectionGui(QWidget):
             # Maximize the x-y view by default.
             layerViewer.volumeEditorWidget.quadview.ensureMaximized(2)
 
-            self.volumeEditors[imageSlot] = layerViewer
+            self.volumeEditors[datasetSlot] = layerViewer
             self.viewerStack.addWidget( layerViewer )
             self._viewerControlWidgetStack.addWidget( layerViewer.viewerControlWidget() )
 
         # Show the right one
-        viewer = self.volumeEditors[imageSlot]
+        viewer = self.volumeEditors[datasetSlot]
         displayedRole = self.fileInfoTabWidget.currentIndex()
         viewer.moveToTop(displayedRole)
         self.viewerStack.setCurrentWidget( viewer )
@@ -371,7 +406,7 @@ class DataSelectionGui(QWidget):
             defaultDirectory = os.path.expanduser('~')
 
         # Launch the "Open File" dialog
-        fileNames = self.getImageFileNamesToOpen(defaultDirectory)
+        fileNames = self.getImageFileNamesToOpen(self, defaultDirectory)
 
         # If the user didn't cancel
         if len(fileNames) > 0:
@@ -382,7 +417,8 @@ class DataSelectionGui(QWidget):
                 log_exception( logger )
                 QMessageBox.critical(self, "Error loading file", str(ex))
 
-    def getImageFileNamesToOpen(self, defaultDirectory):
+    @classmethod
+    def getImageFileNamesToOpen(cls, parent_window, defaultDirectory):
         """
         Launch an "Open File" dialog to ask the user for one or more image files.
         """
@@ -395,7 +431,7 @@ class DataSelectionGui(QWidget):
         
         if ilastik_config.getboolean("ilastik", "debug"):
             # use Qt dialog in debug mode (more portable?)
-            file_dialog = QFileDialog(self, "Select Images")
+            file_dialog = QFileDialog(parent_window, "Select Images")
             file_dialog.setOption(QFileDialog.DontUseNativeDialog, True)
             # do not display file types associated with a filter
             # the line for "Image files" is too long otherwise
@@ -409,7 +445,7 @@ class DataSelectionGui(QWidget):
                 fileNames = file_dialog.selectedFiles()
         else:
             # otherwise, use native dialog of the present platform
-            fileNames = QFileDialog.getOpenFileNames(self, "Select Images", defaultDirectory, filt_all_str)
+            fileNames = QFileDialog.getOpenFileNames(parent_window, "Select Images", defaultDirectory, filt_all_str)
         # Convert from QtString to python str
         fileNames = map(encode_from_qstring, fileNames)
         return fileNames
@@ -439,21 +475,32 @@ class DataSelectionGui(QWidget):
             # Something went wrong.
             return
 
+        # If we're only adding new lanes, NOT modifying existing lanes...
+        adding_only = startingLane == len(self.topLevelOperator)
+
         # Create a list of DatasetInfos
-        infos = self._createDatasetInfos(fileNames, rois)
+        try:
+            infos = self._createDatasetInfos(roleIndex, fileNames, rois)
+        except DataSelectionGui.UserCancelledError:
+            return
         
         # If no exception was thrown so far, set up the operator now
         loaded_all = self._configureOpWithInfos(roleIndex, startingLane, endingLane, infos)
         
-        # Now check the resulting slots.
-        # If they should be copied to the project file, say so.
-        self._reconfigureDatasetLocations(roleIndex, startingLane, endingLane)
-
-        self._checkDataFormatWarnings(roleIndex, startingLane, endingLane)
-
-        # If we succeeded in adding all images, show the first one.
         if loaded_all:
+            # Now check the resulting slots.
+            # If they should be copied to the project file, say so.
+            self._reconfigureDatasetLocations(roleIndex, startingLane, endingLane)
+    
+            self._checkDataFormatWarnings(roleIndex, startingLane, endingLane)
+    
+            # If we succeeded in adding all images, show the first one.
             self.showDataset(startingLane, roleIndex)
+
+        # Notify the workflow that we just added some new lanes.
+        if adding_only:
+            workflow = self.parentApplet.topLevelOperator.parent
+            workflow.handleNewLanesAdded()
 
         # Notify the workflow that something that could affect applet readyness has occurred.
         self.parentApplet.appletStateUpdateRequested.emit()
@@ -492,7 +539,7 @@ class DataSelectionGui(QWidget):
 
         return (startingLane, endingLane)
 
-    def _createDatasetInfos(self, filePaths, rois):
+    def _createDatasetInfos(self, roleIndex, filePaths, rois):
         """
         Create a list of DatasetInfos for the given filePaths and rois
         rois may be None, in which case it is ignored.
@@ -503,11 +550,11 @@ class DataSelectionGui(QWidget):
 
         infos = []
         for filePath, roi in zip(filePaths, rois):
-            info = self._createDatasetInfo(filePath, roi)
+            info = self._createDatasetInfo(roleIndex, filePath, roi)
             infos.append(info)
         return infos
 
-    def _createDatasetInfo(self, filePath, roi):
+    def _createDatasetInfo(self, roleIndex, filePath, roi):
         """
         Create a DatasetInfo object for the given filePath and roi.
         roi may be None, in which case it is ignored.
@@ -532,10 +579,28 @@ class DataSelectionGui(QWidget):
         h5Exts = ['.ilp', '.h5', '.hdf5']
         if os.path.splitext(datasetInfo.filePath)[1] in h5Exts:
             datasetNames = self.getPossibleInternalPaths( absPath )
-            if len(datasetNames) > 0:
+            if len(datasetNames) == 0:
+                raise RuntimeError("HDF5 file %s has no image datasets" % datasetInfo.filePath)
+            elif len(datasetNames) == 1:
                 datasetInfo.filePath += str(datasetNames[0])
             else:
-                raise RuntimeError("HDF5 file %s has no image datasets" % datasetInfo.filePath)
+                # If exactly one of the file's datasets matches a user's previous choice, use it.
+                if roleIndex not in self._default_h5_volumes:
+                    self._default_h5_volumes[roleIndex] = set()
+                previous_selections = self._default_h5_volumes[roleIndex]
+                possible_auto_selections = previous_selections.intersection(datasetNames)
+                if len(possible_auto_selections) == 1:
+                    datasetInfo.filePath += str(list(possible_auto_selections)[0])
+                else:
+                    # Ask the user which dataset to choose
+                    dlg = H5VolumeSelectionDlg(datasetNames, self)
+                    if dlg.exec_() == QDialog.Accepted:
+                        selected_index = dlg.combo.currentIndex()
+                        selected_dataset = str(datasetNames[selected_index])
+                        datasetInfo.filePath += selected_dataset
+                        self._default_h5_volumes[roleIndex].add( selected_dataset )
+                    else:
+                        raise DataSelectionGui.UserCancelledError()
 
         # Allow labels by default if this gui isn't being used for batch data.
         datasetInfo.allowLabels = ( self.guiMode == GuiMode.Normal )
@@ -591,12 +656,12 @@ class DataSelectionGui(QWidget):
         opTop = self.topLevelOperator
         for lane_index in range(startingLane, endingLane+1):
             output_slot = opTop.ImageGroup[lane_index][roleIndex]
-            if output_slot.meta.prefer_2d:
+            if output_slot.meta.prefer_2d and 'z' in output_slot.meta.axistags:
                 shape = numpy.array(output_slot.meta.shape)
                 total_volume = numpy.prod(shape)
                 
                 # Only copy to the project file if the total volume is reasonably small
-                if total_volume < 10e9:
+                if total_volume < 0.5e9:
                     info_slot = opTop.DatasetGroup[lane_index][roleIndex]
                     info = info_slot.value
                     info.location = DatasetInfo.Location.ProjectInternal
@@ -641,17 +706,18 @@ class DataSelectionGui(QWidget):
         """Open the dataset properties editor and return True if the new properties are acceptable."""
         defaultInfos = {}
         defaultInfos[laneIndex] = info
-        editorDlg = DatasetInfoEditorWidget(self, self.topLevelOperator, roleIndex, [laneIndex], defaultInfos)
+        editorDlg = DatasetInfoEditorWidget(self, self.topLevelOperator, roleIndex, [laneIndex], defaultInfos, show_axis_details=self.show_axis_details)
         dlg_state = editorDlg.exec_()
         return ( dlg_state == QDialog.Accepted )
 
-    def getPossibleInternalPaths(self, absPath):
+    @classmethod
+    def getPossibleInternalPaths(cls, absPath, min_ndim=3, max_ndim=5):
         datasetNames = []
         # Open the file as a read-only so we can get a list of the internal paths
         with h5py.File(absPath, 'r') as f:
             # Define a closure to collect all of the dataset names in the file.
             def accumulateDatasetPaths(name, val):
-                if type(val) == h5py._hl.dataset.Dataset and 3 <= len(val.shape) <= 5:
+                if type(val) == h5py._hl.dataset.Dataset and min_ndim <= len(val.shape) <= max_ndim:
                     datasetNames.append( '/' + name )
             # Visit every group/dataset in the file
             f.visititems(accumulateDatasetPaths)
@@ -666,6 +732,7 @@ class DataSelectionGui(QWidget):
         if stackDlg.result() != QDialog.Accepted :
             return
         files = stackDlg.selectedFiles
+        sequence_axis = stackDlg.sequence_axis
         if len(files) == 0:
             return
 
@@ -694,7 +761,7 @@ class DataSelectionGui(QWidget):
 
             # Serializer will update the operator for us, which will propagate to the GUI.
             try:
-                self.serializer.importStackAsLocalDataset( info )
+                self.serializer.importStackAsLocalDataset( info, sequence_axis )
                 try:
                     self.topLevelOperator.DatasetGroup[laneIndex][roleIndex].setValue(info)
                 except DatasetConstraintError as ex:
@@ -740,8 +807,9 @@ class DataSelectionGui(QWidget):
         self.parentApplet.appletStateUpdateRequested.emit()
 
     def editDatasetInfo(self, roleIndex, laneIndexes):
-        editorDlg = DatasetInfoEditorWidget(self, self.topLevelOperator, roleIndex, laneIndexes)
+        editorDlg = DatasetInfoEditorWidget(self, self.topLevelOperator, roleIndex, laneIndexes, show_axis_details=self.show_axis_details)
         editorDlg.exec_()
+        self.parentApplet.appletStateUpdateRequested.emit()
 
     def updateInternalPathVisiblity(self):
         for view in self._detailViewerWidgets:
@@ -751,16 +819,38 @@ class DataSelectionGui(QWidget):
     
     def addDvidVolume(self, roleIndex, laneIndex):
         # TODO: Provide list of recently used dvid hosts, loaded from user preferences
-        #from pydvid.gui.contents_browser import ContentsBrowser
+        recent_hosts_pref = PreferencesManager.Setting("DataSelection", "Recent DVID Hosts")
+        recent_hosts = recent_hosts_pref.get()
+        if not recent_hosts:
+            recent_hosts = ["localhost:8000"]
+        recent_hosts = filter(lambda h: h, recent_hosts)
+            
         from dvidDataSelectionBrowser import DvidDataSelectionBrowser
-        browser = DvidDataSelectionBrowser(["localhost:8000"], parent=self)
+        browser = DvidDataSelectionBrowser(recent_hosts, parent=self)
         if browser.exec_() == DvidDataSelectionBrowser.Rejected:
             return
 
+        if None in browser.get_selection():
+            QMessageBox.critical("Couldn't use your selection.")
+            return
+
         rois = None
-        hostname, dset_index, volume_name, uuid = browser.get_selection()
+        hostname, dset_uuid, volume_name, uuid = browser.get_selection()
         dvid_url = 'http://{hostname}/api/node/{uuid}/{volume_name}'.format( **locals() )
         subvolume_roi = browser.get_subvolume_roi()
+
+        # Relocate host to top of 'recent' list, and limit list to 10 items.
+        try:
+            i = recent_hosts.index(recent_hosts)
+            del recent_hosts[i]
+        except ValueError:
+            pass
+        finally:
+            recent_hosts.insert(0, hostname)        
+            recent_hosts = recent_hosts[:10]
+
+        # Save pref
+        recent_hosts_pref.set(recent_hosts)
 
         if subvolume_roi is None:
             self.addFileNames([dvid_url], roleIndex, laneIndex)

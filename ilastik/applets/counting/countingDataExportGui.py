@@ -18,7 +18,8 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtGui import QColor
+import os
+from PyQt4.QtGui import QColor, QMessageBox, QFileDialog
 
 from lazyflow.operators.generic import OpMultiArraySlicer2
 
@@ -27,7 +28,13 @@ from volumina import colortables
 from countingGui import countingColorTable
 
 from ilastik.utility import bind
+from ilastik.utility.gui import threadRouted
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
+
+from lazyflow.request import Request
+
+import logging
+logger = logging.getLogger(__name__)
 
 class CountingDataExportGui( DataExportGui ):
     """
@@ -35,7 +42,37 @@ class CountingDataExportGui( DataExportGui ):
     """
     def createLayerViewer(self, opLane):
         return CountingResultsViewer(self.parentApplet, opLane)
+
+    def _initAppletDrawerUic(self):
+        localDir = os.path.split(__file__)[0]
+        drawerPath = os.path.join( localDir, "dataExportDrawer.ui")
+        super( CountingDataExportGui, self )._initAppletDrawerUic(drawerPath)
+        self.drawer.selectCsvButton.clicked.connect( self.select_csv_export_location )
         
+        self.topLevelOperator.CsvFilepath.notifyDirty( self._update_csv_label )
+        self.topLevelOperator.CsvFilepath.notifyReady( self._update_csv_label )
+        self.topLevelOperator.CsvFilepath.notifyUnready( self._update_csv_label )
+        self._update_csv_label()
+
+    def stopAndCleanUp(self):
+        self.topLevelOperator.CsvFilepath.unregisterDirty( self._update_csv_label )
+        self.topLevelOperator.CsvFilepath.unregisterReady( self._update_csv_label )
+        self.topLevelOperator.CsvFilepath.unregisterUnready( self._update_csv_label )
+        super(CountingDataExportGui, self).stopAndCleanUp()
+
+    def select_csv_export_location(self):
+        csv_export_path = QFileDialog.getSaveFileName(parent=self, caption="Exported Object Counts", filter="*.csv")
+        if csv_export_path:
+            self.topLevelOperator.CsvFilepath.setValue( str(csv_export_path) )
+            
+
+    def _update_csv_label(self, *args):
+        slot = self.topLevelOperator.CsvFilepath
+        if slot.ready():
+            self.drawer.csvLocationLabel.setText( slot.value )
+        else:
+            self.drawer.csvLocationLabel.setText( "" )
+
 class CountingResultsViewer(DataExportLayerViewerGui):
     
     def __init__(self, *args, **kwargs):

@@ -24,14 +24,53 @@ from PyQt4.QtGui import QColor
 from volumina.api import LazyflowSource, ColortableLayer, AlphaModulatedLayer
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
 from lazyflow.operators import OpMultiArraySlicer2
+from ilastik.utility.exportingOperator import ExportingGui
 
-class ObjectClassificationDataExportGui( DataExportGui ):
+class ObjectClassificationDataExportGui( DataExportGui, ExportingGui ):
     """
     A subclass of the generic data export gui that creates custom layer viewers.
     """
+    def __init__(self, *args, **kwargs):
+        super(ObjectClassificationDataExportGui, self).__init__(*args, **kwargs)
+        self._exporting_operator = None
+
+    def set_exporting_operator(self, op):
+        self._exporting_operator = op
+
+    def get_exporting_operator(self, lane=0):
+        return self._exporting_operator.getLane(lane)
+
     def createLayerViewer(self, opLane):
         return ObjectClassificationResultsViewer(self.parentApplet, opLane)
-        
+
+    def get_export_dialog_title(self):
+        return "Export Object Information"
+
+    @property
+    def gui_applet(self):
+        return self.parentApplet
+
+    def get_raw_shape(self):
+        return self.get_exporting_operator().RawImages.meta.shape
+
+    def get_feature_names(self):
+        return self.get_exporting_operator().ComputedFeatureNames([]).wait()
+
+    def _initAppletDrawerUic(self):
+        super(ObjectClassificationDataExportGui, self)._initAppletDrawerUic()
+
+        from PyQt4.QtGui import QGroupBox, QPushButton, QVBoxLayout
+        group = QGroupBox("Export Object Feature Table", self.drawer)
+        group.setLayout(QVBoxLayout())
+        self.drawer.layout().addWidget(group)
+
+        btn = QPushButton("Configure Feature Table Export", group)
+        btn.clicked.connect(self.configure_table_export)
+        group.layout().addWidget(btn)
+
+    def configure_table_export(self):
+        settings, selected_features = self.show_export_dialog()
+        self._exporting_operator.configure_table_export_settings( settings, selected_features )
 
 def _createDefault16ColorColorTable():
     colors = []

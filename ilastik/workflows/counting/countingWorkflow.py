@@ -18,6 +18,8 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+import sys
+import argparse
 from lazyflow.graph import Graph, Operator, OperatorWrapper
 
 from ilastik.workflow import Workflow
@@ -25,14 +27,17 @@ from ilastik.workflow import Workflow
 from ilastik.applets.projectMetadata import ProjectMetadataApplet
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
-
-from ilastik.applets.counting import CountingApplet, CountingDataExportApplet
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
+from ilastik.applets.counting import CountingApplet, CountingDataExportApplet
 from ilastik.applets.counting.opCounting import OpPredictionPipeline
+from ilastik.applets.batchProcessing import BatchProcessingApplet
 
 from lazyflow.roi import TinyVector
 from lazyflow.graph import Graph, OperatorWrapper
 from lazyflow.operators.generic import OpTransposeSlots, OpSelectSubslot
+
+import logging
+logger = logging.getLogger(__name__)
 
 class CountingWorkflow(Workflow):
     workflowName = "Cell Density Counting"
@@ -43,6 +48,12 @@ class CountingWorkflow(Workflow):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
         if 'graph' in kwargs: del kwargs['graph']
         super( CountingWorkflow, self ).__init__( shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs )
+        self.stored_classifer = None
+
+        # Parse workflow-specific command-line args
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--csv-export-file", help="Instead of exporting prediction density images, export total counts to the given csv path.")
+        self.parsed_counting_workflow_args, unused_args = parser.parse_known_args(workflow_cmdline_args)
 
         ######################
         # Interactive workflow
@@ -57,17 +68,22 @@ class CountingWorkflow(Workflow):
                                                        force5d=False
                                                       )
         opDataSelection = self.dataSelectionApplet.topLevelOperator
-        opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
+        role_names = ['Raw Data']
+        opDataSelection.DatasetRoles.setValue( role_names )
 
         self.featureSelectionApplet = FeatureSelectionApplet(self,
                                                              "Feature Selection",
                                                              "FeatureSelections")
 
-        #self.pcApplet = PixelClassificationApplet(self, "PixelClassification")
         self.countingApplet = CountingApplet(workflow=self)
         opCounting = self.countingApplet.topLevelOperator
 
-        self.dataExportApplet = CountingDataExportApplet(self, "Density Export")
+        self.dataExportApplet = CountingDataExportApplet(self, "Density Export", opCounting)
+        
+        # Customization hooks
+        self.dataExportApplet.prepare_for_entire_export = self.prepare_for_entire_export
+        self.dataExportApplet.post_process_lane_export = self.post_process_lane_export
+        self.dataExportApplet.post_process_entire_export = self.post_process_entire_export
         
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.PmapColors.connect(opCounting.PmapColors)
@@ -83,18 +99,22 @@ class CountingWorkflow(Workflow):
         self._applets.append(self.countingApplet)
         self._applets.append(self.dataExportApplet)
 
-
+        self._batch_input_args = None
+        self._batch_export_args = None
         if appendBatchOperators:
-            # Create applets for batch workflow
-            self.batchInputApplet = DataSelectionApplet(self, "Batch Prediction Input Selections", "BatchDataSelection", supportIlastik05Import=False, batchDataGui=True)
-            self.batchResultsApplet = CountingDataExportApplet(self, "Batch Prediction Output Locations", isBatch=True)
+            self.batchProcessingApplet = BatchProcessingApplet( self, 
+                                                                "Batch Processing", 
+                                                                self.dataSelectionApplet, 
+                                                                self.dataExportApplet )
+            self._applets.append(self.batchProcessingApplet)
+            if unused_args:
+                # We parse the export setting args first.  All remaining args are considered input files by the input applet.
+                self._batch_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args( unused_args )
+                self._batch_input_args, unused_args = self.batchProcessingApplet.parse_known_cmdline_args( unused_args )
     
-            # Expose in shell        
-            self._applets.append(self.batchInputApplet)
-            self._applets.append(self.batchResultsApplet)
-    
-            # Connect batch workflow (NOT lane-based)
-            self._initBatchWorkflow()
+        if unused_args:
+            logger.warn("Unused command-line args: {}".format( unused_args ))
+
 
     @property
     def applets(self):
@@ -103,6 +123,32 @@ class CountingWorkflow(Workflow):
     @property
     def imageNameListSlot(self):
         return self.dataSelectionApplet.topLevelOperator.ImageName
+
+    def prepareForNewLane(self, laneIndex):
+        """
+        Overridden from Workflow base class.
+        Called immediately before a new lane is added to the workflow.
+        """
+        # When the new lane is added, dirty notifications will propagate throughout the entire graph.
+        # This means the classifier will be marked 'dirty' even though it is still usable.
+        # Before that happens, let's store the classifier, so we can restore it at the end of connectLane(), below.
+        opCounting = self.countingApplet.topLevelOperator
+        if opCounting.classifier_cache.Output.ready() and \
+           not opCounting.classifier_cache._dirty:
+            self.stored_classifer = opCounting.classifier_cache.Output.value
+        else:
+            self.stored_classifer = None
+
+    def handleNewLanesAdded(self):
+        """
+        Overridden from Workflow base class.
+        Called immediately after a new lane is added to the workflow and initialized.
+        """
+        # Restore classifier we saved in prepareForNewLane() (if any)
+        if self.stored_classifer is not None:
+            self.countingApplet.topLevelOperator.classifier_cache.forceValue(self.stored_classifer)
+            # Release reference
+            self.stored_classifer = None
 
     def connectLane(self, laneIndex):
         ## Access applet operators
@@ -125,85 +171,61 @@ class CountingWorkflow(Workflow):
         opDataExport.Inputs[0].connect( opCounting.HeadlessPredictionProbabilities )
         opDataExport.RawData.connect( opData.ImageGroup[0] )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
-        opDataExport.ConstraintDataset.connect( opData.ImageGroup[0] )
 
-    def _initBatchWorkflow(self):
+    def onProjectLoaded(self, projectManager):
         """
-        Connect the batch-mode top-level operators to the training workflow and to eachother.
+        Overridden from Workflow base class.  Called by the Project Manager.
+        
+        If the user provided command-line arguments, use them to configure 
+        the workflow for batch mode and export all results.
+        (This workflow's headless mode supports only batch mode for now.)
         """
-        # Access applet operators from the training workflow
-        opTrainingDataSelection = self.dataSelectionApplet.topLevelOperator
-        opTrainingFeatures = self.featureSelectionApplet.topLevelOperator
-        opClassify = self.countingApplet.topLevelOperator
-        
-        # Access the batch operators
-        opBatchInputs = self.batchInputApplet.topLevelOperator
-        opBatchResults = self.batchResultsApplet.topLevelOperator
-        
-        opBatchInputs.DatasetRoles.connect( opTrainingDataSelection.DatasetRoles )
-        
-        opSelectFirstLane = OperatorWrapper( OpSelectSubslot, parent=self )
-        opSelectFirstLane.Inputs.connect( opTrainingDataSelection.ImageGroup )
-        opSelectFirstLane.SubslotIndex.setValue(0)
-        
-        opSelectFirstRole = OpSelectSubslot( parent=self )
-        opSelectFirstRole.Inputs.connect( opSelectFirstLane.Output )
-        opSelectFirstRole.SubslotIndex.setValue(0)
-        
-        opBatchResults.ConstraintDataset.connect( opSelectFirstRole.Output )
-        
-        ## Create additional batch workflow operators
-        opBatchFeatures = OperatorWrapper( OpFeatureSelection, operator_kwargs={'filter_implementation':'Original'}, parent=self, promotedSlotNames=['InputImage'] )
-        opBatchPredictionPipeline = OperatorWrapper( OpPredictionPipeline, parent=self )
-        
-        ## Connect Operators ##
-        opTranspose = OpTransposeSlots( parent=self )
-        opTranspose.OutputLength.setValue(1)
-        opTranspose.Inputs.connect( opBatchInputs.DatasetGroup )
-        
-        # Provide dataset paths from data selection applet to the batch export applet
-        opBatchResults.RawDatasetInfo.connect( opTranspose.Outputs[0] )
-        opBatchResults.WorkingDirectory.connect( opBatchInputs.WorkingDirectory )
-        
-        # Connect (clone) the feature operator inputs from 
-        #  the interactive workflow's features operator (which gets them from the GUI)
-        opBatchFeatures.Scales.connect( opTrainingFeatures.Scales )
-        opBatchFeatures.FeatureIds.connect( opTrainingFeatures.FeatureIds )
-        opBatchFeatures.SelectionMatrix.connect( opTrainingFeatures.SelectionMatrix )
-        
-        # Classifier and LabelsCount are provided by the interactive workflow
-        opBatchPredictionPipeline.Classifier.connect( opClassify.Classifier )
-        opBatchPredictionPipeline.MaxLabel.connect( opClassify.MaxLabelValue )
-        opBatchPredictionPipeline.FreezePredictions.setValue( False )
-        
-        # Provide these for the gui
-        opBatchResults.RawData.connect( opBatchInputs.Image )
-        opBatchResults.PmapColors.connect( opClassify.PmapColors )
-        opBatchResults.LabelNames.connect( opClassify.LabelNames )
-        opBatchResults.UpperBound.connect( opClassify.UpperBound )
-        
-        # Connect Image pathway:
-        # Input Image -> Features Op -> Prediction Op -> Export
-        opBatchFeatures.InputImage.connect( opBatchInputs.Image )
-        opBatchPredictionPipeline.FeatureImages.connect( opBatchFeatures.OutputImage )
-        
-        opBatchResults.SelectionNames.setValue( ['Probabilities'] )        
-        # opBatchResults.Inputs is indexed by [lane][selection],
-        # Use OpTranspose to allow connection.
-        opTransposeBatchInputs = OpTransposeSlots( parent=self )
-        opTransposeBatchInputs.OutputLength.setValue(0)
-        opTransposeBatchInputs.Inputs.resize(1)
-        opTransposeBatchInputs.Inputs[0].connect( opBatchPredictionPipeline.HeadlessPredictionProbabilities ) # selection 0
-        
-        # Now opTransposeBatchInputs.Outputs is level-2 indexed by [lane][selection]
-        opBatchResults.Inputs.connect( opTransposeBatchInputs.Outputs )
+        # Headless batch mode.
+        if self._headless and self._batch_input_args and self._batch_export_args:
+            self.dataExportApplet.configure_operator_with_parsed_args( self._batch_export_args )
 
-        # We don't actually need the cached path in the batch pipeline.
-        # Just connect the uncached features here to satisfy the operator.
-        opBatchPredictionPipeline.CachedFeatureImages.connect( opBatchFeatures.OutputImage )
+            # If the user provided a csv_path via the command line,
+            # overwrite the setting in the counting export operator.
+            csv_path = self.parsed_counting_workflow_args.csv_export_file
+            if csv_path:
+                self.dataExportApplet.topLevelOperator.CsvFilepath.setValue(csv_path)
 
-        self.opBatchPredictionPipeline = opBatchPredictionPipeline
-
+            if self.countingApplet.topLevelOperator.classifier_cache._dirty:
+                logger.warn("Your project file has no classifier.  "
+                            "A new classifier will be trained for this run.")
+                
+            logger.info("Beginning Batch Processing")
+            self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
+            logger.info("Completed Batch Processing")
+    
+    def prepare_for_entire_export(self):
+        """
+        Customization hook for data export (including batch mode).
+        """
+        self.freeze_status = self.countingApplet.topLevelOperator.FreezePredictions.value
+        self.countingApplet.topLevelOperator.FreezePredictions.setValue(False)
+        # Create a new CSV file to write object counts into.
+        self.csv_export_file = None
+        if self.dataExportApplet.topLevelOperator.CsvFilepath.ready():
+            csv_path = self.dataExportApplet.topLevelOperator.CsvFilepath.value
+            logger.info("Exporting object counts to CSV: " + csv_path)
+            self.csv_export_file = open(csv_path, 'w')
+    
+    def post_process_lane_export(self, lane_index):
+        """
+        Customization hook for data export (including batch mode).
+        """
+        # Write the object counts for this lane as a line in the CSV file.
+        if self.csv_export_file:
+            self.dataExportApplet.write_csv_results(self.csv_export_file, lane_index)
+        
+    def post_process_entire_export(self):
+        """
+        Customization hook for data export (including batch mode).
+        """
+        self.countingApplet.topLevelOperator.FreezePredictions.setValue(self.freeze_status)
+        if self.csv_export_file:
+            self.csv_export_file.close()
 
     def handleAppletStateUpdateRequested(self):
         """
@@ -229,15 +251,8 @@ class CountingWorkflow(Workflow):
 
         self._shell.setAppletEnabled(self.featureSelectionApplet, input_ready)
         self._shell.setAppletEnabled(self.countingApplet, features_ready)
-        self._shell.setAppletEnabled(self.dataExportApplet, predictions_ready)
-        
-        # Training workflow must be fully configured before batch can be used
-        self._shell.setAppletEnabled(self.batchInputApplet, predictions_ready)
-
-        opBatchDataSelection = self.batchInputApplet.topLevelOperator
-        batch_input_ready = predictions_ready and \
-                            len(opBatchDataSelection.ImageGroup) > 0
-        self._shell.setAppletEnabled(self.batchResultsApplet, batch_input_ready)
+        self._shell.setAppletEnabled(self.dataExportApplet, predictions_ready and not self.dataExportApplet.busy)
+        self._shell.setAppletEnabled(self.batchProcessingApplet, predictions_ready and not self.batchProcessingApplet.busy)
         
         # Lastly, check for certain "busy" conditions, during which we 
         #  should prevent the shell from closing the project.
@@ -245,4 +260,5 @@ class CountingWorkflow(Workflow):
         busy |= self.dataSelectionApplet.busy
         busy |= self.featureSelectionApplet.busy
         busy |= self.dataExportApplet.busy
+        busy |= self.batchProcessingApplet.busy
         self._shell.enableProjectChanges( not busy )

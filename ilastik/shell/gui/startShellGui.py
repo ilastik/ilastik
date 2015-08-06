@@ -26,14 +26,14 @@ import platform
 import signal
 signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-from PyQt4.QtGui import QApplication, QSplashScreen, QPixmap 
+from PyQt4.QtGui import QApplication
 from PyQt4.QtCore import Qt, QTimer
 
 import splashScreen
 import ilastik.config
 shell = None
 
-def startShellGui(workflow_cmdline_args, eventcapture_mode, playback_args, *testFuncs):
+def startShellGui(workflow_cmdline_args, eventcapture_mode, playback_args, preinit_funcs, postinit_funcs):
     """
     Create an application and launch the shell in it.
     """
@@ -63,7 +63,7 @@ def startShellGui(workflow_cmdline_args, eventcapture_mode, playback_args, *test
 
     splashScreen.showSplashScreen()
     app.processEvents()
-    QTimer.singleShot( 0, functools.partial(launchShell, workflow_cmdline_args, *testFuncs ) )
+    QTimer.singleShot( 0, functools.partial(launchShell, workflow_cmdline_args, preinit_funcs, postinit_funcs ) )
     QTimer.singleShot( 0, splashScreen.hideSplashScreen)
 
     return app.exec_()
@@ -78,11 +78,14 @@ def _applyStyleSheet(app):
         app.setStyleSheet(styleSheetText)
 
 
-def launchShell(workflow_cmdline_args, *testFuncs):
+def launchShell(workflow_cmdline_args, preinit_funcs, postinit_funcs):
     """
     Start the ilastik shell GUI with the given workflow type.
     Note: A QApplication must already exist, and you must call this function from its event loop.
     """
+    for f in preinit_funcs:
+        f()
+
     # This will import a lot of stuff (essentially the entire program).
     # We use a late import here so the splash screen is shown while this lengthy import happens.
     from ilastik.shell.gui.ilastikShell import IlastikShell
@@ -102,12 +105,16 @@ def launchShell(workflow_cmdline_args, *testFuncs):
         shell.move(10,10)
     shell.show()
     
+    # FIXME: The workflow_cmdline_args parameter is meant
+    #        for arguments to the workflow, not the shell.
+    #        This is a bit hacky.
     if workflow_cmdline_args and "--fullscreen" in workflow_cmdline_args:
+        workflow_cmdline_args.remove('--fullscreen')
         shell.showMaximized()
     
-    # Run a test (if given)
-    for testFunc in testFuncs:
-        QTimer.singleShot(0, functools.partial(testFunc, shell) )
+    # Run post-init funcs
+    for f in postinit_funcs:
+        QTimer.singleShot(0, functools.partial(f, shell) )
     
     # On Mac, the main window needs to be explicitly raised
     shell.raise_()

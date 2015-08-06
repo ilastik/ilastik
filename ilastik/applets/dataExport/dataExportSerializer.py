@@ -42,7 +42,7 @@ class DataExportSerializer(AppletSerializer):
     """
     Serializes the user's data export settings to the project file.
     """
-    def __init__(self, operator, projectFileGroupName):
+    def __init__(self, operator, projectFileGroupName, extraSerialSlots=[]):
         self.topLevelOperator = operator
         SerialRoiSlot = partial( SerialListSlot,
                                  store_transform=lambda x: -1 if x is None else x,
@@ -65,6 +65,8 @@ class DataExportSerializer(AppletSerializer):
             
             SerialSlot(operator.OutputFormat),
         ]
+        
+        slots += extraSerialSlots
 
         super(DataExportSerializer, self).__init__(projectFileGroupName,
                                                    slots=slots)

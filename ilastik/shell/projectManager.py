@@ -122,12 +122,12 @@ class ProjectManager(object):
         logger.info("Opening Project: " + projectFilePath)
 
         if not os.path.exists(projectFilePath):
-            raise ProjectManager.FileMissingError()
+            raise ProjectManager.FileMissingError(projectFilePath)
 
         # Open the file as an HDF5 file
         try:
             hdf5File = h5py.File(projectFilePath)
-            readOnly = False
+            readOnly = (hdf5File.mode == 'r')
         except IOError:
             # Maybe the project is read-only
             hdf5File = h5py.File(projectFilePath, 'r')
@@ -230,7 +230,7 @@ class ProjectManager(object):
             for aplt in self._applets:
                 for item in aplt.dataSerializers:
                     assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
-                    if force_all_save or item.isDirty():
+                    if force_all_save or item.isDirty() or item.shouldSerialize(self.currentProjectFile):
                         item.serializeToHdf5(self.currentProjectFile, self.currentProjectPath)
             
             #save the current workflow as standard workflow
@@ -243,10 +243,8 @@ class ProjectManager(object):
             raise ProjectManager.SaveError( str(err) )
         finally:
             # save current time
-            try:
+            if "time" in self.currentProjectFile:
                 del self.currentProjectFile["time"]
-            except:
-                pass
             self.currentProjectFile.create_dataset("time", data = time.ctime())
             # Flush any changes we made to disk, but don't close the file.
             self.currentProjectFile.flush()
@@ -278,7 +276,7 @@ class ProjectManager(object):
                     for item in aplt.dataSerializers:
                         assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
 
-                        if item.isDirty():
+                        if item.isDirty() or item.shouldSerialize(self.currentProjectFile):
                             # Use a COPY of the serializer, so the original serializer doesn't forget it's dirty state
                             itemCopy = copy.copy(item)
                             itemCopy.serializeToHdf5(snapshotFile, snapshotPath)
@@ -287,10 +285,8 @@ class ProjectManager(object):
                 raise ProjectManager.SaveError(str(err))
             finally:
                 # save current time
-                try:
+                if "time" in snapshotFile:
                     del snapshotFile["time"]
-                except:
-                    pass
                 snapshotFile.create_dataset("time", data = time.ctime())
 
                 # Flush any changes we made to disk, but don't close the file.

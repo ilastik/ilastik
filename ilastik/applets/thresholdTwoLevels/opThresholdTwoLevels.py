@@ -69,6 +69,7 @@ class OpThresholdTwoLevels(Operator):
     name = "OpThresholdTwoLevels"
 
     RawInput = InputSlot(optional=True)  # Display only
+    InputChannelColors = InputSlot(optional=True) # Display only
 
     InputImage = InputSlot()
     MinSize = InputSlot(stype='int', value=10)
@@ -306,10 +307,10 @@ class _OpThresholdOneLevel(Operator):
         self._opLabeler.Method.setValue(_labeling_impl)
         self._opLabeler.Input.connect(self._opThresholder.Output)
 
-        self.BeforeSizeFilter.connect( self._opLabeler.CachedOutput )
+        self.BeforeSizeFilter.connect( self._opLabeler.Output )
 
         self._opFilter = OpFilterLabels( parent=self )
-        self._opFilter.Input.connect(self._opLabeler.CachedOutput )
+        self._opFilter.Input.connect(self._opLabeler.Output )
         self._opFilter.MinLabelSize.connect( self.MinSize )
         self._opFilter.MaxLabelSize.connect( self.MaxSize )
         self._opFilter.BinaryOut.setValue(False)
@@ -333,9 +334,8 @@ class _OpThresholdOneLevel(Operator):
 
         self._opThresholder.Function.setValue(
             partial(thresholdToUint8, self.Threshold.value))
-        # Copy the input metadata to the output
-        self.Output.meta.assignFrom(self.InputImage.meta)
-        self.Output.meta.dtype=numpy.uint32
+
+        # self.Output already has metadata: it is directly connected to self._opFilter.Output
 
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here..."
@@ -409,14 +409,14 @@ class _OpThresholdTwoLevels(Operator):
         self._opHighLabeler.Input.connect(self._opHighThresholder.Output)
 
         self._opHighLabelSizeFilter = OpFilterLabels(parent=self)
-        self._opHighLabelSizeFilter.Input.connect(self._opHighLabeler.CachedOutput)
+        self._opHighLabelSizeFilter.Input.connect(self._opHighLabeler.Output)
         self._opHighLabelSizeFilter.MinLabelSize.connect(self.MinSize)
         self._opHighLabelSizeFilter.MaxLabelSize.connect(self.MaxSize)
         self._opHighLabelSizeFilter.BinaryOut.setValue(False)  # we do the binarization in opSelectLabels
                                                                # this way, we get to display pretty colors
 
         self._opSelectLabels = OpSelectLabels( parent=self )        
-        self._opSelectLabels.BigLabels.connect( self._opLowLabeler.CachedOutput )
+        self._opSelectLabels.BigLabels.connect( self._opLowLabeler.Output )
         self._opSelectLabels.SmallLabels.connect( self._opHighLabelSizeFilter.Output )
 
         # remove the remaining very large objects -
@@ -481,9 +481,8 @@ class _OpThresholdTwoLevels(Operator):
         self._opHighThresholder.Function.setValue(
             partial(thresholdToUint8, self.HighThreshold.value))
 
-        # Copy the input metadata to the output
-        self.Output.meta.assignFrom(self.InputImage.meta)
-        self.Output.meta.dtype = numpy.uint8
+        # Output is already connected internally -- don't reassign new metadata
+        # self.Output.meta.assignFrom(self.InputImage.meta)
 
         # Blockshape is the entire spatial volume (hysteresis thresholding is
         # a global operation)

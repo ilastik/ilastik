@@ -67,14 +67,24 @@ class DataExportApplet( Applet ):
             self._gui = DataExportGui( self, self.topLevelOperator )
         return self._gui
 
-    def parse_known_cmdline_args(self, cmdline_args):
-        """
-        Helper function for headless workflows.
-        Parses commandline args that can be used to configure the ``DataExportApplet`` top-level operator 
-        and returns ``(parsed_args, unused_args)``, similar to ``argparse.ArgumentParser.parse_known_args()``
-        See also: :py:meth:`configure_operator_with_parsed_args()`.
-        """
-        arg_parser = argparse.ArgumentParser()
+    # The following functions act as hooks for subclasses to override or clients to 
+    # monkey-patch for custom behavior before/during/after an export is performed.
+    # (The GUI and/or batch applet will call them at the appropriate time.)
+    def prepare_for_entire_export(self):
+        """Called before the entire export process starts"""
+        pass
+    def prepare_lane_for_export(self, lane_index):
+        """Called before each lane is exported."""
+        pass
+    def post_process_lane_export(self, lane_index):
+        """Called immediately after each lane is exported."""
+        pass
+    def post_process_entire_export(self):
+        """Called after the entire export process finishes."""
+
+    @classmethod
+    def make_cmdline_parser(cls, starting_parser=None):
+        arg_parser = starting_parser or argparse.ArgumentParser()
         arg_parser.add_argument( '--cutout_subregion', help='Subregion to export (start,stop), e.g. [(0,0,0,0,0), (1,100,200,20,3)]', required=False )
         
         arg_parser.add_argument( '--pipeline_result_drange', help='Pipeline result data range (min,max) BEFORE normalization, e.g. (0.0, 1.0)', required=False )
@@ -88,8 +98,26 @@ class DataExportApplet( Applet ):
         arg_parser.add_argument( '--output_format', help='Export file format', choices=all_format_names, required=False )
         arg_parser.add_argument( '--output_filename_format', help='Output file path, including special placeholders, e.g. /tmp/results_t{t_start}-t{t_stop}.h5', required=False )
         arg_parser.add_argument( '--output_internal_path', help='Specifies dataset name within an hdf5 dataset (applies to hdf5 output only), e.g. /volume/data', required=False )
+
+        arg_parser.add_argument( '--export_source', help='The data to export.  See the dropdown list on the Data Export page for choices.', required=False )
+
+        return arg_parser
+
+    @classmethod
+    def parse_known_cmdline_args(cls, cmdline_args, parsed_args=None):
+        """
+        Helper function for headless workflows.
+        Parses commandline args that can be used to configure the ``DataExportApplet`` top-level operator 
+        and returns ``(parsed_args, unused_args)``, similar to ``argparse.ArgumentParser.parse_known_args()``
+        See also: :py:meth:`configure_operator_with_parsed_args()`.
         
-        parsed_args, unused_args = arg_parser.parse_known_args(cmdline_args)
+        parsed_args: Already-parsed args as returned from an ArgumentParser from make_cmdline_parser(), above.
+                     If not provided, make_cmdline_parser().parse_known_args() will be used.
+        """
+        unused_args = []
+        if parsed_args is None:
+            arg_parser = cls.make_cmdline_parser()
+            parsed_args, unused_args = arg_parser.parse_known_args(cmdline_args)
 
         # Replace '~' with home dir
         if parsed_args.output_filename_format is not None:
@@ -151,6 +179,8 @@ class DataExportApplet( Applet ):
 
         return parsed_args, unused_args
 
+    
+
     def configure_operator_with_parsed_args(self, parsed_args):
         """
         Helper function for headless workflows.
@@ -159,9 +189,35 @@ class DataExportApplet( Applet ):
         :param parsed_args: Must be an ``argparse.Namespace`` as returned by :py:meth:`parse_known_cmdline_args()`.
         """
         opDataExport = self.topLevelOperator
+        self._configure_operator_with_parsed_args(parsed_args, opDataExport)
+
+    @classmethod
+    def _configure_operator_with_parsed_args(cls, parsed_args, opDataExport):
+        """
+        Helper function for headless workflows.
+        Configures the given export operator according to the settings provided in ``parsed_args``.
+        
+        Unlike the function above, this function can be called from external scripts.
+        The operator can be OpDataExport, OR OpFormattedDataExport
+        
+        :param parsed_args: Must be an ``argparse.Namespace`` as returned by :py:meth:`parse_known_cmdline_args()`.
+        """
+        
         # Disconnect the special 'transaction' slot to prevent these 
         #  settings from triggering many calls to setupOutputs.
         opDataExport.TransactionSlot.disconnect()
+
+        if parsed_args.export_source is not None:
+            source_choices = opDataExport.SelectionNames.value
+            source_choices = map(str.lower, source_choices)
+            export_source = parsed_args.export_source.lower()
+            try:
+                source_index = source_choices.index(export_source)
+            except ValueError:
+                raise Exception("Invalid option for --export_source: '{}'\n"
+                                "Valid options are: {}".format( parsed_args.export_source, source_choices ))
+            else:
+                opDataExport.InputSelection.setValue( source_index )
 
         if parsed_args.cutout_subregion:
             opDataExport.RegionStart.setValue( parsed_args.cutout_subregion[0] )
@@ -180,12 +236,13 @@ class DataExportApplet( Applet ):
             opDataExport.OutputAxisOrder.setValue( parsed_args.output_axis_order )
             
         if parsed_args.output_filename_format:
-            # By default, most workflows consider the project directory to be the 'working directory'
-            #  for transforming relative paths (e.g. export locations) into absolute locations.
-            # A user would probably expect paths to be relative to his cwd when he launches 
-            #  ilastik from the command line.
-            opDataExport.WorkingDirectory.disconnect()
-            opDataExport.WorkingDirectory.setValue( os.getcwd() )
+            if hasattr(opDataExport, 'WorkingDirectory'):
+                # By default, most workflows consider the project directory to be the 'working directory'
+                #  for transforming relative paths (e.g. export locations) into absolute locations.
+                # A user would probably expect paths to be relative to his cwd when he launches 
+                #  ilastik from the command line.
+                opDataExport.WorkingDirectory.disconnect()
+                opDataExport.WorkingDirectory.setValue( os.getcwd() )
     
             opDataExport.OutputFilenameFormat.setValue( parsed_args.output_filename_format )
             
