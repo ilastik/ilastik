@@ -46,11 +46,6 @@ except ImportError as e:
     logger.warn("Failed to import counting workflow; check dependencies: " + str(e))
 
 try:
-    import connectedComponents
-except ImportError as e:
-    logger.warn("Failed to import connected components workflow; check dependencies: " + str(e))
-
-try:
     import tracking.conservation
 except ImportError as e:
     logger.warn( "Failed to import automatic tracking workflow (conservation tracking). For this workflow, see the installation"\
