@@ -126,9 +126,15 @@ class BatchProcessingApplet( Applet ):
         We assume the LAST non-batch input in the workflow has settings that will work for all batch processing inputs.
         Here, we get the DatasetInfo objects from that lane and store them as 'templates' to modify for all batch-processing files.
         """
+        # If there isn't an available dataset to use as a template
+        if len(self.dataSelectionApplet.topLevelOperator.DatasetGroup) == 0:
+            num_roles = len(self.dataSelectionApplet.topLevelOperator.DatasetRoles.value)
+            return dict( zip( range(num_roles), [None] * num_roles ) )
+        
         # Use the LAST non-batch input file as our 'template' for DatasetInfo settings (e.g. axistags)
         template_lane = len(self.dataSelectionApplet.topLevelOperator.DatasetGroup)-1
         opDataSelectionTemplateView = self.dataSelectionApplet.topLevelOperator.getLane(template_lane)
+
         template_infos = {}
         for role_index, info_slot in enumerate(opDataSelectionTemplateView.DatasetGroup):
             if info_slot.ready():
