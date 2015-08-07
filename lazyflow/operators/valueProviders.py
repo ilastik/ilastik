@@ -308,6 +308,7 @@ class OpValueCache(Operator, ObservableCache):
                             # (i.e. self._request is still the request that raised this exception.)
                             if request == self._request:
                                 self._request = None # This is mostly to aid testing.
+                    raise
         
         result[...] = value
         
