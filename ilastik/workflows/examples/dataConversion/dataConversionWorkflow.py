@@ -27,6 +27,7 @@ from lazyflow.graph import Graph
 from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
+from ilastik.applets.batchProcessing import BatchProcessingApplet
 
 class DataConversionWorkflow(Workflow):
     """
@@ -74,23 +75,45 @@ class DataConversionWorkflow(Workflow):
 
         self.dataExportApplet = DataExportApplet(self, "Data Export")
 
+        # No special data pre/post processing necessary...
+        #self.dataExportApplet.prepare_for_entire_export = self.prepare_for_entire_export
+        #self.dataExportApplet.prepare_lane_for_export = self.prepare_lane_for_export
+        #self.dataExportApplet.post_process_lane_export = self.post_process_lane_export
+        #self.dataExportApplet.post_process_entire_export = self.post_process_entire_export
+
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
         opDataExport.SelectionNames.setValue( ["Input"] )        
 
+        self.batchProcessingApplet = BatchProcessingApplet(self, 
+                                                           "Batch Processing", 
+                                                           self.dataSelectionApplet, 
+                                                           self.dataExportApplet)
+
         self._applets.append( self.dataSelectionApplet )
         self._applets.append( self.dataExportApplet )
+        self._applets.append(self.batchProcessingApplet)
 
         # Parse command-line arguments
         # Command-line args are applied in onProjectLoaded(), below.
-        self._workflow_cmdline_args = workflow_cmdline_args
-        self._data_input_args = None
-        self._data_export_args = None
         if workflow_cmdline_args:
             self._data_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args( workflow_cmdline_args )
-            self._data_input_args, unused_args = self.dataSelectionApplet.parse_known_cmdline_args( workflow_cmdline_args, role_names )
-            if unused_args:
-                logger.warn("Unused command-line args: {}".format( unused_args ))
+            self._batch_input_args, unused_args = self.dataSelectionApplet.parse_known_cmdline_args( workflow_cmdline_args, role_names )
+        else:
+            unused_args = None
+            self._batch_input_args = None
+            self._data_export_args = None
+
+        if unused_args:
+            logger.warn("Unused command-line args: {}".format( unused_args ))
+
+    @property
+    def applets(self):
+        return self._applets
+
+    @property
+    def imageNameListSlot(self):
+        return self.dataSelectionApplet.topLevelOperator.ImageName
 
     def onProjectLoaded(self, projectManager):
         """
@@ -99,33 +122,28 @@ class DataConversionWorkflow(Workflow):
         If the user provided command-line arguments, use them to configure 
         the workflow inputs and output settings.
         """
-        # Configure the batch data selection operator.
-        if self._data_input_args and (self._data_input_args.unspecified_input_files or self._data_input_args.input_data):
-            self.dataSelectionApplet.configure_operator_with_parsed_args( self._data_input_args )
-        
         # Configure the data export operator.
         if self._data_export_args:
             self.dataExportApplet.configure_operator_with_parsed_args( self._data_export_args )
 
-        if self._headless and self._data_input_args and self._data_export_args:
-            # Now run the export and report progress....
-            opDataExport = self.dataExportApplet.topLevelOperator
-            for i, opExportDataLaneView in enumerate(opDataExport):
-                logger.info( "Exporting file #{} to {}".format(i, opExportDataLaneView.ExportPath.value) )
-    
-                sys.stdout.write( "Result #{}/{} Progress: ".format( i, len( opDataExport ) ) )
-                def print_progress( progress ):
-                    sys.stdout.write( "{} ".format( progress ) )
-    
-                # If the operator provides a progress signal, use it.
-                slotProgressSignal = opExportDataLaneView.progressSignal
-                slotProgressSignal.subscribe( print_progress )
-                opExportDataLaneView.run_export()
-                
-                # Finished.
-                sys.stdout.write("\n")
+        if self._headless and self._batch_input_args and self._data_export_args:
+            logger.info("Beginning Batch Processing")
+            self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
+            logger.info("Completed Batch Processing")
+
+
+    def prepareForNewLane(self, laneIndex):
+        """
+        Overridden from Workflow base class.
+        """
+        # No preparation necessary.
+        pass
 
     def connectLane(self, laneIndex):
+        """
+        Overridden from Workflow base class.
+        """
+        # Connect input -> export
         opDataSelectionView = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opDataExportView = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
 
@@ -136,13 +154,12 @@ class DataConversionWorkflow(Workflow):
         # There is no special "raw" display layer in this workflow.
         #opDataExportView.RawData.connect( opDataSelectionView.ImageGroup[0] )
 
-    @property
-    def applets(self):
-        return self._applets
-
-    @property
-    def imageNameListSlot(self):
-        return self.dataSelectionApplet.topLevelOperator.ImageName
+    def handleNewLanesAdded(self):
+        """
+        Overridden from Workflow base class.
+        """
+        # No special handling required.
+        pass
 
     def handleAppletStateUpdateRequested(self):
         """
@@ -158,11 +175,14 @@ class DataConversionWorkflow(Workflow):
                             opDataExport.Inputs[0][0].ready() and \
                             (TinyVector(opDataExport.Inputs[0][0].meta.shape) > 0).all()
 
-        self._shell.setAppletEnabled(self.dataExportApplet, export_data_ready)
+        self._shell.setAppletEnabled(self.dataSelectionApplet, not self.batchProcessingApplet.busy)
+        self._shell.setAppletEnabled(self.dataExportApplet, export_data_ready and not self.batchProcessingApplet.busy)
+        self._shell.setAppletEnabled(self.batchProcessingApplet, export_data_ready)
         
         # Lastly, check for certain "busy" conditions, during which we 
         #  should prevent the shell from closing the project.
         busy = False
         busy |= self.dataSelectionApplet.busy
         busy |= self.dataExportApplet.busy
+        busy |= self.batchProcessingApplet.busy
         self._shell.enableProjectChanges( not busy )
