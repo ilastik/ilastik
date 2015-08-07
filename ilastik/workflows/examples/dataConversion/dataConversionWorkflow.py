@@ -29,25 +29,27 @@ from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from ilastik.applets.batchProcessing import BatchProcessingApplet
 
+RAW_DATA_ROLE_INDEX = 0
+
 class DataConversionWorkflow(Workflow):
     """
-    Simple workflow for converting data between formats.  Has only two applets: Data Selection and Data Export.
-    
-    Also supports a command-line interface for headless mode.
-    
-    For example:
-    
-    .. code-block:: bash
+    Simple workflow for converting data between formats.
+    Has only two 'interactive' applets (Data Selection and Data Export), plus the BatchProcessing applet.    
 
-        python ilastik.py --headless --new_project=NewTemporaryProject.ilp --workflow=DataConversionWorkflow --output_format="png sequence" ~/input1.h5 ~/input2.h5
+    Supports headless mode. For example:
     
-    Or if you have an existing project with input files already selected and configured:
+    .. code-block::
 
-    .. code-block:: bash
+        python ilastik.py --headless 
+                          --new_project=NewTemporaryProject.ilp
+                          --workflow=DataConversionWorkflow
+                          --output_format="png sequence"
+                          ~/input1.h5
+                          ~/input2.h5
 
-        python ilastik.py --headless --project=MyProject.ilp --output_format=jpeg
-    
-    .. note:: Beware of issues related to absolute vs. relative paths.  Relative links are stored relative to the project file.
+    .. note:: Beware of issues related to absolute vs. relative paths.
+              Relative links are stored relative to the project file.
+
               To avoid this issue entirely, either 
                  (1) use only absolute filepaths
               or (2) cd into your project file's directory before launching ilastik.
@@ -61,7 +63,7 @@ class DataConversionWorkflow(Workflow):
         super(DataConversionWorkflow, self).__init__(shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
         self._applets = []
 
-        # Create applets 
+        # Instantiate DataSelection applet
         self.dataSelectionApplet = DataSelectionApplet(self, 
                                                        "Input Data", 
                                                        "Input Data", 
@@ -69,27 +71,34 @@ class DataConversionWorkflow(Workflow):
                                                        batchDataGui=False,
                                                        force5d=False)
 
-        opDataSelection = self.dataSelectionApplet.topLevelOperator
+        # Configure global DataSelection settings
         role_names = ["Input Data"]
+        opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue( role_names )
 
+        # Instantiate DataExport applet
         self.dataExportApplet = DataExportApplet(self, "Data Export")
 
-        # No special data pre/post processing necessary...
+        # Configure global DataExport settings
+        opDataExport = self.dataExportApplet.topLevelOperator
+        opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
+        opDataExport.SelectionNames.setValue( ["Input"] )        
+
+        # No special data pre/post processing necessary in this workflow, 
+        #   but this is where we'd hook it up if we needed it.
+        #
         #self.dataExportApplet.prepare_for_entire_export = self.prepare_for_entire_export
         #self.dataExportApplet.prepare_lane_for_export = self.prepare_lane_for_export
         #self.dataExportApplet.post_process_lane_export = self.post_process_lane_export
         #self.dataExportApplet.post_process_entire_export = self.post_process_entire_export
 
-        opDataExport = self.dataExportApplet.topLevelOperator
-        opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
-        opDataExport.SelectionNames.setValue( ["Input"] )        
-
+        # Instantiate BatchProcessing applet
         self.batchProcessingApplet = BatchProcessingApplet(self, 
                                                            "Batch Processing", 
                                                            self.dataSelectionApplet, 
                                                            self.dataExportApplet)
 
+        # Expose our applets in a list (for the shell to use)
         self._applets.append( self.dataSelectionApplet )
         self._applets.append( self.dataExportApplet )
         self._applets.append(self.batchProcessingApplet)
@@ -109,11 +118,51 @@ class DataConversionWorkflow(Workflow):
 
     @property
     def applets(self):
+        """
+        Overridden from Workflow base class.
+        """
         return self._applets
 
     @property
     def imageNameListSlot(self):
+        """
+        Overridden from Workflow base class.
+        """
         return self.dataSelectionApplet.topLevelOperator.ImageName
+
+    def prepareForNewLane(self, laneIndex):
+        """
+        Overridden from Workflow base class.
+        Called immediately before connectLane()
+        """
+        # No preparation necessary.
+        pass
+
+    def connectLane(self, laneIndex):
+        """
+        Overridden from Workflow base class.
+        """
+        # Get a *view* of each top-level operator, specific to the current lane.
+        opDataSelectionView = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
+        opDataExportView = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
+
+        # Now connect the operators together for this lane.
+        # Most workflows would have more to do here, but this workflow is super simple:
+        # We just connect input to export
+        opDataExportView.RawDatasetInfo.connect( opDataSelectionView.DatasetGroup[RAW_DATA_ROLE_INDEX] )        
+        opDataExportView.Inputs.resize( 1 )
+        opDataExportView.Inputs[RAW_DATA_ROLE_INDEX].connect( opDataSelectionView.ImageGroup[RAW_DATA_ROLE_INDEX] )
+
+        # There is no special "raw" display layer in this workflow.
+        #opDataExportView.RawData.connect( opDataSelectionView.ImageGroup[0] )
+
+    def handleNewLanesAdded(self):
+        """
+        Overridden from Workflow base class.
+        Called immediately AFTER connectLane() and the dataset is loaded into the workflow.
+        """
+        # No special handling required.
+        pass
 
     def onProjectLoaded(self, projectManager):
         """
@@ -130,36 +179,6 @@ class DataConversionWorkflow(Workflow):
             logger.info("Beginning Batch Processing")
             self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
             logger.info("Completed Batch Processing")
-
-
-    def prepareForNewLane(self, laneIndex):
-        """
-        Overridden from Workflow base class.
-        """
-        # No preparation necessary.
-        pass
-
-    def connectLane(self, laneIndex):
-        """
-        Overridden from Workflow base class.
-        """
-        # Connect input -> export
-        opDataSelectionView = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
-        opDataExportView = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
-
-        opDataExportView.RawDatasetInfo.connect( opDataSelectionView.DatasetGroup[0] )        
-        opDataExportView.Inputs.resize( 1 )
-        opDataExportView.Inputs[0].connect( opDataSelectionView.ImageGroup[0] )
-
-        # There is no special "raw" display layer in this workflow.
-        #opDataExportView.RawData.connect( opDataSelectionView.ImageGroup[0] )
-
-    def handleNewLanesAdded(self):
-        """
-        Overridden from Workflow base class.
-        """
-        # No special handling required.
-        pass
 
     def handleAppletStateUpdateRequested(self):
         """
