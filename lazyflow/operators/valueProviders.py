@@ -301,6 +301,13 @@ class OpValueCache(Operator, ObservableCache):
                         else:
                             request = self._request
                     state = State.Dirty
+                except Request.CancellationException:
+                    if state == State.Dirty:
+                        with self._lock:
+                            # If no other request has 'taken responsibility' since we were cancelled
+                            # (i.e. self._request is still the request that raised this exception.)
+                            if request == self._request:
+                                self._request = None # This is mostly to aid testing.
         
         result[...] = value
         
