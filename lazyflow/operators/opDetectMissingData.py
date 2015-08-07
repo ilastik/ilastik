@@ -55,15 +55,23 @@ def extractVersion(s):
     else:
         return int(m[1])
 
-
 try:
-    from sklearn.svm import SVC
-    havesklearn = True
     from sklearn import __version__ as sklearnVersion
     svcTakesScaleC = extractVersion(sklearnVersion) < 11
 except ImportError, VersionError:
     logger.warning("Could not import dependency 'sklearn' for SVMs")
     havesklearn = False
+else:
+    havesklearn = True
+
+def SVC(*args, **kwargs):
+    from sklearn.svm import SVC as _SVC
+    # old scikit-learn versions take scale_C as a parameter
+    # new ones don't and default to True
+    if not svcTakesScaleC and "scale_C" in kwargs:
+        del kwargs["scale_C"]
+    print(kwargs)
+    return _SVC(*args, **kwargs)
 
 _defaultBinSize = 30
 
@@ -413,12 +421,7 @@ class OpDetectMissing(Operator):
         labels = [0]*len(negative) + [1]*len(positive)
         samples = np.vstack((negative, positive))
 
-        if svcTakesScaleC:
-            # old scikit-learn versions take scale_C as a parameter
-            # new ones don't and default to True
-            svm = SVC(C=1000, kernel=_histogramIntersectionKernel, scale_C=True)
-        else:
-            svm = SVC(C=1000, kernel=_histogramIntersectionKernel)
+        svm = SVC(C=1000, kernel=_histogramIntersectionKernel, scale_C=True)
 
         svm.fit(samples, labels)
         cls._manager.add(svm, nBins, overwrite=True)
