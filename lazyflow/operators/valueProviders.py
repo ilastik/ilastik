@@ -295,7 +295,7 @@ class OpValueCache(Operator, ObservableCache):
                     #  and that other thread cancelled it before we got a chance to call wait().
                     # Just regenerate the request and try again...
                     with self._lock:
-                        if request == self._request:
+                        if request == self._request or self._request is None:
                             request = self.Input[...]
                             self._request = request
                         else:
