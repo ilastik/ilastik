@@ -87,7 +87,7 @@ class DataConversionWorkflow(Workflow):
         self._data_input_args = None
         self._data_export_args = None
         if workflow_cmdline_args:
-            self._data_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args( unused_args )
+            self._data_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args( workflow_cmdline_args )
             self._data_input_args, unused_args = self.dataSelectionApplet.parse_known_cmdline_args( workflow_cmdline_args, role_names )
             if unused_args:
                 logger.warn("Unused command-line args: {}".format( unused_args ))
