@@ -32,6 +32,11 @@ import psutil
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import enlargeRoiForHalo, TinyVector
 
+from lazyflow.operators.opFilterLabels import OpFilterLabels
+from lazyflow.operators.opFilterLabels import OpLabelFilteringABC
+from lazyflow.operators.opFilterLabelsLazy import OpFilterLabelsLazy
+from lazyflow.operators.opImplementationChoice import OpImplementationChoice
+
 # ilastik
 from lazyflow.utility.timer import Timer
 
@@ -175,7 +180,6 @@ class OpAnisotropicGaussianSmoothing(Operator):
         self._sigmas = self.Sigmas.value
         assert isinstance(self.Sigmas.value, dict), "Sigmas slot expects a dict"
         assert set(self._sigmas.keys()) == set('xyz'), "Sigmas slot expects three key-value pairs for x,y,z"
-        print("Assigning output: {} ====> {}".format(self.Input.meta.getTaggedShape(), self.Output.meta.getTaggedShape()))
         #self.Output.setDirty( slice(None) )
     
     def execute(self, slot, subindex, roi, result):
@@ -392,3 +396,24 @@ class OpSelectLabels(Operator):
             self.Output.setDirty(slice(None))
         else:
             assert False, "Unknown input slot: {}".format(slot.name)
+
+
+class OpFilterLabelsMultiImpl(OpLabelFilteringABC):
+    """
+    wrapper for [non-]lazy OpFilterLabels
+    """
+    # methods available are
+    #   - 'vigra': not actually using vigra, but compatible with OpLabelVolume
+    #   - 'lazy': use OpFilterLabelsLazy
+    Method = InputSlot(value='vigra')
+
+    _labeling_implementations = {'vigra': OpFilterLabels,
+                                 'lazy': OpFilterLabelsLazy}
+
+    def __new__(cls, *args, **kwargs):
+        kwargs['implementations'] = cls._labeling_implementations
+        kwargs['choiceSlot'] = 'Method'
+        op = OpImplementationChoice(OpLabelFilteringABC,
+                                    *args, **kwargs)
+        op.Method.setValue('vigra')
+        return op

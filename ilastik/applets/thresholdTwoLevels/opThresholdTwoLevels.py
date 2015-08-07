@@ -19,7 +19,6 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 # Built-in
-import warnings
 import logging
 from functools import partial
 from ConfigParser import NoOptionError
@@ -36,16 +35,13 @@ import ilastik.config
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpPixelOperator, OpLabelVolume,\
     OpCompressedCache, OpColorizeLabels,\
-    OpSingleChannelSelector, OperatorWrapper,\
-    OpMultiArrayStacker, OpMultiArraySlicer,\
-    OpReorderAxes, OpFilterLabels
-from lazyflow.rtype import SubRegion
-from lazyflow.request import Request, RequestPool
+    OpSingleChannelSelector, OpReorderAxes
+from lazyflow.operators.opLazyConnectedComponents import lazyChunkShape
 
 # local
 from thresholdingTools import OpAnisotropicGaussianSmoothing5d
-
 from thresholdingTools import OpSelectLabels
+from thresholdingTools import OpFilterLabelsMultiImpl
 
 from opGraphcutSegment import haveGraphCut
 
@@ -227,7 +223,6 @@ class OpThresholdTwoLevels(Operator):
         for slot in [self.BigRegions, self.SmallRegions,
                      self.FilteredSmallLabels, self.BeforeSizeFilter]:
             slot.disconnect()
-            slot.meta.NOTREADY = True
         self._opReorder2.Input.disconnect()
         if haveGraphCut():
             self.opThreshold1GC.InputImage.disconnect()
@@ -294,25 +289,26 @@ class _OpThresholdOneLevel(Operator):
 
     Output = OutputSlot()
 
-    #debug output
+    # debug output
     BeforeSizeFilter = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super(_OpThresholdOneLevel, self).__init__(*args, **kwargs)
 
-        self._opThresholder = OpPixelOperator(parent=self )
-        self._opThresholder.Input.connect( self.InputImage )
+        self._opThresholder = OpPixelOperator(parent=self)
+        self._opThresholder.Input.connect(self.InputImage)
 
         self._opLabeler = OpLabelVolume(parent=self)
         self._opLabeler.Method.setValue(_labeling_impl)
         self._opLabeler.Input.connect(self._opThresholder.Output)
 
-        self.BeforeSizeFilter.connect( self._opLabeler.Output )
+        self.BeforeSizeFilter.connect(self._opLabeler.Output)
 
-        self._opFilter = OpFilterLabels( parent=self )
-        self._opFilter.Input.connect(self._opLabeler.Output )
-        self._opFilter.MinLabelSize.connect( self.MinSize )
-        self._opFilter.MaxLabelSize.connect( self.MaxSize )
+        self._opFilter = OpFilterLabelsMultiImpl(parent=self)
+        self._opFilter.Method.setValue(_labeling_impl)
+        self._opFilter.Input.connect(self._opLabeler.Output)
+        self._opFilter.MinLabelSize.connect(self.MinSize)
+        self._opFilter.MaxLabelSize.connect(self.MaxSize)
         self._opFilter.BinaryOut.setValue(False)
 
         self.Output.connect(self._opFilter.Output)
@@ -408,7 +404,8 @@ class _OpThresholdTwoLevels(Operator):
         self._opHighLabeler.Method.setValue(_labeling_impl)
         self._opHighLabeler.Input.connect(self._opHighThresholder.Output)
 
-        self._opHighLabelSizeFilter = OpFilterLabels(parent=self)
+        self._opHighLabelSizeFilter = OpFilterLabelsMultiImpl(parent=self)
+        self._opHighLabelSizeFilter.Method.setValue(_labeling_impl)
         self._opHighLabelSizeFilter.Input.connect(self._opHighLabeler.Output)
         self._opHighLabelSizeFilter.MinLabelSize.connect(self.MinSize)
         self._opHighLabelSizeFilter.MaxLabelSize.connect(self.MaxSize)
@@ -423,7 +420,8 @@ class _OpThresholdTwoLevels(Operator):
         # they might still be present in case a big object
         # was split into many small ones for the higher threshold
         # and they got reconnected again at lower threshold
-        self._opFinalLabelSizeFilter = OpFilterLabels( parent=self )
+        self._opFinalLabelSizeFilter = OpFilterLabelsMultiImpl( parent=self )
+        self._opFinalLabelSizeFilter.Method.setValue(_labeling_impl)
         self._opFinalLabelSizeFilter.Input.connect(self._opSelectLabels.Output )
         self._opFinalLabelSizeFilter.MinLabelSize.connect( self.MinSize )
         self._opFinalLabelSizeFilter.MaxLabelSize.connect( self.MaxSize )
@@ -546,7 +544,7 @@ class _OpCacheWrapper(Operator):
 
         # we need a new cache
         cache = OpCompressedCache(parent=self)
-        cache.name = self.name + "WrappedCache"
+        cache.name = self.name + ".WrappedCache"
 
         # connect cache outputs
         self.CleanBlocks.connect(cache.CleanBlocks)
@@ -561,10 +559,17 @@ class _OpCacheWrapper(Operator):
         tagged_shape = self._op1.Output.meta.getTaggedShape()
         tagged_shape['t'] = 1
         tagged_shape['c'] = 1
-        cacheshape = map(lambda k: tagged_shape[k], 'xyzct')
+        cacheshape = tuple(map(lambda k: tagged_shape[k], 'xyzct'))
         if _labeling_impl == "lazy":
-            #HACK hardcoded block shape
-            blockshape = numpy.minimum(cacheshape, 256)
+            # transpose to txyzc
+            cacheshape = (cacheshape[4],) + cacheshape[:4]
+            ideal = tuple(self._op1.Output.meta.ideal_blockshape)
+            ideal = (ideal[4],) + ideal[:4]
+            ram_per_pixel = self._op1.Output.meta.getDtypeBytes()
+            blockshape = lazyChunkShape(cacheshape, ideal, ram_per_pixel)
+            # revert to xyzct
+            blockshape = tuple(blockshape)
+            blockshape = blockshape[1:] + (blockshape[0],)
         else:
             # use full spatial volume if not lazy
             blockshape = cacheshape
