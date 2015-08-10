@@ -256,7 +256,7 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
         self.LabelNames.setValue( [] )
         self.LabelColors.setValue( [] )
         self.PmapColors.setValue( [] )
-        self.ExportSettings.setValue( [] )
+        self.ExportSettings.setValue( (None, None) )
 
         self.opStackProbabilities = OperatorWrapper( OpMultiArrayStacker, parent=self )
         self.opStackProbabilities.Images.connect( self.opProbChannelsImageCache.Output )
