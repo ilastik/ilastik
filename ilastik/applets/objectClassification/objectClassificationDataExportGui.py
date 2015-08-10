@@ -68,10 +68,6 @@ class ObjectClassificationDataExportGui( DataExportGui, ExportingGui ):
         btn.clicked.connect(self.configure_table_export)
         group.layout().addWidget(btn)
 
-    def configure_table_export(self):
-        settings, selected_features = self.show_export_dialog()
-        self._exporting_operator.configure_table_export_settings( settings, selected_features )
-
 def _createDefault16ColorColorTable():
     colors = []
 

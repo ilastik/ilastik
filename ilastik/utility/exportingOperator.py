@@ -150,13 +150,16 @@ class ExportingGui(object):
 
         dialog = ExportObjectInfoDialog(dimensions, feature_names, title=self.get_export_dialog_title())
         if not dialog.exec_():
-            return
+            return (None, None)
 
         settings = dialog.settings()
         selected_features = list(dialog.checked_features()) # returns a generator, but that's inconvenient because it can't be serialized.
-
         return settings, selected_features
-        #self.get_exporting_operator().export_object_data(settings, selected_features, gui)
+
+    def configure_table_export(self):
+        settings, selected_features = self.show_export_dialog()
+        if settings:
+            self.get_exporting_operator().configure_table_export_settings( settings, selected_features )
 
     def get_raw_shape(self):
         """
