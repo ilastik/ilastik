@@ -98,7 +98,7 @@ class ExportingOperator(object):
         """
         logger.info("Export cancelled")
 
-    def do_export(self, settings, selected_features, progress_slot):
+    def do_export(self, settings, selected_features, progress_slot, lane_index, filename_suffix=""):
         """
         Implement this in the exporting Operator
         :param settings: the settings for the export,
@@ -109,6 +109,8 @@ class ExportingOperator(object):
         :param progress_slot: an object that can display the export progress.
             usage: progress_slot(progress)
             make sure to call it with progress=0 at the start and progress=100 in the end
+        :param lane_index: Specifies which lane to export.
+        :param filename_suffix: If provided, appended to the filename (before the extension).
         """
         raise NotImplementedError
 
