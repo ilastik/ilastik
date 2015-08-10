@@ -346,24 +346,6 @@ class ObjectClassificationWorkflow(Workflow):
                         filename_suffix=filename_suffix)
             req.wait()
          
-    def _record_array_to_csv(self, record_array, filename):
-        """
-        Save the given record array to a CSV file.
-        """
-        # Sort by offset
-        with open(filename, 'w') as csv_file:
-            sorted_fields = sorted( record_array.dtype.fields.items(), key=lambda (k,v): v[1] )
-            field_names = map( lambda (k,v): k, sorted_fields )
-            for name in field_names:
-                # Remove any commas in the header (this is csv, after all)
-                name = name.replace(',', '/')
-                csv_file.write(name + ',')
-            csv_file.write('\n')
-            for row in record_array:
-                for name in field_names:
-                    csv_file.write(str(row[name]) + ',')
-                csv_file.write('\n')
-
     def getHeadlessOutputSlot(self, slotId):
         if slotId == "BatchPredictionImage":
             return self.opBatchClassify.PredictionImage
