@@ -130,7 +130,7 @@ class SerialSlot(object):
             name = slot.name
         self.name = name
         if subname is None:
-            subname = '{}'
+            subname = '{:04d}'
         self.subname = subname
 
         self._dirty = False
@@ -271,7 +271,9 @@ class SerialSlot(object):
             for i, subslot in enumerate(slot):
                 if i in indexes_to_keys:
                     key = indexes_to_keys[i]
-                    assert key == self.subname.format(i)
+                    # Sadly, we can't use the following assertion because it would break  
+                    #  backwards compatibility with a bug we used to have in the key names.
+                    #assert key == self.subname.format(i)
                     self._deserialize(subgroup[key], subslot)
                 else:
                     # Since there was no data for this subslot in the project file,
