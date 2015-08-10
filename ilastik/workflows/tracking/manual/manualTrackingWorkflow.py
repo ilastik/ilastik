@@ -20,7 +20,7 @@
 ###############################################################################
 from lazyflow.graph import Graph
 from ilastik.workflow import Workflow
-from ilastik.applets.dataSelection import DataSelectionApplet
+from ilastik.applets.dataSelection import DataSelectionApplet, DatasetInfo
 from ilastik.applets.tracking.manual.manualTrackingApplet import ManualTrackingApplet
 from ilastik.applets.objectExtraction.objectExtractionApplet import ObjectExtractionApplet
 from ilastik.applets.thresholdTwoLevels.thresholdTwoLevelsApplet import ThresholdTwoLevelsApplet
@@ -67,14 +67,17 @@ class ManualTrackingWorkflow( Workflow ):
                                                              workflow=self, interactive=False)
         
         self.trackingApplet = ManualTrackingApplet( workflow=self )
-        opTracking = self.trackingApplet.topLevelOperator
         self.dataExportApplet = TrackingBaseDataExportApplet(self, "Tracking Result Export")
-        self.dataExportApplet.set_exporting_operator(opTracking)
         
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.SelectionNames.setValue( ['Manual Tracking', 'Object Identities'] )
         opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
 
+        # Extra configuration for object export table (as CSV table or HDF5 table)
+        opTracking = self.trackingApplet.topLevelOperator
+        self.dataExportApplet.set_exporting_operator(opTracking)
+        self.dataExportApplet.post_process_lane_export = self.post_process_lane_export
+        
         self._applets = []        
         self._applets.append(self.dataSelectionApplet)        
         self._applets.append(self.thresholdTwoLevelsApplet)
@@ -116,6 +119,24 @@ class ManualTrackingWorkflow( Workflow ):
         opDataExport.Inputs[1].connect( opTracking.LabelImage )
         opDataExport.RawData.connect( op5Raw.Output )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
+
+    def post_process_lane_export(self, lane_index):
+        # FIXME: This probably only works for the non-blockwise export slot.
+        #        We should assert that the user isn't using the blockwise slot.
+        settings, selected_features = self.trackingApplet.topLevelOperator.getLane(lane_index).get_table_export_settings()
+        if settings:
+            raw_dataset_info = self.dataSelectionApplet.topLevelOperator.DatasetGroup[lane_index][0].value
+            if raw_dataset_info.location == DatasetInfo.Location.FileSystem:
+                filename_suffix = raw_dataset_info.nickname
+            else:
+                filename_suffix = str(lane_index)
+            req = self.trackingApplet.topLevelOperator.getLane(lane_index).export_object_data(
+                        lane_index, 
+                        # FIXME: Even in non-headless mode, we can't show the gui because we're running in a non-main thread.
+                        #        That's not a huge deal, because there's still a progress bar for the overall export.
+                        show_gui=False, 
+                        filename_suffix=filename_suffix)
+            req.wait()         
     
     def _inputReady(self, nRoles):
         slot = self.dataSelectionApplet.topLevelOperator.ImageGroup
@@ -143,9 +164,7 @@ class ManualTrackingWorkflow( Workflow ):
                        len(thresholdingOutput) > 0 
 
         opObjectExtraction = self.objectExtractionApplet.topLevelOperator
-        objectExtractionOutput = opObjectExtraction.ComputedFeatureNames
-        features_ready = thresholding_ready and \
-                         len(objectExtractionOutput) > 0
+        features_ready = thresholding_ready
 
         opTracking = self.trackingApplet.topLevelOperator
         tracking_ready = features_ready and \

@@ -71,10 +71,9 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
         group.setLayout(QVBoxLayout())
         self.drawer.layout().addWidget(group)
 
-        btn = QPushButton("Configure and export", group)
-        btn.clicked.connect(self.show_export_dialog)
+        btn = QPushButton("Configure Feature Table Export", group)
+        btn.clicked.connect(self.configure_table_export)
         group.layout().addWidget(btn)
-        
 
 class TrackingBaseResultsViewer(DataExportLayerViewerGui):
     

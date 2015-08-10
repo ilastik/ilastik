@@ -95,7 +95,9 @@ class ManualTrackingSerializer(AppletSerializer):
     def __init__(self, operator, projectFileGroupName):
         slots = [ #SerialSlot(operator.TrackImage),
                    SerialDivisionsSlot(operator.Divisions),
-                   SerialLabelsSlot(operator.Labels),
-                   SerialPickledValueSlot(operator.ExportSettings)]
+                   SerialLabelsSlot(operator.Labels)]
+                    
+                   # FIXME: ExportSettings can't be serialized because it is technically a level-1 slot.
+                   #SerialPickledValueSlot(operator.ExportSettings)
     
         super(ManualTrackingSerializer, self ).__init__(projectFileGroupName, slots=slots)
