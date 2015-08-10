@@ -128,11 +128,11 @@ class ChaingraphTrackingGui( TrackingBaseGui ):
                             with_div=with_div,
                             cplex_timeout=cplex_timeout)
             except Exception:
-                ex_type, ex, tb = sys.exc_info()
-                log_exception( logger )    
-                self._criticalMessage("Exception(" + str(ex_type) + "): " + str(ex))                        
-                return
-    
+                log_exception(logger, "Error during tracking.  See above error traceback.")
+                self._criticalMessage("Error during tracking.  See error log.\n\n"
+                                      "Exception was:\n\n{})".format( ex ))
+                return    
+
         def _handle_finished(*args):
             self.applet.progressSignal.emit(100)
             self._drawer.TrackButton.setEnabled(True)

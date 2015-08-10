@@ -7,6 +7,7 @@ import re
 import traceback
 from PyQt4.QtCore import pyqtSignal
 from ilastik.applets.tracking.base.trackingBaseGui import TrackingBaseGui
+from ilastik.utility import log_exception
 from ilastik.utility.exportingOperator import ExportingGui
 from ilastik.utility.gui.threadRouter import threadRouted
 from ilastik.utility.gui.titledMenu import TitledMenu
@@ -205,11 +206,11 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
                     appearance_cost = appearanceCost,
                     disappearance_cost = disappearanceCost
                     )
-            except Exception:           
-                ex_type, ex, tb = sys.exc_info()
-                traceback.print_tb(tb)            
-                self._criticalMessage("Exception(" + str(ex_type) + "): " + str(ex))       
-                return                     
+            except Exception as ex:
+                log_exception(logger, "Error during tracking.  See above error traceback.")
+                self._criticalMessage("Error during tracking.  See error log.\n\n"
+                                      "Exception was:\n\n{})".format( ex ))
+                return
         
         def _handle_finished(*args):
             self.applet.busy = False
