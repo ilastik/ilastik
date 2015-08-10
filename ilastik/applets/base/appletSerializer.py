@@ -607,7 +607,6 @@ class SerialPickledValueSlot(SerialSlot):
     For storing value slots whose data is a python object (not an array or a simple number).
     """
     def __init__(self, slot):
-        assert slot.level == 0, "SerialPickledValueSlot can only be used with level-0 slots."
         super(SerialPickledValueSlot, self).__init__(slot)
     
     @staticmethod
