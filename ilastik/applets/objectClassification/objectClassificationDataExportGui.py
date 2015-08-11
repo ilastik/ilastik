@@ -106,11 +106,15 @@ class ObjectClassificationResultsViewer(DataExportLayerViewerGui):
         selection_names = opLane.SelectionNames.value
         selection = selection_names[ opLane.InputSelection.value ]
 
-        # This code depends on a specific order for the export slots.
+        # This code is written to handle the specific output cases we know about.
         # If those change, update this function!
-        assert selection in ['Object Predictions', 'Object Probabilities', 'Pixel Probabilities']
+        assert selection in ['Object Predictions', 
+                             'Object Probabilities', 
+                             'Blockwise Object Predictions', 
+                             'Blockwise Object Probabilities', 
+                             'Pixel Probabilities']
     
-        if selection == "Object Predictions":
+        if selection in ("Object Predictions", "Blockwise Object Predictions"):
             fromDiskSlot = self.topLevelOperatorView.ImageOnDisk
             if fromDiskSlot.ready():
                 exportLayer = ColortableLayer( LazyflowSource(fromDiskSlot), colorTable=self._colorTable16 )
@@ -125,7 +129,7 @@ class ObjectClassificationResultsViewer(DataExportLayerViewerGui):
                 previewLayer.visible = False
                 layers.append(previewLayer)
 
-        elif selection == "Object Probabilities":
+        elif selection in ("Object Probabilities", "Blockwise Object Probabilities"):
             exportedLayers = self._initPredictionLayers(opLane.ImageOnDisk)
             for layer in exportedLayers:
                 layer.visible = True

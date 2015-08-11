@@ -54,7 +54,9 @@ logger = logging.getLogger(__name__)
 
 EXPORT_SELECTION_PREDICTIONS = 0
 EXPORT_SELECTION_PROBABILITIES = 1
-EXPORT_SELECTION_PIXEL_PROBABILITIES = 2
+EXPORT_SELECTION_BLOCKWISE_PREDICTIONS = 2
+EXPORT_SELECTION_BLOCKWISE_PROBABILITIES = 3
+EXPORT_SELECTION_PIXEL_PROBABILITIES = 4
 
 # Constants for pointcloud generation on cluster
 CSV_FORMAT = { 'delimiter' : '\t', 'lineterminator' : '\n' }
@@ -135,19 +137,15 @@ class ObjectClassificationWorkflow(Workflow):
         opDataExport.WorkingDirectory.connect( self.dataSelectionApplet.topLevelOperator.WorkingDirectory )
         
         # See EXPORT_SELECTION_PREDICTIONS and EXPORT_SELECTION_PROBABILITIES, above
-        opDataExport.SelectionNames.setValue( ['Object Predictions', 'Object Probabilities'] )        
+        export_selection_names = ['Object Predictions',
+                                  'Object Probabilities',
+                                  'Blockwise Object Predictions',
+                                  'Blockwise Object Probabilities']
         if self.input_types == 'raw':
             # Re-configure to add the pixel probabilities option
             # See EXPORT_SELECTION_PIXEL_PROBABILITIES, above
-            opDataExport.SelectionNames.setValue( ['Object Predictions', 'Object Probabilities', 'Pixel Probabilities'] )
-
-        self.blockwiseObjectClassificationApplet = BlockwiseObjectClassificationApplet(
-            self, "Blockwise Object Classification", "Blockwise Object Classification")
-
-        self._applets.append(self.objectExtractionApplet)
-        self._applets.append(self.objectClassificationApplet)
-        self._applets.append(self.dataExportApplet)
-        self._applets.append(self.blockwiseObjectClassificationApplet)
+            export_selection_names.append( 'Pixel Probabilities' )
+        opDataExport.SelectionNames.setValue( export_selection_names )
 
         self._batch_export_args = None
         self._batch_input_args = None
@@ -159,7 +157,6 @@ class ObjectClassificationWorkflow(Workflow):
                                                                self.dataSelectionApplet, 
                                                                self.dataExportApplet)
     
-            self._applets.append(self.batchProcessingApplet)
             if unused_args:
                 # Additional export args (specific to the object classification workflow)
                 export_arg_parser = argparse.ArgumentParser()
@@ -187,6 +184,16 @@ class ObjectClassificationWorkflow(Workflow):
                 if self._export_args.export_pixel_probability_img:
                     self._batch_input_args.export_source = "Pixel Probabilities"
 
+
+        self.blockwiseObjectClassificationApplet = BlockwiseObjectClassificationApplet(
+            self, "Blockwise Object Classification", "Blockwise Object Classification")
+
+        self._applets.append(self.objectExtractionApplet)
+        self._applets.append(self.objectClassificationApplet)
+        self._applets.append(self.dataExportApplet)
+        if self.batchProcessingApplet:
+            self._applets.append(self.batchProcessingApplet)
+        self._applets.append(self.blockwiseObjectClassificationApplet)
 
         if unused_args:
             logger.warn("Unused command-line args: {}".format( unused_args ))
@@ -241,6 +248,7 @@ class ObjectClassificationWorkflow(Workflow):
         opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)
         opObjClassification = self.objectClassificationApplet.topLevelOperator.getLane(laneIndex)
         opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
+        opBlockwiseObjectClassification = self.blockwiseObjectClassificationApplet.topLevelOperator.getLane(laneIndex)
 
         opObjExtraction.RawImage.connect(rawslot)
         opObjExtraction.BinaryImage.connect(binaryslot)
@@ -256,12 +264,15 @@ class ObjectClassificationWorkflow(Workflow):
         # Data Export connections
         opDataExport.RawData.connect( opData.ImageGroup[0] )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
-        opDataExport.Inputs.resize(2)
+        opDataExport.Inputs.resize(4)
         opDataExport.Inputs[EXPORT_SELECTION_PREDICTIONS].connect( opObjClassification.UncachedPredictionImages )
         opDataExport.Inputs[EXPORT_SELECTION_PROBABILITIES].connect( opObjClassification.ProbabilityChannelImage )
+        opDataExport.Inputs[EXPORT_SELECTION_BLOCKWISE_PREDICTIONS].connect( opBlockwiseObjectClassification.PredictionImage )
+        opDataExport.Inputs[EXPORT_SELECTION_BLOCKWISE_PROBABILITIES].connect( opBlockwiseObjectClassification.ProbabilityChannelImage )
+        
         if self.input_types == 'raw':
             # Append the prediction probabilities to the list of slots that can be exported.
-            opDataExport.Inputs.resize(3)
+            opDataExport.Inputs.resize(5)
             # Pull from this slot since the data has already been through the Op5 operator
             # (All data in the export operator must have matching spatial dimensions.)
             opThreshold = self.thresholdingApplet.topLevelOperator.getLane(laneIndex)
