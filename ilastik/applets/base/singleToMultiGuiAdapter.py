@@ -114,6 +114,9 @@ class SingleToMultiGuiAdapter( object ):
             gui = self._guis.pop(laneIndex)
             if gui is not None:
                 gui.stopAndCleanUp()
+
+    def allowLaneSelectionChange(self):
+        return True
     
     def setEnabled(self, enabled):
         self._enabled = enabled

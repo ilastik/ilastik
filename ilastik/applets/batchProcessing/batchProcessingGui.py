@@ -58,6 +58,9 @@ class BatchProcessingGui( QTabWidget ):
     def imageLaneAdded(self, laneIndex): pass
     def imageLaneRemoved(self, laneIndex, finalLength): pass
 
+    def allowLaneSelectionChange(self):
+        return False
+
     def stopAndCleanUp(self):
         # We don't have any complex things to clean up (e.g. no layer viewers)
         pass

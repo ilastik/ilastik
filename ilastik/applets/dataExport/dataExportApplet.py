@@ -39,7 +39,7 @@ class DataExportApplet( Applet ):
         # Users can temporarily disconnect the 'transaction' 
         #  slot to force all slots to be applied atomically.
         self.topLevelOperator.TransactionSlot.setValue(True)
-        super(DataExportApplet, self).__init__(title, syncWithImageIndex=not isBatch)
+        super(DataExportApplet, self).__init__(title)
 
         self._gui = None
         self._title = title

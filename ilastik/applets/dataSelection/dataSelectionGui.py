@@ -149,6 +149,9 @@ class DataSelectionGui(QWidget):
         #  handles operator resizes via slot callbacks.
         pass
 
+    def allowLaneSelectionChange(self):
+        return False
+
     ###########################################
     ###########################################
 

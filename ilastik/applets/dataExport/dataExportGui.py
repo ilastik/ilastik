@@ -83,6 +83,9 @@ class DataExportGui(QWidget):
     def imageLaneRemoved(self, laneIndex, finalLength):
         pass
 
+    def allowLaneSelectionChange(self):
+        return False
+
     ###########################################
     ###########################################
     

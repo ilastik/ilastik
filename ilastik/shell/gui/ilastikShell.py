@@ -927,7 +927,9 @@ class IlastikShell(QMainWindow):
 
             applet = self._applets[applet_index]
             # Only show the combo if the applet is lane-aware and there is more than one lane loaded.
-            self.imageSelectionGroup.setVisible(applet.syncWithImageIndex and self.imageSelectionCombo.count() > 1)
+            self.imageSelectionGroup.setVisible(applet.syncWithImageIndex
+                                                and self.imageSelectionCombo.count() > 1
+                                                and self._applets[applet_index].getMultiLaneGui().allowLaneSelectionChange())
 
     def showCentralWidget(self, applet_index):
         if applet_index < len(self._applets):
