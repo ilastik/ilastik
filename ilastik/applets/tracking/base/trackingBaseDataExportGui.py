@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QColor
+from PyQt4.QtGui import QColor, QPushButton, QVBoxLayout
 from ilastik.utility.exportingOperator import ExportingGui
 import volumina.colortables as colortables
 
@@ -65,15 +65,8 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
 
     def _initAppletDrawerUic(self):
         super(TrackingBaseDataExportGui, self)._initAppletDrawerUic()
-
-        from PyQt4.QtGui import QGroupBox, QPushButton, QVBoxLayout
-        group = QGroupBox("Export Object Feature and Tracking Table", self.drawer)
-        group.setLayout(QVBoxLayout())
-        self.drawer.layout().addWidget(group)
-
-        btn = QPushButton("Configure Feature Table Export", group)
-        btn.clicked.connect(self.configure_table_export)
-        group.layout().addWidget(btn)
+        btn = QPushButton("Configure Feature Table Export", clicked=self.configure_table_export)
+        self.drawer.exportSettingsGroupBox.layout().addWidget(btn)
 
 class TrackingBaseResultsViewer(DataExportLayerViewerGui):
     

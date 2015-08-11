@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QColor
+from PyQt4.QtGui import QColor, QPushButton
 
 from volumina.api import LazyflowSource, ColortableLayer, AlphaModulatedLayer
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
@@ -58,15 +58,8 @@ class ObjectClassificationDataExportGui( DataExportGui, ExportingGui ):
 
     def _initAppletDrawerUic(self):
         super(ObjectClassificationDataExportGui, self)._initAppletDrawerUic()
-
-        from PyQt4.QtGui import QGroupBox, QPushButton, QVBoxLayout
-        group = QGroupBox("Export Object Feature Table", self.drawer)
-        group.setLayout(QVBoxLayout())
-        self.drawer.layout().addWidget(group)
-
-        btn = QPushButton("Configure Feature Table Export", group)
-        btn.clicked.connect(self.configure_table_export)
-        group.layout().addWidget(btn)
+        btn = QPushButton("Configure Feature Table Export", clicked=self.configure_table_export)
+        self.drawer.exportSettingsGroupBox.layout().addWidget(btn)
 
 def _createDefault16ColorColorTable():
     colors = []
