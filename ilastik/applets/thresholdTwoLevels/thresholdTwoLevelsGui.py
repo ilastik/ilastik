@@ -156,7 +156,9 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         self._drawer.maxSizeSpinBox.setValue( op.MaxSize.value )
 
         # Operator
-        self._drawer.tabWidget.setCurrentIndex( op.CurOperator.value )
+        tab_index = {0:0, 1:1, 2:2, 3:1}[op.CurOperator.value]
+        self._drawer.tabWidget.setCurrentIndex( tab_index )
+        self._drawer.preserveIdentitiesCheckbox.setChecked(op.CurOperator.value == 3)
 
     def _updateOperatorFromGui(self):
         op = self.topLevelOperatorView
@@ -225,6 +227,9 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         curIndex = self._drawer.tabWidget.currentIndex()
         #print "Setting operator to", curIndex+1, " thresholds"
 
+        op_index = curIndex
+        if curIndex == 1 and self._drawer.preserveIdentitiesCheckbox.isChecked():
+            curIndex = 3
         # Apply new settings to the operator
         op.CurOperator.setValue(curIndex)
         op.Channel.setValue(channel)
@@ -327,7 +332,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
 
         if self._showDebug:
             #FIXME: We have to do that, because lazyflow doesn't have a way to make an operator partially ready
-            curIndex = self._drawer.tabWidget.currentIndex()
+            curIndex = op.CurOperator.value
             if curIndex==1:
                 if op.BigRegions.ready():
                     lowThresholdSrc = LazyflowSource(op.BigRegions)
