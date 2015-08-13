@@ -211,15 +211,19 @@ class LazyflowPixelwiseClassifierABC(object):
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
-    def predict_probabilities_pixelwise(self, feature_image, axistags=None):
+    def predict_probabilities_pixelwise(self, feature_image, roi, axistags=None):
         """
         For each pixel in the given feature_image, predict the probabilities that the
         pixel belongs to each label class the classifier was trained with.
         
         feature_image: An ND image.  Last axis must be channel.
+        roi: The region of interest (start, stop) within feature_image to predict (e.g. without the halo region)
+             Note: roi parameter should not include channel.
+                   For example, a valid roi for a zyxc image could be ((0,0,0), (10,20,30))
         axistags: Optional.  A vigra.AxisTags object describing the feature_image.
         
         Returns: A multi-channel image (each channel corresponds to a different label class).
+                 The result image size is determined by the roi parameter.
         """
         raise NotImplementedError
 

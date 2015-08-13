@@ -1,6 +1,7 @@
 import os
 import tempfile
 import cPickle as pickle
+from itertools import starmap
 
 import numpy
 import vigra
@@ -10,6 +11,9 @@ from lazyflowClassifier import LazyflowPixelwiseClassifierABC, LazyflowPixelwise
 
 import logging
 logger = logging.getLogger(__name__)
+
+def roi_to_slice(start, stop):
+    return tuple( starmap(slice, zip(start, stop)) )
 
 class VigraRfPixelwiseClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     """
@@ -79,8 +83,26 @@ class VigraRfPixelwiseClassifier(LazyflowPixelwiseClassifierABC):
         self._vigra_rf = vigra_rf
         self._feature_names = feature_names
     
-    def predict_probabilities_pixelwise(self, X, axistags=None):
+    def predict_probabilities_pixelwise(self, X, roi, axistags=None):
+        """
+        For each pixel in the given feature_image, predict the probabilities that the
+        pixel belongs to each label class the classifier was trained with.
+        
+        X: An ND image.  Last axis must be channel.
+        roi: The region of interest (start, stop) within feature_image to predict (e.g. without the halo region)
+             Note: roi parameter should not include channel.
+                   For example, a valid roi for a zyxc image could be ((0,0,0), (10,20,30))
+        axistags: Optional.  A vigra.AxisTags object describing the feature_image.
+        
+        Returns: A multi-channel image (each channel corresponds to a different label class).
+                 The result image size is determined by the roi parameter.
+        """
         logger.debug( 'predicting PIXELWISE vigra RF' )
+        
+        # This classifier doesn't benefit from any context around the input,
+        #  so just strip it off and only use the given roi.
+        assert len(roi[0]) == len(roi[1]) == X.ndim - 1
+        X = X[roi_to_slice(*roi)]
         
         # reshape the image into a 2D feature matrix
         matrix_shape = (numpy.prod(X.shape[:-1]), X.shape[-1])
@@ -100,7 +122,7 @@ class VigraRfPixelwiseClassifier(LazyflowPixelwiseClassifierABC):
 
         prediction_shape = X.shape[:-1] + (num_probability_channels,)
         return numpy.reshape(probabilities, prediction_shape)
-    
+
     @property
     def known_classes(self):
         return self._known_labels
