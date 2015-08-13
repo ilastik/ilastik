@@ -548,7 +548,7 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
                                                         "Input Data", 
                                                         "Input Data", 
                                                         batchDataGui=False,
-                                                        force5d=False, 
+                                                        forceAxisOrder=None, 
                                                         instructionText=data_instructions )
         opData = self.dataSelectionApplet.topLevelOperator
         opData.DatasetRoles.setValue(['Raw Data'])
@@ -660,7 +660,7 @@ class ObjectClassificationWorkflowBinary(ObjectClassificationWorkflow):
                                                         "Input Data",
                                                         "Input Data",
                                                         batchDataGui=False,
-                                                        force5d=True,
+                                                        forceAxisOrder='txyzc',
                                                         instructionText=data_instructions )
 
         opData = self.dataSelectionApplet.topLevelOperator
@@ -700,7 +700,7 @@ class ObjectClassificationWorkflowPrediction(ObjectClassificationWorkflow):
                                                         "Input Data",
                                                         "Input Data",
                                                         batchDataGui=False,
-                                                        force5d=True,
+                                                        forceAxisOrder='txyzc',
                                                         instructionText=data_instructions )
 
         opData = self.dataSelectionApplet.topLevelOperator

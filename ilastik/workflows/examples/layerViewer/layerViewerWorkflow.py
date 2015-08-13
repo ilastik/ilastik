@@ -43,8 +43,7 @@ class LayerViewerWorkflow(Workflow):
                                                        "Input Data", 
                                                        "Input Data", 
                                                        supportIlastik05Import=True, 
-                                                       batchDataGui=False,
-                                                       force5d=True)
+                                                       forceAxisOrder='tzyxc')
         self.viewerApplet = LayerViewerApplet(self)
         self.dataExportApplet = DataExportApplet(self, "Data Export")
         opDataExport = self.dataExportApplet.topLevelOperator

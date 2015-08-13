@@ -42,8 +42,7 @@ class ChaingraphTrackingWorkflow( Workflow ):
         self.dataSelectionApplet = DataSelectionApplet(self,
                                                        "Input Data",
                                                        "Input Data",
-                                                       batchDataGui=False,
-                                                       force5d=True,
+                                                       forceAxisOrder='txyzc',
                                                        instructionText=data_instructions,
                                                        max_lanes=1 )
 

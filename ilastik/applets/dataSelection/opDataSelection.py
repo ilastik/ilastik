@@ -130,7 +130,7 @@ class OpDataSelection(Operator):
     Image = OutputSlot() #: The output image
     AllowLabels = OutputSlot(stype='bool') #: A bool indicating whether or not this image can be used for training
 
-    _NonTransposedImage = OutputSlot() #: The output slot, in the data's original axis ordering (regardless of force5d)
+    _NonTransposedImage = OutputSlot() #: The output slot, in the data's original axis ordering (regardless of forceAxisOrder)
 
     ImageName = OutputSlot(stype='string') #: The name of the output image
     
@@ -143,9 +143,9 @@ class OpDataSelection(Operator):
         def __str__(self):
             return self.message
 
-    def __init__(self, force5d=False, *args, **kwargs):
+    def __init__(self, forceAxisOrder=False, *args, **kwargs):
         super(OpDataSelection, self).__init__(*args, **kwargs)
-        self.force5d = force5d
+        self.forceAxisOrder = forceAxisOrder
         self._opReaders = []
 
         # If the gui calls disconnect() on an input slot without replacing it with something else,
@@ -231,8 +231,20 @@ class OpDataSelection(Operator):
 
             self._NonTransposedImage.connect(providerSlot)
             
-            if self.force5d:
+            if self.forceAxisOrder:
+                # Before we re-order, make sure no non-singleton 
+                #  axes would be dropped by the forced order.
+                output_order = "".join(self.forceAxisOrder)
+                provider_order = "".join(providerSlot.meta.getAxisKeys())
+                tagged_provider_shape = providerSlot.meta.getTaggedShape()
+                dropped_axes = set(provider_order) - set(output_order)
+                if any(tagged_provider_shape[a] > 1 for a in dropped_axes):
+                    msg = "The axes of your dataset ({}) are not compatible with the axes used by this workflow ({}). Please fix them."\
+                          .format(provider_order, output_order)
+                    raise DatasetConstraintError("DataSelection", msg)
+
                 op5 = OpReorderAxes(parent=self)
+                op5.AxisOrder.setValue(self.forceAxisOrder)
                 op5.Input.connect(providerSlot)
                 providerSlot = op5.Output
                 self._opReaders.append(op5)
@@ -307,11 +319,11 @@ class OpDataSelectionGroup( Operator ):
     #  it assumes all the others have already been resized.
     ImageName = OutputSlot() # Name of the first dataset is used.  Other names are ignored.
     
-    def __init__(self, force5d=False, *args, **kwargs):
+    def __init__(self, forceAxisOrder=None, *args, **kwargs):
         super(OpDataSelectionGroup, self).__init__(*args, **kwargs)
         self._opDatasets = None
         self._roles = []
-        self._force5d = force5d
+        self._forceAxisOrder = forceAxisOrder
 
         def handleNewRoles(*args):
             self.DatasetGroup.resize( len(self.DatasetRoles.value) )
@@ -330,7 +342,7 @@ class OpDataSelectionGroup( Operator ):
             if self._opDatasets is not None:
                 self._opDatasets.cleanUp()
     
-            self._opDatasets = OperatorWrapper( OpDataSelection, parent=self, operator_kwargs={ 'force5d' : self._force5d },
+            self._opDatasets = OperatorWrapper( OpDataSelection, parent=self, operator_kwargs={ 'forceAxisOrder' : self._forceAxisOrder },
                                                 broadcastingSlotNames=['ProjectFile', 'ProjectDataGroup', 'WorkingDirectory'] )
             self.ImageGroup.connect( self._opDatasets.Image )
             self._NonTransposedImageGroup.connect( self._opDatasets._NonTransposedImage )
@@ -378,8 +390,8 @@ class OpDataSelectionGroup( Operator ):
 class OpMultiLaneDataSelectionGroup( OpMultiLaneWrapper ):
     # TODO: Provide output slots DatasetsByRole and ImagesByRole as a convenience 
     #       to save clients the trouble of instantiating/using OpTransposeSlots.
-    def __init__(self, force5d=False, *args, **kwargs):
-        kwargs.update( { 'operator_kwargs' : {'force5d' : force5d},
+    def __init__(self, forceAxisOrder=False, *args, **kwargs):
+        kwargs.update( { 'operator_kwargs' : {'forceAxisOrder' : forceAxisOrder},
                          'broadcastingSlotNames' : ['ProjectFile', 'ProjectDataGroup', 'WorkingDirectory', 'DatasetRoles'] } )
         super( OpMultiLaneDataSelectionGroup, self ).__init__(OpDataSelectionGroup, *args, **kwargs )
     

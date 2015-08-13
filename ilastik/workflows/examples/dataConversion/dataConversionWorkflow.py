@@ -67,9 +67,7 @@ class DataConversionWorkflow(Workflow):
         self.dataSelectionApplet = DataSelectionApplet(self, 
                                                        "Input Data", 
                                                        "Input Data", 
-                                                       supportIlastik05Import=True, 
-                                                       batchDataGui=False,
-                                                       force5d=False)
+                                                       supportIlastik05Import=True)
 
         # Configure global DataSelection settings
         role_names = ["Input Data"]

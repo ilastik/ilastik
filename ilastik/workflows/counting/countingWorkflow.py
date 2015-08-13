@@ -63,10 +63,7 @@ class CountingWorkflow(Workflow):
 
         self.dataSelectionApplet = DataSelectionApplet(self,
                                                        "Input Data",
-                                                       "Input Data",
-                                                       batchDataGui=False,
-                                                       force5d=False
-                                                      )
+                                                       "Input Data" )
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         role_names = ['Raw Data']
         opDataSelection.DatasetRoles.setValue( role_names )

@@ -38,8 +38,8 @@ class DataSelectionApplet( Applet ):
     
     DEFAULT_INSTRUCTIONS = "Use the controls shown to the right to add image files to this workflow."
     
-    def __init__(self, workflow, title, projectFileGroupName, supportIlastik05Import=False, batchDataGui=False, force5d=False, instructionText=DEFAULT_INSTRUCTIONS, max_lanes=None, show_axis_details=False):
-        self.__topLevelOperator = OpMultiLaneDataSelectionGroup(parent=workflow, force5d=force5d)
+    def __init__(self, workflow, title, projectFileGroupName, supportIlastik05Import=False, batchDataGui=False, forceAxisOrder=None, instructionText=DEFAULT_INSTRUCTIONS, max_lanes=None, show_axis_details=False):
+        self.__topLevelOperator = OpMultiLaneDataSelectionGroup(parent=workflow, forceAxisOrder=forceAxisOrder)
         super(DataSelectionApplet, self).__init__( title, syncWithImageIndex=False )
 
         self._serializableItems = [ DataSelectionSerializer(self.topLevelOperator, projectFileGroupName) ]
