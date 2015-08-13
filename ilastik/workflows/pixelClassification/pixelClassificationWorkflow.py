@@ -56,14 +56,13 @@ class PixelClassificationWorkflow(Workflow):
     def imageNameListSlot(self):
         return self.dataSelectionApplet.topLevelOperator.ImageName
 
-    def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, appendBatchOperators=True, supports_anisotropic_data=False, *args, **kwargs):
+    def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, appendBatchOperators=True, *args, **kwargs):
         # Create a graph to be shared by all operators
         graph = Graph()
         super( PixelClassificationWorkflow, self ).__init__( shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs )
         self.stored_classifer = None
         self._applets = []
         self._workflow_cmdline_args = workflow_cmdline_args
-        self.supports_anisotropic_data = supports_anisotropic_data
         # Parse workflow-specific command-line args
         parser = argparse.ArgumentParser()
         parser.add_argument('--filter', help="pixel feature filter implementation.", choices=['Original', 'Refactored', 'Interpolated'], default='Original')
@@ -143,14 +142,16 @@ class PixelClassificationWorkflow(Workflow):
             logger.warn("Unused command-line args: {}".format( unused_args ))
 
     def createDataSelectionApplet(self):
+        """
+        Can be overridden by subclasses, if they want to use 
+        special parameters to initialize the DataSelectionApplet.
+        """
         data_instructions = "Select your input data using the 'Raw Data' tab shown on the right"
         return DataSelectionApplet( self,
                                     "Input Data",
                                     "Input Data",
                                     supportIlastik05Import=True,
-                                    batchDataGui=False,
-                                    instructionText=data_instructions,
-                                    show_axis_details=self.supports_anisotropic_data )
+                                    instructionText=data_instructions )
 
 
     def createFeatureSelectionApplet(self):

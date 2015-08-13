@@ -21,6 +21,7 @@
 import logging
 logger = logging.getLogger(__name__)
 
+from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow 
 from ilastik.applets.iiboostFeatureSelection import IIBoostFeatureSelectionApplet
 from ilastik.applets.iiboostPixelClassification import IIBoostPixelClassificationApplet
@@ -32,7 +33,21 @@ class IIBoostPixelClassificationWorkflow(PixelClassificationWorkflow):
     defaultAppletIndex = 1 # show DataSelection by default
     
     def __init__(self, *args, **kwargs):
-        super( IIBoostPixelClassificationWorkflow, self ).__init__( *args, supports_anisotropic_data=True, **kwargs )
+        super( IIBoostPixelClassificationWorkflow, self ).__init__( *args, **kwargs )
+
+    def createDataSelectionApplet(self):
+        """
+        Overridden from the base PixelClassificationWorkflow.
+        We require a particular axis order and we also allow axis details editing.
+        """
+        data_instructions = "Select your input data using the 'Raw Data' tab shown on the right"
+        return DataSelectionApplet( self,
+                                    "Input Data",
+                                    "Input Data",
+                                    supportIlastik05Import=True,
+                                    forceAxisOrder='zyxc', # This workflow requires 3D data and assumes zyxc order in feature computation and prediction.
+                                    instructionText=data_instructions,
+                                    show_axis_details=True ) # IIBoost supports/requires information about anisotropy.
 
     def createFeatureSelectionApplet(self):
         """
