@@ -362,8 +362,80 @@ class ObjectClassificationWorkflow(Workflow):
             return self.opBatchClassify.PredictionImage
         raise Exception("Unknown headless output slot")
 
+    def handleAppletStateUpdateRequested(self, upstream_ready=False):
+        """
+        Overridden from Workflow base class
+        Called when an applet has fired the :py:attr:`Applet.appletStateUpdateRequested`
+        
+        This method will be called by the child classes with the result of their
+        own applet readyness findings as keyword argument.
+        """
+
+        # all workflows have these applets in common:
+
+        # object feature selection
+        # object classification
+        # object prediction export
+        # blockwise classification
+        # batch input
+        # batch prediction export
+
+        self._shell.setAppletEnabled(self.dataSelectionApplet, not self.batchProcessingApplet.busy)
+
+        cumulated_readyness = upstream_ready
+        cumulated_readyness &= not self.batchProcessingApplet.busy # Nothing can be touched while batch mode is executing.
+
+        self._shell.setAppletEnabled(self.objectExtractionApplet, cumulated_readyness)
+
+        object_features_ready = ( self.objectExtractionApplet.topLevelOperator.Features.ready()
+                                  and len(self.objectExtractionApplet.topLevelOperator.Features.value) > 0 )
+        cumulated_readyness = cumulated_readyness and object_features_ready
+        self._shell.setAppletEnabled(self.objectClassificationApplet, cumulated_readyness)
+
+        opObjectClassification = self.objectClassificationApplet.topLevelOperator
+        invalid_classifier = opObjectClassification.classifier_cache.fixAtCurrent.value and \
+                             opObjectClassification.classifier_cache.Output.ready() and\
+                             opObjectClassification.classifier_cache.Output.value is None
+
+        invalid_classifier |= not opObjectClassification.NumLabels.ready() or \
+                              opObjectClassification.NumLabels.value < 2
+
+        object_classification_ready = object_features_ready and not invalid_classifier
+
+        cumulated_readyness = cumulated_readyness and object_classification_ready
+        self._shell.setAppletEnabled(self.dataExportApplet, cumulated_readyness)
+
+        if self.batch:
+            object_prediction_ready = True  # TODO is that so?
+            cumulated_readyness = cumulated_readyness and object_prediction_ready
+
+            self._shell.setAppletEnabled(self.blockwiseObjectClassificationApplet, cumulated_readyness)
+            self._shell.setAppletEnabled(self.batchProcessingApplet, cumulated_readyness)
+
+        # Lastly, check for certain "busy" conditions, during which we 
+        # should prevent the shell from closing the project.
+        #TODO implement
+        busy = False
+        self._shell.enableProjectChanges( not busy )
+
+    def _inputReady(self, nRoles):
+        slot = self.dataSelectionApplet.topLevelOperator.ImageGroup
+        if len(slot) > 0:
+            input_ready = True
+            for sub in slot:
+                input_ready = input_ready and \
+                    all([sub[i].ready() for i in range(nRoles)])
+        else:
+            input_ready = False
+
+        return input_ready
+
     def postprocessClusterSubResult(self, roi, result, blockwise_fileset):
         """
+        This function is only used by special cluster scripts.
+        
+        When the batch-processing mechanism was rewritten, this function broke.
+        It could probably be fixed with minor changes.
         """
         # TODO: Here, we hard-code to select from the first lane only.
         opBatchClassify = self.opBatchClassify[0]
@@ -467,74 +539,6 @@ class ObjectClassificationWorkflow(Workflow):
                 #fout.flush()
         
         logger.info("FINISHED csv export")
-
-    def handleAppletStateUpdateRequested(self, upstream_ready=False):
-        """
-        Overridden from Workflow base class
-        Called when an applet has fired the :py:attr:`Applet.appletStateUpdateRequested`
-        
-        This method will be called by the child classes with the result of their
-        own applet readyness findings as keyword argument.
-        """
-
-        # all workflows have these applets in common:
-
-        # object feature selection
-        # object classification
-        # object prediction export
-        # blockwise classification
-        # batch input
-        # batch prediction export
-
-        self._shell.setAppletEnabled(self.dataSelectionApplet, not self.batchProcessingApplet.busy)
-
-        cumulated_readyness = upstream_ready
-        cumulated_readyness &= not self.batchProcessingApplet.busy # Nothing can be touched while batch mode is executing.
-
-        self._shell.setAppletEnabled(self.objectExtractionApplet, cumulated_readyness)
-
-        object_features_ready = ( self.objectExtractionApplet.topLevelOperator.Features.ready()
-                                  and len(self.objectExtractionApplet.topLevelOperator.Features.value) > 0 )
-        cumulated_readyness = cumulated_readyness and object_features_ready
-        self._shell.setAppletEnabled(self.objectClassificationApplet, cumulated_readyness)
-
-        opObjectClassification = self.objectClassificationApplet.topLevelOperator
-        invalid_classifier = opObjectClassification.classifier_cache.fixAtCurrent.value and \
-                             opObjectClassification.classifier_cache.Output.ready() and\
-                             opObjectClassification.classifier_cache.Output.value is None
-
-        invalid_classifier |= not opObjectClassification.NumLabels.ready() or \
-                              opObjectClassification.NumLabels.value < 2
-
-        object_classification_ready = object_features_ready and not invalid_classifier
-
-        cumulated_readyness = cumulated_readyness and object_classification_ready
-        self._shell.setAppletEnabled(self.dataExportApplet, cumulated_readyness)
-
-        if self.batch:
-            object_prediction_ready = True  # TODO is that so?
-            cumulated_readyness = cumulated_readyness and object_prediction_ready
-
-            self._shell.setAppletEnabled(self.blockwiseObjectClassificationApplet, cumulated_readyness)
-            self._shell.setAppletEnabled(self.batchProcessingApplet, cumulated_readyness)
-
-        # Lastly, check for certain "busy" conditions, during which we 
-        # should prevent the shell from closing the project.
-        #TODO implement
-        busy = False
-        self._shell.enableProjectChanges( not busy )
-
-    def _inputReady(self, nRoles):
-        slot = self.dataSelectionApplet.topLevelOperator.ImageGroup
-        if len(slot) > 0:
-            input_ready = True
-            for sub in slot:
-                input_ready = input_ready and \
-                    all([sub[i].ready() for i in range(nRoles)])
-        else:
-            input_ready = False
-
-        return input_ready
 
 
 class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):

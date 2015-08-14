@@ -283,21 +283,6 @@ class PixelClassificationWorkflow(Workflow):
         busy |= self.batchProcessingApplet.busy
         self._shell.enableProjectChanges( not busy )
 
-    def getHeadlessOutputSlot(self, slotId):
-        # "Regular" (i.e. with the images that the user selected as input data)
-        if slotId == "Predictions":
-            return self.pcApplet.topLevelOperator.HeadlessPredictionProbabilities
-        elif slotId == "PredictionsUint8":
-            return self.pcApplet.topLevelOperator.HeadlessUint8PredictionProbabilities
-        # "Batch" (i.e. with the images that the user selected as batch inputs).
-        elif slotId == "BatchPredictions":
-            return self.opBatchPredictionPipeline.HeadlessPredictionProbabilities
-        if slotId == "BatchPredictionsUint8":
-            return self.opBatchPredictionPipeline.HeadlessUint8PredictionProbabilities
-        
-        raise Exception("Unknown headless output slot")
-
-
     def onProjectLoaded(self, projectManager):
         """
         Overridden from Workflow base class.  Called by the Project Manager.
@@ -438,4 +423,24 @@ class PixelClassificationWorkflow(Workflow):
             label_input_slot[fullSlicing(shape)] = random_labels
         
         logger.info( "Done injecting labels" )
+
+
+    def getHeadlessOutputSlot(self, slotId):
+        """
+        Not used by the regular app.
+        Only used for special cluster scripts.
+        """
+        # "Regular" (i.e. with the images that the user selected as input data)
+        if slotId == "Predictions":
+            return self.pcApplet.topLevelOperator.HeadlessPredictionProbabilities
+        elif slotId == "PredictionsUint8":
+            return self.pcApplet.topLevelOperator.HeadlessUint8PredictionProbabilities
+        # "Batch" (i.e. with the images that the user selected as batch inputs).
+        elif slotId == "BatchPredictions":
+            return self.opBatchPredictionPipeline.HeadlessPredictionProbabilities
+        if slotId == "BatchPredictionsUint8":
+            return self.opBatchPredictionPipeline.HeadlessUint8PredictionProbabilities
+        
+        raise Exception("Unknown headless output slot")
+
 
