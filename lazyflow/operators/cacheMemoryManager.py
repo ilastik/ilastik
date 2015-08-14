@@ -89,6 +89,7 @@ class CacheMemoryManager(threading.Thread):
         self._disable_lock = threading.Condition()
         self._disabled = False
         self._refresh_interval = default_refresh_interval
+        self._first_class_caches_lock = threading.Lock()
 
         # maximum fraction of *allowed memory* used
         self._max_usage = 1.0
@@ -110,14 +111,16 @@ class CacheMemoryManager(threading.Thread):
         # late import to prevent import loop
         from lazyflow.operators.opCache import Cache
         if isinstance(cache, Cache):
-            self._first_class_caches.add(cache)
+            with self._first_class_caches_lock:
+                self._first_class_caches.add(cache)
         self.addCache(cache)
 
     def getFirstClassCaches(self):
         """
         get a list of first class caches
         """
-        return list(self._first_class_caches)
+        with self._first_class_caches_lock:
+            return list(self._first_class_caches)
 
     def getCaches(self):
         """
@@ -169,7 +172,11 @@ class CacheMemoryManager(threading.Thread):
         try:
             # notify subscribed functions about current cache memory
             total = 0
-            first_class_caches = self._first_class_caches.copy() # Avoid "RuntimeError: Set changed size during iteration"
+            
+            # Avoid "RuntimeError: Set changed size during iteration"
+            with self._first_class_caches_lock:
+                first_class_caches = self._first_class_caches.copy()
+            
             for cache in first_class_caches:
                 if isinstance(cache, ObservableCache):
                     total += cache.usedMemory()
