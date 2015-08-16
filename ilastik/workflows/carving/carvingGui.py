@@ -496,6 +496,7 @@ class CarvingGui(LabelingGui):
         object_supervoxels = mst.object_lut[object_name]
         object_lut = numpy.zeros(mst.nodeNum+1, dtype=numpy.int32)
         object_lut[object_supervoxels] = 1
+        # TODO: process blockwise
         supervoxel_volume = mst.supervoxelUint32
         object_volume = object_lut[supervoxel_volume]
 
@@ -576,17 +577,23 @@ class CarvingGui(LabelingGui):
         self._shownObjects3D = dict((k, v) for k, v in self._shownObjects3D.iteritems()
                                     if k in op.MST.value.object_lut.keys())
 
-        lut = numpy.zeros(op.MST.value.nodeNum+1, dtype=numpy.int32)
+        # TODO: resolve discrepancy between previous and current versions (current version seems to glitch out until labels are cleared; possibly project file has old-style labels?)
+        #lut = numpy.zeros(op.MST.value.nodeNum + 1, dtype=numpy.int32) # NOTE: previous ilastiktools watershed
+        #lut = numpy.zeros(op.MST.value.nodeNum, dtype=numpy.int32) # NOTE: current ilastiktools watershed
+        lut = numpy.zeros(op.MST.value.getSuperVoxelSeg().size, dtype=numpy.int32) # TODO: remove hack
+
         for name, label in self._shownObjects3D.iteritems():
             objectSupervoxels = op.MST.value.objects[name]
             lut[objectSupervoxels] = label
 
         if self._showSegmentationIn3D:
             # Add segmentation as label, which is green
-            lut[:] = numpy.where( op.MST.value.getSuperVoxelSeg() == 2, self._segmentation_3d_label, lut )
+            supervoxelSeg = op.MST.value.getSuperVoxelSeg()
+            lut[:] = numpy.where( supervoxelSeg == 2, self._segmentation_3d_label, lut )
         import vigra
-        #with vigra.Timer("remapping"):          
-        self._renderMgr.volume = lut[op.MST.value.supervoxelUint32] # (Advanced indexing)
+        # TODO: read labels blockwise
+        labels = op.MST.value.supervoxelUint32.value[0,...,0]
+        self._renderMgr.volume = lut[labels] # (Advanced indexing)
         self._update_colors()
         self._renderMgr.update()
 
@@ -660,9 +667,6 @@ class CarvingGui(LabelingGui):
        
         #segmentation 
         seg = self.topLevelOperatorView.Segmentation
-        
-        #seg = self.topLevelOperatorView.MST.value.segmentation
-        #temp = self._done_lut[self.MST.value.supervoxelUint32[sl[1:4]]]
         if seg.ready():
             #source = RelabelingArraySource(seg)
             #source.setRelabeling(numpy.arange(256, dtype=numpy.uint8))

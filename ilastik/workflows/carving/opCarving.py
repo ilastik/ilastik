@@ -287,6 +287,7 @@ class OpCarving(Operator):
         assert len(position3d) == 3
 
         #find the supervoxel that was clicked
+        # TODO: process blockwise
         sv = self._mst.supervoxelUint32[position3d]
         names = []
         for name, objectSupervoxels in self._mst.object_lut.iteritems():
@@ -610,7 +611,7 @@ class OpCarving(Operator):
 
     def execute(self, slot, subindex, roi, result):
         self._mst = self.MST.value
-        
+
         if slot == self.AllObjectNames:
             ret = self._mst.object_names.keys()
             return ret
@@ -623,9 +624,7 @@ class OpCarving(Operator):
             
         elif slot == self.Supervoxels:
             #avoid data being copied
-            # TODO: this assumes that supervoxels are allocated and calculated completely? -- fix
-            temp = self._mst.supervoxelUint32[sl[1:4]]
-            temp.shape = (1,) + temp.shape + (1,)
+            temp = self._mst.supervoxelUint32(sl).wait()
         elif slot  == self.DoneObjects:
             #avoid data being copied
             if self._done_lut is None:

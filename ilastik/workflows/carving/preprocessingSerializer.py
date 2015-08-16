@@ -96,8 +96,9 @@ class PreprocessingSerializer( AppletSerializer ):
                 opPre.InvertWatershedSource.setValue( invert_watershed_source )
             opPre.initialFilter = sfilter
             opPre.Filter.setValue(sfilter)
-            
-            mst = WatershedSegmentor(h5file=graphgroup)
+
+            #TODO: Cleanup how labels are handled
+            mst = WatershedSegmentor(labels=opPre._opMstProvider.LabelImage, h5file=graphgroup)
             opPre._prepData = numpy.array([mst])
         
             

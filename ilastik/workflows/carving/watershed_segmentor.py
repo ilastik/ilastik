@@ -6,19 +6,21 @@ import numpy
 
 
 class WatershedSegmentor(object):
-    def __init__(self, h5file = None):
+    # TODO: class OpWatershedSegmentor(Operator)
+    def __init__(self, labels, h5file=None):
         self.object_names = dict()
         self.objects = dict()
         self.object_seeds_fg = dict()
         self.object_seeds_bg = dict()
         self.object_seeds_fg_voxels = dict()
         self.object_seeds_bg_voxels = dict()
-        self.bg_priority =dict()
+        self.bg_priority = dict()
         self.no_bias_below = dict()
         self.object_lut = dict()
         self.hasSeg = False
 
         if h5file is None:
+<<<<<<< HEAD
             ndim  = 3
             self.supervoxelUint32 = labels
             self.volumeFeat = volume_feat.squeeze()
@@ -38,14 +40,41 @@ class WatershedSegmentor(object):
 
             else:
                 raise RuntimeError("internal error")
+||||||| merged common ancestors
+            # TODO: remove?
+            #self.supervoxelUint32 = labels
+            #self.volumeFeat = volume_feat.squeeze()
+
+            self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
+
+            self.gridSegmentor.init()
+=======
+            # TODO: keep reference to labels slot?
+            self.supervoxelUint32 = labels
+
+            self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
+
+            self.gridSegmentor.init()
+>>>>>>> Blockwise preprocessing is now working again (after blockwise refactor of ilastiktools).
 
             self.nodeNum = self.gridSegmentor.nodeNum()
             self.hasSeg = False
         else:
             self.nodeNum = h5file.attrs["numNodes"]
 
-            # TODO: remove?
+            # TODO: keep reference to labels slot? make labels a slot.
+            '''
+            #h5file = h5py.File(fname)
             #self.supervoxelUint32 = h5file['labels'][:]
+            source = OpStreamingHdf5Reader(graph=graph)
+            source.Hdf5File.setValue(h5file)
+            source.InternalPath.setValue(gname)
+
+            op = OpCompressedCache( parent=None, graph=graph )
+            op.BlockShape.setValue( [128, 128, 128] )
+            op.Input.connect( source.OutputImage )
+            '''
+            self.supervoxelUint32 = labels
 
             if(self.supervoxelUint32.squeeze().ndim == 3):
                 self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
@@ -73,8 +102,10 @@ class WatershedSegmentor(object):
 
             self.hasSeg = resultSegmentation.max()>0
 
-    def preprocess(self, labels, volume_features):
-        self.gridSegmentor.preprocessing(labels=labels, edgeWeights=volume_features)
+    def preprocess(self, labels, volume_features, roi_stop):
+        assert not self.hasSeg, "gridSegmentor was finalized; cannot preprocess."
+        self.gridSegmentor.preprocessing(labels=labels, weightArray=volume_features, roiEnd=roi_stop)
+        self.nodeNum = self.gridSegmentor.nodeNum()
 
     def run(self, unaries, prios = None, uncertainty="exchangeCount",
             moving_average = False, noBiasBelow = 0, **kwargs):
@@ -92,7 +123,7 @@ class WatershedSegmentor(object):
         # see opPreprocessing.execute for example
 
         self.gridSegmentor.addSeeds(labels=labels, labelsOffset=labels_roi_begin,
-                                    fgSeeds, bgSeeds)
+                                    fgSeeds=fgSeeds, bgSeeds=bgSeeds)
 
     def addSeeds(self, roi, brushStroke):
         if isinstance(self.gridSegmentor, ilastiktools.GridSegmentor_3D_UInt32):
@@ -105,12 +136,11 @@ class WatershedSegmentor(object):
         roiShape = [e-b for b,e in zip(roiBegin,roiEnd)]
         brushStroke = brushStroke.reshape(roiShape)
 
-        # TODO: handle labels roi correctly
-        # see opPreprocessing.execute for example
-
+        labels = self.supervoxelUint32(roi.toSlice()).wait()[0,...,0]
         self.gridSegmentor.addSeedBlock(labels=labels, brushStroke=brushStroke)
 
     def getVoxelSegmentation(self, roi, out = None):
+        # TODO: Handle 2D case correctly (do we need all the roi* calculations; why not use roi directly?
         if isinstance(self.gridSegmentor, ilastiktools.GridSegmentor_3D_UInt32):
             roiBegin  = roi.start[1:4]
             roiEnd  = roi.stop[1:4]
@@ -126,14 +156,16 @@ class WatershedSegmentor(object):
 
         # TODO: handle labels roi correctly
         # see opPreprocessing.execute for example
+        # labels = self.supervoxelUint32(roiShape.toSlice()).wait()[0,...,0]
 
+        labels = self.supervoxelUint32(roi.toSlice()).wait()[0,...,0]
         return self.gridSegmentor.getSegmentation(labels=labels, out=out)
 
     def getSuperVoxelSeg(self):
-        return  self.gridSegmentor.getSuperVoxelSeg()
+        return self.gridSegmentor.getSuperVoxelSeg()
 
     def getSuperVoxelSeeds(self):
-        return  self.gridSegmentor.getSuperVoxelSeeds()
+        return self.gridSegmentor.getSuperVoxelSeeds()
 
     def saveH5(self, filename, groupname, mode="w"):
         f = h5py.File(filename, mode)
@@ -149,12 +181,10 @@ class WatershedSegmentor(object):
 
         g.attrs["numNodes"] = self.numNodes
         # TODO: save labels blockwise
-        '''
         g.create_dataset("labels",
                          data=self.supervoxelUint32,
                          compression='gzip',
                          compression_opts=4)
-        '''
 
         gridSeg = self.gridSegmentor
         g.create_dataset("graph", data = gridSeg.serializeGraph())

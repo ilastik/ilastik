@@ -27,7 +27,7 @@ import numpy
 import vigra
 
 #lazyflow
-from lazyflow.roi import getIntersectingBlocks, getBlockBounds, roiToSlice, roiFromShape
+from lazyflow.roi import getIntersectingBlocks, getBlockBounds, roiFromShape, enlargeRoiForHalo, TinyVector
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.utility.timer import Timer
@@ -35,7 +35,7 @@ from lazyflow.utility.timer import Timer
 # ilastik
 from ilastik.applets.base.applet import DatasetConstraintError
 
-#carving Cython module
+#carving tools
 from watershed_segmentor import WatershedSegmentor
 
 import logging
@@ -183,15 +183,13 @@ class OpSimpleWatershed(Operator):
         volume_feat = input_image[0,...,0]
         result_view = result[0,...,0]
         with Timer() as watershedTimer:
+            sys.stdout.write("Watershed..."); sys.stdout.flush()
+
             if self.Input.meta.getTaggedShape()['z'] > 1:
-                sys.stdout.write("Watershed..."); sys.stdout.flush()
-                #result_view[...] = vigra.analysis.watersheds(volume_feat[:,:])[0].astype(numpy.int32)
                 result_view[...] = vigra.analysis.watershedsNew(volume_feat[:,:].astype(numpy.uint8))[0]
                 logger.info( "done {}".format(numpy.max(result[...]) ) )
             else:
-                sys.stdout.write("Watershed..."); sys.stdout.flush()
-                
-                labelVolume = vigra.analysis.watershedsNew(volume_feat[:,:,0])[0]#.view(dtype=numpy.int32)
+                labelVolume = vigra.analysis.watershedsNew(volume_feat[:,:,0])[0]
                 result_view[...] = labelVolume[:,:,numpy.newaxis]
                 logger.info( "done {}".format(numpy.max(labelVolume)) )
 
@@ -215,7 +213,7 @@ class OpMstSegmentorProvider(Operator):
         self.MST.meta.shape = (1,)
         self.MST.meta.dtype = object
 
-    def execute(self,slot,subindex,unused_roi,result):
+    def execute(self, slot, subindex, unused_roi, result):
         assert slot == self.MST, "Invalid output slot: {}".format(slot.name)
 
         #first thing, show the user that we are waiting for computations to finish
@@ -228,10 +226,12 @@ class OpMstSegmentorProvider(Operator):
                 self.applet.progressSignal.emit(p)
                 self.applet.progress = p
 
-        block_shape = (1,512,512,512,1)
+        bsz = 256
+        halo_size = (0,1,1,1,0)
+        block_shape = (1,bsz,bsz,bsz,1)
         block_starts = getIntersectingBlocks( block_shape, roiFromShape(self.Image.meta.shape) )
 
-        mst = WatershedSegmentor()
+        mst = WatershedSegmentor(labels=self.LabelImage)
 
         try:
             block_count = len(block_starts)
@@ -239,11 +239,19 @@ class OpMstSegmentorProvider(Operator):
                 features_roi = getBlockBounds(self.Image.meta.shape, block_shape, block)
                 labels_roi = getBlockBounds(self.LabelImage.meta.shape, block_shape, block)
 
-                featureVolume = self.Image( *features_roi ).wait()
-                labelVolume = self.LabelImage( *labels_roi ).wait()
+                features_roi_halo = enlargeRoiForHalo(features_roi[0], features_roi[1], self.Image.meta.shape, 1, window=1, enlarge_axes=halo_size)
+                labels_roi_halo = enlargeRoiForHalo(labels_roi[0], labels_roi[1], self.LabelImage.meta.shape, 1, window=1, enlarge_axes=halo_size)
 
-                mst.preprocess(labelVolume[0,...,0], numpy.asarray(featureVolume[0,...,0], numpy.float32))
-                           #, edgeWeightFunctor = "minimum",progressCallback = partial(updateProgressBar, b_id, block_count)
+                # remove halo from bottom
+                features_roi_halo[0] = features_roi[0]
+                labels_roi_halo[0] = labels_roi[0]
+
+                featureVolume = self.Image( *features_roi_halo ).wait()
+                labelVolume = self.LabelImage( *labels_roi_halo ).wait()
+
+                block_roi = labels_roi[1]-labels_roi[0]
+
+                mst.preprocess(labelVolume[0,...,0], numpy.asarray(featureVolume[0,...,0], numpy.float32), TinyVector(block_roi[1:-1]))
 
                 updateProgressBar(b_id, block_count, 50)
 
@@ -374,8 +382,10 @@ class OpPreprocessing(Operator):
         self.PreprocessedData.meta.shape = (1,)
         self.PreprocessedData.meta.dtype = object
 
+        # TODO: Fix corruption issue (maybe try opSplitRequestsBlockwise everywhere instead?)
         innerCacheBlockShape = (256,256,256,256,256)
-        outerCacheBlockShape = (512,512,512,512,512)
+        outerCacheBlockShape = (10000,10000,10000,10000,10000) # must be larger than max block size, otherwise data is corrupted
+        outerCacheBlockShape = (1024,1024,1024,1024,1024) # must be larger than max block size, otherwise data is corrupted
 
         self._opFilterCache.fixAtCurrent.setValue(False)
         self._opFilterCache.innerBlockShape.setValue( innerCacheBlockShape )
