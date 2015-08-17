@@ -86,9 +86,14 @@ class VigraRfAdaptiveMaskPixelwiseClassifier(LazyflowPixelwiseClassifierABC):
         self._known_labels = known_labels
         self._vigra_rf = vigra_rf
     
-    def predict_probabilities_pixelwise(self, X, axistags=None): 
+    def predict_probabilities_pixelwise(self, X, roi, axistags=None): 
         logger.debug( 'predicting PIXELWISE vigra RF' )
         
+        # This classifier doesn't benefit from any context around the input, (does it?)
+        #  so just strip it off and only use the given roi.
+        assert len(roi[0]) == len(roi[1]) == X.ndim - 1
+        X = X[roi_to_slice(*roi)]
+
         FRAME_SPAN = 10 # Number of frames to wait until the mask is recalculated  
         DILATION_RADIUS = 50 # In pixels
         BACKGROUND_LABEL = 1  

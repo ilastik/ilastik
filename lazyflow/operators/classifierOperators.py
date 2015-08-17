@@ -455,9 +455,7 @@ class OpPixelwiseClassifierPredict(Operator):
 
         # Determine how to extract the data from the result (without the halo)
         downstream_roi = numpy.array((roi.start, roi.stop))
-        downstream_channels = self.PMaps.meta.shape[-1]
-        roi_within_result = downstream_roi - upstream_roi[0]
-        roi_within_result[:,-1] = [0, downstream_channels]
+        predictions_roi = downstream_roi[:,:-1] - upstream_roi[0,:-1]
 
         # Request all upstream channels
         input_channels = self.Image.meta.shape[-1]
@@ -466,7 +464,7 @@ class OpPixelwiseClassifierPredict(Operator):
         # Request the data
         input_data = self.Image(*upstream_roi).wait()
         axistags = self.Image.meta.axistags
-        probabilities = classifier.predict_probabilities_pixelwise( input_data, axistags )
+        probabilities = classifier.predict_probabilities_pixelwise( input_data, predictions_roi, axistags )
         
         # We're expecting a channel for each label class.
         # If we didn't provide at least one sample for each label,
@@ -481,11 +479,8 @@ class OpPixelwiseClassifierPredict(Operator):
             
             probabilities = full_probabilities
 
-        # Extract requested region (discard halo)
-        probabilities = probabilities[ roiToSlice(*roi_within_result) ]
-        
         # Copy only the prediction channels the client requested.
-        result[...] = probabilities[...,roi.start[-1]:roi.stop[-1]]
+        result[...] = probabilities[..., roi.start[-1]:roi.stop[-1]]
         return result
 
     def propagateDirty(self, slot, subindex, roi):

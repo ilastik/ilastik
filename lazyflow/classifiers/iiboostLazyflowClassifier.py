@@ -1,4 +1,5 @@
 import cPickle as pickle
+from itertools import starmap
 
 import numpy
 
@@ -8,6 +9,9 @@ logger = logging.getLogger(__name__)
 import iiboost
 
 from lazyflow.classifiers import LazyflowPixelwiseClassifierFactoryABC, LazyflowPixelwiseClassifierABC
+
+def roi_to_slice(start, stop):
+    return tuple( starmap(slice, zip(start, stop)) )
 
 class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
     """
@@ -106,12 +110,20 @@ class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         # Calculate anisotropy factor.
         z_anisotropy_factor = 1.0
         if axistags:
+            assert [tag.key for tag in axistags] == list('zyxc'), "Data must be provided in zyxc order"
             x_tag = axistags['x']
             z_tag = axistags['z']
             if z_tag.resolution != 0.0 and x_tag.resolution != 0.0:
                 z_anisotropy_factor = z_tag.resolution / x_tag.resolution
 
-        model.trainWithChannels( raw_images, hev_images, converted_labels, integral_images, z_anisotropy_factor, self.num_stumps, *self._args, **self._kwargs )
+        model.trainWithChannels( raw_images, 
+                                 hev_images, 
+                                 converted_labels, 
+                                 integral_images, 
+                                 z_anisotropy_factor, 
+                                 self.num_stumps, 
+                                 *self._args, 
+                                 **self._kwargs )
 
         return IIBoostLazyflowClassifier( model, known_labels, feature_count=len(integral_images[0]), feature_names=feature_names )
 
@@ -147,12 +159,18 @@ class IIBoostLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         self._feature_count = feature_count
         self._feature_names = feature_names
     
-    def predict_probabilities_pixelwise(self, input_image, axistags=None):
+    def predict_probabilities_pixelwise(self, input_image, roi, axistags=None):
         """
         feature_image: An ND image.  Last axis must be channel.
+        roi: The region of interest (start, stop) within feature_image to predict (e.g. without the halo region)
+             Note: roi parameter should not include channel.
+                   For example, a valid roi for a zyxc image could be ((0,0,0), (10,20,30))
         axistags: Optional.  A vigra.AxisTags object describing the feature_image.
                   (Used to compute the anisotropy of the data.)
         
+        Returns: A multi-channel image (each channel corresponds to a different label class).
+                 The result image size is determined by the roi parameter.
+
         NOTE: See note in factory class above concerning the expected structure of the input image.
         """
         logger.debug( 'predicting with IIBoost' )
@@ -179,14 +197,32 @@ class IIBoostLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         # Calculate anisotropy factor.
         z_anisotropy_factor = 1.0
         if axistags:
+            assert [tag.key for tag in axistags] == list('zyxc'), "Data must be provided in zyxc order"
             x_tag = axistags['x']
             z_tag = axistags['z']
             if z_tag.resolution != 0.0 and x_tag.resolution != 0.0:
                 z_anisotropy_factor = z_tag.resolution / x_tag.resolution
         
-        prediction_img = self._model.predictWithChannels( raw, hev_image, integral_filter_channels, z_anisotropy_factor )
-        assert prediction_img.dtype == numpy.float32
+        subROI = iiboost.ROICoordinates()
+        subROI.z1, subROI.y1, subROI.x1 = roi[0]
+        subROI.z2, subROI.y2, subROI.x2 = roi[1]
         
+        prediction_img = self._model.predictWithChannels( raw, 
+                                                          hev_image, 
+                                                          integral_filter_channels, 
+                                                          z_anisotropy_factor, 
+                                                          useEarlyStopping=True, 
+                                                          subROI=subROI )
+        assert prediction_img.dtype == numpy.float32
+        assert prediction_img.shape == input_image.shape[:-1], \
+            "Output has unexpected shape: Got {}, expected {}"\
+            .format( prediction_img.shape, input_image.shape[:-1] )        
+
+        # IIBoost computes predictions only for the subROI, 
+        #  but the returned array is as large as the input.
+        # Extract the predictied roi now.
+        prediction_img = prediction_img[roi_to_slice(*roi)]
+
         # Convert prediction output to a probability: prob = 1/(1 + exp(-prediction))
         # Optimize: Here we use in-place operations to avoid temporaries. 
         #           For medium-to-large arrays, this is 25-40% faster than using the above formula directly.
@@ -208,9 +244,10 @@ class IIBoostLazyflowClassifier(LazyflowPixelwiseClassifierABC):
         if 2 in self._known_labels:
             prediction_img_reshaped[...,-1] = prediction_img
         
-        assert prediction_img_reshaped.shape == input_image.shape[:-1] + (len(self._known_labels),), \
-            "Output image had wrong shape. Expected: {}, Got {}"\
-            "".format( input_image.shape[:-1] + (len(self._known_labels),), prediction_img_reshaped.shape )
+        roi_shape = tuple(numpy.subtract(roi[1], roi[0]))
+        assert prediction_img_reshaped.shape == roi_shape + (len(self._known_labels),), \
+            "Prediction has wrong shape. Expected: {}, Got {}"\
+            "".format( roi_shape + (len(self._known_labels),), prediction_img_reshaped.shape )
         return prediction_img_reshaped
     
     @property
