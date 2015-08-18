@@ -23,6 +23,7 @@ import os
 import shutil
 import tempfile
 import unittest
+import platform
 
 import numpy
 import vigra
@@ -42,6 +43,7 @@ else:
 
 
 @unittest.skipIf(not have_dvid, "optional module pydvid not available.")
+@unittest.skipIf(platform.system() == "Windows", "DVID not tested on Windows. Skipping.")
 class TestOpDvidVolume(unittest.TestCase):
     """
     Mostly copied from the dvid_volume test...

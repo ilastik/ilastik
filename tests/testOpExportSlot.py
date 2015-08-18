@@ -22,6 +22,7 @@
 import os
 import tempfile
 import shutil
+import platform
 
 import nose
 import numpy
@@ -41,6 +42,8 @@ try:
     _skip_dvid = False
 except ImportError:
     _skip_dvid = True
+
+_skip_dvid |= (platform.system() == "Windows")
 
 class TestOpExportSlot(object):
     
