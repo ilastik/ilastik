@@ -84,6 +84,9 @@ class TestMultiInputConcatenater(object):
         assert numpy.all(op.Output[4][...].wait() == array6[...])
 
 if __name__ == "__main__":
+    import sys
     import nose
-    ret = nose.run(defaultTest=__file__, env={'NOSE_NOCAPTURE' : 1})
+    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+    ret = nose.run(defaultTest=__file__)
     if not ret: sys.exit(1)
