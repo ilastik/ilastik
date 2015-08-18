@@ -74,25 +74,27 @@ class TestOpMultipageTiff(object):
         opExport.run_export()
 
         opReader = OpTiffReader( graph=self.graph )
-        opReader.Filepath.setValue( filepath )
-
-        # Re-order before comparing
-        opReorderAxes = OpReorderAxes( graph=self.graph )
-        opReorderAxes.AxisOrder.setValue( self._axisorder )
-        opReorderAxes.Input.connect( opReader.Output )
-        
-        readData = opReorderAxes.Output[:].wait()
-        logger.debug("Expected shape={}".format( self.testData.shape ) )
-        logger.debug("Read shape={}".format( readData.shape ) )
-        
-        assert opReorderAxes.Output.meta.shape == self.testData.shape, \
-            "Exported files were of the wrong shape or number."
-        assert (opReorderAxes.Output[:].wait() == self.testData.view( numpy.ndarray )).all(), \
-            "Exported data was not correct"
-        
-        # Cleanup
-        opReorderAxes.cleanUp()
-        opReader.cleanUp()
+        try:
+            opReader.Filepath.setValue( filepath )
+    
+            # Re-order before comparing
+            opReorderAxes = OpReorderAxes( graph=self.graph )
+            try:
+                opReorderAxes.AxisOrder.setValue( self._axisorder )
+                opReorderAxes.Input.connect( opReader.Output )
+                
+                readData = opReorderAxes.Output[:].wait()
+                logger.debug("Expected shape={}".format( self.testData.shape ) )
+                logger.debug("Read shape={}".format( readData.shape ) )
+                
+                assert opReorderAxes.Output.meta.shape == self.testData.shape, \
+                    "Exported files were of the wrong shape or number."
+                assert (opReorderAxes.Output[:].wait() == self.testData.view( numpy.ndarray )).all(), \
+                    "Exported data was not correct"
+            finally:
+                opReorderAxes.cleanUp()
+        finally:
+            opReader.cleanUp()
 
 if __name__ == "__main__":
     # Run this file independently to see debug output.
