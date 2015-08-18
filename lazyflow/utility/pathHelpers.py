@@ -291,7 +291,7 @@ def getPathVariants(originalPath, workingDirectory):
     if os.path.isabs(originalPath):
         absPath = originalPath
         if areOnSameDrive(originalPath,workingDirectory):
-            relPath = os.path.relpath(absPath, workingDirectory).replace("\\","/")
+            relPath = os.path.relpath(absPath, workingDirectory)
         else:
             # Relative path does not always exist.  Caller must check for None.
             relPath = None
@@ -299,4 +299,4 @@ def getPathVariants(originalPath, workingDirectory):
         relPath = originalPath
         absPath = os.path.normpath(os.path.join(workingDirectory, relPath))
 
-    return (absPath, relPath)
+    return (absPath.replace("\\","/"), relPath.replace("\\","/"))
