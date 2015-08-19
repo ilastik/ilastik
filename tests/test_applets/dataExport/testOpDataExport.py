@@ -80,15 +80,16 @@ class TestOpDataExport(object):
         opExport.run_export()
         
         opRead = OpInputDataReader( graph=graph )
-        opRead.FilePath.setValue( opExport.ExportPath.value )
-
-        # Compare with the correct subregion and convert dtype.
-        expected_data = data.view(numpy.ndarray)[roiToSlice(*sub_roi)]
-        expected_data = expected_data.astype(numpy.uint8)
-        read_data = opRead.Output[:].wait()
-        assert (read_data == expected_data).all(), "Read data didn't match exported data!"
-        
-        opRead.cleanUp()
+        try:
+            opRead.FilePath.setValue( opExport.ExportPath.value )
+    
+            # Compare with the correct subregion and convert dtype.
+            expected_data = data.view(numpy.ndarray)[roiToSlice(*sub_roi)]
+            expected_data = expected_data.astype(numpy.uint8)
+            read_data = opRead.Output[:].wait()
+            assert (read_data == expected_data).all(), "Read data didn't match exported data!"
+        finally:
+            opRead.cleanUp()
 
 if __name__ == "__main__":
     import sys

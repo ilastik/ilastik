@@ -232,15 +232,16 @@ class TestPixelClassificationHeadless(object):
         opReorderAxes.AxisOrder.setValue( 'tzyxc' )
         opReorderAxes.Input.connect( opReader.stack )
          
-        readData = opReorderAxes.Output[:].wait()
- 
-        # Check basic attributes
-        assert readData.shape[:-1] == self.data[0:1, 50:150, 50:150, 0:50, 0:2].shape[:-1] # Assume channel is last axis
-        assert readData.shape[-1] == 2, "Wrong number of channels.  Expected 2, got {}".format( readData.shape[-1] )
-         
-        # Clean-up.
-        opReorderAxes.cleanUp()
-        opReader.cleanUp()
+        try:
+            readData = opReorderAxes.Output[:].wait()
+     
+            # Check basic attributes
+            assert readData.shape[:-1] == self.data[0:1, 50:150, 50:150, 0:50, 0:2].shape[:-1] # Assume channel is last axis
+            assert readData.shape[-1] == 2, "Wrong number of channels.  Expected 2, got {}".format( readData.shape[-1] )
+        finally:
+            # Clean-up.
+            opReorderAxes.cleanUp()
+            opReader.cleanUp()
 
 if __name__ == "__main__":
     #make the program quit on Ctrl+C
