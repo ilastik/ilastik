@@ -171,6 +171,11 @@ class OpSimpleWatershed(Operator):
     Input = InputSlot()
     Output = OutputSlot()
 
+    # TODO: fix hack -- assumes watersheds are only calculated once per region for given opSimpleWatershed instance
+    # TODO: fix hack -- doesn't work with threading
+    # TODO: fix hack -- doesn't work with re-calculated blocks
+    max_seed_value = 0 # the largest seed value found so far
+
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
         self.Output.meta.dtype = numpy.uint32
@@ -187,11 +192,19 @@ class OpSimpleWatershed(Operator):
 
             if self.Input.meta.getTaggedShape()['z'] > 1:
                 result_view[...] = vigra.analysis.watershedsNew(volume_feat[:,:].astype(numpy.uint8))[0]
-                logger.info( "done {}".format(numpy.max(result[...]) ) )
             else:
                 labelVolume = vigra.analysis.watershedsNew(volume_feat[:,:,0])[0]
                 result_view[...] = labelVolume[:,:,numpy.newaxis]
-                logger.info( "done {}".format(numpy.max(labelVolume)) )
+
+            old_max_seed_value = self.max_seed_value
+            result_min = numpy.min(result[...])
+            result_max = numpy.max(result[...])
+            result_range = (result_max - result_min) + 1
+            self.max_seed_value += result_range
+
+            result_view[...] += old_max_seed_value
+
+            logger.info("done - calculated range {}: {}-{}, offset {}".format(result_range, result_min, result_max, old_max_seed_value))
 
         logger.info( "Watershed took {} seconds".format( watershedTimer.seconds() ) )
         return result
@@ -385,7 +398,8 @@ class OpPreprocessing(Operator):
         # TODO: Fix corruption issue (maybe try opSplitRequestsBlockwise everywhere instead?)
         innerCacheBlockShape = (256,256,256,256,256)
         outerCacheBlockShape = (10000,10000,10000,10000,10000) # must be larger than max block size, otherwise data is corrupted
-        outerCacheBlockShape = (1024,1024,1024,1024,1024) # must be larger than max block size, otherwise data is corrupted
+        innerCacheBlockShape = (100,100,100,100,100)
+        outerCacheBlockShape = (100,100,100,100,100) # must be larger than max block size, otherwise data is corrupted
 
         self._opFilterCache.fixAtCurrent.setValue(False)
         self._opFilterCache.innerBlockShape.setValue( innerCacheBlockShape )
