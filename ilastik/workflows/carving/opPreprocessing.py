@@ -20,6 +20,7 @@
 ###############################################################################
 #Python
 import sys
+import threading
 from functools import partial
 
 #SciPy
@@ -172,18 +173,15 @@ class OpSimpleWatershed(Operator):
     Output = OutputSlot()
 
     # TODO: fix hack -- assumes watersheds are only calculated once per region for given opSimpleWatershed instance
-    # TODO: fix hack -- doesn't work with threading
     # TODO: fix hack -- doesn't work with re-calculated blocks
-    max_seed_value = 0 # the largest seed value found so far
+    _maxSeedValue = 0 # the largest seed value found so far
+    _maxSeedValueLock = threading.Lock()
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
         self.Output.meta.dtype = numpy.uint32
 
     def execute(self, slot, subindex, roi, result):
-        # TODO: remove
-        #assert roi.stop - roi.start == self.Output.meta.shape, "Watershed must be run on the entire volume."
-
         input_image = self.Input(roi.start, roi.stop).wait()
         volume_feat = input_image[0,...,0]
         result_view = result[0,...,0]
@@ -196,11 +194,13 @@ class OpSimpleWatershed(Operator):
                 labelVolume = vigra.analysis.watershedsNew(volume_feat[:,:,0])[0]
                 result_view[...] = labelVolume[:,:,numpy.newaxis]
 
-            old_max_seed_value = self.max_seed_value
             result_min = numpy.min(result[...])
             result_max = numpy.max(result[...])
             result_range = (result_max - result_min) + 1
-            self.max_seed_value += result_range
+
+            with self._maxSeedValueLock:
+                old_max_seed_value = self._maxSeedValue
+                self._maxSeedValue += result_range
 
             result_view[...] += old_max_seed_value
 
