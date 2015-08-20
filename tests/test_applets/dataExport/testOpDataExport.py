@@ -75,8 +75,10 @@ class TestOpDataExport(object):
         assert opExport.ImageToExport.ready()
         assert opExport.ExportPath.ready()
         
-        #print "exporting data to: {}".format( opExport.ExportPath.value )
-        assert opExport.ExportPath.value == self._tmpdir + '/' + rawInfo.nickname + '_export_x10-90_y20-80.h5/volume/data'
+        expected_path = self._tmpdir + '/' + rawInfo.nickname + '_export_x10-90_y20-80.h5/volume/data'
+        computed_path = opExport.ExportPath.value
+        assert os.path.normpath(computed_path) == os.path.normpath(expected_path), \
+            "Expected {}\nGot: {}".format( expected_path, computed_path )
         opExport.run_export()
         
         opRead = OpInputDataReader( graph=graph )
