@@ -299,4 +299,4 @@ def getPathVariants(originalPath, workingDirectory):
         relPath = originalPath
         absPath = os.path.normpath(os.path.join(workingDirectory, relPath))
 
-    return (absPath.replace("\\","/"), relPath.replace("\\","/"))
+    return (absPath.replace("\\","/"), relPath and relPath.replace("\\","/"))
