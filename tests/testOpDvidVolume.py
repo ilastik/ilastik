@@ -42,14 +42,14 @@ else:
     have_dvid = True
 
 
-@unittest.skipIf(not have_dvid, "optional module pydvid not available.")
-@unittest.skipIf(platform.system() == "Windows", "DVID not tested on Windows. Skipping.")
 class TestOpDvidVolume(unittest.TestCase):
     """
     Mostly copied from the dvid_volume test...
     """
     
     @classmethod
+    @unittest.skipIf(not have_dvid, "optional module pydvid not available.")
+    @unittest.skipIf(platform.system() == "Windows", "DVID not tested on Windows. Skipping.")
     def setupClass(cls):
         """
         Override.  Called by nosetests.
