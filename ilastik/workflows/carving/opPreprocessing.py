@@ -409,7 +409,7 @@ class OpPreprocessing(Operator):
         
         # copy over seeds, and saved objects
         if self._prepData[0] is not None:
-            mst.seeds[:] = self._prepData[0].seeds[:]
+            #mst.seeds[:] = self._prepData[0].seeds[:]
             mst.object_lut = self._prepData[0].object_lut
             mst.object_names = self._prepData[0].object_names
             mst.object_seeds_bg_voxels = self._prepData[0].object_seeds_bg_voxels
