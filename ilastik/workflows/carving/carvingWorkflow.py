@@ -18,6 +18,10 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+import argparse
+import logging
+logger = logging.getLogger(__name__)
+
 #lazyflow
 from lazyflow.graph import Graph
 from lazyflow.operators.opReorderAxes import OpReorderAxes
@@ -30,8 +34,11 @@ from ilastik.applets.dataSelection import DataSelectionApplet
 #this workflow: carving
 from carvingApplet import CarvingApplet
 from preprocessingApplet import PreprocessingApplet
+from ilastik.workflows.carving.opPreprocessing import OpPreprocessing, OpFilter
 
 #===----------------------------------------------------------------------------------------------------------------===
+
+DATA_ROLES = ['Raw Data']
 
 class CarvingWorkflow(Workflow):
     
@@ -55,6 +62,7 @@ class CarvingWorkflow(Workflow):
         graph = Graph()
         
         super(CarvingWorkflow, self).__init__(shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
+        self.workflow_cmdline_args = workflow_cmdline_args
         
         data_instructions = "Select your input data using the 'Raw Data' tab shown on the right"
         
@@ -68,9 +76,7 @@ class CarvingWorkflow(Workflow):
                                                         instructionText=data_instructions,
                                                         max_lanes=1 )
         opDataSelection = self.dataSelectionApplet.topLevelOperator
-        opDataSelection.DatasetRoles.setValue( ['Raw Data'] )
-        
-        
+        opDataSelection.DatasetRoles.setValue( DATA_ROLES )
         
         self.preprocessingApplet = PreprocessingApplet(workflow=self,
                                            title = "Preprocessing",
@@ -89,7 +95,7 @@ class CarvingWorkflow(Workflow):
         self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.preprocessingApplet)
         self._applets.append(self.carvingApplet)
-        
+
     def connectLane(self, laneIndex):
         ## Access applet operators
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
@@ -125,4 +131,59 @@ class CarvingWorkflow(Workflow):
         # Enable each applet as appropriate
         self._shell.setAppletEnabled(self.preprocessingApplet, input_ready)
         self._shell.setAppletEnabled(self.carvingApplet, preprocessed_data_ready)
-        
+
+    def onProjectLoaded(self, projectManager):
+        """
+        Overridden from Workflow base class.  Called by the Project Manager.
+
+        If the user provided command-line arguments, use them to configure
+        the workflow for batch mode and export all results.
+        (This workflow's headless mode supports only batch mode for now.)
+        """
+        # If input data files were provided on the command line, configure the DataSelection applet now.
+        # (Otherwise, we assume the project already had a dataset selected.)
+        input_data_args, unused_args = DataSelectionApplet.parse_known_cmdline_args(self.workflow_cmdline_args, DATA_ROLES)
+        if input_data_args.raw_data:
+            self.dataSelectionApplet.configure_operator_with_parsed_args(input_data_args)
+
+        #
+        # Parse the remaining cmd-line arguments
+        #
+        filter_indexes = { 'bright-lines' : OpFilter.HESSIAN_BRIGHT,
+                           'dark-lines'   : OpFilter.HESSIAN_DARK,
+                           'step-edges'   : OpFilter.STEP_EDGES,
+                           'original'     : OpFilter.RAW,
+                           'inverted'     : OpFilter.RAW_INVERTED }
+
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--run-preprocessing', action='store_true')
+        parser.add_argument('--preprocessing-sigma', type=float, required=False)
+        parser.add_argument('--preprocessing-filter', required=False, type=str.lower,
+                            choices=filter_indexes.keys())
+
+        parsed_args, unused_args = parser.parse_known_args(unused_args)
+        if unused_args:
+            logger.warn("Did not use the following command-line arguments: {}".format(unused_args))
+
+        # Execute pre-processing.
+        if parsed_args.run_preprocessing:
+            if len(self.preprocessingApplet.topLevelOperator) != 1:
+                raise RuntimeError("Can't run preprocessing on a project with no images.")
+
+            opPreprocessing = self.preprocessingApplet.topLevelOperator.getLane(0) # Carving has only one 'lane'
+
+            # If user provided parameters, override the defaults.
+            if parsed_args.preprocessing_sigma is not None:
+                opPreprocessing.Sigma.setValue(parsed_args.preprocessing_sigma)
+
+            if parsed_args.preprocessing_filter:
+                filter_index = filter_indexes[parsed_args.preprocessing_filter]
+                opPreprocessing.Filter.setValue(filter_index)
+
+            logger.info("Running Preprocessing...")
+            opPreprocessing.PreprocessedData[:].wait()
+            logger.info("FINISHED Preprocessing...")
+
+            logger.info("Saving project...")
+            self._shell.projectManager.saveProject()
+            logger.info("Done saving.")
