@@ -136,9 +136,10 @@ class CarvingWorkflow(Workflow):
         """
         Overridden from Workflow base class.  Called by the Project Manager.
 
-        If the user provided command-line arguments, use them to configure
-        the workflow for batch mode and export all results.
-        (This workflow's headless mode supports only batch mode for now.)
+        If the user provided command-line arguments, apply them to the workflow operators.
+        Currently, we support command-line configuration of:
+        - DataSelection
+        - Preprocessing, in which case preprocessing is immediately executed
         """
         # If input data files were provided on the command line, configure the DataSelection applet now.
         # (Otherwise, we assume the project already had a dataset selected.)
