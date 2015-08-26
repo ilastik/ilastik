@@ -273,6 +273,8 @@ def isUrl(path):
     # For now, the simplest rule will work.
     return '://' in path
 
+def make_absolute(path, cwd=os.getcwd()):
+    return PathComponents(path, cwd).totalPath()
 
 def getPathVariants(originalPath, workingDirectory):
     """
