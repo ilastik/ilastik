@@ -4,6 +4,8 @@ import os
 import ilastik.config
 from ilastik.config import cfg as ilastik_config
 
+from lazyflow.utility import Memory
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -247,8 +249,10 @@ def _prepare_lazyflow_config( parsed_args ):
                     raise Exception("In your current configuration, RAM is limited to {} MB."
                                     "  Remember to specify RAM in MB, not GB."
                                     .format( total_ram_mb ))
-                logger.info("Configuring lazyflow RAM limit to {} MB".format( total_ram_mb ))
-                lazyflow.AVAILABLE_RAM_MB = total_ram_mb
+                ram = total_ram_mb * 1024**2
+                fmt = Memory.format(ram)
+                logger.info("Configuring lazyflow RAM limit to {}".format(fmt))
+                Memory.setAvailableRam(ram)
         return _configure_lazyflow_settings
     return None
 
