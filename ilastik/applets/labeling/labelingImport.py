@@ -486,6 +486,8 @@ class LabelImportOptionsDlg(QDialog):
                                   'Warning: Imported X/Y dimensions do not match your original dataset.'
                                   '</span></p></body></html>')
 
+        if not self._dataInputSlot.ready():
+            return
         tagged_import_dimensions = self._dataInputSlot.meta.getTaggedShape()
         tagged_destination_dimensions = self._writeSeedsSlot.meta.getTaggedShape()
         show_warning = (   tagged_import_dimensions['x'] != tagged_destination_dimensions['x']
