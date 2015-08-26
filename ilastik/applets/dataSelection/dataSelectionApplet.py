@@ -234,32 +234,6 @@ class DataSelectionApplet( Applet ):
                 logger.warn("*******************************************************************************************")        
 
     @classmethod
-    def create_default_headless_dataset_info(cls, filepath):
-        """
-        filepath may be a globstring or a full hdf5 path+dataset 
-        """
-        comp = PathComponents(filepath)
-        nickname = comp.filenameBase
-        
-        # Remove globstring syntax.
-        if '*' in nickname:
-            nickname = nickname.replace('*', '')
-        if os.path.pathsep in nickname:
-            nickname = PathComponents(nickname.split(os.path.pathsep)[0]).fileNameBase
-
-        info = DatasetInfo()
-        info.location = DatasetInfo.Location.FileSystem
-        info.nickname = nickname
-        info.filePath = filepath
-        # Convert all (non-url) paths to absolute 
-        # (otherwise they are relative to the project file, which probably isn't what the user meant)
-        if not isUrl(filepath):
-            comp.externalPath = os.path.abspath(comp.externalPath)
-            info.filePath = comp.totalPath()
-        return info
-        
-
-    @classmethod
     def convertStacksToH5(cls, filePaths, stackVolumeCacheDir):
         """
         If any of the files in filePaths appear to be globstrings for a stack,

@@ -161,7 +161,7 @@ class BatchProcessingApplet( Applet ):
                 info = DatasetInfo()
 
             # Override the template settings with the current filepath.
-            default_info = DataSelectionApplet.create_default_headless_dataset_info(path_for_role)
+            default_info = DatasetInfo(path_for_role)
             info.filePath = default_info.filePath
             info.location = default_info.location
             info.nickname = default_info.nickname

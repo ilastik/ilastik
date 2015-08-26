@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+import os
 import uuid
 import numpy
 import vigra
@@ -29,6 +30,7 @@ from lazyflow.operators.valueProviders import OpMetadataInjector
 from ilastik.applets.base.applet import DatasetConstraintError
 
 from ilastik.utility import OpMultiLaneWrapper
+from lazyflow.utility import PathComponents, isUrl, make_absolute
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 class DatasetInfo(object):
@@ -39,18 +41,57 @@ class DatasetInfo(object):
         FileSystem = 0
         ProjectInternal = 1
         
-    def __init__(self, jsonNamespace=None):
+    def __init__(self, filepath=None, jsonNamespace=None, cwd=None):
+        """
+        filepath: may be a globstring or a full hdf5 path+dataset
+        jsonNamespace: If provided, overrides default settings after filepath is applied
+        cwd: The working directory for interpeting relative paths.  If not provided, os.getcwd() is used.
+        """
+        cwd = cwd or os.getcwd()
         Location = DatasetInfo.Location
         self.location = Location.FileSystem # Whether the data will be found/stored on the filesystem or in the project file
         self._filePath = ""                 # The original path to the data (also used as a fallback if the data isn't in the project yet)
         self._datasetId = ""                # The name of the data within the project file (if it is stored locally)
-        self.allowLabels = True             # Whether or not this dataset should be used for training a classifier.
+        self.allowLabels = True             # OBSOLETE: Whether or not this dataset should be used for training a classifier.
         self.drange = None
         self.normalizeDisplay = True
         self.fromstack = False
         self.nickname = ""
         self.axistags = None
         self.subvolume_roi = None
+
+        # Set defaults for location, nickname, filepath, and fromstack
+        if filepath:
+            # Check for sequences (either globstring or separated paths),
+            file_list = None
+            if '*' in filepath:
+                file_list = glob.glob(filepath)
+            if not isUrl(filepath) and os.path.pathsep in filepath:
+                file_list = filepath.split(os.path.pathsep)
+            
+            # For stacks, choose nickname based on a common prefix
+            if file_list:
+                fromstack = True
+    
+                # Convert all paths to absolute 
+                file_list = map(lambda f: make_absolute(f, cwd), file_list)
+                filepath = os.path.pathsep.join( file_list )
+    
+                # Add an underscore for each wildcard digit
+                prefix = os.path.commonprefix(file_list)
+                num_wildcards = len(file_list[-1]) - len(prefix) - len( os.path.splitext(file_list[-1])[1] )
+                nickname = PathComponents(prefix).filenameBase + ("_"*num_wildcards)
+            else:
+                fromstack = False
+                if not isUrl(filepath):
+                    # Convert all (non-url) paths to absolute 
+                    filepath = make_absolute(filepath, cwd)
+                nickname = PathComponents(filepath).filenameBase
+
+            self.location = DatasetInfo.Location.FileSystem
+            self.nickname = nickname
+            self.filePath = filepath
+            self.fromstack = fromstack
 
         if jsonNamespace is not None:
             self.updateFromJson( jsonNamespace )

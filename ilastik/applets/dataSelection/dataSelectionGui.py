@@ -562,23 +562,17 @@ class DataSelectionGui(QWidget):
         Create a DatasetInfo object for the given filePath and roi.
         roi may be None, in which case it is ignored.
         """
-        datasetInfo = DatasetInfo()
-        
-        if roi is not None:
-            datasetInfo.subvolume_roi = roi
-        
         cwd = self.topLevelOperator.WorkingDirectory.value
-        
+        datasetInfo = DatasetInfo(filePath, cwd=cwd)
+        datasetInfo.subvolume_roi = roi # (might be None)
+                
         absPath, relPath = getPathVariants(filePath, cwd)
         
-        # Relative by default, unless the file is in a totally different tree from the working directory.
+        # If the file is in a totally different tree from the cwd,
+        # then leave the path as absolute.  Otherwise, override with the relative path.
         if relPath is not None and len(os.path.commonprefix([cwd, absPath])) > 1:
             datasetInfo.filePath = relPath
-        else:
-            datasetInfo.filePath = absPath
             
-        datasetInfo.nickname = PathComponents(absPath).filenameBase
-
         h5Exts = ['.ilp', '.h5', '.hdf5']
         if os.path.splitext(datasetInfo.filePath)[1] in h5Exts:
             datasetNames = self.getPossibleInternalPaths( absPath )
@@ -739,17 +733,8 @@ class DataSelectionGui(QWidget):
         if len(files) == 0:
             return
 
-        info = DatasetInfo()
-        info.filePath = os.path.pathsep.join( files )
-        prefix = os.path.commonprefix(files)
-        info.nickname = PathComponents(prefix).filenameBase
-        # Add an underscore for each wildcard digit
-        num_wildcards = len(files[-1]) - len(prefix) - len( os.path.splitext(files[-1])[1] )
-        info.nickname += "_"*num_wildcards
-
-        # Allow labels by default if this gui isn't being used for batch data.
-        info.allowLabels = ( self.guiMode == GuiMode.Normal )
-        info.fromstack = True
+        cwd = self.topLevelOperator.WorkingDirectory.value
+        info = DatasetInfo(os.path.pathsep.join(files), cwd=cwd)
 
         originalNumLanes = len(self.topLevelOperator.DatasetGroup)
 
