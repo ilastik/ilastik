@@ -643,7 +643,7 @@ class TestThresholdGC(Generator2):
 
     @unittest.skipIf(not have_opengm, "OpenGM not available")
     def setUp(self):
-        pass
+        super(TestThresholdGC, self).setUp()
 
     def testWithout(self):
         oper5d = OpThresholdTwoLevels(graph=Graph())
@@ -767,6 +767,13 @@ class TestTTLUseCase(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    #make the program quit on Ctrl+C
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+    import sys
     import nose
-    nose.run(defaultTest=__file__, env={'NOSE_NOCAPTURE': 1})
+    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+    nose.run(defaultTest=__file__)
 
