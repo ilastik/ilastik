@@ -5,6 +5,7 @@ from collections import OrderedDict
 import logging
 logger = logging.getLogger(__name__)
 
+import vigra
 from lazyflow.request import Request
 from ilastik.utility import log_exception
 from ilastik.applets.base.applet import Applet
@@ -54,9 +55,9 @@ class BatchProcessingApplet( Applet ):
         """
         role_names = self.dataSelectionApplet.topLevelOperator.DatasetRoles.value
         role_path_dict = self.dataSelectionApplet.role_paths_from_parsed_args(parsed_args, role_names)
-        self.run_export(role_path_dict)
+        self.run_export(role_path_dict, parsed_args.input_axes)
 
-    def run_export(self, role_path_dict ):
+    def run_export(self, role_path_dict, input_axes=None ):
         """
         Run the export for each dataset listed in role_path_dict, 
         which must be a dict of {role_index : path_list}.
@@ -77,7 +78,7 @@ class BatchProcessingApplet( Applet ):
         self.progressSignal.emit(0)
         try:
             assert isinstance(role_path_dict, OrderedDict)
-            template_infos = self._get_template_dataset_infos()
+            template_infos = self._get_template_dataset_infos(input_axes)
             # Invert dict from [role][batch_index] -> path to a list-of-tuples, indexed by batch_index: 
             # [ (role-1-path, role-2-path, ...),
             #   (role-1-path, role-2-path,...) ]
@@ -121,27 +122,34 @@ class BatchProcessingApplet( Applet ):
         finally:
             self.progressSignal.emit(100)
 
-    def _get_template_dataset_infos(self):
+    def _get_template_dataset_infos(self, input_axes=None):
         """
         Sometimes the default settings for an input file are not suitable (e.g. the axistags need to be changed).
         We assume the LAST non-batch input in the workflow has settings that will work for all batch processing inputs.
         Here, we get the DatasetInfo objects from that lane and store them as 'templates' to modify for all batch-processing files.
         """
+        template_infos = {}
+
         # If there isn't an available dataset to use as a template
         if len(self.dataSelectionApplet.topLevelOperator.DatasetGroup) == 0:
             num_roles = len(self.dataSelectionApplet.topLevelOperator.DatasetRoles.value)
-            return dict( zip( range(num_roles), [None] * num_roles ) )
+            for role_index in range(num_roles):
+                template_infos[role_index] = DatasetInfo()
+                template_infos[role_index].axistags = vigra.defaultAxistags(input_axes)
+            return template_infos
         
         # Use the LAST non-batch input file as our 'template' for DatasetInfo settings (e.g. axistags)
         template_lane = len(self.dataSelectionApplet.topLevelOperator.DatasetGroup)-1
         opDataSelectionTemplateView = self.dataSelectionApplet.topLevelOperator.getLane(template_lane)
 
-        template_infos = {}
         for role_index, info_slot in enumerate(opDataSelectionTemplateView.DatasetGroup):
             if info_slot.ready():
                 template_infos[role_index] = info_slot.value
             else:
-                template_infos[role_index] = None
+                template_infos[role_index] = DatasetInfo()
+            if input_axes:
+                # Support the --input_axes arg to override input axis order, same as DataSelection applet.
+                template_infos[role_index].axistags = vigra.defaultAxistags(input_axes)
         return template_infos
     
     def _run_export_with_empty_batch_lane(self, role_input_paths, batch_lane_index, template_infos, progress_callback):
@@ -156,10 +164,7 @@ class BatchProcessingApplet( Applet ):
             if not path_for_role:
                 continue
 
-            if template_infos[role_index]:
-                info = copy.copy(template_infos[role_index])
-            else:
-                info = DatasetInfo()
+            info = copy.copy(template_infos[role_index])
 
             # Override the template settings with the current filepath.
             default_info = DatasetInfo(path_for_role)

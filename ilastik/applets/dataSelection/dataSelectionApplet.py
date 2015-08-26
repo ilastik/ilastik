@@ -25,7 +25,8 @@ import collections
 import logging
 logger = logging.getLogger(__name__)
 
-from lazyflow.utility import PathComponents, isUrl
+import vigra
+from lazyflow.utility import PathComponents, isUrl, make_absolute
 from ilastik.applets.base.applet import Applet
 from opDataSelection import OpMultiLaneDataSelectionGroup, DatasetInfo
 from dataSelectionSerializer import DataSelectionSerializer, Ilastik05DataSelectionDeserializer
@@ -113,6 +114,7 @@ class DataSelectionApplet( Applet ):
         arg_parser.add_argument('unspecified_input_files', nargs='*', help='List of input files to process.')
             
         arg_parser.add_argument('--preconvert_stacks', help="Convert image stacks to temporary hdf5 files before loading them.", action='store_true', default=False)
+        arg_parser.add_argument('--input_axes', help="Explicitly specify the axes of your dataset.", required=False)
         parsed_args, unused_args = arg_parser.parse_known_args(cmdline_args)
 
         if parsed_args.unspecified_input_files:
@@ -209,10 +211,12 @@ class DataSelectionApplet( Applet ):
             if parsed_args.preconvert_stacks:
                 import tempfile
                 input_paths = self.convertStacksToH5( input_paths, tempfile.gettempdir() )
-            
-            input_infos = [ self.create_default_headless_dataset_info(p) if p else None 
-                            for p in input_paths ]
-    
+
+            input_infos = [DatasetInfo(p) if p else None for p in input_paths]
+            if parsed_args.input_axes:
+                for info in filter(None, input_infos):
+                    info.axistags = vigra.defaultAxistags(parsed_args.input_axes)
+
             opDataSelection = self.topLevelOperator
             existing_lanes = len(opDataSelection.DatasetGroup)
             opDataSelection.DatasetGroup.resize( max(len(input_infos), existing_lanes) )
