@@ -191,19 +191,7 @@ class DataSelectionApplet( Applet ):
                 role_paths[role_index] = []
             num_missing = len(role_paths[0]) - len(role_paths[role_index])
             role_paths[role_index] += [None] * num_missing
-        return role_paths        
-
-        role_paths = self.role_paths_from_parsed_args(parsed_args, role_names)
-
-        # As far as this parser is concerned, all roles except the first are optional.
-        # (Workflows that require the other roles are responsible for raising an error themselves.)
-        for role_index in range(1,len(role_names)):
-            # Fill in None for missing files
-            if role_index not in role_paths:
-                role_paths[role_index] = []
-            num_missing = len(role_paths[0]) - len(role_paths[role_index])
-            role_paths[role_index] += [None] * num_missing
-        return role_paths        
+        return role_paths
 
     def configure_operator_with_parsed_args(self, parsed_args):
         """
