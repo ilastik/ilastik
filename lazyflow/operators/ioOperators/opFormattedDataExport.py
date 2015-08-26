@@ -21,6 +21,7 @@
 ###############################################################################
 import os
 import collections
+import warnings
 import numpy
 
 from lazyflow.utility import format_known_keys
@@ -131,7 +132,12 @@ class OpFormattedDataExport(Operator):
             #  which we replace with the full extent of the corresponding axis
             new_stop = map( lambda (x, extent): x or extent, zip(self.RegionStop.value, total_roi[1]) )
 
-        new_start, new_stop = tuple(new_start), tuple(new_stop)
+        clipped_start = numpy.maximum(0, new_start)
+        clipped_stop = numpy.minimum(total_roi[1], new_stop)
+        if (clipped_start != new_start).any() or (clipped_stop != new_stop).any():
+            warnings.warn("The ROI you are attempting to export exceeds the extents of your dataset.  Clipping to dataset bounds.")
+
+        new_start, new_stop = tuple(clipped_start), tuple(clipped_stop)
 
         # If we're in the process of switching input data, 
         #  then the roi dimensionality might not match up.
