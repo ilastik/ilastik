@@ -1,4 +1,5 @@
 import copy
+import weakref
 import argparse
 from collections import OrderedDict
 import logging
@@ -18,7 +19,7 @@ class BatchProcessingApplet( Applet ):
     """
     def __init__( self, workflow, title, dataSelectionApplet, dataExportApplet):
         super(BatchProcessingApplet, self).__init__( "Batch Processing", syncWithImageIndex=False )
-        self.workflow = workflow
+        self.workflow = weakref.ref(workflow)
         self.dataSelectionApplet = dataSelectionApplet
         self.dataExportApplet = dataExportApplet
         assert isinstance(self.dataSelectionApplet.topLevelOperator, OpMultiLaneDataSelectionGroup)
@@ -171,12 +172,12 @@ class BatchProcessingApplet( Applet ):
 
         # Make sure nothing went wrong
         opDataExportBatchlaneView = self.dataExportApplet.topLevelOperator.getLane( batch_lane_index )
-        assert opDataExportBatchlaneView.ImageToExport.ready()
-        assert opDataExportBatchlaneView.ExportPath.ready()
-        
         # New lanes were added.
         # Give the workflow a chance to restore anything that was unecessarily invalidated (e.g. classifiers)
-        self.workflow.handleNewLanesAdded()
+        self.workflow().handleNewLanesAdded()
+
+        assert opDataExportBatchlaneView.ImageToExport.ready()
+        assert opDataExportBatchlaneView.ExportPath.ready()
         
         # Call customization hook
         self.dataExportApplet.prepare_lane_for_export(batch_lane_index)
