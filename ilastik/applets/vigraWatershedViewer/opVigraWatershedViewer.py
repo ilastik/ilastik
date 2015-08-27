@@ -38,13 +38,14 @@ class OpVigraWatershedViewer(Operator):
     
     InputImage = InputSlot() # The image to be sliced and watershedded
 
-    InputChannelIndexes = InputSlot(stype='object') # opChannelSlicer
-    WatershedPadding = InputSlot() # opWatershed
     FreezeCache = InputSlot(value=True) # opWatershedCache
-    CacheBlockShape = InputSlot() # opWatershedCache block shapes. Expected: tuple of (width, depth) viewing shape
-    OverrideLabels = InputSlot(stype='object') # opColorizer
-    SeedThresholdValue = InputSlot(optional=True) # opThreshold
-    MinSeedSize = InputSlot() # opSeedLabeler
+
+    InputChannelIndexes = InputSlot(value=[0])
+    WatershedPadding = InputSlot(value=10)
+    OverrideLabels = InputSlot(value={ 0: (0,0,0,0) })
+    SeedThresholdValue = InputSlot(value=0.0)
+    MinSeedSize = InputSlot(value=0)
+    CacheBlockShape = InputSlot(value=(256, 10)) # opWatershedCache block shapes. Expected: tuple of (width, depth) viewing shape
 
     Seeds = OutputSlot()            # For batch export
     WatershedLabels = OutputSlot()  # Watershed labeled output
