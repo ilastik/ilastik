@@ -69,14 +69,32 @@ def main():
             parsed_args.project = workflow_cmdline_args[0]
             workflow_cmdline_args = []
 
-    # DEBUG EXAMPLES
+    # DEVELOPERS:
+    # Provide your command-line args here. See examples below.
+    
+    ## Auto-open an existing project
     #parsed_args.project='/Users/bergs/MyProject.ilp'
-    #parsed_args.headless = True
-    #os.environ["LAZYFLOW_THREADS"] = "0"
 
+    ## Headless-mode options
     #parsed_args.headless = True
-    #parsed_args.new_project = '/tmp/emptyproj.ilp'
-    #parsed_args.workflow = "Pixel Classification"
+
+    ## Override lazyflow environment settings
+    #os.environ["LAZYFLOW_THREADS"] = "0"
+    #os.environ["LAZYFLOW_TOTAL_RAM_MB"] = "8192"
+
+    ## Provide workflow-specific args
+    #workflow_cmdline_args += ["--retrain"]
+
+    ## Provide batch inputs (for headless mode)
+    #workflow_cmdline_args += ["/magnetic/data/cells/001cell.png",
+    #                          "/magnetic/data/cells/002cell.png",
+    #                          "/magnetic/data/cells/003cell.png" ]
+
+    # Create a new project from scratch (instead of opening existing project)
+    #parsed_args.new_project='/Users/bergs/MyProject.ilp'
+    #parsed_args.workflow = 'Pixel Classification'
+    #parsed_args.workflow = 'Object Classification (from pixel classification)'
+    #parsed_args.workflow = 'Carving'
 
     ilastik_main.main(parsed_args, workflow_cmdline_args)
 
@@ -84,4 +102,5 @@ if __name__ == "__main__":
     # Examples:
     # python ilastik.py --headless --project=MyProject.ilp --output_format=hdf5 raw_input.h5/volumes/data
     # python ilastik.py --playback_speed=2.0 --exit_on_failure --exit_on_success --debug --playback_script=my_recording.py
+
     main()
