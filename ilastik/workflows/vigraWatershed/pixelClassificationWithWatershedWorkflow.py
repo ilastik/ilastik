@@ -46,3 +46,9 @@ class PixelClassificationWithWatershedWorkflow(PixelClassificationWorkflow):
         # Connect them up
         opWatershedViewer.InputImage.connect( opPixelClassification.CachedPredictionProbabilities )
         opWatershedViewer.RawImage.connect( opPixelClassification.InputImages )
+
+    def handleAppletStateUpdateRequested(self):
+        super(PixelClassificationWithWatershedWorkflow, self).handleAppletStateUpdateRequested()
+        predictions_ready = self._shell.isAppletEnabled(self.dataExportApplet)
+        self._shell.setAppletEnabled(self.watershedApplet, predictions_ready)
+
