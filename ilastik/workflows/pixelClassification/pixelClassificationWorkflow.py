@@ -56,7 +56,7 @@ class PixelClassificationWorkflow(Workflow):
     def imageNameListSlot(self):
         return self.dataSelectionApplet.topLevelOperator.ImageName
 
-    def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, appendBatchOperators=True, *args, **kwargs):
+    def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
         # Create a graph to be shared by all operators
         graph = Graph()
         super( PixelClassificationWorkflow, self ).__init__( shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs )
@@ -124,20 +124,20 @@ class PixelClassificationWorkflow(Workflow):
         self.dataExportApplet.prepare_for_entire_export = self.prepare_for_entire_export
         self.dataExportApplet.post_process_entire_export = self.post_process_entire_export
 
-        self._batch_input_args = None
-        self._batch_export_args = None
-        if appendBatchOperators:
-            self.batchProcessingApplet = BatchProcessingApplet(self, 
-                                                               "Batch Processing", 
-                                                               self.dataSelectionApplet, 
-                                                               self.dataExportApplet)
-    
-            self._applets.append(self.batchProcessingApplet)
-            if unused_args:
-                # We parse the export setting args first.  All remaining args are considered input files by the input applet.
-                self._batch_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args( unused_args )
-                self._batch_input_args, unused_args = self.batchProcessingApplet.parse_known_cmdline_args( unused_args )
-    
+        self.batchProcessingApplet = BatchProcessingApplet(self, 
+                                                           "Batch Processing", 
+                                                           self.dataSelectionApplet, 
+                                                           self.dataExportApplet)
+
+        self._applets.append(self.batchProcessingApplet)
+        if unused_args:
+            # We parse the export setting args first.  All remaining args are considered input files by the input applet.
+            self._batch_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args( unused_args )
+            self._batch_input_args, unused_args = self.batchProcessingApplet.parse_known_cmdline_args( unused_args )
+        else:
+            self._batch_input_args = None
+            self._batch_export_args = None
+
         if unused_args:
             logger.warn("Unused command-line args: {}".format( unused_args ))
 

@@ -28,13 +28,13 @@ class PixelClassificationWithWatershedWorkflow(PixelClassificationWorkflow):
     
     
     def __init__( self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs ):
-        super(PixelClassificationWithWatershedWorkflow, self).__init__( shell, headless, workflow_cmdline_args, project_creation_args, appendBatchOperators=False, *args, **kwargs )
+        super(PixelClassificationWithWatershedWorkflow, self).__init__( shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs )
 
         # Create applets
         self.watershedApplet = VigraWatershedViewerApplet(self, "Watershed", "Watershed")
         
-        # Expose for shell
-        self._applets.append(self.watershedApplet)
+        # Expose for shell (insert before last applet, which is the batch applet)
+        self._applets.insert(-2, self.watershedApplet)
 
     def connectLane(self, laneIndex):
         super( PixelClassificationWithWatershedWorkflow, self ).connectLane( laneIndex )
