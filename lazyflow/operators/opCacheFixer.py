@@ -49,6 +49,10 @@ class OpCacheFixer(Operator):
         self.Output.meta.assignFrom( self.Input.meta )
         self.Output.meta.dontcache = self.fixAtCurrent.value
 
+        # During initialization, if fixAtCurrent is configured before Input, then propagateDirty was never called.
+        # We need to make sure that the dirty logic for fixAtCurrent has definitely been called here.
+        self.propagateDirty(self.fixAtCurrent, (), slice(None))
+
     def execute(self, slot, subindex, roi, result):
         if self._fixed:
             # The downstream user doesn't know he's getting fake data.
