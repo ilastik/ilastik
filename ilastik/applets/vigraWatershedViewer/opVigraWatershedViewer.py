@@ -40,7 +40,7 @@ class OpVigraWatershedViewer(Operator):
 
     InputChannelIndexes = InputSlot(stype='object') # opChannelSlicer
     WatershedPadding = InputSlot() # opWatershed
-    FreezeCache = InputSlot() # opWatershedCache
+    FreezeCache = InputSlot(value=True) # opWatershedCache
     CacheBlockShape = InputSlot() # opWatershedCache block shapes. Expected: tuple of (width, depth) viewing shape
     OverrideLabels = InputSlot(stype='object') # opColorizer
     SeedThresholdValue = InputSlot(optional=True) # opThreshold
