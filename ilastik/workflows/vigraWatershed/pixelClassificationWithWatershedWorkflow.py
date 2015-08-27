@@ -26,12 +26,14 @@ class PixelClassificationWithWatershedWorkflow(PixelClassificationWorkflow):
     workflowName = "Pixel Classification (with Watershed Preview)"
     workflowDisplayName = "Pixel Classification (with Watershed Preview)"
     
-    
     def __init__( self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs ):
         super(PixelClassificationWithWatershedWorkflow, self).__init__( shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs )
 
         # Create applets
         self.watershedApplet = VigraWatershedViewerApplet(self, "Watershed", "Watershed")
+
+        opDataExport = self.dataExportApplet.topLevelOperator
+        opDataExport.SelectionNames.setValue( self.EXPORT_NAMES + ["Watershed Seeds", "Watershed Labels"] )
         
         # Expose for shell (insert before last applet, which is the batch applet)
         self._applets.insert(-2, self.watershedApplet)
@@ -42,10 +44,15 @@ class PixelClassificationWithWatershedWorkflow(PixelClassificationWorkflow):
         # Get the right lane from each operator
         opPixelClassification = self.pcApplet.topLevelOperator.getLane(laneIndex)
         opWatershedViewer = self.watershedApplet.topLevelOperator.getLane(laneIndex)
+        opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
 
         # Connect them up
         opWatershedViewer.InputImage.connect( opPixelClassification.CachedPredictionProbabilities )
         opWatershedViewer.RawImage.connect( opPixelClassification.InputImages )
+        opDataExport.Inputs.resize( len(PixelClassificationWorkflow.EXPORT_NAMES) + 2 )
+        opDataExport.Inputs[-2].connect( opWatershedViewer.Seeds )
+        opDataExport.Inputs[-1].connect( opWatershedViewer.WatershedLabels )
+
 
     def handleAppletStateUpdateRequested(self):
         super(PixelClassificationWithWatershedWorkflow, self).handleAppletStateUpdateRequested()

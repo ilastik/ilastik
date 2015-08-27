@@ -45,7 +45,8 @@ class OpVigraWatershedViewer(Operator):
     OverrideLabels = InputSlot(stype='object') # opColorizer
     SeedThresholdValue = InputSlot(optional=True) # opThreshold
     MinSeedSize = InputSlot() # opSeedLabeler
-    
+
+    Seeds = OutputSlot()            # For batch export
     WatershedLabels = OutputSlot()  # Watershed labeled output
     SummedInput = OutputSlot()      # Watershed input (for gui display)
     ColoredPixels = OutputSlot()    # Colored watershed labels (for gui display)
@@ -128,6 +129,7 @@ class OpVigraWatershedViewer(Operator):
         self.opColorizer.OverrideColors.connect( self.OverrideLabels )
 
         # Connnect external outputs the operators that provide them
+        self.Seeds.connect( self.opSeedCache.Output )
         self.ColoredPixels.connect( self.opColorizer.Output )
         self.SelectedInputChannels.connect( self.opChannelSlicer.Slices )
         self.SummedInput.connect( self.opAverage.Output )
