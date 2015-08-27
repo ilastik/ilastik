@@ -373,6 +373,8 @@ class IlastikShell(QMainWindow):
         # No applet can be enabled unless his disableCount == 0
 
         self._refreshDrawerRecursionGuard = False
+        
+        self._applet_enabled_states = {}
 
         self.setupOpenFileButtons()
         self.updateShellProjectDisplay()
@@ -1558,8 +1560,16 @@ class IlastikShell(QMainWindow):
             self.setAppletEnabled(applet, enabled)
 
     def setAppletEnabled(self, applet, enabled):
+        # We immediately track the enabled status in a member dict instead 
+        #  of checking with the applet gui itself, in case isAppletEnabled() 
+        #  gets called before _setAppletEnabled gets a chance to execute.
+        self._applet_enabled_states[applet] = enabled
+
         # Post this to the gui thread
         self.thunkEventHandler.post(self._setAppletEnabled, applet, enabled)
+
+    def isAppletEnabled(self, applet):
+        return self._applet_enabled_states[applet]
 
     def newServerConnected(self, name):
         # iterate over all other applets and inform about new connection if relevant

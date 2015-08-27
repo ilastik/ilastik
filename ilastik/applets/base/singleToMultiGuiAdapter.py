@@ -127,4 +127,6 @@ class SingleToMultiGuiAdapter( object ):
             import sip
             if not sip.isdeleted(blank_drawer):
                 blank_drawer.setEnabled(enabled)
-        
+
+    def isEnabled(self):
+        return self._enabled
