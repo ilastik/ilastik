@@ -64,6 +64,7 @@ class DatasetDetailedInfoTableModel(QAbstractItemModel):
 
         # Any lanes that already exist must be added now.        
         for laneIndex, slot in enumerate(self._op.DatasetGroup):
+            self.prepareForNewLane( self._op.DatasetGroup, laneIndex )
             self.handleNewLane( self._op.DatasetGroup, laneIndex )
 
     @threadRouted
