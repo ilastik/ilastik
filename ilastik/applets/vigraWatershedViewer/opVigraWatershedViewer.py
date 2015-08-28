@@ -62,15 +62,14 @@ class OpVigraWatershedViewer(Operator):
         # Overview Schematic
         # Example here uses input channels 0,2,5
         
-        # InputChannelIndexes=[0,2,5] ---
-        #                                \
-        # InputImage -------------------> opChannelSlicer .Slices[0] ---\
-        #                                                 .Slices[1] ----> opAverage --> opWatershed --> opWatershedCache --> opColorizer --> GUI 
-        #                                                 .Slices[2] ---/               /
-        #                                                                              /
-        # SeedThresholdValue ---                   MinSeedSize ---                    /
-        #                       \                                 \                  /
-        # InputImage ----------> opThreshold --> opSeedLabeler --> opSeedFilter ----- ---> opSeedCache --> opSeedColorizer --> GUI
+        # InputChannelIndexes=[0,2,5] ----
+        #                                 \
+        # InputImage --> opChannelSlicer .Slices[0] ---\
+        #                                .Slices[1] ----> opAverage -------------------------------------------------> opWatershed --> opWatershedCache --> opColorizer --> GUI
+        #                                .Slices[2] ---/           \                                                  /
+        #                                                           \     MinSeedSize                                /
+        #                                                            \               \                              /
+        #                              SeedThresholdValue ----------> opThreshold --> opSeedLabeler --> opSeedFilter --> opSeedCache --> opSeedColorizer --> GUI
         
         # Create operators
         self.opChannelSlicer = OpMultiArraySlicer2(parent=self)
