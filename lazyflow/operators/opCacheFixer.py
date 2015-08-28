@@ -36,8 +36,8 @@ class OpCacheFixer(Operator):
     (as a bounding box), and emits the entire dirty ROI at once as soon as it becomes "unfixed".
     Also, this operator returns only zeros while fixAtCurrent=True.
     """
-    Input = InputSlot(allow_mask=True)
     fixAtCurrent = InputSlot(value=False)
+    Input = InputSlot(allow_mask=True)
     Output = OutputSlot(allow_mask=True)
 
     def __init__(self, *args, **kwargs):
