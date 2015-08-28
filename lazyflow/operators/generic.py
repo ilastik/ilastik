@@ -289,11 +289,12 @@ class OpMultiArraySlicer2(Operator):
             all_output_slices_indexes = self.getSliceIndexes()
             for i in range(*dirty_slice_indexes):
                 if i in all_output_slices_indexes:
-                    slot = self.Slices[i]
-                    sliceRoi = copy.copy(roi)
-                    sliceRoi.start[sliced_axis] = 0
-                    sliceRoi.stop[sliced_axis] = 1
-                    slot.setDirty(sliceRoi)
+                    if i < len(self.Slices):
+                        slot = self.Slices[i]
+                        sliceRoi = copy.copy(roi)
+                        sliceRoi.start[sliced_axis] = 0
+                        sliceRoi.stop[sliced_axis] = 1
+                        slot.setDirty(sliceRoi)
         else:
             assert False, "Unknown dirty input slot."
 
