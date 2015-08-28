@@ -28,7 +28,6 @@ class VigraWatershedViewerSerializer(AppletSerializer):
     def __init__(self, operator, projectFileGroupName):
         slots = [SerialListSlot(operator.InputChannelIndexes, selfdepends=True),
                  SerialSlot(operator.WatershedPadding, selfdepends=True),
-                 SerialSlot(operator.FreezeCache, selfdepends=True),
                  SerialSlot(operator.CacheBlockShape, selfdepends=True),
                  SerialSlot(operator.SeedThresholdValue, selfdepends=True),
                  SerialSlot(operator.MinSeedSize, selfdepends=True) ]
