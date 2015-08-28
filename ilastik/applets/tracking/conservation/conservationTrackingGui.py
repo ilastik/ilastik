@@ -171,7 +171,10 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             withArmaCoordinates = True
             appearanceCost = self._drawer.appearanceBox.value()
             disappearanceCost = self._drawer.disappearanceBox.value()
-    
+
+            angleWeight = self._drawer.angleWeightBox.value()
+            velocityWeight = self._drawer.velocityWeightBox.value()
+
             ndim=3
             if (to_z - from_z == 0):
                 ndim=2
@@ -204,7 +207,9 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
                     cplex_timeout = cplex_timeout,
                     appearance_cost = appearanceCost,
                     disappearance_cost = disappearanceCost,
-                    graph_building_parameter_changed = True
+                    graph_building_parameter_changed = True,
+                    angleWeight=angleWeight,
+                    velocityWeight=velocityWeight
                     )
             except Exception:           
                 ex_type, ex, tb = sys.exc_info()

@@ -9,11 +9,64 @@ from ilastik.applets.tracking.base.trackingUtilities import relabelMergers
 from ilastik.applets.tracking.base.trackingUtilities import get_events
 from lazyflow.operators.opCompressedCache import OpCompressedCache
 from lazyflow.roi import sliceToRoi
-
+from PyQt4 import QtGui
 
 import logging
 logger = logging.getLogger(__name__)
 
+def swirl_motion_func_creator(angleWeight, velocityWeight):
+    def swirl_motion_func(traxelA, traxelB, traxelC, traxelD):
+        # print("SwirlMotion evaluated for traxels: {}, {}, {}".format(traxelA, traxelB, traxelC))
+        traxels = [traxelA, traxelB, traxelC, traxelD]
+        positions = [np.array([t.X(), t.Y(), t.Z()]) for t in traxels]
+
+        # compute angle -> should be 180 degrees
+        vecs = [positions[1] - positions[0], positions[1] - positions[2], positions[2] - positions[1], positions[2] - positions[3]]
+
+        def computeAngle(vs):
+            lengths = [np.linalg.norm(v) for v in vs]
+            lengthProd = lengths[0] * lengths[1]
+            if lengthProd == 0.0:
+                cosAngle = -1
+            else:
+                cosAngle = vs[0].dot(vs[1]) / lengthProd
+
+            if np.isnan(lengthProd):
+                print("NaN resulted from lengths: {}, {} of vectors {}, {}".format(lengths[0], lengths[1], vs[0], vs[1]))
+            if np.isnan(cosAngle):
+                print("Got a nan cosine for vectors {} {}".format(vs[0], vs[1]))
+            return np.arccos(cosAngle) / np.pi * 180.0
+
+        angle1 = computeAngle(vecs[:2])
+        angle2 = computeAngle(vecs[2:])
+
+        cost = float(angleWeight) * np.abs(angle1 - angle2)
+        # print("Adding cost {} for angles: {}, {}".format(cost, angle1, angle2))
+
+
+        # acceleration penalty
+        lengths = [np.linalg.norm(v) for v in [vecs[1], vecs[3]]]
+        # if lengths[1] == 0.0:
+        #     if lengths[0] == 0.0:
+        #         ratio = 1.0
+        #     else:
+        #         ratio = 0.0
+        # else:
+        #     ratio = np.abs(lengths[0] / lengths[1])
+        # cost += 100.0 * (1.0 - ratio)
+        cost += float(velocityWeight) * np.abs(lengths[0] - lengths[1])
+
+        # compute cost
+        # cost = (cosAngle + 1.0)*10.0 + (1.0 - ratio) * 100.0
+
+        # # alternative: add vecs[0] to pos[1] and measure the distance to pos[2]
+        # expected_pos = positions[2]  + vecs[2]
+        # deviation = np.linalg.norm(expected_pos - positions[3])
+        # cost += 100.0 * deviation
+        # print("Adding cost {} to link between traxels {} at positions {}".format(cost, traxels, positions))
+
+        return cost
+    return swirl_motion_func
 
 class OpConservationTracking(OpTrackingBase):
     DivisionProbabilities = InputSlot(stype=Opaque, rtype=List)
@@ -93,7 +146,9 @@ class OpConservationTracking(OpTrackingBase):
             withArmaCoordinates = True,
             appearance_cost = 500,
             disappearance_cost = 500,
-            graph_building_parameter_changed = True
+            graph_building_parameter_changed = True,
+            angleWeight=100.0,
+            velocityWeight=1.0
             ):
         
         if not self.Parameters.ready():
@@ -137,7 +192,7 @@ class OpConservationTracking(OpTrackingBase):
         
         median_obj_size = [0]
 
-        ts, empty_frame = self._generate_traxelstore(time_range, x_range, y_range, z_range, 
+        fs, ts, empty_frame = self._generate_traxelstore(time_range, x_range, y_range, z_range,
                                                                       size_range, x_scale, y_scale, z_scale, 
                                                                       median_object_size=median_obj_size, 
                                                                       with_div=withDivisions,
@@ -188,9 +243,19 @@ class OpConservationTracking(OpTrackingBase):
                                          "none",  # detection_rf_filename
                                          fov,
                                          "none", # dump traxelstore,
-                                         pgmlink.ConsTrackingSolverType.CplexSolver
+                                         pgmlink.ConsTrackingSolverType.DynProgSolver
                                          )
             g = self.tracker.buildGraph(ts)
+
+        # DEBUG-STUFF: dump hypotheses graph
+        # hypo_graph_filename = '/Users/chaubold/Desktop/whirls.hypg'
+        # if hypo_graph_filename:
+        #     import pickle
+        #     print("Saving hypotheses graph to: " + hypo_graph_filename)
+        #     with open(hypo_graph_filename, 'wb') as hg_out:
+        #             pickle.dump(g, hg_out)
+        #             pickle.dump(fov, hg_out)
+        #             pickle.dump(fs, hg_out)
 
         # create dummy uncertainty parameter object with just one iteration, so no perturbations at all (iter=0 -> MAP)
         sigmas = pgmlink.VectorOfDouble()
@@ -198,25 +263,34 @@ class OpConservationTracking(OpTrackingBase):
             sigmas.append(0.0)
         uncertaintyParams = pgmlink.UncertaintyParameter(1, pgmlink.DistrId.PerturbAndMAP, sigmas)
 
+        params = self.tracker.get_conservation_tracking_parameters(
+            0,       # forbidden_cost
+            float(ep_gap), # ep_gap
+            withTracklets, # with tracklets
+            10.0, # detection weight
+            divWeight, # division weight
+            transWeight, # transition weight
+            disappearance_cost, # disappearance cost
+            appearance_cost, # appearance cost
+            withMergerResolution, # with merger resolution
+            ndim, # ndim
+            transition_parameter, # transition param
+            borderAwareWidth, # border width
+            True, #with_constraints
+            uncertaintyParams, # uncertainty parameters
+            cplex_timeout, # cplex timeout
+            None, # transition classifier
+            pgmlink.ConsTrackingSolverType.DynProgSolver, # Solver
+            1, # num threads
+            False # additional timestep constraint
+        )
+
+        if angleWeight > 0 and velocityWeight > 0:
+            print("Registering motion model with weights {} and {}".format(angleWeight, velocityWeight))
+            params.register_motion_model4_func(swirl_motion_func_creator(angleWeight, velocityWeight))
+
         try:
-            eventsVector = self.tracker.track(0,       # forbidden_cost
-                                            float(ep_gap), # ep_gap
-                                            withTracklets,
-                                            10.0, # detection weight
-                                            divWeight,
-                                            transWeight,
-                                            disappearance_cost, # disappearance cost
-                                            appearance_cost, # appearance cost
-                                            withMergerResolution,
-                                            ndim,
-                                            transition_parameter,
-                                            borderAwareWidth,
-                                            True, #with_constraints
-                                            uncertaintyParams,
-                                            cplex_timeout,
-                                            None,
-                                            1,
-                                            False) # TransitionClassifier
+            eventsVector = self.tracker.track(params, False)
 
             # plot hypotheses graph
             # self.tracker.plot_hypotheses_graph(

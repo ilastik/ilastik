@@ -169,7 +169,10 @@ class OpTrackingBase(Operator, ExportingOperator):
             self.Output.setDirty(roi)
         elif inputSlot is self.EventsVector:
             self._setLabel2Color()
-            self._setLabel2Color(export_mode=True)
+            try:
+                self._setLabel2Color(export_mode=True)
+            except:
+                print("Warning: some label information might be wrong...")
 
     def setInSlot(self, slot, subindex, roi, value):
         assert slot == self.InputHdf5, "Invalid slot for setInSlot(): {}".format(slot.name)
@@ -549,7 +552,7 @@ class OpTrackingBase(Operator, ExportingOperator):
 
         self.FilteredLabels.setValue(filtered_labels, check_changed=False)
 
-        return ts, empty_frame
+        return fs, ts, empty_frame
 
     def save_export_progress_dialog(self, dialog):
         """
