@@ -18,6 +18,8 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+import vigra
+from lazyflow.graph import Operator, InputSlot, OutputSlot
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
 from ilastik.applets.vigraWatershedViewer import VigraWatershedViewerApplet
 
@@ -46,16 +48,45 @@ class PixelClassificationWithWatershedWorkflow(PixelClassificationWorkflow):
         opWatershedViewer = self.watershedApplet.topLevelOperator.getLane(laneIndex)
         opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
 
+        # We allow the user to declare her data as tyx instead of zyx,
+        #  which enables 2D features for pixel classification.
+        # But the watershed viewer insists on 3D data, so we'll use this special
+        #  operator to rename the 't' axis to the 'z' axis before feeding it in.
+        opMake3DRaw = _OpMake3D(parent=self)
+        opMake3DInput = _OpMake3D(parent=self)
+
         # Connect them up
-        opWatershedViewer.InputImage.connect( opPixelClassification.CachedPredictionProbabilities )
-        opWatershedViewer.RawImage.connect( opPixelClassification.InputImages )
+        opMake3DInput.Input.connect( opPixelClassification.CachedPredictionProbabilities )
+        opMake3DRaw.Input.connect( opPixelClassification.InputImages )
+        
+        opWatershedViewer.InputImage.connect( opMake3DInput.Output )
+        opWatershedViewer.RawImage.connect( opMake3DRaw.Output )
+
         opDataExport.Inputs.resize( len(PixelClassificationWorkflow.EXPORT_NAMES) + 2 )
         opDataExport.Inputs[-2].connect( opWatershedViewer.Seeds )
         opDataExport.Inputs[-1].connect( opWatershedViewer.WatershedLabels )
-
 
     def handleAppletStateUpdateRequested(self):
         super(PixelClassificationWithWatershedWorkflow, self).handleAppletStateUpdateRequested()
         predictions_ready = self._shell.isAppletEnabled(self.dataExportApplet)
         self._shell.setAppletEnabled(self.watershedApplet, predictions_ready)
 
+class _OpMake3D(Operator):
+    """
+    Pass-through operator, except that the 't' axis (if any) is renamed to 'z'.
+    """
+    Input = InputSlot()
+    Output = OutputSlot()
+
+    def setupOutputs(self):
+        self.Output.meta.assignFrom(self.Input.meta)
+        input_tags = self.Input.meta.axistags
+        if 't' in input_tags and 'z' not in input_tags:
+            # Replace t -> z
+            self.Output.meta.axistags['t'] = vigra.AxisInfo.z
+
+    def execute(self, slot, subindex, roi, result):
+        self.Input.get(roi).writeInto(result).wait()
+
+    def propagateDirty(self, slot, subindex, roi):
+        self.Output.setDirty(roi.start, roi.stop)
