@@ -28,7 +28,9 @@ def _clean_paths( ilastik_dir ):
     # remove undesired paths from PYTHONPATH and add ilastik's submodules
     pythonpath = [k for k in sys.path if k.startswith(ilastik_dir)]
     for k in ['/ilastik/lazyflow', '/ilastik/volumina', '/ilastik/ilastik']:
-        pythonpath.append(ilastik_dir + k.replace('/', os.path.sep))
+        new_path = ilastik_dir + k.replace('/', os.path.sep)
+        if os.path.isdir(new_path):
+            pythonpath.append(new_path)
     sys.path = pythonpath
     
     if sys.platform.startswith('win'):
@@ -41,8 +43,10 @@ def _clean_paths( ilastik_dir ):
         path = [k for k in path_array \
                    if k.count('CPLEX') > 0 or k.count('gurobi') > 0 or \
                       k.count('windows\\system32') > 0]
-        for k in ['/Qt4/bin', '/python', '/bin']:
-            path.append(ilastik_dir + k.replace('/', os.path.sep))
+        for k in ['/Qt4/bin', '/Library/bin', '/python', '/bin']:
+            new_path = ilastik_dir + k.replace('/', os.path.sep)
+            if os.path.isdir(new_path):
+                path.append(new_path)
         os.environ['PATH'] = os.pathsep.join(reversed(path))
     else:
         # clean LD_LIBRARY_PATH and add ilastik's installation paths
