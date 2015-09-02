@@ -179,22 +179,18 @@ class OpInputDataReader(Operator):
 
     def _attemptOpenAsMmf(self, filePath):          
         if '.mmf' in filePath:
-            print 'Opening MMF video'
             mmfReader = OpStreamingMmfReader(parent=self)
             mmfReader.FileName.setValue(filePath)
             
-            print "Done reading MMF video"
             return ([mmfReader], mmfReader.Output)
         else :
             return ([], None)
     
     def _attemptOpenAsUfmf(self, filePath):          
         if '.ufmf' in filePath:
-            print 'Opening uFMF video'
             ufmfReader = OpStreamingUfmfReader(parent=self)
             ufmfReader.FileName.setValue(filePath)
             
-            print "Done reading uFMF video"
             return ([ufmfReader], ufmfReader.Output)
         else :
             return ([], None)

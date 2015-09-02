@@ -20,30 +20,6 @@
 #           http://ilastik.org/license/
 ###############################################################################
 
-'''
-MMF reader adapted from JAABA's mmf header reader: https://github.com/kristinbranson/JAABA/blob/master/filehandling/mmf_read_header.m
-
-mmf format documentation (Copied from JAABA's mmf_read_header.m):
-Set of Image Stacks representing a movie. Beginning of file is a header, with this format:
-10240 byte zero padded header beginning with a textual description of the file, followed by \0 then the following fields (all ints, except idcode)
-4 byte unsigned long idcode = a3d2d45d, header size in bytes, key frame interval, threshold below background, threshold above background
-Header is followed by a set of common background image stacks, with the following format:
-Stack of common background images, beginning with this header:
-512 byte zero-padded header, with the following fields (all 4 byte ints, except idcode):
-4 byte unsigned long idcode = bb67ca20, header size in bytes, total size of stack on disk, nframes: number of images in stack
-Then the background image, as an IplImage, starting with the 112 byte image header, followed by the image data
-Then nframes background removed images containing only differences from the background, in this format:
-BackgroundRemovedImage: header is a1024 byte zero padded header with the following data fields (all 4 byte ints, except id code)
-4 byte unsigned long idcode = f80921af, headersize (number of bytes in header), depth (IplImage depth), nChannels (IplImage number of channels), numims (number of 
-image blocks that differ from background) then metadata:
-Name-Value MetaData: idcode (unsigned long) = c15ac674, int number of key-value pairs stored, then each pair
-in the format \0-terminated string of chars then 8 byte double value
-header is followed by numims image blocks of the following form:
-(16 bytes) CvRect [x y w h] describing location of image data, then interlaced row ordered image data
-
-TODO: handle multichannel data, non 8-bit data
-'''
-
 import logging
 import time
 
@@ -77,8 +53,6 @@ class OpStreamingMmfReader(Operator):
 
     def __init__(self, *args, **kwargs):
         super(OpStreamingMmfReader, self).__init__(*args, **kwargs)
-        self._memmapFile = None
-        self._rawVigraArray = None
 
     def setupOutputs(self):
         """
@@ -110,7 +84,6 @@ class OpStreamingMmfReader(Operator):
             frame = self.mmf.getFrame(tStart)
             self.frame = frame[None, :, :, None]
 
-          
         result[...] = self.frame[0:1, yStart:yStop, xStart:xStop, cStart:cStop]
         
     def propagateDirty(self, slot, subindex, roi):

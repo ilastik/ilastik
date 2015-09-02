@@ -1,3 +1,5 @@
+# This file was copied from the motmot ufmf GitHub repository: https://github.com/motmot/ufmf commit c795ffe369b7e58de69d34926388af33ce71b711
+
 from __future__ import division
 import sys
 import struct, collections
