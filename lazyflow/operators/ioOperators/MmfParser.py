@@ -52,6 +52,22 @@ FILE_HEADER_ID = 0xa3d2d45d
 STACK_HEADER_ID = 0xbb67ca20
 IMAGE_HEADER_ID = 0xf80921af
 
+
+class FileNotFoundError(Exception):
+    pass
+
+class BkgIdMatchError(Exception):
+    pass
+
+class ImgHeaderIdMatchError(Exception):
+    pass
+
+class MultiChannelError(Exception):
+    pass
+
+class ImageDepthError(Exception):
+    pass
+
 class MmfParser(object):
     # Initialize information to seek frames
     _frameSeekInfo = []
@@ -63,8 +79,9 @@ class MmfParser(object):
         
         try:
             self.mmfFile = open(fileName, "rb")
-        except FileNotFoundError:
-            print "Wrong file or file path."
+        except Exception as e:
+            msg = "Error opening or reading MMF file: {}".format( str(e) )
+            raise FileNotFoundError(msg)
         
         # Find header id code (and skip ASCII description)
         while struct.unpack('1I',self.mmfFile.read(4))[0] != FILE_HEADER_ID :
@@ -93,7 +110,8 @@ class MmfParser(object):
             stackIdCode = struct.unpack('1I',buf)[0]
             
             if  stackIdCode != STACK_HEADER_ID :
-                print "Error: Background image header id code does not match."
+                msg = 'Error: Background Image Header ID does not match.'
+                raise BkgIdMatchError(msg)
             
             stackHeaderSize = struct.unpack('1i',self.mmfFile.read(4))[0]
             stackSize = struct.unpack('1i',self.mmfFile.read(4))[0]
@@ -110,13 +128,15 @@ class MmfParser(object):
                 
                 bkgChannelNum =  struct.unpack('1i',self.mmfFile.read(4))[0]
                 if bkgChannelNum != 1 :
-                    print 'Cannot read multichannel data yet: TODO'
+                    msg = 'Error: Cannot read multi-channel data yet.'
+                    raise MultiChannelError(msg)
                 
                 bkgAlphaChannel =  struct.unpack('1i',self.mmfFile.read(4))[0]
                 
                 bkgDepth =  struct.unpack('1i',self.mmfFile.read(4))[0]
                 if bkgDepth != 8 :
-                    print 'Cannot read non-8-bit depth images yet: TODO'
+                    msg = 'Error: Cannot read non-8-bit depth images yet.'
+                    raise ImageDepthError(msg)
                 
                 bkgColorModel =  struct.unpack('4c',self.mmfFile.read(4))[0]
                 bkgChannelSeq =  struct.unpack('4c',self.mmfFile.read(4))[0]
@@ -168,7 +188,8 @@ class MmfParser(object):
                 imgIdCode = struct.unpack('1I',self.mmfFile.read(4))[0]
                 
                 if imgIdCode != IMAGE_HEADER_ID :
-                    print "Image ID does not match."
+                    msg = "Image ID does not match."
+                    raise ImgHeaderIdMatchError(msg)
                 
                 imgHeaderSize = struct.unpack('1i',self.mmfFile.read(4))[0]
                 self.mmfFile.seek(8,1)

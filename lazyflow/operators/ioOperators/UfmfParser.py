@@ -11,8 +11,7 @@ import numpy
 import numpy as np
 from numpy import nan
 import logging
-
-logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 import time
 
@@ -1471,7 +1470,7 @@ class UfmfSaverV3(UfmfSaverBase):
             assert np_image_data.strides[0] == width*np_image_data.strides[1]
             assert np_image_data.strides[1] == strides1
         except:
-            print 'np_image_data.strides, width',np_image_data.strides, width
+            logger.warn('np_image_data.strides: {}, width: {}'.format(np_image_data.strides, width) )
             raise
         b =  chr(KEYFRAME_CHUNK) + chr(char2) + keyframe_type # chunkid, len(type), type
         b += struct.pack(FMT[self.version].KEYFRAME2,dtype,width,height,timestamp)
