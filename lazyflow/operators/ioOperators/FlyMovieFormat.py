@@ -13,6 +13,9 @@ import time
 
 import math
 
+import logging
+logger = logging.getLogger(__name__)
+
 # version 1 formats:
 VERSION_FMT = '<I'
 FORMAT_LEN_FMT = '<I'
@@ -87,7 +90,7 @@ class FlyMovie:
         self.next_frame = None
 
         if self.bytes_per_chunk != self.bits_per_pixel/8*self.framesize[0]*self.framesize[1] + self.timestamp_len:
-            print "FMF reading will probably end badly:", self.bytes_per_chunk, self.bits_per_pixel, self.framesize, self.timestamp_len, self.bits_per_pixel*self.framesize[0]*self.framesize[1] + self.timestamp_len
+            logger.warn("FMF reading will probably end badly: {}, {}, {}, {}, {}".format(self.bytes_per_chunk, self.bits_per_pixel, self.framesize, self.timestamp_len, self.bits_per_pixel*self.framesize[0]*self.framesize[1] + self.timestamp_len) )
 
 	if self.n_frames == 0: # unknown movie length, read to find out
             # seek to end of the movie
@@ -183,10 +186,10 @@ class FlyMovie:
                 frame = self.bgcenter.copy()
                 frame[idx] = v
             except:
-                print "sbfmf indexing error", self.file.tell()
-                print len( x )
-                print idx.shape, nx.max( idx )
-                print frame.shape
+                logger.warn("sbfmf indexing error: {}".format(self.file.tell()) )
+                logger.warn( "{}".format(len( x ) ) )
+                logger.warn( "{}".format( idx.shape, nx.max( idx ) ) )
+                logger.warn( "{}".format( frame.shape ) )
                 raise
             frame.shape = self.framesize
         else:
@@ -259,7 +262,7 @@ class FlyMovie:
         try:
             x = self.get_next_frame()
         except:
-            print "error after seeking to", seek_to, "for frame", frame_number
+            logger.warn( "error after seeking to {} for frame {}".format(seek_to, frame_number) )
             raise
         else:
             return x
