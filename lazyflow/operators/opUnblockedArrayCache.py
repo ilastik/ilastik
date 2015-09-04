@@ -162,8 +162,11 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
         return super(OpUnblockedArrayCache, self).lastAccessTime()
 
     def getBlockAccessTimes(self):
-        l = [(k, self._last_access_times[k])
-             for k in self._last_access_times]
+        with self._lock:
+            # needs to be locked because dicts must not change size
+            # during iteration
+            l = [(k, self._last_access_times[k])
+                 for k in self._last_access_times]
         return l
 
     def freeMemory(self):
