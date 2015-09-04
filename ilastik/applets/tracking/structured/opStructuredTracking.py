@@ -130,7 +130,8 @@ class OpStructuredTracking(OpTrackingBase):
             withArmaCoordinates = True,
             appearance_cost = 500,
             disappearance_cost = 500,
-            graph_building_parameter_changed = True
+            graph_building_parameter_changed = True,
+            trainingToHardConstraints = False
             ):
         
         if not self.Parameters.ready():
@@ -228,7 +229,61 @@ class OpStructuredTracking(OpTrackingBase):
                 "none", # dump traxelstore,
                 pgmlink.ConsTrackingSolverType.CplexSolver,
                 ndim)
-            self.tracker.buildGraph(ts)
+            hypothesesGraph = self.tracker.buildGraph(ts)
+
+
+            self.features = self.ObjectFeatures(range(0,self.LabelImage.meta.shape[0])).wait()
+            if trainingToHardConstraints:
+                print "Adding Annotations to Hypotheses Graph"
+                self.tracker.addLabels()
+
+                for cropKey in self.Annotations.value.keys():
+                    crop = self.Annotations.value[cropKey]
+
+                    if "labels" in crop.keys():
+                        labels = crop["labels"]
+                        for time in labels.keys():
+                            for label in labels[time].keys():
+                                trackSet = labels[time][label]
+                                track = trackSet.pop()
+                                trackSet.add(track)
+                                center = self.features[time]['Default features']['RegionCenter'][label]
+                                trackCount = len(trackSet)
+
+                                # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
+                                type = self._type(cropKey, time, track) # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
+
+                                if type[0] == "FIRST":
+                                    self.tracker.addFirstLabels(time, int(label), float(trackCount))
+                                elif type[0] == "LAST":
+                                    self.tracker.addLastLabels(time, int(label), float(trackCount))
+                                    self.tracker.addArcLabel(time-1, int(type[1]), int(label), float(trackCount))
+                                elif type[0] == "INTERMEDIATE":
+                                    self.tracker.addIntermediateLabels(time, int(label), float(trackCount))
+                                    self.tracker.addArcLabel(time-1, int(type[1]), int(label), float(trackCount))
+
+                    if "divisions" in crop.keys():
+                        divisions = crop["divisions"]
+                        for track in divisions.keys():
+                            division = divisions[track]
+                            time = int(division[1])
+
+                            parent = int(self.getLabelInCrop(cropKey, time, track))
+                            self.tracker.addDivisionLabel(time, parent, 1.0)
+                            self.tracker.addAppearanceLabel(time, parent, 1.0)
+
+                            child0 = int(self.getLabelInCrop(cropKey, time+1, division[0][0]))
+                            self.tracker.addDisappearanceLabel(time+1, child0, 1.0)
+                            self.tracker.addAppearanceLabel(time+1, child0, 1.0)
+                            self.tracker.addArcLabel(time, parent, child0, 1.0)
+
+                            child1 = int(self.getLabelInCrop(cropKey, time+1, division[0][1]))
+                            self.tracker.addDisappearanceLabel(time+1, child1, 1.0)
+                            self.tracker.addAppearanceLabel(time+1, child1, 1.0)
+                            self.tracker.addArcLabel(time, parent, child1, 1.0)
+
+
+
 
         # create dummy uncertainty parameter object with just one iteration, so no perturbations at all (iter=0 -> MAP)
         sigmas = pgmlink.VectorOfDouble()
@@ -252,15 +307,14 @@ class OpStructuredTracking(OpTrackingBase):
                                             True, #with_constraints
                                             uncertaintyParams,
                                             cplex_timeout,
-                                            None) # TransitionClassifier
+                                            None, # TransitionClassifier
+                                            trainingToHardConstraints ) # default: False
 
             eventsVector = eventsVector[0] # we have a vector such that we could get a vector per perturbation
 
             # extract the coordinates with the given event vector
             if withMergerResolution:
                 coordinate_map = pgmlink.TimestepIdCoordinateMap()
-                # TODO what should the variable withArmaCoordinates toggle?
-                # is this the intended use?
                 if withArmaCoordinates:
                     coordinate_map.initialize()
                 self._get_merger_coordinates(coordinate_map,
@@ -287,6 +341,108 @@ class OpStructuredTracking(OpTrackingBase):
         self.Parameters.setValue(parameters, check_changed=False)
         self.EventsVector.setValue(events, check_changed=False)
         
+    # def addTrainingToHardConstraints(self, tracker, hypothesesGraph):
+    #     self.features = self.ObjectFeatures(range(0,self.LabelImage.meta.shape[0])).wait()
+    #     for cropKey in self.Annotations.value.keys():
+    #         crop = self.Annotations.value[cropKey]
+    #
+    #         if "labels" in crop.keys():
+    #             labels = crop["labels"]
+    #             for time in labels.keys():
+    #                 for label in labels[time].keys():
+    #                     trackSet = labels[time][label]
+    #                     track = trackSet.pop()
+    #                     trackSet.add(track)
+    #                     center = self.features[time]['Default features']['RegionCenter'][label]
+    #                     trackCount = len(trackSet)
+    #
+    #                     # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
+    #                     type = self._type(cropKey, time, track) # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
+    #
+    #                     if type[0] == "FIRST":
+    #                         pass #tracker.addFirstLabels(time, int(label), float(trackCount))
+    #
+    #
+    #
+    #                         tracker.fixNodeToAppearanceLabel(hypothesesGraph, int(label), float(trackCount))
+    #                     elif type[0] == "LAST":
+    #                         pass #tracker.addLastLabels(time, int(label), float(trackCount))
+    #                         pass #tracker.addArcLabel(time-1, int(type[1]), int(label), 1.0)
+    #                     elif type[0] == "INTERMEDIATE":
+    #                         pass #tracker.addIntermediateLabels(time, int(label), float(trackCount))
+    #                         pass #tracker.addArcLabel(time-1, int(type[1]), int(label), 1.0)
+    #
+    #         if "divisions" in crop.keys():
+    #             divisions = crop["divisions"]
+    #             for track in divisions.keys():
+    #                 division = divisions[track]
+    #                 time = int(division[1])
+    #
+    #                 parent = int(self.getLabelInCrop(cropKey, time, track))
+    #                 pass #tracker.addDivisionLabel(time, parent, 1.0)
+    #                 pass #tracker.addAppearanceLabel(time, parent, 1.0)
+    #
+    #                 child0 = int(self.getLabelInCrop(cropKey, time+1, division[0][0]))
+    #                 pass #tracker.addDisappearanceLabel(time+1, child0, 1.0)
+    #                 pass #tracker.addAppearanceLabel(time+1, child0, 1.0)
+    #                 pass #tracker.addArcLabel(time, parent, child0, 1.0)
+    #
+    #                 child1 = int(self.getLabelInCrop(cropKey, time+1, division[0][1]))
+    #                 pass #tracker.addDisappearanceLabel(time+1, child1, 1.0)
+    #                 pass #tracker.addAppearanceLabel(time+1, child1, 1.0)
+    #                 pass #tracker.addArcLabel(time, parent, child1, 1.0)
+
+    def getLabelInCrop(self, cropKey, time, track):
+        labels = self.Annotations.value[cropKey]["labels"][time]
+        for label in labels.keys():
+            if self.Annotations.value[cropKey]["labels"][time][label] == set([track]):
+                return label
+        return False
+
+    def _type(self, cropKey, time, track):
+        # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
+        type = None
+        if track == -1:
+            return ["FALSE_DETECTION"]
+        elif time == 0:
+            type = "FIRST"
+
+        labels = self.Annotations.value[cropKey]["labels"]
+
+        crop = self.Crops.value[cropKey]
+        lastTime = -1
+        lastLabel = -1
+        for t in range(crop["time"][0],time):
+            for label in labels[t]:
+                if track in labels[t][label]:
+                    lastTime = t
+                    lastLabel = label
+
+        if lastTime == -1:
+            type = "FIRST"
+        elif lastTime < time-1:
+            print "ERROR: Your annotations are not complete. See time frame:", time-1
+        elif lastTime == time-1:
+            type =  "INTERMEDIATE"
+
+        firstTime = -1
+        for t in range(crop["time"][1],time,-1):
+            for label in labels[t]:
+                if track in labels[t][label]:
+                    firstTime = t
+
+        if firstTime == -1:
+            if type == "FIRST":
+                return ["SINGLETON(FIRST_LAST)"]
+            else:
+                return ["LAST", lastLabel]
+        elif firstTime > time+1:
+            print "ERROR: Your annotations are not complete. See time frame:", time+1
+        elif firstTime == time+1:
+            if type ==  "INTERMEDIATE":
+                return ["INTERMEDIATE",lastLabel]
+            elif type != None:
+                return [type]
 
     def propagateDirty(self, slot, subindex, roi):
         super(OpStructuredTracking, self).propagateDirty(slot, subindex, roi)

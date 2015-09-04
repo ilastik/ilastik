@@ -41,7 +41,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self.topLevelOperatorView = topLevelOperatorView
         super(TrackingBaseGui, self).__init__(parentApplet, topLevelOperatorView)
         self.mainOperator = topLevelOperatorView
-
         if self.mainOperator.LabelImage.meta.shape:
             self.editor.dataShape = self.mainOperator.LabelImage.meta.shape
 
@@ -141,6 +140,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._drawer.disappearanceBox.valueChanged.connect(self._onDisappearanceWeightBoxChanged)                
         self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)
 
+        self._drawer.AllOnesButton.clicked.connect(self._onAllOnesButtonPressed)
+
         self._divisionWeight = self.topLevelOperatorView.DivisionWeight.value
         self._detectionWeight = self.topLevelOperatorView.DetectionWeight.value
         self._transitionWeight =self.topLevelOperatorView.TransitionWeight.value
@@ -164,6 +165,32 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         self.operator.labels = self.operator.Labels.value
         self.initializeAnnotations()
+
+
+
+        # ONLY for TESTING
+        self._drawer.trainingToHardConstraints.setChecked(True)
+
+
+
+    def _onAllOnesButtonPressed(self):
+        self.topLevelOperatorView.DivisionWeight.setValue(1)
+        self.topLevelOperatorView.DetectionWeight.setValue(1)
+        self.topLevelOperatorView.TransitionWeight.setValue(1)
+        self.topLevelOperatorView.AppearanceWeight.setValue(1)
+        self.topLevelOperatorView.DisappearanceWeight.setValue(1)
+
+        self._divisionWeight = self.topLevelOperatorView.DivisionWeight.value
+        self._detectionWeight = self.topLevelOperatorView.DetectionWeight.value
+        self._transitionWeight =self.topLevelOperatorView.TransitionWeight.value
+        self._appearanceWeight = self.topLevelOperatorView.AppearanceWeight.value
+        self._disappearanceWeight = self.topLevelOperatorView.DisappearanceWeight.value
+
+        self._drawer.detWeightBox.setValue(self._detectionWeight)
+        self._drawer.divWeightBox.setValue(self._divisionWeight)
+        self._drawer.transWeightBox.setValue(self._transitionWeight)
+        self._drawer.appearanceBox.setValue(self._appearanceWeight)
+        self._drawer.disappearanceBox.setValue(self._disappearanceWeight)
 
     @threadRouted
     def _onTimeoutBoxChanged(self, *args):
@@ -337,10 +364,10 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                             structuredLearningTracker.addFirstLabels(time, int(label), float(trackCount))
                         elif type[0] == "LAST":
                             structuredLearningTracker.addLastLabels(time, int(label), float(trackCount))
-                            structuredLearningTracker.addArcLabel(time-1, int(type[1]), int(label), 1.0)
+                            structuredLearningTracker.addArcLabel(time-1, int(type[1]), int(label), float(trackCount))
                         elif type[0] == "INTERMEDIATE":
                             structuredLearningTracker.addIntermediateLabels(time, int(label), float(trackCount))
-                            structuredLearningTracker.addArcLabel(time-1, int(type[1]), int(label), 1.0)
+                            structuredLearningTracker.addArcLabel(time-1, int(type[1]), int(label), float(trackCount))
 
             if "divisions" in crop.keys():
                 divisions = crop["divisions"]
@@ -354,12 +381,12 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
                     child0 = int(self.getLabelInCrop(cropKey, time+1, division[0][0]))
                     structuredLearningTracker.addDisappearanceLabel(time+1, child0, 1.0)
-                    structuredLearningTracker.addAppearanceLabel(time+1, child0, 1.0)
+                    #structuredLearningTracker.addAppearanceLabel(time+1, child0, 1.0) # must be there for dense training in structured learning
                     structuredLearningTracker.addArcLabel(time, parent, child0, 1.0)
 
                     child1 = int(self.getLabelInCrop(cropKey, time+1, division[0][1]))
                     structuredLearningTracker.addDisappearanceLabel(time+1, child1, 1.0)
-                    structuredLearningTracker.addAppearanceLabel(time+1, child1, 1.0)
+                    #structuredLearningTracker.addAppearanceLabel(time+1, child1, 1.0) # must be there for dense training in structured learning
                     structuredLearningTracker.addArcLabel(time, parent, child1, 1.0)
 
         forbidden_cost = 0.0
@@ -441,6 +468,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         print "ilastik structured learning tracking: transition weight = ", self._transitionWeight
         print "ilastik structured learning tracking: appearance weight = ", self._appearanceWeight
         print "ilastik structured learning tracking: disappearance weight = ", self._disappearanceWeight
+
+        print "self.mainOperator.Annotations.value",self.mainOperator.Annotations.value
 
     def getLabelInCrop(self, cropKey, time, track):
         labels = self.mainOperator.Annotations.value[cropKey]["labels"][time]
@@ -569,7 +598,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                     cplex_timeout = cplex_timeout,
                     appearance_cost = appearanceCost,
                     disappearance_cost = disappearanceCost,
-                    graph_building_parameter_changed = True
+                    graph_building_parameter_changed = True,
+                    trainingToHardConstraints = self._drawer.trainingToHardConstraints.isChecked()
                     )
             except Exception:           
                 ex_type, ex, tb = sys.exc_info()
