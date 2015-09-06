@@ -119,19 +119,16 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
         maximum_roi = roiFromShape(self.Input.meta.shape)
         maximum_roi = self._standardize_roi( *maximum_roi )
         
-        with self._lock:
-            if dirty_roi == maximum_roi:
-                # Optimize the common case:
-                # Everything is dirty, so no need to loop
-                self._block_data = {}
-                self._block_locks = {}
-            else:
-                # FIXME: This is O(N) for now.
-                #        We should speed this up by maintaining a bookkeeping data structure in execute().
-                for block_roi in self._block_data.keys():
-                    if getIntersection(block_roi, dirty_roi, assertIntersect=False):
-                        del self._block_data[block_roi]
-                        del self._block_locks[block_roi]
+        if dirty_roi == maximum_roi:
+            # Optimize the common case:
+            # Everything is dirty, so no need to loop
+            self._resetBlocks()
+        else:
+            # FIXME: This is O(N) for now.
+            #        We should speed this up by maintaining a bookkeeping data structure in execute().
+            for block_roi in self._block_data.keys():
+                if getIntersection(block_roi, dirty_roi, assertIntersect=False):
+                    self.freeBlock(block_roi)
 
         self.Output.setDirty( roi.start, roi.stop )
 
