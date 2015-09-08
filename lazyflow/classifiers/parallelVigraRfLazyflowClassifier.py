@@ -2,6 +2,7 @@ import os
 import tempfile
 from functools import partial
 import cPickle as pickle
+import collections
 
 import numpy
 import vigra
@@ -37,22 +38,21 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
                      to match the number of available lazyflow worker threads.
         kwargs: Additional keyword args, passed directly to the vigra.RandomForest constructor.
         """
-        
-        parsed_args, workflow_cmdline_args = ilastik_main.parser.parse_known_args()
-        logger.info("Param TREES: {}".format(parsed_args.trees))
-        logger.info("Param VARIMP: {}".format(parsed_args.varimp)) 
-        
+                
         self._num_trees = num_trees_total
         self._kwargs = kwargs
         
-        # Use number of trees from command line argument (default trees = 100)      
-        self._num_trees = parsed_args.trees  
-
         # By default, num_forests matches the number of lazyflow worker threads
         self._num_forests = num_forests or Request.global_thread_pool.num_workers
         self._num_forests = max(1, self._num_forests)
     
-    def create_and_train(self, X, y, feature_names=None):  
+    def create_and_train(self, X, y, feature_names=None): 
+        # Use number of trees from command line argument (default trees = 100)
+        parsed_args, workflow_cmdline_args = ilastik_main.parser.parse_known_args()
+        logger.info("Param TREES: {}".format(parsed_args.trees))
+        logger.info("Param VARIMP: {}".format(parsed_args.varimp))     
+          
+        self._num_trees = parsed_args.trees       
           
         # Distribute trees as evenly as possible
         tree_counts = numpy.array( [self._num_trees // self._num_forests] * self._num_forests )
@@ -78,6 +78,15 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
         for tree_count in tree_counts:
             forests.append( vigra.learning.RandomForest(tree_count, **self._kwargs) )
 
+        # Train them all in parallel
+        oobs = [None] * len(forests)
+        importances = [None] * len(forests)
+        
+        def store_training_results(i, training_results):
+            oob, importance_results = training_results
+            oobs[i] = oob
+            importances[i] = importance_results
+
         # Sample X and y
         proportion = 0.01
         row_num = int(proportion*X.shape[0])
@@ -86,18 +95,68 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
         y = y[idx] 
 
         # Train them all in parallel
-        oobs = [None] * len(forests)
-        pool = RequestPool()
-        for i, forest in enumerate(forests):
-            req = Request( partial(forest.learnRF, X, y) )
-            # save the oobs
-            req.notify_finished( partial( oobs.__setitem__, i ) )
-            pool.add( req )
-
-        with Timer() as timer:
+        with Timer() as train_timer:
+            pool = RequestPool()
+            for i, forest in enumerate(forests):
+                req = Request( partial(forest.learnRFWithFeatureSelection, X, y) )
+                # save the oobs
+                req.notify_finished( partial( store_training_results, i ) )
+                pool.add( req )
             pool.wait()
-        logger.info( "Training completed in {} seconds. Average OOB: {}".format( timer.seconds(), numpy.average(oobs) ) )
+            
+        logger.info("Training took, {} ".format( train_timer.seconds() ) )    
+
+        named_importances = collections.OrderedDict( zip( feature_names, numpy.average(importances, axis=0) ) )
+        importance_table = self.generate_importance_table( named_importances, sort=True )
+        logger.info("Feature Importance measurements during training: {}".format(importance_table) )        
+
+        logger.info( "Training complete. Average OOB: {}".format( numpy.average(oobs) ) )
         return ParallelVigraRfLazyflowClassifier( forests, oobs, known_labels, feature_names )
+
+    @classmethod
+    def generate_importance_table(cls, named_importances_dict, sort=True):
+        """
+        Return a string of the given importances dict, in csv format, 
+        but also with extra spaces for pretty-printing.
+        """
+        import csv
+        from StringIO import StringIO
+        #CSV_FORMAT = { 'delimiter' : '\t', 'lineterminator' : '\n' }
+        CSV_FORMAT = { 'delimiter' : ',', 'lineterminator' : '\n' }
+
+        feature_name_length = max( map(len, named_importances_dict.keys()) )
+
+        # See vigra/random_forest/rf_visitors.hxx, class VariableImportanceVisitor
+        n_classes = len(named_importances_dict.values()[0]) - 2
+        columns = [ "{: <{width}}".format("Feature Name", width=feature_name_length) ]
+        columns += [ "  Class #{}".format(i) for i in range(n_classes)]
+        columns += [ "   Overall" ]
+        columns += [ "      Gini" ]
+        
+        output = StringIO()
+        csv_writer = csv.writer(output, **CSV_FORMAT)
+        csv_writer.writerow( columns )
+
+        if sort:
+            # Sort by "overall" importance (column -2)
+            sorted_importances = sorted( named_importances_dict.items(),
+                                         key=lambda (k,v): v[-2] )
+            named_importances_dict = collections.OrderedDict( sorted_importances )
+
+        for feature_name, importances in named_importances_dict.items():
+            feature_name = "{: <{width}}".format(feature_name, width=feature_name_length)
+            importance_strings = map( lambda x: "{: .07f}".format(x), importances )
+            importance_strings = map( lambda s: "{: >10}".format(s), importance_strings )
+            csv_writer.writerow( [feature_name] + importance_strings )
+        
+        # Save var importance table to file
+        parsed_args, workflow_cmdline_args = ilastik_main.parser.parse_known_args()
+        if parsed_args.varimp :   
+            file = open(os.path.join(parsed_args.varimp, 'varimp.txt'), 'w')
+            file.write(output.getvalue())
+            file.close()    
+            
+        return output.getvalue()
 
     def estimated_ram_usage_per_requested_predictionchannel(self):
         return (Request.global_thread_pool.num_workers) * 4
