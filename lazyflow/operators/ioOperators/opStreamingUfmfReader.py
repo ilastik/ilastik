@@ -22,6 +22,7 @@
 
 import logging
 import time
+import threading
 
 import numpy
 import vigra
@@ -53,8 +54,7 @@ class OpStreamingUfmfReader(Operator):
 
     def __init__(self, *args, **kwargs):
         super(OpStreamingUfmfReader, self).__init__(*args, **kwargs)
-        self._memmapFile = None
-        self._rawVigraArray = None
+        self._lock = threading.Lock()
 
     def setupOutputs(self):
         """
@@ -76,6 +76,7 @@ class OpStreamingUfmfReader(Operator):
         self.Output.meta.dtype = self.frame.dtype.type
         self.Output.meta.axistags = vigra.defaultAxistags(AXIS_ORDER)
         self.Output.meta.shape = (frameNum, self.frame.shape[1], self.frame.shape[2], self.frame.shape[3])
+        self.Output.meta.ideal_blockshape = (1,) + self.Output.meta.shape[1:]
         
     def execute(self, slot, subindex, roi, result):
         start, stop = roi.start, roi.stop
@@ -84,14 +85,12 @@ class OpStreamingUfmfReader(Operator):
         yStart, yStop = start[1], stop[1]
         xStart, xStop = start[2], stop[2]
         cStart, cStop = start[3], stop[3]    
-                  
-        if self.position != tStart :
-            self.position = tStart
-            self.fmf.seek(tStart)
-            frame, timestamp = self.fmf.get_next_frame()
-            self.frame = frame[None, :, :, None]
-          
-        result[...] = self.frame[0:1, yStart:yStop, xStart:xStop, cStart:cStop]
+  
+        for tResult, tFrame in enumerate(range(tStart, tStop)):
+            with self._lock:
+                self.fmf.seek(tStart)
+                frame, timestamp = self.fmf.get_next_frame()
+            result[tResult, ..., 0] = frame[yStart:yStop, xStart:xStop] 
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.FileName:

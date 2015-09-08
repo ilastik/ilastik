@@ -54,16 +54,6 @@ class TestOpStreamingMmfReader(object):
         mmfReader = OpStreamingMmfReader(graph=self.graph)
         mmfReader.FileName.setValue(self.fileName)  
         output = mmfReader.Output[:].wait()
-        
-        print "Shape: ", output.shape
-        comp = output[0,:,:,0] == output[100,:,:,0]
-        print "Final == Last: ", len(comp[comp==False])
-        
-        plt.imshow(output[0, ..., 0])
-        plt.show()
-    
-        plt.imshow(output[-1, ..., 0])
-        plt.show()
                 
         # Verify shape, data type, and axis tags
         assert output.shape == EXPECTED_SHAPE
