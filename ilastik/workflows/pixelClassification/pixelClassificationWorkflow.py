@@ -72,6 +72,8 @@ class PixelClassificationWorkflow(Workflow):
         parser.add_argument('--random-label-value', help="The label value to use injecting random labels", default=1, type=int)
         parser.add_argument('--random-label-count', help="The number of random labels to inject via --generate-random-labels", default=2000, type=int)
         parser.add_argument('--retrain', help="Re-train the classifier based on labels stored in project file, and re-save.", action="store_true")
+        parser.add_argument('--trees', help='Number of trees for Vigra RF single-thread classifier.', default=100, type=int)
+        parser.add_argument('--varimp', help='Location to save variable importance table', default='', type=str)
 
         # Parse the creation args: These were saved to the project file when this project was first created.
         parsed_creation_args, unused_args = parser.parse_known_args(project_creation_args)
@@ -85,6 +87,8 @@ class PixelClassificationWorkflow(Workflow):
         self.random_label_value = parsed_args.random_label_value
         self.random_label_count = parsed_args.random_label_count
         self.retrain = parsed_args.retrain
+        self.varimp = parsed_args.varimp
+        self.trees = parsed_args.trees
 
         if parsed_args.filter and parsed_args.filter != parsed_creation_args.filter:
             logger.error("Ignoring new --filter setting.  Filter implementation cannot be changed after initial project creation.")
@@ -303,6 +307,16 @@ class PixelClassificationWorkflow(Workflow):
         if self._headless:
             # In headless mode, let's see the messages from the training operator.
             logging.getLogger("lazyflow.operators.classifierOperators").setLevel(logging.DEBUG)
+        
+        if self.varimp:
+            classifier_factory = self.pcApplet.topLevelOperator.opTrain.ClassifierFactory.value
+            classifier_factory.set_variable_importance_output_file( self.varimp )
+
+        if self.trees:
+            #classifier_factory = self.pcApplet.topLevelOperator.opTrain.ClassifierFactory.value
+            #classifier_factory.set_num_trees( self.trees )
+            new_factory = ParallelVigraRfLazyflowClassifierFactory(num_trees_total=self.trees)
+            self.pcApplet.topLevelOperator.opTrain.ClassifierFactory.setValue(new_factory)
         
         if self.retrain:
             # Cause the classifier to be dirty so it is forced to retrain.
