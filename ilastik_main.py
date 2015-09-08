@@ -34,6 +34,9 @@ parser.add_argument('--playback_speed', help='Speed to play the playback script.
 parser.add_argument('--exit_on_failure', help='Immediately call exit(1) if an unhandled exception occurs.', action='store_true', default=False)
 parser.add_argument('--exit_on_success', help='Quit the app when the playback is complete.', action='store_true', default=False)
 
+parser.add_argument('--trees', help='Number of trees for Vigra RF single-thread classifier.', default=100, type=int)
+parser.add_argument('--varimp', help='Location to save variable importance table', default='', type=str)
+
 def main( parsed_args, workflow_cmdline_args=[] ):
     this_path = os.path.dirname(__file__)
     ilastik_dir = os.path.abspath(os.path.join(this_path, "..%s.." % os.path.sep))
