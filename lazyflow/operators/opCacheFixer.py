@@ -36,8 +36,8 @@ class OpCacheFixer(Operator):
     (as a bounding box), and emits the entire dirty ROI at once as soon as it becomes "unfixed".
     Also, this operator returns only zeros while fixAtCurrent=True.
     """
-    Input = InputSlot(allow_mask=True)
     fixAtCurrent = InputSlot(value=False)
+    Input = InputSlot(allow_mask=True)
     Output = OutputSlot(allow_mask=True)
 
     def __init__(self, *args, **kwargs):
@@ -48,6 +48,10 @@ class OpCacheFixer(Operator):
     def setupOutputs(self):
         self.Output.meta.assignFrom( self.Input.meta )
         self.Output.meta.dontcache = self.fixAtCurrent.value
+
+        # During initialization, if fixAtCurrent is configured before Input, then propagateDirty was never called.
+        # We need to make sure that the dirty logic for fixAtCurrent has definitely been called here.
+        self.propagateDirty(self.fixAtCurrent, (), slice(None))
 
     def execute(self, slot, subindex, roi, result):
         if self._fixed:

@@ -75,22 +75,25 @@ class TestOpExportMultipageTiffSequence(object):
         globstring = globstring.replace('999', '*')
 
         opReader = OpTiffSequenceReader( graph=self.graph )
-        opReader.GlobString.setValue( globstring )
-
-        # (The OpStackLoader produces txyzc order.)
-        opReorderAxes = OpReorderAxes( graph=self.graph )
-        opReorderAxes.AxisOrder.setValue( self._axisorder )
-        opReorderAxes.Input.connect( opReader.Output )
-        
-        readData = opReorderAxes.Output[:].wait()
-        logger.debug("Expected shape={}".format( self.testData.shape ) )
-        logger.debug("Read shape={}".format( readData.shape ) )
-        
-        assert opReorderAxes.Output.meta.shape == self.testData.shape, "Exported files were of the wrong shape or number."
-        assert (opReorderAxes.Output[:].wait() == self.testData.view( numpy.ndarray )).all(), "Exported data was not correct"
-        
-        opReorderAxes.cleanUp()
-        opReader.cleanUp()
+        try:
+            opReader.GlobString.setValue( globstring )
+    
+            # (The OpStackLoader produces txyzc order.)
+            opReorderAxes = OpReorderAxes( graph=self.graph )
+            try:
+                opReorderAxes.AxisOrder.setValue( self._axisorder )
+                opReorderAxes.Input.connect( opReader.Output )
+                
+                readData = opReorderAxes.Output[:].wait()
+                logger.debug("Expected shape={}".format( self.testData.shape ) )
+                logger.debug("Read shape={}".format( readData.shape ) )
+                
+                assert opReorderAxes.Output.meta.shape == self.testData.shape, "Exported files were of the wrong shape or number."
+                assert (opReorderAxes.Output[:].wait() == self.testData.view( numpy.ndarray )).all(), "Exported data was not correct"
+            finally:
+                opReorderAxes.cleanUp()
+        finally:
+            opReader.cleanUp()
 
 if __name__ == "__main__":
     # Run this file independently to see debug output.

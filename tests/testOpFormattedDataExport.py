@@ -74,28 +74,29 @@ class TestOpFormattedDataExport(object):
         opExport.run_export()
         
         opRead = OpInputDataReader( graph=graph )
-        opRead.FilePath.setValue( opExport.ExportPath.value )
-
-        # Compare with the correct subregion and convert dtype.
-        sub_roi[1] = (100, 80) # Replace 'None' with full extent
-        expected_data = data.view(numpy.ndarray)[roiToSlice(*sub_roi)]
-        expected_data = expected_data.astype(numpy.uint8)
-        expected_data += 100 # see renormalization settings
-
-        assert opRead.Output.meta.shape == expected_data.shape
-        assert opRead.Output.meta.dtype == expected_data.dtype
-        read_data = opRead.Output[:].wait()
-
-        # Due to rounding errors, the actual result and the expected result may differ by 1
-        #  e.g. if the original pixel value was 32.99999999
-        # Also, must promote to signed values to avoid unsigned rollover
-        # See issue ( https://github.com/ilastik/lazyflow/issues/165 ).
-        expected_data_signed = expected_data.astype(numpy.int16)
-        read_data_signed = expected_data.astype(numpy.int16)
-        difference_from_expected = expected_data_signed - read_data_signed
-        assert (numpy.abs(difference_from_expected) <= 1).all(), "Read data didn't match exported data!"
-        
-        opRead.cleanUp()
+        try:
+            opRead.FilePath.setValue( opExport.ExportPath.value )
+    
+            # Compare with the correct subregion and convert dtype.
+            sub_roi[1] = (100, 80) # Replace 'None' with full extent
+            expected_data = data.view(numpy.ndarray)[roiToSlice(*sub_roi)]
+            expected_data = expected_data.astype(numpy.uint8)
+            expected_data += 100 # see renormalization settings
+    
+            assert opRead.Output.meta.shape == expected_data.shape
+            assert opRead.Output.meta.dtype == expected_data.dtype
+            read_data = opRead.Output[:].wait()
+    
+            # Due to rounding errors, the actual result and the expected result may differ by 1
+            #  e.g. if the original pixel value was 32.99999999
+            # Also, must promote to signed values to avoid unsigned rollover
+            # See issue ( https://github.com/ilastik/lazyflow/issues/165 ).
+            expected_data_signed = expected_data.astype(numpy.int16)
+            read_data_signed = expected_data.astype(numpy.int16)
+            difference_from_expected = expected_data_signed - read_data_signed
+            assert (numpy.abs(difference_from_expected) <= 1).all(), "Read data didn't match exported data!"
+        finally:
+            opRead.cleanUp()
 
 if __name__ == "__main__":
     import sys

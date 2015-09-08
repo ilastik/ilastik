@@ -22,7 +22,16 @@
 import os
 from lazyflow.utility.pathHelpers import compressPathForDisplay, getPathVariants, PathComponents
 
+SIMULATE_WINDOWS = False
+
 class TestPathHelpers(object):
+
+    @classmethod
+    def setupClass(cls):
+        if SIMULATE_WINDOWS:
+            import ntpath
+            os.sep = ntpath.sep
+            os.path = ntpath
 
     def testPathComponents(self):
         components = PathComponents('/some/external/path/to/file.h5/with/internal/path/to/data')
@@ -75,22 +84,24 @@ class TestPathHelpers(object):
         abs, rel = getPathVariants('/aaa/bbb/ccc/ddd.txt', '/aaa/bbb/ccc/eee')
         #assert abs == '/aaa/bbb/ccc/ddd.txt'
         # Use normpath to make sure this test works on windows...
-        assert abs == os.path.normpath(os.path.join('/aaa/bbb/ccc/eee', '/aaa/bbb/ccc/ddd.txt'))
+        expected = os.path.normpath(os.path.join('/aaa/bbb/ccc/eee', '/aaa/bbb/ccc/ddd.txt')).replace('\\', '/')
+        assert abs == expected, "{} != {}".format( abs, expected )
         assert rel == '../ddd.txt'
 
         abs, rel = getPathVariants('../ddd.txt', '/aaa/bbb/ccc/eee')
         #assert abs == '/aaa/bbb/ccc/ddd.txt'
         # Use normpath to make sure this test works on windows...
-        assert abs == os.path.normpath(os.path.join('/aaa/bbb/ccc/eee', '../ddd.txt'))
+        assert abs == os.path.normpath(os.path.join('/aaa/bbb/ccc/eee', '../ddd.txt')).replace('\\', '/')
         assert rel == '../ddd.txt'
 
         abs, rel = getPathVariants('ddd.txt', '/aaa/bbb/ccc')
         #assert abs == '/aaa/bbb/ccc/ddd.txt'
         # Use normpath to make sure this test works on windows...
-        assert abs == os.path.normpath(os.path.join('/aaa/bbb/ccc', 'ddd.txt'))
+        assert abs == os.path.normpath(os.path.join('/aaa/bbb/ccc', 'ddd.txt')).replace('\\', '/')
         assert rel == 'ddd.txt'
 
-        assert getPathVariants('', '/abc') == ('/abc', '')
+        assert getPathVariants('', '/abc') == ('/abc', ''), \
+            "{} != {}".format( getPathVariants('', '/abc'), ('/abc', '') )
 
 if __name__ == "__main__":
     import sys

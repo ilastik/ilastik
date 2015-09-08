@@ -22,6 +22,7 @@
 import os
 import tempfile
 import shutil
+import platform
 
 import nose
 import numpy
@@ -41,6 +42,8 @@ try:
     _skip_dvid = False
 except ImportError:
     _skip_dvid = True
+
+_skip_dvid |= (platform.system() == "Windows")
 
 class TestOpExportSlot(object):
     
@@ -74,12 +77,13 @@ class TestOpExportSlot(object):
         opExport.run_export()
         
         opRead = OpInputDataReader( graph=graph )
-        opRead.FilePath.setValue( opExport.ExportPath.value )
-        expected_data = data.view(numpy.ndarray)
-        read_data = opRead.Output[:].wait()
-        assert (read_data == expected_data).all(), "Read data didn't match exported data!"
-        
-        opRead.cleanUp()
+        try:
+            opRead.FilePath.setValue( opExport.ExportPath.value )
+            expected_data = data.view(numpy.ndarray)
+            read_data = opRead.Output[:].wait()
+            assert (read_data == expected_data).all(), "Read data didn't match exported data!"
+        finally:
+            opRead.cleanUp()
 
     def testBasic_Npy(self):
         data = numpy.random.random( (100,100) ).astype( numpy.float32 )
@@ -101,12 +105,13 @@ class TestOpExportSlot(object):
         opExport.run_export()
         
         opRead = OpInputDataReader( graph=graph )
-        opRead.FilePath.setValue( opExport.ExportPath.value )
-        expected_data = data.view(numpy.ndarray)
-        read_data = opRead.Output[:].wait()
-        assert (read_data == expected_data).all(), "Read data didn't match exported data!"
-        
-        opRead.cleanUp()
+        try:
+            opRead.FilePath.setValue( opExport.ExportPath.value )
+            expected_data = data.view(numpy.ndarray)
+            read_data = opRead.Output[:].wait()
+            assert (read_data == expected_data).all(), "Read data didn't match exported data!"
+        finally:
+            opRead.cleanUp()
 
     def testBasic_Dvid(self):
         if _skip_dvid:
@@ -169,13 +174,15 @@ class TestOpExportSlot(object):
         opExport.run_export()
         
         opRead = OpInputDataReader( graph=graph )
-        opRead.FilePath.setValue( opExport.ExportPath.value )
-        expected_data = data.view(numpy.ndarray)
-        read_data = opRead.Output[:].wait()
-        
-        # Note: vigra inserts a channel axis, so read_data is xyc
-        assert (read_data[...,0] == expected_data).all(), "Read data didn't match exported data!"
-        opRead.cleanUp()
+        try:
+            opRead.FilePath.setValue( opExport.ExportPath.value )
+            expected_data = data.view(numpy.ndarray)
+            read_data = opRead.Output[:].wait()
+            
+            # Note: vigra inserts a channel axis, so read_data is xyc
+            assert (read_data[...,0] == expected_data).all(), "Read data didn't match exported data!"
+        finally:
+            opRead.cleanUp()
 
     def testBasic_2d_Sequence(self):
         data = 255 * numpy.random.random( (10, 50,100, 3) )
@@ -203,19 +210,19 @@ class TestOpExportSlot(object):
         globstring = globstring.replace('999', '*')
 
         opReader = OpStackLoader( graph=graph )
-        opReader.globstring.setValue( globstring )
-
-        # (The OpStackLoader produces txyzc order.)
         opReorderAxes = OpReorderAxes( graph=graph )
-        opReorderAxes.AxisOrder.setValue( 'zyxc' )
-        opReorderAxes.Input.connect( opReader.stack )
-        
-        assert opReorderAxes.Output.meta.shape == data.shape, "Exported files were of the wrong shape or number."
-        assert (opReorderAxes.Output[:].wait() == data.view( numpy.ndarray )).all(), "Exported data was not correct"
-
-        # Cleanup
-        opReorderAxes.cleanUp()
-        opReader.cleanUp()
+        try:
+            opReader.globstring.setValue( globstring )
+    
+            # (The OpStackLoader produces txyzc order.)
+            opReorderAxes.AxisOrder.setValue( 'zyxc' )
+            opReorderAxes.Input.connect( opReader.stack )
+            
+            assert opReorderAxes.Output.meta.shape == data.shape, "Exported files were of the wrong shape or number."
+            assert (opReorderAxes.Output[:].wait() == data.view( numpy.ndarray )).all(), "Exported data was not correct"
+        finally:
+            opReorderAxes.cleanUp()
+            opReader.cleanUp()
 
     def testBasic_MultipageTiffSequence(self):
         data = 255 * numpy.random.random( (5, 10, 50,100, 3) )
@@ -243,19 +250,21 @@ class TestOpExportSlot(object):
         globstring = globstring.replace('999', '*')
 
         opReader = OpTiffSequenceReader( graph=graph )
-        opReader.GlobString.setValue( globstring )
-
-        # (The OpStackLoader produces txyzc order.)
         opReorderAxes = OpReorderAxes( graph=graph )
-        opReorderAxes.AxisOrder.setValue( 'tzyxc' )
-        opReorderAxes.Input.connect( opReader.Output )
-        
-        assert opReorderAxes.Output.meta.shape == data.shape, "Exported files were of the wrong shape or number."
-        assert (opReorderAxes.Output[:].wait() == data.view( numpy.ndarray )).all(), "Exported data was not correct"
 
-        # Cleanup
-        opReorderAxes.cleanUp()
-        opReader.cleanUp()
+        try:
+            opReader.GlobString.setValue( globstring )
+    
+            # (The OpStackLoader produces txyzc order.)
+            opReorderAxes.AxisOrder.setValue( 'tzyxc' )
+            opReorderAxes.Input.connect( opReader.Output )
+            
+            assert opReorderAxes.Output.meta.shape == data.shape, "Exported files were of the wrong shape or number."
+            assert (opReorderAxes.Output[:].wait() == data.view( numpy.ndarray )).all(), "Exported data was not correct"
+
+        finally:
+            opReorderAxes.cleanUp()
+            opReader.cleanUp()
 
     def testInvalidDim2d(self):
         data = 255 * numpy.random.random((50, 100, 2))

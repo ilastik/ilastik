@@ -39,10 +39,10 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
     description = ""
 
     #Inputs
+    fixAtCurrent = InputSlot(value = False)
     Input = InputSlot(allow_mask=True)
     innerBlockShape = InputSlot()
     outerBlockShape = InputSlot()
-    fixAtCurrent = InputSlot(value = False)
    
     #Outputs
     Output = OutputSlot(allow_mask=True)

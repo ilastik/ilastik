@@ -39,8 +39,8 @@ class OpRefactoredBlockedArrayCache(Operator, ManagedBlockedCache):
     implemented via separate "splitting" operator that comes after the cache.
     Also, the "fixAtCurrent" feature is implemented in a special operator, which comes before the cache.    
     """
-    Input = InputSlot(allow_mask=True)
     fixAtCurrent = InputSlot(value=False)
+    Input = InputSlot(allow_mask=True)
     #BlockShape = InputSlot()
     innerBlockShape = InputSlot(optional=True)
     outerBlockShape = InputSlot()

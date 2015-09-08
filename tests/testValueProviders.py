@@ -292,9 +292,6 @@ class TestOpZeroDefault(object):
 #    handler.setLevel(logging.DEBUG)
 #    traceLogger.addHandler(handler)
 
-#    import nose
-#    ret = nose.run(defaultTest=__file__, env={'NOSE_NOCAPTURE' : 1})
-
 if __name__ == "__main__":
     import sys
     import nose

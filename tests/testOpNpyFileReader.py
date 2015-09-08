@@ -46,24 +46,29 @@ class TestOpNpyFileReader(object):
     def test_OpNpyFileReader(self):
         # Now read back our test data using an OpNpyFileReader operator
         npyReader = OpNpyFileReader(graph=self.graph)
-        npyReader.FileName.setValue(self.testDataFilePath)
-
-        # Read the entire file and verify the contents
-        a = npyReader.Output[:].wait()
-        assert a.shape == (10,11) # OpNpyReader automatically added a channel axis
-        assert npyReader.Output.meta.dtype == self.testData.dtype
-
-        # Why doesn't this work?  Numpy bug?
-        # cmp = ( a == self.testData )
-        # assert cmp.all()
-
-        # Check each of the values
-        for i in range(10):
-            for j in range(11):
-                assert a[i,j] == self.testData[i,j]
-        npyReader.cleanUp()
+        try:
+            npyReader.FileName.setValue(self.testDataFilePath)
+    
+            # Read the entire file and verify the contents
+            a = npyReader.Output[:].wait()
+            assert a.shape == (10,11) # OpNpyReader automatically added a channel axis
+            assert npyReader.Output.meta.dtype == self.testData.dtype
+    
+            # Why doesn't this work?  Numpy bug?
+            # cmp = ( a == self.testData )
+            # assert cmp.all()
+    
+            # Check each of the values
+            for i in range(10):
+                for j in range(11):
+                    assert a[i,j] == self.testData[i,j]
+        finally:
+            npyReader.cleanUp()
 
 if __name__ == "__main__":
+    import sys
     import nose
-    ret = nose.run(defaultTest=__file__, env={'NOSE_NOCAPTURE' : 1})
+    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+    ret = nose.run(defaultTest=__file__)
     if not ret: sys.exit(1)

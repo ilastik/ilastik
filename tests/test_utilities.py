@@ -1,6 +1,7 @@
 import signal
 import functools
 import threading
+import platform
 
 class TimeoutError(Exception):
     def __init__(self, seconds):
@@ -22,6 +23,11 @@ def fail_after_timeout( seconds ):
     """
     assert isinstance(seconds, int), "signal.alarm() requires an int"
     def decorator(func):
+        if platform.system() == 'Windows':
+            # Windows doesn't support SIGALRM
+            # Therefore, on Windows, we let this decorator be a no-op.
+            return func
+        
         def raise_timeout(signum, frame):
             raise TimeoutError(seconds)
 

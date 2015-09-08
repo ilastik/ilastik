@@ -68,7 +68,8 @@ class OpVigraWatershed(Operator):
         
         if self.SeedImage.ready():
             assert numpy.issubdtype(self.SeedImage.meta.dtype, numpy.uint32)
-            assert self.SeedImage.meta.shape == self.InputImage.meta.shape
+            assert self.SeedImage.meta.shape == self.InputImage.meta.shape, \
+                "{} != {}".format(self.SeedImage.meta.shape, self.InputImage.meta.shape)
     
     def getSlicings(self, roi):
         """

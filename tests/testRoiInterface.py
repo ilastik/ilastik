@@ -163,27 +163,9 @@ class TestRoiUtilities(TestCase):
         assert lazyflow.roi.roiToSlice(roi[0], roi[1]) == (slice(1,2), slice(2,4), slice(3,6), slice(4,8), slice(5,10))
         
 if __name__ == "__main__":
+    import sys
     import nose
-    ret = nose.run(defaultTest=__file__, env={'NOSE_NOCAPTURE' : 1})
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+    ret = nose.run(defaultTest=__file__)
     if not ret: sys.exit(1)

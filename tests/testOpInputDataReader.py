@@ -61,17 +61,19 @@ class TestOpInputDataReader(object):
 
         # Now read back our test data using an OpInputDataReader operator
         npyReader = OpInputDataReader(graph=self.graph)
-        npyReader.FilePath.setValue(self.testNpyDataFileName)
-        cwd = os.path.split(__file__)[0]
-        npyReader.WorkingDirectory.setValue( cwd )
-
-        # Read the entire NPY file and verify the contents
-        npyData = npyReader.Output[:].wait()
-        assert npyData.shape == (10,11)
-        for x in range(0,10):
-            for y in range(0,11):
-                assert npyData[x,y] == x+y
-
+        try:
+            npyReader.FilePath.setValue(self.testNpyDataFileName)
+            cwd = os.path.split(__file__)[0]
+            npyReader.WorkingDirectory.setValue( cwd )
+    
+            # Read the entire NPY file and verify the contents
+            npyData = npyReader.Output[:].wait()
+            assert npyData.shape == (10,11)
+            for x in range(0,10):
+                for y in range(0,11):
+                    assert npyData[x,y] == x+y
+        finally:
+            npyReader.cleanUp()
 
     def test_png(self):
         # Create PNG test data
@@ -104,34 +106,39 @@ class TestOpInputDataReader(object):
 
         # Read the entire HDF5 file and verify the contents
         h5Reader = OpInputDataReader(graph=self.graph)
-        h5Reader.FilePath.setValue(self.testH5FileName + '/volume/data') # Append internal path
-        cwd = os.path.split(__file__)[0]
-        h5Reader.WorkingDirectory.setValue( cwd )
+        try:
+            h5Reader.FilePath.setValue(self.testH5FileName + '/volume/data') # Append internal path
+            cwd = os.path.split(__file__)[0]
+            h5Reader.WorkingDirectory.setValue( cwd )
+    
+            # Grab a section of the h5 data
+            h5Data = h5Reader.Output[0,0,:,:,:].wait()
+            assert h5Data.shape == (1,1,3,4,5)
+            # (Just check part of the data)
+            for k in range(0,shape[2]):
+                for l in range(0,shape[3]):
+                    for m in range(0,shape[4]):
+                        assert h5Data[0,0,k,l,m] == k + l + m
 
-        # Grab a section of the h5 data
-        h5Data = h5Reader.Output[0,0,:,:,:].wait()
-        assert h5Data.shape == (1,1,3,4,5)
-        # (Just check part of the data)
-        for k in range(0,shape[2]):
-            for l in range(0,shape[3]):
-                for m in range(0,shape[4]):
-                    assert h5Data[0,0,k,l,m] == k + l + m
-
-        # Call cleanUp() to close the file that this operator opened        
-        h5Reader.cleanUp()
-        assert not h5Reader._file # Whitebox assertion...
+        finally:    
+            # Call cleanUp() to close the file that this operator opened        
+            h5Reader.cleanUp()
+            assert not h5Reader._file # Whitebox assertion...
 
     def test_npy_with_roi(self):
         a = numpy.indices((100,100,200)).astype( numpy.uint8 ).sum(0)
         assert a.shape == (100,100,200)
         numpy.save( self.testNpyDataFileName, a )
         opReader = OpInputDataReader( graph=lazyflow.graph.Graph() )
-        opReader.FilePath.setValue( self.testNpyDataFileName )
-        opReader.SubVolumeRoi.setValue( ((10,20,30), (50, 70, 90)) )
-
-        all_data = opReader.Output[:].wait()
-        assert all_data.shape == ( 40, 50, 60 )
-        assert (all_data == a[ 10:50, 20:70, 30:90 ]).all()
+        try:
+            opReader.FilePath.setValue( self.testNpyDataFileName )
+            opReader.SubVolumeRoi.setValue( ((10,20,30), (50, 70, 90)) )
+    
+            all_data = opReader.Output[:].wait()
+            assert all_data.shape == ( 40, 50, 60 )
+            assert (all_data == a[ 10:50, 20:70, 30:90 ]).all()
+        finally:
+            opReader.cleanUp()
 
 if __name__ == "__main__":
     import sys

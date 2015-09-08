@@ -23,6 +23,7 @@ import os
 import shutil
 import tempfile
 import unittest
+import platform
 
 import numpy
 import vigra
@@ -41,10 +42,11 @@ else:
     have_dvid = True
 
 
-@unittest.skipIf(not have_dvid, "optional module pydvid not available.")
 class TestOpDvidVolume(unittest.TestCase):
     
     @classmethod
+    @unittest.skipIf(not have_dvid, "optional module pydvid not available.")
+    @unittest.skipIf(platform.system() == "Windows", "DVID not tested on Windows. Skipping.")
     def setupClass(cls):
         """
         Override.  Called by nosetests.
