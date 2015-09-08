@@ -681,6 +681,8 @@ class OpCompressedCache(OpUnmanagedCompressedCache, ManagedBlockedCache):
             return mem
 
     def getBlockAccessTimes(self):
-        # FIXME
-        return [(key, self._last_access_times[key])
-                for key in self._last_access_times]
+        with self._lock:
+            # needs to be locked because dicts must not change size
+            # during iteration
+            return [(key, self._last_access_times[key])
+                    for key in self._last_access_times]
