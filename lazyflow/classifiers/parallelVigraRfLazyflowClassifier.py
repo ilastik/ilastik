@@ -6,6 +6,7 @@ import cPickle as pickle
 import numpy
 import vigra
 import h5py
+import random
 
 from lazyflow.utility import Timer
 from lazyflow.request import Request, RequestPool, RequestLock
@@ -14,9 +15,19 @@ from lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwi
 import logging
 logger = logging.getLogger(__name__)
 
+import ilastik_main
+
+        
+#import argparse
+#parser = argparse.ArgumentParser( description="start an ilastik workflow" )
+#parser.add_argument('--trees', help='Number of trees for Vigra RF single-thread classifier.', default=100)
+#parser.add_argument('--varimp', help='Location to save variable importance table', default='')
+
 class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
     VERSION = 1 # This is used to determine compatibility of pickled classifier factories.
                 # You must bump this if any instance members are added/removed/renamed.
+ 
+    parsed_args = None
     
     def __init__(self, num_trees_total=100, num_forests=None, **kwargs):
         """
@@ -26,14 +37,23 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
                      to match the number of available lazyflow worker threads.
         kwargs: Additional keyword args, passed directly to the vigra.RandomForest constructor.
         """
+        
+        parsed_args, workflow_cmdline_args = ilastik_main.parser.parse_known_args()
+        logger.info("Param TREES: {}".format(parsed_args.trees))
+        logger.info("Param VARIMP: {}".format(parsed_args.varimp)) 
+        
         self._num_trees = num_trees_total
         self._kwargs = kwargs
+        
+        # Use number of trees from command line argument (default trees = 100)      
+        self._num_trees = parsed_args.trees  
 
         # By default, num_forests matches the number of lazyflow worker threads
         self._num_forests = num_forests or Request.global_thread_pool.num_workers
         self._num_forests = max(1, self._num_forests)
     
-    def create_and_train(self, X, y, feature_names=None):
+    def create_and_train(self, X, y, feature_names=None):  
+          
         # Distribute trees as evenly as possible
         tree_counts = numpy.array( [self._num_trees // self._num_forests] * self._num_forests )
         tree_counts[:self._num_trees % self._num_forests] += 1
@@ -57,6 +77,13 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
         forests = []
         for tree_count in tree_counts:
             forests.append( vigra.learning.RandomForest(tree_count, **self._kwargs) )
+
+        # Sample X and y
+        proportion = 0.01
+        row_num = int(proportion*X.shape[0])
+        idx = random.sample(range(X.shape[0]), row_num)
+        X = X[idx,:]
+        y = y[idx] 
 
         # Train them all in parallel
         oobs = [None] * len(forests)
