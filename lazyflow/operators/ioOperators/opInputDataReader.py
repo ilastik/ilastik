@@ -182,7 +182,17 @@ class OpInputDataReader(Operator):
             mmfReader = OpStreamingMmfReader(parent=self)
             mmfReader.FileName.setValue(filePath)
             
-            return ([mmfReader], mmfReader.Output)
+            #return ([mmfReader], mmfReader.Output)
+            
+            # Cache the pages we read
+            page_shape = mmfReader.Output.meta.ideal_blockshape
+            opCache = OpBlockedArrayCache( parent=self )
+            opCache.fixAtCurrent.setValue( False )
+            opCache.innerBlockShape.setValue( page_shape )
+            opCache.outerBlockShape.setValue( page_shape )
+            opCache.Input.connect( mmfReader.Output )
+             
+            return ([mmfReader, opCache], opCache.Output)
         else :
             return ([], None)
     

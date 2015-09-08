@@ -19,11 +19,14 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
+import os
 import numpy as np
 import vigra
 from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpStreamingMmfReader
 import nose
+
+import pylab as plt
 
 EXPECTED_DTYPE = np.uint8
 EXPECTED_SHAPE = (180, 2816, 2816, 1)
@@ -42,8 +45,9 @@ class TestOpStreamingMmfReader(object):
         pass
 
     def test_OpStreamingMmfReader(self):
-        # Skip tests since the MMF video file is not located in the folder by default.
-        raise nose.SkipTest     
+        # Skip tests since the MMF video file is not found
+        if not os.path.isfile(self.fileName):
+            raise nose.SkipTest     
     
         # Test the mmf streaming reading operator with a small video containing 180 frames
         self.graph = Graph()
@@ -51,6 +55,16 @@ class TestOpStreamingMmfReader(object):
         mmfReader.FileName.setValue(self.fileName)  
         output = mmfReader.Output[:].wait()
         
+        print "Shape: ", output.shape
+        comp = output[0,:,:,0] == output[100,:,:,0]
+        print "Final == Last: ", len(comp[comp==False])
+        
+        plt.imshow(output[0, ..., 0])
+        plt.show()
+    
+        plt.imshow(output[-1, ..., 0])
+        plt.show()
+                
         # Verify shape, data type, and axis tags
         assert output.shape == EXPECTED_SHAPE
         assert mmfReader.Output.meta.dtype == EXPECTED_DTYPE

@@ -22,6 +22,7 @@
 
 import logging
 import time
+import threading
 
 import numpy
 import vigra
@@ -33,6 +34,9 @@ from lazyflow.utility import Timer
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.utility import Timer 
+
+import logging
+logger = logging.getLogger(__name__)
 
 AXIS_ORDER = 'tyxc'
 
@@ -53,6 +57,7 @@ class OpStreamingMmfReader(Operator):
 
     def __init__(self, *args, **kwargs):
         super(OpStreamingMmfReader, self).__init__(*args, **kwargs)
+        self._lock = threading.Lock()
 
     def setupOutputs(self):
         """
@@ -70,6 +75,9 @@ class OpStreamingMmfReader(Operator):
         self.Output.meta.dtype = self.frame.dtype.type
         self.Output.meta.axistags = vigra.defaultAxistags(AXIS_ORDER)
         self.Output.meta.shape = (frameNum, self.frame.shape[1], self.frame.shape[2], self.frame.shape[3])
+        self.Output.meta.ideal_blockshape = (1,) + self.Output.meta.shape[1:]
+        
+        logger.info("Ideal block shape: {}".format(self.Output.meta.ideal_blockshape))
 
     def execute(self, slot, subindex, roi, result):
         start, stop = roi.start, roi.stop
@@ -78,13 +86,22 @@ class OpStreamingMmfReader(Operator):
         yStart, yStop = start[1], stop[1]
         xStart, xStop = start[2], stop[2]
         cStart, cStop = start[3], stop[3]
-            
-        if self.position != tStart :
-            self.position = tStart
-            frame = self.mmf.getFrame(tStart)
-            self.frame = frame[None, :, :, None]
 
-        result[...] = self.frame[0:1, yStart:yStop, xStart:xStop, cStart:cStop]
+        logger.info("t {}:{}, y {}:{}, x {}:{}".format(tStart, tStop, yStart, yStop, xStart, xStop))
+
+        with Timer() as timer :    
+            for tResult, tFrame in enumerate(range(tStart, tStop)):
+                with self._lock:
+                    frame = self.mmf.getFrame(tFrame)
+                result[tResult, ..., 0] = frame[yStart:yStop, xStart:xStop]
+                    
+#             if self.position != tStart :
+#                 self.position = tStart
+#                 frame = self.mmf.getFrame(tStart)
+#                 self.frame = frame[None, :, :, None] 
+#             result[...] = self.frame[0:1, yStart:yStop, xStart:xStop, cStart:cStop]
+                
+        logger.info( " Frame time elapsed: {}".format(timer.seconds()) )
         
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.FileName:
