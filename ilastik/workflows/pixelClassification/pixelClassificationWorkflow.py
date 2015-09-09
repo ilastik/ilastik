@@ -36,6 +36,7 @@ from ilastik.applets.batchProcessing import BatchProcessingApplet
 
 from lazyflow.graph import Graph
 from lazyflow.roi import TinyVector, fullSlicing
+from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
 
 class PixelClassificationWorkflow(Workflow):
     
@@ -72,6 +73,9 @@ class PixelClassificationWorkflow(Workflow):
         parser.add_argument('--random-label-value', help="The label value to use injecting random labels", default=1, type=int)
         parser.add_argument('--random-label-count', help="The number of random labels to inject via --generate-random-labels", default=2000, type=int)
         parser.add_argument('--retrain', help="Re-train the classifier based on labels stored in project file, and re-save.", action="store_true")
+        parser.add_argument('--trees-number', help='Number of trees for Vigra RF single-thread classifier.', default=100, type=int)
+        parser.add_argument('--variable-importance-path', help='Location to save variable importance table.', default='', type=str)
+        parser.add_argument('--label-proportion', help='Location to save variable importance table', default=1.0, type=float)
 
         # Parse the creation args: These were saved to the project file when this project was first created.
         parsed_creation_args, unused_args = parser.parse_known_args(project_creation_args)
@@ -85,6 +89,9 @@ class PixelClassificationWorkflow(Workflow):
         self.random_label_value = parsed_args.random_label_value
         self.random_label_count = parsed_args.random_label_count
         self.retrain = parsed_args.retrain
+        self.trees_number = parsed_args.trees_number
+        self.variable_importance_path = parsed_args.variable_importance_path
+        self.label_proportion = parsed_args.label_proportion
 
         if parsed_args.filter and parsed_args.filter != parsed_creation_args.filter:
             logger.error("Ignoring new --filter setting.  Filter implementation cannot be changed after initial project creation.")
@@ -303,6 +310,11 @@ class PixelClassificationWorkflow(Workflow):
         if self._headless:
             # In headless mode, let's see the messages from the training operator.
             logging.getLogger("lazyflow.operators.classifierOperators").setLevel(logging.DEBUG)
+
+        if self.variable_importance_path or self.trees_number != 100 or self.label_proportion != 1.0:            
+            new_factory = ParallelVigraRfLazyflowClassifierFactory(num_trees_total=self.trees_number, variable_importance_path=self.variable_importance_path, label_proportion=self.label_proportion)
+            self.pcApplet.topLevelOperator.opTrain.ClassifierFactory.disconnect()
+            self.pcApplet.topLevelOperator.opTrain.ClassifierFactory.setValue(new_factory)
         
         if self.retrain:
             # Cause the classifier to be dirty so it is forced to retrain.
