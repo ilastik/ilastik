@@ -16,21 +16,12 @@ from lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwi
 import logging
 logger = logging.getLogger(__name__)
 
-import ilastik_main
-
-        
-#import argparse
-#parser = argparse.ArgumentParser( description="start an ilastik workflow" )
-#parser.add_argument('--trees', help='Number of trees for Vigra RF single-thread classifier.', default=100)
-#parser.add_argument('--varimp', help='Location to save variable importance table', default='')
 
 class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
     VERSION = 1 # This is used to determine compatibility of pickled classifier factories.
                 # You must bump this if any instance members are added/removed/renamed.
- 
-    parsed_args = None
     
-    def __init__(self, num_trees_total=100, num_forests=None, **kwargs):
+    def __init__(self, num_trees_total=100, num_forests=None, variable_importance_path='', label_proportion=1.0, **kwargs):      
         """
         num_trees_total: The number of trees to train
         num_forests: How many forests in which to distribute the trees (forests can train and predict in parallel)
@@ -40,20 +31,15 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
         """
                 
         self._num_trees = num_trees_total
+        self._label_proportion = label_proportion
+        self._variable_importance_path = variable_importance_path
         self._kwargs = kwargs
         
         # By default, num_forests matches the number of lazyflow worker threads
         self._num_forests = num_forests or Request.global_thread_pool.num_workers
         self._num_forests = max(1, self._num_forests)
     
-    def create_and_train(self, X, y, feature_names=None): 
-        # Use number of trees from command line argument (default trees = 100)
-        parsed_args, workflow_cmdline_args = ilastik_main.parser.parse_known_args()
-        logger.info("Param TREES: {}".format(parsed_args.trees))
-        logger.info("Param VARIMP: {}".format(parsed_args.varimp))     
-          
-        self._num_trees = parsed_args.trees       
-          
+    def create_and_train(self, X, y, feature_names=None):           
         # Distribute trees as evenly as possible
         tree_counts = numpy.array( [self._num_trees // self._num_forests] * self._num_forests )
         tree_counts[:self._num_trees % self._num_forests] += 1
@@ -88,7 +74,7 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
             importances[i] = importance_results
 
         # Sample X and y
-        proportion = 0.01
+        proportion = self._label_proportion #0.01
         row_num = int(proportion*X.shape[0])
         idx = random.sample(range(X.shape[0]), row_num)
         X = X[idx,:]
@@ -106,22 +92,26 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
             
         logger.info("Training took, {} ".format( train_timer.seconds() ) )    
 
-        named_importances = collections.OrderedDict( zip( feature_names, numpy.average(importances, axis=0) ) )
-        importance_table = self.generate_importance_table( named_importances, sort=True )
-        logger.info("Feature Importance measurements during training: {}".format(importance_table) )        
+        weights = numpy.array(tree_counts).astype(float)
+        weights /= weights.sum()
+
+        named_importances = collections.OrderedDict( zip( feature_names, numpy.average(importances, weights=weights, axis=0) ) )
+        
+        importance_table = self._generate_importance_table( named_importances, sort=True )
+        logger.info("Feature importance measurements during training: \n{}".format(importance_table) )        
 
         logger.info( "Training complete. Average OOB: {}".format( numpy.average(oobs) ) )
         return ParallelVigraRfLazyflowClassifier( forests, oobs, known_labels, feature_names )
 
-    @classmethod
-    def generate_importance_table(cls, named_importances_dict, sort=True):
+
+    def _generate_importance_table(self, named_importances_dict, sort=True):
         """
         Return a string of the given importances dict, in csv format, 
         but also with extra spaces for pretty-printing.
         """
         import csv
         from StringIO import StringIO
-        #CSV_FORMAT = { 'delimiter' : '\t', 'lineterminator' : '\n' }
+
         CSV_FORMAT = { 'delimiter' : ',', 'lineterminator' : '\n' }
 
         feature_name_length = max( map(len, named_importances_dict.keys()) )
@@ -149,12 +139,11 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
             importance_strings = map( lambda s: "{: >10}".format(s), importance_strings )
             csv_writer.writerow( [feature_name] + importance_strings )
         
-        # Save var importance table to file
-        parsed_args, workflow_cmdline_args = ilastik_main.parser.parse_known_args()
-        if parsed_args.varimp :   
-            file = open(os.path.join(parsed_args.varimp, 'varimp.txt'), 'w')
-            file.write(output.getvalue())
-            file.close()    
+        # Save variable importance table to file
+        if self._variable_importance_path :   
+             file = open(os.path.join(self._variable_importance_path, 'varimp.txt'), 'w')
+             file.write(output.getvalue())
+             file.close()    
             
         return output.getvalue()
 
