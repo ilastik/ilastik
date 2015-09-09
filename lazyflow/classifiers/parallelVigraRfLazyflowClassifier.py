@@ -21,7 +21,7 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
     VERSION = 1 # This is used to determine compatibility of pickled classifier factories.
                 # You must bump this if any instance members are added/removed/renamed.
     
-    def __init__(self, num_trees_total=100, num_forests=None, variable_importance_path='', label_proportion=1.0, **kwargs):      
+    def __init__(self, num_trees_total=100, num_forests=None, variable_importance_path=None, label_proportion=None, **kwargs):      
         """
         num_trees_total: The number of trees to train
         num_forests: How many forests in which to distribute the trees (forests can train and predict in parallel)
@@ -39,6 +39,15 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
         self._num_forests = num_forests or Request.global_thread_pool.num_workers
         self._num_forests = max(1, self._num_forests)
     
+    def set_num_trees(self, num_trees_total):
+        self._num_trees = num_trees_total
+        
+    def set_variable_importance_path(self, variable_importance_path):
+        self._variable_importance_path = variable_importance_path
+
+    def set_label_proportion(self, label_proportion):
+        self._label_proportion = label_proportion
+        
     def create_and_train(self, X, y, feature_names=None):           
         # Distribute trees as evenly as possible
         tree_counts = numpy.array( [self._num_trees // self._num_forests] * self._num_forests )
@@ -74,11 +83,12 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
             importances[i] = importance_results
 
         # Sample X and y
-        proportion = self._label_proportion #0.01
-        row_num = int(proportion*X.shape[0])
-        idx = random.sample(range(X.shape[0]), row_num)
-        X = X[idx,:]
-        y = y[idx] 
+        if self._label_proportion:
+            proportion = self._label_proportion
+            row_num = int(proportion*X.shape[0])
+            idx = random.sample(range(X.shape[0]), row_num)
+            X = X[idx,:]
+            y = y[idx] 
 
         # Train them all in parallel
         with Timer() as train_timer:
@@ -141,9 +151,9 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
         
         # Save variable importance table to file
         if self._variable_importance_path :   
-             file = open(os.path.join(self._variable_importance_path, 'varimp.txt'), 'w')
-             file.write(output.getvalue())
-             file.close()    
+            file = open(os.path.join(self._variable_importance_path, 'varimp.txt'), 'w')
+            file.write(output.getvalue())
+            file.close()    
             
         return output.getvalue()
 
