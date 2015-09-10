@@ -62,12 +62,11 @@ class OpStreamingMmfReader(Operator):
         self.mmf = MmfParser.MmfParser(str(fileName))
         frameNum = self.mmf.getNumberOfFrames()
         
-        frame = self.mmf.getFrame(0)
-        self.frame = frame[None, :, :, None]
+        self.frame = self.mmf.getFrame(0)
 
         self.Output.meta.dtype = self.frame.dtype.type
         self.Output.meta.axistags = vigra.defaultAxistags(AXIS_ORDER)
-        self.Output.meta.shape = (frameNum, self.frame.shape[1], self.frame.shape[2], self.frame.shape[3])
+        self.Output.meta.shape = (frameNum, self.frame.shape[0], self.frame.shape[1], 1)
         self.Output.meta.ideal_blockshape = (1,) + self.Output.meta.shape[1:]
 
     def execute(self, slot, subindex, roi, result):
@@ -79,9 +78,11 @@ class OpStreamingMmfReader(Operator):
         cStart, cStop = start[3], stop[3]
   
         for tResult, tFrame in enumerate(range(tStart, tStop)) :
-            with self._lock:
-                frame = self.mmf.getFrame(tFrame)
-            result[tResult, ..., 0] = frame[yStart:yStop, xStart:xStop]
+            if self.position != tFrame:
+                with self._lock:
+                    self.position = tFrame
+                    self.frame = self.mmf.getFrame(tFrame)
+            result[tResult, ..., 0] = self.frame[yStart:yStop, xStart:xStop]
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.FileName:

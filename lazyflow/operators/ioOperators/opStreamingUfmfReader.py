@@ -68,14 +68,13 @@ class OpStreamingUfmfReader(Operator):
         height = self.fmf.get_height()
         
         try:
-            frame, timestamp = self.fmf.get_next_frame()
-            self.frame = frame[None, :, :, None]
+            self.frame, timestamp = self.fmf.get_next_frame()
         except FMF.NoMoreFramesException, err:
             logger.info("Error reading uFMF frame.")
 
         self.Output.meta.dtype = self.frame.dtype.type
         self.Output.meta.axistags = vigra.defaultAxistags(AXIS_ORDER)
-        self.Output.meta.shape = (frameNum, self.frame.shape[1], self.frame.shape[2], self.frame.shape[3])
+        self.Output.meta.shape = (frameNum, self.frame.shape[0], self.frame.shape[1], 1)
         self.Output.meta.ideal_blockshape = (1,) + self.Output.meta.shape[1:]
         
     def execute(self, slot, subindex, roi, result):
@@ -87,10 +86,12 @@ class OpStreamingUfmfReader(Operator):
         cStart, cStop = start[3], stop[3]    
   
         for tResult, tFrame in enumerate(range(tStart, tStop)):
-            with self._lock:
-                self.fmf.seek(tStart)
-                frame, timestamp = self.fmf.get_next_frame()
-            result[tResult, ..., 0] = frame[yStart:yStop, xStart:xStop] 
+            if self.position != tFrame:
+                with self._lock:
+                    self.position = tFrame
+                    self.fmf.seek(tStart)
+                    self.frame, timestamp = self.fmf.get_next_frame()
+            result[tResult, ..., 0] = self.frame[yStart:yStop, xStart:xStop] 
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.FileName:

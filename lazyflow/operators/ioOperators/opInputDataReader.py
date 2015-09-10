@@ -181,7 +181,10 @@ class OpInputDataReader(Operator):
         if '.mmf' in filePath:
             mmfReader = OpStreamingMmfReader(parent=self)
             mmfReader.FileName.setValue(filePath)
+
+            return ([mmfReader], mmfReader.Output)
             
+            '''
             # Cache the frames we read
             frameShape = mmfReader.Output.meta.ideal_blockshape
               
@@ -190,8 +193,9 @@ class OpInputDataReader(Operator):
             mmfCache.innerBlockShape.setValue( frameShape )
             mmfCache.outerBlockShape.setValue( frameShape )
             mmfCache.Input.connect( mmfReader.Output )
-               
+
             return ([mmfReader, mmfCache], mmfCache.Output)
+            '''
         else :
             return ([], None)
     
@@ -200,8 +204,12 @@ class OpInputDataReader(Operator):
             ufmfReader = OpStreamingUfmfReader(parent=self)
             ufmfReader.FileName.setValue(filePath)
             
+            return ([ufmfReader], ufmfReader.Output)
+            
             # Cache the frames we read
+            '''
             frameShape = ufmfReader.Output.meta.ideal_blockshape
+            
             ufmfCache = OpBlockedArrayCache( parent=self )
             ufmfCache.fixAtCurrent.setValue( False )
             ufmfCache.innerBlockShape.setValue( frameShape )
@@ -209,6 +217,7 @@ class OpInputDataReader(Operator):
             ufmfCache.Input.connect( ufmfReader.Output )
              
             return ([ufmfReader, ufmfCache], ufmfCache.Output)
+            '''
         else :
             return ([], None)
     
