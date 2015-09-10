@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
-    VERSION = 1 # This is used to determine compatibility of pickled classifier factories.
+    VERSION = 2 # This is used to determine compatibility of pickled classifier factories.
                 # You must bump this if any instance members are added/removed/renamed.
     
     def __init__(self, num_trees_total=100, num_forests=None, variable_importance_path=None, label_proportion=None, **kwargs):      
@@ -73,7 +73,7 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
         for tree_count in tree_counts:
             forests.append( vigra.learning.RandomForest(tree_count, **self._kwargs) )
 
-        # Train them all in parallel
+        # Train forests in parallel
         oobs = [None] * len(forests)
         importances = [None] * len(forests)
         
@@ -90,27 +90,40 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
             X = X[idx,:]
             y = y[idx] 
 
-        # Train them all in parallel
-        with Timer() as train_timer:
-            pool = RequestPool()
-            for i, forest in enumerate(forests):
-                req = Request( partial(forest.learnRFWithFeatureSelection, X, y) )
-                # save the oobs
-                req.notify_finished( partial( store_training_results, i ) )
-                pool.add( req )
-            pool.wait()
+        if feature_names:
+            with Timer() as train_timer:
+                pool = RequestPool()
+                for i, forest in enumerate(forests):
+                    req = Request( partial(forest.learnRFWithFeatureSelection, X, y) )
+                    # save the oobs
+                    req.notify_finished( partial( store_training_results, i ) )
+                    pool.add( req )
+                pool.wait()
+                
+            logger.info("Training took, {} ".format( train_timer.seconds() ) )    
+    
+            weights = numpy.array(tree_counts).astype(float)
+            weights /= weights.sum()
+    
+            named_importances = collections.OrderedDict( zip( feature_names, numpy.average(importances, weights=weights, axis=0) ) )
             
-        logger.info("Training took, {} ".format( train_timer.seconds() ) )    
+            importance_table = self._generate_importance_table( named_importances, sort=True )
+            
+            logger.info("Feature importance measurements during training: \n{}".format(importance_table) )  
+            logger.info( "Training complete. Average OOB: {}".format( numpy.average(oobs) ) )
+               
+        else:
+            oobs = None
+            known_labels = None
+            feature_names = None
+            
+            with Timer() as train_timer:
+                pool = RequestPool()
+                for i, forest in enumerate(forests):
+                    req = Request( partial(forest.learnRF, X, y) )
+                    pool.add( req )
+                pool.wait()                  
 
-        weights = numpy.array(tree_counts).astype(float)
-        weights /= weights.sum()
-
-        named_importances = collections.OrderedDict( zip( feature_names, numpy.average(importances, weights=weights, axis=0) ) )
-        
-        importance_table = self._generate_importance_table( named_importances, sort=True )
-        logger.info("Feature importance measurements during training: \n{}".format(importance_table) )        
-
-        logger.info( "Training complete. Average OOB: {}".format( numpy.average(oobs) ) )
         return ParallelVigraRfLazyflowClassifier( forests, oobs, known_labels, feature_names )
 
 
