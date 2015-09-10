@@ -39,21 +39,23 @@ class TestThreadPool(object):
 #             self.testBasic()
     
     def testBasic(self):        
-        e1 = threading.Event()
-        e2 = threading.Event()
+        f1_started = threading.Event()
+        f2_started = threading.Event()
+        f2_finished = threading.Event()
         
         def f1():
-            e1.set()
+            f1_started.set()
         
         def f2():
-            e1.wait()
-            e2.set()
+            f2_started.set()
+            f1_started.wait()
+            f2_finished.set()
         
         TestThreadPool.thread_pool.wake_up( f2 )
-        time.sleep(0.1)
+        f2_started.wait()
         TestThreadPool.thread_pool.wake_up( f1 )
         
-        e2.wait()
+        f2_finished.wait()
         
         # This is just to make sure the test is doing what its supposed to.
         assert f1.assigned_worker != f2.assigned_worker, \
