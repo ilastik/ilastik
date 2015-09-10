@@ -73,7 +73,7 @@ class PixelClassificationWorkflow(Workflow):
         parser.add_argument('--random-label-value', help="The label value to use injecting random labels", default=1, type=int)
         parser.add_argument('--random-label-count', help="The number of random labels to inject via --generate-random-labels", default=2000, type=int)
         parser.add_argument('--retrain', help="Re-train the classifier based on labels stored in project file, and re-save.", action="store_true")
-        parser.add_argument('--trees-number', help='Number of trees for Vigra RF classifier.', type=int)
+        parser.add_argument('--tree-count', help='Number of trees for Vigra RF classifier.', type=int)
         parser.add_argument('--variable-importance-path', help='Location of variable-importance table.', type=str)
         parser.add_argument('--label-proportion', help='Proportion of feature-pixels used to train the classifier.', type=float)
 
@@ -89,7 +89,7 @@ class PixelClassificationWorkflow(Workflow):
         self.random_label_value = parsed_args.random_label_value
         self.random_label_count = parsed_args.random_label_count
         self.retrain = parsed_args.retrain
-        self.trees_number = parsed_args.trees_number
+        self.tree_count = parsed_args.tree_count
         self.variable_importance_path = parsed_args.variable_importance_path
         self.label_proportion = parsed_args.label_proportion
 
@@ -315,9 +315,9 @@ class PixelClassificationWorkflow(Workflow):
             classifier_factory = self.pcApplet.topLevelOperator.opTrain.ClassifierFactory.value
             classifier_factory.set_variable_importance_path( self.variable_importance_path )
             
-        if self.trees_number:
+        if self.tree_count:
             classifier_factory = self.pcApplet.topLevelOperator.opTrain.ClassifierFactory.value
-            classifier_factory.set_num_trees( self.trees_number )
+            classifier_factory.set_num_trees( self.tree_count )
             
         if self.label_proportion:
             classifier_factory = self.pcApplet.topLevelOperator.opTrain.ClassifierFactory.value
