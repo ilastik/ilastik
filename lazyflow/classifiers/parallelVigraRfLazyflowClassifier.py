@@ -21,7 +21,7 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
     VERSION = 2 # This is used to determine compatibility of pickled classifier factories.
                 # You must bump this if any instance members are added/removed/renamed.
     
-    def __init__(self, num_trees_total=100, num_forests=None, variable_importance_path=None, label_proportion=None, **kwargs):      
+    def __init__(self, num_trees_total=100, num_forests=None, variable_importance_path=None, label_proportion=None, variable_importance_enabled=True, **kwargs):      
         """
         num_trees_total: The number of trees to train
         num_forests: How many forests in which to distribute the trees (forests can train and predict in parallel)
@@ -33,6 +33,7 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
         self._num_trees = num_trees_total
         self._label_proportion = label_proportion
         self._variable_importance_path = variable_importance_path
+        self._variable_importance_enabled = variable_importance_enabled
         self._kwargs = kwargs
         
         # By default, num_forests matches the number of lazyflow worker threads
@@ -82,6 +83,9 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
             oobs[i] = oob
             importances[i] = importance_results
 
+        def store_oob_results(i, oob):
+            oobs[i] = oob
+
         # Sample X and y
         if self._label_proportion:
             proportion = self._label_proportion
@@ -89,13 +93,18 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
             idx = random.sample(range(X.shape[0]), row_num)
             X = X[idx,:]
             y = y[idx] 
-
-        if feature_names:
+        
+        # Train classifier with feature importance visitor    
+        if self._variable_importance_enabled:
+            if not feature_names:
+                num_features = X.shape[1]
+                feature_names = ["feature-{:02d}".format(i) for i in range(num_features)]
+            
             with Timer() as train_timer:
                 pool = RequestPool()
                 for i, forest in enumerate(forests):
                     req = Request( partial(forest.learnRFWithFeatureSelection, X, y) )
-                    # save the oobs
+                    # save the training results
                     req.notify_finished( partial( store_training_results, i ) )
                     pool.add( req )
                 pool.wait()
@@ -110,10 +119,9 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
             importance_table = self._generate_importance_table( named_importances, sort=True )
             
             logger.info("Feature importance measurements during training: \n{}".format(importance_table) )  
-            logger.info( "Training complete. Average OOB: {}".format( numpy.average(oobs) ) )
-               
+            
+        # train classifier without feature importance visitor       
         else:
-            oobs = None
             known_labels = None
             feature_names = None
             
@@ -121,9 +129,12 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
                 pool = RequestPool()
                 for i, forest in enumerate(forests):
                     req = Request( partial(forest.learnRF, X, y) )
+                    # save the oob results
+                    req.notify_finished( partial( store_oob_results, i ) )
                     pool.add( req )
-                pool.wait()                  
-
+                pool.wait()  
+                                   
+        logger.info( "Training complete. Average OOB: {}".format( numpy.average(oobs) ) )
         return ParallelVigraRfLazyflowClassifier( forests, oobs, known_labels, feature_names )
 
 
