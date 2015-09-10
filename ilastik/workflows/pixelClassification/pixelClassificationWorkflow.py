@@ -318,10 +318,13 @@ class PixelClassificationWorkflow(Workflow):
         if self.tree_count:
             classifier_factory = self.pcApplet.topLevelOperator.opTrain.ClassifierFactory.value
             classifier_factory.set_num_trees( self.tree_count )
-            
+                        
         if self.label_proportion:
             classifier_factory = self.pcApplet.topLevelOperator.opTrain.ClassifierFactory.value
             classifier_factory.set_label_proportion( self.label_proportion )
+            
+        if self.tree_count or self.label_proportion:
+            self.pcApplet.topLevelOperator.ClassifierFactory.setDirty()
             
         if self.retrain:
             # Cause the classifier to be dirty so it is forced to retrain.
