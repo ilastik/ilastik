@@ -73,9 +73,9 @@ class PixelClassificationWorkflow(Workflow):
         parser.add_argument('--random-label-value', help="The label value to use injecting random labels", default=1, type=int)
         parser.add_argument('--random-label-count', help="The number of random labels to inject via --generate-random-labels", default=2000, type=int)
         parser.add_argument('--retrain', help="Re-train the classifier based on labels stored in project file, and re-save.", action="store_true")
-        parser.add_argument('--trees-number', help='Number of trees for Vigra RF single-thread classifier.', type=int)
-        parser.add_argument('--variable-importance-path', help='Location to save variable importance table.', type=str)
-        parser.add_argument('--label-proportion', help='Location to save variable importance table', type=float)
+        parser.add_argument('--trees-number', help='Number of trees for Vigra RF classifier.', type=int)
+        parser.add_argument('--variable-importance-path', help='Location of variable-importance table.', type=str)
+        parser.add_argument('--label-proportion', help='Proportion of feature-pixels used to train the classifier.', type=float)
 
         # Parse the creation args: These were saved to the project file when this project was first created.
         parsed_creation_args, unused_args = parser.parse_known_args(project_creation_args)
