@@ -36,7 +36,6 @@ from ilastik.applets.batchProcessing import BatchProcessingApplet
 
 from lazyflow.graph import Graph
 from lazyflow.roi import TinyVector, fullSlicing
-from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
 
 class PixelClassificationWorkflow(Workflow):
     
