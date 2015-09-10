@@ -72,6 +72,9 @@ class PixelClassificationWorkflow(Workflow):
         parser.add_argument('--random-label-value', help="The label value to use injecting random labels", default=1, type=int)
         parser.add_argument('--random-label-count', help="The number of random labels to inject via --generate-random-labels", default=2000, type=int)
         parser.add_argument('--retrain', help="Re-train the classifier based on labels stored in project file, and re-save.", action="store_true")
+        parser.add_argument('--tree-count', help='Number of trees for Vigra RF classifier.', type=int)
+        parser.add_argument('--variable-importance-path', help='Location of variable-importance table.', type=str)
+        parser.add_argument('--label-proportion', help='Proportion of feature-pixels used to train the classifier.', type=float)
 
         # Parse the creation args: These were saved to the project file when this project was first created.
         parsed_creation_args, unused_args = parser.parse_known_args(project_creation_args)
@@ -85,6 +88,9 @@ class PixelClassificationWorkflow(Workflow):
         self.random_label_value = parsed_args.random_label_value
         self.random_label_count = parsed_args.random_label_count
         self.retrain = parsed_args.retrain
+        self.tree_count = parsed_args.tree_count
+        self.variable_importance_path = parsed_args.variable_importance_path
+        self.label_proportion = parsed_args.label_proportion
 
         if parsed_args.filter and parsed_args.filter != parsed_creation_args.filter:
             logger.error("Ignoring new --filter setting.  Filter implementation cannot be changed after initial project creation.")
@@ -303,7 +309,22 @@ class PixelClassificationWorkflow(Workflow):
         if self._headless:
             # In headless mode, let's see the messages from the training operator.
             logging.getLogger("lazyflow.operators.classifierOperators").setLevel(logging.DEBUG)
-        
+
+        if self.variable_importance_path: 
+            classifier_factory = self.pcApplet.topLevelOperator.opTrain.ClassifierFactory.value
+            classifier_factory.set_variable_importance_path( self.variable_importance_path )
+            
+        if self.tree_count:
+            classifier_factory = self.pcApplet.topLevelOperator.opTrain.ClassifierFactory.value
+            classifier_factory.set_num_trees( self.tree_count )
+                        
+        if self.label_proportion:
+            classifier_factory = self.pcApplet.topLevelOperator.opTrain.ClassifierFactory.value
+            classifier_factory.set_label_proportion( self.label_proportion )
+            
+        if self.tree_count or self.label_proportion:
+            self.pcApplet.topLevelOperator.ClassifierFactory.setDirty()
+            
         if self.retrain:
             # Cause the classifier to be dirty so it is forced to retrain.
             # (useful if the stored labels were changed outside ilastik)
