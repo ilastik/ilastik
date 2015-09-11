@@ -29,6 +29,9 @@ from lazyflow.operators.ioOperators import OpStackLoader, OpBlockwiseFilesetRead
 from lazyflow.utility.jsonConfig import JsonConfigParser
 from lazyflow.utility.pathHelpers import isUrl
 
+from opStreamingUfmfReader import OpStreamingUfmfReader
+from opStreamingMmfReader import OpStreamingMmfReader
+
 try:
     from lazyflow.operators.ioOperators import OpDvidVolume
     _supports_dvid = True
@@ -53,13 +56,14 @@ class OpInputDataReader(Operator):
     name = "OpInputDataReader"
     category = "Input"
 
+    videoExts = ['ufmf', 'mmf', 'avi']
     h5Exts = ['h5', 'hdf5', 'ilp']
     npyExts = ['npy']
     blockwiseExts = ['json']
     tiledExts = ['json']
     tiffExts = ['tif', 'tiff']
     vigraImpexExts = vigra.impex.listExtensions().split()
-    SupportedExtensions = h5Exts + npyExts + vigraImpexExts + blockwiseExts
+    SupportedExtensions = h5Exts + npyExts + vigraImpexExts + blockwiseExts + videoExts
     if _supports_dvid:
         dvidExts = ['dvidvol']
         SupportedExtensions += dvidExts
@@ -125,7 +129,9 @@ class OpInputDataReader(Operator):
         if self._file is not None:
             self._file.close()
 
-        openFuncs = [ self._attemptOpenAsDvidVolume,
+        openFuncs = [ self._attemptOpenAsUfmf,
+                      self._attemptOpenAsMmf,
+                      self._attemptOpenAsDvidVolume,
                       self._attemptOpenAsTiffStack,
                       self._attemptOpenAsStack,
                       self._attemptOpenAsHdf5,
@@ -170,6 +176,50 @@ class OpInputDataReader(Operator):
 
         # Directly connect our own output to the internal output
         self.Output.connect( self.opInjector.Output )
+
+    def _attemptOpenAsMmf(self, filePath):          
+        if '.mmf' in filePath:
+            mmfReader = OpStreamingMmfReader(parent=self)
+            mmfReader.FileName.setValue(filePath)
+
+            return ([mmfReader], mmfReader.Output)
+            
+            '''
+            # Cache the frames we read
+            frameShape = mmfReader.Output.meta.ideal_blockshape
+              
+            mmfCache = OpBlockedArrayCache( parent=self )
+            mmfCache.fixAtCurrent.setValue( False )
+            mmfCache.innerBlockShape.setValue( frameShape )
+            mmfCache.outerBlockShape.setValue( frameShape )
+            mmfCache.Input.connect( mmfReader.Output )
+
+            return ([mmfReader, mmfCache], mmfCache.Output)
+            '''
+        else :
+            return ([], None)
+    
+    def _attemptOpenAsUfmf(self, filePath):          
+        if '.ufmf' in filePath:
+            ufmfReader = OpStreamingUfmfReader(parent=self)
+            ufmfReader.FileName.setValue(filePath)
+            
+            return ([ufmfReader], ufmfReader.Output)
+            
+            # Cache the frames we read
+            '''
+            frameShape = ufmfReader.Output.meta.ideal_blockshape
+            
+            ufmfCache = OpBlockedArrayCache( parent=self )
+            ufmfCache.fixAtCurrent.setValue( False )
+            ufmfCache.innerBlockShape.setValue( frameShape )
+            ufmfCache.outerBlockShape.setValue( frameShape )
+            ufmfCache.Input.connect( ufmfReader.Output )
+             
+            return ([ufmfReader, ufmfCache], ufmfCache.Output)
+            '''
+        else :
+            return ([], None)
     
     def _attemptOpenAsTiffStack(self, filePath):
         if not ('*' in filePath or os.path.pathsep in filePath):
