@@ -77,12 +77,12 @@ class OpStreamingMmfReader(Operator):
         xStart, xStop = start[2], stop[2]
         cStart, cStop = start[3], stop[3]
   
-        for tResult, tFrame in enumerate(range(tStart, tStop)) :
-            if self.position != tFrame:
-                with self._lock:
+        for tResult, tFrame in enumerate(range(tStart, tStop)):
+            with self._lock:
+                if self.position != tFrame:
                     self.position = tFrame
                     self.frame = self.mmf.getFrame(tFrame)
-            result[tResult, ..., 0] = self.frame[yStart:yStop, xStart:xStop]
+                result[tResult, ..., 0] = self.frame[yStart:yStop, xStart:xStop]
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.FileName:

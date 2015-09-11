@@ -86,12 +86,12 @@ class OpStreamingUfmfReader(Operator):
         cStart, cStop = start[3], stop[3]    
   
         for tResult, tFrame in enumerate(range(tStart, tStop)):
-            if self.position != tFrame:
-                with self._lock:
+            with self._lock:
+                if self.position != tFrame:
                     self.position = tFrame
                     self.fmf.seek(tStart)
                     self.frame, timestamp = self.fmf.get_next_frame()
-            result[tResult, ..., 0] = self.frame[yStart:yStop, xStart:xStop] 
+                result[tResult, ..., 0] = self.frame[yStart:yStop, xStart:xStop] 
 
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.FileName:
