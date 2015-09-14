@@ -330,11 +330,11 @@ class OpPreprocessing(Operator):
 
         self._opFilterNormalize = OpNormalize255( parent=self )
         self._opFilterNormalize.Input.connect( self._opFilter.Output )
-        
+
         self._opFilterCache = OpBlockedArrayCache( parent=self )
 
         self._opWatershed = OpSimpleWatershed( parent=self )
-        
+
         self._opWatershedCache = OpBlockedArrayCache( parent=self )
 
         self._opOverlayFilter = OpFilter( parent=self )
@@ -395,11 +395,11 @@ class OpPreprocessing(Operator):
         self.PreprocessedData.meta.shape = (1,)
         self.PreprocessedData.meta.dtype = object
 
-        # TODO: Fix corruption issue (maybe try opSplitRequestsBlockwise everywhere instead?)
         innerCacheBlockShape = (256,256,256,256,256)
-        outerCacheBlockShape = (10000,10000,10000,10000,10000) # must be larger than max block size, otherwise data is corrupted
+        outerCacheBlockShape = (512,512,512,512,512)
+        # TODO: remove testing values
         innerCacheBlockShape = (100,100,100,100,100)
-        outerCacheBlockShape = (100,100,100,100,100) # must be larger than max block size, otherwise data is corrupted
+        outerCacheBlockShape = (100,100,100,100,100)
 
         self._opFilterCache.fixAtCurrent.setValue(False)
         self._opFilterCache.innerBlockShape.setValue( innerCacheBlockShape )
