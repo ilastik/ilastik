@@ -109,7 +109,12 @@ class TrackingBaseGui( LayerViewerGui ):
 
             mergerLayer = ColortableLayer( self.mergersrc, merger_ct )
             mergerLayer.name = "Merger"
-            mergerLayer.visible = True
+
+            if 'withMergerResolution' in parameters.keys() and not parameters['withMergerResolution']:
+                mergerLayer.visible = True
+            else:
+                mergerLayer.visible = False
+
             layers.append(mergerLayer)
 
         if self.topLevelOperatorView.CachedOutput.ready():
