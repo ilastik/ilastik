@@ -90,14 +90,25 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         self._drawer.timeoutBox.textChanged.connect(self._onTimeoutBoxChanged)
 
         if not ilastik_config.getboolean("ilastik", "debug"):
-            assert self._drawer.trackletsBox.isChecked()
-            self._drawer.trackletsBox.hide()
-            
-            assert not self._drawer.hardPriorBox.isChecked()
-            self._drawer.hardPriorBox.hide()
+            def checkboxAssertHandler(checkbox, assertEnabled=True):
+                if checkbox.isChecked() == assertEnabled:
+                    checkbox.hide()
+                else:
+                    checkbox.setEnabled(False)
 
-            assert not self._drawer.opticalBox.isChecked()
-            self._drawer.opticalBox.hide()
+            checkboxAssertHandler(self._drawer.trackletsBox, True)
+
+            if self._drawer.classifierPriorBox.isChecked():
+                self._drawer.hardPriorBox.hide()
+                self._drawer.classifierPriorBox.hide()
+                self._drawer.sizeDepBox.hide()
+            else:
+                self._drawer.hardPriorBox.setEnabled(False)
+                self._drawer.classifierPriorBox.setEnabled(False)
+                self._drawer.sizeDepBox.setEnabled(False)
+
+            checkboxAssertHandler(self._drawer.opticalBox, False)
+            checkboxAssertHandler(self._drawer.mergerResolutionBox, True)
 
             self._drawer.maxDistBox.hide() # hide the maximal distance box
             self._drawer.label_2.hide() # hie the maximal distance label
