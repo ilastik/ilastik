@@ -433,7 +433,6 @@ class OpConservationTracking(OpTrackingBase):
         if with_merger_resolution:
             label_image = self.RelabeledImage
 
-            # TODO: how do we merge the newly computed features with the previously stored ones?
             opRelabeledRegionFeatures = self._setupRelabeledFeatureSlot(object_feature_slot)
             object_feature_slot = opRelabeledRegionFeatures.RegionFeatures
         else:
