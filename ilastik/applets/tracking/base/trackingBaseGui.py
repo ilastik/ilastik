@@ -141,7 +141,7 @@ class TrackingBaseGui( LayerViewerGui ):
         objLayer = ColortableLayer( self.objectssrc, ct )
         objLayer.name = "Objects"
         objLayer.opacity = 1.0
-        objLayer.visible = True
+        objLayer.visible = False
         layers.append(objLayer)
 
         if self.mainOperator.RawImage.ready():
