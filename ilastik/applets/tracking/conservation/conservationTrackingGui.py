@@ -285,6 +285,11 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         color = self.mainOperator.CachedOutput(slicing).wait()
         return color.flat[0]
 
+    def get_object(self, pos5d):
+        slicing = tuple(slice(i, i+1) for i in pos5d)
+        label = self.mainOperator.RelabeledImage(slicing).wait()
+        return label.flat[0], pos5d[0]
+
     @property
     def gui_applet(self):
         return self.applet
