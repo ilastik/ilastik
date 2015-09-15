@@ -276,7 +276,7 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
 
     def get_feature_names(self):
         params = self.topLevelOperatorView.Parameters
-        if params.value["withDivisions"] if params.ready() else False:
+        if params.ready() and params.value["withDivisions"]:
             return self.topLevelOperatorView.ComputedFeatureNamesWithDivFeatures([]).wait()
         return self.topLevelOperatorView.ComputedFeatureNames([]).wait()
 
