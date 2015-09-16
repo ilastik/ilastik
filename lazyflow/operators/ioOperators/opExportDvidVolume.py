@@ -17,11 +17,12 @@ import contextlib
 
 import numpy
 
-import pydvid
-
 from lazyflow.graph import Operator, InputSlot
 from lazyflow.utility import OrderedSignal, BigRequestStreamer
 from lazyflow.roi import roiFromShape
+
+from libdvid import DVIDException
+from libdvid.voxels import VoxelsAccessor, VoxelsMetadata
 
 import logging
 logger = logging.getLogger(__name__)
@@ -69,42 +70,38 @@ class OpExportDvidVolume(Operator):
         else:
             offset_start = (0,) * len( self.Input.meta.shape )
 
-        connection = pydvid.dvid_connection.DvidConnection( hostname )
-        with contextlib.closing( connection ):
-            self.progressSignal(5)
-            
-            # Get the dataset details
-            try:
-                metadata = pydvid.voxels.get_metadata(connection, uuid, dataname)
-            except pydvid.errors.DvidHttpError as ex:
-                if ex.status_code != 404:
-                    raise
-                # Dataset doesn't exist yet.  Let's create it.
-                metadata = pydvid.voxels.VoxelsMetadata.create_default_metadata( shape, 
-                                                                                 self.Input.meta.dtype, 
-                                                                                 axiskeys, 
-                                                                                 0.0, 
-                                                                                 "" )
-                pydvid.voxels.create_new(connection, uuid, dataname, metadata)
-    
-            # Since this class is generall used to push large blocks of data,
-            #  we'll be nice and set throttle=True
-            client = pydvid.voxels.VoxelsAccessor( connection, uuid, dataname, throttle=True )
-            
-            def handle_block_result(roi, data):
-                # Send it to dvid
-                roi = numpy.asarray(roi)
-                roi += offset_start
-                start, stop = roi
-                if self._transpose_axes:
-                    data = data.transpose()
-                    start = tuple(reversed(start))
-                    stop = tuple(reversed(stop))
-                    client.post_ndarray( start, stop, data )
-            requester = BigRequestStreamer( self.Input, roiFromShape( self.Input.meta.shape ) )
-            requester.resultSignal.subscribe( handle_block_result )
-            requester.progressSignal.subscribe( self.progressSignal )
-            requester.execute()
+        self.progressSignal(5)
+        
+        # Get the dataset details
+        try:
+            metadata = VoxelsAccessor.get_metadata(hostname, uuid, dataname)
+        except VoxelsAccessor.BadRequestError as ex:
+            # Dataset doesn't exist yet.  Let's create it.
+            metadata = VoxelsMetadata.create_default_metadata( shape, 
+                                                               self.Input.meta.dtype, 
+                                                               axiskeys, 
+                                                               0.0, 
+                                                               "" )
+            VoxelsAccessor.create_new(hostname, uuid, dataname, metadata)
+
+        # Since this class is generally used to push large blocks of data,
+        #  we'll be nice and set throttle=True
+        client = VoxelsAccessor( hostname, uuid, dataname, throttle=True )
+        
+        def handle_block_result(roi, data):
+            # Send it to dvid
+            roi = numpy.asarray(roi)
+            roi += offset_start
+            start, stop = roi
+            if self._transpose_axes:
+                data = data.transpose()
+                start = tuple(reversed(start))
+                stop = tuple(reversed(stop))
+                client.post_ndarray( start, stop, data )
+        requester = BigRequestStreamer( self.Input, roiFromShape( self.Input.meta.shape ) )
+        requester.resultSignal.subscribe( handle_block_result )
+        requester.progressSignal.subscribe( self.progressSignal )
+        requester.execute()
         
         self.progressSignal(100)
     

@@ -24,18 +24,53 @@ import shutil
 import tempfile
 import unittest
 import platform
+import httplib
+import json
+import time
 
 import numpy
 import vigra
 import h5py
 
 from lazyflow.graph import Graph
+from lazyflow.roi import roiFromShape
 from lazyflow.operators import OpArrayPiper
+from lazyflow.operators.ioOperators import OpExportSlot, OpInputDataReader
 
 try:
     from lazyflow.operators.ioOperators import OpExportDvidVolume
-    # Must be imported AFTER lazyflow, which adds pydvid to sys.path
-    from mockserver.h5mockserver import H5MockServer, H5MockServerDataFile 
+    from libdvid import DVIDConnection, ConnectionMethod, DVIDNodeService
+    from libdvid.voxels import VoxelsMetadata, VoxelsAccessor
+    TEST_DVID_SERVER = os.getenv("TEST_DVID_SERVER", "127.0.0.1:8000")
+    
+    def get_testrepo_root_uuid():
+        connection = DVIDConnection(TEST_DVID_SERVER)
+        status, body, error_message = connection.make_request( "/repos/info", ConnectionMethod.GET)
+        assert status == httplib.OK, "Request for /repos/info returned status {}".format( status )
+        assert error_message == ""
+        repos_info = json.loads(body)
+        test_repos = filter( lambda (uuid, repo_info): repo_info and repo_info['Alias'] == 'testrepo', 
+                             repos_info.items() )
+        if test_repos:
+            uuid = test_repos[0][0]
+            return str(uuid)
+        else:
+            from libdvid import DVIDServerService
+            server = DVIDServerService(TEST_DVID_SERVER)
+            uuid = server.create_new_repo("testrepo", "This repo is for unit tests to use and abuse.");
+            return str(uuid)
+
+    def delete_all_data_instances(uuid):
+        connection = DVIDConnection(TEST_DVID_SERVER)
+        repo_info_uri = "/repo/{uuid}/info".format( uuid=uuid )
+        status, body, error_message = connection.make_request( repo_info_uri, ConnectionMethod.GET)
+        assert status == httplib.OK, "Request for {} returned status {}".format(repo_info_uri, status)
+        assert error_message == ""
+        repo_info = json.loads(body)
+        for instance_name in repo_info["DataInstances"].keys():
+            status, body, error_message = connection.make_request( "/api/repo/{uuid}/{dataname}?imsure=true"
+                                                                   .format( uuid=uuid, dataname=str(instance_name) ),
+                                                                   ConnectionMethod.DELETE )            
 except ImportError:
     have_dvid = False
 else:
@@ -44,58 +79,31 @@ else:
 
 class TestOpDvidVolume(unittest.TestCase):
     
-    @classmethod
-    @unittest.skipIf(not have_dvid, "optional module pydvid not available.")
+    @unittest.skipIf(not have_dvid, "optional module libdvid not available.")
     @unittest.skipIf(platform.system() == "Windows", "DVID not tested on Windows. Skipping.")
-    def setupClass(cls):
+    def setUp(self):
         """
         Override.  Called by nosetests.
-        """
-        if not have_dvid:
-            return
-        cls._tmp_dir = tempfile.mkdtemp()
-        cls.test_filepath = os.path.join( cls._tmp_dir, "test_data.h5" )
-        cls._generate_empty_h5(cls.test_filepath)
-        cls.server_proc, cls.shutdown_event = H5MockServer.create_and_start( cls.test_filepath, "localhost", 8000, 
-                                                                             same_process=True, disable_server_logging=True )
-
-    @classmethod
-    def teardownClass(cls):
-        """
-        Override.  Called by nosetests.
-        """
-        if not have_dvid:
-            return
-        cls.shutdown_event.set()
-        cls.server_proc.join()
-        shutil.rmtree(cls._tmp_dir)
-
-    @classmethod
-    def _generate_empty_h5(cls, test_filepath):
-        """
-        Generate a temporary hdf5 file for the mock server to use (and us to compare against)
         """
         # Choose names
-        cls.dvid_dataset = "datasetA"
-        cls.data_uuid = "abcde"
-        cls.data_name = "indices_data"
+        self.hostname = TEST_DVID_SERVER
+        self.dvid_repo = "datasetA"
+        self.data_name = "exported_data_{}".format(time.time())
+        self.data_uuid = get_testrepo_root_uuid()
 
-        # Write to h5 file
-        with H5MockServerDataFile( test_filepath ) as test_h5file:
-            test_h5file.add_node( cls.dvid_dataset, cls.data_uuid )
-    
+    def tearDown(self):
+        """
+        Override.  Called by nosetests.
+        """
+        delete_all_data_instances(self.data_uuid)
+
     def test_export(self):
-        """
-        hostname: The dvid server host
-        h5filename: The h5 file to compare against
-        h5group: The hdf5 group, also used as the uuid of the dvid dataset
-        h5dataset: The dataset name, also used as the name of the dvid dataset
-        start, stop: The bounds of the cutout volume to retrieve from the server. C ORDER FOR THIS TEST BECAUSE we use transpose_axes=True.
-        """
-        data = numpy.indices( (10, 100, 200, 4) )
-        assert data.shape == (4, 10, 100, 200, 4)
+        # For now, we require block-aligned POST
+        data = numpy.random.randint(0,255, (32, 128, 256, 1) ).astype(numpy.uint8)
+        data = numpy.asfortranarray(data, numpy.uint8)
+        assert data.shape == (32, 128, 256, 1)
         data = data.astype( numpy.uint8 )
-        data = vigra.taggedView( data, vigra.defaultAxistags('tzyxc') )
+        data = vigra.taggedView( data, vigra.defaultAxistags('zyxc') )
 
         # Retrieve from server
         graph = Graph()
@@ -112,26 +120,22 @@ class TestOpDvidVolume(unittest.TestCase):
         # Export!
         opExport.run_export()
 
-        # Retrieve from file
-        with h5py.File(self.test_filepath, 'r') as f:
-            exported_data = f['all_nodes'][self.data_uuid][self.data_name][:]
+        # Read back. (transposed, because of transposed_axes, above)
+        accessor = VoxelsAccessor(TEST_DVID_SERVER, self.data_uuid, self.data_name)
+        read_data = accessor[:]
 
         # Compare.
-        assert ( data.view(numpy.ndarray) == exported_data.transpose() ).all(),\
+        assert ( data.view(numpy.ndarray) == read_data.transpose() ).all(), \
             "Exported data is not correct"
 
     def test_export_with_offset(self):
         """
-        hostname: The dvid server host
-        h5filename: The h5 file to compare against
-        h5group: The hdf5 group, also used as the uuid of the dvid dataset
-        h5dataset: The dataset name, also used as the name of the dvid dataset
-        start, stop: The bounds of the cutout volume to retrieve from the server. C ORDER FOR THIS TEST BECAUSE we use transpose_axes=True.
+        For now, the offset and data must both be block-aligned for DVID.
         """
-        data = numpy.indices( (10, 100, 200, 4) )
-        assert data.shape == (4, 10, 100, 200, 4)
-        data = data.astype( numpy.uint8 )
-        data = vigra.taggedView( data, vigra.defaultAxistags('tzyxc') )
+        data = numpy.random.randint(0,255, (32, 128, 256, 1) ).astype(numpy.uint8)
+        data = numpy.asfortranarray(data, numpy.uint8)
+        assert data.shape == (32, 128, 256, 1)
+        data = vigra.taggedView( data, vigra.defaultAxistags('zyxc') )
 
         # Retrieve from server
         graph = Graph()
@@ -144,25 +148,54 @@ class TestOpDvidVolume(unittest.TestCase):
         # Reverse data order for dvid export
         opExport.Input.connect( opPiper.Output )
         opExport.NodeDataUrl.setValue( 'http://localhost:8000/api/node/{uuid}/{dataname}'.format( uuid=self.data_uuid, dataname=self.data_name ) )
-        offset = (0, 5, 500, 0, 0)
+        offset = (32, 64, 128, 0)
         opExport.OffsetCoord.setValue( offset )
 
         # Export!
         opExport.run_export()
 
-        # Retrieve from file
-        with h5py.File(self.test_filepath, 'r') as f:
-            exported_data = f['all_nodes'][self.data_uuid][self.data_name][:]
+        # Read back. (transposed, because of transposed_axes, above)
+        accessor = VoxelsAccessor(TEST_DVID_SERVER, self.data_uuid, self.data_name)
+        read_data = accessor[:]
 
         # The offset should have caused larger extents in the saved data.
-        assert (exported_data.transpose().shape == numpy.add( data.shape, offset )).all(), \
+        assert (read_data.transpose().shape == numpy.add( data.shape, offset )).all(), \
             "Wrong shape: {}".format(exported_data.transpose().shape)
 
         # Compare.
         offset_slicing = tuple(slice(s,None) for s in offset)
-        assert ( data.view(numpy.ndarray) == exported_data.transpose()[offset_slicing] ).all(),\
+        assert ( data.view(numpy.ndarray) == read_data.transpose()[offset_slicing] ).all(), \
             "Exported data is not correct"
 
+    def test_via_OpExportSlot(self):
+        data = 255 * numpy.random.random( (64, 128, 128, 1) )
+        data = data.astype( numpy.uint8 )
+        data = vigra.taggedView( data, vigra.defaultAxistags('zyxc') )
+         
+        graph = Graph()
+         
+        opPiper = OpArrayPiper(graph=graph)
+        opPiper.Input.setValue( data )
+         
+        opExport = OpExportSlot(graph=graph)
+        opExport.Input.connect( opPiper.Output )
+        opExport.OutputFormat.setValue( 'dvid' )
+        url = 'http://{hostname}/api/node/{data_uuid}/{data_name}'.format( **self.__dict__ )
+        opExport.OutputFilenameFormat.setValue( url )
+         
+        assert opExport.ExportPath.ready()
+        assert opExport.ExportPath.value == url
+ 
+        opExport.run_export()
+ 
+        opRead = OpInputDataReader( graph=graph )
+        try:
+            opRead.FilePath.setValue( opExport.ExportPath.value )
+            expected_data = data.view(numpy.ndarray)
+            read_data = opRead.Output( *roiFromShape(data.shape) ).wait()
+            assert (read_data == expected_data).all(), "Read data didn't match exported data!"
+        finally:
+            opRead.cleanUp()
 
 if __name__ == "__main__":
     import sys

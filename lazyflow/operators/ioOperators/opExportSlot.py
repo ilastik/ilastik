@@ -171,7 +171,7 @@ class OpExportSlot(Operator):
                 return "DVID requires the last axis to be channel."
 
             # Make sure DVID supports this dtype/channel combo.
-            from pydvid.voxels import VoxelsMetadata
+            from libdvid.voxels import VoxelsMetadata
             axiskeys = self.Input.meta.getAxisKeys()
             # We reverse the axiskeys because the export operator (see below) uses transpose_axes=True
             reverse_axiskeys = "".join(reversed( axiskeys ))
