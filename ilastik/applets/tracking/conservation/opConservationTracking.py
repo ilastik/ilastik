@@ -170,36 +170,6 @@ class OpConservationTracking(OpTrackingBase):
         if ndim == 2:
             assert z_range[0] * z_scale == 0 and (z_range[1]-1) * z_scale == 0, "fov of z must be (0,0) if ndim==2"
 
-        # tracker = pgmlink.ConsTracking(maxObj,
-        #                                  float(maxDist),
-        #                                  float(divThreshold),
-        #                                  "none",  # detection_rf_filename
-        #                                  sizeDependent,   # size_dependent_detection_prob
-        #                                  0,       # forbidden_cost
-        #                                  float(ep_gap), # ep_gap
-        #                                  float(median_obj_size[0]), # median_object_size
-        #                                  withTracklets,
-        #                                  divWeight,
-        #                                  transWeight,
-        #                                  withDivisions,
-        #                                  disappearance_cost, # disappearance cost
-        #                                  appearance_cost, # appearance cost
-        #                                  withMergerResolution,
-        #                                  ndim,
-        #                                  transition_parameter,
-        #                                  borderAwareWidth,
-        #                                  fov,
-        #                                  True, #with_constraints
-        #                                  cplex_timeout,
-        #                                  "none" # dump traxelstore
-        #                                  )
-        #
-        #
-        # try:
-        #     eventsVector = tracker(ts, coordinate_map.get())
-        # except Exception as e:
-        #     raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
-
         tracker = pgmlink.ConsTracking(maxObj,
                                      sizeDependent,   # size_dependent_detection_prob
                                      float(median_obj_size[0]), # median_object_size
