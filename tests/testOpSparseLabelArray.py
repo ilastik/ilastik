@@ -24,15 +24,22 @@ logger = logging.getLogger('tests.testOpSparseLabelArray')
 
 import numpy
 from lazyflow.graph import Graph
-from lazyflow.operators.opSparseLabelArray import OpSparseLabelArray
 
 from lazyflow.utility.slicingtools import sl, slicing2shape
 from lazyflow.utility import timeLogged
+
+import unittest
 
 class TestOpSparseLabelArray(object):
     
     @timeLogged(logger)
     def setup(self):
+        try:
+            import blist
+        except ImportError:
+            raise unittest.SkipTest 
+        
+        from lazyflow.operators.opSparseLabelArray import OpSparseLabelArray
         graph = Graph()
         op = OpSparseLabelArray(graph=graph)
         arrayshape = numpy.array([1,10,10,10,1])

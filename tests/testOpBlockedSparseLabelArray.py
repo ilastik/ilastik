@@ -21,8 +21,8 @@
 ###############################################################################
 import numpy
 import vigra
+import unittest
 from lazyflow.graph import Graph
-from lazyflow.operators.opBlockedSparseLabelArray import OpBlockedSparseLabelArray
 
 from lazyflow.utility.slicingtools import sl, slicing2shape
 
@@ -30,6 +30,12 @@ class TestOpBlockedSparseLabelArray(object):
     
     def setup(self):
         graph = Graph()
+        try:
+            import blist
+        except ImportError:
+            raise unittest.SkipTest
+
+        from lazyflow.operators.opBlockedSparseLabelArray import OpBlockedSparseLabelArray
         op = OpBlockedSparseLabelArray(graph=graph)
         arrayshape = (1,100,100,10,1)
         op.inputs["shape"].setValue( arrayshape )
