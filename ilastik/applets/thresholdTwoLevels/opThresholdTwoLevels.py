@@ -31,6 +31,7 @@ import vigra
 # ilastik
 from ilastik.applets.base.applet import DatasetConstraintError
 import ilastik.config
+from ipht import identity_preserving_hysteresis_thresholding
 
 # Lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -149,6 +150,14 @@ class OpThresholdTwoLevels(Operator):
         self.opThreshold2.LowThreshold.connect(self.LowThreshold)
         self.opThreshold2.HighThreshold.connect(self.HighThreshold)
 
+        # Identity-preserving hysteresis thresholding
+        self.opIpht = OpIpht(parent=self)
+        self.opIpht.MinSize.connect(self.MinSize)
+        self.opIpht.MaxSize.connect(self.MaxSize)
+        self.opIpht.LowThreshold.connect(self.LowThreshold)
+        self.opIpht.HighThreshold.connect(self.HighThreshold)
+        self.opIpht.InputImage.connect( self._opSmoother.Output )
+
         if haveGraphCut():
             self.opThreshold1GC = _OpThresholdOneLevel(parent=self)
             self.opThreshold1GC.Threshold.connect(self.SingleThresholdGC)
@@ -173,7 +182,6 @@ class OpThresholdTwoLevels(Operator):
         #cache our own output, don't propagate from internal operator
         self._cache = _OpCacheWrapper(parent=self)
         self._cache.name = "OpThresholdTwoLevels.OpCacheWrapper"
-        self._cache.Input.connect(self.Output)
         self.CachedOutput.connect(self._cache.Output)
 
         # Serialization slots
@@ -204,12 +212,15 @@ class OpThresholdTwoLevels(Operator):
             outputSlot = self._connectForTwoLevelThreshold()
         elif curIndex == 2:
             outputSlot = self._connectForGraphCut()
+        elif curIndex == 3:
+            outputSlot = self.opIpht.Output
         else:
             raise ValueError(
                 "Unknown index {} for current tab.".format(curIndex))
 
         self._opReorder2.Input.connect(outputSlot)
         # force the cache to emit a dirty signal
+        self._cache.Input.connect(outputSlot)
         self._cache.Input.setDirty(slice(None))
 
     def checkConstraints(self, *args):
@@ -238,7 +249,7 @@ class OpThresholdTwoLevels(Operator):
         # connect the operators for SingleThreshold
         self.BeforeSizeFilter.connect(threshOp.BeforeSizeFilter)
         self.BeforeSizeFilter.meta.NOTREADY = None
-        threshOp.InputImage.connect(self.Smoothed)
+        threshOp.InputImage.connect(self._opSmoother.Output)
         return threshOp.Output
 
     def _connectForTwoLevelThreshold(self):
@@ -249,7 +260,7 @@ class OpThresholdTwoLevels(Operator):
         for slot in [self.BigRegions, self.SmallRegions,
                      self.FilteredSmallLabels]:
             slot.meta.NOTREADY = None
-        self.opThreshold2.InputImage.connect(self.Smoothed)
+        self.opThreshold2.InputImage.connect(self._opSmoother.Output)
 
         return self.opThreshold2.Output
 
@@ -511,6 +522,91 @@ class _OpThresholdTwoLevels(Operator):
         # Our Input slots are directly fed into the cache,
         #  so all calls to __setitem__ are forwarded automatically
 
+
+class OpIpht(Operator):
+    """
+    Identity-preserving Hysteresis Thresholding.
+    Requires 5D input, txyzc order, with only 1-channel input.
+    """
+    InputImage = InputSlot()
+    MinSize = InputSlot(stype='int', value=0)
+    MaxSize = InputSlot(stype='int', value=1000000)
+    HighThreshold = InputSlot(stype='float', value=0.5)
+    LowThreshold = InputSlot(stype='float', value=0.2)
+
+    Output = OutputSlot()
+    CachedOutput = OutputSlot()  # For the GUI (blockwise-access)
+
+    # For serialization
+    InputHdf5 = InputSlot(optional=True)
+    OutputHdf5 = OutputSlot()
+    CleanBlocks = OutputSlot()
+
+    # Debug outputs
+    BigRegions = OutputSlot()
+    SmallRegions = OutputSlot()
+    FilteredSmallLabels = OutputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super(OpIpht, self).__init__(*args, **kwargs)
+        self._opIpht = OpIphtNoCache(parent=self)
+        self._opIpht.InputImage.connect( self.InputImage )
+        self._opIpht.MinSize.connect( self.MinSize )
+        self._opIpht.MaxSize.connect( self.MaxSize )
+        self._opIpht.HighThreshold.connect( self.HighThreshold )
+        self._opIpht.LowThreshold.connect( self.LowThreshold )
+        self.Output.connect( self._opIpht.Output )
+        
+        self._opCache = OpCompressedCache(parent=self)
+        self._opCache.Input.connect( self._opIpht.Output )
+        self.CachedOutput.connect( self._opCache.Output )
+    
+    def setupOutputs(self):
+        assert self.InputImage.meta.getAxisKeys() == list('txyzc')
+        # Blockshape is the entire spatial volume (hysteresis thresholding is
+        # a global operation)
+        tagged_shape = self.Output.meta.getTaggedShape()
+        tagged_shape['c'] = 1
+        tagged_shape['t'] = 1
+        self._opCache.BlockShape.setValue( tuple(tagged_shape.values()) )
+
+    def execute(self, slot, subindex, roi, result):
+        assert False, "Shouldn't get here..."
+
+    def propagateDirty(self, slot, subindex, roi):
+        pass  # Nothing to do here
+
+class OpIphtNoCache(Operator):
+    InputImage = InputSlot()
+    MinSize = InputSlot(stype='int', value=0)
+    MaxSize = InputSlot(stype='int', value=1000000)
+    HighThreshold = InputSlot(stype='float', value=0.5)
+    LowThreshold = InputSlot(stype='float', value=0.2)
+
+    Output = OutputSlot()
+    
+    def setupOutputs(self):
+        assert self.InputImage.meta.getAxisKeys() == list('txyzc')
+        assert self.InputImage.meta.shape[-1] == 1
+        self.Output.meta.assignFrom(self.InputImage.meta)
+        self.Output.meta.dtype = numpy.uint32
+    
+    def execute(self, slot, subindex, roi, result):
+        # Input is required to be in txyzc order
+        t_start, t_stop = roi.start[0], roi.stop[0]
+        for t in range(t_start, t_stop):
+            roi_t = numpy.array( (roi.start, roi.stop) )
+            roi_t[:,0] = (t, t+1)
+            image = self.InputImage(*roi_t).wait()    
+            identity_preserving_hysteresis_thresholding( image[0,...,0],
+                                                         self.HighThreshold.value,
+                                                         self.LowThreshold.value,
+                                                         self.MinSize.value,
+                                                         self.MaxSize.value,
+                                                         out=result[t-t_start,...,0] )
+
+    def propagateDirty(self, slot, subindex, roi):
+        self.Output.setDirty()
 
 #HACK this ensures backwards compatibility by providing serialization slots
 # with xyzct axes

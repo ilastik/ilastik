@@ -47,7 +47,7 @@ class AutocontextClassificationWorkflow(Workflow):
     def imageNameListSlot(self):
         return self.dataSelectionApplet.topLevelOperator.ImageName
     
-    def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, appendBatchOperators=True, *args, **kwargs):
+    def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
         # Create a graph to be shared by all operators
         graph = Graph()
         super(AutocontextClassificationWorkflow, self).__init__( shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs )
@@ -69,17 +69,17 @@ class AutocontextClassificationWorkflow(Workflow):
         self._applets.append(self.featureSelectionApplet)
         self._applets.append(self.pcApplet)
 
-        if appendBatchOperators:
-            # Create applets for batch workflow
-            self.batchInputApplet = DataSelectionApplet(self, "Batch Prediction Input Selections", "BatchDataSelection", supportIlastik05Import=False, batchDataGui=True)
-            self.batchResultsApplet = BatchIoApplet(self, "Batch Prediction Output Locations")
-    
-            # Expose in shell        
-            self._applets.append(self.batchInputApplet)
-            self._applets.append(self.batchResultsApplet)
-    
-            # Connect batch workflow (NOT lane-based)
-            self._initBatchWorkflow()
+        assert False, "This is no longer how batch mode works..."
+        # Create applets for batch workflow
+        self.batchInputApplet = DataSelectionApplet(self, "Batch Prediction Input Selections", "BatchDataSelection", supportIlastik05Import=False, batchDataGui=True)
+        self.batchResultsApplet = BatchIoApplet(self, "Batch Prediction Output Locations")
+
+        # Expose in shell        
+        self._applets.append(self.batchInputApplet)
+        self._applets.append(self.batchResultsApplet)
+
+        # Connect batch workflow (NOT lane-based)
+        self._initBatchWorkflow()
 
     def connectLane(self, laneIndex):
         # Get a handle to each operator

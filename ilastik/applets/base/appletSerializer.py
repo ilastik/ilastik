@@ -130,7 +130,7 @@ class SerialSlot(object):
             name = slot.name
         self.name = name
         if subname is None:
-            subname = '{}'
+            subname = '{:04d}'
         self.subname = subname
 
         self._dirty = False
@@ -271,7 +271,9 @@ class SerialSlot(object):
             for i, subslot in enumerate(slot):
                 if i in indexes_to_keys:
                     key = indexes_to_keys[i]
-                    assert key == self.subname.format(i)
+                    # Sadly, we can't use the following assertion because it would break  
+                    #  backwards compatibility with a bug we used to have in the key names.
+                    #assert key == self.subname.format(i)
                     self._deserialize(subgroup[key], subslot)
                 else:
                     # Since there was no data for this subslot in the project file,
@@ -328,7 +330,9 @@ class SerialListSlot(SerialSlot):
         try:
             subgroup = group[self.name]
         except:
-            warnings.warn("Deserialization: Could not locate value for slot '{}'.  Skipping.".format( self.name ))
+            if logger.isEnabledFor(logging.DEBUG):
+                # Only show this warning when debugging serialization
+                warnings.warn("Deserialization: Could not locate value for slot '{}'.  Skipping.".format( self.name ))
             return
         if 'isEmpty' in subgroup.attrs and subgroup.attrs['isEmpty']:
             self.inslot.setValue( self._iterable([]) )
@@ -597,6 +601,23 @@ class SerialClassifierSlot(SerialSlot):
         # loaded. As soon as training input changes, it will be
         # retrained.)
         self.cache.forceValue( classifier )
+
+class SerialPickledValueSlot(SerialSlot):
+    """
+    For storing value slots whose data is a python object (not an array or a simple number).
+    """
+    def __init__(self, slot):
+        super(SerialPickledValueSlot, self).__init__(slot)
+    
+    @staticmethod
+    def _saveValue(group, name, value):
+        group.create_dataset(name, data=pickle.dumps(value))
+
+    @staticmethod
+    def _getValue(subgroup, slot):
+        val = subgroup[()]
+        slot.setValue(pickle.loads(val))
+
 
 class SerialCountingSlot(SerialSlot):
     """For saving a random forest classifier."""

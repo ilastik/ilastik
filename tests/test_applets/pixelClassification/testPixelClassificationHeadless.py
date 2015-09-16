@@ -210,7 +210,7 @@ class TestPixelClassificationHeadless(object):
         args.append( "--pipeline_result_drange=(0,2)" )
         args.append( "--export_drange=(0,255)" )
  
-        args.append( "--cutout_subregion=[(0,50,50,0,0), (1, 150, 150, 50, 2)]" )
+        args.append( "--cutout_subregion=[(0,50,50,0,0), (1, 150, 150, 50, 1)]" )
         args.append( self.SAMPLE_DATA )
  
         sys.argv = ['ilastik.py'] # Clear the existing commandline args so it looks like we're starting fresh.
@@ -232,15 +232,16 @@ class TestPixelClassificationHeadless(object):
         opReorderAxes.AxisOrder.setValue( 'tzyxc' )
         opReorderAxes.Input.connect( opReader.stack )
          
-        readData = opReorderAxes.Output[:].wait()
- 
-        # Check basic attributes
-        assert readData.shape[:-1] == self.data[0:1, 50:150, 50:150, 0:50, 0:2].shape[:-1] # Assume channel is last axis
-        assert readData.shape[-1] == 2, "Wrong number of channels.  Expected 2, got {}".format( readData.shape[-1] )
-         
-        # Clean-up.
-        opReorderAxes.cleanUp()
-        opReader.cleanUp()
+        try:
+            readData = opReorderAxes.Output[:].wait()
+     
+            # Check basic attributes
+            assert readData.shape[:-1] == self.data[0:1, 50:150, 50:150, 0:50, 0:1].shape[:-1] # Assume channel is last axis
+            assert readData.shape[-1] == 1, "Wrong number of channels.  Expected 1, got {}".format( readData.shape[-1] )
+        finally:
+            # Clean-up.
+            opReorderAxes.cleanUp()
+            opReader.cleanUp()
 
 if __name__ == "__main__":
     #make the program quit on Ctrl+C

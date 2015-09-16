@@ -131,7 +131,14 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
         readData = req.result
         
         maxLabels = len(labelingSlots.labelNames.value)
-        unique_read_labels, readLabelCounts = numpy.unique(readData, return_counts=True)
+
+        # Can't use return_counts feature because that requires numpy >= 1.9
+        #unique_read_labels, readLabelCounts = numpy.unique(readData, return_counts=True)
+
+        # This does the same as the above, albeit slower, and probably with more ram.
+        unique_read_labels = numpy.unique(readData)
+        readLabelCounts = numpy.bincount(readData.flat)[unique_read_labels]
+
         labelInfo = (maxLabels, (unique_read_labels, readLabelCounts))
         del readData
     
@@ -486,6 +493,8 @@ class LabelImportOptionsDlg(QDialog):
                                   'Warning: Imported X/Y dimensions do not match your original dataset.'
                                   '</span></p></body></html>')
 
+        if not self._dataInputSlot.ready():
+            return
         tagged_import_dimensions = self._dataInputSlot.meta.getTaggedShape()
         tagged_destination_dimensions = self._writeSeedsSlot.meta.getTaggedShape()
         show_warning = (   tagged_import_dimensions['x'] != tagged_destination_dimensions['x']

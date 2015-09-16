@@ -170,7 +170,7 @@ class DataSelectionSerializer( AppletSerializer ):
                         infoGroup.create_dataset('drange', data=datasetInfo.drange)
 
                     # Pull the axistags from the NonTransposedImage, 
-                    #  which is what the image looks like before 'force5d' is applied, 
+                    #  which is what the image looks like before 'forceAxisOrder' is applied, 
                     #  and before 'c' is automatically appended
                     axistags = self.topLevelOperator._NonTransposedImageGroup[laneIndex][roleIndex].meta.axistags
                     infoGroup.create_dataset('axistags', data=axistags.toJSON())

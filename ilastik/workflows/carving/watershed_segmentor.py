@@ -57,6 +57,8 @@ class WatershedSegmentor(object):
         print seg
         self.hasSeg = True
 
+    def clearSegmentation(self):
+        self.gridSegmentor.clearSegmentation()
 
     def addSeeds(self, roi, brushStroke):
         roiBegin  = roi.start[1:4]
@@ -93,7 +95,10 @@ class WatershedSegmentor(object):
         g = h5g
 
         g.attrs["numNodes"] = self.numNodes
-        g.create_dataset("labels", data = self.supervoxelUint32)
+        g.create_dataset("labels",
+                         data=self.supervoxelUint32,
+                         compression='gzip',
+                         compression_opts=4)
 
         gridSeg = self.gridSegmentor
         g.create_dataset("graph", data = gridSeg.serializeGraph())

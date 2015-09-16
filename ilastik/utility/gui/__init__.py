@@ -19,4 +19,4 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from thunkEvent import ThunkEvent, ThunkEventHandler
-from threadRouter import ThreadRouter, threadRouted
+from threadRouter import ThreadRouter, threadRouted, threadRoutedWithRouter

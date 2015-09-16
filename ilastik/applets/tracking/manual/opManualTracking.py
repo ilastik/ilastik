@@ -31,6 +31,7 @@ from lazyflow.stype import Opaque
 
 import numpy as np
 
+import os
 import logging
 logger = logging.getLogger(__name__)
 
@@ -51,6 +52,18 @@ class OpManualTracking(Operator, ExportingOperator):
     Divisions = OutputSlot(stype=Opaque, rtype=List)
     UntrackedImage = OutputSlot()
 
+    # Use a slot for storing the export settings in the project file.
+    ExportSettings = OutputSlot()
+    # Override functions ExportingOperator mixin
+    def configure_table_export_settings(self, settings, selected_features):
+        self.ExportSettings.setValue( (settings, selected_features) )
+    def get_table_export_settings(self):
+        if self.ExportSettings.ready():
+            (settings, selected_features) = self.ExportSettings.value
+            return (settings, selected_features)
+        else:
+            return None, None
+
     def __init__(self, parent=None, graph=None):
         super(OpManualTracking, self).__init__(parent=parent, graph=graph)
         self.labels = {}
@@ -61,6 +74,7 @@ class OpManualTracking(Operator, ExportingOperator):
         self.BinaryImage.notifyReady(self._checkConstraints)
 
         self.export_progress_dialog = None
+        self.ExportSettings.setValue( (None, None) )
 
     def setupOutputs(self):
         self.TrackImage.meta.assignFrom(self.LabelImage.meta)
@@ -69,8 +83,7 @@ class OpManualTracking(Operator, ExportingOperator):
         for t in range(self.LabelImage.meta.shape[0]):
             if t not in self.labels.keys():
                 self.labels[t] = {}
-
-
+        
     def _checkConstraints(self, *args):
         if self.RawImage.ready():
             rawTaggedShape = self.RawImage.meta.getTaggedShape()
@@ -202,15 +215,18 @@ class OpManualTracking(Operator, ExportingOperator):
                 return oid
         raise ValueError("TID {} at t={} not found!".format(tid, t))
 
-    def do_export(self, settings, selected_features, progress_slot):
+    def do_export(self, settings, selected_features, progress_slot, lane_index, filename_suffix=""):
         """
         Implements ExportOperator.do_export(settings, selected_features, progress_slot
         Most likely called from ExportOperator.export_object_data
         :param settings: the settings for the exporter, see
         :param selected_features:
         :param progress_slot:
+        :param lane_index: Ignored. (This is a single-lane operator. It is the caller's responsibility to make sure he's calling the right lane.)
+        :param filename_suffix: If provided, appended to the filename (before the extension).
         :return:
         """
+        
         obj_count = list(objects_per_frame(self.LabelImage))  # slow
         divisions = self.divisions
         t_range = (0, self.LabelImage.meta.shape[self.LabelImage.meta.axistags.index("t")])
@@ -218,7 +234,12 @@ class OpManualTracking(Operator, ExportingOperator):
         max_tracks = max(max(map(len, i.values())) for i in oid2tid.values())
         ids = ilastik_ids(obj_count)
 
-        export_file = ExportFile(settings["file path"])
+        file_path = settings["file path"]
+        if filename_suffix:
+            path, ext = os.path.splitext(file_path)
+            file_path = path + "-" + filename_suffix + ext
+
+        export_file = ExportFile(file_path)
         export_file.ExportProgress.subscribe(progress_slot)
         export_file.InsertionProgress.subscribe(progress_slot)
 

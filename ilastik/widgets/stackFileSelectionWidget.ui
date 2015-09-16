@@ -126,6 +126,13 @@ Examples:
         </spacer>
        </item>
        <item>
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>Stack Across:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QRadioButton" name="stackAcrossTButton">
          <property name="text">
           <string>T</string>
@@ -143,13 +150,6 @@ Examples:
          <attribute name="buttonGroup">
           <string notr="true">buttonGroup</string>
          </attribute>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLabel" name="label">
-         <property name="text">
-          <string>Stack Across:</string>
-         </property>
         </widget>
        </item>
        <item>

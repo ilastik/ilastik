@@ -38,14 +38,16 @@ class OpVigraWatershedViewer(Operator):
     
     InputImage = InputSlot() # The image to be sliced and watershedded
 
-    InputChannelIndexes = InputSlot(stype='object') # opChannelSlicer
-    WatershedPadding = InputSlot() # opWatershed
-    FreezeCache = InputSlot() # opWatershedCache
-    CacheBlockShape = InputSlot() # opWatershedCache block shapes. Expected: tuple of (width, depth) viewing shape
-    OverrideLabels = InputSlot(stype='object') # opColorizer
-    SeedThresholdValue = InputSlot(optional=True) # opThreshold
-    MinSeedSize = InputSlot() # opSeedLabeler
-    
+    FreezeCache = InputSlot(value=True) # opWatershedCache
+
+    InputChannelIndexes = InputSlot(value=[0])
+    WatershedPadding = InputSlot(value=10)
+    OverrideLabels = InputSlot(value={ 0: (0,0,0,0) })
+    SeedThresholdValue = InputSlot(value=0.0)
+    MinSeedSize = InputSlot(value=0)
+    CacheBlockShape = InputSlot(value=(256, 10)) # opWatershedCache block shapes. Expected: tuple of (width, depth) viewing shape
+
+    Seeds = OutputSlot()            # For batch export
     WatershedLabels = OutputSlot()  # Watershed labeled output
     SummedInput = OutputSlot()      # Watershed input (for gui display)
     ColoredPixels = OutputSlot()    # Colored watershed labels (for gui display)
@@ -60,15 +62,14 @@ class OpVigraWatershedViewer(Operator):
         # Overview Schematic
         # Example here uses input channels 0,2,5
         
-        # InputChannelIndexes=[0,2,5] ---
-        #                                \
-        # InputImage -------------------> opChannelSlicer .Slices[0] ---\
-        #                                                 .Slices[1] ----> opAverage --> opWatershed --> opWatershedCache --> opColorizer --> GUI 
-        #                                                 .Slices[2] ---/               /
-        #                                                                              /
-        # SeedThresholdValue ---                   MinSeedSize ---                    /
-        #                       \                                 \                  /
-        # InputImage ----------> opThreshold --> opSeedLabeler --> opSeedFilter ----- ---> opSeedCache --> opSeedColorizer --> GUI
+        # InputChannelIndexes=[0,2,5] ----
+        #                                 \
+        # InputImage --> opChannelSlicer .Slices[0] ---\
+        #                                .Slices[1] ----> opAverage -------------------------------------------------> opWatershed --> opWatershedCache --> opColorizer --> GUI
+        #                                .Slices[2] ---/           \                                                  /
+        #                                                           \     MinSeedSize                                /
+        #                                                            \               \                              /
+        #                              SeedThresholdValue ----------> opThreshold --> opSeedLabeler --> opSeedFilter --> opSeedCache --> opSeedColorizer --> GUI
         
         # Create operators
         self.opChannelSlicer = OpMultiArraySlicer2(parent=self)
@@ -128,6 +129,7 @@ class OpVigraWatershedViewer(Operator):
         self.opColorizer.OverrideColors.connect( self.OverrideLabels )
 
         # Connnect external outputs the operators that provide them
+        self.Seeds.connect( self.opSeedCache.Output )
         self.ColoredPixels.connect( self.opColorizer.Output )
         self.SelectedInputChannels.connect( self.opChannelSlicer.Slices )
         self.SummedInput.connect( self.opAverage.Output )

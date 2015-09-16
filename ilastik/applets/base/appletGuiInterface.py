@@ -135,6 +135,15 @@ class AppletGuiInterface():
         """
         raise NotImplementedError
 
+    def allowLaneSelectionChange(self):
+        """
+        Abstract method.
+        Called by the shell to determine if the shell's lane selection combobox should be displayed.
+        Return False if your applet GUI handles switching between lanes itself (e.g. DataSelection, DataExport),
+        or if the notion of lanes doesn't apply to this applet (e.g. ProjectMetadata, BatchProcessing).
+        """
+        raise NotImplementedError
+
     @classmethod
     def __subclasshook__(cls, C):
         if cls is AppletGuiInterface:
@@ -146,6 +155,7 @@ class AppletGuiInterface():
                                 'setImageIndex',
                                 'imageLaneAdded',
                                 'imageLaneRemoved',
+                                'allowLaneSelectionChange',
                                 'stopAndCleanUp' ]
             return True if _has_attributes(C, requiredMethods) else False
         return NotImplemented

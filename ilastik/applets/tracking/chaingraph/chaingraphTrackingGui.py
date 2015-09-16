@@ -132,7 +132,7 @@ class ChaingraphTrackingGui( TrackingBaseGui ):
                 self._criticalMessage("Error during tracking.  See error log.\n\n"
                                       "Exception was:\n\n{})".format( ex ))
                 return
-    
+
         def _handle_finished(*args):
             self.applet.progressSignal.emit(100)
             self._drawer.TrackButton.setEnabled(True)

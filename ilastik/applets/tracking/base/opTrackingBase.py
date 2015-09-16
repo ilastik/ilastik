@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 # http://ilastik.org/license.html
 # ##############################################################################
+import os
 from functools import partial
 import logging
 
@@ -64,6 +65,18 @@ class OpTrackingBase(Operator, ExportingOperator):
 
     Output = OutputSlot()
 
+    # Use a slot for storing the export settings in the project file.
+    ExportSettings = OutputSlot()
+    # Override functions ExportingOperator mixin
+    def configure_table_export_settings(self, settings, selected_features):
+        self.ExportSettings.setValue( (settings, selected_features) )
+    def get_table_export_settings(self):
+        if self.ExportSettings.ready():
+            (settings, selected_features) = self.ExportSettings.value
+            return (settings, selected_features)
+        else:
+            return None, None
+
     def __init__(self, parent=None, graph=None):
         super(OpTrackingBase, self).__init__(parent=parent, graph=graph)
         self.label2color = []
@@ -89,7 +102,7 @@ class OpTrackingBase(Operator, ExportingOperator):
         self.LabelImage.notifyReady(self._checkConstraints)
 
         self.export_progress_dialog = None
-
+        self.ExportSettings.setValue( (None, None) )
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.LabelImage.meta)
@@ -539,15 +552,20 @@ class OpTrackingBase(Operator, ExportingOperator):
         """
         self.export_progress_dialog = dialog
 
-    def do_export(self, settings, selected_features, progress_slot):
+    def do_export(self, settings, selected_features, progress_slot, lane_index, filename_suffix=""):
         """
         Implements ExportOperator.do_export(settings, selected_features, progress_slot
         Most likely called from ExportOperator.export_object_data
         :param settings: the settings for the exporter, see
         :param selected_features:
         :param progress_slot:
+        :param lane_index: Ignored. (This is a single-lane operator. It is the caller's responsibility to make sure he's calling the right lane.)
+        :param filename_suffix: If provided, appended to the filename (before the extension).
         :return:
         """
+
+        assert lane_index == 0, "This has only been tested in tracking workflows with a single image."
+
         with_divisions = self.Parameters.value["withDivisions"] if self.Parameters.ready() else False
         if with_divisions:
             object_feature_slot = self.ObjectFeaturesWithDivFeatures
@@ -571,7 +589,12 @@ class OpTrackingBase(Operator, ExportingOperator):
         t_range = self.Parameters.value["time_range"] if self.Parameters.ready() else (0, 0)
         ids = ilastik_ids(obj_count)
 
-        export_file = ExportFile(settings["file path"])
+        file_path = settings["file path"]
+        if filename_suffix:
+            path, ext = os.path.splitext(file_path)
+            file_path = path + "-" + filename_suffix + ext
+
+        export_file = ExportFile(file_path)
         export_file.ExportProgress.subscribe(progress_slot)
         export_file.InsertionProgress.subscribe(progress_slot)
 

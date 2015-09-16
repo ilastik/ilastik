@@ -136,6 +136,12 @@ class OpIIBoostFeatureSelection(Operator):
         self.OutputImage.meta.shape = output_shape
         self.CachedOutputImage.meta.shape = output_shape
 
+        channel_names = ['Raw Data']
+        channel_names += ['Hessian Eigenvectors Element {}'.format(i) for i in range(9)]
+        channel_names += self.opIntegralImage.Output.meta.channel_names
+        self.OutputImage.meta.channel_names = channel_names
+        self.CachedOutputImage.meta.channel_names = channel_names
+
         # If we know the data resolution, fine-tune the hessian eigenvalue sigma
         x_tag = self.InputImage.meta.axistags['x']
         if x_tag.resolution != 0.0:
@@ -373,6 +379,9 @@ class OpIntegralImage(Operator):
 
         self.Output.meta.assignFrom( self.Input.meta )
         self.Output.meta.dtype = numpy.float32
+        
+        if self.Input.meta.channel_names:
+            self.Output.meta.channel_names = ["Integrated " + name for name in self.Input.meta.channel_names]
 
     def execute(self, slot, subindex, roi, result):
 

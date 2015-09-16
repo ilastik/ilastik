@@ -125,7 +125,7 @@ class TestWithCube(object):
         opPredict.SegmentationImages[0].connect(opExtract.LabelImage)
         opPredict.ObjectFeatures.resize(1)
         opPredict.ObjectFeatures[0].connect(opExtract.RegionFeatures)
-        opPredict.ComputedFeatureNames.connect(opExtract.ComputedFeatureNames)
+        opPredict.ComputedFeatureNames.connect(opExtract.Features)
         
         #run the workflow with the test blocks in the gui, 
         #if you want to see why these labels are chosen
@@ -196,7 +196,7 @@ class TestWithCube(object):
         opPredict.SegmentationImages[0].connect(opExtract.LabelImage)
         opPredict.ObjectFeatures.resize(1)
         opPredict.ObjectFeatures[0].connect(opExtract.RegionFeatures)
-        opPredict.ComputedFeatureNames.connect(opExtract.ComputedFeatureNames)
+        opPredict.ComputedFeatureNames.connect(opExtract.Features)
         
         grT = Graph()
         opExtractT = OpObjectExtraction(graph=grT)
@@ -212,7 +212,7 @@ class TestWithCube(object):
         opPredictT.SegmentationImages[0].connect(opExtractT.LabelImage)
         opPredictT.ObjectFeatures.resize(1)
         opPredictT.ObjectFeatures[0].connect(opExtractT.RegionFeatures)
-        opPredictT.ComputedFeatureNames.connect(opExtractT.ComputedFeatureNames)
+        opPredictT.ComputedFeatureNames.connect(opExtractT.Features)
         
         #run the workflow with the test blocks in the gui, 
         #if you want to see why these labels are chosen
