@@ -22,6 +22,8 @@
 from ioOperators import *
 
 # All "Read" operators must come before OpInputDataReader, which uses them.
+from opStreamingMmfReader import *
+from opStreamingUfmfReader import *
 from opNpyFileReader import *
 from opStreamingHdf5Reader import *
 from opRESTfulVolumeReader import *
