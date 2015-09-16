@@ -20,6 +20,8 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 import os
+import httplib
+import json
 import shutil
 import tempfile
 import unittest
@@ -33,14 +35,42 @@ from lazyflow.graph import Graph
 
 try:
     from lazyflow.operators.ioOperators import OpDvidVolume
-    # Must be imported AFTER lazyflow, which adds pydvid to sys.path
-    from mockserver.h5mockserver import H5MockServer, H5MockServerDataFile
-    from pydvid import voxels
+    from libdvid import DVIDConnection, ConnectionMethod, DVIDNodeService
+    from libdvid.voxels import VoxelsMetadata
+    TEST_DVID_SERVER = os.getenv("TEST_DVID_SERVER", "127.0.0.1:8000")
+    
+    def get_testrepo_root_uuid():
+        connection = DVIDConnection(TEST_DVID_SERVER)
+        status, body, error_message = connection.make_request( "/repos/info", ConnectionMethod.GET)
+        assert status == httplib.OK, "Request for /repos/info returned status {}".format( status )
+        assert error_message == ""
+        repos_info = json.loads(body)
+        test_repos = filter( lambda (uuid, repo_info): repo_info and repo_info['Alias'] == 'testrepo', 
+                             repos_info.items() )
+        if test_repos:
+            uuid = test_repos[0][0]
+            return str(uuid)
+        else:
+            from libdvid import DVIDServerService
+            server = DVIDServerService(TEST_DVID_SERVER)
+            uuid = server.create_new_repo("testrepo", "This repo is for unit tests to use and abuse.");
+            return str(uuid)
+
+    def delete_all_data_instances(uuid):
+        connection = DVIDConnection(TEST_DVID_SERVER)
+        repo_info_uri = "/repo/{uuid}/info".format( uuid=uuid )
+        status, body, error_message = connection.make_request( repo_info_uri, ConnectionMethod.GET)
+        assert status == httplib.OK, "Request for {} returned status {}".format(repo_info_uri, status)
+        assert error_message == ""
+        repo_info = json.loads(body)
+        for instance_name in repo_info["DataInstances"].keys():
+            status, body, error_message = connection.make_request( "/api/repo/{uuid}/{dataname}?imsure=true"
+                                                                   .format( uuid=uuid, dataname=str(instance_name) ),
+                                                                   ConnectionMethod.DELETE )            
 except ImportError:
     have_dvid = False
 else:
     have_dvid = True
-
 
 class TestOpDvidVolume(unittest.TestCase):
     """
@@ -48,65 +78,49 @@ class TestOpDvidVolume(unittest.TestCase):
     """
     
     @classmethod
-    @unittest.skipIf(not have_dvid, "optional module pydvid not available.")
+    @unittest.skipIf(not have_dvid, "optional module libdvid not available.")
     @unittest.skipIf(platform.system() == "Windows", "DVID not tested on Windows. Skipping.")
-    def setupClass(cls):
+    def setUpClass(cls):
         """
         Override.  Called by nosetests.
         """
-        if not have_dvid:
-            return
-        cls._tmp_dir = tempfile.mkdtemp()
-        cls.test_filepath = os.path.join( cls._tmp_dir, "test_data.h5" )
-        cls._generate_testdata_h5(cls.test_filepath)
-        cls.server_proc, cls.shutdown_event = H5MockServer.create_and_start( cls.test_filepath, "localhost", 8000 )
-
-    @classmethod
-    def teardownClass(cls):
-        """
-        Override.  Called by nosetests.
-        """
-        if not have_dvid:
-            return
-        cls.shutdown_event.set()
-        cls.server_proc.join()
-        shutil.rmtree(cls._tmp_dir)
-
-    @classmethod
-    def _generate_testdata_h5(cls, test_filepath):
-        """
-        Generate a temporary hdf5 file for the mock server to use (and us to compare against)
-        """
-        # Generate some test data
-        data = numpy.indices( (10, 100, 200, 3) )
-        data = data.transpose()
-        assert data.shape == (3, 200, 100, 10, 4)
-        data = data.astype( numpy.uint32 )
-        data = vigra.taggedView( data, 'cxyzt' )
-
         # Choose names
-        cls.dvid_dataset = "datasetA"
-        cls.data_uuid = "abcde"
-        cls.data_name = "indices_data"
-        cls.voxels_metadata = voxels.VoxelsMetadata.create_default_metadata(data.shape, data.dtype, "cxyzt", 1.0, "")
+        cls.dvid_repo = "datasetA"
+        cls.data_name = "random_data"
+        cls.volume_location = "/repos/{dvid_repo}/volumes/{data_name}".format( **cls.__dict__ )
 
-        # Write to h5 file
-        with H5MockServerDataFile( test_filepath ) as test_h5file:
-            test_h5file.add_node( cls.dvid_dataset, cls.data_uuid )
-            test_h5file.add_volume( cls.dvid_dataset, cls.data_name, data, cls.voxels_metadata )
-    
+        cls.data_uuid = get_testrepo_root_uuid()
+        cls.node_location = "/repos/{dvid_repo}/nodes/{data_uuid}".format( **cls.__dict__ )
+
+        # Generate some test data
+        data = numpy.random.randint(0, 255, (1, 128, 256, 512))
+        data = numpy.asfortranarray(data, numpy.uint8)
+        cls.original_data = data
+        cls.voxels_metadata = VoxelsMetadata.create_default_metadata(data.shape, data.dtype, "cxyz", 1.0, "")
+
+        # Write it to a new data instance
+        node_service = DVIDNodeService(TEST_DVID_SERVER, cls.data_uuid)
+        node_service.create_grayscale8(cls.data_name)
+        node_service.put_gray3D( cls.data_name, data[0,...], (0,0,0) )
+
+    @classmethod
+    def tearDownClass(cls):
+        """
+        Override.  Called by nosetests.
+        """
+        delete_all_data_instances(cls.data_uuid)    
+
     def test_cutout(self):
         """
         Get some data from the server and check it.
         """
-        self._test_volume( "localhost:8000", self.test_filepath, self.data_uuid, self.data_name, (0,9,5,50,0), (4,10,20,150,3) )
+        self._test_volume( TEST_DVID_SERVER, self.data_uuid, self.data_name, (50,5,9,0), (150,20,10,1) )
     
-    def _test_volume(self, hostname, h5filename, uuid, dataname, start, stop):
+    def _test_volume(self, hostname, uuid, dataname, start, stop):
         """
         hostname: The dvid server host
-        h5filename: The h5 file to compare against
-        h5group: The hdf5 group, also used as the uuid of the dvid dataset
-        h5dataset: The dataset name, also used as the name of the dvid dataset
+        uuid: The node we can test with
+        dataname: The data instance to test with
         start, stop: The bounds of the cutout volume to retrieve from the server. C ORDER FOR THIS TEST BECAUSE we use transpose_axes=True
         """
         # Retrieve from server
@@ -118,8 +132,7 @@ class TestOpDvidVolume(unittest.TestCase):
         slicing = tuple( slice(x,y) for x,y in zip(start, stop) )
         slicing = tuple( reversed(slicing) )
 
-        with h5py.File(h5filename, 'r') as f:
-            expected_data = f['all_nodes'][uuid][dataname][slicing]
+        expected_data = self.original_data[slicing]
 
         # Compare.
         assert ( subvol.view(numpy.ndarray) == expected_data.transpose() ).all(),\

@@ -36,8 +36,8 @@ try:
     from opDvidVolume import OpDvidVolume
     from opExportDvidVolume import OpExportDvidVolume
 except ImportError as ex:
-    # If the exception was not related to pydvid, then re-raise it.
-    if 'pydvid' not in ex.args[0]:
+    # If the exception was not related to libdvid, then re-raise it.
+    if 'libdvid' not in ex.args[0]:
         raise
 
 from opInputDataReader import *

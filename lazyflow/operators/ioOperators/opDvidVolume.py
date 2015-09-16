@@ -28,7 +28,8 @@ import vigra
 from lazyflow.graph import Operator, OutputSlot
 from lazyflow.roi import determineBlockShape
 
-import pydvid
+from libdvid import DVIDException, ErrMsg
+from libdvid.voxels import VoxelsAccessor
 
 class OpDvidVolume(Operator):
     Output = OutputSlot()
@@ -58,23 +59,18 @@ class OpDvidVolume(Operator):
         This serves as an alternative init function, from which we are allowed to raise exceptions.
         """
         try:
-            self._connection = pydvid.dvid_connection.DvidConnection( self._hostname, timeout=60.0 )
-            #self._default_accessor = pydvid.voxels.VoxelsAccessor( self._connection, self._uuid, self._dataname, self._query_args )
-            self._default_accessor = pydvid.voxels.VoxelsAccessor( self._connection, self._uuid, self._dataname, self._query_args, retry_timeout=30*60.0 ) # 30 minute retry period
-            self._throttled_accessor = pydvid.voxels.VoxelsAccessor( self._connection, self._uuid, self._dataname, self._query_args,
-                                                                     throttle=True, retry_timeout=30*60.0 ) # 30 minute retry period
-        except pydvid.errors.DvidHttpError as ex:
-            if ex.status_code == httplib.NOT_FOUND:
-                raise OpDvidVolume.DatasetReadError("Host not found: {}".format( self._hostname ))
+            self._default_accessor = VoxelsAccessor( self._hostname, self._uuid, self._dataname, self._query_args )
+            self._throttled_accessor = VoxelsAccessor( self._hostname, self._uuid, self._dataname, self._query_args, throttle=True )
+        except DVIDException as ex:
+            if ex.status == httplib.NOT_FOUND:
+                raise OpDvidVolume.DatasetReadError("DVIDException: " + ex.message)
             raise
-        except socket.error as ex:
-            import errno
-            if ex.errno == errno.ECONNREFUSED:
-                raise OpDvidVolume.DatasetReadError("Connection refused: {}".format( self._hostname ))
-            raise
+        except ErrMsg as ex:
+            raise OpDvidVolume.DatasetReadError("ErrMsg: " + str(ex))
     
     def cleanUp(self):
-        self._connection.close()
+        self._default_accessor = None
+        self._throttled_accessor = None
         super( OpDvidVolume, self ).cleanUp()
     
     def setupOutputs(self):
