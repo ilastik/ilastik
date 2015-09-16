@@ -27,7 +27,7 @@ FILEPATH = os.path.split(__file__)[0]
 
 # Is DVID available?
 try:
-    import pydvid
+    import libdvid
     _supports_dvid = True
 except ImportError:
     _supports_dvid = False

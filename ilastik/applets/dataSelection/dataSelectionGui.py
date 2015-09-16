@@ -55,7 +55,7 @@ from datasetDetailedInfoTableModel import DatasetDetailedInfoColumn, DatasetDeta
 from datasetDetailedInfoTableView import DatasetDetailedInfoTableView
 
 try:
-    import pydvid
+    import libdvid
     _has_dvid_support = True
 except:
     _has_dvid_support = False
