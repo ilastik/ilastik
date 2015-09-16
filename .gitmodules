@@ -1,4 +1,0 @@
-
-[submodule "submodules/pydvid"]
-	path = submodules/pydvid
-	url = https://github.com/janelia-flyem/pydvid
