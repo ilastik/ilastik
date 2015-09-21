@@ -66,8 +66,6 @@ class DvidDataSelectionBrowser(ContentsBrowser):
         except VoxelsAccessor.BadRequestError as ex:
             # DVID will return an error if the selected dataset 
             #  isn't a 'voxels' dataset and thus has no voxels metadata
-            # In that case, show the error on the console, and don't let the user hit 'okay'.
-            log_exception( logger, level=logging.WARN )
             self._buttonbox.button(QDialogButtonBox.Ok).setEnabled(False)
             return
         else:
