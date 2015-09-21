@@ -156,7 +156,6 @@ class OpConservationTracking(OpTrackingBase):
         parameters = self.Parameters.value
         parameters_changed = {}
         self._setParameter('maxDist', maxDist, parameters, parameters_changed)
-        self._setParameter('maxDist', maxDist, parameters, parameters_changed)
         self._setParameter('maxObj', maxObj, parameters, parameters_changed)
         self._setParameter('divThreshold', divThreshold, parameters, parameters_changed)
         self._setParameter('avgSize', avgSize, parameters, parameters_changed)
