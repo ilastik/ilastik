@@ -829,7 +829,7 @@ class DataSelectionGui(QWidget):
 
         # Relocate host to top of 'recent' list, and limit list to 10 items.
         try:
-            i = recent_hosts.index(recent_hosts)
+            i = recent_hosts.index(hostname)
             del recent_hosts[i]
         except ValueError:
             pass
