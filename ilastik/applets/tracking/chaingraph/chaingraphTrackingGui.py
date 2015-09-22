@@ -131,7 +131,7 @@ class ChaingraphTrackingGui( TrackingBaseGui ):
                 log_exception(logger, "Error during tracking.  See above error traceback.")
                 self._criticalMessage("Error during tracking.  See error log.\n\n"
                                       "Exception was:\n\n{})".format( ex ))
-                return    
+                return
 
         def _handle_finished(*args):
             self.applet.progressSignal.emit(100)

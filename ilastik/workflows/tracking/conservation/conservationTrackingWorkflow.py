@@ -67,7 +67,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         self.dataExportApplet = TrackingBaseDataExportApplet(self, "Tracking Result Export")
 
         opDataExport = self.dataExportApplet.topLevelOperator
-        opDataExport.SelectionNames.setValue( ['Tracking Result', 'Merger Result', 'Object Identities'] )
+        opDataExport.SelectionNames.setValue( ['Object Identities', 'Tracking Result', 'Merger Result'] )
         opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
         
         # Extra configuration for object export table (as CSV table or HDF5 table)
@@ -187,9 +187,9 @@ class ConservationTrackingWorkflowBase( Workflow ):
         opTracking.NumLabels.connect( opCellClassification.NumLabels )
     
         opDataExport.Inputs.resize(3)
-        opDataExport.Inputs[0].connect( opTracking.Output )
-        opDataExport.Inputs[1].connect( opTracking.MergerOutput )
-        opDataExport.Inputs[2].connect( opTracking.LabelImage )
+        opDataExport.Inputs[0].connect( opTracking.RelabeledImage )
+        opDataExport.Inputs[1].connect( opTracking.Output )
+        opDataExport.Inputs[2].connect( opTracking.MergerOutput )
         opDataExport.RawData.connect( op5Raw.Output )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
 

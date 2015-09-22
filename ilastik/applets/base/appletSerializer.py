@@ -783,6 +783,43 @@ class SerialClassifierFactorySlot(SerialSlot):
         else:
             slot.setValue( value )
 
+
+class SerialPickleableSlot(SerialSlot):
+    def __init__(self, slot, version, default, name=None):
+        super( SerialPickleableSlot, self ).__init__( slot, name=name )
+        self._failed_to_deserialize = False
+        self._version = version
+        self._default = default
+
+    def _saveValue(self, group, name, value):
+        pickled = pickle.dumps( value )
+        dset = group.create_dataset(name, data=pickled)
+        dset.attrs['version'] = self._version
+        self._failed_to_deserialize = False
+
+    def shouldSerialize(self, group):
+        if self._failed_to_deserialize:
+            return True
+        else:
+            return super(SerialPickleableSlot, self).shouldSerialize(group)
+
+    def _getValue(self, dset, slot):
+        try:
+            # first check that the version of the deserialized and the expected value are the same
+            loaded_version = dset.attrs['version']
+            assert loaded_version == self._version
+
+            # Attempt to unpickle
+            pickled = dset[()]
+            value = pickle.loads(pickled)
+        except:
+            self._failed_to_deserialize = True
+            warnings.warn("This project file uses an old or unsupported storage format. "
+                          "When save the project the next time, it will be stored in the new format.")
+            slot.setValue(self._default)
+        else:
+            slot.setValue( value )
+
 ####################################
 # the base applet serializer class #
 ####################################

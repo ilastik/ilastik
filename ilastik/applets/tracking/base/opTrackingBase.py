@@ -81,6 +81,7 @@ class OpTrackingBase(Operator, ExportingOperator):
         super(OpTrackingBase, self).__init__(parent=parent, graph=graph)
         self.label2color = []
         self.mergers = []
+        self.resolvedto = []
 
         self.track_id = None
         self.extra_track_ids = None
@@ -207,6 +208,7 @@ class OpTrackingBase(Operator, ExportingOperator):
         label2color = []
         label2color.append({})
         mergers = []
+        resolvedto = []
 
         maxId = 2  # misdetections have id 1
 
@@ -214,6 +216,7 @@ class OpTrackingBase(Operator, ExportingOperator):
         for i in range(time_range[0]):
             label2color.append({})
             mergers.append({})
+            resolvedto.append({})
 
         if export_mode:
             extra_track_ids = {}
@@ -227,25 +230,26 @@ class OpTrackingBase(Operator, ExportingOperator):
             div = get_dict_value(events[str(i - time_range[0] + 1)], "div", [])
             mov = get_dict_value(events[str(i - time_range[0] + 1)], "mov", [])
             merger = get_dict_value(events[str(i - time_range[0])], "merger", [])
-            multi = get_dict_value(events[str(i - time_range[0] + 1)], "multiMove", [])
+            res = get_dict_value(events[str(i - time_range[0])], "res", {})
 
             logger.info(" {} dis at {}".format(len(dis), i))
             logger.info(" {} app at {}".format(len(app), i))
             logger.info(" {} div at {}".format(len(div), i))
             logger.info(" {} mov at {}".format(len(mov), i))
             logger.info(" {} merger at {}".format(len(merger), i))
-            logger.info(" {} multiMoves at {}\n".format(len(multi), i))
+            logger.info(" {} res at {}".format(len(res), i))
 
             label2color.append({})
             mergers.append({})
             moves_at = []
+            resolvedto.append({})
 
             if export_mode:
                 moves_to = {}
 
             for e in app:
                 if successive_ids:
-                    label2color[-1][int(e[0])] = maxId
+                    label2color[-1][int(e[0])] = maxId  # in export mode, the label color is used as track ID
                     maxId += 1
                 else:
                     label2color[-1][int(e[0])] = np.random.randint(1, 255)
@@ -255,25 +259,29 @@ class OpTrackingBase(Operator, ExportingOperator):
                     if e[1] in moves_to:
                         multi_move.setdefault(i, {})
                         multi_move[i][e[0]] = e[1]
-                        multi_move[i][moves_to[e[1]][0]] = e[1]
+                        if len(moves_to[e[1]]) == 1:  # if we are just setting up this multi move
+                            multi_move[i][moves_to[e[1]][0]] = e[1]
                         multi_move_next[(i, e[1])] = 0
                     moves_to.setdefault(e[1], [])
-                    moves_to[e[1]].append(e[0])
+                    moves_to[e[1]].append(e[0])  # moves_to[target] contains list of incoming object ids
 
+                # alternative way of appearance
                 if not label2color[-2].has_key(int(e[0])):
                     if successive_ids:
                         label2color[-2][int(e[0])] = maxId
                         maxId += 1
                     else:
                         label2color[-2][int(e[0])] = np.random.randint(1, 255)
+
+                # assign color of parent
                 label2color[-1][int(e[1])] = label2color[-2][int(e[0])]
                 moves_at.append(int(e[0]))
 
                 if export_mode:
                     key = i - 1, e[0]
-                    if key in multi_move_next:
-                        multi_move_next[key] = e[1]
-                        multi_move_next[(i, e[1])] = 0
+                    if key in multi_move_next:  # captures mergers staying connected over longer time spans
+                        multi_move_next[key] = e[1]  # redirects output of last merger to target in this frame
+                        multi_move_next[(i, e[1])] = 0  # sets current end to zero (might be changed by above line in the future)
 
             for e in div:  # event(parent, child, child)
                 # if not label2color[-2].has_key(int(e[0])):
@@ -299,26 +307,14 @@ class OpTrackingBase(Operator, ExportingOperator):
             for e in merger:
                 mergers[-1][int(e[0])] = int(e[1])
 
-            for e in multi:
-                if int(e[2]) >= 0 and not label2color[time_range[0] + int(e[2])].has_key(int(e[0])):
-                    if successive_ids:
-                        label2color[time_range[0] + int(e[2])][int(e[0])] = maxId
-                        maxId += 1
-                    else:
-                        label2color[time_range[0] + int(e[2])][int(e[0])] = np.random.randint(1, 255)
-                label2color[-1][int(e[1])] = label2color[time_range[0] + int(e[2])][int(e[0])]
-                if export_mode:
-                    e_start = int(time_range[0] + e[2])
-                    e_end = int(i)
-                    track_id = label2color[time_range[0] + int(e[2])][int(e[0])]
-                    double_object = multi_move[e_start][e[0]]
-                    for t in xrange(e_start, e_end):
-                        extra_track_ids.setdefault(t + 1, {})
-                        extra_track_ids[t + 1].setdefault(double_object, [])
-                        extra_track_ids[t + 1][double_object].append(track_id)
-                        next_key = (t, double_object)
-                        double_object = multi_move_next[next_key]
+            for o, r in res.iteritems():
+                resolvedto[-1][int(o)] = [int(c) for c in r[:-1]]
+                # label the original object with the false detection label
+                mergers[-1][int(o)] = len(r[:-1])
 
+                if export_mode:
+                    extra_track_ids.setdefault(i, {})
+                    extra_track_ids[i][int(o)] = [int(c) for c in r[:-1]]
 
         # last timestep
         merger = get_dict_value(events[str(time_range[-1] - time_range[0] + 1)], "merger", [])
@@ -326,6 +322,16 @@ class OpTrackingBase(Operator, ExportingOperator):
         for e in merger:
             mergers[-1][int(e[0])] = int(e[1])
 
+        res = get_dict_value(events[str(time_range[-1] - time_range[0] + 1)], "res", {})
+        resolvedto.append({})
+        if export_mode:
+            extra_track_ids[time_range[-1] + 1] = {}
+        for o, r in res.iteritems():
+            resolvedto[-1][int(o)] = [int(c) for c in r[:-1]]
+            mergers[-1][int(o)] = len(r[:-1])
+
+            if export_mode:
+                    extra_track_ids[time_range[-1] + 1][int(o)] = [int(c) for c in r[:-1]]
 
         # mark the filtered objects
         for i in filtered_labels.keys():
@@ -338,11 +344,12 @@ class OpTrackingBase(Operator, ExportingOperator):
 
         if export_mode:  # don't set fields when in export_mode
             self.track_id = label2color
-            self.extra_track_ids = extra_track_ids
             self.divisions = divisions
+            self.extra_track_ids = extra_track_ids
             return label2color, extra_track_ids, divisions
 
         self.label2color = label2color
+        self.resolvedto = resolvedto
         self.mergers = mergers
 
         self.Output._value = None
@@ -388,14 +395,10 @@ class OpTrackingBase(Operator, ExportingOperator):
                               max_traxel_id_at=None,
                               with_opt_correction=False,
                               with_coordinate_list=False,
-                              with_classifier_prior=False,
-                              coordinate_map=None):
+                              with_classifier_prior=False):
 
         if not self.Parameters.ready():
             raise Exception("Parameter slot is not ready")
-
-        if coordinate_map is not None and not with_coordinate_list:
-            coordinate_map.initialize()
 
         parameters = self.Parameters.value
         parameters['scales'] = [x_scale, y_scale, z_scale]
@@ -524,29 +527,6 @@ class OpTrackingBase(Operator, ExportingOperator):
 
                 ts.add(tr)
 
-                # add coordinate lists
-
-                if with_coordinate_list and coordinate_map is not None:  # store coordinates in arma::mat
-                    # generate roi: assume the following order: txyzc
-                    n_dim = len(rc[idx])
-                    roi = [0] * 5
-                    roi[0] = slice(int(t), int(t + 1))
-                    roi[1] = slice(int(lower[idx][0]), int(upper[idx][0] + 1))
-                    roi[2] = slice(int(lower[idx][1]), int(upper[idx][1] + 1))
-                    if n_dim == 3:
-                        roi[3] = slice(int(lower[idx][2]), int(upper[idx][2] + 1))
-                    else:
-                        assert n_dim == 2
-                    image_excerpt = self.LabelImage[roi].wait()
-                    if n_dim == 2:
-                        image_excerpt = image_excerpt[0, ..., 0, 0]
-                    elif n_dim == 3:
-                        image_excerpt = image_excerpt[0, ..., 0]
-                    else:
-                        raise Exception, "n_dim = %s instead of 2 or 3"
-
-                    pgmlink.extract_coordinates(coordinate_map, image_excerpt, lower[idx].astype(np.int64), tr)
-
             if len(filtered_labels_at) > 0:
                 filtered_labels[str(int(t) - time_range[0])] = filtered_labels_at
             logger.info("at timestep {}, {} traxels passed filter".format(t, count))
@@ -583,14 +563,25 @@ class OpTrackingBase(Operator, ExportingOperator):
         :param filename_suffix: If provided, appended to the filename (before the extension).
         :return:
         """
+
         assert lane_index == 0, "This has only been tested in tracking workflows with a single image."
 
+        with_divisions = self.Parameters.value["withDivisions"] if self.Parameters.ready() else False
+        if with_divisions:
+            object_feature_slot = self.ObjectFeaturesWithDivFeatures
+        else:
+            object_feature_slot = self.ObjectFeatures
+
+        self._do_export_impl(settings, selected_features, progress_slot, object_feature_slot, self.LabelImage, lane_index, filename_suffix)
+
+
+    def _do_export_impl(self, settings, selected_features, progress_slot, object_feature_slot, label_image_slot, lane_index, filename_suffix=""):
         from ilastik.utility.exportFile import objects_per_frame, ExportFile, ilastik_ids, Mode, Default, \
             flatten_dict, division_flatten_dict
 
         selected_features = list(selected_features)
         with_divisions = self.Parameters.value["withDivisions"] if self.Parameters.ready() else False
-        obj_count = list(objects_per_frame(self.LabelImage))
+        obj_count = list(objects_per_frame(label_image_slot))
         track_ids, extra_track_ids, divisions = self.export_track_ids()
         self._setLabel2Color()
         lineage = flatten_dict(self.label2color, obj_count)
@@ -613,10 +604,7 @@ class OpTrackingBase(Operator, ExportingOperator):
         export_file.add_columns("table", track_ids, Mode.IlastikTrackingTable,
                                 {"max": multi_move_max, "counts": obj_count, "extra ids": extra_track_ids,
                                  "range": t_range})
-        if with_divisions:
-            object_feature_slot = self.ObjectFeaturesWithDivFeatures
-        else:
-            object_feature_slot = self.ObjectFeatures
+
         export_file.add_columns("table", object_feature_slot, Mode.IlastikFeatureTable,
                                 {"selection": selected_features})
 
@@ -630,7 +618,7 @@ class OpTrackingBase(Operator, ExportingOperator):
                 logger.debug("No divisions occurred. Division Table will not be exported!")
 
         if settings["file type"] == "h5":
-            export_file.add_rois(Default.LabelRoiPath, self.LabelImage, "table", settings["margin"], "labeling")
+            export_file.add_rois(Default.LabelRoiPath, label_image_slot, "table", settings["margin"], "labeling")
             if settings["include raw"]:
                 export_file.add_image(Default.RawPath, self.RawImage)
             else:

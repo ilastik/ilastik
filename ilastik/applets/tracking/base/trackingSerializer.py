@@ -19,7 +19,9 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.appletSerializer import AppletSerializer,\
-    SerialDictSlot, SerialSlot, SerialHdf5BlockSlot
+    SerialDictSlot, SerialSlot, SerialHdf5BlockSlot, SerialPickleableSlot
+
+import pgmlink
 
 class TrackingSerializer(AppletSerializer):
     
@@ -39,6 +41,9 @@ class TrackingSerializer(AppletSerializer):
                                      mainOperator.MergerCleanBlocks,
                                      name="MergerCachedOutput"),
                           )
+
+        if 'CoordinateMap' in mainOperator.outputs:
+            slots.append(SerialPickleableSlot(mainOperator.CoordinateMap, 1, pgmlink.TimestepIdCoordinateMap()))
 
         super( TrackingSerializer, self ).__init__( projectFileGroupName, slots=slots )
         
