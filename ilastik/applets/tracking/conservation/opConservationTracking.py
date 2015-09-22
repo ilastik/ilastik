@@ -412,15 +412,20 @@ class OpConservationTracking(OpTrackingBase):
             'divThreshold']
         return any(parameters_changed[key] for key in rebuild_for_keys_changed)
 
-    def do_export(self, settings, selected_features, progress_slot):
+    def do_export(self, settings, selected_features, progress_slot, lane_index, filename_suffix=""):
         """
         Implements ExportOperator.do_export(settings, selected_features, progress_slot
         Most likely called from ExportOperator.export_object_data
         :param settings: the settings for the exporter, see
         :param selected_features:
         :param progress_slot:
+        :param lane_index: Ignored. (This is a single-lane operator. It is the caller's responsibility to make sure he's calling the right lane.)
+        :param filename_suffix: If provided, appended to the filename (before the extension).
         :return:
         """
+
+        assert lane_index == 0, "This has only been tested in tracking workflows with a single image."
+
         with_divisions = self.Parameters.value["withDivisions"] if self.Parameters.ready() else False
         with_merger_resolution = self.Parameters.value["withMergerResolution"] if self.Parameters.ready() else False
 
@@ -437,7 +442,7 @@ class OpConservationTracking(OpTrackingBase):
         else:
             label_image = self.LabelImage
 
-        self._do_export_impl(settings, selected_features, progress_slot, object_feature_slot, label_image)
+        self._do_export_impl(settings, selected_features, progress_slot, object_feature_slot, label_image, lane_index, filename_suffix)
 
         if with_merger_resolution:
             opRelabeledRegionFeatures.cleanUp()

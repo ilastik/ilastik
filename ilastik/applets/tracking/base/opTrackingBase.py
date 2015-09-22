@@ -572,10 +572,10 @@ class OpTrackingBase(Operator, ExportingOperator):
         else:
             object_feature_slot = self.ObjectFeatures
 
-        self._do_export_impl(settings, selected_features, progress_slot, object_feature_slot, self.LabelImage)
+        self._do_export_impl(settings, selected_features, progress_slot, object_feature_slot, self.LabelImage, lane_index, filename_suffix)
 
 
-    def _do_export_impl(self, settings, selected_features, progress_slot, object_feature_slot, label_image_slot):
+    def _do_export_impl(self, settings, selected_features, progress_slot, object_feature_slot, label_image_slot, lane_index, filename_suffix=""):
         from ilastik.utility.exportFile import objects_per_frame, ExportFile, ilastik_ids, Mode, Default, \
             flatten_dict, division_flatten_dict
 
