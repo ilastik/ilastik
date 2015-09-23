@@ -67,9 +67,11 @@ class OpTrackingBase(Operator, ExportingOperator):
 
     # Use a slot for storing the export settings in the project file.
     ExportSettings = OutputSlot()
+
     # Override functions ExportingOperator mixin
     def configure_table_export_settings(self, settings, selected_features):
         self.ExportSettings.setValue( (settings, selected_features) )
+
     def get_table_export_settings(self):
         if self.ExportSettings.ready():
             (settings, selected_features) = self.ExportSettings.value
