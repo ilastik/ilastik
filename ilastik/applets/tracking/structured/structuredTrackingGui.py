@@ -101,7 +101,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._drawer.timeoutBox.textChanged.connect(self._onTimeoutBoxChanged)
 
         if not ilastik_config.getboolean("ilastik", "debug"):
-            assert self._drawer.trackletsBox.isChecked()
+            #assert self._drawer.trackletsBox.isChecked()
             self._drawer.trackletsBox.hide()
             
             assert not self._drawer.hardPriorBox.isChecked()
@@ -361,12 +361,13 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                         type = self._type(cropKey, time, track) # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
 
                         if type[0] == "FIRST":
-                            structuredLearningTracker.addFirstLabels(time, int(label), float(trackCount))
+                            #structuredLearningTracker.addFirstLabels(time, int(label), float(trackCount))
+                            pass
                         elif type[0] == "LAST":
-                            structuredLearningTracker.addLastLabels(time, int(label), float(trackCount))
+                            #structuredLearningTracker.addLastLabels(time, int(label), float(trackCount))
                             structuredLearningTracker.addArcLabel(time-1, int(type[1]), int(label), float(trackCount))
                         elif type[0] == "INTERMEDIATE":
-                            structuredLearningTracker.addIntermediateLabels(time, int(label), float(trackCount))
+                            #structuredLearningTracker.addIntermediateLabels(time, int(label), float(trackCount))
                             structuredLearningTracker.addArcLabel(time-1, int(type[1]), int(label), float(trackCount))
 
             if "divisions" in crop.keys():
@@ -444,13 +445,13 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         #    sltWeightNorm += structuredLearningTracker.weight(i) * structuredLearningTracker.weight(i)
         #sltWeightNorm = math.sqrt(sltWeightNorm)
 
-        #self._detectionWeight = structuredLearningTracker.weight(0)
-        #self._divisionWeight = structuredLearningTracker.weight(1)
-        #self._transitionWeight = structuredLearningTracker.weight(2)
-        #self._appearanceWeight = structuredLearningTracker.weight(3)
-        #self._disappearanceWeight = structuredLearningTracker.weight(4)
+        # self._detectionWeight = structuredLearningTracker.weight(0)
+        # self._divisionWeight = structuredLearningTracker.weight(1)
+        # self._transitionWeight = structuredLearningTracker.weight(2)
+        # self._appearanceWeight = structuredLearningTracker.weight(3)
+        # self._disappearanceWeight = structuredLearningTracker.weight(4)
 
-        self._detectionWeight = math.exp(structuredLearningTracker.weight(0))
+        self._detectionWeight = math.exp(float(structuredLearningTracker.weight(0)))
         self._divisionWeight = math.exp(structuredLearningTracker.weight(1))
         self._transitionWeight = math.exp(structuredLearningTracker.weight(2))
         self._appearanceWeight = math.exp(structuredLearningTracker.weight(3))
@@ -552,7 +553,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             if len(str(self._drawer.timeoutBox.text())):
                 cplex_timeout = int(self._drawer.timeoutBox.text())
 
-            withTracklets = self._drawer.trackletsBox.isChecked()
+            withTracklets = False; #self._drawer.trackletsBox.isChecked()
             sizeDependent = self._drawer.sizeDepBox.isChecked()
             hardPrior = self._drawer.hardPriorBox.isChecked()
             classifierPrior = self._drawer.classifierPriorBox.isChecked()

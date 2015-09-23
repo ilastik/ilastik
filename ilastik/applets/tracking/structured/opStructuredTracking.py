@@ -54,7 +54,7 @@ class OpStructuredTracking(OpTrackingBase):
         self.MergerOutputHdf5.connect(self._mergerOpCache.OutputHdf5)
         self.MergerCachedOutput.connect(self._mergerOpCache.Output)
 
-        self.tracker = None
+        self.consTracker = None
         self._parent = parent
 
         self.DivisionWeight.setValue(1)
@@ -215,9 +215,9 @@ class OpStructuredTracking(OpTrackingBase):
         if ndim == 2:
             assert z_range[0] * z_scale == 0 and (z_range[1]-1) * z_scale == 0, "fov of z must be (0,0) if ndim==2"
 
-        if(self.tracker == None or graph_building_parameter_changed):
+        if(self.consTracker == None or graph_building_parameter_changed):
             print '\033[94m' +"make new graph"+  '\033[0m'
-            self.tracker = pgmlink.ConsTracking(
+            self.consTracker = pgmlink.ConsTracking(
                 maxObj,
                 sizeDependent,   # size_dependent_detection_prob
                 float(median_obj_size[0]), # median_object_size
@@ -229,13 +229,13 @@ class OpStructuredTracking(OpTrackingBase):
                 "none", # dump traxelstore,
                 pgmlink.ConsTrackingSolverType.CplexSolver,
                 ndim)
-            hypothesesGraph = self.tracker.buildGraph(ts)
+            hypothesesGraph = self.consTracker.buildGraph(ts)
 
 
             self.features = self.ObjectFeatures(range(0,self.LabelImage.meta.shape[0])).wait()
             if trainingToHardConstraints:
                 print "Adding Annotations to Hypotheses Graph"
-                self.tracker.addLabels()
+                self.consTracker.addLabels()
 
                 for cropKey in self.Annotations.value.keys():
                     crop = self.Annotations.value[cropKey]
@@ -248,19 +248,39 @@ class OpStructuredTracking(OpTrackingBase):
                                 track = trackSet.pop()
                                 trackSet.add(track)
                                 center = self.features[time]['Default features']['RegionCenter'][label]
-                                trackCount = len(trackSet)
+                                trackCount = len(trackSet) # should be the cardinality of an INTERSECTION with STARTING vertex track set
 
                                 # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
                                 type = self._type(cropKey, time, track) # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
 
+                                if type[0] == "LAST" or type[0] == "INTERMEDIATE":
+                                    previous_label = int(type[1])
+                                    print "time",time,"label",label,"previous_label",previous_label
+                                    previousTrackSet = labels[time-1][previous_label]
+                                    intersectionSet = trackSet.intersection(previousTrackSet)
+                                    trackCount = len (intersectionSet)
+
                                 if type[0] == "FIRST":
-                                    self.tracker.addFirstLabels(time, int(label), float(trackCount))
+                                    #print "FIRST"
+                                    ################self.consTracker.addFirstLabels(time, int(label), float(trackCount)) # <--- trackCount does not work here----> use PLUS ONE instead
+                                    pass
                                 elif type[0] == "LAST":
-                                    self.tracker.addLastLabels(time, int(label), float(trackCount))
-                                    self.tracker.addArcLabel(time-1, int(type[1]), int(label), float(trackCount))
+                                    print "LAST"
+                                    #############self.consTracker.addLastLabels(time, int(label), float(trackCount)) # <--- trackCount does not work here
+                                    self.consTracker.addArcLabel(time-1, int(type[1]), int(label), float(trackCount))
+                                    pass
                                 elif type[0] == "INTERMEDIATE":
-                                    self.tracker.addIntermediateLabels(time, int(label), float(trackCount))
-                                    self.tracker.addArcLabel(time-1, int(type[1]), int(label), float(trackCount))
+                                    print "INTERMEDIATE"
+                                    #############self.consTracker.addIntermediateLabels(time, int(label), float(trackCount)) # <--- trackCount does not work here
+                                    self.consTracker.addArcLabel(time-1, int(type[1]), int(label), float(trackCount))
+                                    pass
+                                elif type[0] == "SINGLETON": #FIRST_LAST
+                                    #print "SINGLETON"
+                                    #self.consTracker.addIntermediateLabels(time, int(label), float(trackCount)) # <--- trackCount does not work here
+                                    pass
+                                else:
+                                    #print type[0]
+                                    pass
 
                     if "divisions" in crop.keys():
                         divisions = crop["divisions"]
@@ -269,18 +289,20 @@ class OpStructuredTracking(OpTrackingBase):
                             time = int(division[1])
 
                             parent = int(self.getLabelInCrop(cropKey, time, track))
-                            self.tracker.addDivisionLabel(time, parent, 1.0)
-                            self.tracker.addAppearanceLabel(time, parent, 1.0)
 
+                            print "PARENT"
+                            self.consTracker.addDivisionLabel(time, parent, 1.0)
+                            #self.consTracker.addAppearanceLabel(time, parent, 1.0)
+
+                            print "CHILD first"
                             child0 = int(self.getLabelInCrop(cropKey, time+1, division[0][0]))
-                            self.tracker.addDisappearanceLabel(time+1, child0, 1.0)
-                            self.tracker.addAppearanceLabel(time+1, child0, 1.0)
-                            self.tracker.addArcLabel(time, parent, child0, 1.0)
+                            #self.consTracker.addDisappearanceLabel(time+1, child0, 1.0)
+                            self.consTracker.addArcLabel(time, parent, child0, 1.0)
 
+                            print "CHILD second"
                             child1 = int(self.getLabelInCrop(cropKey, time+1, division[0][1]))
-                            self.tracker.addDisappearanceLabel(time+1, child1, 1.0)
-                            self.tracker.addAppearanceLabel(time+1, child1, 1.0)
-                            self.tracker.addArcLabel(time, parent, child1, 1.0)
+                            #self.consTracker.addDisappearanceLabel(time+1, child1, 1.0)
+                            self.consTracker.addArcLabel(time, parent, child1, 1.0)
 
 
 
@@ -292,7 +314,7 @@ class OpStructuredTracking(OpTrackingBase):
         uncertaintyParams = pgmlink.UncertaintyParameter(1, pgmlink.DistrId.PerturbAndMAP, sigmas)
 
         try:
-            eventsVector = self.tracker.track(0,       # forbidden_cost
+            eventsVector = self.consTracker.track(0,       # forbidden_cost
                                             float(ep_gap), # ep_gap
                                             withTracklets,
                                             10.0, # detection weight
@@ -313,24 +335,25 @@ class OpStructuredTracking(OpTrackingBase):
             eventsVector = eventsVector[0] # we have a vector such that we could get a vector per perturbation
 
             # extract the coordinates with the given event vector
-            if withMergerResolution:
-                coordinate_map = pgmlink.TimestepIdCoordinateMap()
-                if withArmaCoordinates:
-                    coordinate_map.initialize()
-                self._get_merger_coordinates(coordinate_map,
-                                             time_range,
-                                             eventsVector)
 
-                eventsVector = self.tracker.resolve_mergers(eventsVector,
-                                                coordinate_map.get(),
-                                                float(ep_gap),
-                                                transWeight,
-                                                withTracklets,
-                                                ndim,
-                                                transition_parameter,
-                                                True, # with_constraints
-                                                #True) # with_multi_frame_moves
-                                                None) # TransitionClassifier
+            # if withMergerResolution:
+            #     coordinate_map = pgmlink.TimestepIdCoordinateMap()
+            #     if withArmaCoordinates:
+            #         coordinate_map.initialize()
+            #     self._get_merger_coordinates(coordinate_map,
+            #                                  time_range,
+            #                                  eventsVector)
+            #
+            #     eventsVector = self.consTracker.resolve_mergers(eventsVector,
+            #                                     coordinate_map.get(),
+            #                                     float(ep_gap),
+            #                                     transWeight,
+            #                                     withTracklets,
+            #                                     ndim,
+            #                                     transition_parameter,
+            #                                     True, # with_constraints
+            #                                     #True) # with_multi_frame_moves
+            #                                     None) # TransitionClassifier
         except Exception as e:
             raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
         
@@ -341,62 +364,12 @@ class OpStructuredTracking(OpTrackingBase):
         self.Parameters.setValue(parameters, check_changed=False)
         self.EventsVector.setValue(events, check_changed=False)
         
-    # def addTrainingToHardConstraints(self, tracker, hypothesesGraph):
-    #     self.features = self.ObjectFeatures(range(0,self.LabelImage.meta.shape[0])).wait()
-    #     for cropKey in self.Annotations.value.keys():
-    #         crop = self.Annotations.value[cropKey]
-    #
-    #         if "labels" in crop.keys():
-    #             labels = crop["labels"]
-    #             for time in labels.keys():
-    #                 for label in labels[time].keys():
-    #                     trackSet = labels[time][label]
-    #                     track = trackSet.pop()
-    #                     trackSet.add(track)
-    #                     center = self.features[time]['Default features']['RegionCenter'][label]
-    #                     trackCount = len(trackSet)
-    #
-    #                     # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
-    #                     type = self._type(cropKey, time, track) # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
-    #
-    #                     if type[0] == "FIRST":
-    #                         pass #tracker.addFirstLabels(time, int(label), float(trackCount))
-    #
-    #
-    #
-    #                         tracker.fixNodeToAppearanceLabel(hypothesesGraph, int(label), float(trackCount))
-    #                     elif type[0] == "LAST":
-    #                         pass #tracker.addLastLabels(time, int(label), float(trackCount))
-    #                         pass #tracker.addArcLabel(time-1, int(type[1]), int(label), 1.0)
-    #                     elif type[0] == "INTERMEDIATE":
-    #                         pass #tracker.addIntermediateLabels(time, int(label), float(trackCount))
-    #                         pass #tracker.addArcLabel(time-1, int(type[1]), int(label), 1.0)
-    #
-    #         if "divisions" in crop.keys():
-    #             divisions = crop["divisions"]
-    #             for track in divisions.keys():
-    #                 division = divisions[track]
-    #                 time = int(division[1])
-    #
-    #                 parent = int(self.getLabelInCrop(cropKey, time, track))
-    #                 pass #tracker.addDivisionLabel(time, parent, 1.0)
-    #                 pass #tracker.addAppearanceLabel(time, parent, 1.0)
-    #
-    #                 child0 = int(self.getLabelInCrop(cropKey, time+1, division[0][0]))
-    #                 pass #tracker.addDisappearanceLabel(time+1, child0, 1.0)
-    #                 pass #tracker.addAppearanceLabel(time+1, child0, 1.0)
-    #                 pass #tracker.addArcLabel(time, parent, child0, 1.0)
-    #
-    #                 child1 = int(self.getLabelInCrop(cropKey, time+1, division[0][1]))
-    #                 pass #tracker.addDisappearanceLabel(time+1, child1, 1.0)
-    #                 pass #tracker.addAppearanceLabel(time+1, child1, 1.0)
-    #                 pass #tracker.addArcLabel(time, parent, child1, 1.0)
-
     def getLabelInCrop(self, cropKey, time, track):
         labels = self.Annotations.value[cropKey]["labels"][time]
         for label in labels.keys():
             if self.Annotations.value[cropKey]["labels"][time][label] == set([track]):
                 return label
+                #return [label,len(self.Annotations.value[cropKey]["labels"][time][label])]
         return False
 
     def _type(self, cropKey, time, track):
@@ -433,7 +406,7 @@ class OpStructuredTracking(OpTrackingBase):
 
         if firstTime == -1:
             if type == "FIRST":
-                return ["SINGLETON(FIRST_LAST)"]
+                return ["SINGLETON"] #(FIRST_LAST)
             else:
                 return ["LAST", lastLabel]
         elif firstTime > time+1:

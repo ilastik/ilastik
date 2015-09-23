@@ -58,13 +58,13 @@
    <item row="2" column="2" colspan="3">
     <widget class="QDoubleSpinBox" name="detWeightBox">
      <property name="decimals">
-      <number>5</number>
+      <number>16</number>
      </property>
      <property name="minimum">
       <double>-10000.000000000000000</double>
      </property>
      <property name="maximum">
-      <double>10000.000000000000000</double>
+      <double>1000000.000000000000000</double>
      </property>
      <property name="value">
       <double>1.000000000000000</double>
@@ -84,13 +84,13 @@
    <item row="3" column="2" colspan="3">
     <widget class="QDoubleSpinBox" name="divWeightBox">
      <property name="decimals">
-      <number>5</number>
+      <number>16</number>
      </property>
      <property name="minimum">
       <double>-10000.000000000000000</double>
      </property>
      <property name="maximum">
-      <double>10000.000000000000000</double>
+      <double>1000000.000000000000000</double>
      </property>
      <property name="value">
       <double>1.000000000000000</double>
@@ -110,13 +110,13 @@
    <item row="4" column="2" colspan="3">
     <widget class="QDoubleSpinBox" name="transWeightBox">
      <property name="decimals">
-      <number>5</number>
+      <number>16</number>
      </property>
      <property name="minimum">
       <double>-10000.000000000000000</double>
      </property>
      <property name="maximum">
-      <double>10000.000000000000000</double>
+      <double>1000000.000000000000000</double>
      </property>
      <property name="value">
       <double>1.000000000000000</double>
@@ -136,13 +136,13 @@
    <item row="5" column="2" colspan="3">
     <widget class="QDoubleSpinBox" name="appearanceBox">
      <property name="decimals">
-      <number>5</number>
+      <number>16</number>
      </property>
      <property name="minimum">
       <double>-10000.000000000000000</double>
      </property>
      <property name="maximum">
-      <double>10000.000000000000000</double>
+      <double>1000000.000000000000000</double>
      </property>
      <property name="value">
       <double>1.000000000000000</double>
@@ -162,13 +162,13 @@
    <item row="6" column="2" colspan="3">
     <widget class="QDoubleSpinBox" name="disappearanceBox">
      <property name="decimals">
-      <number>5</number>
+      <number>16</number>
      </property>
      <property name="minimum">
       <double>-10000.000000000000000</double>
      </property>
      <property name="maximum">
-      <double>10000.000000000000000</double>
+      <double>1000000.000000000000000</double>
      </property>
      <property name="value">
       <double>1.000000000000000</double>
