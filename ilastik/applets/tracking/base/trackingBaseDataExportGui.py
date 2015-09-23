@@ -65,7 +65,7 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
 
     def _initAppletDrawerUic(self):
         super(TrackingBaseDataExportGui, self)._initAppletDrawerUic()
-        btn = QPushButton("Configure Feature Table Export", clicked=self.configure_table_export)
+        btn = QPushButton("Configure Table Export for Tracking+Features", clicked=self.configure_table_export)
         self.drawer.exportSettingsGroupBox.layout().addWidget(btn)
 
 class TrackingBaseResultsViewer(DataExportLayerViewerGui):
