@@ -198,6 +198,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         #        We should assert that the user isn't using the blockwise slot.
         settings, selected_features = self.trackingApplet.topLevelOperator.getLane(lane_index).get_table_export_settings()
         if settings:
+            self.dataExportApplet.progressSignal.emit(-1)
             raw_dataset_info = self.dataSelectionApplet.topLevelOperator.DatasetGroup[lane_index][0].value
             if raw_dataset_info.location == DatasetInfo.Location.FileSystem:
                 filename_suffix = raw_dataset_info.nickname
@@ -209,7 +210,8 @@ class ConservationTrackingWorkflowBase( Workflow ):
                         #        That's not a huge deal, because there's still a progress bar for the overall export.
                         show_gui=False, 
                         filename_suffix=filename_suffix)
-            req.wait()         
+            req.wait()
+            self.dataExportApplet.progressSignal.emit(100)
     
     def _inputReady(self, nRoles):
         slot = self.dataSelectionApplet.topLevelOperator.ImageGroup
