@@ -30,8 +30,10 @@ class ExportObjectInfoDialog(QDialog):
     :type req_features: list or None
     :param parent: the parent QWidget for this dialog
     :type parent: QWidget or None
+    :param filename: The filename to use as default
+    :type filename: str or None
     """
-    def __init__(self, dimensions, feature_table, req_features=None, title=None, parent=None):
+    def __init__(self, dimensions, feature_table, req_features=None, title=None, parent=None, filename=None):
         super(ExportObjectInfoDialog, self).__init__(parent)
 
         ui_class, widget_class = uic.loadUiType(os.path.split(__file__)[0] + "/exportObjectInfoDialog.ui")
@@ -50,10 +52,22 @@ class ExportObjectInfoDialog(QDialog):
         self.ui.featureView.setHeaderLabels(("Select Features",))
         self.ui.featureView.expandAll()
 
-        self.ui.exportPath.setText(os.path.expanduser("~") + "/exported_data.h5")
+        if filename is not None and self.is_valid_path(filename):
+            self.ui.exportPath.setText(filename)
+            self.ui.fileFormat.setCurrentIndex(self._get_file_type_index_from_filename(filename))
+        else:
+            self.ui.exportPath.setText(os.path.expanduser("~") + "/exported_data.h5")
+            
         self.ui.exportPath.dropEvent = self._drop_event
         # self.ui.forceUniqueIds.setEnabled(dimensions[0] > 1)
         self.ui.compressFrame.setVisible(False)
+
+    def _get_file_type_index_from_filename(self, filename):
+        extension = filename.rsplit(".", 1)[1].lower()
+        idx = ALLOWED_EXTENSIONS.index(extension)
+        if idx < 3:
+            return 0 # file type "h5"
+        return 1 # file type "csv"
 
     def checked_features(self):
         """
@@ -160,8 +174,7 @@ class ExportObjectInfoDialog(QDialog):
             return
         else:
             path = unicode(self.ui.exportPath.text())
-            match = path.rsplit(".", 1)
-            if len(match) == 1 or match[1] not in ALLOWED_EXTENSIONS:
+            if not self.is_valid_path(path):
                 title = "Warning"
                 text = "No file extension or invalid file extension ( %s )\nAllowed: %s"
                 if len(match) == 1:
@@ -174,6 +187,12 @@ class ExportObjectInfoDialog(QDialog):
                 return
 
         self.accept()
+
+    def is_valid_path(self, path):
+        match = path.rsplit(".", 1)
+        if len(match) == 1 or match[1] not in ALLOWED_EXTENSIONS:
+            return False
+        return True
 
     # slot is called from button.click
     def choose_path(self):

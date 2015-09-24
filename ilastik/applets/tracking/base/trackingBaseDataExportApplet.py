@@ -26,8 +26,13 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
     provides a special viewer for trackign output.
     """
     def __init__(self, *args, **kwargs):
+        if 'default_export_filename' in kwargs:
+            default_export_filename = kwargs['default_export_filename']
+            del kwargs['default_export_filename']
+
         super(TrackingBaseDataExportApplet, self).__init__(*args, **kwargs)
         self.export_op = None
+        self._default_export_filename = default_export_filename
 
     def set_exporting_operator(self, op):
         self.export_op = op
@@ -40,6 +45,7 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
 
             assert self.export_op is not None, "Exporting Operator must be set!"
             self._gui.set_exporting_operator(self.export_op)
+            self._gui.set_default_export_filename(self._default_export_filename)
         return self._gui
 
 

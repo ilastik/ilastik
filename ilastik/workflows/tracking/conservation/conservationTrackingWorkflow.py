@@ -1,4 +1,6 @@
+import os
 from lazyflow.graph import Graph
+from lazyflow.utility import PathComponents, make_absolute, format_known_keys
 from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet, DatasetInfo
 from ilastik.applets.tracking.conservation.conservationTrackingApplet import ConservationTrackingApplet
@@ -64,7 +66,10 @@ class ConservationTrackingWorkflowBase( Workflow ):
                 
         self.trackingApplet = ConservationTrackingApplet( workflow=self )
 
-        self.dataExportApplet = TrackingBaseDataExportApplet(self, "Tracking Result Export")
+        self.default_export_filename = '{dataset_dir}/{nickname}-exported_data.csv'
+        self.dataExportApplet = TrackingBaseDataExportApplet(self, 
+                                                             "Tracking Result Export", 
+                                                             default_export_filename=self.default_export_filename)
 
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.SelectionNames.setValue( ['Object Identities', 'Tracking Result', 'Merger Result'] )
@@ -185,6 +190,11 @@ class ConservationTrackingWorkflowBase( Workflow ):
         opTracking.DivisionProbabilities.connect( opDivDetection.Probabilities )
         opTracking.DetectionProbabilities.connect( opCellClassification.Probabilities )
         opTracking.NumLabels.connect( opCellClassification.NumLabels )
+
+        # configure export settings
+        settings = {'file path': self.default_export_filename, 'compression': {}, 'file type': 'csv'}
+        selected_features = ['Count', 'RegionCenter']
+        opTracking.configure_table_export_settings(settings, selected_features)
     
         opDataExport.Inputs.resize(3)
         opDataExport.Inputs[0].connect( opTracking.RelabeledImage )
@@ -198,18 +208,34 @@ class ConservationTrackingWorkflowBase( Workflow ):
         #        We should assert that the user isn't using the blockwise slot.
         settings, selected_features = self.trackingApplet.topLevelOperator.getLane(lane_index).get_table_export_settings()
         if settings:
+            self.dataExportApplet.progressSignal.emit(-1)
             raw_dataset_info = self.dataSelectionApplet.topLevelOperator.DatasetGroup[lane_index][0].value
-            if raw_dataset_info.location == DatasetInfo.Location.FileSystem:
-                filename_suffix = raw_dataset_info.nickname
-            else:
-                filename_suffix = str(lane_index)
+            
+            project_path = self.shell.projectManager.currentProjectPath
+            project_dir = os.path.dirname(project_path)
+            dataset_dir = PathComponents(raw_dataset_info.filePath).externalDirectory
+            abs_dataset_dir = make_absolute(dataset_dir, cwd=project_dir)
+
+            known_keys = {}        
+            known_keys['dataset_dir'] = abs_dataset_dir
+            nickname = raw_dataset_info.nickname.replace('*', '')
+            if os.path.pathsep in nickname:
+                nickname = PathComponents(nickname.split(os.path.pathsep)[0]).fileNameBase
+            known_keys['nickname'] = nickname
+            
+            # use partial formatting to fill in non-coordinate name fields
+            name_format = settings['file path']
+            partially_formatted_name = format_known_keys( name_format, known_keys )
+            settings['file path'] = partially_formatted_name
+
             req = self.trackingApplet.topLevelOperator.getLane(lane_index).export_object_data(
                         lane_index, 
                         # FIXME: Even in non-headless mode, we can't show the gui because we're running in a non-main thread.
                         #        That's not a huge deal, because there's still a progress bar for the overall export.
-                        show_gui=False, 
-                        filename_suffix=filename_suffix)
-            req.wait()         
+                        show_gui=False)
+
+            req.wait()
+            self.dataExportApplet.progressSignal.emit(100)
     
     def _inputReady(self, nRoles):
         slot = self.dataSelectionApplet.topLevelOperator.ImageGroup
