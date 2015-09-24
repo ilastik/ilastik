@@ -39,6 +39,7 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
     def __init__(self, *args, **kwargs):
         super(TrackingBaseDataExportGui, self).__init__(*args, **kwargs)
         self._exporting_operator = None
+        self._default_export_filename = None
 
     def get_feature_names(self):
         op = self.get_exporting_operator()
@@ -67,6 +68,32 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
         super(TrackingBaseDataExportGui, self)._initAppletDrawerUic()
         btn = QPushButton("Configure Table Export for Tracking+Features", clicked=self.configure_table_export)
         self.drawer.exportSettingsGroupBox.layout().addWidget(btn)
+
+    def set_default_export_filename(self, filename):
+        self._default_export_filename = filename
+
+    # override this ExportingOperator function so that we can pass the default filename
+    def show_export_dialog(self):
+        """
+        Shows the ExportObjectInfoDialog and calls the operators export_object_data method
+        """
+        # Late imports here, so we don't accidentally import PyQt during headless mode.
+        from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog
+        from ilastik.widgets.progressDialog import ProgressDialog
+        
+        dimensions = self.get_raw_shape()
+        feature_names = self.get_feature_names()        
+
+        dialog = ExportObjectInfoDialog(dimensions, 
+                                        feature_names, 
+                                        title=self.get_export_dialog_title(), 
+                                        filename=self._default_export_filename)
+        if not dialog.exec_():
+            return (None, None)
+
+        settings = dialog.settings()
+        selected_features = list(dialog.checked_features()) # returns a generator, but that's inconvenient because it can't be serialized.
+        return settings, selected_features
 
 class TrackingBaseResultsViewer(DataExportLayerViewerGui):
     
