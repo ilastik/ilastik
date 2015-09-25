@@ -26,8 +26,6 @@ from lazyflow.graph import Graph
 from lazyflow.operators.ioOperators import OpStreamingMmfReader
 import nose
 
-import pylab as plt
-
 EXPECTED_DTYPE = np.uint8
 EXPECTED_SHAPE = (180, 2816, 2816, 1)
 EXPECTED_AXIS_ORDER = 'tyxc'
