@@ -90,7 +90,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._previousCrop = -1
         self._currentCrop = -1
         self._currentCropName = ""
-        
+        self._maxNearestNeighbors = 1
+
         super(StructuredTrackingGui, self).initAppletDrawerUi()
 
         self.realOperator = self.topLevelOperatorView.Labels.getRealOperator()
@@ -139,6 +140,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._drawer.appearanceBox.valueChanged.connect(self._onAppearanceWeightBoxChanged)                
         self._drawer.disappearanceBox.valueChanged.connect(self._onDisappearanceWeightBoxChanged)                
         self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)
+        self._drawer.maxNearestNeighborsSpinBox.valueChanged.connect(self._onMaxNearestNeighborsSpinBoxChanged)
 
         self._drawer.AllOnesButton.clicked.connect(self._onAllOnesButtonPressed)
 
@@ -227,7 +229,11 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
     def _onDisappearanceWeightBoxChanged(self, *args):
         self._disappearanceWeight = self._drawer.disappearanceBox.value()
         self.topLevelOperatorView.DisappearanceWeight.setValue(self._disappearanceWeight)
-        
+
+    @threadRouted
+    def _onMaxNearestNeighborsSpinBoxChanged(self, *args):
+        self._maxNearestNeighbors = self._drawer.maxNearestNeighborsSpinBox.value()
+
     def _setRanges(self, *args):
         super(StructuredTrackingGui, self)._setRanges()
         maxx = self.topLevelOperatorView.LabelImage.meta.shape[1] - 1
@@ -322,7 +328,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         if empty_frame:
             raise Exception, 'cannot track frames with 0 objects, abort.'
 
-        hypothesesGraph = consTracker.buildGraph(traxelStore)
+        hypothesesGraph = consTracker.buildGraph(traxelStore, self._maxNearestNeighbors)
 
         maxDist = 200
         withDivisions = True
@@ -344,31 +350,92 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         structuredLearningTracker.addLabels()
 
+        # for cropKey in self.mainOperator.Annotations.value.keys():
+        #     crop = self.mainOperator.Annotations.value[cropKey]
+        #
+        #     if "labels" in crop.keys():
+        #         labels = crop["labels"]
+        #         for time in labels.keys():
+        #             for label in labels[time].keys():
+        #                 trackSet = labels[time][label]
+        #                 track = trackSet.pop()
+        #                 trackSet.add(track)
+        #                 center = self.features[time]['Default features']['RegionCenter'][label]
+        #                 trackCount = len(trackSet)
+        #
+        #                 # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
+        #                 type = self._type(cropKey, time, track) # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
+        #
+        #                 if type[0] == "FIRST":
+        #                     #structuredLearningTracker.addFirstLabels(time, int(label), float(trackCount))
+        #                     pass
+        #                 elif type[0] == "LAST":
+        #                     #structuredLearningTracker.addLastLabels(time, int(label), float(trackCount))
+        #                     structuredLearningTracker.addArcLabel(time-1, int(type[1]), int(label), float(trackCount))
+        #                 elif type[0] == "INTERMEDIATE":
+        #                     #structuredLearningTracker.addIntermediateLabels(time, int(label), float(trackCount))
+        #                     structuredLearningTracker.addArcLabel(time-1, int(type[1]), int(label), float(trackCount))
+        #
+        #     if "divisions" in crop.keys():
+        #         divisions = crop["divisions"]
+        #         for track in divisions.keys():
+        #             division = divisions[track]
+        #             time = int(division[1])
+        #
+        #             parent = int(self.getLabelInCrop(cropKey, time, track))
+        #             structuredLearningTracker.addDivisionLabel(time, parent, 1.0)
+        #             structuredLearningTracker.addAppearanceLabel(time, parent, 1.0)
+        #
+        #             child0 = int(self.getLabelInCrop(cropKey, time+1, division[0][0]))
+        #             structuredLearningTracker.addDisappearanceLabel(time+1, child0, 1.0)
+        #             #structuredLearningTracker.addAppearanceLabel(time+1, child0, 1.0) # must be there for dense training in structured learning
+        #             structuredLearningTracker.addArcLabel(time, parent, child0, 1.0)
+        #
+        #             child1 = int(self.getLabelInCrop(cropKey, time+1, division[0][1]))
+        #             structuredLearningTracker.addDisappearanceLabel(time+1, child1, 1.0)
+        #             #structuredLearningTracker.addAppearanceLabel(time+1, child1, 1.0) # must be there for dense training in structured learning
+        #             structuredLearningTracker.addArcLabel(time, parent, child1, 1.0)
+
+
+
         for cropKey in self.mainOperator.Annotations.value.keys():
             crop = self.mainOperator.Annotations.value[cropKey]
 
             if "labels" in crop.keys():
                 labels = crop["labels"]
                 for time in labels.keys():
+
                     for label in labels[time].keys():
                         trackSet = labels[time][label]
-                        track = trackSet.pop()
-                        trackSet.add(track)
                         center = self.features[time]['Default features']['RegionCenter'][label]
                         trackCount = len(trackSet)
 
-                        # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
-                        type = self._type(cropKey, time, track) # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
+                        for track in trackSet:
+
+                           # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
+                            type = self._type(cropKey, time, track) # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
+
+                            if type[0] == "LAST" or type[0] == "INTERMEDIATE":
+                                previous_label = int(type[1])
+                                previousTrackSet = labels[time-1][previous_label]
+                                intersectionSet = trackSet.intersection(previousTrackSet)
+                                trackCountIntersection = len(intersectionSet)
+
+                            if type[0] == "LAST":
+                                structuredLearningTracker.addArcLabel(time-1, int(previous_label), int(label), float(trackCountIntersection))
+                            elif type[0] == "INTERMEDIATE":
+                                structuredLearningTracker.addArcLabel(time-1, int(previous_label), int(label), float(trackCountIntersection))
 
                         if type[0] == "FIRST":
-                            #structuredLearningTracker.addFirstLabels(time, int(label), float(trackCount))
-                            pass
+                            structuredLearningTracker.addFirstLabels(time, int(label), float(trackCount))
+                            if time > self.mainOperator.Crops.value[cropKey]["time"][0]:
+                                structuredLearningTracker.addDisappearanceLabel(time, int(label), 0.0)
+
                         elif type[0] == "LAST":
-                            #structuredLearningTracker.addLastLabels(time, int(label), float(trackCount))
-                            structuredLearningTracker.addArcLabel(time-1, int(type[1]), int(label), float(trackCount))
+                            structuredLearningTracker.addLastLabels(time, int(label), float(trackCount))
+
                         elif type[0] == "INTERMEDIATE":
-                            #structuredLearningTracker.addIntermediateLabels(time, int(label), float(trackCount))
-                            structuredLearningTracker.addArcLabel(time-1, int(type[1]), int(label), float(trackCount))
+                            structuredLearningTracker.addIntermediateLabels(time, int(label), float(trackCount))
 
             if "divisions" in crop.keys():
                 divisions = crop["divisions"]
@@ -377,18 +444,20 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                     time = int(division[1])
 
                     parent = int(self.getLabelInCrop(cropKey, time, track))
+
                     structuredLearningTracker.addDivisionLabel(time, parent, 1.0)
                     structuredLearningTracker.addAppearanceLabel(time, parent, 1.0)
 
                     child0 = int(self.getLabelInCrop(cropKey, time+1, division[0][0]))
                     structuredLearningTracker.addDisappearanceLabel(time+1, child0, 1.0)
-                    #structuredLearningTracker.addAppearanceLabel(time+1, child0, 1.0) # must be there for dense training in structured learning
                     structuredLearningTracker.addArcLabel(time, parent, child0, 1.0)
 
                     child1 = int(self.getLabelInCrop(cropKey, time+1, division[0][1]))
                     structuredLearningTracker.addDisappearanceLabel(time+1, child1, 1.0)
-                    #structuredLearningTracker.addAppearanceLabel(time+1, child1, 1.0) # must be there for dense training in structured learning
                     structuredLearningTracker.addArcLabel(time, parent, child1, 1.0)
+
+
+
 
         forbidden_cost = 0.0
         ep_gap = 0.05
@@ -445,17 +514,17 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         #    sltWeightNorm += structuredLearningTracker.weight(i) * structuredLearningTracker.weight(i)
         #sltWeightNorm = math.sqrt(sltWeightNorm)
 
-        # self._detectionWeight = structuredLearningTracker.weight(0)
-        # self._divisionWeight = structuredLearningTracker.weight(1)
-        # self._transitionWeight = structuredLearningTracker.weight(2)
-        # self._appearanceWeight = structuredLearningTracker.weight(3)
-        # self._disappearanceWeight = structuredLearningTracker.weight(4)
+        self._detectionWeight = structuredLearningTracker.weight(0)
+        self._divisionWeight = structuredLearningTracker.weight(1)
+        self._transitionWeight = structuredLearningTracker.weight(2)
+        self._appearanceWeight = structuredLearningTracker.weight(3)
+        self._disappearanceWeight = structuredLearningTracker.weight(4)
 
         self._detectionWeight = math.exp(float(structuredLearningTracker.weight(0)))
-        self._divisionWeight = math.exp(structuredLearningTracker.weight(1))
-        self._transitionWeight = math.exp(structuredLearningTracker.weight(2))
-        self._appearanceWeight = math.exp(structuredLearningTracker.weight(3))
-        self._disappearanceWeight = math.exp(structuredLearningTracker.weight(4))
+        self._divisionWeight = math.exp(float(structuredLearningTracker.weight(1)))
+        self._transitionWeight = math.exp(float(structuredLearningTracker.weight(2)))
+        self._appearanceWeight = math.exp(float(structuredLearningTracker.weight(3)))
+        self._disappearanceWeight = math.exp(float(structuredLearningTracker.weight(4)))
 
         self._drawer.detWeightBox.setValue(self._detectionWeight);
         self._drawer.divWeightBox.setValue(self._divisionWeight);
@@ -470,7 +539,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         print "ilastik structured learning tracking: appearance weight = ", self._appearanceWeight
         print "ilastik structured learning tracking: disappearance weight = ", self._disappearanceWeight
 
-        print "self.mainOperator.Annotations.value",self.mainOperator.Annotations.value
+        #print "self.mainOperator.Annotations.value",self.mainOperator.Annotations.value
 
     def getLabelInCrop(self, cropKey, time, track):
         labels = self.mainOperator.Annotations.value[cropKey]["labels"][time]
@@ -600,7 +669,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                     appearance_cost = appearanceCost,
                     disappearance_cost = disappearanceCost,
                     graph_building_parameter_changed = True,
-                    trainingToHardConstraints = self._drawer.trainingToHardConstraints.isChecked()
+                    trainingToHardConstraints = self._drawer.trainingToHardConstraints.isChecked(),
+                    max_nearest_neighbors = self._maxNearestNeighbors
                     )
             except Exception:           
                 ex_type, ex, tb = sys.exc_info()
