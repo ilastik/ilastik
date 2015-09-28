@@ -270,9 +270,12 @@ class OpStructuredTracking(OpTrackingBase):
                                     self.consTracker.addFirstLabels(time, int(label), float(trackCount))
                                     if time > self.Crops.value[cropKey]["time"][0]:
                                         self.consTracker.addDisappearanceLabel(time, int(label), 0.0)
+                                    self.consTracker.addAppearanceLabel(time, int(label), 1.0)
 
                                 elif type[0] == "LAST":
                                     self.consTracker.addLastLabels(time, int(label), float(trackCount))
+                                    if time < self.Crops.value[cropKey]["time"][1]:
+                                        self.consTracker.addAppearanceLabel(time, int(label), 0.0)
 
                                 elif type[0] == "INTERMEDIATE":
                                     self.consTracker.addIntermediateLabels(time, int(label), float(trackCount))
@@ -287,13 +290,16 @@ class OpStructuredTracking(OpTrackingBase):
 
                             self.consTracker.addDivisionLabel(time, parent, 1.0)
                             self.consTracker.addAppearanceLabel(time, parent, 1.0)
+                            self.consTracker.addDisappearanceLabel(time, parent, 1.0)
 
                             child0 = int(self.getLabelInCrop(cropKey, time+1, division[0][0]))
                             self.consTracker.addDisappearanceLabel(time+1, child0, 1.0)
+                            self.consTracker.addAppearanceLabel(time+1, child0, 1.0)
                             self.consTracker.addArcLabel(time, parent, child0, 1.0)
 
                             child1 = int(self.getLabelInCrop(cropKey, time+1, division[0][1]))
                             self.consTracker.addDisappearanceLabel(time+1, child1, 1.0)
+                            self.consTracker.addAppearanceLabel(time+1, child1, 1.0)
                             self.consTracker.addArcLabel(time, parent, child1, 1.0)
 
         # create dummy uncertainty parameter object with just one iteration, so no perturbations at all (iter=0 -> MAP)

@@ -430,9 +430,12 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                             structuredLearningTracker.addFirstLabels(time, int(label), float(trackCount))
                             if time > self.mainOperator.Crops.value[cropKey]["time"][0]:
                                 structuredLearningTracker.addDisappearanceLabel(time, int(label), 0.0)
+                            structuredLearningTracker.addAppearanceLabel(time, int(label), 1.0)
 
                         elif type[0] == "LAST":
                             structuredLearningTracker.addLastLabels(time, int(label), float(trackCount))
+                            if time < self.mainOperator.Crops.value[cropKey]["time"][1]:
+                                structuredLearningTracker.addAppearanceLabel(time, int(label), 0.0)
 
                         elif type[0] == "INTERMEDIATE":
                             structuredLearningTracker.addIntermediateLabels(time, int(label), float(trackCount))
@@ -447,13 +450,16 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
                     structuredLearningTracker.addDivisionLabel(time, parent, 1.0)
                     structuredLearningTracker.addAppearanceLabel(time, parent, 1.0)
+                    structuredLearningTracker.addDisappearanceLabel(time, parent, 1.0)
 
                     child0 = int(self.getLabelInCrop(cropKey, time+1, division[0][0]))
                     structuredLearningTracker.addDisappearanceLabel(time+1, child0, 1.0)
+                    structuredLearningTracker.addAppearanceLabel(time+1, child0, 1.0)
                     structuredLearningTracker.addArcLabel(time, parent, child0, 1.0)
 
                     child1 = int(self.getLabelInCrop(cropKey, time+1, division[0][1]))
                     structuredLearningTracker.addDisappearanceLabel(time+1, child1, 1.0)
+                    structuredLearningTracker.addAppearanceLabel(time+1, child1, 1.0)
                     structuredLearningTracker.addArcLabel(time, parent, child1, 1.0)
 
 
