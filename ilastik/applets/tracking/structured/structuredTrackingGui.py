@@ -430,7 +430,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                             structuredLearningTracker.addFirstLabels(time, int(label), float(trackCount))
                             if time > self.mainOperator.Crops.value[cropKey]["time"][0]:
                                 structuredLearningTracker.addDisappearanceLabel(time, int(label), 0.0)
-                            structuredLearningTracker.addAppearanceLabel(time, int(label), 1.0)
 
                         elif type[0] == "LAST":
                             structuredLearningTracker.addLastLabels(time, int(label), float(trackCount))

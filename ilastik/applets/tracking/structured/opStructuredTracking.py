@@ -270,7 +270,6 @@ class OpStructuredTracking(OpTrackingBase):
                                     self.consTracker.addFirstLabels(time, int(label), float(trackCount))
                                     if time > self.Crops.value[cropKey]["time"][0]:
                                         self.consTracker.addDisappearanceLabel(time, int(label), 0.0)
-                                    self.consTracker.addAppearanceLabel(time, int(label), 1.0)
 
                                 elif type[0] == "LAST":
                                     self.consTracker.addLastLabels(time, int(label), float(trackCount))
