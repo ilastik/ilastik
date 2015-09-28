@@ -297,172 +297,157 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             float(self.topLevelOperatorView.LabelImage.meta.shape[2]),
             float(self.topLevelOperatorView.LabelImage.meta.shape[3]))
 
-        consTracker = pgmlink.ConsTracking(
-            maxObj,
-            True,
-            float(median_obj_size[0]),
-            float(200),
-            True,
-            float(0.5),
-            "none",
-            fieldOfView,
-            "none",
-            pgmlink.ConsTrackingSolverType.CplexSolver,
-            ndim)
+        foundAllArcs = False;
+        new_max_nearest_neighbors = self._maxNearestNeighbors-1
 
-        time_range = range (0,self.topLevelOperatorView.LabelImage.meta.shape[0])
-        traxelStore, empty_frame = self.mainOperator._generate_traxelstore(
-            time_range,
-            (0,self.topLevelOperatorView.LabelImage.meta.shape[1]),#x_range
-            (0,self.topLevelOperatorView.LabelImage.meta.shape[2]),#y_range
-            (0,self.topLevelOperatorView.LabelImage.meta.shape[3]),#z_range,
-            (0, 100000),#size_range
-            1.0,# x_scale
-            1.0,# y_scale
-            1.0,# z_scale,
-            median_object_size=median_obj_size,
-            with_div=True,
-            with_opt_correction=False,
-            with_classifier_prior=True)
+        while not foundAllArcs:
+            new_max_nearest_neighbors += 1
+            consTracker = pgmlink.ConsTracking(
+                maxObj,
+                True,
+                float(median_obj_size[0]),
+                float(200),
+                True,
+                float(0.5),
+                "none",
+                fieldOfView,
+                "none",
+                pgmlink.ConsTrackingSolverType.CplexSolver,
+                ndim)
 
-        if empty_frame:
-            raise Exception, 'cannot track frames with 0 objects, abort.'
+            time_range = range (0,self.topLevelOperatorView.LabelImage.meta.shape[0])
+            traxelStore, empty_frame = self.mainOperator._generate_traxelstore(
+                time_range,
+                (0,self.topLevelOperatorView.LabelImage.meta.shape[1]),#x_range
+                (0,self.topLevelOperatorView.LabelImage.meta.shape[2]),#y_range
+                (0,self.topLevelOperatorView.LabelImage.meta.shape[3]),#z_range,
+                (0, 100000),#size_range
+                1.0,# x_scale
+                1.0,# y_scale
+                1.0,# z_scale,
+                median_object_size=median_obj_size,
+                with_div=True,
+                with_opt_correction=False,
+                with_classifier_prior=True)
 
-        hypothesesGraph = consTracker.buildGraph(traxelStore, self._maxNearestNeighbors)
+            if empty_frame:
+                raise Exception, 'cannot track frames with 0 objects, abort.'
 
-        maxDist = 200
-        withDivisions = True
-        sizeDependent = False
-        divThreshold = float(0.5)
-        structuredLearningTracker = pgmlink.StructuredLearningTracking(
-            hypothesesGraph,
-            maxObj,
-            sizeDependent,
-            float(median_obj_size[0]),
-            maxDist,
-            withDivisions,
-            divThreshold,
-            "none",  # detection_rf_filename
-            fieldOfView,
-            "none", # dump traxelstore,
-            pgmlink.ConsExplicitTrackingSolverType.CplexSolver,
-            ndim)
+            hypothesesGraph = consTracker.buildGraph(traxelStore, new_max_nearest_neighbors)
 
-        structuredLearningTracker.addLabels()
+            maxDist = 200
+            withDivisions = True
+            sizeDependent = False
+            divThreshold = float(0.5)
+            structuredLearningTracker = pgmlink.StructuredLearningTracking(
+                hypothesesGraph,
+                maxObj,
+                sizeDependent,
+                float(median_obj_size[0]),
+                maxDist,
+                withDivisions,
+                divThreshold,
+                "none",  # detection_rf_filename
+                fieldOfView,
+                "none", # dump traxelstore,
+                pgmlink.ConsExplicitTrackingSolverType.CplexSolver,
+                ndim)
 
-        # for cropKey in self.mainOperator.Annotations.value.keys():
-        #     crop = self.mainOperator.Annotations.value[cropKey]
-        #
-        #     if "labels" in crop.keys():
-        #         labels = crop["labels"]
-        #         for time in labels.keys():
-        #             for label in labels[time].keys():
-        #                 trackSet = labels[time][label]
-        #                 track = trackSet.pop()
-        #                 trackSet.add(track)
-        #                 center = self.features[time]['Default features']['RegionCenter'][label]
-        #                 trackCount = len(trackSet)
-        #
-        #                 # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
-        #                 type = self._type(cropKey, time, track) # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
-        #
-        #                 if type[0] == "FIRST":
-        #                     #structuredLearningTracker.addFirstLabels(time, int(label), float(trackCount))
-        #                     pass
-        #                 elif type[0] == "LAST":
-        #                     #structuredLearningTracker.addLastLabels(time, int(label), float(trackCount))
-        #                     structuredLearningTracker.addArcLabel(time-1, int(type[1]), int(label), float(trackCount))
-        #                 elif type[0] == "INTERMEDIATE":
-        #                     #structuredLearningTracker.addIntermediateLabels(time, int(label), float(trackCount))
-        #                     structuredLearningTracker.addArcLabel(time-1, int(type[1]), int(label), float(trackCount))
-        #
-        #     if "divisions" in crop.keys():
-        #         divisions = crop["divisions"]
-        #         for track in divisions.keys():
-        #             division = divisions[track]
-        #             time = int(division[1])
-        #
-        #             parent = int(self.getLabelInCrop(cropKey, time, track))
-        #             structuredLearningTracker.addDivisionLabel(time, parent, 1.0)
-        #             structuredLearningTracker.addAppearanceLabel(time, parent, 1.0)
-        #
-        #             child0 = int(self.getLabelInCrop(cropKey, time+1, division[0][0]))
-        #             structuredLearningTracker.addDisappearanceLabel(time+1, child0, 1.0)
-        #             #structuredLearningTracker.addAppearanceLabel(time+1, child0, 1.0) # must be there for dense training in structured learning
-        #             structuredLearningTracker.addArcLabel(time, parent, child0, 1.0)
-        #
-        #             child1 = int(self.getLabelInCrop(cropKey, time+1, division[0][1]))
-        #             structuredLearningTracker.addDisappearanceLabel(time+1, child1, 1.0)
-        #             #structuredLearningTracker.addAppearanceLabel(time+1, child1, 1.0) # must be there for dense training in structured learning
-        #             structuredLearningTracker.addArcLabel(time, parent, child1, 1.0)
+            structuredLearningTracker.addLabels()
 
+            foundAllArcs = True;
 
+            for cropKey in self.mainOperator.Annotations.value.keys():
+                crop = self.mainOperator.Annotations.value[cropKey]
 
-        for cropKey in self.mainOperator.Annotations.value.keys():
-            crop = self.mainOperator.Annotations.value[cropKey]
+                if foundAllArcs and "labels" in crop.keys():
 
-            if "labels" in crop.keys():
-                labels = crop["labels"]
-                for time in labels.keys():
+                    labels = crop["labels"]
+                    for time in labels.keys():
 
-                    for label in labels[time].keys():
-                        trackSet = labels[time][label]
-                        center = self.features[time]['Default features']['RegionCenter'][label]
-                        trackCount = len(trackSet)
+                        if not foundAllArcs:
+                            break
 
-                        for track in trackSet:
+                        for label in labels[time].keys():
 
-                           # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
-                            type = self._type(cropKey, time, track) # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
+                            if not foundAllArcs:
+                                break
 
-                            if type[0] == "LAST" or type[0] == "INTERMEDIATE":
-                                previous_label = int(type[1])
-                                previousTrackSet = labels[time-1][previous_label]
-                                intersectionSet = trackSet.intersection(previousTrackSet)
-                                trackCountIntersection = len(intersectionSet)
+                            trackSet = labels[time][label]
+                            center = self.features[time]['Default features']['RegionCenter'][label]
+                            trackCount = len(trackSet)
 
-                            if type[0] == "LAST":
-                                structuredLearningTracker.addArcLabel(time-1, int(previous_label), int(label), float(trackCountIntersection))
+                            for track in trackSet:
+
+                                if not foundAllArcs:
+                                    break
+
+                               # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
+                                type = self._type(cropKey, time, track) # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
+
+                                if type[0] == "LAST" or type[0] == "INTERMEDIATE":
+                                    previous_label = int(type[1])
+                                    previousTrackSet = labels[time-1][previous_label]
+                                    intersectionSet = trackSet.intersection(previousTrackSet)
+                                    trackCountIntersection = len(intersectionSet)
+
+                                    #print "foundAllArcs",foundAllArcs
+                                    foundAllArcs &= structuredLearningTracker.addArcLabel(time-1, int(previous_label), int(label), float(trackCountIntersection))
+                                    #print "foundAllArcs",foundAllArcs
+                                    if not foundAllArcs:
+                                        print "[structuredTrackingGui] You have tried to set a label of an arc that does not exist!",time-1, int(previous_label), int(label), float(trackCountIntersection)
+                                        break
+
+                            if type[0] == "FIRST":
+                                structuredLearningTracker.addFirstLabels(time, int(label), float(trackCount))
+                                if time > self.mainOperator.Crops.value[cropKey]["time"][0]:
+                                    structuredLearningTracker.addDisappearanceLabel(time, int(label), 0.0)
+
+                            elif type[0] == "LAST":
+                                structuredLearningTracker.addLastLabels(time, int(label), float(trackCount))
+                                if time < self.mainOperator.Crops.value[cropKey]["time"][1]:
+                                    structuredLearningTracker.addAppearanceLabel(time, int(label), 0.0)
+
                             elif type[0] == "INTERMEDIATE":
-                                structuredLearningTracker.addArcLabel(time-1, int(previous_label), int(label), float(trackCountIntersection))
+                                structuredLearningTracker.addIntermediateLabels(time, int(label), float(trackCount))
 
-                        if type[0] == "FIRST":
-                            structuredLearningTracker.addFirstLabels(time, int(label), float(trackCount))
-                            if time > self.mainOperator.Crops.value[cropKey]["time"][0]:
-                                structuredLearningTracker.addDisappearanceLabel(time, int(label), 0.0)
+                if foundAllArcs and "divisions" in crop.keys():
+                    divisions = crop["divisions"]
 
-                        elif type[0] == "LAST":
-                            structuredLearningTracker.addLastLabels(time, int(label), float(trackCount))
-                            if time < self.mainOperator.Crops.value[cropKey]["time"][1]:
-                                structuredLearningTracker.addAppearanceLabel(time, int(label), 0.0)
+                    for track in divisions.keys():
+                        if not foundAllArcs:
+                            break
 
-                        elif type[0] == "INTERMEDIATE":
-                            structuredLearningTracker.addIntermediateLabels(time, int(label), float(trackCount))
+                        division = divisions[track]
+                        time = int(division[1])
 
-            if "divisions" in crop.keys():
-                divisions = crop["divisions"]
-                for track in divisions.keys():
-                    division = divisions[track]
-                    time = int(division[1])
+                        parent = int(self.getLabelInCrop(cropKey, time, track))
 
-                    parent = int(self.getLabelInCrop(cropKey, time, track))
+                        if parent >=0:
+                            structuredLearningTracker.addDivisionLabel(time, parent, 1.0)
+                            structuredLearningTracker.addAppearanceLabel(time, parent, 1.0)
+                            structuredLearningTracker.addDisappearanceLabel(time, parent, 1.0)
 
-                    structuredLearningTracker.addDivisionLabel(time, parent, 1.0)
-                    structuredLearningTracker.addAppearanceLabel(time, parent, 1.0)
-                    structuredLearningTracker.addDisappearanceLabel(time, parent, 1.0)
+                            child0 = int(self.getLabelInCrop(cropKey, time+1, division[0][0]))
+                            structuredLearningTracker.addDisappearanceLabel(time+1, child0, 1.0)
+                            structuredLearningTracker.addAppearanceLabel(time+1, child0, 1.0)
+                            foundAllArcs &= structuredLearningTracker.addArcLabel(time, parent, child0, 1.0)
+                            if not foundAllArcs:
+                                print "[structuredTrackingGui] You have tried to set a label of an arc that does not exist! parent--->child0",time,parent,child0
+                                break
 
-                    child0 = int(self.getLabelInCrop(cropKey, time+1, division[0][0]))
-                    structuredLearningTracker.addDisappearanceLabel(time+1, child0, 1.0)
-                    structuredLearningTracker.addAppearanceLabel(time+1, child0, 1.0)
-                    structuredLearningTracker.addArcLabel(time, parent, child0, 1.0)
+                            child1 = int(self.getLabelInCrop(cropKey, time+1, division[0][1]))
+                            structuredLearningTracker.addDisappearanceLabel(time+1, child1, 1.0)
+                            structuredLearningTracker.addAppearanceLabel(time+1, child1, 1.0)
+                            foundAllArcs &= structuredLearningTracker.addArcLabel(time, parent, child1, 1.0)
+                            if not foundAllArcs:
+                                print "[structuredTrackingGui] You have tried to set a label of an arc that does not exist! parent--->child1",time,parent,child1
+                                break
+            print "new_max_nearest_neighbors=",new_max_nearest_neighbors
 
-                    child1 = int(self.getLabelInCrop(cropKey, time+1, division[0][1]))
-                    structuredLearningTracker.addDisappearanceLabel(time+1, child1, 1.0)
-                    structuredLearningTracker.addAppearanceLabel(time+1, child1, 1.0)
-                    structuredLearningTracker.addArcLabel(time, parent, child1, 1.0)
-
-
-
+        if new_max_nearest_neighbors > self._maxNearestNeighbors:
+            self._maxNearestNeighbors = new_max_nearest_neighbors
+            self._drawer.maxNearestNeighborsSpinBox.setValue(self._maxNearestNeighbors)
 
         forbidden_cost = 0.0
         ep_gap = 0.05
@@ -551,7 +536,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         for label in labels.keys():
             if self.mainOperator.Annotations.value[cropKey]["labels"][time][label] == set([track]):
                 return label
-        return False
+        return -1
 
     def _type(self, cropKey, time, track):
         # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
