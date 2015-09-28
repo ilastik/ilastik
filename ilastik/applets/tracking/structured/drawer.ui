@@ -527,7 +527,7 @@
      <item>
       <widget class="QRadioButton" name="trainingToHardConstraints">
        <property name="text">
-        <string>Training To Constraints</string>
+        <string>Use Training Annoations in Tracking</string>
        </property>
        <property name="checked">
         <bool>false</bool>
@@ -922,7 +922,7 @@
    <item row="13" column="0" colspan="3">
     <widget class="QLabel" name="label_2">
      <property name="text">
-      <string>Maximal Distance</string>
+      <string>Max. Distance</string>
      </property>
     </widget>
    </item>
@@ -965,7 +965,7 @@
    <item row="12" column="0" colspan="3">
     <widget class="QLabel" name="label_27">
      <property name="text">
-      <string>Max Nearest Neighbors</string>
+      <string>Max. Nearest Neighbors</string>
      </property>
     </widget>
    </item>

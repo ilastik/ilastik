@@ -395,7 +395,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                                     foundAllArcs &= structuredLearningTracker.addArcLabel(time-1, int(previous_label), int(label), float(trackCountIntersection))
                                     #print "foundAllArcs",foundAllArcs
                                     if not foundAllArcs:
-                                        print "[structuredTrackingGui] You have tried to set a label of an arc that does not exist!",time-1, int(previous_label), int(label), float(trackCountIntersection)
+                                        print "[structuredTrackingGui] Transitions Arc: (",time-1, ",",int(previous_label), ") ---> (",time,",",int(label),")"
                                         break
 
                             if type[0] == "FIRST":
@@ -433,7 +433,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                             structuredLearningTracker.addAppearanceLabel(time+1, child0, 1.0)
                             foundAllArcs &= structuredLearningTracker.addArcLabel(time, parent, child0, 1.0)
                             if not foundAllArcs:
-                                print "[structuredTrackingGui] You have tried to set a label of an arc that does not exist! parent--->child0",time,parent,child0
+                                print "[structuredTrackingGui] Divisions Arc0: (",time, ",",int(parent), ") ---> (",time+1,",",int(child0),")"
                                 break
 
                             child1 = int(self.getLabelInCrop(cropKey, time+1, division[0][1]))
@@ -441,9 +441,9 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                             structuredLearningTracker.addAppearanceLabel(time+1, child1, 1.0)
                             foundAllArcs &= structuredLearningTracker.addArcLabel(time, parent, child1, 1.0)
                             if not foundAllArcs:
-                                print "[structuredTrackingGui] You have tried to set a label of an arc that does not exist! parent--->child1",time,parent,child1
+                                print "[structuredTrackingGui] Divisions Arc1: (",time, ",",int(parent), ") ---> (",time+1,",",int(child1),")"
                                 break
-            print "new_max_nearest_neighbors=",new_max_nearest_neighbors
+            print "max nearest neighbors=",new_max_nearest_neighbors
 
         if new_max_nearest_neighbors > self._maxNearestNeighbors:
             self._maxNearestNeighbors = new_max_nearest_neighbors

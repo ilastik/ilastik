@@ -226,7 +226,6 @@ class OpStructuredTracking(OpTrackingBase):
             while not foundAllArcs:
                 new_max_nearest_neighbors += 1
                 print '\033[94m' +"make new graph"+  '\033[0m'
-                print "max_nearest_neighbors=",new_max_nearest_neighbors
                 self.consTracker = pgmlink.ConsTracking(
                     maxObj,
                     sizeDependent,   # size_dependent_detection_prob
@@ -274,7 +273,7 @@ class OpStructuredTracking(OpTrackingBase):
 
                                             foundAllArcs &= self.consTracker.addArcLabel(time-1, int(previous_label), int(label), float(trackCountIntersection))
                                             if not foundAllArcs:
-                                                print "[opStructuredTracking] You have tried to set a label of an arc that does not exist!"
+                                                print "[opStructuredTracking] Arc: (",time-1, ",",int(previous_label), ") ---> (",time,",",int(label),")"
                                                 break;
 
                                     if type[0] == "FIRST":
@@ -307,7 +306,7 @@ class OpStructuredTracking(OpTrackingBase):
                                     self.consTracker.addAppearanceLabel(time+1, child0, 1.0)
                                     foundAllArcs &= self.consTracker.addArcLabel(time, parent, child0, 1.0)
                                     if not foundAllArcs:
-                                        print "[opStructuredTracking] You have tried to set a label of an arc that does not exist! parent--->child0",time,parent,child0
+                                        print "[opStructuredTracking] Divisions Arc0: (",time, ",",int(parent), ") ---> (",time+1,",",int(child0),")"
                                         break;
 
                                     child1 = int(self.getLabelInCrop(cropKey, time+1, division[0][1]))
@@ -315,11 +314,11 @@ class OpStructuredTracking(OpTrackingBase):
                                     self.consTracker.addAppearanceLabel(time+1, child1, 1.0)
                                     foundAllArcs &= self.consTracker.addArcLabel(time, parent, child1, 1.0)
                                     if not foundAllArcs:
-                                        print "[opStructuredTracking] You have tried to set a label of an arc that does not exist! parent--->child1",time,parent,child1
+                                        print "[opStructuredTracking] Divisions Arc1: (",time, ",",int(parent), ") ---> (",time+1,",",int(child1),")"
                                         break;
 
 
-                print "new_max_nearest_neighbors=",new_max_nearest_neighbors
+                print "max nearest neighbors=",new_max_nearest_neighbors
 
         if new_max_nearest_neighbors > max_nearest_neighbors:
             max_nearest_neighbors = new_max_nearest_neighbors
