@@ -76,12 +76,12 @@ class OpDvidVolume(Operator):
     def setupOutputs(self):
         shape, dtype, axiskeys = self._default_accessor.shape, self._default_accessor.dtype, self._default_accessor.axiskeys
         
-        # FIXME: For now, we hard-code DVID volumes to have a large (1M cubed) shape.
-        tagged_shape = collections.OrderedDict( zip(axiskeys, shape) )
-        for k,v in tagged_shape.items():
-            if k in 'xyz':
-                tagged_shape[k] = int(1e6)
-        shape = tuple(tagged_shape.values())
+#         # FIXME: For now, we hard-code DVID volumes to have a large (1M cubed) shape.
+#         tagged_shape = collections.OrderedDict( zip(axiskeys, shape) )
+#         for k,v in tagged_shape.items():
+#             if k in 'xyz':
+#                 tagged_shape[k] = int(1e6)
+#         shape = tuple(tagged_shape.values())
         
         num_channels = shape[0]
         if self._transpose_axes:
