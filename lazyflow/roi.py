@@ -534,7 +534,9 @@ def getBlockBounds(dataset_shape, block_shape, block_start):
     >>> getBlockBounds( [35,35,35], [10,10,10], [10,20,30] )
     (array([10, 20, 30]), array([20, 30, 35]))
     """
-    assert (numpy.mod( block_start, block_shape ) == 0).all(), "Invalid block_start.  Must be a multiple of the block shape!"
+    assert (numpy.mod( block_start, block_shape ) == 0).all(), \
+        "Invalid block_start: {}.  Must be a multiple of the block shape: {}"\
+        .format( block_start, block_shape )
 
     entire_dataset_roi = roiFromShape( dataset_shape )
     block_shape = TinyVector( block_shape )
