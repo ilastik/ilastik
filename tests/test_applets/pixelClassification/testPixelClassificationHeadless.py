@@ -43,13 +43,18 @@ logger = logging.getLogger(__name__)
 #logger.setLevel(logging.DEBUG)
 
 class TestPixelClassificationHeadless(object):
-    dir = tempfile.mkdtemp()
-    PROJECT_FILE = os.path.join(dir, 'test_project.ilp')
+    
+    # Project and data are kept in different directories so we can test both absolute and relative paths.
+    project_dir = tempfile.mkdtemp()
+    data_dir = tempfile.mkdtemp()
+    PROJECT_FILE = os.path.join(project_dir, 'test_project.ilp')
     #SAMPLE_DATA = os.path.split(__file__)[0] + '/synapse_small.npy'
 
     @classmethod
     def setupClass(cls):
         print 'starting setup...'
+        cls.original_cwd = os.getcwd()
+        os.chdir(cls.data_dir)
 
         if hasattr(cls, 'SAMPLE_DATA'):
             cls.using_random_data = False
@@ -70,6 +75,7 @@ class TestPixelClassificationHeadless(object):
 
     @classmethod
     def teardownClass(cls):
+        os.chdir(cls.original_cwd)
         # Clean up: Delete any test files we generated
         removeFiles = [ TestPixelClassificationHeadless.PROJECT_FILE ]
         if cls.using_random_data:
@@ -83,12 +89,12 @@ class TestPixelClassificationHeadless(object):
 
     @classmethod
     def create_random_tst_data(cls):
-        cls.SAMPLE_DATA = os.path.join(cls.dir, 'random_data.npy')
+        cls.SAMPLE_DATA = os.path.join(cls.data_dir, 'random_data.npy')
         cls.data = numpy.random.random((1,200,200,50,1))
         cls.data *= 256
         numpy.save(cls.SAMPLE_DATA, cls.data.astype(numpy.uint8))
         
-        cls.SAMPLE_MASK = os.path.join(cls.dir, 'mask.npy')
+        cls.SAMPLE_MASK = os.path.join(cls.data_dir, 'mask.npy')
         cls.data = numpy.ones((1,200,200,50,1))
         numpy.save(cls.SAMPLE_MASK, cls.data.astype(numpy.uint8))
 
@@ -171,7 +177,8 @@ class TestPixelClassificationHeadless(object):
         args += " --output_filename_format={dataset_dir}/{nickname}_prediction.h5"
         args += " --output_internal_path=volume/pred_volume"
         args += " --raw_data"
-        args += " " + self.SAMPLE_DATA
+        # test that relative path works correctly: should be relative to cwd, not project file.
+        args += " " + os.path.normpath(os.path.relpath(self.SAMPLE_DATA, os.getcwd()))
         args += " --prediction_mask"
         args += " " + self.SAMPLE_MASK
 
