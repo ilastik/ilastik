@@ -245,24 +245,36 @@ class OpStructuredTracking(OpTrackingBase):
 
                 foundAllArcs = True;
                 if trainingToHardConstraints:
-                    print "Adding Annotations to Hypotheses Graph"
+
+                    print "Tracking: Adding Training Annotations to Hypotheses Graph"
+
+                    # could be merged with code in structuredTrackingGui
                     self.consTracker.addLabels()
 
                     for cropKey in self.Annotations.value.keys():
                         crop = self.Annotations.value[cropKey]
 
-                        if "labels" in crop.keys():
+                        if foundAllArcs and "labels" in crop.keys():
                             labels = crop["labels"]
                             for time in labels.keys():
 
+                                if not foundAllArcs:
+                                    break
+
                                 for label in labels[time].keys():
+                                    if not foundAllArcs:
+                                        break
+
                                     trackSet = labels[time][label]
                                     center = self.features[time]['Default features']['RegionCenter'][label]
                                     trackCount = len(trackSet)
 
                                     for track in trackSet:
 
-                                       # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
+                                        if not foundAllArcs:
+                                            break
+
+                                        # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
                                         type = self._type(cropKey, time, track) # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
 
                                         if type[0] == "LAST" or type[0] == "INTERMEDIATE":
@@ -273,8 +285,8 @@ class OpStructuredTracking(OpTrackingBase):
 
                                             foundAllArcs &= self.consTracker.addArcLabel(time-1, int(previous_label), int(label), float(trackCountIntersection))
                                             if not foundAllArcs:
-                                                print "[opStructuredTracking] Arc: (",time-1, ",",int(previous_label), ") ---> (",time,",",int(label),")"
-                                                break;
+                                                print "[opStructuredTracking] Arc: (", time-1, ",", int(previous_label), ") ---> (", time, ",", int(label), ")"
+                                                break
 
                                     if type[0] == "FIRST":
                                         self.consTracker.addFirstLabels(time, int(label), float(trackCount))
@@ -306,16 +318,16 @@ class OpStructuredTracking(OpTrackingBase):
                                     self.consTracker.addAppearanceLabel(time+1, child0, 1.0)
                                     foundAllArcs &= self.consTracker.addArcLabel(time, parent, child0, 1.0)
                                     if not foundAllArcs:
-                                        print "[opStructuredTracking] Divisions Arc0: (",time, ",",int(parent), ") ---> (",time+1,",",int(child0),")"
-                                        break;
+                                        print "[opStructuredTracking] Divisions Arc0: (", time, ",", int(parent), ") ---> (", time+1, ",", int(child0), ")"
+                                        break
 
                                     child1 = int(self.getLabelInCrop(cropKey, time+1, division[0][1]))
                                     self.consTracker.addDisappearanceLabel(time+1, child1, 1.0)
                                     self.consTracker.addAppearanceLabel(time+1, child1, 1.0)
                                     foundAllArcs &= self.consTracker.addArcLabel(time, parent, child1, 1.0)
                                     if not foundAllArcs:
-                                        print "[opStructuredTracking] Divisions Arc1: (",time, ",",int(parent), ") ---> (",time+1,",",int(child1),")"
-                                        break;
+                                        print "[opStructuredTracking] Divisions Arc1: (", time, ",", int(parent), ") ---> (", time+1, ",", int(child1), ")"
+                                        break
 
 
                 print "max nearest neighbors=",new_max_nearest_neighbors

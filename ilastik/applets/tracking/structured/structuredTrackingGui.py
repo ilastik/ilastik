@@ -353,10 +353,12 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                 pgmlink.ConsExplicitTrackingSolverType.CplexSolver,
                 ndim)
 
+            print "Structured Learning: Adding Training Annotations to Hypotheses Graph"
+
+            # could be merged with code in opStructuredTracking
             structuredLearningTracker.addLabels()
 
             foundAllArcs = True;
-
             for cropKey in self.mainOperator.Annotations.value.keys():
                 crop = self.mainOperator.Annotations.value[cropKey]
 
@@ -391,11 +393,9 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                                     intersectionSet = trackSet.intersection(previousTrackSet)
                                     trackCountIntersection = len(intersectionSet)
 
-                                    #print "foundAllArcs",foundAllArcs
                                     foundAllArcs &= structuredLearningTracker.addArcLabel(time-1, int(previous_label), int(label), float(trackCountIntersection))
-                                    #print "foundAllArcs",foundAllArcs
                                     if not foundAllArcs:
-                                        print "[structuredTrackingGui] Transitions Arc: (",time-1, ",",int(previous_label), ") ---> (",time,",",int(label),")"
+                                        print "[structuredTrackingGui] Transitions Arc: (", time-1, ",", int(previous_label), ") ---> (", time, ",", int(label), ")"
                                         break
 
                             if type[0] == "FIRST":
@@ -433,7 +433,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                             structuredLearningTracker.addAppearanceLabel(time+1, child0, 1.0)
                             foundAllArcs &= structuredLearningTracker.addArcLabel(time, parent, child0, 1.0)
                             if not foundAllArcs:
-                                print "[structuredTrackingGui] Divisions Arc0: (",time, ",",int(parent), ") ---> (",time+1,",",int(child0),")"
+                                print "[structuredTrackingGui] Divisions Arc0: (", time, ",", int(parent), ") ---> (", time+1, ",", int(child0), ")"
                                 break
 
                             child1 = int(self.getLabelInCrop(cropKey, time+1, division[0][1]))
@@ -441,7 +441,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                             structuredLearningTracker.addAppearanceLabel(time+1, child1, 1.0)
                             foundAllArcs &= structuredLearningTracker.addArcLabel(time, parent, child1, 1.0)
                             if not foundAllArcs:
-                                print "[structuredTrackingGui] Divisions Arc1: (",time, ",",int(parent), ") ---> (",time+1,",",int(child1),")"
+                                print "[structuredTrackingGui] Divisions Arc1: (", time, ",", int(parent), ") ---> (", time+1, ",", int(child1), ")"
                                 break
             print "max nearest neighbors=",new_max_nearest_neighbors
 
