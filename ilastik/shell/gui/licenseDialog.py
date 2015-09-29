@@ -53,7 +53,7 @@ def get_buildem_license():
 
 
 class LicenseDialog(QMessageBox):
-    LICENSE_SHORT = u"""<p>Copyright © 2011-2014, the ilastik developers <team@ilastik.org></p>
+    LICENSE_SHORT = u"""<p>Copyright © 2011-2015, the ilastik developers <team@ilastik.org></p>
 <p>
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
