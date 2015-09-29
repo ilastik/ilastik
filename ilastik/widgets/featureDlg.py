@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtGui import QDialog, QTextDocument
+from PyQt4.QtGui import QDialog
 import sys        
 import os
 from PyQt4 import uic
