@@ -19,9 +19,10 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
+import os
 import httplib
-import socket
 import collections
+import logging
 
 import numpy
 import vigra
@@ -30,6 +31,8 @@ from lazyflow.roi import determineBlockShape
 
 from libdvid import DVIDException, ErrMsg
 from libdvid.voxels import VoxelsAccessor
+
+logger = logging.getLogger(__name__)
 
 class OpDvidVolume(Operator):
     Output = OutputSlot()
@@ -76,12 +79,22 @@ class OpDvidVolume(Operator):
     def setupOutputs(self):
         shape, dtype, axiskeys = self._default_accessor.shape, self._default_accessor.dtype, self._default_accessor.axiskeys
         
-#         # FIXME: For now, we hard-code DVID volumes to have a large (1M cubed) shape.
-#         tagged_shape = collections.OrderedDict( zip(axiskeys, shape) )
-#         for k,v in tagged_shape.items():
-#             if k in 'xyz':
-#                 tagged_shape[k] = int(1e6)
-#         shape = tuple(tagged_shape.values())
+        try:
+            no_extents_checking = bool(int(os.getenv("LAZYFLOW_NO_DVID_EXTENTS", 0)))
+        except ValueError:
+            raise RuntimeError("Didn't understand value for environment variable "\
+                               "LAZYFLOW_NO_DVID_EXTENTS: '{}'.  Please use either 0 or 1."
+                               .format(os.getenv("LAZYFLOW_NO_DVID_EXTENTS")))
+
+        if no_extents_checking:
+            # In headless mode, we allow the users to request regions outside the currently valid regions of the image.
+            # For now, the easiest way to allow that is to simply hard-code DVID volumes to have a really large (1M cubed) shape.
+            logger.info("Using absurdly large DVID volume extents, to allow out-of-bounds requests.")
+            tagged_shape = collections.OrderedDict( zip(axiskeys, shape) )
+            for k,v in tagged_shape.items():
+                if k in 'xyz':
+                    tagged_shape[k] = int(1e6)
+            shape = tuple(tagged_shape.values())
         
         num_channels = shape[0]
         if self._transpose_axes:
@@ -101,6 +114,11 @@ class OpDvidVolume(Operator):
         self.Output.meta.ram_usage_per_requested_pixel = 2 * dtype.type().nbytes * num_channels
 
     def execute(self, slot, subindex, roi, result):
+        if numpy.prod(roi.stop - roi.start) > 1e7:
+            logger.error("Requesting an ENORMOUS volume from DVID: {}\n"\
+                         "Is that really what you meant to do?"
+                         .format( roi ))
+            
         # TODO: Modify accessor implementation to accept a pre-allocated array.
 
 # FIXME: Disabled throttling for now.  Need a better heuristic or explicit setting.
