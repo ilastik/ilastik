@@ -135,7 +135,8 @@ class BatchProcessingApplet( Applet ):
             num_roles = len(self.dataSelectionApplet.topLevelOperator.DatasetRoles.value)
             for role_index in range(num_roles):
                 template_infos[role_index] = DatasetInfo()
-                template_infos[role_index].axistags = vigra.defaultAxistags(input_axes)
+                if input_axes:
+                    template_infos[role_index].axistags = vigra.defaultAxistags(input_axes)
             return template_infos
         
         # Use the LAST non-batch input file as our 'template' for DatasetInfo settings (e.g. axistags)
