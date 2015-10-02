@@ -70,7 +70,7 @@ class OpTiffSequenceReader(Operator):
 
         num_files = len(file_paths)
         if num_files == 0:
-            self.stack.meta.NOTREADY = True
+            self.Output.meta.NOTREADY = True
             return
 
         try:
