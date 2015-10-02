@@ -263,7 +263,7 @@ class OpInputDataReader(Operator):
         try:
             h5File = h5py.File(externalPath, 'r')
         except OpInputDataReader.DatasetReadError:
-            raise
+            raise 
         except Exception as e:
             msg = "Unable to open HDF5 File: {}\n{}".format( externalPath, str(e) )
             raise OpInputDataReader.DatasetReadError( msg )
@@ -352,24 +352,30 @@ class OpInputDataReader(Operator):
                 hostname, uuid, dataname = filetext.splitlines()
             opDvidVolume = OpDvidVolume( hostname, uuid, dataname, transpose_axes=True, parent=self )
             return [opDvidVolume], opDvidVolume.Output
-        if '://' in filePath:
-            url_format = "^protocol://hostname/api/node/uuid/dataname(\\?query_string)?"
-            for field in ['protocol', 'hostname', 'uuid', 'dataname', 'query_string']:
-                url_format = url_format.replace( field, '(?P<' + field + '>[^?]+)' )
-            match = re.match( url_format, filePath )
-            if match:
-                fields = match.groupdict()
-                try:
-                    query_string = fields['query_string']
-                    query_args = {}
-                    if query_string:
-                        query_args = dict( map(lambda s: s.split('='), query_string.split('&')) )
-                    opDvidVolume = OpDvidVolume( fields['hostname'], fields['uuid'], fields['dataname'], query_args,
-                                                 transpose_axes=True, parent=self )
-                    return [opDvidVolume], opDvidVolume.Output
-                except OpDvidVolume.DatasetReadError as e:
-                    raise OpInputDataReader.DatasetReadError( *e.args )
-        return ([], None)
+        
+        if '://' not in filePath:
+            return ([], None) # not a url
+
+        url_format = "^protocol://hostname/api/node/uuid/dataname(\\?query_string)?"
+        for field in ['protocol', 'hostname', 'uuid', 'dataname', 'query_string']:
+            url_format = url_format.replace( field, '(?P<' + field + '>[^?]+)' )
+        match = re.match( url_format, filePath )
+        if not match:
+            # DVID is the only url-based format we support right now.
+            # So if it looks like the user gave a URL that isn't a valid DVID node, then error.
+            raise OpInputDataReader.DatasetReadError("Invalid URL format for DVID: {}".format(filePath))
+
+        fields = match.groupdict()
+        try:
+            query_string = fields['query_string']
+            query_args = {}
+            if query_string:
+                query_args = dict( map(lambda s: s.split('='), query_string.split('&')) )
+            opDvidVolume = OpDvidVolume( fields['hostname'], fields['uuid'], fields['dataname'], query_args,
+                                         transpose_axes=True, parent=self )
+            return [opDvidVolume], opDvidVolume.Output
+        except OpDvidVolume.DatasetReadError as e:
+            raise OpInputDataReader.DatasetReadError( *e.args )
 
     def _attemptOpenAsBlockwiseFileset(self, filePath):
         fileExtension = os.path.splitext(filePath)[1].lower()
