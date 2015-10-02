@@ -54,7 +54,6 @@ class WatershedSegmentor(object):
             moving_average = False, noBiasBelow = 0, **kwargs):
         self.gridSegmentor.run(float(prios[1]),float(noBiasBelow))
         seg = self.gridSegmentor.getSuperVoxelSeg()
-        print seg
         self.hasSeg = True
 
     def clearSegmentation(self):
