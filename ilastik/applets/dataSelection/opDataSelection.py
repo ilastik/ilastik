@@ -27,6 +27,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.utility.jsonConfig import RoiTuple
 from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpInputDataReader
 from lazyflow.operators.valueProviders import OpMetadataInjector
+from lazyflow.operators.opArrayPiper import OpArrayPiper
 from ilastik.applets.base.applet import DatasetConstraintError
 
 from ilastik.utility import OpMultiLaneWrapper
@@ -40,16 +41,23 @@ class DatasetInfo(object):
     class Location():
         FileSystem = 0
         ProjectInternal = 1
+        PreloadedArray = 2
         
-    def __init__(self, filepath=None, jsonNamespace=None, cwd=None):
+    def __init__(self, filepath=None, jsonNamespace=None, cwd=None, preloaded_array=None):
         """
         filepath: may be a globstring or a full hdf5 path+dataset
+        
         jsonNamespace: If provided, overrides default settings after filepath is applied
+        
         cwd: The working directory for interpeting relative paths.  If not provided, os.getcwd() is used.
+        
+        preloaded_array: Instead of providing a filePath to read from, a pre-loaded array can be directly provided.
+                         In that case, you'll probably want to configure the axistags member, or provide a tagged vigra.VigraArray.
         """
+        assert preloaded_array is None or not filepath, "You can't provide filepath and a preloaded_array"
         cwd = cwd or os.getcwd()
+        self.preloaded_array = preloaded_array # See description above.
         Location = DatasetInfo.Location
-        self.location = Location.FileSystem # Whether the data will be found/stored on the filesystem or in the project file
         self._filePath = ""                 # The original path to the data (also used as a fallback if the data isn't in the project yet)
         self._datasetId = ""                # The name of the data within the project file (if it is stored locally)
         self.allowLabels = True             # OBSOLETE: Whether or not this dataset should be used for training a classifier.
@@ -59,6 +67,15 @@ class DatasetInfo(object):
         self.nickname = ""
         self.axistags = None
         self.subvolume_roi = None
+        self.location = Location.FileSystem
+
+        if self.preloaded_array is not None:
+            self.filePath = "" # set property to ensure unique _datasetId
+            self.location = Location.PreloadedArray
+            self.fromstack = False
+            self.nickname = "preloaded-{}-array".format( self.preloaded_array.dtype.name )
+            if hasattr(self.preloaded_array, 'axistags'):
+                self.axistags = self.preloaded_array.axistags
 
         # Set defaults for location, nickname, filepath, and fromstack
         if filepath:
@@ -125,7 +142,10 @@ class DatasetInfo(object):
     def __str__(self):
         s = "{ "
         s += "filepath: {},\n".format(self.filePath)
-        s += "location: {}\n".format( {DatasetInfo.Location.FileSystem: "FileSystem", DatasetInfo.Location.ProjectInternal: "ProjectInternal"}[self.location] )
+        s += "location: {}\n".format( { DatasetInfo.Location.FileSystem: "FileSystem",
+                                        DatasetInfo.Location.ProjectInternal: "ProjectInternal",
+                                        DatasetInfo.Location.PreloadedArray: "PreloadedArray"
+                                      }[self.location] )
         s += "nickname: {},\n".format( self.nickname )
         if self.axistags:
             s +="axistags: {},\n".format(self.axistags)
@@ -222,7 +242,30 @@ class OpDataSelection(Operator):
                 opReader.Hdf5File.setValue(self.ProjectFile.value)
                 opReader.InternalPath.setValue(internalPath)
                 providerSlot = opReader.OutputImage
-                self._opReaders.append(opReader)
+            elif datasetInfo.location == DatasetInfo.Location.PreloadedArray:
+                preloaded_array = datasetInfo.preloaded_array
+                assert preloaded_array is not None
+                if not hasattr(preloaded_array, 'axistags'):
+                    # Guess the axis order, since one was not provided.
+                    axisorders = { 2 : 'yx',
+                                   3 : 'zyx',
+                                   4 : 'zyxc',
+                                   5 : 'tzyxc' }
+
+                    shape = preloaded_array.shape
+                    ndim = preloaded_array.ndim            
+                    assert ndim != 0, "Support for 0-D data not yet supported"
+                    assert ndim != 1, "Support for 1-D data not yet supported"
+                    assert ndim <= 5, "No support for data with more than 5 dimensions."
+        
+                    axisorder = axisorders[ndim]
+                    if ndim == 3 and shape[2] <= 4:
+                        # Special case: If the 3rd dim is small, assume it's 'c', not 'z'
+                        axisorder = 'yxc'
+                    preloaded_array = vigra.taggedView(preloaded_array, axisorder)
+                opReader = OpArrayPiper(parent=self)
+                opReader.Input.setValue( preloaded_array )
+                providerSlot = opReader.Output
             else:
                 # Use a normal (filesystem) reader
                 opReader = OpInputDataReader(parent=self)
@@ -231,7 +274,7 @@ class OpDataSelection(Operator):
                 opReader.WorkingDirectory.setValue( self.WorkingDirectory.value )
                 opReader.FilePath.setValue(datasetInfo.filePath)
                 providerSlot = opReader.Output
-                self._opReaders.append(opReader)
+            self._opReaders.append(opReader)
             
             # Inject metadata if the dataset info specified any.
             # Also, inject if if dtype is uint8, which we can reasonably assume has drange (0,255)
