@@ -57,7 +57,7 @@ class BatchProcessingApplet( Applet ):
         role_path_dict = self.dataSelectionApplet.role_paths_from_parsed_args(parsed_args, role_names)
         self.run_export(role_path_dict, parsed_args.input_axes)
 
-    def run_export(self, role_data_dict, input_axes=None ):
+    def run_export(self, role_data_dict, input_axes=None, export_to_array=False ):
         """
         Run the export for each dataset listed in role_data_dict, 
         which must be a dict of {role_index : path-list} OR {role_index : DatasetInfo-list}
@@ -78,7 +78,12 @@ class BatchProcessingApplet( Applet ):
         
         After each lane is processed, the given post-processing callback will be executed.
         signature: lane_postprocessing_callback(batch_lane_index)
+        
+        export_to_array: If True do NOT export to disk as usual.
+                         Instead, export the results to a list of arrays, which is returned.
         """
+        array_results = []
+        
         self.progressSignal.emit(0)
         try:
             assert isinstance(role_data_dict, OrderedDict)
@@ -106,10 +111,13 @@ class BatchProcessingApplet( Applet ):
                         self.progressSignal.emit(100*overall_progress)
 
                     # Now use the new lane to export the batch results for the current file.
-                    self._run_export_with_empty_batch_lane( role_input_datas,
-                                                            batch_lane_index,
-                                                            template_infos,
-                                                            emit_progress )
+                    array_data = self._run_export_with_empty_batch_lane( role_input_datas,
+                                                                         batch_lane_index,
+                                                                         template_infos,
+                                                                         emit_progress,
+                                                                         export_to_array=export_to_array )
+                    assert array_data is not None or not export_to_array
+                    array_results.append( array_data )
                 finally:
                     # Remove the batch lane.  See docstring above for explanation.
                     try:
@@ -122,6 +130,12 @@ class BatchProcessingApplet( Applet ):
 
             # Call customization hook
             self.dataExportApplet.post_process_entire_export()
+            
+            # If we exported to in-memory array instead of to disk, return the results
+            if export_to_array:
+                return array_results
+            else:
+                return
             
         finally:
             self.progressSignal.emit(100)
@@ -157,7 +171,7 @@ class BatchProcessingApplet( Applet ):
                 template_infos[role_index].axistags = vigra.defaultAxistags(input_axes)
         return template_infos
     
-    def _run_export_with_empty_batch_lane(self, role_input_datas, batch_lane_index, template_infos, progress_callback):
+    def _run_export_with_empty_batch_lane(self, role_input_datas, batch_lane_index, template_infos, progress_callback, export_to_array):
         """
         Configure the fresh batch lane with the given input files, and export the results.
         
@@ -210,7 +224,14 @@ class BatchProcessingApplet( Applet ):
         # Finally, run the export
         logger.info("Exporting to {}".format( opDataExportBatchlaneView.ExportPath.value ))
         opDataExportBatchlaneView.progressSignal.subscribe(progress_callback)
-        opDataExportBatchlaneView.run_export()
+
+        result = None        
+        if export_to_array:
+            result = opDataExportBatchlaneView.run_export_to_array()
+        else:
+            opDataExportBatchlaneView.run_export()
 
         # Call customization hook
         self.dataExportApplet.post_process_lane_export(batch_lane_index)
+
+        return result

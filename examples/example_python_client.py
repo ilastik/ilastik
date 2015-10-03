@@ -1,4 +1,10 @@
-import collections
+"""
+This script provides an example of how a pre-trained ilastik 
+PixelClassification project can be used to generate predictions 
+from within Python, without the need to read/write data from disk. 
+Once the project is loaded, this script doesn't touch the hard-disk.
+"""
+from collections import OrderedDict
 
 import numpy
 import vigra
@@ -39,11 +45,23 @@ probability_colors = opPixelClassification.PmapColors.value
 
 print label_names, label_colors, probability_colors
 
-# See PixelClassificationWorkflow.ROLE_NAMES
-role_data_dict = collections.OrderedDict([ ("Raw Data", [ DatasetInfo(preloaded_array=input_data1),
-                                                          DatasetInfo(preloaded_array=input_data2) ]) ]) 
+# Construct an OrderedDict of role-names -> DatasetInfos
+# (See PixelClassificationWorkflow.ROLE_NAMES)
+role_data_dict = OrderedDict([ ("Raw Data", [ DatasetInfo(preloaded_array=input_data1),
+                                              DatasetInfo(preloaded_array=input_data2) ]) ]) 
+
+## Note: If you want to pull your data from disk instead of in-memory, just provide filepaths like so:
+# role_data_dict = OrderedDict([ ("Raw Data", [ '/path/to/input-file-1.png',
+#                                               '/path/to/input-file-2.h5/mydata' ]) ]) 
 
 # Run the export via the BatchProcessingApplet
-# TODO: This still outputs to disk.
-#       Need to implement run_export_to_array()
-shell.workflow.batchProcessingApplet.run_export(role_data_dict)
+# Note: If you don't provide export_to_array, then the results will 
+#       be exported to disk accordering to your project's DataExport settings.
+#       In that case, run_export() returns None.
+predictions = shell.workflow.batchProcessingApplet.run_export(role_data_dict, export_to_array=True)
+
+print "Computed {} result arrays:".format( len(predictions) )
+for result in predictions:
+    print result.dtype, result.shape
+
+print "DONE."
