@@ -48,6 +48,7 @@ from opNpyWriter import OpNpyWriter
 from opExport2DImage import OpExport2DImage
 from opExportMultipageTiff import OpExportMultipageTiff
 from opExportMultipageTiffSequence import OpExportMultipageTiffSequence
+from opExportToArray import OpExportToArray
 from opExportSlot import OpExportSlot
 from opFormattedDataExport import OpFormattedDataExport
 

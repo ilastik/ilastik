@@ -31,7 +31,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiFromShape
 from lazyflow.utility import OrderedSignal, format_known_keys, PathComponents
 from lazyflow.operators.ioOperators import OpH5WriterBigDataset, OpNpyWriter, OpExport2DImage, OpStackWriter, \
-                                           OpExportMultipageTiff, OpExportMultipageTiffSequence
+                                           OpExportMultipageTiff, OpExportMultipageTiffSequence, OpExportToArray
 
 try:
     from lazyflow.operators.ioOperators import OpExportDvidVolume
@@ -198,6 +198,22 @@ class OpExportSlot(Operator):
         if slot == self.OutputFormat:
             self._updateFormatSelectionErrorMsg()
 
+    def run_export_to_array(self):
+        """
+        Export the slot data to an array, instead of to disk.
+        The data is computed blockwise, as necessary.
+        The result is returned.
+        """
+        self.progressSignal(0)
+        opExport = OpExportToArray(parent=self)
+        try:
+            opExport.progressSignal.subscribe(self.progressSignal)
+            opExport.Input.connect(self.Input)
+            return opExport.run_export_to_array()
+        finally:
+            opExport.cleanUp()
+            self.progressSignal(100)                
+    
     def run_export(self):
         """
         Perform the export and WAIT for it to complete.

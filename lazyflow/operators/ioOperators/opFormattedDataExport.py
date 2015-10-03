@@ -232,36 +232,5 @@ class OpFormattedDataExport(Operator):
     def run_export(self):
         self._opExportSlot.run_export()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    def run_export_to_array(self):
+        return self._opExportSlot.run_export_to_array()
