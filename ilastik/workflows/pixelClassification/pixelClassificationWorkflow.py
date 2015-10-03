@@ -45,7 +45,7 @@ class PixelClassificationWorkflow(Workflow):
     
     DATA_ROLE_RAW = 0
     DATA_ROLE_PREDICTION_MASK = 1
-    
+    ROLE_NAMES = ['Raw Data', 'Prediction Mask']
     EXPORT_NAMES = ['Probabilities', 'Simple Segmentation', 'Uncertainty', 'Features']
     
     @property
@@ -105,8 +105,7 @@ class PixelClassificationWorkflow(Workflow):
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         
         # see role constants, above
-        role_names = ['Raw Data', 'Prediction Mask']
-        opDataSelection.DatasetRoles.setValue( role_names )
+        opDataSelection.DatasetRoles.setValue( PixelClassificationWorkflow.ROLE_NAMES )
 
         self.featureSelectionApplet = self.createFeatureSelectionApplet()
 
