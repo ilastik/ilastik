@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 import os
+import glob
 import uuid
 import numpy
 import vigra
