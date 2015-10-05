@@ -121,8 +121,9 @@ class OpMetadataInjector(Operator):
         return result
 
     def propagateDirty(self, slot, subindex, roi):
-        # Forward to the output slot
-        self.Output.setDirty(roi)
+        if slot is self.Input:
+            # Forward to the output slot
+            self.Output.setDirty(roi)
 
 class OpMetadataSelector(Operator):
     name = "OpMetadataSelector"
