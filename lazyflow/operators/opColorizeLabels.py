@@ -23,8 +23,11 @@ import zlib
 import copy
 import numpy
 import os
+import tempfile
+import threading
 from functools import partial
 import math
+from lazyflow.utility import FileLock
 
 import numpy
 
@@ -63,14 +66,16 @@ class OpColorizeLabels(Operator):
     Output = OutputSlot() # 4 channels: RGBA
 
     colortable = None
+    _lock = threading.Lock()
         
     def __init__(self, *args, **kwargs):
         super(OpColorizeLabels, self).__init__(*args, **kwargs)
 
         self.overrideColors = {}
 
-        if OpColorizeLabels.colortable is None:
-            OpColorizeLabels.colortable = OpColorizeLabels.generateColortable(2**22)
+        with OpColorizeLabels._lock:
+            if OpColorizeLabels.colortable is None:
+                OpColorizeLabels.colortable = OpColorizeLabels.generateColortable(2**22)
 
         # Pre-generate the table of data
         self.colortable = copy.copy(OpColorizeLabels.colortable)
@@ -135,45 +140,58 @@ class OpColorizeLabels(Operator):
         # The execute function makes this assumption, so check it.
         assert lg == math.floor(lg), "Colortable size must be a power of 2."
         
-        # If possible, load the table from disk
         lazyflowSettingsDir = os.path.expanduser('~/.lazyflow')
+        try:
+            if not os.path.exists( lazyflowSettingsDir ):
+                os.makedirs( lazyflowSettingsDir )
+        except Exception, ex:
+            import warnings
+            warnings.warn("Not able to create dir: ~/.lazyflow.  Writing random_color_table.npy to /tmp instead.")
+            # Write to a temporary directory.
+            lazyflowSettingsDir = tempfile.mkdtemp()
+
         cachedColortablePath = os.path.join(lazyflowSettingsDir, 'random_color_table.npy')
 
-        loadedTable = False
-        if os.path.exists( cachedColortablePath ):
-            table = numpy.load(cachedColortablePath)
-            if table.shape[0] == size:
-                loadedTable = True
-            else:
-                table = None
-
-        if not loadedTable:
-            randState = numpy.random.mtrand.RandomState(0)
-            table = numpy.zeros((size,4), dtype=numpy.uint8)
-            table[...] = randState.random_integers( 0, 255, table.shape )
-            table[...,3] = 255 # Alpha is 255 by default.
-
-            # Save it for next session
-            saved = False
-            ex = None
-            try:
-                if not os.path.exists( lazyflowSettingsDir ):
-                    os.makedirs( lazyflowSettingsDir )
-            except Exception, ex:
-                pass
-            else:
+        with FileLock(cachedColortablePath):
+            # If possible, load the table from disk
+            loadedTable = False
+            if os.path.exists( cachedColortablePath ):
                 try:
-                    numpy.save(cachedColortablePath, table)
-                    saved = True
+                    table = numpy.load(cachedColortablePath)
+                    if table.shape[0] == size:
+                        loadedTable = True
+                    else:
+                        table = None
+                except: 
+                    table = None
+            
+            if not loadedTable:
+                randState = numpy.random.mtrand.RandomState(0)
+                table = numpy.zeros((size,4), dtype=numpy.uint8)
+                table[...] = randState.random_integers( 0, 255, table.shape )
+                table[...,3] = 255 # Alpha is 255 by default.
+    
+                # Save it for next session
+                saved = False
+                ex = None
+                try:
+                    if not os.path.exists( lazyflowSettingsDir ):
+                        os.makedirs( lazyflowSettingsDir )
                 except Exception, ex:
                     pass
-
-            if not saved:
-                # It's not worth crashing if the table can't be cached.
-                logger.warn( "Wasn't able to create cache file: " + cachedColortablePath )
-                logger.warn( "Caught exception: " + str(ex) )
-                    
-        return table
+                else:
+                    try:
+                        numpy.save(cachedColortablePath, table)
+                        saved = True
+                    except Exception, ex:
+                        pass
+    
+                if not saved:
+                    # It's not worth crashing if the table can't be cached.
+                    logger.warn( "Wasn't able to create cache file: " + cachedColortablePath )
+                    logger.warn( "Caught exception: " + str(ex) )
+                        
+            return table
 
     def propagateDirty(self, inputSlot, subindex, roi):
         if inputSlot == self.Input:
