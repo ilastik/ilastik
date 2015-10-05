@@ -106,7 +106,7 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
         opMetadataInjector.Input.connect( opCache.Output )
         metadata = opCache.Output.meta.copy()
         opMetadataInjector.Metadata.setValue( metadata )
-        opReorderAxes.Input.connect( opImport.Output )
+        opReorderAxes.Input.connect( opMetadataInjector.Output )
 
         # Transpose the axes for assignment to the labeling operator.
         opReorderAxes.AxisOrder.setValue( writeSeeds.meta.getAxisKeys() )
