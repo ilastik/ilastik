@@ -262,7 +262,7 @@ class DataSelectionApplet( Applet ):
             #  even if the dataset is located in the same location as a previous one and has the same globstring!
             # Create a sha-1 of the file name and modification date.
             sha = hashlib.sha1()
-            files = [k.replace('\\', '/') for k in glob.glob( path )]
+            files = sorted([k.replace('\\', '/') for k in glob.glob( path )])
             for f in files:
                 sha.update(f)
                 sha.update(pickle.dumps(os.stat(f).st_mtime))

@@ -84,6 +84,7 @@ class DatasetInfo(object):
             file_list = None
             if '*' in filepath:
                 file_list = glob.glob(filepath)
+                file_list = sorted(file_list)
             if not isUrl(filepath) and os.path.pathsep in filepath:
                 file_list = filepath.split(os.path.pathsep)
             
