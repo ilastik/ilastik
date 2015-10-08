@@ -54,7 +54,7 @@ class HeadlessShell(object):
         import ilastik.workflows
         try:
             # Open the project file
-            hdf5File, workflow_class, _ = ProjectManager.openProjectFile(projectFilePath)
+            hdf5File, workflow_class, readOnly = ProjectManager.openProjectFile(projectFilePath)
 
             # If there are any "creation-time" command-line args saved to the project file,
             #  load them so that the workflow can be instantiated with the same settings 
@@ -79,7 +79,7 @@ class HeadlessShell(object):
                                                   headless=True,
                                                   workflow_cmdline_args=self._workflow_cmdline_args,
                                                   project_creation_args=project_creation_args )
-            self.projectManager._loadProject(hdf5File, projectFilePath, readOnly = False)
+            self.projectManager._loadProject(hdf5File, projectFilePath, readOnly)
 
         except ProjectManager.FileMissingError:
             logger.error("Couldn't find project file: {}".format( projectFilePath ))
