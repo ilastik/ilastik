@@ -15,6 +15,7 @@ parser = argparse.ArgumentParser( description="start an ilastik workflow" )
 # Common options
 parser.add_argument('--headless', help="Don't start the ilastik gui.", action='store_true', default=False)
 parser.add_argument('--project', help='A project file to open on startup.', required=False)
+parser.add_argument('--readonly', help="Open all projects in read-only mode, to ensure you don't accidentally make changes.", default=False)
 
 parser.add_argument('--new_project', help='Create a new project with the specified name.  Must also specify --workflow.', required=False)
 parser.add_argument('--workflow', help='When used with --new_project, specifies the workflow to use.', required=False)
@@ -271,7 +272,7 @@ def _prepare_auto_open_project( parsed_args ):
     
     def loadProject(shell):
         # This should work for both the IlastikShell and the HeadlessShell
-        shell.openProjectFile(path)
+        shell.openProjectFile(path, parsed_args.readonly)
     return loadProject
 
 def _prepare_auto_create_new_project( parsed_args ):

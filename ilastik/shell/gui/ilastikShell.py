@@ -1216,9 +1216,9 @@ class IlastikShell(QMainWindow):
 
             self.openProjectFile(projectFilePath)
 
-    def openProjectFile(self, projectFilePath):
+    def openProjectFile(self, projectFilePath, force_readonly=False):
         try:
-            hdf5File, workflow_class, readOnly = ProjectManager.openProjectFile(projectFilePath)
+            hdf5File, workflow_class, readOnly = ProjectManager.openProjectFile(projectFilePath, force_readonly)
         except ProjectManager.ProjectVersionError, e:
             QMessageBox.warning(self, "Old Project",
                                 "Could not load old project file: " + projectFilePath + ".\nPlease try 'Import Project' instead.")

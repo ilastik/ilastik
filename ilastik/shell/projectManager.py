@@ -111,7 +111,7 @@ class ProjectManager(object):
         return str( projectFile['workflowName'][()] )
 
     @classmethod
-    def openProjectFile(cls, projectFilePath):
+    def openProjectFile(cls, projectFilePath, forceReadOnly=False):
         """
         Class method.
         Attempt to open the given path to an existing project file.
@@ -126,12 +126,15 @@ class ProjectManager(object):
 
         # Open the file as an HDF5 file
         try:
-            hdf5File = h5py.File(projectFilePath)
-            readOnly = (hdf5File.mode == 'r')
+            if forceReadOnly:
+                mode = 'r'
+            else:
+                mode = 'r+'
+            hdf5File = h5py.File(projectFilePath, mode)
         except IOError:
-            # Maybe the project is read-only
+            # Maybe we tried 'r+', but the project is read-only
             hdf5File = h5py.File(projectFilePath, 'r')
-            readOnly = True
+        readOnly = (hdf5File.mode == 'r')
 
         projectVersion = "0.5"
         if "ilastikVersion" in hdf5File.keys():
