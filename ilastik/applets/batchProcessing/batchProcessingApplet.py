@@ -222,13 +222,14 @@ class BatchProcessingApplet( Applet ):
         self.dataExportApplet.prepare_lane_for_export(batch_lane_index)
 
         # Finally, run the export
-        logger.info("Exporting to {}".format( opDataExportBatchlaneView.ExportPath.value ))
         opDataExportBatchlaneView.progressSignal.subscribe(progress_callback)
 
         result = None        
         if export_to_array:
+            logger.info("Exporting to in-memory array.")
             result = opDataExportBatchlaneView.run_export_to_array()
         else:
+            logger.info("Exporting to {}".format( opDataExportBatchlaneView.ExportPath.value ))
             opDataExportBatchlaneView.run_export()
 
         # Call customization hook
