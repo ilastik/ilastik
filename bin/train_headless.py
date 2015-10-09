@@ -104,7 +104,8 @@ def generate_trained_project_file( new_project_path,
     inject the corresponding labels, configure the given feature selections,
     and (if provided) override the classifier type ('factory').
     
-    Finally, train the 
+    Finally, request the classifier object from the pipeline (which forces training),
+    and save the project.
     """
     import ilastik_main
     from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
