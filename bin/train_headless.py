@@ -167,11 +167,15 @@ def generate_trained_project_file( new_project_path,
     for lane, label_data_path in enumerate(label_data_paths):
         graph = Graph()
         opReader = OpInputDataReader(graph=graph)
-        opReader.WorkingDirectory.setValue( cwd )
-        opReader.FilePath.setValue( label_data_path )
-        
-        print "Reading label volume: {}".format( label_data_path )
-        label_volume = opReader.Output[:].wait()
+        try:
+            opReader.WorkingDirectory.setValue( cwd )
+            opReader.FilePath.setValue( label_data_path )
+            
+            print "Reading label volume: {}".format( label_data_path )
+            label_volume = opReader.Output[:].wait()
+        finally:
+            opReader.cleanUp()
+
         raw_shape = opPixelClassification.InputImages[lane].meta.shape
         if label_volume.ndim != len(raw_shape):
             # Append a singleton channel axis
