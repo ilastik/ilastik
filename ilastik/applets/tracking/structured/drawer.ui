@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>1252</height>
+    <height>1285</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -527,7 +527,7 @@
      <item>
       <widget class="QRadioButton" name="trainingToHardConstraints">
        <property name="text">
-        <string>Use Training Annoations in Tracking</string>
+        <string>Use Training Annotations in Tracking</string>
        </property>
        <property name="checked">
         <bool>false</bool>

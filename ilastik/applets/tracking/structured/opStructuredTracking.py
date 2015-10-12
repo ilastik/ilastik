@@ -120,6 +120,7 @@ class OpStructuredTracking(OpTrackingBase):
             avgSize=[0],                        
             withTracklets=False,
             sizeDependent=True,
+            detWeight=10.0,
             divWeight=10.0,
             transWeight=10.0,
             withDivisions=True,

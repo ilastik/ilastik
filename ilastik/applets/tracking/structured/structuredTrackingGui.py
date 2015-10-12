@@ -5,6 +5,7 @@ import sys
 import re
 import traceback
 import math
+import random
 
 import pgmlink
 
@@ -170,7 +171,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
 
 
-        # ONLY for TESTING
         self._drawer.trainingToHardConstraints.setChecked(True)
 
 
@@ -182,6 +182,12 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self.topLevelOperatorView.AppearanceWeight.setValue(1)
         self.topLevelOperatorView.DisappearanceWeight.setValue(1)
 
+        # self.topLevelOperatorView.DivisionWeight.setValue(random.random())
+        # self.topLevelOperatorView.DetectionWeight.setValue(random.random())
+        # self.topLevelOperatorView.TransitionWeight.setValue(random.random())
+        # self.topLevelOperatorView.AppearanceWeight.setValue(random.random())
+        # self.topLevelOperatorView.DisappearanceWeight.setValue(random.random())
+        #
         self._divisionWeight = self.topLevelOperatorView.DivisionWeight.value
         self._detectionWeight = self.topLevelOperatorView.DetectionWeight.value
         self._transitionWeight =self.topLevelOperatorView.TransitionWeight.value
@@ -616,6 +622,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             sizeDependent = self._drawer.sizeDepBox.isChecked()
             hardPrior = self._drawer.hardPriorBox.isChecked()
             classifierPrior = self._drawer.classifierPriorBox.isChecked()
+            detWeight = self._drawer.detWeightBox.value()
             divWeight = self._drawer.divWeightBox.value()
             transWeight = self._drawer.transWeightBox.value()
             withDivisions = self._drawer.divisionsBox.isChecked()        
@@ -646,6 +653,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                     avgSize=avgSize,                
                     withTracklets=withTracklets,
                     sizeDependent=sizeDependent,
+                    detWeight=detWeight,
                     divWeight=divWeight,
                     transWeight=transWeight,
                     withDivisions=withDivisions,
