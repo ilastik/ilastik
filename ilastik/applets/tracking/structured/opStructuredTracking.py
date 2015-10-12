@@ -1,8 +1,11 @@
 import numpy as np
+import math
 from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.rtype import List
 from lazyflow.stype import Opaque
+print "------------------------------------------------------------------>BEFORE IMPORT pgmlink"
 import pgmlink
+print "..................................................................>AFTER IMPORT pgmlink"
 from ilastik.applets.tracking.base.opTrackingBase import OpTrackingBase
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 from ilastik.applets.tracking.base.trackingUtilities import relabelMergers
@@ -227,6 +230,8 @@ class OpStructuredTracking(OpTrackingBase):
             while not foundAllArcs:
                 new_max_nearest_neighbors += 1
                 print '\033[94m' +"make new graph"+  '\033[0m'
+
+                print "BEFORE constructor ConsTracking"
                 self.consTracker = pgmlink.ConsTracking(
                     maxObj,
                     sizeDependent,   # size_dependent_detection_prob
@@ -239,6 +244,7 @@ class OpStructuredTracking(OpTrackingBase):
                     "none", # dump traxelstore,
                     pgmlink.ConsTrackingSolverType.CplexSolver,
                     ndim)
+                print "AFTER constructor ConsTracking"
                 hypothesesGraph = self.consTracker.buildGraph(ts, new_max_nearest_neighbors)
 
 
@@ -286,7 +292,8 @@ class OpStructuredTracking(OpTrackingBase):
 
                                             foundAllArcs &= self.consTracker.addArcLabel(time-1, int(previous_label), int(label), float(trackCountIntersection))
                                             if not foundAllArcs:
-                                                print "[opStructuredTracking] Arc: (", time-1, ",", int(previous_label), ") ---> (", time, ",", int(label), ")"
+                                                #print "[opStructuredTracking] Arc: (", time-1, ",", int(previous_label), ") ---> (", time, ",", int(label), ")"
+                                                print "[opStructuredTracking] Increasing max nearest neighbors!"
                                                 break
 
                                     if type[0] == "FIRST":
@@ -319,7 +326,8 @@ class OpStructuredTracking(OpTrackingBase):
                                     self.consTracker.addAppearanceLabel(time+1, child0, 1.0)
                                     foundAllArcs &= self.consTracker.addArcLabel(time, parent, child0, 1.0)
                                     if not foundAllArcs:
-                                        print "[opStructuredTracking] Divisions Arc0: (", time, ",", int(parent), ") ---> (", time+1, ",", int(child0), ")"
+                                        #print "[opStructuredTracking] Divisions Arc0: (", time, ",", int(parent), ") ---> (", time+1, ",", int(child0), ")"
+                                        print "[opStructuredTracking] Increasing max nearest neighbors!"
                                         break
 
                                     child1 = int(self.getLabelInCrop(cropKey, time+1, division[0][1]))
@@ -327,7 +335,8 @@ class OpStructuredTracking(OpTrackingBase):
                                     self.consTracker.addAppearanceLabel(time+1, child1, 1.0)
                                     foundAllArcs &= self.consTracker.addArcLabel(time, parent, child1, 1.0)
                                     if not foundAllArcs:
-                                        print "[opStructuredTracking] Divisions Arc1: (", time, ",", int(parent), ") ---> (", time+1, ",", int(child1), ")"
+                                        #print "[opStructuredTracking] Divisions Arc1: (", time, ",", int(parent), ") ---> (", time+1, ",", int(child1), ")"
+                                        print "[opStructuredTracking] Increasing max nearest neighbors!"
                                         break
 
 
@@ -344,25 +353,68 @@ class OpStructuredTracking(OpTrackingBase):
             sigmas.append(0.0)
         uncertaintyParams = pgmlink.UncertaintyParameter(1, pgmlink.DistrId.PerturbAndMAP, sigmas)
 
+        detWeight = self.parent.parent.trackingApplet._gui.currentGui()._drawer.detWeightBox.value()
+        divWeight = self.parent.parent.trackingApplet._gui.currentGui()._drawer.divWeightBox.value()
+        transWeight = self.parent.parent.trackingApplet._gui.currentGui()._drawer.transWeightBox.value()
+        appearance_cost = self.parent.parent.trackingApplet._gui.currentGui()._drawer.appearanceBox.value()
+        disappearance_cost = self.parent.parent.trackingApplet._gui.currentGui()._drawer.disappearanceBox.value()
+
+        print "detWeight=",detWeight
+        print "divWeight=",divWeight
+        print "transWeight=",transWeight
+        print "appearance_cost=",appearance_cost
+        print "disappearance_cost=",disappearance_cost
+
+        consTrackerParameters = self.consTracker.get_conservation_tracking_parameters(
+                                        0,       # forbidden_cost
+                                        float(ep_gap), # ep_gap
+                                        withTracklets,
+                                        10,#detWeight, # detection weight
+                                        divWeight,
+                                        transWeight,
+                                        disappearance_cost, # disappearance cost
+                                        appearance_cost, # appearance cost
+                                        withMergerResolution,
+                                        ndim,
+                                        transition_parameter,
+                                        borderAwareWidth,
+                                        True, #with_constraints
+                                        uncertaintyParams,
+                                        cplex_timeout,
+                                        None, # TransitionClassifier
+                                        pgmlink.ConsTrackingSolverType.CplexSolver,
+                                        trainingToHardConstraints,
+                                        1) # default: False
+
+        print "get_conservation_tracking_parameters DONE!"
+        consTrackerParameters.register_transition_func(self.my_transition_func)
+
+        fixLabeledNodes = False;
+
         try:
-            eventsVector = self.consTracker.track(0,       # forbidden_cost
-                                            float(ep_gap), # ep_gap
-                                            withTracklets,
-                                            10.0, # detection weight
-                                            divWeight,
-                                            transWeight,
-                                            disappearance_cost, # disappearance cost
-                                            appearance_cost, # appearance cost
-                                            withMergerResolution,
-                                            ndim,
-                                            transition_parameter,
-                                            borderAwareWidth,
-                                            True, #with_constraints
-                                            uncertaintyParams,
-                                            cplex_timeout,
-                                            None, # TransitionClassifier
-                                            trainingToHardConstraints,
-                                            1) # default: False
+
+
+            eventsVector = self.consTracker.track(consTrackerParameters, fixLabeledNodes )
+
+            # eventsVector = self.consTracker.track(
+            #                                 0,       # forbidden_cost
+            #                                 float(ep_gap), # ep_gap
+            #                                 withTracklets,
+            #                                 detWeight, # detection weight
+            #                                 divWeight,
+            #                                 transWeight,
+            #                                 disappearance_cost, # disappearance cost
+            #                                 appearance_cost, # appearance cost
+            #                                 withMergerResolution,
+            #                                 ndim,
+            #                                 transition_parameter,
+            #                                 borderAwareWidth,
+            #                                 True, #with_constraints
+            #                                 uncertaintyParams,
+            #                                 cplex_timeout,
+            #                                 None, # TransitionClassifier
+            #                                 trainingToHardConstraints,
+            #                                 1) # default: False
 
             eventsVector = eventsVector[0] # we have a vector such that we could get a vector per perturbation
 
@@ -396,6 +448,22 @@ class OpStructuredTracking(OpTrackingBase):
         self.Parameters.setValue(parameters, check_changed=False)
         self.EventsVector.setValue(events, check_changed=False)
         
+    def my_transition_func(self, traxel_1, traxel_2, state):
+        #traxels = [traxel_1, traxel_2]
+        #positions = [np.array([t.X(), t.Y(), t.Z()]) for t in traxels]
+        distance = math.sqrt((traxel_1.X()-traxel_2.X())*(traxel_1.X()-traxel_2.X()) + (traxel_1.Y()-traxel_2.Y())*(traxel_1.Y()-traxel_2.Y()) + (traxel_1.Z()-traxel_2.Z())*(traxel_1.Z()-traxel_2.Z())  )
+        #distanceSquared = (traxel_1.X()-traxel_2.X())*(traxel_1.X()-traxel_2.X()) + (traxel_1.Y()-traxel_2.Y())*(traxel_1.Y()-traxel_2.Y()) + (traxel_1.Z()-traxel_2.Z())*(traxel_1.Z()-traxel_2.Z())
+
+        #distance = (traxel_1, traxel_2)
+
+
+
+        #return 10.0*float(distanceSquared)**2
+        #return float(distanceSquared)
+        return float(distance)
+
+
+
     def getLabelInCrop(self, cropKey, time, track):
         labels = self.Annotations.value[cropKey]["labels"][time]
         for label in labels.keys():

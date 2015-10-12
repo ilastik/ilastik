@@ -173,6 +173,11 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         self._drawer.trainingToHardConstraints.setChecked(True)
 
+        self.topLevelOperatorView._detectionWeight = self._detectionWeight
+        self.topLevelOperatorView._divisionWeight = self._divisionWeight
+        self.topLevelOperatorView._transitionWeight = self._transitionWeight
+        self.topLevelOperatorView._appearanceWeight = self._appearanceWeight
+        self.topLevelOperatorView._disappearanceWeight = self._disappearanceWeight
 
 
     def _onAllOnesButtonPressed(self):
@@ -345,6 +350,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             withDivisions = True
             sizeDependent = False
             divThreshold = float(0.5)
+
             structuredLearningTracker = pgmlink.StructuredLearningTracking(
                 hypothesesGraph,
                 maxObj,
@@ -401,7 +407,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
                                     foundAllArcs &= structuredLearningTracker.addArcLabel(time-1, int(previous_label), int(label), float(trackCountIntersection))
                                     if not foundAllArcs:
-                                        print "[structuredTrackingGui] Transitions Arc: (", time-1, ",", int(previous_label), ") ---> (", time, ",", int(label), ")"
+                                        #print "[structuredTrackingGui] Transitions Arc: (", time-1, ",", int(previous_label), ") ---> (", time, ",", int(label), ")"
+                                        print "[structuredTrackingGui] Increasing max nearest neighbors!"
                                         break
 
                             if type[0] == "FIRST":
@@ -439,7 +446,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                             structuredLearningTracker.addAppearanceLabel(time+1, child0, 1.0)
                             foundAllArcs &= structuredLearningTracker.addArcLabel(time, parent, child0, 1.0)
                             if not foundAllArcs:
-                                print "[structuredTrackingGui] Divisions Arc0: (", time, ",", int(parent), ") ---> (", time+1, ",", int(child0), ")"
+                                #print "[structuredTrackingGui] Divisions Arc0: (", time, ",", int(parent), ") ---> (", time+1, ",", int(child0), ")"
+                                print "[structuredTrackingGui] Increasing max nearest neighbors!"
                                 break
 
                             child1 = int(self.getLabelInCrop(cropKey, time+1, division[0][1]))
@@ -447,7 +455,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                             structuredLearningTracker.addAppearanceLabel(time+1, child1, 1.0)
                             foundAllArcs &= structuredLearningTracker.addArcLabel(time, parent, child1, 1.0)
                             if not foundAllArcs:
-                                print "[structuredTrackingGui] Divisions Arc1: (", time, ",", int(parent), ") ---> (", time+1, ",", int(child1), ")"
+                                #print "[structuredTrackingGui] Divisions Arc1: (", time, ",", int(parent), ") ---> (", time+1, ",", int(child1), ")"
+                                print "[structuredTrackingGui] Increasing max nearest neighbors!"
                                 break
             print "max nearest neighbors=",new_max_nearest_neighbors
 
@@ -459,7 +468,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         ep_gap = 0.05
         withTracklets=False
         withMergerResolution=True
-        ndim=2
+        ndim=2                                  # TODO: test ndim = 3
         transition_parameter = 5.0
         borderAwareWidth = 0.0
 
@@ -472,10 +481,10 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         transitionClassifier = None
 
         detectionWeight = self._detectionWeight
-        divWeight = self._divisionWeight
-        transWeight = self._transitionWeight
-        disappearance_cost = self._disappearanceWeight
-        appearance_cost = self._appearanceWeight
+        divisionWeight = self._divisionWeight
+        transitionWeight = self._transitionWeight
+        disappearanceWeight = self._disappearanceWeight
+        appearanceWeight = self._appearanceWeight
 
         for key in self._crops.keys():
             crop = self._crops[key]
@@ -485,16 +494,17 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
             structuredLearningTracker.exportCrop(fieldOfView)
 
+        with_optical_correction = True
         with_constraints = True
-        structuredLearningTracker.structuredLearning(
+        structuredLearningTrackerParameters = structuredLearningTracker.getStructuredLearningTrackingParameters(
             float(forbidden_cost),
             float(ep_gap),
             withTracklets,
             detectionWeight,
-            divWeight,
-            transWeight,
-            disappearance_cost,
-            appearance_cost,
+            divisionWeight,
+            transitionWeight,
+            disappearanceWeight,
+            appearanceWeight,
             withMergerResolution,
             ndim,
             transition_parameter,
@@ -502,8 +512,33 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             with_constraints,
             uncertaintyParams,
             cplex_timeout,
-            transitionClassifier
+            transitionClassifier,
+            with_optical_correction,
+            pgmlink.ConservationExplicitTrackingSolverType.CplexSolver
         )
+
+        structuredLearningTrackerParameters.register_explicit_transition_func(self.mainOperator.my_transition_func)
+
+        structuredLearningTracker.structuredLearning(structuredLearningTrackerParameters)
+
+        # structuredLearningTracker.structuredLearning(
+        #     float(forbidden_cost),
+        #     float(ep_gap),
+        #     withTracklets,
+        #     detectionWeight,
+        #     divisionWeight,
+        #     transitionWeight,
+        #     disappearanceWeight,
+        #     appearanceWeight,
+        #     withMergerResolution,
+        #     ndim,
+        #     transition_parameter,
+        #     borderAwareWidth,
+        #     with_constraints,
+        #     uncertaintyParams,
+        #     cplex_timeout,
+        #     transitionClassifier
+        # )
 
         #sltWeightNorm = 0
         #for i in range(5):
