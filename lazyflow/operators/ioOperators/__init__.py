@@ -19,18 +19,19 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
-from ioOperators import *
+from ioOperators import OpStackLoader, OpStackWriter, OpStackToH5Writer, OpH5WriterBigDataset
 
 # All "Read" operators must come before OpInputDataReader, which uses them.
-from opStreamingMmfReader import *
-from opStreamingUfmfReader import *
-from opNpyFileReader import *
-from opStreamingHdf5Reader import *
-from opRESTfulVolumeReader import *
-from opBlockwiseFilesetReader import *
-from opRESTfulBlockwiseFilesetReader import *
-from opTiledVolumeReader import *
-from opCachedTiledVolumeReader import *
+from opStreamingMmfReader import OpStreamingMmfReader
+from opStreamingUfmfReader import OpStreamingUfmfReader
+from opRawBinaryFileReader import OpRawBinaryFileReader
+from opNpyFileReader import OpNpyFileReader
+from opStreamingHdf5Reader import OpStreamingHdf5Reader
+from opRESTfulVolumeReader import OpRESTfulVolumeReader
+from opBlockwiseFilesetReader import OpBlockwiseFilesetReader
+from opRESTfulBlockwiseFilesetReader import OpRESTfulBlockwiseFilesetReader
+from opTiledVolumeReader import OpTiledVolumeReader
+from opCachedTiledVolumeReader import OpCachedTiledVolumeReader
 
 # Try to import the dvid-related operator.
 # If it fails, that's okay.

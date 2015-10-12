@@ -23,6 +23,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpImageReader, OpBlockedArrayCache, OpMetadataInjector, OpSubRegion
 from opStreamingHdf5Reader import OpStreamingHdf5Reader
 from opNpyFileReader import OpNpyFileReader
+from opRawBinaryFileReader import OpRawBinaryFileReader
 from opTiffReader import OpTiffReader
 from opTiffSequenceReader import OpTiffSequenceReader
 from lazyflow.operators.ioOperators import OpStackLoader, OpBlockwiseFilesetReader, OpRESTfulBlockwiseFilesetReader, OpCachedTiledVolumeReader
@@ -59,11 +60,12 @@ class OpInputDataReader(Operator):
     videoExts = ['ufmf', 'mmf', 'avi']
     h5Exts = ['h5', 'hdf5', 'ilp']
     npyExts = ['npy']
+    rawExts = ['dat', 'bin', 'raw']
     blockwiseExts = ['json']
     tiledExts = ['json']
     tiffExts = ['tif', 'tiff']
     vigraImpexExts = vigra.impex.listExtensions().split()
-    SupportedExtensions = h5Exts + npyExts + vigraImpexExts + blockwiseExts + videoExts
+    SupportedExtensions = h5Exts + npyExts + rawExts + vigraImpexExts + blockwiseExts + videoExts
     if _supports_dvid:
         dvidExts = ['dvidvol']
         SupportedExtensions += dvidExts
@@ -136,6 +138,7 @@ class OpInputDataReader(Operator):
                       self._attemptOpenAsStack,
                       self._attemptOpenAsHdf5,
                       self._attemptOpenAsNpy,
+                      self._attemptOpenAsRawBinary,
                       self._attemptOpenAsBlockwiseFileset,
                       self._attemptOpenAsRESTfulBlockwiseFileset,
                       self._attemptOpenAsTiledVolume,
@@ -339,6 +342,23 @@ class OpInputDataReader(Operator):
                 return ([npyReader], npyReader.Output)
             except OpNpyFileReader.DatasetReadError as e:
                 raise OpInputDataReader.DatasetReadError( *e.args )
+
+    def _attemptOpenAsRawBinary(self, filePath):
+        fileExtension = os.path.splitext(filePath)[1].lower()
+        fileExtension = fileExtension.lstrip('.') # Remove leading dot
+
+        # Check for numpy extension
+        if fileExtension not in OpInputDataReader.rawExts:
+            return ([], None)
+        else:
+            try:
+                # Create an internal operator
+                opReader = OpRawBinaryFileReader(parent=self)
+                opReader.FilePath.setValue(filePath)
+                return ([opReader], opReader.Output)
+            except OpRawBinaryFileReader.DatasetReadError as e:
+                raise OpInputDataReader.DatasetReadError( *e.args )
+
 
     def _attemptOpenAsDvidVolume(self, filePath):
         """
