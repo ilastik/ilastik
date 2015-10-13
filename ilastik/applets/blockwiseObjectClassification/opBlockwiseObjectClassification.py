@@ -142,7 +142,8 @@ class OpSingleBlockObjectPrediction( Operator ):
         self._opProbabilityChannelStacker.Images.connect( self._opProbabilityChannelsToImage.Output )
         self._opProbabilityChannelStacker.AxisFlag.setValue('c')
         
-        self.ProbabilityChannelImage.connect( self._opProbabilityChannelStacker.Output )
+        self._opProbabilityCache = OpArrayCache( parent=self )
+        self._opProbabilityCache.Input.connect( self._opProbabilityChannelStacker.Output )
 
     def setupOutputs(self):
         tagged_input_shape = self.RawImage.meta.getTaggedShape()
@@ -167,19 +168,30 @@ class OpSingleBlockObjectPrediction( Operator ):
         self.PredictionImage.meta.assignFrom( self._opPredictionImage.Output.meta )
         self.PredictionImage.meta.shape = tuple( numpy.subtract( self.block_roi[1], self.block_roi[0] ) )
 
-        # Forward dirty regions to our own output
+        self.ProbabilityChannelImage.meta.assignFrom( self._opProbabilityChannelStacker.Output.meta )
+        probability_shape = numpy.subtract( self.block_roi[1], self.block_roi[0] )
+        probability_shape[-1] = self._opProbabilityChannelStacker.Output.meta.shape[-1]
+        self.ProbabilityChannelImage.meta.shape = tuple(probability_shape)
+
+        # Cache the entire block
         self._opPredictionCache.blockShape.setValue( self._opPredictionCache.Input.meta.shape )
+        self._opProbabilityCache.blockShape.setValue( self._opProbabilityCache.Input.meta.shape )
+
+        # Forward dirty regions to our own output
         self._opPredictionImage.Output.notifyDirty( self._handleDirtyPrediction )
-    
+
     def execute(self, slot, subindex, roi, destination):
-        assert slot == self.PredictionImage, "Unknown input slot"
-        assert (numpy.array(roi.stop) <= self.PredictionImage.meta.shape).all(), "Roi is out-of-bounds"
+        assert slot is self.PredictionImage or slot is self.ProbabilityChannelImage, "Unknown input slot"
+        assert (numpy.array(roi.stop) <= slot.meta.shape).all(), "Roi is out-of-bounds"
 
         # Extract from the output (discard halo)
         halo_offset = numpy.subtract(self.block_roi[0], self._halo_roi[0])
         adjusted_roi = ( halo_offset + roi.start,
                          halo_offset + roi.stop )
-        return self._opPredictionCache.Output(*adjusted_roi).writeInto(destination).wait()
+        if slot is self.PredictionImage:
+            return self._opPredictionCache.Output(*adjusted_roi).writeInto(destination).wait()
+        elif slot is self.ProbabilityChannelImage:
+            return self._opProbabilityCache.Output(*adjusted_roi).writeInto(destination).wait()
 
     def propagateDirty(self, slot, subindex, roi):
         """
@@ -200,6 +212,10 @@ class OpSingleBlockObjectPrediction( Operator ):
             halo_offset = numpy.subtract(self.block_roi[0], self._halo_roi[0])
             adjusted_roi = dirtyRoi - halo_offset # adjusted_roi is in output coordinates (relative to output block start)
             self.PredictionImage.setDirty( *adjusted_roi )
+
+            # Expand to all channels and set channel image dirty
+            adjusted_roi[:,-1] = (0, self.ProbabilityChannelImage.meta.shape[-1])            
+            self.ProbabilityChannelImage.setDirty( *adjusted_roi )
 
     @classmethod
     def computeHaloRoi(cls, tagged_dataset_shape, halo_padding, block_roi):
@@ -317,10 +333,8 @@ class OpBlockwiseObjectClassification( Operator ):
             if slot == self.ProbabilityChannelImage:
                 block_slot = opBlockPipeline.ProbabilityChannelImage
                 # Add channels back to roi
-                # request all channels
-                block_relative_intersection[...,-1] = (0, opBlockPipeline.ProbabilityChannelImage.meta.shape[-1])
-                # But only write the ones that were specified in the original roi
-                destination_relative_intersection[...,-1] = ( roi.start[-1], roi.stop[-1] )
+                block_relative_intersection[...,-1] = ( roi.start[-1], roi.stop[-1] )
+                destination_relative_intersection[...,-1] = (0, roi.stop[-1] - roi.start[-1])
 
             # Request the data
             destination_slice = roiToSlice( *destination_relative_intersection )

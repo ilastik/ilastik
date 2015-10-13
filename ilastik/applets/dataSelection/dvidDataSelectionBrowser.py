@@ -1,9 +1,9 @@
-import httplib
 import socket
 import logging
 
-import pydvid
-from pydvid.gui.contents_browser import ContentsBrowser
+from libdvid import DVIDException, ErrMsg
+from libdvid.voxels import VoxelsAccessor, VoxelsMetadata
+from libdvid.gui.contents_browser import ContentsBrowser
 
 from volumina.widgets.subregionRoiWidget import SubregionRoiWidget
 from PyQt4.QtGui import QVBoxLayout, QGroupBox, QSizePolicy, QMessageBox, QDialogButtonBox
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 class DvidDataSelectionBrowser(ContentsBrowser):
     """
-    A subclass of the pydvid ContentsBrowser that includes a widget for optional subvolume selection.
+    A subclass of the libdvid ContentsBrowser that includes a widget for optional subvolume selection.
     """
     def __init__(self, *args, **kwargs):
         # Initialize the base class...
@@ -57,18 +57,15 @@ class DvidDataSelectionBrowser(ContentsBrowser):
         error_msg = None
         try:
             # Query the server
-            connection = httplib.HTTPConnection( hostname )
-            raw_metadata = pydvid.voxels.get_metadata( connection, node_uuid, dataname )
-            voxels_metadata = pydvid.voxels.VoxelsMetadata( raw_metadata )
-        except socket.error as ex:
-            error_msg = "Socket Error: {} (Error {})".format( ex.args[1], ex.args[0] )
-        except httplib.HTTPException as ex:
-            error_msg = "HTTP Error: {}".format( ex.args[0] )
-        except pydvid.errors.DvidHttpError as ex:
+            raw_metadata = VoxelsAccessor.get_metadata( hostname, node_uuid, dataname )
+            voxels_metadata = VoxelsMetadata( raw_metadata )
+        except DVIDException as ex:
+            error_msg = ex.message
+        except ErrMsg as ex:
+            error_msg = str(ErrMsg)
+        except VoxelsAccessor.BadRequestError as ex:
             # DVID will return an error if the selected dataset 
             #  isn't a 'voxels' dataset and thus has no voxels metadata
-            # In that case, show the error on the console, and don't let the user hit 'okay'.
-            log_exception( logger, level=logging.WARN )
             self._buttonbox.button(QDialogButtonBox.Ok).setEnabled(False)
             return
         else:

@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QColor
+from PyQt4.QtGui import QColor, QPushButton
 
 from volumina.api import LazyflowSource, ColortableLayer, AlphaModulatedLayer
 from ilastik.applets.dataExport.dataExportGui import DataExportGui, DataExportLayerViewerGui
@@ -58,16 +58,8 @@ class ObjectClassificationDataExportGui( DataExportGui, ExportingGui ):
 
     def _initAppletDrawerUic(self):
         super(ObjectClassificationDataExportGui, self)._initAppletDrawerUic()
-
-        from PyQt4.QtGui import QGroupBox, QPushButton, QVBoxLayout
-        group = QGroupBox("Export Object Feature Table", self.drawer)
-        group.setLayout(QVBoxLayout())
-        self.drawer.layout().addWidget(group)
-
-        btn = QPushButton("Configure and export", group)
-        btn.clicked.connect(self.show_export_dialog)
-        group.layout().addWidget(btn)
-        
+        btn = QPushButton("Configure Feature Table Export", clicked=self.configure_table_export)
+        self.drawer.exportSettingsGroupBox.layout().addWidget(btn)
 
 def _createDefault16ColorColorTable():
     colors = []
@@ -114,11 +106,15 @@ class ObjectClassificationResultsViewer(DataExportLayerViewerGui):
         selection_names = opLane.SelectionNames.value
         selection = selection_names[ opLane.InputSelection.value ]
 
-        # This code depends on a specific order for the export slots.
+        # This code is written to handle the specific output cases we know about.
         # If those change, update this function!
-        assert selection in ['Object Predictions', 'Object Probabilities', 'Pixel Probabilities']
+        assert selection in ['Object Predictions', 
+                             'Object Probabilities', 
+                             'Blockwise Object Predictions', 
+                             'Blockwise Object Probabilities', 
+                             'Pixel Probabilities']
     
-        if selection == "Object Predictions":
+        if selection in ("Object Predictions", "Blockwise Object Predictions"):
             fromDiskSlot = self.topLevelOperatorView.ImageOnDisk
             if fromDiskSlot.ready():
                 exportLayer = ColortableLayer( LazyflowSource(fromDiskSlot), colorTable=self._colorTable16 )
@@ -133,7 +129,7 @@ class ObjectClassificationResultsViewer(DataExportLayerViewerGui):
                 previewLayer.visible = False
                 layers.append(previewLayer)
 
-        elif selection == "Object Probabilities":
+        elif selection in ("Object Probabilities", "Blockwise Object Probabilities"):
             exportedLayers = self._initPredictionLayers(opLane.ImageOnDisk)
             for layer in exportedLayers:
                 layer.visible = True

@@ -83,7 +83,7 @@ class ConnectedComponentsWorkflow(Workflow):
                                                         "Input Data",
                                                         "Input Data",
                                                         batchDataGui=False,
-                                                        force5d=True,
+                                                        forceAxisOrder='txyzc',
                                                         instructionText=data_instructions )
 
         opData = self.dataSelectionApplet.topLevelOperator

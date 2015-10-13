@@ -114,6 +114,9 @@ class SingleToMultiGuiAdapter( object ):
             gui = self._guis.pop(laneIndex)
             if gui is not None:
                 gui.stopAndCleanUp()
+
+    def allowLaneSelectionChange(self):
+        return True
     
     def setEnabled(self, enabled):
         self._enabled = enabled
@@ -124,4 +127,6 @@ class SingleToMultiGuiAdapter( object ):
             import sip
             if not sip.isdeleted(blank_drawer):
                 blank_drawer.setEnabled(enabled)
-        
+
+    def isEnabled(self):
+        return self._enabled

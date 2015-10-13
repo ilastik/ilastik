@@ -263,6 +263,11 @@ class OpDataExport(Operator):
             self.setupOnDiskView()
             self._opImageOnDiskProvider.Dirty.setValue( False )
 
+    def run_export_to_array(self):
+        # This function can be used to export the results to an in-memory array, instead of to disk
+        # (Typically used from pure-python clients in batch mode.)
+        return self._opFormattedExport.run_export_to_array()
+
 class OpRawSubRegionHelper(Operator):
     """
     We display the raw data underneath the export data.

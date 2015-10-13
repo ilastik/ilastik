@@ -35,7 +35,7 @@ class PredictionViewerWorkflow(Workflow):
     def imageNameListSlot(self):
         return self.dataSelectionApplet.topLevelOperator.ImageName
 
-    def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, appendBatchOperators=True, *args, **kwargs):
+    def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
         # Create a graph to be shared by all operators
         graph = Graph()
         super(PredictionViewerWorkflow, self ).__init__( shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs )

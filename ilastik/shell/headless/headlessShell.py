@@ -48,13 +48,13 @@ class HeadlessShell(object):
         self.projectManager._loadProject(hdf5File, newProjectFilePath, readOnly)
         self.projectManager.saveProject()
         
-    def openProjectFile(self, projectFilePath):
+    def openProjectFile(self, projectFilePath, force_readonly=False):
         # Make sure all workflow sub-classes have been loaded,
         #  so we can detect the workflow type in the project.
         import ilastik.workflows
         try:
             # Open the project file
-            hdf5File, workflow_class, _ = ProjectManager.openProjectFile(projectFilePath)
+            hdf5File, workflow_class, readOnly = ProjectManager.openProjectFile(projectFilePath, force_readonly)
 
             # If there are any "creation-time" command-line args saved to the project file,
             #  load them so that the workflow can be instantiated with the same settings 
@@ -79,7 +79,7 @@ class HeadlessShell(object):
                                                   headless=True,
                                                   workflow_cmdline_args=self._workflow_cmdline_args,
                                                   project_creation_args=project_creation_args )
-            self.projectManager._loadProject(hdf5File, projectFilePath, readOnly = False)
+            self.projectManager._loadProject(hdf5File, projectFilePath, readOnly)
 
         except ProjectManager.FileMissingError:
             logger.error("Couldn't find project file: {}".format( projectFilePath ))
@@ -115,6 +115,9 @@ class HeadlessShell(object):
         For now, HeadlessShell has no concept of "enabled" or "disabled" applets.
         """
         pass
+
+    def isAppletEnabled(self, applet):
+        return False
 
     def enableProjectChanges(self, enabled):
         """

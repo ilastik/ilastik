@@ -320,9 +320,6 @@ class OpObjectExtraction(Operator):
     # dict[plugin_name][feature_name] = feature_value
     RegionFeatures = OutputSlot(stype=Opaque, rtype=List)
 
-    # pass through the 'Features' input slot
-    ComputedFeatureNames = OutputSlot(rtype=List, stype=Opaque)
-
     BlockwiseRegionFeatures = OutputSlot() # For compatibility with tracking workflow, the RegionFeatures output
                                            # has rtype=List, indexed by t.
                                            # For other workflows, output has rtype=ArrayLike, indexed by (t)
@@ -383,7 +380,6 @@ class OpObjectExtraction(Operator):
         self.BlockwiseRegionFeatures.connect(self._opRegFeats.Output)
         self.LabelOutputHdf5.connect(self._opLabelVolume.OutputHdf5)
         self.CleanLabelBlocks.connect(self._opLabelVolume.CleanBlocks)
-        self.ComputedFeatureNames.connect(self.Features)
 
         # As soon as input data is available, check its constraints
         self.RawImage.notifyReady( self._checkConstraints )

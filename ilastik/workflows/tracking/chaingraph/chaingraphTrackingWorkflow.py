@@ -42,8 +42,7 @@ class ChaingraphTrackingWorkflow( Workflow ):
         self.dataSelectionApplet = DataSelectionApplet(self,
                                                        "Input Data",
                                                        "Input Data",
-                                                       batchDataGui=False,
-                                                       force5d=True,
+                                                       forceAxisOrder='txyzc',
                                                        instructionText=data_instructions,
                                                        max_lanes=1 )
 
@@ -141,9 +140,9 @@ class ChaingraphTrackingWorkflow( Workflow ):
                        len(thresholdingOutput) > 0 
 
         opObjectExtraction = self.objectExtractionApplet.topLevelOperator
-        objectExtractionOutput = opObjectExtraction.ComputedFeatureNames
         features_ready = thresholding_ready and \
-                         len(objectExtractionOutput) > 0
+                         opObjectExtraction.FeatureNames.ready() and \
+                         len(opObjectExtraction.FeatureNames.value) > 0
 
         opTracking = self.trackingApplet.topLevelOperator
         tracking_ready = features_ready and \

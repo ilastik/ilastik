@@ -20,4 +20,4 @@
 ###############################################################################
 from pixelClassificationApplet import *
 from pixelClassificationDataExportApplet import *
-
+from opPixelClassificationDataExport import OpPixelClassificationDataExport

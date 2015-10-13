@@ -54,7 +54,6 @@ class WatershedSegmentor(object):
             moving_average = False, noBiasBelow = 0, **kwargs):
         self.gridSegmentor.run(float(prios[1]),float(noBiasBelow))
         seg = self.gridSegmentor.getSuperVoxelSeg()
-        print seg
         self.hasSeg = True
 
     def clearSegmentation(self):
@@ -95,7 +94,10 @@ class WatershedSegmentor(object):
         g = h5g
 
         g.attrs["numNodes"] = self.numNodes
-        g.create_dataset("labels", data = self.supervoxelUint32)
+        g.create_dataset("labels",
+                         data=self.supervoxelUint32,
+                         compression='gzip',
+                         compression_opts=4)
 
         gridSeg = self.gridSegmentor
         g.create_dataset("graph", data = gridSeg.serializeGraph())

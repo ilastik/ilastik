@@ -87,11 +87,11 @@ class OpCarving(Operator):
 
     Uncertainty = OutputSlot()
 
-    #contains an array with the object labels done so far, one label for each
-    #object
+    #contains an array with where all objects done so far are labeled the same
     DoneObjects  = OutputSlot()
 
-    #contains an array with where all objects done so far are labeled the same
+    #contains an array with the object labels done so far, one label for each
+    #object
     DoneSegmentation = OutputSlot()
     
     CurrentObjectName = OutputSlot(stype='string')

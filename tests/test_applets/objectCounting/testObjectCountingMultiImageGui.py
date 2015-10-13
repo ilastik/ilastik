@@ -26,6 +26,7 @@
 
 import os
 import numpy
+import vigra
 from PyQt4.QtGui import QApplication,QKeyEvent
 from PyQt4.QtCore import QEvent,Qt
 from ilastik.workflows.counting import CountingWorkflow
@@ -109,7 +110,7 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
                 info = DatasetInfo()
 
                 info.filePath = dataFile
-
+                info.axistags = vigra.defaultAxistags('xyc')
 
                 opDataSelection.DatasetGroup.resize(i+1)
                 opDataSelection.DatasetGroup[i][0].setValue(info)
@@ -189,6 +190,7 @@ class TestObjectCountingGuiMultiImage(ShellGuiTestCaseBase):
             # Turn off the huds and so we can capture the raw image
             viewMenu = gui.currentGui().menus()[0]
             viewMenu.actionToggleAllHuds.trigger()
+            viewMenu.parent().selectedZoomToOriginal.trigger()
 
             ## Turn off the slicing position lines
             ## FIXME: This disables the lines without unchecking the position

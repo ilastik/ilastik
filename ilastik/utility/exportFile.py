@@ -105,7 +105,8 @@ def flatten_ilastik_feature_table(table, selection, signal):
     for t, cf in computed_feature.iteritems():
         for name in dtype_names:
             cat, feat_name, index = dtype_to_key[name]
-            feature_table[name][start:end] = cf[cat][feat_name][1:, index]
+            data_len = len(cf[cat][feat_name][1:, index])
+            feature_table[name][start:start + data_len] = cf[cat][feat_name][1:, index]
         start = end
         try:
             end += obj_count[int(t) + 1]
