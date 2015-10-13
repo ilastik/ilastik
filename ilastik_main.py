@@ -4,8 +4,6 @@ import os
 import ilastik.config
 from ilastik.config import cfg as ilastik_config
 
-from lazyflow.utility import Memory
-
 import logging
 logger = logging.getLogger(__name__)
 
@@ -242,6 +240,8 @@ def _prepare_lazyflow_config( parsed_args ):
         def _configure_lazyflow_settings():
             import lazyflow
             import lazyflow.request
+            from lazyflow.utility import Memory
+
             if n_threads is not None:
                 logger.info("Resetting lazyflow thread pool with {} threads.".format( n_threads ))
                 lazyflow.request.Request.reset_thread_pool(n_threads)
