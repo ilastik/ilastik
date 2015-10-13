@@ -362,7 +362,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                 "none",  # detection_rf_filename
                 fieldOfView,
                 "none", # dump traxelstore,
-                pgmlink.ConsExplicitTrackingSolverType.CplexSolver,
+                pgmlink.StructuredLearningTrackingSolverType.CplexSolver,
                 ndim)
 
             print "Structured Learning: Adding Training Annotations to Hypotheses Graph"
@@ -494,7 +494,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
             structuredLearningTracker.exportCrop(fieldOfView)
 
-        with_optical_correction = True
+        #with_optical_correction = True
         with_constraints = True
         structuredLearningTrackerParameters = structuredLearningTracker.getStructuredLearningTrackingParameters(
             float(forbidden_cost),
@@ -513,11 +513,11 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             uncertaintyParams,
             cplex_timeout,
             transitionClassifier,
-            with_optical_correction,
-            pgmlink.ConservationExplicitTrackingSolverType.CplexSolver
+            #with_optical_correction,
+            pgmlink.StructuredLearningTrackingSolverType.CplexSolver
         )
 
-        structuredLearningTrackerParameters.register_explicit_transition_func(self.mainOperator.my_transition_func)
+        structuredLearningTrackerParameters.register_explicit_transition_func(self.mainOperator.track_transition_func)
 
         structuredLearningTracker.structuredLearning(structuredLearningTrackerParameters)
 
@@ -551,11 +551,17 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._appearanceWeight = structuredLearningTracker.weight(3)
         self._disappearanceWeight = structuredLearningTracker.weight(4)
 
-        self._detectionWeight = math.exp(float(structuredLearningTracker.weight(0)))
-        self._divisionWeight = math.exp(float(structuredLearningTracker.weight(1)))
-        self._transitionWeight = math.exp(float(structuredLearningTracker.weight(2)))
-        self._appearanceWeight = math.exp(float(structuredLearningTracker.weight(3)))
-        self._disappearanceWeight = math.exp(float(structuredLearningTracker.weight(4)))
+        # self._detectionWeight = math.exp(float(structuredLearningTracker.weight(0)))
+        # self._divisionWeight = math.exp(float(structuredLearningTracker.weight(1)))
+        # self._transitionWeight = math.exp(float(structuredLearningTracker.weight(2)))
+        # self._appearanceWeight = math.exp(float(structuredLearningTracker.weight(3)))
+        # self._disappearanceWeight = math.exp(float(structuredLearningTracker.weight(4)))
+
+        self.mainOperator.detectionWeight = self._detectionWeight
+        self.mainOperator.divisionWeight = self._divisionWeight
+        self.mainOperator.transitionWeight = self._transitionWeight
+        self.mainOperator.appearanceWeight = self._appearanceWeight
+        self.mainOperator.disappearanceWeight = self._disappearanceWeight
 
         self._drawer.detWeightBox.setValue(self._detectionWeight);
         self._drawer.divWeightBox.setValue(self._divisionWeight);
@@ -569,8 +575,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         print "ilastik structured learning tracking: transition weight = ", self._transitionWeight
         print "ilastik structured learning tracking: appearance weight = ", self._appearanceWeight
         print "ilastik structured learning tracking: disappearance weight = ", self._disappearanceWeight
-
-        #print "self.mainOperator.Annotations.value",self.mainOperator.Annotations.value
 
     def getLabelInCrop(self, cropKey, time, track):
         labels = self.mainOperator.Annotations.value[cropKey]["labels"][time]

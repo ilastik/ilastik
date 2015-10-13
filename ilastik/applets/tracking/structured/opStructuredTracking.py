@@ -70,6 +70,13 @@ class OpStructuredTracking(OpTrackingBase):
 
         self.MaxNumObjOut.setValue(1)
 
+        self.transition_parameter = 5
+        self.detectionWeight = 1
+        self.divisionWeight = 1
+        self.transitionWeight = 1
+        self.appearanceWeight = 1
+        self.disappearanceWeight = 1
+
     def setupOutputs(self):
         super(OpStructuredTracking, self).setupOutputs()
         self.MergerOutput.meta.assignFrom(self.LabelImage.meta)
@@ -199,8 +206,7 @@ class OpStructuredTracking(OpTrackingBase):
         logger.info( 'median_obj_size = {}'.format( median_obj_size ) )
 
         ep_gap = 0.05
-        transition_parameter = 5
-        
+
         fov = pgmlink.FieldOfView(time_range[0] * 1.0,
                                       x_range[0] * x_scale,
                                       y_range[0] * y_scale,
@@ -353,30 +359,30 @@ class OpStructuredTracking(OpTrackingBase):
             sigmas.append(0.0)
         uncertaintyParams = pgmlink.UncertaintyParameter(1, pgmlink.DistrId.PerturbAndMAP, sigmas)
 
-        detWeight = self.parent.parent.trackingApplet._gui.currentGui()._drawer.detWeightBox.value()
-        divWeight = self.parent.parent.trackingApplet._gui.currentGui()._drawer.divWeightBox.value()
-        transWeight = self.parent.parent.trackingApplet._gui.currentGui()._drawer.transWeightBox.value()
-        appearance_cost = self.parent.parent.trackingApplet._gui.currentGui()._drawer.appearanceBox.value()
-        disappearance_cost = self.parent.parent.trackingApplet._gui.currentGui()._drawer.disappearanceBox.value()
+        self.detectionWeight = self.parent.parent.trackingApplet._gui.currentGui()._drawer.detWeightBox.value()
+        self.divisionWeight = self.parent.parent.trackingApplet._gui.currentGui()._drawer.divWeightBox.value()
+        self.transitionWeight = self.parent.parent.trackingApplet._gui.currentGui()._drawer.transWeightBox.value()
+        self.appearanceWeight = self.parent.parent.trackingApplet._gui.currentGui()._drawer.appearanceBox.value()
+        self.disappearanceWeight = self.parent.parent.trackingApplet._gui.currentGui()._drawer.disappearanceBox.value()
 
-        print "detWeight=",detWeight
-        print "divWeight=",divWeight
-        print "transWeight=",transWeight
-        print "appearance_cost=",appearance_cost
-        print "disappearance_cost=",disappearance_cost
+        print "detectionWeight=",self.detectionWeight
+        print "divisionWeight=",self.divisionWeight
+        print "transitionWeight=",self.transitionWeight
+        print "appearanceWeight=",self.appearanceWeight
+        print "disappearanceWeight=",self.disappearanceWeight
 
         consTrackerParameters = self.consTracker.get_conservation_tracking_parameters(
-                                        0,       # forbidden_cost
-                                        float(ep_gap), # ep_gap
+                                        0,# forbidden_cost
+                                        float(ep_gap),
                                         withTracklets,
-                                        10,#detWeight, # detection weight
-                                        divWeight,
-                                        transWeight,
-                                        disappearance_cost, # disappearance cost
-                                        appearance_cost, # appearance cost
+                                        self.detectionWeight,
+                                        self.divisionWeight,
+                                        self.transitionWeight,
+                                        self.disappearanceWeight,
+                                        self.appearanceWeight,
                                         withMergerResolution,
                                         ndim,
-                                        transition_parameter,
+                                        self.transition_parameter,
                                         borderAwareWidth,
                                         True, #with_constraints
                                         uncertaintyParams,
@@ -387,7 +393,7 @@ class OpStructuredTracking(OpTrackingBase):
                                         1) # default: False
 
         print "get_conservation_tracking_parameters DONE!"
-        consTrackerParameters.register_transition_func(self.my_transition_func)
+        consTrackerParameters.register_transition_func(self.track_transition_func)
 
         fixLabeledNodes = False;
 
@@ -448,21 +454,20 @@ class OpStructuredTracking(OpTrackingBase):
         self.Parameters.setValue(parameters, check_changed=False)
         self.EventsVector.setValue(events, check_changed=False)
         
-    def my_transition_func(self, traxel_1, traxel_2, state):
-        #traxels = [traxel_1, traxel_2]
-        #positions = [np.array([t.X(), t.Y(), t.Z()]) for t in traxels]
+    def track_transition_func(self, traxel_1, traxel_2, state):
+
         distance = math.sqrt((traxel_1.X()-traxel_2.X())*(traxel_1.X()-traxel_2.X()) + (traxel_1.Y()-traxel_2.Y())*(traxel_1.Y()-traxel_2.Y()) + (traxel_1.Z()-traxel_2.Z())*(traxel_1.Z()-traxel_2.Z())  )
-        #distanceSquared = (traxel_1.X()-traxel_2.X())*(traxel_1.X()-traxel_2.X()) + (traxel_1.Y()-traxel_2.Y())*(traxel_1.Y()-traxel_2.Y()) + (traxel_1.Z()-traxel_2.Z())*(traxel_1.Z()-traxel_2.Z())
+        alpha = self.transition_parameter
 
-        #distance = (traxel_1, traxel_2)
+        if state == 0:
+            arg = 1 - math.exp(-distance/alpha)
+        else:
+            arg = math.exp(-distance/alpha)
 
+        if arg < 0.0000000001:
+            arg = 0.0000000001
 
-
-        #return 10.0*float(distanceSquared)**2
-        #return float(distanceSquared)
-        return float(distance)
-
-
+        return - self.transitionWeight * math.log(arg)#,math.exp(1))
 
     def getLabelInCrop(self, cropKey, time, track):
         labels = self.Annotations.value[cropKey]["labels"][time]
