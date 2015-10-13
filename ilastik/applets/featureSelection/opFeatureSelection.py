@@ -48,7 +48,7 @@ class OpFeatureSelectionNoCache(Operator):
 
     # Multiple input images
     InputImage = InputSlot()
-
+    
     # The following input slots are applied uniformly to all input images
     Scales = InputSlot() # The list of possible scales to use when computing features
     FeatureIds = InputSlot() # The list of features to compute
@@ -200,14 +200,18 @@ class OpFeatureSelection( OpFeatureSelectionNoCache ):
     This is the top-level operator of the feature selection applet when used in a GUI.
     It provides an extra output for cached data.
     """
-
+    H5CacheGroup = InputSlot()
     CachedOutputImage = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super( OpFeatureSelection, self).__init__( *args, **kwargs )
 
+        from lazyflow.operators.opBlockedHdf5Cache import OpBlockedHdf5Cache
+
         # Create the cache
-        self.opPixelFeatureCache = OpSlicedBlockedArrayCache(parent=self)
+        #self.opPixelFeatureCache = OpSlicedBlockedArrayCache(parent=self)
+        self.opPixelFeatureCache = OpBlockedHdf5Cache(parent=self)
+        self.opPixelFeatureCache.H5CacheGroup.connect( self.H5CacheGroup )
         self.opPixelFeatureCache.name = "opPixelFeatureCache"
 
         # Connect the cache to the feature output
@@ -224,18 +228,18 @@ class OpFeatureSelection( OpFeatureSelectionNoCache ):
         else:
             # We choose block shapes that have only 1 channel because the channels may be 
             #  coming from different features (e.g different filters) and probably shouldn't be cached together.
-            blockDimsX = { 't' : (1,1),
-                           'z' : (256,256),
-                           'y' : (256,256),
-                           'x' : (32,32),
-                           'c' : (1000,1000) }  # Overestimate number of feature channels: 
-                                                # Cache block dimensions will be clipped to the size of the actual feature image
-    
-            blockDimsY = { 't' : (1,1),
-                           'z' : (256,256),
-                           'y' : (32,32),
-                           'x' : (256,256),
-                           'c' : (1000,1000) }
+#             blockDimsX = { 't' : (1,1),
+#                            'z' : (256,256),
+#                            'y' : (256,256),
+#                            'x' : (32,32),
+#                            'c' : (1000,1000) }  # Overestimate number of feature channels: 
+#                                                 # Cache block dimensions will be clipped to the size of the actual feature image
+#     
+#             blockDimsY = { 't' : (1,1),
+#                            'z' : (256,256),
+#                            'y' : (32,32),
+#                            'x' : (256,256),
+#                            'c' : (1000,1000) }
     
             blockDimsZ = { 't' : (1,1),
                            'z' : (32,32),
@@ -244,18 +248,20 @@ class OpFeatureSelection( OpFeatureSelectionNoCache ):
                            'c' : (1000,1000) }
             
             axisOrder = [ tag.key for tag in self.InputImage.meta.axistags ]
-            innerBlockShapeX = tuple( blockDimsX[k][0] for k in axisOrder )
-            outerBlockShapeX = tuple( blockDimsX[k][1] for k in axisOrder )
-    
-            innerBlockShapeY = tuple( blockDimsY[k][0] for k in axisOrder )
-            outerBlockShapeY = tuple( blockDimsY[k][1] for k in axisOrder )
+#             innerBlockShapeX = tuple( blockDimsX[k][0] for k in axisOrder )
+#             outerBlockShapeX = tuple( blockDimsX[k][1] for k in axisOrder )
+#     
+#             innerBlockShapeY = tuple( blockDimsY[k][0] for k in axisOrder )
+#             outerBlockShapeY = tuple( blockDimsY[k][1] for k in axisOrder )
     
             innerBlockShapeZ = tuple( blockDimsZ[k][0] for k in axisOrder )
             outerBlockShapeZ = tuple( blockDimsZ[k][1] for k in axisOrder )
     
             # Configure the cache        
-            self.opPixelFeatureCache.innerBlockShape.setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
-            self.opPixelFeatureCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
+#             self.opPixelFeatureCache.innerBlockShape.setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
+#             self.opPixelFeatureCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
+            self.opPixelFeatureCache.innerBlockShape.setValue( innerBlockShapeZ )
+            self.opPixelFeatureCache.outerBlockShape.setValue( outerBlockShapeZ )
 
             # Connect external output to internal output
             self.CachedOutputImage.connect( self.opPixelFeatureCache.Output )

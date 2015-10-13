@@ -207,6 +207,14 @@ class PixelClassificationWorkflow(Workflow):
         opTrainingFeatures = self.featureSelectionApplet.topLevelOperator.getLane(laneIndex)
         opClassify = self.pcApplet.topLevelOperator.getLane(laneIndex)
         opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
+
+        h5_file = opData.ProjectFile.value        
+        feature_serializer = self.featureSelectionApplet.dataSerializers[0]
+        feature_h5_group = h5_file[feature_serializer.topGroupName]
+        if 'FeatureCacheBlocks' not in feature_h5_group:
+            feature_h5_group.create_group('FeatureCacheBlocks')
+        feature_cache_block_group = feature_h5_group['FeatureCacheBlocks']
+        opTrainingFeatures.H5CacheGroup.setValue(feature_cache_block_group)
         
         # Input Image -> Feature Op
         #         and -> Classification Op (for display)
