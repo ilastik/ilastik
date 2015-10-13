@@ -20,11 +20,23 @@ class WatershedSegmentor(object):
         self.hasSeg = False
 
         if h5file is None:
+            ndim  = 3
             self.supervoxelUint32 = labels
             self.volumeFeat = volume_feat.squeeze()
-            self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
-            self.gridSegmentor.preprocessing(self.supervoxelUint32,self.volumeFeat)
+            if self.volumeFeat.ndim == 3:
+                self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
+                self.gridSegmentor.preprocessing(self.supervoxelUint32,self.volumeFeat)
 
+            elif self.volumeFeat.ndim == 2:
+                ndim = 2
+                self.gridSegmentor = ilastiktools.GridSegmentor_2D_UInt32()
+                self.gridSegmentor.preprocessing(self.supervoxelUint32.squeeze(),self.volumeFeat)
+
+            else:
+                raise RuntimeError("internal error")
+
+
+            
             # fixe! which of both??!
             self.nodeNum = self.gridSegmentor.nodeNum()
             self.numNodes = self.nodeNum
@@ -34,9 +46,10 @@ class WatershedSegmentor(object):
             self.numNodes = h5file.attrs["numNodes"]
             self.nodeNum = self.numNodes
             self.supervoxelUint32 = h5file['labels'][:]
-
-            self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
-
+            if(self.supervoxelUint32.squeeze().ndim == 3):
+                self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
+            else:
+                self.gridSegmentor = ilastiktools.GridSegmentor_2D_UInt32()
             graphS = h5file['graph'][:]
             edgeWeights = h5file['edgeWeights'][:]
             nodeSeeds = h5file['nodeSeeds'][:]
