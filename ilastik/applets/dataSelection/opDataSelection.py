@@ -94,7 +94,10 @@ class DatasetInfo(object):
     
                 # Convert all paths to absolute 
                 file_list = map(lambda f: make_absolute(f, cwd), file_list)
-                filepath = os.path.pathsep.join( file_list )
+                if '*' in filepath:
+                    filepath = make_absolute(filepath, cwd)
+                else:
+                    filepath = os.path.pathsep.join( file_list )
     
                 # Add an underscore for each wildcard digit
                 prefix = os.path.commonprefix(file_list)
