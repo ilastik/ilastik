@@ -101,9 +101,9 @@ class CarvingGui(LabelingGui):
                                        self.labelingDrawerUi.segment  ) )
         
         try:
-            self.render = True
-            self._shownObjects3D = {}
-            self._renderMgr = RenderingManager( self.editor.view3d)
+            self.render = False
+            #self._shownObjects3D = {}
+            #self._renderMgr = RenderingManager( self.editor.view3d)
         except:
             self.render = False
 
