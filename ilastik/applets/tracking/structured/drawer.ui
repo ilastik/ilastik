@@ -248,16 +248,6 @@
      </property>
     </widget>
    </item>
-   <item row="1" column="2" colspan="3">
-    <widget class="QPushButton" name="AllOnesButton">
-     <property name="styleSheet">
-      <string notr="true"/>
-     </property>
-     <property name="text">
-      <string>Ones</string>
-     </property>
-    </widget>
-   </item>
    <item row="27" column="0" colspan="5">
     <layout class="QVBoxLayout" name="verticalLayout_3">
      <item>
@@ -966,6 +956,30 @@
     <widget class="QLabel" name="label_27">
      <property name="text">
       <string>Max. Nearest Neighbors</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="4">
+    <widget class="QPushButton" name="OnesButton">
+     <property name="styleSheet">
+      <string notr="true"/>
+     </property>
+     <property name="text">
+      <string>Ones</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="2">
+    <widget class="QPushButton" name="ZerosButton">
+     <property name="text">
+      <string>Zeros</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="3">
+    <widget class="QPushButton" name="RandomButton">
+     <property name="text">
+      <string>Random</string>
      </property>
     </widget>
    </item>

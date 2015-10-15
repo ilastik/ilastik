@@ -265,85 +265,86 @@ class OpStructuredTracking(OpTrackingBase):
                     self.consTracker.addLabels()
 
                     for cropKey in self.Annotations.value.keys():
-                        crop = self.Annotations.value[cropKey]
+                        if foundAllArcs:
+                            crop = self.Annotations.value[cropKey]
 
-                        if foundAllArcs and "labels" in crop.keys():
-                            labels = crop["labels"]
-                            for time in labels.keys():
+                            if "labels" in crop.keys():
+                                labels = crop["labels"]
+                                for time in labels.keys():
 
-                                if not foundAllArcs:
-                                    break
-
-                                for label in labels[time].keys():
                                     if not foundAllArcs:
                                         break
 
-                                    trackSet = labels[time][label]
-                                    center = self.features[time]['Default features']['RegionCenter'][label]
-                                    trackCount = len(trackSet)
-
-                                    for track in trackSet:
-
+                                    for label in labels[time].keys():
                                         if not foundAllArcs:
                                             break
 
-                                        # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
-                                        type = self._type(cropKey, time, track) # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
+                                        trackSet = labels[time][label]
+                                        center = self.features[time]['Default features']['RegionCenter'][label]
+                                        trackCount = len(trackSet)
 
-                                        if type[0] == "LAST" or type[0] == "INTERMEDIATE":
-                                            previous_label = int(type[1])
-                                            previousTrackSet = labels[time-1][previous_label]
-                                            intersectionSet = trackSet.intersection(previousTrackSet)
-                                            trackCountIntersection = len(intersectionSet)
+                                        for track in trackSet:
 
-                                            foundAllArcs &= self.consTracker.addArcLabel(time-1, int(previous_label), int(label), float(trackCountIntersection))
                                             if not foundAllArcs:
-                                                #print "[opStructuredTracking] Arc: (", time-1, ",", int(previous_label), ") ---> (", time, ",", int(label), ")"
-                                                print "[opStructuredTracking] Increasing max nearest neighbors!"
                                                 break
 
-                                    if type[0] == "FIRST":
-                                        self.consTracker.addFirstLabels(time, int(label), float(trackCount))
-                                        if time > self.Crops.value[cropKey]["time"][0]:
-                                            self.consTracker.addDisappearanceLabel(time, int(label), 0.0)
+                                            # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
+                                            type = self._type(cropKey, time, track) # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
 
-                                    elif type[0] == "LAST":
-                                        self.consTracker.addLastLabels(time, int(label), float(trackCount))
-                                        if time < self.Crops.value[cropKey]["time"][1]:
-                                            self.consTracker.addAppearanceLabel(time, int(label), 0.0)
+                                            if type[0] == "LAST" or type[0] == "INTERMEDIATE":
+                                                previous_label = int(type[1])
+                                                previousTrackSet = labels[time-1][previous_label]
+                                                intersectionSet = trackSet.intersection(previousTrackSet)
+                                                trackCountIntersection = len(intersectionSet)
 
-                                    elif type[0] == "INTERMEDIATE":
-                                        self.consTracker.addIntermediateLabels(time, int(label), float(trackCount))
+                                                foundAllArcs &= self.consTracker.addArcLabel(time-1, int(previous_label), int(label), float(trackCountIntersection))
+                                                if not foundAllArcs:
+                                                    #print "[opStructuredTracking] Arc: (", time-1, ",", int(previous_label), ") ---> (", time, ",", int(label), ")"
+                                                    print "[opStructuredTracking] Increasing max nearest neighbors!"
+                                                    break
 
-                        if "divisions" in crop.keys():
-                            divisions = crop["divisions"]
-                            for track in divisions.keys():
-                                division = divisions[track]
-                                time = int(division[1])
-                                parent = int(self.getLabelInCrop(cropKey, time, track))
+                                        if type[0] == "FIRST":
+                                            self.consTracker.addFirstLabels(time, int(label), float(trackCount))
+                                            if time > self.Crops.value[cropKey]["time"][0]:
+                                                self.consTracker.addDisappearanceLabel(time, int(label), 0.0)
 
-                                if parent >=0:
-                                    self.consTracker.addDivisionLabel(time, parent, 1.0)
-                                    self.consTracker.addAppearanceLabel(time, parent, 1.0)
-                                    self.consTracker.addDisappearanceLabel(time, parent, 1.0)
+                                        elif type[0] == "LAST":
+                                            self.consTracker.addLastLabels(time, int(label), float(trackCount))
+                                            if time < self.Crops.value[cropKey]["time"][1]:
+                                                self.consTracker.addAppearanceLabel(time, int(label), 0.0)
 
-                                    child0 = int(self.getLabelInCrop(cropKey, time+1, division[0][0]))
-                                    self.consTracker.addDisappearanceLabel(time+1, child0, 1.0)
-                                    self.consTracker.addAppearanceLabel(time+1, child0, 1.0)
-                                    foundAllArcs &= self.consTracker.addArcLabel(time, parent, child0, 1.0)
-                                    if not foundAllArcs:
-                                        #print "[opStructuredTracking] Divisions Arc0: (", time, ",", int(parent), ") ---> (", time+1, ",", int(child0), ")"
-                                        print "[opStructuredTracking] Increasing max nearest neighbors!"
-                                        break
+                                        elif type[0] == "INTERMEDIATE":
+                                            self.consTracker.addIntermediateLabels(time, int(label), float(trackCount))
 
-                                    child1 = int(self.getLabelInCrop(cropKey, time+1, division[0][1]))
-                                    self.consTracker.addDisappearanceLabel(time+1, child1, 1.0)
-                                    self.consTracker.addAppearanceLabel(time+1, child1, 1.0)
-                                    foundAllArcs &= self.consTracker.addArcLabel(time, parent, child1, 1.0)
-                                    if not foundAllArcs:
-                                        #print "[opStructuredTracking] Divisions Arc1: (", time, ",", int(parent), ") ---> (", time+1, ",", int(child1), ")"
-                                        print "[opStructuredTracking] Increasing max nearest neighbors!"
-                                        break
+                            if "divisions" in crop.keys():
+                                divisions = crop["divisions"]
+                                for track in divisions.keys():
+                                    division = divisions[track]
+                                    time = int(division[1])
+                                    parent = int(self.getLabelInCrop(cropKey, time, track))
+
+                                    if parent >=0:
+                                        self.consTracker.addDivisionLabel(time, parent, 1.0)
+                                        self.consTracker.addAppearanceLabel(time, parent, 1.0)
+                                        self.consTracker.addDisappearanceLabel(time, parent, 1.0)
+
+                                        child0 = int(self.getLabelInCrop(cropKey, time+1, division[0][0]))
+                                        self.consTracker.addDisappearanceLabel(time+1, child0, 1.0)
+                                        self.consTracker.addAppearanceLabel(time+1, child0, 1.0)
+                                        foundAllArcs &= self.consTracker.addArcLabel(time, parent, child0, 1.0)
+                                        if not foundAllArcs:
+                                            #print "[opStructuredTracking] Divisions Arc0: (", time, ",", int(parent), ") ---> (", time+1, ",", int(child0), ")"
+                                            print "[opStructuredTracking] Increasing max nearest neighbors!"
+                                            break
+
+                                        child1 = int(self.getLabelInCrop(cropKey, time+1, division[0][1]))
+                                        self.consTracker.addDisappearanceLabel(time+1, child1, 1.0)
+                                        self.consTracker.addAppearanceLabel(time+1, child1, 1.0)
+                                        foundAllArcs &= self.consTracker.addArcLabel(time, parent, child1, 1.0)
+                                        if not foundAllArcs:
+                                            #print "[opStructuredTracking] Divisions Arc1: (", time, ",", int(parent), ") ---> (", time+1, ",", int(child1), ")"
+                                            print "[opStructuredTracking] Increasing max nearest neighbors!"
+                                            break
 
 
                 print "max nearest neighbors=",new_max_nearest_neighbors
@@ -455,7 +456,9 @@ class OpStructuredTracking(OpTrackingBase):
         self.EventsVector.setValue(events, check_changed=False)
         
     def track_transition_func(self, traxel_1, traxel_2, state):
+        return self.transitionWeight * self.track_transition_func_no_weight(traxel_1, traxel_2, state)
 
+    def track_transition_func_no_weight(self, traxel_1, traxel_2, state):
         distance = math.sqrt((traxel_1.X()-traxel_2.X())*(traxel_1.X()-traxel_2.X()) + (traxel_1.Y()-traxel_2.Y())*(traxel_1.Y()-traxel_2.Y()) + (traxel_1.Z()-traxel_2.Z())*(traxel_1.Z()-traxel_2.Z())  )
         alpha = self.transition_parameter
 
@@ -467,7 +470,12 @@ class OpStructuredTracking(OpTrackingBase):
         if arg < 0.0000000001:
             arg = 0.0000000001
 
-        return - self.transitionWeight * math.log(arg)#,math.exp(1))
+        result = - math.log(arg,math.exp(1))
+
+        if result == -0:
+            return 0
+        else:
+            return result
 
     def getLabelInCrop(self, cropKey, time, track):
         labels = self.Annotations.value[cropKey]["labels"][time]
