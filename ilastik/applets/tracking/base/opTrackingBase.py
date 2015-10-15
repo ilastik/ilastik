@@ -483,6 +483,7 @@ class OpTrackingBase(Operator, ExportingOperator):
                     tr.add_feature_array("divProb", 1)
                     # idx+1 because rc and ct start from 1, divProbs starts from 0
                     tr.set_feature_value("divProb", 0, float(divProbs[t][idx + 1][1]))
+#print "--->",tr.get_feature_value("divProb", 0)
 
                 if with_classifier_prior:
                     tr.add_feature_array("detProb", len(detProbs[t][idx + 1]))
@@ -492,7 +493,7 @@ class OpTrackingBase(Operator, ExportingOperator):
                             val = 0.0000001
                         if val > 0.99999999:
                             val = 0.99999999
-                        tr.set_feature_value("detProb", i, float(v))
+                        tr.set_feature_value("detProb", i, float(val))
 
 
                 # FIXME: check whether it is 2d or 3d data!
