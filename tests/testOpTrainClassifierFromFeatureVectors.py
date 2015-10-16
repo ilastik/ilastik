@@ -37,11 +37,11 @@ class TestOpTrainClassifierFromFeatureVectors(object):
         
         assert opTrain.Classifier.ready()
         
-        trained_classifer = opTrain.Classifier.value
+        trained_classifier = opTrain.Classifier.value
         
         # This isn't much of a test at the moment...
-        assert isinstance( trained_classifer, ParallelVigraRfLazyflowClassifier ), \
-            "classifier is of the wrong type: {}".format(type(trained_classifer))
+        assert isinstance( trained_classifier, ParallelVigraRfLazyflowClassifier ), \
+            "classifier is of the wrong type: {}".format(type(trained_classifier))
 
 if __name__ == "__main__":
     import sys
