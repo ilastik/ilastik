@@ -163,14 +163,22 @@ class ObjectClassificationWorkflow(Workflow):
                 export_arg_parser.add_argument( "--table_filename", help="The location to export the object feature/prediction CSV file.", required=False )
                 export_arg_parser.add_argument( "--export_object_prediction_img", action="store_true" )
                 export_arg_parser.add_argument( "--export_object_probability_img", action="store_true" )
+                export_arg_parser.add_argument( "--export_pixel_probability_img", action="store_true" )
                 
                 # TODO: Support this, too, someday?
                 #export_arg_parser.add_argument( "--export_object_label_img", action="store_true" )
                 
-                if self.input_types == 'raw':
-                    export_arg_parser.add_argument( "--export_pixel_probability_img", action="store_true" )
+                    
                 self._export_args, unused_args = export_arg_parser.parse_known_args(unused_args)
-                self._export_args.export_pixel_probability_img = self._export_args.export_pixel_probability_img or None
+                if self.input_types != 'raw' and self._export_args.export_pixel_probability_img:
+                    raise RuntimeError("Invalid command-line argument: \n"\
+                                       "--export_pixel_probability_img' can only be used with the combined "\
+                                       "'Pixel Classification + Object Classification' workflow.")
+
+                if sum([self._export_args.export_object_prediction_img,
+                        self._export_args.export_object_probability_img,
+                        self._export_args.export_pixel_probability_img]) > 1:
+                    raise RuntimeError("Invalid command-line arguments: Only one type classification output can be exported at a time.")
 
                 # We parse the export setting args first.  All remaining args are considered input files by the input applet.
                 self._batch_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args( unused_args )
