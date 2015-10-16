@@ -52,6 +52,9 @@ class TestPathHelpers(object):
         assert components.externalDirectory == 'http://somehost:8000/path/to/data'
         assert components.filenameBase == 'with'
 
+        # Asterisk should be treated like an ordinary character for component purposes.
+        assert PathComponents('/tmp/hello*.png').totalPath() == '/tmp/hello*.png'
+
         # Try modifying the properties and verify that the total path is updated.
         components = PathComponents('/some/external/path/to/file.h5/with/internal/path/to/data')
         components.extension = '.hdf5'
