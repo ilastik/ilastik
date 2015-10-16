@@ -78,6 +78,7 @@ class ObjectClassificationWorkflow(Workflow):
         if 'graph' in kwargs:
             del kwargs['graph']
         super(ObjectClassificationWorkflow, self).__init__(shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
+        self.stored_pixel_classifier
         self.stored_pixel_classifier = None
         self.stored_object_classifier = None
 
@@ -219,34 +220,34 @@ class ObjectClassificationWorkflow(Workflow):
             opPixelClassification = self.pcApplet.topLevelOperator
             if opPixelClassification.classifier_cache.Output.ready() and \
                not opPixelClassification.classifier_cache._dirty:
-                self.stored_pixel_classifer = opPixelClassification.classifier_cache.Output.value
+                self.stored_pixel_classifier = opPixelClassification.classifier_cache.Output.value
             else:
-                self.stored_pixel_classifer = None
+                self.stored_pixel_classifier = None
         
         opObjectClassification = self.objectClassificationApplet.topLevelOperator
         if opObjectClassification.classifier_cache.Output.ready() and \
            not opObjectClassification.classifier_cache._dirty:
-            self.stored_object_classifer = opObjectClassification.classifier_cache.Output.value
+            self.stored_object_classifier = opObjectClassification.classifier_cache.Output.value
         else:
-            self.stored_object_classifer = None
+            self.stored_object_classifier = None
 
     def handleNewLanesAdded(self):
         """
         If new lanes were added, then we invalidated our classifiers unecessarily.
-        Here, we can restore the classifer so it doesn't need to be retrained.
+        Here, we can restore the classifier so it doesn't need to be retrained.
         """
         # If we have stored classifiers, restore them into the workflow now.
-        if self.stored_pixel_classifer:
+        if self.stored_pixel_classifier:
             opPixelClassification = self.pcApplet.topLevelOperator
-            opPixelClassification.classifier_cache.forceValue(self.stored_pixel_classifer)
+            opPixelClassification.classifier_cache.forceValue(self.stored_pixel_classifier)
             # Release reference
-            self.stored_pixel_classifer = None
+            self.stored_pixel_classifier = None
 
-        if self.stored_object_classifer:
+        if self.stored_object_classifier:
             opObjectClassification = self.objectClassificationApplet.topLevelOperator
-            opObjectClassification.classifier_cache.forceValue(self.stored_object_classifer)
+            opObjectClassification.classifier_cache.forceValue(self.stored_object_classifier)
             # Release reference
-            self.stored_object_classifer = None
+            self.stored_object_classifier = None
 
     def connectLane(self, laneIndex):
         rawslot, binaryslot = self.connectInputs(laneIndex)

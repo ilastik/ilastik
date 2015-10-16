@@ -60,7 +60,7 @@ class PixelClassificationWorkflow(Workflow):
         # Create a graph to be shared by all operators
         graph = Graph()
         super( PixelClassificationWorkflow, self ).__init__( shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs )
-        self.stored_classifer = None
+        self.stored_classifier = None
         self._applets = []
         self._workflow_cmdline_args = workflow_cmdline_args
         # Parse workflow-specific command-line args
@@ -186,9 +186,9 @@ class PixelClassificationWorkflow(Workflow):
         opPixelClassification = self.pcApplet.topLevelOperator
         if opPixelClassification.classifier_cache.Output.ready() and \
            not opPixelClassification.classifier_cache._dirty:
-            self.stored_classifer = opPixelClassification.classifier_cache.Output.value
+            self.stored_classifier = opPixelClassification.classifier_cache.Output.value
         else:
-            self.stored_classifer = None
+            self.stored_classifier = None
         
     def handleNewLanesAdded(self):
         """
@@ -196,10 +196,10 @@ class PixelClassificationWorkflow(Workflow):
         Called immediately after a new lane is added to the workflow and initialized.
         """
         # Restore classifier we saved in prepareForNewLane() (if any)
-        if self.stored_classifer:
-            self.pcApplet.topLevelOperator.classifier_cache.forceValue(self.stored_classifer)
+        if self.stored_classifier:
+            self.pcApplet.topLevelOperator.classifier_cache.forceValue(self.stored_classifier)
             # Release reference
-            self.stored_classifer = None
+            self.stored_classifier = None
 
     def connectLane(self, laneIndex):
         # Get a handle to each operator

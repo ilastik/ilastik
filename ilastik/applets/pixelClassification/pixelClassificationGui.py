@@ -71,8 +71,8 @@ class ClassifierSelectionDlg(QDialog):
         classifier_listwidget = QListWidget(parent=self)
         classifier_listwidget.setSelectionMode( QListWidget.SingleSelection )
 
-        classifer_factories = self._get_available_classifier_factories()
-        for name, classifier_factory in classifer_factories.items():
+        classifier_factories = self._get_available_classifier_factories()
+        for name, classifier_factory in classifier_factories.items():
             item = QListWidgetItem( name )
             item.setData( Qt.UserRole, QVariant(classifier_factory) )
             classifier_listwidget.addItem(item)
