@@ -3,6 +3,7 @@ from vigra import graphs as vgraph
 #from vigra import ilastiktools
 import ilastiktools
 import numpy
+from lazyflow.roi import roiToSlice, sliceToRoi
 
 
 class WatershedSegmentor(object):
@@ -20,16 +21,13 @@ class WatershedSegmentor(object):
         self.hasSeg = False
 
         if h5file is None:
-<<<<<<< HEAD
             ndim  = 3
+            # TODO: keep reference to labels slot?
             self.supervoxelUint32 = labels
             self.volumeFeat = volume_feat.squeeze()
             if self.volumeFeat.ndim == 3:
                 self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
                 self.gridSegmentor.init()
-                # TODO: remove?
-                #self.supervoxelUint32 = labels
-                #self.volumeFeat = volume_feat.squeeze()
 
             elif self.volumeFeat.ndim == 2:
                 ndim = 2
@@ -40,22 +38,6 @@ class WatershedSegmentor(object):
 
             else:
                 raise RuntimeError("internal error")
-||||||| merged common ancestors
-            # TODO: remove?
-            #self.supervoxelUint32 = labels
-            #self.volumeFeat = volume_feat.squeeze()
-
-            self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
-
-            self.gridSegmentor.init()
-=======
-            # TODO: keep reference to labels slot?
-            self.supervoxelUint32 = labels
-
-            self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
-
-            self.gridSegmentor.init()
->>>>>>> Blockwise preprocessing is now working again (after blockwise refactor of ilastiktools).
 
             self.nodeNum = self.gridSegmentor.nodeNum()
             self.hasSeg = False
@@ -133,10 +115,15 @@ class WatershedSegmentor(object):
             roiBegin  = roi.start[1:3]
             roiEnd  = roi.stop[1:3]
 
+        # TODO: why not this version?
+        #roiSlice = roiToSlice( roi.start, roi.stop )
+        #roiShape = [s.stop-s.start for s in roiSlice]
+        #brushStroke = brushStroke.reshape(roiShape)[0,...,0]
+      
         roiShape = [e-b for b,e in zip(roiBegin,roiEnd)]
         brushStroke = brushStroke.reshape(roiShape)
 
-        labels = self.supervoxelUint32(roi.toSlice()).wait()[0,...,0]
+        labels = self.supervoxelUint32(roiSlice).wait()[0,...,0]
         self.gridSegmentor.addSeedBlock(labels=labels, brushStroke=brushStroke)
 
     def getVoxelSegmentation(self, roi, out = None):
@@ -157,6 +144,8 @@ class WatershedSegmentor(object):
         # TODO: handle labels roi correctly
         # see opPreprocessing.execute for example
         # labels = self.supervoxelUint32(roiShape.toSlice()).wait()[0,...,0]
+        #roiSlice = roiToSlice( roi.start, roi.stop )
+        #labels = self.supervoxelUint32(roiSlice).wait()[0,...,0]
 
         labels = self.supervoxelUint32(roi.toSlice()).wait()[0,...,0]
         return self.gridSegmentor.getSegmentation(labels=labels, out=out)
@@ -179,12 +168,7 @@ class WatershedSegmentor(object):
     def saveH5G(self, h5g):
         g = h5g
 
-        g.attrs["numNodes"] = self.numNodes
-        # TODO: save labels blockwise
-        g.create_dataset("labels",
-                         data=self.supervoxelUint32,
-                         compression='gzip',
-                         compression_opts=4)
+        g.attrs["numNodes"] = self.nodeNum
 
         gridSeg = self.gridSegmentor
         g.create_dataset("graph", data = gridSeg.serializeGraph())

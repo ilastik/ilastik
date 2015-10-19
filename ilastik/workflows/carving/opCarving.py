@@ -110,7 +110,6 @@ class OpCarving(Operator):
     def __init__(self, graph=None, hintOverlayFile=None, pmapOverlayFile=None, parent=None):
         super(OpCarving, self).__init__(graph=graph, parent=parent)
         self.opLabelArray = OpDenseLabelArray( parent=self )
-        #self.opLabelArray.EraserLabelValue.setValue( 100 )
         self.opLabelArray.MetaInput.connect( self.InputData )
         
         self._hintOverlayFile = hintOverlayFile
@@ -332,12 +331,6 @@ class OpCarving(Operator):
         assert name in self._mst.object_seeds_bg_voxels
         assert name in self._mst.bg_priority
         assert name in self._mst.no_bias_below
-
-        #lut_segmentation = self._mst.segmentation.lut[:]
-        #lut_objects = self._mst.objects.lut[:]
-        #lut_seeds = self._mst.seeds.lut[:]
-        ## clean seeds
-        #lut_seeds[:] = 0
 
         # set foreground and background seeds
         fgVoxelsSeedPos = self._mst.object_seeds_fg_voxels[name]
@@ -621,10 +614,10 @@ class OpCarving(Operator):
             #avoid data being copied
             temp = self._mst.getVoxelSegmentation(roi=roi)
             temp.shape = (1,) + temp.shape + (1,)
-            
         elif slot == self.Supervoxels:
             #avoid data being copied
-            temp = self._mst.supervoxelUint32(sl).wait()
+            temp = self._mst.supervoxelUint32(sl[1:4]).wait()
+            temp.shape = (1,) + temp.shape + (1,)
         elif slot  == self.DoneObjects:
             #avoid data being copied
             if self._done_lut is None:

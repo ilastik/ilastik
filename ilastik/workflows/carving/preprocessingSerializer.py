@@ -89,6 +89,8 @@ class PreprocessingSerializer( AppletSerializer ):
             
         for opPre in self._o.innerOperators:
             
+            opPre.applet.writeprotected = True
+
             opPre.initialSigma = sigma
             opPre.Sigma.setValue(sigma)
             if watershed_source:
@@ -97,14 +99,11 @@ class PreprocessingSerializer( AppletSerializer ):
             opPre.initialFilter = sfilter
             opPre.Filter.setValue(sfilter)
 
-            #TODO: Cleanup how labels are handled
-            mst = WatershedSegmentor(labels=opPre._opMstProvider.LabelImage, h5file=graphgroup)
-            opPre._prepData = numpy.array([mst])
-        
-            
+            mst = WatershedSegmentor(labels=opPre._opWatershedCache.Output,
+                                     h5file=graphgroup)
+            opPre._prepData[0] = mst
+
             opPre._dirty = False
-            opPre.applet.writeprotected = True
-            
             opPre.PreprocessedData.setDirty()
             opPre.enableDownstream(True)
            
