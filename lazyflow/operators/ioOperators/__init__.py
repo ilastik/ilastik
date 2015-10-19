@@ -37,6 +37,7 @@ from opCachedTiledVolumeReader import OpCachedTiledVolumeReader
 # If it fails, that's okay.
 try:
     from opDvidVolume import OpDvidVolume
+    from opDvidRoi import OpDvidRoi
     from opExportDvidVolume import OpExportDvidVolume
 except ImportError as ex:
     # If the exception was not related to libdvid, then re-raise it.

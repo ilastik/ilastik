@@ -34,7 +34,7 @@ from opStreamingUfmfReader import OpStreamingUfmfReader
 from opStreamingMmfReader import OpStreamingMmfReader
 
 try:
-    from lazyflow.operators.ioOperators import OpDvidVolume
+    from lazyflow.operators.ioOperators import OpDvidVolume, OpDvidRoi
     _supports_dvid = True
 except ImportError as ex:
     if 'OpDvidVolume' not in ex.args[0]:
@@ -391,9 +391,15 @@ class OpInputDataReader(Operator):
             query_args = {}
             if query_string:
                 query_args = dict( map(lambda s: s.split('='), query_string.split('&')) )
-            opDvidVolume = OpDvidVolume( fields['hostname'], fields['uuid'], fields['dataname'], query_args,
-                                         transpose_axes=True, parent=self )
-            return [opDvidVolume], opDvidVolume.Output
+            try:
+                opDvidVolume = OpDvidVolume( fields['hostname'], fields['uuid'], fields['dataname'], query_args,
+                                             transpose_axes=True, parent=self )
+                return [opDvidVolume], opDvidVolume.Output
+            except:
+                # Maybe this is actually a roi
+                opDvidRoi = OpDvidRoi( fields['hostname'], fields['uuid'], fields['dataname'],
+                                             transpose_axes=True, parent=self )
+                return [opDvidRoi], opDvidRoi.Output
         except OpDvidVolume.DatasetReadError as e:
             raise OpInputDataReader.DatasetReadError( *e.args )
 
