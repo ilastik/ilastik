@@ -106,9 +106,9 @@ class CarvingGui(LabelingGui):
         self.render = False
         tagged_shape = defaultdict(lambda: 1)
         tagged_shape.update( topLevelOperatorView.InputData.meta.getTaggedShape() )
-        ndims = (tagged_shape['x'] + tagged_shape['y'] + tagged_shape['z'])
+        is_3d = (tagged_shape['x'] > 1 and tagged_shape['y'] > 1 and tagged_shape['z'] > 1)
 
-        if ndims == 3:
+        if is_3d:
             try:
                 self._renderMgr = RenderingManager( self.editor.view3d )
                 self._shownObjects3D = {}
