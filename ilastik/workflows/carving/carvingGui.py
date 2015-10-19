@@ -609,7 +609,7 @@ class CarvingGui(LabelingGui):
         ctable = self._doneSegmentationLayer.colorTable
 
         for name, label in self._shownObjects3D.iteritems():
-            color = QColor(ctable[op.MST.value.objects[name]])
+            color = QColor(ctable[op.MST.value.object_names[name]])
             color = (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0)
             self._renderMgr.setColor(label, color)
 
