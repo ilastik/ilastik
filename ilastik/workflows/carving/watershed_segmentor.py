@@ -56,10 +56,14 @@ class WatershedSegmentor(object):
             resultSegmentation = h5file['resultSegmentation'][:]
 
            
-
-            self.gridSegmentor.preprocessingFromSerialization(labels=self.supervoxelUint32,
-                serialization=graphS, edgeWeights=edgeWeights, nodeSeeds=nodeSeeds, 
-                resultSegmentation=resultSegmentation)
+            if(self.supervoxelUint32.squeeze().ndim == 3):
+                self.gridSegmentor.preprocessingFromSerialization(labels=self.supervoxelUint32,
+                    serialization=graphS, edgeWeights=edgeWeights, nodeSeeds=nodeSeeds, 
+                    resultSegmentation=resultSegmentation)
+            else:
+                self.gridSegmentor.preprocessingFromSerialization(labels=self.supervoxelUint32.squeeze(),
+                    serialization=graphS, edgeWeights=edgeWeights, nodeSeeds=nodeSeeds, 
+                    resultSegmentation=resultSegmentation)
 
             self.hasSeg = resultSegmentation.max()>0
 
