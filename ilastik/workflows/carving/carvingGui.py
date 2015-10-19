@@ -22,6 +22,7 @@
 import os
 import tempfile
 from functools import partial
+from collections import defaultdict
 import numpy
 
 #PyQt
@@ -99,13 +100,21 @@ class CarvingGui(LabelingGui):
                                        self.labelingDrawerUi.segment.click,
                                        self.labelingDrawerUi.segment,
                                        self.labelingDrawerUi.segment  ) )
+
         
-        try:
-            self.render = True
-            self._shownObjects3D = {}
-            self._renderMgr = RenderingManager( self.editor.view3d)
-        except:
-            self.render = False
+        # Disable 3D view by default
+        self.render = False
+        tagged_shape = defaultdict(lambda: 1)
+        tagged_shape.update( topLevelOperatorView.InputData.meta.getTaggedShape() )
+        ndims = (tagged_shape['x'] + tagged_shape['y'] + tagged_shape['z'])
+
+        if ndims == 3:
+            try:
+                self._renderMgr = RenderingManager( self.editor.view3d )
+                self._shownObjects3D = {}
+                self.render = True
+            except:
+                self.render = False
 
         # Segmentation is toggled on by default in _after_init, below.
         # (We can't enable it until the layers are all present.)
