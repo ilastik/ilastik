@@ -20,27 +20,27 @@ class DvidDataSelectionBrowser(ContentsBrowser):
         # Initialize the base class...
         super( DvidDataSelectionBrowser, self ).__init__(*args, **kwargs)
 
-        self._roi_widget = SubregionRoiWidget( parent=self )
+        self._subvol_widget = SubregionRoiWidget( parent=self )
 
-        roi_layout = QVBoxLayout()
-        roi_layout.addWidget( self._roi_widget )
-        roi_groupbox = QGroupBox("Specify Region of Interest", parent=self)
-        roi_groupbox.setCheckable(True)
-        roi_groupbox.setChecked(False)
-        roi_groupbox.setEnabled(False)
-        roi_groupbox.toggled.connect( self._update_display )
-        roi_groupbox.setLayout( roi_layout )
-        roi_groupbox.setFixedHeight( 200 )
-        roi_groupbox.setSizePolicy( QSizePolicy.Preferred, QSizePolicy.Minimum )
-        self._roi_groupbox = roi_groupbox
+        subvol_layout = QVBoxLayout()
+        subvol_layout.addWidget( self._subvol_widget )
+        subvol_groupbox = QGroupBox("Specify Region of Interest", parent=self)
+        subvol_groupbox.setCheckable(True)
+        subvol_groupbox.setChecked(False)
+        subvol_groupbox.setEnabled(False)
+        subvol_groupbox.toggled.connect( self._update_display )
+        subvol_groupbox.setLayout( subvol_layout )
+        subvol_groupbox.setFixedHeight( 200 )
+        subvol_groupbox.setSizePolicy( QSizePolicy.Preferred, QSizePolicy.Minimum )
+        self._subvol_groupbox = subvol_groupbox
 
         # Add to the layout
         layout = self.layout()
-        layout.insertWidget( 3, roi_groupbox )
+        layout.insertWidget( 3, subvol_groupbox )
 
     def get_subvolume_roi(self):
-        if self._roi_groupbox.isChecked():
-            return self._roi_widget.roi
+        if self._subvol_groupbox.isChecked():
+            return self._subvol_widget.roi
         return None
 
     def _update_display(self):
@@ -48,10 +48,10 @@ class DvidDataSelectionBrowser(ContentsBrowser):
         hostname, dset_uuid, dataname, node_uuid = self.get_selection()
 
         enable_contents = self._repos_info is not None and dataname != "" and node_uuid != ""
-        self._roi_groupbox.setEnabled(enable_contents)
+        self._subvol_groupbox.setEnabled(enable_contents)
 
         if not dataname or not node_uuid:
-            self._roi_widget.initWithExtents( "", (), (), () )
+            self._subvol_widget.initWithExtents( "", (), (), () )
             return
         
         error_msg = None
@@ -73,11 +73,11 @@ class DvidDataSelectionBrowser(ContentsBrowser):
 
         if error_msg:
             QMessageBox.critical(self, "DVID Error", error_msg)
-            self._roi_widget.initWithExtents( "", (), (), () )
+            self._subvol_widget.initWithExtents( "", (), (), () )
             return
 
-        self._roi_widget.initWithExtents( voxels_metadata.axiskeys, voxels_metadata.shape,
-                                          voxels_metadata.minindex, voxels_metadata.shape )
+        self._subvol_widget.initWithExtents( voxels_metadata.axiskeys, voxels_metadata.shape,
+                                                voxels_metadata.minindex, voxels_metadata.shape )
 
 if __name__ == "__main__":
     """
