@@ -37,7 +37,7 @@ from lazyflow.operators import OpSingleChannelSelector, OpWrapSlot
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 #volumina
-from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, LayerStackModel
+from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ColortableLayer, LayerStackModel, generateRandomColors
 from volumina.volumeEditor import VolumeEditor
 from volumina.utility import ShortcutManager
 from volumina.interpreter import ClickReportingInterpreter
@@ -256,7 +256,7 @@ class LayerViewerGui(QWidget):
         c_index = slot.meta.axistags.index('c')
         if c_index < len(slot.meta.axistags):
             numChannels = slot.meta.shape[c_index]
-            display_mode = slot.meta.axistags["c"].description
+            display_mode = slot.meta.display_mode
                 
         if display_mode == "" or display_mode == "default":
             ## Figure out whether the default should be rgba or grayscale
@@ -279,8 +279,12 @@ class LayerViewerGui(QWidget):
                 "Unhandled combination of channels.  numChannels={}, lastChannelIsAlpha={}, axistags={}"\
                 .format( numChannels, lastChannelIsAlpha, slot.meta.axistags )
             return cls._create_rgba_layer_from_slot(slot, numChannels, lastChannelIsAlpha)
+        elif display_mode == "random-colortable":
+            return cls._create_random_colortable_layer_from_slot(slot)
+        elif display_mode == "binary-mask":
+            return cls._create_binary_mask_layer_from_slot(slot)
         else:
-            raise RuntimeError("unknown channel display mode")
+            raise RuntimeError("unknown channel display mode: " + display_mode )
 
     @classmethod
     def _create_grayscale_layer_from_slot(cls, slot, n_channels):
@@ -290,6 +294,23 @@ class LayerViewerGui(QWidget):
         layer.set_range(0, slot.meta.drange)
         normalize = cls._should_normalize_display(slot)
         layer.set_normalize( 0, normalize )
+        return layer
+
+    @classmethod
+    def _create_random_colortable_layer_from_slot(cls, slot, num_colors=256):
+        colortable = generateRandomColors(num_colors, clamp={'v': 1.0, 's' : 0.5})
+        layer = ColortableLayer(LazyflowSource(slot), colortable)
+        return layer
+
+    @classmethod
+    def _create_binary_mask_layer_from_slot(cls, slot):
+        # 0: black, 1-255: transparent
+        # This works perfectly for uint8.  
+        # For uint32, etc., values of 256,512, etc. will be appear 'off'.
+        # But why would you use uint32 for a binary mask anyway? 
+        colortable = [QColor(0,0,0,255).rgba()]
+        colortable += 255*[QColor(0,0,0,0).rgba()]
+        layer = ColortableLayer(LazyflowSource(slot), colortable)
         return layer
         
     @classmethod
