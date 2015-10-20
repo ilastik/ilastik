@@ -413,6 +413,15 @@ class PixelClassificationGui(LabelingGui):
                     projectionLayer.opacity = 1.0
                     layers.append(projectionLayer)
 
+        # Show the mask over everything except labels
+        maskSlot = self.topLevelOperatorView.PredictionMasks
+        if maskSlot.ready():
+            maskLayer = self._create_binary_mask_layer_from_slot( maskSlot )
+            maskLayer.name = "Mask"
+            maskLayer.visible = True
+            maskLayer.opacity = 1.0
+            layers.append( maskLayer )
+
         # Add the uncertainty estimate layer
         uncertaintySlot = self.topLevelOperatorView.UncertaintyEstimate
         if uncertaintySlot.ready():
