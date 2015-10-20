@@ -1,13 +1,14 @@
 import socket
 import logging
 
-from libdvid import DVIDException, ErrMsg
-from libdvid.voxels import VoxelsAccessor, VoxelsMetadata
+import numpy
+from PyQt4.QtGui import QVBoxLayout, QGroupBox, QSizePolicy, QMessageBox, QDialogButtonBox
+
+from libdvid import DVIDException, ErrMsg, DVIDNodeService
+from libdvid.voxels import VoxelsAccessor, VoxelsMetadata, DVID_BLOCK_WIDTH
 from libdvid.gui.contents_browser import ContentsBrowser
 
 from volumina.widgets.subregionRoiWidget import SubregionRoiWidget
-from PyQt4.QtGui import QVBoxLayout, QGroupBox, QSizePolicy, QMessageBox, QDialogButtonBox
-
 from ilastik.utility import log_exception
 
 logger = logging.getLogger(__name__)
@@ -45,7 +46,7 @@ class DvidDataSelectionBrowser(ContentsBrowser):
 
     def _update_display(self):
         super( DvidDataSelectionBrowser, self )._update_display()
-        hostname, dset_uuid, dataname, node_uuid = self.get_selection()
+        hostname, dset_uuid, dataname, node_uuid, typename = self.get_selection()
 
         enable_contents = self._repos_info is not None and dataname != "" and node_uuid != ""
         self._subvol_groupbox.setEnabled(enable_contents)
@@ -56,28 +57,32 @@ class DvidDataSelectionBrowser(ContentsBrowser):
         
         error_msg = None
         try:
-            # Query the server
-            raw_metadata = VoxelsAccessor.get_metadata( hostname, node_uuid, dataname )
-            voxels_metadata = VoxelsMetadata( raw_metadata )
-        except DVIDException as ex:
-            error_msg = ex.message
-        except ErrMsg as ex:
-            error_msg = str(ErrMsg)
-        except VoxelsAccessor.BadRequestError as ex:
-            # DVID will return an error if the selected dataset 
-            #  isn't a 'voxels' dataset and thus has no voxels metadata
-            self._buttonbox.button(QDialogButtonBox.Ok).setEnabled(False)
-            return
+            if typename == "roi":
+                node_service = DVIDNodeService(hostname, node_uuid)
+                roi_blocks_xyz = numpy.array( node_service.get_roi(str(dataname)) )
+                maxindex = tuple( DVID_BLOCK_WIDTH*(1 + numpy.max( roi_blocks_xyz, axis=0 )) )
+                minindex = (0,0,0) # Rois are always 3D
+                axiskeys = "xyz"
+            else:
+                # Query the server
+                raw_metadata = VoxelsAccessor.get_metadata( hostname, node_uuid, dataname )
+                voxels_metadata = VoxelsMetadata( raw_metadata )
+                maxindex = voxels_metadata.shape
+                minindex = voxels_metadata.minindex
+                axiskeys = voxels_metadata.axiskeys
+        except (DVIDException, ErrMsg) as ex:
+            error_msg = str(ex)
+            log_exception(logger)
         else:
             self._buttonbox.button(QDialogButtonBox.Ok).setEnabled(True)
 
         if error_msg:
+            self._buttonbox.button(QDialogButtonBox.Ok).setEnabled(False)
             QMessageBox.critical(self, "DVID Error", error_msg)
             self._subvol_widget.initWithExtents( "", (), (), () )
             return
 
-        self._subvol_widget.initWithExtents( voxels_metadata.axiskeys, voxels_metadata.shape,
-                                                voxels_metadata.minindex, voxels_metadata.shape )
+        self._subvol_widget.initWithExtents( axiskeys, maxindex, minindex, maxindex )
 
 if __name__ == "__main__":
     """
@@ -91,12 +96,15 @@ if __name__ == "__main__":
     import argparse
     from PyQt4.QtGui import QApplication
 
+    handler = logging.StreamHandler()
+    logger.addHandler(handler)
+    
     parser = argparse.ArgumentParser()
     parser.add_argument("--mock-server-hdf5", required=False)
     parser.add_argument("--mode", choices=["select_existing", "specify_new"], default="select_existing")
     parser.add_argument("hostname", metavar="hostname:port")
     
-    sys.argv.append("emdata2:8000")
+    sys.argv.append("localhost:8000")
 
     DEBUG = False
     if DEBUG and len(sys.argv) == 1:
