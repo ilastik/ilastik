@@ -484,6 +484,8 @@ class OpH5WriterBigDataset(Operator):
 
         if self.Image.meta.drange is not None:
             self.d.attrs['drange'] = self.Image.meta.drange
+        if self.Image.meta.display_mode is not None:
+            self.d.attrs['display_mode'] = self.Image.meta.display_mode
 
     def execute(self, slot, subindex, rroi, result):
         self.progressSignal(0)

@@ -102,6 +102,10 @@ class OpStreamingHdf5Reader(Operator):
         if 'drange' in self._hdf5File[internalPath].attrs:
             self.OutputImage.meta.drange = tuple( self._hdf5File[internalPath].attrs['drange'] )
         
+        # Same for display_mode
+        if 'display_mode' in self._hdf5File[internalPath].attrs:
+            self.OutputImage.meta.display_mode = tuple( self._hdf5File[internalPath].attrs['display_mode'] )
+        
         total_volume = numpy.prod(numpy.array(self._hdf5File[internalPath].shape))
         chunks = self._hdf5File[internalPath].chunks
         if not chunks and total_volume > 1e8:
