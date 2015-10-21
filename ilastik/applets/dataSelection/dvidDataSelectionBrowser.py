@@ -2,7 +2,8 @@ import socket
 import logging
 
 import numpy
-from PyQt4.QtGui import QVBoxLayout, QGroupBox, QSizePolicy, QMessageBox, QDialogButtonBox
+from PyQt4.QtCore import Qt, QEvent
+from PyQt4.QtGui import QVBoxLayout, QGroupBox, QSizePolicy, QMessageBox, QDialogButtonBox, QMouseEvent
 
 from libdvid import DVIDException, ErrMsg, DVIDNodeService
 from libdvid.voxels import VoxelsAccessor, VoxelsMetadata, DVID_BLOCK_WIDTH
@@ -25,7 +26,8 @@ class DvidDataSelectionBrowser(ContentsBrowser):
 
         subvol_layout = QVBoxLayout()
         subvol_layout.addWidget( self._subvol_widget )
-        subvol_groupbox = QGroupBox("Specify Region of Interest", parent=self)
+        group_title = "Restrict to subvolume (Right-click a volume name above to auto-initialize these subvolume parameters.)"
+        subvol_groupbox = QGroupBox(group_title, parent=self)
         subvol_groupbox.setCheckable(True)
         subvol_groupbox.setChecked(False)
         subvol_groupbox.setEnabled(False)
@@ -39,10 +41,33 @@ class DvidDataSelectionBrowser(ContentsBrowser):
         layout = self.layout()
         layout.insertWidget( 3, subvol_groupbox )
 
+        # Special right-click behavior.
+        self._repo_treewidget.viewport().installEventFilter(self)
+
     def get_subvolume_roi(self):
         if self._subvol_groupbox.isChecked():
             return self._subvol_widget.roi
         return None
+
+    def eventFilter(self, widget, event):
+        """
+        If the user right-clicks on a volume/roi name, it triggers special behavior:
+        The subvolume widget is automatically initialized with extents matching the
+        right-clicked volume, regardless of the currently selected volume.
+        """
+        if widget is self._repo_treewidget.viewport() \
+        and event.type() == QEvent.MouseButtonPress \
+        and event.button() == Qt.RightButton:
+            item = self._repo_treewidget.itemAt(event.pos())
+            repo_uuid, dataname, typename = item.data(0, Qt.UserRole).toPyObject()
+            is_roi = (typename == 'roi')
+            is_voxels = (typename in ['labelblk', 'uint8blk'])
+            if (is_voxels or is_roi) \
+            and self._buttonbox.button(QDialogButtonBox.Ok).isEnabled():
+                self._update_subvol_widget(repo_uuid, dataname, typename) # FIXME: we're passing the repo id instead of the node id. is that okay?
+                self._subvol_groupbox.setChecked(True)
+                return True
+        return super(DvidDataSelectionBrowser, self).eventFilter(widget, event)
 
     def _update_status(self):
         super( DvidDataSelectionBrowser, self )._update_status()
@@ -55,21 +80,41 @@ class DvidDataSelectionBrowser(ContentsBrowser):
             self._subvol_widget.initWithExtents( "", (), (), () )
             return
         
+        self._update_subvol_widget(node_uuid, dataname, typename)
+    
+    def _update_subvol_widget(self, node_uuid, dataname, typename):
+        """
+        Update the subvolume widget with the min/max extents of the given node and dataname.
+        Note: The node and dataname do not necessarily have to match the currently 
+              selected node and dataname.
+              This enables the right-click behavior, which can be used to  
+              limit your data volume to the size of a different data volume.
+        """
         error_msg = None
         try:
             if typename == "roi":
-                node_service = DVIDNodeService(hostname, node_uuid)
+                node_service = DVIDNodeService(self._hostname, str(node_uuid))
                 roi_blocks_xyz = numpy.array( node_service.get_roi(str(dataname)) )
                 maxindex = tuple( DVID_BLOCK_WIDTH*(1 + numpy.max( roi_blocks_xyz, axis=0 )) )
                 minindex = (0,0,0) # Rois are always 3D
                 axiskeys = "xyz"
+                # If the current selection is a dataset, then include a channel dimension
+                if self.get_selection().typename != "roi":
+                    axiskeys = "cxyz"
+                    minindex = (0,) + minindex
+                    maxindex = (1,) + maxindex # FIXME: This assumes that the selected data has only 1 channel...
             else:
                 # Query the server
-                raw_metadata = VoxelsAccessor.get_metadata( hostname, node_uuid, dataname )
+                raw_metadata = VoxelsAccessor.get_metadata( self._hostname, node_uuid, dataname )
                 voxels_metadata = VoxelsMetadata( raw_metadata )
                 maxindex = voxels_metadata.shape
                 minindex = voxels_metadata.minindex
                 axiskeys = voxels_metadata.axiskeys
+                # If the current selection is a roi, then remove the channel dimension
+                if self.get_selection().typename == "roi":
+                    axiskeys = "xyz"
+                    minindex = minindex[1:]
+                    maxindex = maxindex[1:]
         except (DVIDException, ErrMsg) as ex:
             error_msg = str(ex)
             log_exception(logger)
@@ -97,5 +142,6 @@ if __name__ == "__main__":
 
     if browser.exec_() == DvidDataSelectionBrowser.Accepted:
         print "The dialog was accepted with result: ", browser.get_selection()
+        print "And subvolume: ", browser.get_subvolume_roi()
     else:
         print "The dialog was rejected."
