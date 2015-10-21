@@ -29,7 +29,7 @@ class DvidDataSelectionBrowser(ContentsBrowser):
         subvol_groupbox.setCheckable(True)
         subvol_groupbox.setChecked(False)
         subvol_groupbox.setEnabled(False)
-        subvol_groupbox.toggled.connect( self._update_display )
+        subvol_groupbox.toggled.connect( self._update_status )
         subvol_groupbox.setLayout( subvol_layout )
         subvol_groupbox.setFixedHeight( 200 )
         subvol_groupbox.setSizePolicy( QSizePolicy.Preferred, QSizePolicy.Minimum )
@@ -44,8 +44,8 @@ class DvidDataSelectionBrowser(ContentsBrowser):
             return self._subvol_widget.roi
         return None
 
-    def _update_display(self):
-        super( DvidDataSelectionBrowser, self )._update_display()
+    def _update_status(self):
+        super( DvidDataSelectionBrowser, self )._update_status()
         hostname, dset_uuid, dataname, node_uuid, typename = self.get_selection()
 
         enable_contents = self._repos_info is not None and dataname != "" and node_uuid != ""
