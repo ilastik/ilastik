@@ -18,7 +18,6 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-import warnings
 from PyQt4.QtGui import QColor
 
 from lazyflow.operators.generic import OpMultiArraySlicer2
@@ -49,7 +48,7 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
         # This code depends on a specific order for the export slots.
         # If those change, update this function!
         selection_names = opLane.SelectionNames.value
-        assert selection_names[0:4] == ['Probabilities', 'Simple Segmentation', 'Uncertainty', 'Features'] # see comment above
+        assert selection_names == ['Probabilities', 'Simple Segmentation', 'Uncertainty', 'Features'] # see comment above
         
         selection = selection_names[ opLane.InputSelection.value ]
 
@@ -65,7 +64,6 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
                 layer.visible = False
                 layer.name = layer.name + "- Preview"
             layers += previewLayers
-
         elif selection == "Simple Segmentation":
             exportedLayer = self._initSegmentationlayer(opLane.ImageOnDisk)
             if exportedLayer:
@@ -78,7 +76,6 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
                 previewLayer.visible = False
                 previewLayer.name = previewLayer.name + " - Preview"
                 layers.append( previewLayer )
-
         elif selection == "Uncertainty":
             if opLane.ImageToExport.ready():
                 previewUncertaintySource = LazyflowSource(opLane.ImageToExport)
@@ -100,22 +97,17 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
                 exportedLayer.visible = True
                 exportedLayer.name = "Uncertainty - Exported"
                 layers.append(exportedLayer)
-
-        else: # Features and all other layers.
-            if selection != "Features":
-                warnings.warn("Not sure how to display '{}' result.  Showing with default layer settings."
-                              .format(selection))
-
+        elif selection == "Features":
             if opLane.ImageToExport.ready():
                 previewLayer = self.createStandardLayerFromSlot( opLane.ImageToExport )
                 previewLayer.visible = False
-                previewLayer.name = "{} - Preview".format( selection )
+                previewLayer.name = "Features - Preview"
                 previewLayer.set_normalize( 0, None )
                 layers.append(previewLayer)
             if opLane.ImageOnDisk.ready():
                 exportedLayer = self.createStandardLayerFromSlot( opLane.ImageOnDisk )
                 exportedLayer.visible = True
-                exportedLayer.name = "{} - Exported".format( selection )
+                exportedLayer.name = "Features - Exported"
                 exportedLayer.set_normalize( 0, None )
                 layers.append(exportedLayer)
 
