@@ -85,61 +85,17 @@ class DvidDataSelectionBrowser(ContentsBrowser):
         self._subvol_widget.initWithExtents( axiskeys, maxindex, minindex, maxindex )
 
 if __name__ == "__main__":
-    """
-    This main section permits simple command-line control.
-    usage: contents_browser.py [-h] [--mock-server-hdf5=MOCK_SERVER_HDF5] hostname:port
-    
-    If --mock-server-hdf5 is provided, the mock server will be launched with the provided hdf5 file.
-    Otherwise, the DVID server should already be running on the provided hostname.
-    """
-    import sys
-    import argparse
-    from PyQt4.QtGui import QApplication
+    # Make the program quit on Ctrl+C
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-    handler = logging.StreamHandler()
-    logger.addHandler(handler)
-    
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--mock-server-hdf5", required=False)
-    parser.add_argument("--mode", choices=["select_existing", "specify_new"], default="select_existing")
-    parser.add_argument("hostname", metavar="hostname:port")
-    
-    sys.argv.append("localhost:8000")
-
-    DEBUG = False
-    if DEBUG and len(sys.argv) == 1:
-        # default debug args
-        parser.print_help()
-        print ""
-        print "*******************************************************"
-        print "No args provided.  Starting with special debug args...."
-        print "*******************************************************"
-        sys.argv.append("--mock-server-hdf5=/magnetic/mockdvid_gigacube_fortran.h5")
-        #sys.argv.append("--mode=specify_new")
-        sys.argv.append("localhost:8000")
-
-    parsed_args = parser.parse_args()
-    
-    server_proc = None
-    if parsed_args.mock_server_hdf5:
-        from mockserver.h5mockserver import H5MockServer
-        hostname, port = parsed_args.hostname.split(":")
-        server_proc, shutdown_event = H5MockServer.create_and_start( parsed_args.mock_server_hdf5,
-                                                     hostname,
-                                                     int(port),
-                                                     same_process=False,
-                                                     disable_server_logging=False )
-    
+    from PyQt4.QtGui import QApplication    
     app = QApplication([])
-    browser = DvidDataSelectionBrowser([parsed_args.hostname], parsed_args.mode)
+    browser = DvidDataSelectionBrowser(["localhost:8000", "emdata2:7000"],
+                                       default_node='57c4c6a0740d4509a02da6b9453204cb',
+                                       mode="select_existing")
 
-    try:
-        if browser.exec_() == DvidDataSelectionBrowser.Accepted:
-            print "The dialog was accepted with result: ", browser.get_selection()
-            print "Subvolume roi:", browser.get_subvolume_roi()
-        else:
-            print "The dialog was rejected."
-    finally:
-        if server_proc:
-            shutdown_event.set()
-            server_proc.join()
+    if browser.exec_() == DvidDataSelectionBrowser.Accepted:
+        print "The dialog was accepted with result: ", browser.get_selection()
+    else:
+        print "The dialog was rejected."
