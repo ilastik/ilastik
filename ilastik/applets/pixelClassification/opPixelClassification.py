@@ -24,14 +24,17 @@ from functools import partial
 
 #SciPy
 import numpy
+#import IPython
 import vigra
 
 #lazyflow
 from lazyflow.roi import determineBlockShape
-from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.operators import OpValueCache, OpTrainClassifierBlocked, OpClassifierPredict,\
                                OpSlicedBlockedArrayCache, OpMultiArraySlicer2, \
-                               OpPixelOperator, OpMaxChannelIndicatorOperator, OpCompressedUserLabelArray
+                               OpPixelOperator, OpMaxChannelIndicatorOperator, OpCompressedUserLabelArray, OpFeatureMatrixCache
+import feature_selection
+import numpy as np
 
 from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
 
@@ -39,6 +42,8 @@ from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
+
+from PyQt4.QtCore import pyqtRemoveInputHook, pyqtRestoreInputHook
 
 class OpPixelClassification( Operator ):
     """
@@ -145,6 +150,26 @@ class OpPixelClassification( Operator ):
         self.opPredictionPipeline.FreezePredictions.connect( self.FreezePredictions )
         self.opPredictionPipeline.PredictionsFromDisk.connect( self.PredictionsFromDisk )
         self.opPredictionPipeline.PredictionMask.connect( self.PredictionMasks )
+
+        # Feature Selection Stuff
+        self.opFeatureMatrixCaches = OpMultiLaneWrapper(OpFeatureMatrixCache, parent=self)
+        self.opFeatureMatrixCaches.LabelImage.connect(self.opLabelPipeline.Output)
+        self.opFeatureMatrixCaches.FeatureImage.connect(self.FeatureImages)
+        self.opFeatureMatrixCaches.NonZeroLabelBlocks.setValue(0) # this slot is not used, but requires a value
+        self.opFeatureMatrixCaches.LabelImage.setDirty()  # do I still need this?
+
+        self.opFilterFeatureSelection = OpFilterFeatureSelection(parent=self)
+        self.opFilterFeatureSelection.FeatureLabelMatrix.connect(self.opFeatureMatrixCaches.LabelAndFeatureMatrix)
+        self.opFilterFeatureSelection.NumberOfSelectedFeatures.setValue(10)  # default
+
+        self.opWrapperFeatureSelection = OpWrapperFeatureSelection(parent=self)
+        self.opWrapperFeatureSelection.FeatureLabelMatrix.connect(self.opFeatureMatrixCaches.LabelAndFeatureMatrix)
+
+        self.opGiniFeatureSelection = OpGiniFeatureSelection(parent=self)
+        self.opGiniFeatureSelection.FeatureLabelMatrix.connect(self.opFeatureMatrixCaches.LabelAndFeatureMatrix)
+
+
+
         
         def _updateNumClasses(*args):
             """
@@ -573,12 +598,6 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
                        'x' : (256,256),
                        'c' : (100,100) }
 
-        blockDimsTBlock = { 't' : (20,20),
-                            'z' : (1,1),
-                            'y' : (256,256),
-                            'x' : (256,256),
-                            'c' : (100,100) }
-
         innerBlockShapeX = tuple( blockDimsX[k][0] for k in axisOrder )
         outerBlockShapeX = tuple( blockDimsX[k][1] for k in axisOrder )
 
@@ -588,14 +607,11 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         innerBlockShapeZ = tuple( blockDimsZ[k][0] for k in axisOrder )
         outerBlockShapeZ = tuple( blockDimsZ[k][1] for k in axisOrder )
 
-        innerBlockShapeT = tuple( blockDimsTBlock[k][0] for k in axisOrder )
-        outerBlockShapeT = tuple( blockDimsTBlock[k][1] for k in axisOrder )
+        self.prediction_cache_gui.inputs["innerBlockShape"].setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
+        self.prediction_cache_gui.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
 
-        self.prediction_cache_gui.inputs["innerBlockShape"].setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ, innerBlockShapeT) )
-        self.prediction_cache_gui.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ, innerBlockShapeT) )
-
-        self.opUncertaintyCache.inputs["innerBlockShape"].setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ, innerBlockShapeT) )
-        self.opUncertaintyCache.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ, innerBlockShapeT) )
+        self.opUncertaintyCache.inputs["innerBlockShape"].setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
+        self.opUncertaintyCache.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
 
         assert self.opConvertToUint8.Output.meta.drange == (0,255)
 
@@ -649,3 +665,119 @@ class OpEnsembleMargin(Operator):
         roi.start[chanAxis] = 0
         roi.stop[chanAxis] = 1
         self.Output.setDirty( roi )
+
+class OpFilterFeatureSelection(Operator):
+    FeatureLabelMatrix = InputSlot(level=1)
+    FilterMethod = InputSlot(optional=True)
+    NumberOfSelectedFeatures = InputSlot()
+
+    SelectedFeatureIDs = OutputSlot()
+
+    def setupOutputs(self):
+        # the output slot should maybe contain the internal feature IDs or a bool list of len(internal_feature_ids)
+        self.SelectedFeatureIDs.meta.shape = (1,)
+        self.SelectedFeatureIDs.meta.dtype = list
+        self._filter_method = "ICAP"
+
+        if self.FilterMethod.connected():
+            self._filter_method = self.FilterMethod.value
+
+    def execute(self, slot, subindex, roi, result):
+        feature_label_matrix = self.FeatureLabelMatrix[0].value
+        labels = feature_label_matrix[:, 0]  # first row is labels
+        data = feature_label_matrix[:, 1:]  # the rest is data
+
+        feature_selector = feature_selection.filter_feature_selection.FilterFeatureSelection(data, labels.astype("int"), self._filter_method)
+        selected_features = feature_selector.run(self.NumberOfSelectedFeatures.value)
+
+        # selected_features_names = [self.FeatureImages[0].meta['channel_names'][i] for i in selected_features]
+        # how do I convert feature names to internal feature IDs?
+
+        result = [selected_features]
+        return result
+
+    def propagateDirty(self, slot, subindex, roi):
+        self.SelectedFeatureIDs.setDirty()
+
+class OpWrapperFeatureSelection(Operator):
+    FeatureLabelMatrix = InputSlot(level=1)
+    WrapperMethod = InputSlot(optional=True)  # "SFS", "BFS", or "SBE"
+    Classifier = InputSlot(optional=True)  # not used. In the future it should be possible to plug in a classifier here.
+    # Default classifier it sklearn random forest
+    EvaluationFunction = InputSlot(optional=True)  # if this is not connected then we use a default
+
+    SelectedFeatureIDs = OutputSlot()
+
+    def setupOutputs(self):
+        if self.WrapperMethod.connected():
+            self._wrapper_method = self.WrapperMethod.value
+        else:
+            self._wrapper_method = "SFS"
+
+        if self.Classifier.connected():
+            self._classifier = self.Classifier.value
+        else:
+            from sklearn import ensemble
+            self._classifier = ensemble.RandomForestClassifier(n_estimators=100, n_jobs=-1)
+
+        if self.EvaluationFunction.connected():
+            self._evaluation_fct = self.EvaluationFunction.value
+        else:
+            self._evaluator = feature_selection.wrapper_feature_selection.EvaluationFunction(self._classifier, complexity_penalty=0.07)
+            self._evaluation_fct = self._evaluator.evaluate_feature_set_size_penalty
+
+        # the output slot should maybe contain the internal feature IDs or a bool list of len(internal_feature_ids)
+        self.SelectedFeatureIDs.meta.shape = (1,)
+        self.SelectedFeatureIDs.meta.dtype = list
+
+    def execute(self, slot, subindex, roi, result):
+
+        feature_label_matrix = self.FeatureLabelMatrix[0].value
+
+        labels = feature_label_matrix[:, 0]  # first row is labels
+        data = feature_label_matrix[:, 1:]  # the rest is data
+
+
+        feature_selector = feature_selection.wrapper_feature_selection.WrapperFeatureSelection(data,
+                                                                                               labels.astype("int"),
+                                                                                               self._evaluation_fct, self._wrapper_method)
+
+
+        selected_features = feature_selector.run()[0]
+
+        # selected_features_names = [self.FeatureImages[0].meta['channel_names'][i] for i in selected_features]
+
+        result = [selected_features]
+        return result
+
+    def propagateDirty(self, slot, subindex, roi):
+        self.SelectedFeatureIDs.setDirty()
+
+class OpGiniFeatureSelection(Operator):
+    FeatureLabelMatrix = InputSlot(level=1)
+    NumberOfSelectedFeatures = InputSlot()
+
+    SelectedFeatureIDs = OutputSlot()
+
+    def setupOutputs(self):
+        # the output slot should maybe contain the internal feature IDs or a bool list of len(internal_feature_ids)
+        self.SelectedFeatureIDs.meta.shape = (1,)
+        self.SelectedFeatureIDs.meta.dtype = list
+
+    def execute(self, slot, subindex, roi, result):
+
+        feature_label_matrix = self.FeatureLabelMatrix[0].value
+
+        labels = feature_label_matrix[:, 0]  # first row is labels
+        data = feature_label_matrix[:, 1:]  # the rest is data
+
+        from sklearn import ensemble
+        rf = ensemble.RandomForestClassifier(n_estimators = 100, n_jobs = -1)
+        rf.fit(data, labels)
+        importances = rf.feature_importances_
+
+        result = [np.argsort(importances)[::-1][:self.NumberOfSelectedFeatures.value]]
+        return result
+
+    def propagateDirty(self, slot, subindex, roi):
+        self.SelectedFeatureIDs.setDirty()

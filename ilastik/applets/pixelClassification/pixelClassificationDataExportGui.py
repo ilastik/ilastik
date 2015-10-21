@@ -18,7 +18,6 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-import warnings
 from PyQt4.QtCore import Qt
 from PyQt4.QtGui import QColor
 
@@ -69,7 +68,6 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
                 layer.visible = False
                 layer.name = layer.name + "- Preview"
             layers += previewLayers
-
         elif selection.startswith("Simple Segmentation") or selection.startswith("Labels"):
             exportedLayer = self._initColortablelayer(opLane.ImageOnDisk)
             if exportedLayer:
@@ -82,7 +80,6 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
                 previewLayer.visible = False
                 previewLayer.name = selection + " - Preview"
                 layers.append( previewLayer )
-
         elif selection.startswith("Uncertainty"):
             if opLane.ImageToExport.ready():
                 previewUncertaintySource = LazyflowSource(opLane.ImageToExport)

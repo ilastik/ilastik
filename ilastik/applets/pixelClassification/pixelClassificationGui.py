@@ -27,8 +27,8 @@ from functools import partial
 # Third-party
 import numpy
 from PyQt4 import uic
-from PyQt4.QtCore import Qt, pyqtSlot, QVariant
-from PyQt4.QtGui import QMessageBox, QColor, QIcon, QMenu, QDialog, QVBoxLayout, QDialogButtonBox, QListWidget, QListWidgetItem
+from PyQt4.QtCore import Qt, pyqtSlot, QVariant, pyqtRemoveInputHook, pyqtRestoreInputHook
+from PyQt4.QtGui import QMessageBox, QColor, QIcon, QMenu, QDialog, QVBoxLayout, QDialogButtonBox, QListWidget, QListWidgetItem, QApplication, QCursor
 
 # HCI
 from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer, ColortableLayer
@@ -38,6 +38,7 @@ from lazyflow.utility import PathComponents
 from lazyflow.roi import slicing_to_string
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators.ioOperators import OpInputDataReader
+from lazyflow.operators import OpFeatureMatrixCache
 
 # ilastik
 from ilastik.config import cfg as ilastik_config
@@ -47,6 +48,9 @@ from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui, H5VolumeSelectionDlg
 from ilastik.shell.gui.variableImportanceDialog import VariableImportanceDialog
+
+#import IPython
+import featureSelectionDlg
 
 try:
     from volumina.view3d.volumeRendering import RenderingManager
@@ -300,10 +304,14 @@ class PixelClassificationGui(LabelingGui):
         self.labelingDrawerUi.liveUpdateButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.labelingDrawerUi.liveUpdateButton.toggled.connect( self.toggleInteractive )
 
+        self.initFeatSelDlg()
+        self.labelingDrawerUi.suggestFeaturesButton.clicked.connect(self.featSelDlg.exec_)
+
         self.topLevelOperatorView.LabelNames.notifyDirty( bind(self.handleLabelSelectionChange) )
         self.__cleanup_fns.append( partial( self.topLevelOperatorView.LabelNames.unregisterDirty, bind(self.handleLabelSelectionChange) ) )
         
         self._initShortcuts()
+
 
         # FIXME: We MUST NOT enable the render manager by default,
         #        since it will drastically slow down the app for large volumes.
@@ -329,6 +337,90 @@ class PixelClassificationGui(LabelingGui):
         # listen to freezePrediction changes
         self.topLevelOperatorView.FreezePredictions.notifyDirty( bind(FreezePredDirty) )
         self.__cleanup_fns.append( partial( self.topLevelOperatorView.FreezePredictions.unregisterDirty, bind(FreezePredDirty) ) )
+
+    def initFeatSelDlg(self):
+        self.featSelDlg = featureSelectionDlg.FeatureSelectionDlg()
+        self.featSelDlg.accepted.connect(self.selectFeatures)
+
+    def selectFeatures(self):
+        method = self.featSelDlg.selectedMethod
+
+        QApplication.instance().setOverrideCursor( QCursor(Qt.WaitCursor) )
+
+        #pyqtRemoveInputHook()  # i need to do this if i want to get into the ipython shell. This line (and the one on
+        # the bottom) must be removed before release because they freeze the gui
+
+        import numpy as np
+        thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
+
+
+        # activate all features
+        current_matrix = thisOpFeatureSelection.SelectionMatrix.value
+        current_matrix[:,1:] = True
+        current_matrix[0, 0] = True
+        current_matrix[1:, 0] = False # do not use any other feature than gauss smooth on sigma=0.3
+        thisOpFeatureSelection.SelectionMatrix.setValue(current_matrix)
+        thisOpFeatureSelection.SelectionMatrix.setDirty() # this does not do anything!?!?
+        thisOpFeatureSelection.setupOutputs()
+
+
+        # we should be able to modify this via a gui element
+        # this should also be controlled by the gui
+
+        if method == "Filter":
+            self.topLevelOperatorView.opFilterFeatureSelection.NumberOfSelectedFeatures.setValue(8)
+            selected_feature_ids = self.topLevelOperatorView.opFilterFeatureSelection.SelectedFeatureIDs.value
+        elif method == "Wrapper":
+            selected_feature_ids = self.topLevelOperatorView.opWrapperFeatureSelection.SelectedFeatureIDs.value
+        elif method == "Gini":
+            self.topLevelOperatorView.opGiniFeatureSelection.NumberOfSelectedFeatures.setValue(8)
+            selected_feature_ids = self.topLevelOperatorView.opGiniFeatureSelection.SelectedFeatureIDs.value
+        else:
+            raise Exception("invalid feature selection method: %s" % method)
+
+
+        # now it gets pretty messy... There must be another way to identify which values in the feature matrix need to
+        # be modified...
+        feature_channel_names = self.topLevelOperatorView.FeatureImages.meta['channel_names']
+        scales = thisOpFeatureSelection.Scales.value
+        featureIDs = thisOpFeatureSelection.FeatureIds.value
+        current_matrix = thisOpFeatureSelection.SelectionMatrix.value
+        new_matrix = np.zeros(current_matrix.shape, 'bool')  # initialize new matrix as all False
+
+        # now find out where i need to make changes in the matrix
+        # matrix is len(features) by len(scales)
+        for feature in selected_feature_ids:
+            channel_name = feature_channel_names[feature]
+            eq_sign_pos = channel_name.find("=")
+            right_bracket_pos = channel_name.find(")")
+            scale = float(channel_name[eq_sign_pos + 1 : right_bracket_pos])
+            if "Smoothing" in channel_name:
+                featureID = "GaussianSmoothing"
+            elif "Laplacian" in channel_name:
+                featureID = "LaplacianOfGaussian"
+            elif "Magnitude" in channel_name:
+                featureID = "GaussianGradientMagnitude"
+            elif "Difference" in channel_name:
+                featureID = "DifferenceOfGaussians"
+            elif "Structure" in channel_name:
+                featureID = "StructureTensorEigenvalues"
+            elif "Hessian" in channel_name:
+                featureID = "HessianOfGaussianEigenvalues"
+            else:
+                raise Exception("Unkown feature encountered!")
+
+            col_position_in_matrix = scales.index(scale)
+            row_position_in_matrix = featureIDs.index(featureID)
+            new_matrix[row_position_in_matrix, col_position_in_matrix] = True
+
+
+        thisOpFeatureSelection.SelectionMatrix.setValue(new_matrix)
+        thisOpFeatureSelection.SelectionMatrix.setDirty()
+        thisOpFeatureSelection.setupOutputs()
+
+        QApplication.instance().restoreOverrideCursor()
+
+        #pyqtRestoreInputHook()
 
     def initViewerControlUi(self):
         localDir = os.path.split(__file__)[0]
