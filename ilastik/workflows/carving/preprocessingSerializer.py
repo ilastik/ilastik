@@ -88,9 +88,6 @@ class PreprocessingSerializer( AppletSerializer ):
             graphgroup = h5py.File(filePath,"r")["graph"]
             
         for opPre in self._o.innerOperators:
-            
-            opPre.applet.writeprotected = True
-
             opPre.initialSigma = sigma
             opPre.Sigma.setValue(sigma)
             if watershed_source:
@@ -102,6 +99,8 @@ class PreprocessingSerializer( AppletSerializer ):
             mst = WatershedSegmentor(labels=opPre._opWatershedCache.Output,
                                      h5file=graphgroup)
             opPre._prepData[0] = mst
+
+            opPre.applet.writeprotected = True
 
             opPre._dirty = False
             opPre.PreprocessedData.setDirty()

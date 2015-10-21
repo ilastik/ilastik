@@ -441,8 +441,8 @@ class OpPreprocessing(Operator):
         innerCacheBlockShape = (256,256,256,256,256)
         outerCacheBlockShape = (512,512,512,512,512)
         # TODO: remove testing values
-        #innerCacheBlockShape = (100,100,100,100,100)
-        #outerCacheBlockShape = (100,100,100,100,100)
+        innerCacheBlockShape = (100,100,100,100,100)
+        outerCacheBlockShape = (100,100,100,100,100)
 
         self._opFilterCache.fixAtCurrent.setValue(False)
         self._opFilterCache.innerBlockShape.setValue( innerCacheBlockShape )
@@ -482,26 +482,16 @@ class OpPreprocessing(Operator):
         #self.applet.topLevelOperator.ProjectDataGroup.ready()
 
         # opWatershedCache
-        self._opWatershedCache.fixAtCurrent.setValue(False)
+        h5PreprocessingGrp = self._hdf5File.require_group('preprocessing')
+        h5WatershedGrp = h5PreprocessingGrp.require_group('watershed_labels')
+        h5WatershedCached = len(h5WatershedGrp.keys()) > 0
+
+        self._opWatershedCache.fixAtCurrent.setValue(h5WatershedCached)
         self._opWatershedCache.innerBlockShape.setValue( innerCacheBlockShape )
         self._opWatershedCache.outerBlockShape.setValue( outerCacheBlockShape )
 
-        preprocessingKey = 'preprocessing'
-        watershedLabelsKey = 'watershed_labels'
-
-        try:
-            h5PreprocessingGrp = self._hdf5File[preprocessingKey]
-        except:
-            h5PreprocessingGrp = self._hdf5File.create_group(preprocessingKey)
-
-        try:
-            h5WatershedGrp = h5PreprocessingGrp[watershedLabelsKey]
-        except:
-            h5WatershedGrp = h5PreprocessingGrp.create_group(watershedLabelsKey)
-
         self._hdf5File.file.flush()
 
-        self._opWatershedCache.fixAtCurrent.setValue( self.applet.writeprotected )
         self._opWatershedCache.H5CacheGroup.setValue( h5WatershedGrp )
 
 

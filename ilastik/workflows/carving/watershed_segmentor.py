@@ -7,7 +7,6 @@ from lazyflow.roi import roiToSlice, sliceToRoi
 
 
 class WatershedSegmentor(object):
-    # TODO: class OpWatershedSegmentor(Operator)
     def __init__(self, labels, h5file=None):
         self.object_names = dict()
         self.objects = dict()
@@ -21,8 +20,6 @@ class WatershedSegmentor(object):
         self.hasSeg = False
 
         if h5file is None:
-            ndim  = 3
-            # TODO: keep reference to labels slot?
             self.supervoxelUint32 = labels
             self.volumeFeat = volume_feat.squeeze()
             if self.volumeFeat.ndim == 3:
@@ -30,7 +27,6 @@ class WatershedSegmentor(object):
                 self.gridSegmentor.init()
 
             elif self.volumeFeat.ndim == 2:
-                ndim = 2
                 self.gridSegmentor = ilastiktools.GridSegmentor_2D_UInt32()
                 self.gridSegmentor.init()
                 # TODO: remove after preprocess fixed                
@@ -42,26 +38,14 @@ class WatershedSegmentor(object):
             self.nodeNum = self.gridSegmentor.nodeNum()
             self.hasSeg = False
         else:
-            self.nodeNum = h5file.attrs["numNodes"]
-
-            # TODO: keep reference to labels slot? make labels a slot.
-            '''
-            #h5file = h5py.File(fname)
-            #self.supervoxelUint32 = h5file['labels'][:]
-            source = OpStreamingHdf5Reader(graph=graph)
-            source.Hdf5File.setValue(h5file)
-            source.InternalPath.setValue(gname)
-
-            op = OpCompressedCache( parent=None, graph=graph )
-            op.BlockShape.setValue( [128, 128, 128] )
-            op.Input.connect( source.OutputImage )
-            '''
             self.supervoxelUint32 = labels
 
             if(self.supervoxelUint32.squeeze().ndim == 3):
                 self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
             else:
                 self.gridSegmentor = ilastiktools.GridSegmentor_2D_UInt32()
+
+            self.nodeNum = h5file.attrs["numNodes"]
 
             graphS = h5file['graph'][:]
             edgeWeights = h5file['edgeWeights'][:]
@@ -89,8 +73,7 @@ class WatershedSegmentor(object):
         self.gridSegmentor.preprocessing(labels=labels, weightArray=volume_features, roiEnd=roi_stop)
         self.nodeNum = self.gridSegmentor.nodeNum()
 
-    def run(self, unaries, prios = None, uncertainty="exchangeCount",
-            moving_average = False, noBiasBelow = 0, **kwargs):
+    def run(self, unaries, prios = None, noBiasBelow = 0, **kwargs):
         self.gridSegmentor.run(float(prios[1]),float(noBiasBelow))
         seg = self.gridSegmentor.getSuperVoxelSeg()
         self.hasSeg = True
@@ -119,11 +102,13 @@ class WatershedSegmentor(object):
         #roiSlice = roiToSlice( roi.start, roi.stop )
         #roiShape = [s.stop-s.start for s in roiSlice]
         #brushStroke = brushStroke.reshape(roiShape)[0,...,0]
+        #roiShape = [s.stop-s.start for s in roi.toSlice()]
+        #brushStroke = brushStroke.reshape(roiShape)[0,...,0]
       
         roiShape = [e-b for b,e in zip(roiBegin,roiEnd)]
         brushStroke = brushStroke.reshape(roiShape)
 
-        labels = self.supervoxelUint32(roiSlice).wait()[0,...,0]
+        labels = self.supervoxelUint32(roi.toSlice()).wait()[0,...,0]
         self.gridSegmentor.addSeedBlock(labels=labels, brushStroke=brushStroke)
 
     def getVoxelSegmentation(self, roi, out = None):
