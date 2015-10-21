@@ -811,10 +811,13 @@ class DataSelectionGui(QWidget):
         recent_hosts = recent_hosts_pref.get()
         if not recent_hosts:
             recent_hosts = ["localhost:8000"]
-        recent_hosts = filter(lambda h: h, recent_hosts)
+        recent_hosts = filter(lambda h: h, recent_hosts) # There used to be a bug where empty strings could be saved. Filter those out.
+
+        recent_nodes_pref = PreferencesManager.Setting("DataSelection", "Recent DVID Nodes")
+        recent_nodes = recent_nodes_pref.get() or {}
             
         from dvidDataSelectionBrowser import DvidDataSelectionBrowser
-        browser = DvidDataSelectionBrowser(recent_hosts, parent=self)
+        browser = DvidDataSelectionBrowser(recent_hosts, recent_nodes, parent=self)
         if browser.exec_() == DvidDataSelectionBrowser.Rejected:
             return
 
@@ -823,8 +826,8 @@ class DataSelectionGui(QWidget):
             return
 
         rois = None
-        hostname, dset_uuid, volume_name, uuid, typename = browser.get_selection()
-        dvid_url = 'http://{hostname}/api/node/{uuid}/{volume_name}'.format( **locals() )
+        hostname, repo_uuid, volume_name, node_uuid, typename = browser.get_selection()
+        dvid_url = 'http://{hostname}/api/node/{node_uuid}/{volume_name}'.format( **locals() )
         subvolume_roi = browser.get_subvolume_roi()
 
         # Relocate host to top of 'recent' list, and limit list to 10 items.
@@ -839,6 +842,9 @@ class DataSelectionGui(QWidget):
 
         # Save pref
         recent_hosts_pref.set(recent_hosts)
+        
+        recent_nodes[hostname] = node_uuid
+        recent_nodes_pref.set(recent_nodes)
 
         if subvolume_roi is None:
             self.addFileNames([dvid_url], roleIndex, laneIndex)
@@ -850,11 +856,3 @@ class DataSelectionGui(QWidget):
             start = tuple(reversed(start))
             stop = tuple(reversed(stop))
             self.addFileNames([dvid_url], roleIndex, laneIndex, [(start, stop)])
-            
-
-
-
-
-
-
-

@@ -137,7 +137,7 @@ if __name__ == "__main__":
     from PyQt4.QtGui import QApplication    
     app = QApplication([])
     browser = DvidDataSelectionBrowser(["localhost:8000", "emdata2:7000"],
-                                       default_node='57c4c6a0740d4509a02da6b9453204cb',
+                                       default_nodes={ "localhost:8000" : '57c4c6a0740d4509a02da6b9453204cb'},
                                        mode="select_existing")
 
     if browser.exec_() == DvidDataSelectionBrowser.Accepted:
