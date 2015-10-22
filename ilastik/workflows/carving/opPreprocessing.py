@@ -79,69 +79,69 @@ class OpFilter(Operator):
         volume = volume5d[0,:,:,:,0]
         result_view = result[0,:,:,:,0]
         
-        logger.info( "input volume shape: %r" %  (volume.shape,) )
-        logger.info( "input volume size: %r MB", (volume.nbytes / 1024**2,) )
+        logger.info( "Filter input volume shape: %r, size: %r MB, roi: %s" % (volume.shape, volume.nbytes / 1024**2, roi) )
+
         fvol = numpy.asarray(volume, numpy.float32)
 
         #Choose filter selected by user
         volume_filter = self.Filter.value
 
-        logger.info( "applying filter on shape = %r" % (fvol.shape,) )
-        with Timer() as filterTimer:        
+        logger.info( " applying filter on shape: %r, size: %r MB" % (fvol.shape, fvol.nbytes / 1024**2 ) )
+        with Timer() as filterTimer:
             if fvol.shape[2] > 1:
                 # true 3D volume
                 if volume_filter == OpFilter.HESSIAN_BRIGHT:
-                    logger.info( "lowest eigenvalue of Hessian of Gaussian" )
+                    logger.info( " lowest eigenvalue of Hessian of Gaussian" )
                     options = vigra.blockwise.BlockwiseConvolutionOptions3D()
                     options.stdDev = (sigma, )*3 
                     result_view[...] = vigra.blockwise.hessianOfGaussianLastEigenvalue(fvol,options)[:,:,:]
                     result_view[:] = numpy.max(result_view) - result_view
                 
                 elif volume_filter == OpFilter.HESSIAN_DARK:
-                    logger.info( "greatest eigenvalue of Hessian of Gaussian" )
+                    logger.info( " greatest eigenvalue of Hessian of Gaussian" )
                     options = vigra.blockwise.BlockwiseConvolutionOptions3D()
                     options.stdDev = (sigma, )*3 
                     result_view[...] = vigra.blockwise.hessianOfGaussianFirstEigenvalue(fvol,options)[:,:,:]
                      
                 elif volume_filter == OpFilter.STEP_EDGES:
-                    logger.info( "Gaussian Gradient Magnitude" )
+                    logger.info( " Gaussian Gradient Magnitude" )
                     result_view[...] = vigra.filters.gaussianGradientMagnitude(fvol,sigma)
                     
                 elif volume_filter == OpFilter.RAW:
-                    logger.info( "Gaussian Smoothing" )
+                    logger.info( " Gaussian Smoothing" )
                     result_view[...] = vigra.filters.gaussianSmoothing(fvol,sigma)
                     
                 elif volume_filter == OpFilter.RAW_INVERTED:
-                    logger.info( "negative Gaussian Smoothing" )
+                    logger.info( " negative Gaussian Smoothing" )
                     result_view[...] = vigra.filters.gaussianSmoothing(-fvol,sigma)
-
-                logger.info( "Filter took {} seconds".format( filterTimer.seconds() ) )
             else:
                 # 2D Image
                 fvol = fvol[:,:,0]
                 if volume_filter == OpFilter.HESSIAN_BRIGHT:
-                    logger.info( "lowest eigenvalue of Hessian of Gaussian" )
+                    logger.info( " lowest eigenvalue of Hessian of Gaussian" )
                     volume_feat = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,1]
                     volume_feat[:] = numpy.max(volume_feat) - volume_feat
                 
                 elif volume_filter == OpFilter.HESSIAN_DARK:
-                    logger.info( "greatest eigenvalue of Hessian of Gaussian" )
+                    logger.info( " greatest eigenvalue of Hessian of Gaussian" )
                     volume_feat = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,0]
                      
                 elif volume_filter == OpFilter.STEP_EDGES:
-                    logger.info( "Gaussian Gradient Magnitude" )
+                    logger.info( " Gaussian Gradient Magnitude" )
                     volume_feat = vigra.filters.gaussianGradientMagnitude(fvol,sigma)
                     
                 elif volume_filter == OpFilter.RAW:
-                    logger.info( "Gaussian Smoothing" )
+                    logger.info( " Gaussian Smoothing" )
                     volume_feat = vigra.filters.gaussianSmoothing(fvol,sigma)
                     
                 elif volume_filter == OpFilter.RAW_INVERTED:
-                    logger.info( "negative Gaussian Smoothing" )
+                    logger.info( " negative Gaussian Smoothing" )
                     volume_feat = vigra.filters.gaussianSmoothing(-fvol,sigma)
 
                 result_view[:,:,0] = volume_feat
-                logger.info( "Filter took {} seconds".format( filterTimer.seconds() ) )
+
+            logger.info( "Filter took {} seconds".format( filterTimer.seconds() ) )
+
         return result
 
     def propagateDirty(self, slot, subindex, roi):
@@ -206,9 +206,8 @@ class OpSimpleWatershed(Operator):
 
             result_view[...] += old_max_seed_value
 
-            logger.info("done - calculated range {}: {}-{}, offset {}".format(result_range, result_min, result_max, old_max_seed_value))
+            logger.info( "Watershed took {} seconds - calculated range {}: {}-{}, offset {}".format(watershedTimer.seconds(), result_range, result_min, result_max, old_max_seed_value))
 
-        logger.info( "Watershed took {} seconds".format( watershedTimer.seconds() ) )
         return result
 
     def propagateDirty(self, slot, subindex, roi):
@@ -234,12 +233,15 @@ class OpMstSegmentorProvider(Operator):
         #first thing, show the user that we are waiting for computations to finish
         self.applet.progressSignal.emit(-1)
         self.applet.progress = 0
-        def updateProgressBar(blk, max_blk, x):
+        def updateProgressBar(blk, max_blk, roi, timer):
             #send signal iff progress is significant
-            p = int(((blk * 100) + x) / (max_blk * 100))
+            p = int(((blk + 1) * 100) / max_blk)
             if p-self.applet.progress>=1 or p==100:
                 self.applet.progressSignal.emit(p)
                 self.applet.progress = p
+
+            logger.info( "Segmentor preprocessed block: {} out of {}, roi: {}, took {} seconds".format( blk, max_blk, roi, timer.seconds() ) )
+
 
         bsz = 256 #block size
         halo_size = (0,1,1,1,0)
@@ -251,30 +253,30 @@ class OpMstSegmentorProvider(Operator):
         try:
             block_count = len(block_starts)
             for b_id, block in enumerate(block_starts):
-                features_roi = getBlockBounds(self.Image.meta.shape, block_shape, block)
-                labels_roi = getBlockBounds(self.LabelImage.meta.shape, block_shape, block)
+                with Timer() as mstBlockTimer:
+                    features_roi = getBlockBounds(self.Image.meta.shape, block_shape, block)
+                    labels_roi = getBlockBounds(self.LabelImage.meta.shape, block_shape, block)
 
-                features_roi_halo = enlargeRoiForHalo(features_roi[0], features_roi[1], self.Image.meta.shape, 1, window=1, enlarge_axes=halo_size)
-                labels_roi_halo = enlargeRoiForHalo(labels_roi[0], labels_roi[1], self.LabelImage.meta.shape, 1, window=1, enlarge_axes=halo_size)
+                    features_roi_halo = enlargeRoiForHalo(features_roi[0], features_roi[1], self.Image.meta.shape, 1, window=1, enlarge_axes=halo_size)
+                    labels_roi_halo = enlargeRoiForHalo(labels_roi[0], labels_roi[1], self.LabelImage.meta.shape, 1, window=1, enlarge_axes=halo_size)
 
-                # remove halo from bottom
-                features_roi_halo[0] = features_roi[0]
-                labels_roi_halo[0] = labels_roi[0]
+                    # remove halo from bottom
+                    features_roi_halo[0] = features_roi[0]
+                    labels_roi_halo[0] = labels_roi[0]
 
-                featureVolume = self.Image( *features_roi_halo ).wait()
-                labelVolume = self.LabelImage( *labels_roi_halo ).wait()
+                    featureVolume = self.Image( *features_roi_halo ).wait()
+                    labelVolume = self.LabelImage( *labels_roi_halo ).wait()
 
-                block_roi = labels_roi[1]-labels_roi[0]
+                    block_roi = labels_roi[1]-labels_roi[0]
 
-                mst.preprocess(labelVolume[0,...,0], numpy.asarray(featureVolume[0,...,0], numpy.float32), TinyVector(block_roi[1:-1]))
+                    mst.preprocess(labelVolume[0,...,0], numpy.asarray(featureVolume[0,...,0], numpy.float32), TinyVector(block_roi[1:-1]))
 
-                updateProgressBar(b_id, block_count, 50)
+                    updateProgressBar(b_id, block_count, labels_roi, mstBlockTimer)
 
             result[0] = mst
             return result
 
         finally:
-            updateProgressBar(b_id, block_count, 100)
             self.applet.progressSignal.emit(100)
 
 
@@ -438,11 +440,12 @@ class OpPreprocessing(Operator):
         self.PreprocessedData.meta.shape = (1,)
         self.PreprocessedData.meta.dtype = object
 
+        # TODO: this needs to match with bsz shape from OpMstSegmentorProvider.execute
         innerCacheBlockShape = (256,256,256,256,256)
         outerCacheBlockShape = (512,512,512,512,512)
         # TODO: remove testing values
-        innerCacheBlockShape = (100,100,100,100,100)
-        outerCacheBlockShape = (100,100,100,100,100)
+        innerCacheBlockShape = (256,256,256,256,256)
+        outerCacheBlockShape = (256,256,256,256,256)
 
         self._opFilterCache.fixAtCurrent.setValue(False)
         self._opFilterCache.innerBlockShape.setValue( innerCacheBlockShape )
@@ -501,10 +504,14 @@ class OpPreprocessing(Operator):
         if self._prepData[0] is not None and not self._dirty:
             return self._prepData
 
-        self._opMstProvider.MST.ready()
+        with Timer() as mstProviderTimer:
+            logger.info( "Creating Segmentor..." )
 
-        mst = self._opMstProvider.MST.value
-        
+            self._opMstProvider.MST.ready()
+            mst = self._opMstProvider.MST.value
+
+            logger.info( "Created Segmentor in {} seconds".format( mstProviderTimer.seconds() ) )
+
         #save settings for reloading them if asked by user
         self.initialSigma = self.Sigma.value
         self.initialFilter = self.Filter.value
