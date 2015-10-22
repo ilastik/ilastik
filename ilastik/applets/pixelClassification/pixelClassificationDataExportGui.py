@@ -49,7 +49,7 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
         # This code depends on a specific order for the export slots.
         # If those change, update this function!
         selection_names = opLane.SelectionNames.value
-        assert selection_names[0:4] == ['Probabilities', 'Simple Segmentation', 'Uncertainty', 'Features'] # see comment above
+        assert selection_names[0:5] == ['Probabilities', 'Simple Segmentation', 'Uncertainty', 'Features', 'Labels'] # see comment above
         
         selection = selection_names[ opLane.InputSelection.value ]
 
@@ -66,17 +66,17 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
                 layer.name = layer.name + "- Preview"
             layers += previewLayers
 
-        elif selection == "Simple Segmentation":
-            exportedLayer = self._initSegmentationlayer(opLane.ImageOnDisk)
+        elif selection in ("Simple Segmentation", "Labels"):
+            exportedLayer = self._initColortablelayer(opLane.ImageOnDisk)
             if exportedLayer:
                 exportedLayer.visible = True
-                exportedLayer.name = exportedLayer.name + " - Exported"
+                exportedLayer.name = selection + " - Exported"
                 layers.append( exportedLayer )
 
-            previewLayer = self._initSegmentationlayer(opLane.ImageToExport)
+            previewLayer = self._initColortablelayer(opLane.ImageToExport)
             if previewLayer:
                 previewLayer.visible = False
-                previewLayer.name = previewLayer.name + " - Preview"
+                previewLayer.name = selection + " - Preview"
                 layers.append( previewLayer )
 
         elif selection == "Uncertainty":
@@ -100,7 +100,7 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
                 exportedLayer.visible = True
                 exportedLayer.name = "Uncertainty - Exported"
                 layers.append(exportedLayer)
-
+        
         else: # Features and all other layers.
             if selection != "Features":
                 warnings.warn("Not sure how to display '{}' result.  Showing with default layer settings."
@@ -130,18 +130,20 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
 
         return layers 
 
-    def _initSegmentationlayer(self, segSlot):
+    def _initColortablelayer(self, segSlot):
+        """
+        Used to export both segmentation and labels
+        """
         if not segSlot.ready():
             return None
         opLane = self.topLevelOperatorView
         colors = opLane.PmapColors.value
         colortable = []
-        colortable.append( QColor(0,0,0).rgba() )
+        colortable.append( QColor(0,0,0,0).rgba() ) # transparent
         for color in colors:
             colortable.append( QColor(*color).rgba() )
         segsrc = LazyflowSource( segSlot )
         seglayer = ColortableLayer( segsrc, colortable )
-        seglayer.name = "Simple Segmentation"
         return seglayer
 
     def _initPredictionLayers(self, predictionSlot):

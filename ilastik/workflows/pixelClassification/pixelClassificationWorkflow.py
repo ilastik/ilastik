@@ -46,7 +46,7 @@ class PixelClassificationWorkflow(Workflow):
     DATA_ROLE_RAW = 0
     DATA_ROLE_PREDICTION_MASK = 1
     ROLE_NAMES = ['Raw Data', 'Prediction Mask']
-    EXPORT_NAMES = ['Probabilities', 'Simple Segmentation', 'Uncertainty', 'Features']
+    EXPORT_NAMES = ['Probabilities', 'Simple Segmentation', 'Uncertainty', 'Features', 'Labels']
     
     @property
     def applets(self):
@@ -232,6 +232,7 @@ class PixelClassificationWorkflow(Workflow):
         opDataExport.Inputs[1].connect( opClassify.SimpleSegmentation )
         opDataExport.Inputs[2].connect( opClassify.HeadlessUncertaintyEstimate )
         opDataExport.Inputs[3].connect( opClassify.FeatureImages )
+        opDataExport.Inputs[4].connect( opClassify.LabelImages )
         for slot in opDataExport.Inputs:
             assert slot.partner is not None
 
