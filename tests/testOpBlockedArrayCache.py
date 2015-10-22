@@ -36,10 +36,6 @@ from lazyflow.utility.testing import OpArrayPiperWithAccessCount
 from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
 
 
-# This test suite works for the old and new implementations of OpBlockedArrayCache
-from lazyflow.operators.opRefactoredBlockedArrayCache import OpRefactoredBlockedArrayCache
-OpBlockedArrayCache = OpRefactoredBlockedArrayCache
-
 #from lazyflow.request import Request
 #Request.reset_thread_pool(0)
 
