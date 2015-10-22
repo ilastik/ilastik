@@ -206,7 +206,7 @@ class OpSimpleWatershed(Operator):
 
             result_view[...] += old_max_seed_value
 
-            logger.info( "Watershed took {} seconds - calculated range {}: {}-{}, offset {}".format(watershedTimer.seconds(), result_range, result_min, result_max, old_max_seed_value))
+            logger.info( "Watershed took {} seconds - calculated range {}: {}-{}, offset {}, roi: {}".format(watershedTimer.seconds(), result_range, result_min, result_max, old_max_seed_value, roi))
 
         return result
 
