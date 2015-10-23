@@ -78,7 +78,6 @@ class ObjectClassificationWorkflow(Workflow):
         if 'graph' in kwargs:
             del kwargs['graph']
         super(ObjectClassificationWorkflow, self).__init__(shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
-        self.stored_pixel_classifier
         self.stored_pixel_classifier = None
         self.stored_object_classifier = None
 
