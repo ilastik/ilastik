@@ -806,7 +806,6 @@ class DataSelectionGui(QWidget):
                                  not model.hasInternalPaths())
     
     def addDvidVolume(self, roleIndex, laneIndex):
-        # TODO: Provide list of recently used dvid hosts, loaded from user preferences
         recent_hosts_pref = PreferencesManager.Setting("DataSelection", "Recent DVID Hosts")
         recent_hosts = recent_hosts_pref.get()
         if not recent_hosts:
