@@ -261,13 +261,14 @@ def _prepare_auto_open_project( parsed_args ):
     if parsed_args.project is None:
         return None
 
+    from lazyflow.utility.pathHelpers import PathComponents, isUrl
+
     # Make sure project file exists.
-    if not os.path.exists(parsed_args.project):
+    if not isUrl(parsed_args.project) and not os.path.exists(parsed_args.project):
         raise RuntimeError("Project file '" + parsed_args.project + "' does not exist.")
 
     parsed_args.project = os.path.expanduser(parsed_args.project)
     #convert path to convenient format
-    from lazyflow.utility.pathHelpers import PathComponents
     path = PathComponents(parsed_args.project).totalPath()
     
     def loadProject(shell):

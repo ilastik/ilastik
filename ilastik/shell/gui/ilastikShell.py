@@ -47,7 +47,7 @@ from lazyflow.roi import TinyVector
 from lazyflow.graph import Operator
 import lazyflow.tools.schematic
 from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
-from lazyflow.utility import timeLogged
+from lazyflow.utility import timeLogged, isUrl
 
 # volumina
 from volumina.utility import PreferencesManager, ShortcutManagerDlg, ShortcutManager, decode_to_qstring, \
@@ -66,6 +66,7 @@ from iconMgr import ilastikIcons
 from ilastik.shell.gui.errorMessageFilter import ErrorMessageFilter
 from ilastik.shell.gui.memUsageDialog import MemUsageDialog
 from ilastik.shell.shellAbc import ShellABC
+from ilastik.shell.headless.headlessShell import HeadlessShell
 
 from ilastik.shell.gui.splashScreen import showSplashScreen
 from ilastik.shell.gui.licenseDialog import LicenseDialog
@@ -78,6 +79,12 @@ import os
 
 # Import all known workflows now to make sure they are all registered with getWorkflowFromName()
 import ilastik.workflows
+
+try:
+    import libdvid
+    _has_dvid_support = True
+except:
+    _has_dvid_support = False
 
 ILASTIKFont = QFont("Helvetica", 12, QFont.Bold)
 
@@ -494,6 +501,12 @@ class IlastikShell(QMainWindow):
         shellActions.importProjectAction = menu.addAction("&Import Project...")
         shellActions.importProjectAction.setIcon(QIcon(ilastikIcons.Open))
         shellActions.importProjectAction.triggered.connect(self.onImportProjectActionTriggered)
+
+        # Menu item: Download from DVID
+        if _has_dvid_support:
+            shellActions.downloadProjectFromDvidAction = menu.addAction("&Download Project from DVID...")
+            shellActions.downloadProjectFromDvidAction.setIcon(QIcon(ilastikIcons.Open))
+            shellActions.downloadProjectFromDvidAction.triggered.connect(self.onDownloadProjectFromDvidActionTriggered)    
 
         shellActions.closeAction = menu.addAction("&Close")
         shellActions.closeAction.setIcon(QIcon(ilastikIcons.ProcessStop))
@@ -1181,6 +1194,49 @@ class IlastikShell(QMainWindow):
             self._loadProject(newProjectFile, newProjectFilePath, workflow_class=None, readOnly=False,
                               importFromPath=importedFilePath)
 
+    def onDownloadProjectFromDvidActionTriggered(self):
+        logger.debug("Download Project From DVID")
+        
+        recent_hosts_pref = PreferencesManager.Setting("DataSelection", "Recent DVID Hosts")
+        recent_hosts = recent_hosts_pref.get()
+        if not recent_hosts:
+            recent_hosts = ["localhost:8000"]
+        recent_hosts = filter(lambda h: h, recent_hosts) # There used to be a bug where empty strings could be saved. Filter those out.
+
+        recent_nodes_pref = PreferencesManager.Setting("DataSelection", "Recent DVID Nodes")
+        recent_nodes = recent_nodes_pref.get() or {}
+
+        # Ask for a selection.
+        from libdvid.gui import ContentsBrowser
+        browser = ContentsBrowser(recent_hosts, recent_nodes, mode='select_existing', selectable_type='keyvalue', parent=self)
+        if browser.exec_() == ContentsBrowser.Rejected:
+            return
+
+        if None in browser.get_selection():
+            QMessageBox.critical("Couldn't use your selection.")
+            return
+
+        hostname, repo_uuid, data_name, node_uuid, typename = browser.get_selection()
+        dvid_url = 'http://{hostname}/api/node/{node_uuid}/{data_name}'.format( **locals() )
+
+        # Relocate host to top of 'recent' list, and limit list to 10 items.
+        try:
+            i = recent_hosts.index(hostname)
+            del recent_hosts[i]
+        except ValueError:
+            pass
+        finally:
+            recent_hosts.insert(0, hostname)        
+            recent_hosts = recent_hosts[:10]
+
+        # Save pref
+        recent_nodes[str(hostname)] = str(node_uuid)
+        recent_nodes_pref.set(recent_nodes)
+        recent_hosts_pref.set(recent_hosts)
+
+        # Open
+        self.openProjectFile(dvid_url)
+
     def getProjectPathToOpen(self, defaultDirectory):
         """
         Return the path of the project the user wants to open (or None if he cancels).
@@ -1217,6 +1273,16 @@ class IlastikShell(QMainWindow):
             self.openProjectFile(projectFilePath)
 
     def openProjectFile(self, projectFilePath, force_readonly=False):
+        """
+        Explicitly required by ShellABC
+        """
+        # If the user gives us a URL to a DVID key,
+        # then download the project file from dvid first.
+        # (So far, DVID is the only type of URL access we support for project files.)
+        if isUrl(projectFilePath):
+            projectFilePath = HeadlessShell.downloadProjectFromDvid(projectFilePath)
+            force_readonly=True
+
         try:
             hdf5File, workflow_class, readOnly = ProjectManager.openProjectFile(projectFilePath, force_readonly)
         except ProjectManager.ProjectVersionError, e:

@@ -19,9 +19,11 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 import os
+import re
 import logging
 logger = logging.getLogger(__name__)
 
+from lazyflow.utility import isUrl
 from ilastik.shell.shellAbc import ShellABC
 from ilastik.shell.projectManager import ProjectManager
 
@@ -47,8 +49,34 @@ class HeadlessShell(object):
                                               workflow_cmdline_args=self._workflow_cmdline_args  )
         self.projectManager._loadProject(hdf5File, newProjectFilePath, readOnly)
         self.projectManager.saveProject()
+
+    @classmethod
+    def downloadProjectFromDvid(cls, dvid_key_url):
+        # By convention, command-line users specify the location of the project 
+        # keyvalue data using the same format that the DVID API itself uses.
+        url_format = "^protocol://hostname/api/node/uuid/kv_instance_name(\\?/key/keyname)?"
+        for field in ['protocol', 'hostname', 'uuid', 'kv_instance_name', 'keyname']:
+            url_format = url_format.replace( field, '(?P<' + field + '>[^?]+)' )
+
+        match = re.match( url_format, dvid_key_url )
+        if not match:
+            # DVID is the only url-based format we support right now.
+            # So if it looks like the user gave a URL that isn't a valid DVID node, then error.
+            raise RuntimeError("Invalid URL format for DVID key-value data: {}".format(projectFilePath))
+
+        fields = match.groupdict()            
+        projectFilePath = ProjectManager.downloadProjectFromDvid( fields['hostname'],
+                                                                  fields['uuid'],
+                                                                  fields['kv_instance_name'],
+                                                                  fields['keyname'] )
+        return projectFilePath
         
     def openProjectFile(self, projectFilePath, force_readonly=False):
+        # If the user gave a URL to a DVID key, then download the project file from dvid first.
+        # (So far, DVID is the only type of URL access we support for project files.)
+        if isUrl(projectFilePath):
+            projectFilePath = HeadlessShell.downloadProjectFromDvid(projectFilePath)
+
         # Make sure all workflow sub-classes have been loaded,
         #  so we can detect the workflow type in the project.
         import ilastik.workflows
