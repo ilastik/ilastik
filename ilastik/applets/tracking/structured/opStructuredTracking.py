@@ -319,6 +319,8 @@ class OpStructuredTracking(OpTrackingBase):
                             if "divisions" in crop.keys():
                                 divisions = crop["divisions"]
                                 for track in divisions.keys():
+                                    if not foundAllArcs:
+                                        break
                                     division = divisions[track]
                                     time = int(division[1])
                                     parent = int(self.getLabelInCrop(cropKey, time, track))
@@ -456,6 +458,7 @@ class OpStructuredTracking(OpTrackingBase):
         self.EventsVector.setValue(events, check_changed=False)
         
     def track_transition_func(self, traxel_1, traxel_2, state):
+        #print "track_transition_func"
         return self.transitionWeight * self.track_transition_func_no_weight(traxel_1, traxel_2, state)
 
     def track_transition_func_no_weight(self, traxel_1, traxel_2, state):
@@ -463,7 +466,7 @@ class OpStructuredTracking(OpTrackingBase):
         alpha = self.transition_parameter
 
         if state == 0:
-            arg = 1 - math.exp(-distance/alpha)
+            arg = 1.0 - math.exp(-distance/alpha)
         else:
             arg = math.exp(-distance/alpha)
 
@@ -472,8 +475,9 @@ class OpStructuredTracking(OpTrackingBase):
 
         result = - math.log(arg,math.exp(1))
 
+        #print "track_transition_func_no_weight"
         if result == -0:
-            return 0
+            return 0.0
         else:
             return result
 

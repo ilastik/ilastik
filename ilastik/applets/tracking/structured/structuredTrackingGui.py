@@ -421,6 +421,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                     if "labels" in crop.keys():
 
                         labels = crop["labels"]
+                        print "labels",labels
                         for time in labels.keys():
 
                             if not foundAllArcs:
@@ -448,7 +449,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                                         previousTrackSet = labels[time-1][previous_label]
                                         intersectionSet = trackSet.intersection(previousTrackSet)
                                         trackCountIntersection = len(intersectionSet)
-
+                                        #print "addArcLabel",time-1, int(previous_label), int(label), float(trackCountIntersection)
                                         foundAllArcs &= structuredLearningTracker.addArcLabel(time-1, int(previous_label), int(label), float(trackCountIntersection))
                                         if not foundAllArcs:
                                             #print "[structuredTrackingGui] Transitions Arc: (", time-1, ",", int(previous_label), ") ---> (", time, ",", int(label), ")"
@@ -470,7 +471,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
                     if foundAllArcs and "divisions" in crop.keys():
                         divisions = crop["divisions"]
-#print "divisions",divisions
+                        print "divisions",divisions
                         for track in divisions.keys():
                             if not foundAllArcs:
                                 break
@@ -509,7 +510,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             self._drawer.maxNearestNeighborsSpinBox.setValue(self._maxNearestNeighbors)
 
         forbidden_cost = 0.0
-        ep_gap = 0.05
+        ep_gap = 0.01
         withTracklets=False
         withMergerResolution=True
         ndim=2                                  # TODO: test ndim = 3
@@ -521,7 +522,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             sigmas.append(0.0)
         uncertaintyParams = pgmlink.UncertaintyParameter(1, pgmlink.DistrId.PerturbAndMAP, sigmas)
 
-        cplex_timeout=float(1e75)
+        cplex_timeout=float(20.0)#float(1e75)
         transitionClassifier = None
 
         detectionWeight = self._detectionWeight
@@ -540,6 +541,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         #with_optical_correction = True
         with_constraints = True
+        withNormalization = False#True
+        withClassifierPrior = self._drawer.classifierPriorBox.isChecked()
         structuredLearningTrackerParameters = structuredLearningTracker.getStructuredLearningTrackingParameters(
             float(forbidden_cost),
             float(ep_gap),
@@ -558,11 +561,12 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             cplex_timeout,
             transitionClassifier,
             #with_optical_correction,
-            pgmlink.StructuredLearningTrackingSolverType.CplexSolver
+            pgmlink.StructuredLearningTrackingSolverType.CplexSolver,
+            withNormalization,
+            withClassifierPrior
         )
 
         structuredLearningTrackerParameters.register_explicit_transition_func(self.mainOperator.track_transition_func_no_weight)
-
         structuredLearningTracker.structuredLearning(structuredLearningTrackerParameters)
 
         # structuredLearningTracker.structuredLearning(
@@ -614,10 +618,10 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._drawer.disappearanceBox.setValue(self._disappearanceWeight);
 
         print "ilastik structured learning tracking"
-        print "ilastik structured learning tracking: detection weight = ", self._detectionWeight
-        print "ilastik structured learning tracking: division weight = ", self._divisionWeight
-        print "ilastik structured learning tracking: transition weight = ", self._transitionWeight
-        print "ilastik structured learning tracking: appearance weight = ", self._appearanceWeight
+        print "ilastik structured learning tracking: detection weight     = ", self._detectionWeight
+        print "ilastik structured learning tracking: division weight      = ", self._divisionWeight
+        print "ilastik structured learning tracking: transition weight    = ", self._transitionWeight
+        print "ilastik structured learning tracking: appearance weight    = ", self._appearanceWeight
         print "ilastik structured learning tracking: disappearance weight = ", self._disappearanceWeight
 
     def getLabelInCrop(self, cropKey, time, track):
