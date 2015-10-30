@@ -47,7 +47,7 @@ class OpTrainClassifierBlocked(Operator):
     Images = InputSlot(level=1)
     Labels = InputSlot(level=1)
     ClassifierFactory = InputSlot()
-    nonzeroLabelBlocks = InputSlot(level=1)
+    nonzeroLabelBlocks = InputSlot(level=1) # Used only in the pixelwise case.
     MaxLabel = InputSlot()
     
     Classifier = OutputSlot()
@@ -62,7 +62,6 @@ class OpTrainClassifierBlocked(Operator):
         self._opVectorwiseTrain.Images.connect( self.Images )
         self._opVectorwiseTrain.Labels.connect( self.Labels )
         self._opVectorwiseTrain.ClassifierFactory.connect( self.ClassifierFactory )
-        self._opVectorwiseTrain.nonzeroLabelBlocks.connect( self.nonzeroLabelBlocks )
         self._opVectorwiseTrain.MaxLabel.connect( self.MaxLabel )
         self._opVectorwiseTrain.progressSignal.subscribe( self.progressSignal )
 
@@ -221,7 +220,6 @@ class OpTrainVectorwiseClassifierBlocked(Operator):
     Images = InputSlot(level=1)
     Labels = InputSlot(level=1)
     ClassifierFactory = InputSlot()
-    nonzeroLabelBlocks = InputSlot(level=1) # TODO: Eliminate this slot. It isn't used any more...
     MaxLabel = InputSlot()
     
     Classifier = OutputSlot()
@@ -237,7 +235,6 @@ class OpTrainVectorwiseClassifierBlocked(Operator):
         self._opFeatureMatrixCaches = OperatorWrapper( OpFeatureMatrixCache, parent=self )
         self._opFeatureMatrixCaches.LabelImage.connect( self.Labels )
         self._opFeatureMatrixCaches.FeatureImage.connect( self.Images )
-        self._opFeatureMatrixCaches.NonZeroLabelBlocks.connect( self.nonzeroLabelBlocks )
         
         self._opConcatenateFeatureMatrices = OpConcatenateFeatureMatrices( parent=self )
         self._opConcatenateFeatureMatrices.FeatureMatrices.connect( self._opFeatureMatrixCaches.LabelAndFeatureMatrix )

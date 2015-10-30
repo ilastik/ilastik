@@ -16,7 +16,7 @@ class OpFeatureMatrixCache(Operator):
     - Cache the feature matrix for each block separately
     - Output the concatenation of all feature matrices
     
-    Note: This operator does not currently use the NonZeroLabelBlocks slot.
+    Note: This operator does not currently have "NonZeroLabelBlocks" input slot.
           Instead, it only requests labels for blocks that have been
           marked dirty via dirty notifications from the LabelImage slot.
           As a result, you MUST connect/configure this operator before you 
@@ -26,7 +26,6 @@ class OpFeatureMatrixCache(Operator):
     """    
     FeatureImage = InputSlot()
     LabelImage = InputSlot()
-    NonZeroLabelBlocks = InputSlot()  # TODO: Eliminate this slot. It isn't used...
     
     # Output is a single 'value', which is a 2D ndarray.
     # The first row is labels, the rest are the features.
@@ -180,9 +179,6 @@ class OpFeatureMatrixCache(Operator):
         result[0] = total_feature_matrix
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot == self.NonZeroLabelBlocks:
-            # Label changes will be handled via labelimage dirtyness propagation
-            return
         assert slot == self.FeatureImage or slot == self.LabelImage
 
         # Our blocks are tracked by label roi (1 channel)
