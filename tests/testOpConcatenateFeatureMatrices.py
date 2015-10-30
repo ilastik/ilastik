@@ -42,7 +42,6 @@ class TestOpConcatenateFeatureMatrices(object):
         opFeatureMatrixCache = OpFeatureMatrixCache(graph=graph)
         opFeatureMatrixCache.FeatureImage.setValue(features)
         opFeatureMatrixCache.LabelImage.setValue(labels)
-        opFeatureMatrixCache.NonZeroLabelBlocks.setValue(0)
         
         opFeatureMatrixCache.LabelImage.setDirty( numpy.s_[10:11, 10:12] )
         opFeatureMatrixCache.LabelImage.setDirty( numpy.s_[20:21, 20:22] )
