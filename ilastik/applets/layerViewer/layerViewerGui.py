@@ -25,6 +25,9 @@ import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
 
+# SciPy
+import numpy
+
 #PyQt
 from PyQt4.QtGui import *
 from PyQt4 import uic
@@ -268,6 +271,8 @@ class LayerViewerGui(QWidget):
             # Automatically select Grayscale or RGBA based on number of channels
             if numChannels == 2 or numChannels == 3:
                 display_mode = "rgba"
+            elif slot.meta.dtype == numpy.uint64:
+                display_mode = "random-colortable"
             else:
                 display_mode = "grayscale"
                 
