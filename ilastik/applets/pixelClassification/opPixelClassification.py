@@ -705,6 +705,7 @@ class OpWrapperFeatureSelection(Operator):
     Classifier = InputSlot(optional=True)  # not used. In the future it should be possible to plug in a classifier here.
     # Default classifier it sklearn random forest
     EvaluationFunction = InputSlot(optional=True)  # if this is not connected then we use a default
+    ComplexityPenalty = InputSlot(optional=True)
 
     SelectedFeatureIDs = OutputSlot()
 
@@ -723,7 +724,11 @@ class OpWrapperFeatureSelection(Operator):
         if self.EvaluationFunction.connected():
             self._evaluation_fct = self.EvaluationFunction.value
         else:
-            self._evaluator = feature_selection.wrapper_feature_selection.EvaluationFunction(self._classifier, complexity_penalty=0.07)
+            if self.ComplexityPenalty.connected():
+                complexity_penalty = self.ComplexityPenalty.value
+            else:
+                complexity_penalty = 0.07 # default
+            self._evaluator = feature_selection.wrapper_feature_selection.EvaluationFunction(self._classifier, complexity_penalty = complexity_penalty)
             self._evaluation_fct = self._evaluator.evaluate_feature_set_size_penalty
 
         # the output slot should maybe contain the internal feature IDs or a bool list of len(internal_feature_ids)
@@ -743,7 +748,7 @@ class OpWrapperFeatureSelection(Operator):
                                                                                                self._evaluation_fct, self._wrapper_method)
 
 
-        selected_features = feature_selector.run()[0]
+        selected_features = feature_selector.run(overshoot=3)[0]
 
         # selected_features_names = [self.FeatureImages[0].meta['channel_names'][i] for i in selected_features]
 
