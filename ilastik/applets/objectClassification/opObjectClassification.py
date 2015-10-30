@@ -25,7 +25,7 @@ import vigra
 import time
 import warnings
 import itertools
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from functools import partial
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -747,7 +747,7 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
 
         label_image = self.SegmentationImages[lane_index]
         obj_count = list(objects_per_frame(label_image))
-        ids = ilastik_ids(obj_count)
+        ids = list(ilastik_ids(obj_count))
 
         file_path = settings["file path"]
         if filename_suffix:
@@ -758,8 +758,34 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
         export_file.ExportProgress.subscribe(progress_slot)
         export_file.InsertionProgress.subscribe(progress_slot)
 
+        # Object IDs
         export_file.add_columns("table", range(sum(obj_count)), Mode.List, Default.KnimeId)
-        export_file.add_columns("table", list(ids), Mode.List, Default.IlastikId)
+        export_file.add_columns("table", ids, Mode.List, Default.IlastikId)
+
+        # Object Prediction Labels
+        class_names = OrderedDict(enumerate(self.LabelNames.value, start=1))
+        predictions = self.Predictions[lane_index]([]).wait()
+
+        # Predicted classes
+        named_predictions = []
+        for t, object_id in ids:
+             prediction_label = predictions[t][object_id]
+             prediction_name = class_names[prediction_label]
+             named_predictions.append(prediction_name)
+        export_file.add_columns("table", named_predictions, Mode.List, {"names": ("predicted_class",)})
+
+        # Class probabilities
+        probabilities = self.Probabilities[lane_index]([]).wait()
+        probability_columns = OrderedDict((name, []) for name in class_names.values())
+        for t, object_id in ids:
+             for label_id, class_name in class_names.items():
+                 prob = probabilities[t][object_id][label_id-1]
+                 probability_columns[class_name].append( prob )
+
+        probability_column_names = map(lambda class_name: "Probability of {}".format( class_name ), class_names.values())
+        export_file.add_columns("table", zip(*probability_columns.values()), Mode.List, {"names": probability_column_names})
+
+        # Object features
         export_file.add_columns("table", self.ObjectFeatures[lane_index], Mode.IlastikFeatureTable,
                                 {"selection": selected_features})
 
