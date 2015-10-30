@@ -384,6 +384,7 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
         N: change to N
         magic_eraser_value: change to 0  
         """
+        new_pixels = new_pixels.view(numpy.ndarray)
 
         # Extract the data to modify
         original_data = self.Output.stype.allocateDestination(SubRegion(self.Output, *roiFromShape(new_pixels.shape)))
