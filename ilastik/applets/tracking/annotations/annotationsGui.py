@@ -306,8 +306,6 @@ class AnnotationsGui(LayerViewerGui):
 
         self.topLevelOperatorView.Labels.setValue(self.topLevelOperatorView.labels)
         self.topLevelOperatorView.Divisions.setValue(self.topLevelOperatorView.divisions)
-        #self._setDirty(self.mainOperator.Labels, range(self.mainOperator.TrackImage.meta.shape[0]))
-        #self._setDirty(self.mainOperator.Divisions, range(self.mainOperator.TrackImage.meta.shape[0]))
 
     def _onSaveAnnotations(self, name=""):
         if name == "":
@@ -315,10 +313,6 @@ class AnnotationsGui(LayerViewerGui):
             crop = self.getCurrentCrop()
         else:
             crop = self.topLevelOperatorView.Crops.value[name]
-
-        #print ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>self.topLevelOperatorView.labels", self.topLevelOperatorView.labels
-        #print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXself.topLevelOperatorView.divisions",self.topLevelOperatorView.divisions
-
 
         if name not in self.topLevelOperatorView.Annotations.value.keys():
             self.topLevelOperatorView.Annotations.value[name] = {}
@@ -368,7 +362,6 @@ class AnnotationsGui(LayerViewerGui):
                 #print "WARNING:Your divisons and labels do not match for time ",time, " and parent track ", parentTrack,"(label ",parent," )!"
                 pass
             else:
-                #print "===>",time, parent, child1, child2
                 lowerParent = self.features[time][default_features_key]['Coord<Minimum>'][parent]
                 upperParent = self.features[time][default_features_key]['Coord<Maximum>'][parent]
 
@@ -441,6 +434,7 @@ class AnnotationsGui(LayerViewerGui):
             cropMidPos = [(b+a)/2 for [a,b] in self.editor.cropModel._crop_extents]
             for i in range(3):
                 self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
+        self.editor.navCtrl.panSlicingViews(cropMidPos,[0,1,2])
 
         self.editor.navCtrl.changeTimeRelative(self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[row].name]["time"][0] - self.editor.posModel.time)
         self.editor.cropModel.colorChanged.emit(brushColor)

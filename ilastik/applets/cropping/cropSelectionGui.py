@@ -446,6 +446,7 @@ class CropSelectionGui(CroppingGui):
             cropMidPos = [(b+a)/2 for [a,b] in self.editor.cropModel._crop_extents]
             for i in range(3):
                 self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
+        self.editor.navCtrl.panSlicingViews(cropMidPos,[0,1,2])
 
         self.editor.navCtrl.changeTimeRelative(self.topLevelOperatorView.Crops.value[self._cropControlUi.cropListModel[row].name]["time"][0] - self.editor.posModel.time)
         self.editor.cropModel.colorChanged.emit(brushColor)
