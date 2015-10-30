@@ -364,8 +364,10 @@ class AnnotationsGui(LayerViewerGui):
             child2 = self.getLabel(time+1, child2Track)
 
             if not (parent and child1 and child2):
-                print "WARNING:Your divisons and labels do not match for time ",time, " and parent track ", parentTrack,"(label ",parent," )!"
+                #print "WARNING:Your divisons and labels do not match for time ",time, " and parent track ", parentTrack,"(label ",parent," )!"
+                pass
             else:
+                #print "===>",time, parent, child1, child2
                 lowerParent = self.features[time][default_features_key]['Coord<Minimum>'][parent]
                 upperParent = self.features[time][default_features_key]['Coord<Maximum>'][parent]
 

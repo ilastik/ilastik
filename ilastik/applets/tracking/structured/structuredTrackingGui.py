@@ -416,12 +416,11 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             for cropKey in self.mainOperator.Annotations.value.keys():
                 if foundAllArcs:
                     crop = self.mainOperator.Annotations.value[cropKey]
-# print "cropKey",cropKey
-# print "crop",crop
+
                     if "labels" in crop.keys():
 
                         labels = crop["labels"]
-                        print "labels",labels
+
                         for time in labels.keys():
 
                             if not foundAllArcs:
@@ -471,7 +470,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
                     if foundAllArcs and "divisions" in crop.keys():
                         divisions = crop["divisions"]
-                        print "divisions",divisions
+
                         for track in divisions.keys():
                             if not foundAllArcs:
                                 break
@@ -480,7 +479,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                             time = int(division[1])
 
                             parent = int(self.getLabelInCrop(cropKey, time, track))
-# print "time",time, "      parent",parent
+
                             if parent >=0:
                                 structuredLearningTracker.addDivisionLabel(time, parent, 1.0)
                                 structuredLearningTracker.addAppearanceLabel(time, parent, 1.0)
@@ -503,14 +502,14 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                                     #print "[structuredTrackingGui] Divisions Arc1: (", time, ",", int(parent), ") ---> (", time+1, ",", int(child1), ")"
                                     print "[structuredTrackingGui] Increasing max nearest neighbors!"
                                     break
-            print "max nearest neighbors=",new_max_nearest_neighbors
+        print "max nearest neighbors=",new_max_nearest_neighbors
 
         if new_max_nearest_neighbors > self._maxNearestNeighbors:
             self._maxNearestNeighbors = new_max_nearest_neighbors
             self._drawer.maxNearestNeighborsSpinBox.setValue(self._maxNearestNeighbors)
 
         forbidden_cost = 0.0
-        ep_gap = 0.01
+        ep_gap = 0.05
         withTracklets=False
         withMergerResolution=True
         ndim=2                                  # TODO: test ndim = 3
@@ -541,7 +540,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         #with_optical_correction = True
         with_constraints = True
-        withNormalization = False#True
+        withNormalization = True
         withClassifierPrior = self._drawer.classifierPriorBox.isChecked()
         structuredLearningTrackerParameters = structuredLearningTracker.getStructuredLearningTrackingParameters(
             float(forbidden_cost),
@@ -588,22 +587,11 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         #     transitionClassifier
         # )
 
-        #sltWeightNorm = 0
-        #for i in range(5):
-        #    sltWeightNorm += structuredLearningTracker.weight(i) * structuredLearningTracker.weight(i)
-        #sltWeightNorm = math.sqrt(sltWeightNorm)
-
         self._detectionWeight = structuredLearningTracker.weight(0)
         self._divisionWeight = structuredLearningTracker.weight(1)
         self._transitionWeight = structuredLearningTracker.weight(2)
         self._appearanceWeight = structuredLearningTracker.weight(3)
         self._disappearanceWeight = structuredLearningTracker.weight(4)
-
-        # self._detectionWeight = math.exp(float(structuredLearningTracker.weight(0)))
-        # self._divisionWeight = math.exp(float(structuredLearningTracker.weight(1)))
-        # self._transitionWeight = math.exp(float(structuredLearningTracker.weight(2)))
-        # self._appearanceWeight = math.exp(float(structuredLearningTracker.weight(3)))
-        # self._disappearanceWeight = math.exp(float(structuredLearningTracker.weight(4)))
 
         self.mainOperator.detectionWeight = self._detectionWeight
         self.mainOperator.divisionWeight = self._divisionWeight
