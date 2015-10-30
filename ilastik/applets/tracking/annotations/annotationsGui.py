@@ -272,6 +272,7 @@ class AnnotationsGui(LayerViewerGui):
             self._drawer.cropListView.updateGeometry()
             self._drawer.cropListView.update()
             self._drawer.cropListView.selectRow(0)
+            self._selectedRow = 0
             self._previousCrop = -1
 
             rawImageSlot = self.topLevelOperatorView.RawImage
@@ -423,6 +424,7 @@ class AnnotationsGui(LayerViewerGui):
     def _onCropSelected(self, row):
         #logger.debug("switching to crop=%r" % (self._drawer.cropListModel[row]))
 
+        self._selectedRow = row
         currentName = self._drawer.cropListModel[row].name
 
         self.editor.brushingModel.setDrawnNumber(row+1)
