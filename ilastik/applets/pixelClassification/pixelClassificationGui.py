@@ -334,17 +334,25 @@ class PixelClassificationGui(LabelingGui):
         self.__cleanup_fns.append( partial( self.topLevelOperatorView.FreezePredictions.unregisterDirty, bind(FreezePredDirty) ) )
 
     def initFeatSelDlg(self):
+        thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
+
+        from FeatureSelectionDialog import FeatureSelectionDialog
+        self.featSelDlg = FeatureSelectionDialog(thisOpFeatureSelection, self.topLevelOperatorView)
+
+        '''
         self.featSelDlg = featureSelectionDlg.FeatureSelectionDlg()
-        self.featSelDlg.accepted.connect(self.selectFeatures)
+        self.featSelDlg.accepted.connect(self.selectFeatures)'''
 
     def selectFeatures(self):
+
         method = self.featSelDlg.selectedMethod
 
         QApplication.instance().setOverrideCursor( QCursor(Qt.WaitCursor) )
 
-        #pyqtRemoveInputHook()  # i need to do this if i want to get into the ipython shell. This line (and the one on
+        pyqtRemoveInputHook()  # i need to do this if i want to get into the ipython shell. This line (and the one on
         # the bottom) must be removed before release because they freeze the gui
 
+        import IPython
         import numpy as np
         thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
 
@@ -356,6 +364,7 @@ class PixelClassificationGui(LabelingGui):
         current_matrix[1:, 0] = False # do not use any other feature than gauss smooth on sigma=0.3
         thisOpFeatureSelection.SelectionMatrix.setValue(current_matrix)
         thisOpFeatureSelection.SelectionMatrix.setDirty() # this does not do anything!?!?
+        IPython.embed()
         thisOpFeatureSelection.setupOutputs()
 
 
@@ -415,7 +424,7 @@ class PixelClassificationGui(LabelingGui):
 
         QApplication.instance().restoreOverrideCursor()
 
-        #pyqtRestoreInputHook()
+        pyqtRestoreInputHook()
 
     def initViewerControlUi(self):
         localDir = os.path.split(__file__)[0]
