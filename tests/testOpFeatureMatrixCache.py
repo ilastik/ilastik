@@ -21,6 +21,7 @@ class TestOpFeatureMatrixCache(object):
         features = numpy.indices( (100,100) ).astype(numpy.float32) + 0.5
         features = numpy.rollaxis(features, 0, 3)
         features = vigra.taggedView(features, 'xyc')
+
         labels = numpy.zeros( (100,100,1), dtype=numpy.uint8 )
         labels = vigra.taggedView(labels, 'xyc')
         
@@ -31,11 +32,12 @@ class TestOpFeatureMatrixCache(object):
         
         graph = Graph()
         opFeatureMatrixCache = OpFeatureMatrixCache(graph=graph)
-        opFeatureMatrixCache.FeatureImage.setValue(features)
         opFeatureMatrixCache.LabelImage.setValue(labels)
+        opFeatureMatrixCache.FeatureImage.setValue(features)
         
         labels_and_features = opFeatureMatrixCache.LabelAndFeatureMatrix.value
-        assert labels_and_features.shape == (0,3), "Empty feature matrix has wrong shape: {}".format( labels_and_features.shape )
+        assert labels_and_features.shape == (0,3), \
+            "Empty feature matrix has wrong shape: {}".format( labels_and_features.shape )
         
         opFeatureMatrixCache.LabelImage.setDirty( numpy.s_[10:11, 10:12] )
         opFeatureMatrixCache.LabelImage.setDirty( numpy.s_[20:21, 20:22] )
