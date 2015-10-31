@@ -25,6 +25,7 @@ import collections
 
 # Third-party
 import numpy
+import vigra
 
 # Lazyflow
 from lazyflow.graph import InputSlot, OutputSlot
@@ -164,7 +165,7 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
             block[matching_label_coords] = replacement_value
             coords_to_decrement = block > label_to_purge
             if decrement_remaining:
-                block[coords_to_decrement] -= 1
+                block[coords_to_decrement] -= numpy.uint8(1)
             
             # Update cache with the new data (only if something really changed)
             if len(matching_label_coords[0]) > 0 or (decrement_remaining and coords_to_decrement.sum() > 0):
@@ -384,7 +385,8 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
         N: change to N
         magic_eraser_value: change to 0  
         """
-        new_pixels = new_pixels.view(numpy.ndarray)
+        if isinstance(new_pixels, vigra.VigraArray):
+            new_pixels = new_pixels.view(numpy.ndarray)
 
         # Extract the data to modify
         original_data = self.Output.stype.allocateDestination(SubRegion(self.Output, *roiFromShape(new_pixels.shape)))
