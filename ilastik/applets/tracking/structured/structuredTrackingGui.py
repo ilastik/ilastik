@@ -173,7 +173,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
 
 
-        self._drawer.trainingToHardConstraints.setChecked(True)
+        self._drawer.trainingToHardConstraints.setChecked(False)
 
         self.topLevelOperatorView._detectionWeight = self._detectionWeight
         self.topLevelOperatorView._divisionWeight = self._divisionWeight
@@ -587,11 +587,16 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         #     transitionClassifier
         # )
 
-        self._detectionWeight = structuredLearningTracker.weight(0)
-        self._divisionWeight = structuredLearningTracker.weight(1)
-        self._transitionWeight = structuredLearningTracker.weight(2)
-        self._appearanceWeight = structuredLearningTracker.weight(3)
-        self._disappearanceWeight = structuredLearningTracker.weight(4)
+        norm = 0
+        for i in range(5):
+            norm += structuredLearningTracker.weight(i)*structuredLearningTracker.weight(i)
+        norm = math.sqrt(norm)
+
+        self._detectionWeight = structuredLearningTracker.weight(0)/norm
+        self._divisionWeight = structuredLearningTracker.weight(1)/norm
+        self._transitionWeight = structuredLearningTracker.weight(2)/norm
+        self._appearanceWeight = structuredLearningTracker.weight(3)/norm
+        self._disappearanceWeight = structuredLearningTracker.weight(4)/norm
 
         self.mainOperator.detectionWeight = self._detectionWeight
         self.mainOperator.divisionWeight = self._divisionWeight
@@ -605,12 +610,17 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._drawer.appearanceBox.setValue(self._appearanceWeight);
         self._drawer.disappearanceBox.setValue(self._disappearanceWeight);
 
-        print "ilastik structured learning tracking"
-        print "ilastik structured learning tracking: detection weight     = ", self._detectionWeight
-        print "ilastik structured learning tracking: division weight      = ", self._divisionWeight
-        print "ilastik structured learning tracking: transition weight    = ", self._transitionWeight
-        print "ilastik structured learning tracking: appearance weight    = ", self._appearanceWeight
-        print "ilastik structured learning tracking: disappearance weight = ", self._disappearanceWeight
+        print "structured learning tracking weights:                          normalized:"
+        print "   detection weight     = ", structuredLearningTracker.weight(0)
+        print "                                                     = ", self._detectionWeight
+        print "   division weight      = ", structuredLearningTracker.weight(1)
+        print "                                                     = ", self._divisionWeight
+        print "   transition weight    = ", structuredLearningTracker.weight(2)
+        print "                                                     = ", self._transitionWeight
+        print "   appearance weight    = ", structuredLearningTracker.weight(3)
+        print "                                                     = ", self._appearanceWeight
+        print "   disappearance weight = ", structuredLearningTracker.weight(4)
+        print "                                                     = ", self._disappearanceWeight
 
     def getLabelInCrop(self, cropKey, time, track):
         labels = self.mainOperator.Annotations.value[cropKey]["labels"][time]
