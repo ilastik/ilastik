@@ -158,18 +158,6 @@ class OpPixelClassification( Operator ):
         self.opFeatureMatrixCaches.NonZeroLabelBlocks.setValue(0) # this slot is not used, but requires a value
         self.opFeatureMatrixCaches.LabelImage.setDirty()  # do I still need this?
 
-        self.opFilterFeatureSelection = OpFilterFeatureSelection(parent=self)
-        self.opFilterFeatureSelection.FeatureLabelMatrix.connect(self.opFeatureMatrixCaches.LabelAndFeatureMatrix)
-        self.opFilterFeatureSelection.NumberOfSelectedFeatures.setValue(10)  # default
-
-        self.opWrapperFeatureSelection = OpWrapperFeatureSelection(parent=self)
-        self.opWrapperFeatureSelection.FeatureLabelMatrix.connect(self.opFeatureMatrixCaches.LabelAndFeatureMatrix)
-
-        self.opGiniFeatureSelection = OpGiniFeatureSelection(parent=self)
-        self.opGiniFeatureSelection.FeatureLabelMatrix.connect(self.opFeatureMatrixCaches.LabelAndFeatureMatrix)
-
-
-
         
         def _updateNumClasses(*args):
             """
