@@ -31,6 +31,7 @@ class FeatureSelectionResult(object):
         self.oob_err = oob_err
         self.feature_calc_time = feature_calc_time
 
+
         self.name = self._create_name()
 
     def _create_name(self):
@@ -50,8 +51,12 @@ class FeatureSelectionResult(object):
 
 class FeatureSelectionDialog(QtGui.QDialog):
     def __init__(self, current_opFeatureSelection, current_opPixelClassification):
+        super(FeatureSelectionDialog, self).__init__()
+
         self.opPixelClassification = current_opPixelClassification
         self.opFeatureSelection = current_opFeatureSelection
+
+        self._init_feature_matrix = False
 
         g = graph.Graph()
 
@@ -72,7 +77,6 @@ class FeatureSelectionDialog(QtGui.QDialog):
         # this should be changed
         self._stackdim = self.opPixelClassification.InputImages.meta.shape
 
-        super(FeatureSelectionDialog, self).__init__()
 
         self.__selection_methods = {
             0: "gini",
@@ -112,26 +116,12 @@ class FeatureSelectionDialog(QtGui.QDialog):
 
         self.resize(1366, 768)
 
-
-
     def exec_(self):
         ilastik_editor = self.opPixelClassification.parent.pcApplet.getMultiLaneGui().currentGui().editor
         ilastik_currentslicing = ilastik_editor.posModel.slicingPos
         self._ilastik_currentslicing_5D = ilastik_editor.posModel.slicingPos5D
 
-
-        self.featureLabelMatrix_all_features = self.opFeatureMatrixCaches.LabelAndFeatureMatrix.value
-        self.opFilterFeatureSelection.FeatureLabelMatrix.setValue(self.featureLabelMatrix_all_features)
-        self.opFilterFeatureSelection.FeatureLabelMatrix.resize(1)
-        self.opFilterFeatureSelection.setupOutputs()
-        self.opWrapperFeatureSelection.FeatureLabelMatrix.setValue(self.featureLabelMatrix_all_features)
-        self.opWrapperFeatureSelection.FeatureLabelMatrix.resize(1)
-        self.opWrapperFeatureSelection.setupOutputs()
-        self.opGiniFeatureSelection.FeatureLabelMatrix.setValue(self.featureLabelMatrix_all_features)
-        self.opGiniFeatureSelection.FeatureLabelMatrix.resize(1)
-        self.opGiniFeatureSelection.setupOutputs()
-
-        self.n_features = self.featureLabelMatrix_all_features.shape[1] - 1
+        self._initialized_feature_matrix = False
 
         if ilastik_currentslicing[-1] != self._xysliceID:
             self._xysliceID = ilastik_currentslicing[-1]
@@ -387,6 +377,39 @@ class FeatureSelectionDialog(QtGui.QDialog):
 
         return segmentation
 
+    def retrieve_segmentation_new(self, feat):
+        import opSimplePixelClassification
+        from lazyflow import graph
+        from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
+
+        pyqtRemoveInputHook()
+        IPython.embed()
+        pyqtRestoreInputHook()
+
+        self.opSimpleClassification = opSimplePixelClassification.OpSimplePixelClassification(parent = self.opPixelClassification.parent.pcApplet.topLevelOperator)
+        self.opSimpleClassification.Labels.connect(self.opPixelClassification.opLabelPipeline.Output)
+        self.opSimpleClassification.Features.connect(self.opPixelClassification.FeatureImages)
+        self.opSimpleClassification.Labels.resize(1)
+        self.opSimpleClassification.Features.resize(1)
+        self.opSimpleClassification.ingest_labels()
+        self.opSimpleClassification.ClassifierFactory.setValue(ParallelVigraRfLazyflowClassifierFactory(100))
+
+        # resize of input slots required, otherwise "IndexError: list index out of range" after this line
+        segmentation = self.opSimpleClassification.Predictions[0][0, :, :, 25, 0].wait()
+
+        # now I get:
+        '''RuntimeError:
+        Precondition violation!
+        Sampler(): Requested sample count must be at least as large as the number of strata.
+        (/miniconda/conda-bld/work/include/vigra/sampling.hxx:371)'''
+
+
+        '''
+        In [72]: self.opSimpleClassification.Predictions[0].meta.shape
+        Out[72]: (1, 300, 275, 50, 1)
+        '''
+
+
     def _convert_featureIDs_to_featureMatrix(self, selected_feature_IDs):
         feature_channel_names = self.opPixelClassification.FeatureImages.meta['channel_names']
         scales = self.opFeatureSelection.Scales.value
@@ -428,7 +451,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
 
         feature_order = np.array(feature_order)
 
-        rf = RandomForestClassifier(n_jobs=1, n_estimators=255)
+        rf = RandomForestClassifier(n_jobs=-1, n_estimators=255)
         ev_func = EvaluationFunction(rf, complexity_penalty=self._selection_params["c"])
         n_select = 1
         overshoot = 0
@@ -450,11 +473,25 @@ class FeatureSelectionDialog(QtGui.QDialog):
 
         return n_select_opt
 
-
     def _run_selection(self):
+        self.retrieve_segmentation_new(None)
         # pyqtRemoveInputHook()
         # IPython.embed()
         # pyqtRestoreInputHook()
+
+        if not self._initialized_feature_matrix:
+            self.featureLabelMatrix_all_features = self.opFeatureMatrixCaches.LabelAndFeatureMatrix.value
+            self.opFilterFeatureSelection.FeatureLabelMatrix.setValue(self.featureLabelMatrix_all_features)
+            self.opFilterFeatureSelection.FeatureLabelMatrix.resize(1)
+            self.opFilterFeatureSelection.setupOutputs()
+            self.opWrapperFeatureSelection.FeatureLabelMatrix.setValue(self.featureLabelMatrix_all_features)
+            self.opWrapperFeatureSelection.FeatureLabelMatrix.resize(1)
+            self.opWrapperFeatureSelection.setupOutputs()
+            self.opGiniFeatureSelection.FeatureLabelMatrix.setValue(self.featureLabelMatrix_all_features)
+            self.opGiniFeatureSelection.FeatureLabelMatrix.resize(1)
+            self.opGiniFeatureSelection.setupOutputs()
+            self._initialized_feature_matrix = True
+            self.n_features = self.featureLabelMatrix_all_features.shape[1] - 1
 
 
         # self.opFeatureSelection.change_feature_cache_size()
