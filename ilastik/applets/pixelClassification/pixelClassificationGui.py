@@ -49,7 +49,7 @@ from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui, H5VolumeSelectionDlg
 from ilastik.shell.gui.variableImportanceDialog import VariableImportanceDialog
 
-#import IPython
+import IPython
 import featureSelectionDlg
 
 try:
@@ -305,7 +305,8 @@ class PixelClassificationGui(LabelingGui):
         self.labelingDrawerUi.liveUpdateButton.toggled.connect( self.toggleInteractive )
 
         self.initFeatSelDlg()
-        self.labelingDrawerUi.suggestFeaturesButton.clicked.connect(self.featSelDlg.exec_)
+        self.labelingDrawerUi.suggestFeaturesButton.clicked.connect(self.show_feature_selection_dialog)
+        self.featSelDlg.accepted.connect(self.update_features_from_dialog)
 
         self.topLevelOperatorView.LabelNames.notifyDirty( bind(self.handleLabelSelectionChange) )
         self.__cleanup_fns.append( partial( self.topLevelOperatorView.LabelNames.unregisterDirty, bind(self.handleLabelSelectionChange) ) )
@@ -348,8 +349,18 @@ class PixelClassificationGui(LabelingGui):
         self.featSelDlg = featureSelectionDlg.FeatureSelectionDlg()
         self.featSelDlg.accepted.connect(self.selectFeatures)'''
 
-    def selectFeatures(self):
+    def show_feature_selection_dialog(self):
+        self.featSelDlg.exec_()
 
+
+    def update_features_from_dialog(self):
+        thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
+
+
+        thisOpFeatureSelection.SelectionMatrix.setValue(self.featSelDlg.selected_features_matrix)
+        thisOpFeatureSelection.SelectionMatrix.setDirty()
+        thisOpFeatureSelection.setupOutputs()
+        '''
         method = self.featSelDlg.selectedMethod
 
         QApplication.instance().setOverrideCursor( QCursor(Qt.WaitCursor) )
@@ -359,7 +370,6 @@ class PixelClassificationGui(LabelingGui):
 
         import IPython
         import numpy as np
-        thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
 
 
         # activate all features
@@ -430,6 +440,7 @@ class PixelClassificationGui(LabelingGui):
         QApplication.instance().restoreOverrideCursor()
 
         pyqtRestoreInputHook()
+        '''
 
     def initViewerControlUi(self):
         localDir = os.path.split(__file__)[0]

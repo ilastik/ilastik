@@ -15,7 +15,11 @@ from volumina.layer import ColortableLayer, GrayscaleLayer
 from volumina import colortables
 from volumina.pixelpipeline.datasourcefactories import createDataSource
 
-from copy import deepcopy
+from ilastik.applets.pixelClassification import opPixelClassification
+from lazyflow.operators import OpFeatureMatrixCache
+from ilastik.utility import OpMultiLaneWrapper
+from lazyflow import graph
+
 
 # just a container class
 class FeatureSelectionResult(object):
@@ -36,7 +40,7 @@ class FeatureSelectionResult(object):
             else:
                 name = "%s_num_feat_%d" % (self.selection_method, self.parameters["num_of_feat"])
         else:
-            name = "%s_c_%1.02f" % (self.selection_method, self.parameters["c"])
+            name = "%s_c_%1.02f_%i_features" % (self.selection_method, self.parameters["c"], np.sum(self.feature_matrix))
         return name
 
     def change_name(self, name):
@@ -45,23 +49,25 @@ class FeatureSelectionResult(object):
 
 
 class FeatureSelectionDialog(QtGui.QDialog):
-    def __init__(self, opFeatureSelection, opPixelClassification):
-        self.opPixelClassification = opPixelClassification
-        self.opFeatureSelection = opFeatureSelection
-        self.opFilterFeatureSelection = self.opPixelClassification.opFilterFeatureSelection
-        self.opWrapperFeatureSelection = self.opPixelClassification.opWrapperFeatureSelection
-        self.opGiniFeatureSelection = self.opPixelClassification.opGiniFeatureSelection
+    def __init__(self, current_opFeatureSelection, current_opPixelClassification):
+        self.opPixelClassification = current_opPixelClassification
+        self.opFeatureSelection = current_opFeatureSelection
+
+        g = graph.Graph()
+
+        self.opFilterFeatureSelection = opPixelClassification.OpFilterFeatureSelection(graph=g)
+        self.opWrapperFeatureSelection = opPixelClassification.OpWrapperFeatureSelection(graph=g)
+        self.opGiniFeatureSelection = opPixelClassification.OpGiniFeatureSelection(graph=g)
+
         self.opFeatureMatrixCaches = self.opPixelClassification.opFeatureMatrixCaches
 
-        self.opFilterFeatureSelection.FeatureLabelMatrix.connect(self.opFeatureMatrixCaches.LabelAndFeatureMatrix)
-        self.opWrapperFeatureSelection.FeatureLabelMatrix.connect(self.opFeatureMatrixCaches.LabelAndFeatureMatrix)
-        self.opGiniFeatureSelection.FeatureLabelMatrix.connect(self.opFeatureMatrixCaches.LabelAndFeatureMatrix)
         self._xysliceID = -1
 
         self._initialized_all_features_segmentation_layer = False
         self._initialized_current_features_segmentation_layer = False
-        self._initialized_feature_matrix = False
+
         self._selected_feature_set_id = None
+        self.selected_features_matrix = None
 
         # this should be changed
         self._stackdim = self.opPixelClassification.InputImages.meta.shape
@@ -113,6 +119,20 @@ class FeatureSelectionDialog(QtGui.QDialog):
         ilastik_currentslicing = ilastik_editor.posModel.slicingPos
         self._ilastik_currentslicing_5D = ilastik_editor.posModel.slicingPos5D
 
+
+        self.featureLabelMatrix_all_features = self.opFeatureMatrixCaches.LabelAndFeatureMatrix.value
+        self.opFilterFeatureSelection.FeatureLabelMatrix.setValue(self.featureLabelMatrix_all_features)
+        self.opFilterFeatureSelection.FeatureLabelMatrix.resize(1)
+        self.opFilterFeatureSelection.setupOutputs()
+        self.opWrapperFeatureSelection.FeatureLabelMatrix.setValue(self.featureLabelMatrix_all_features)
+        self.opWrapperFeatureSelection.FeatureLabelMatrix.resize(1)
+        self.opWrapperFeatureSelection.setupOutputs()
+        self.opGiniFeatureSelection.FeatureLabelMatrix.setValue(self.featureLabelMatrix_all_features)
+        self.opGiniFeatureSelection.FeatureLabelMatrix.resize(1)
+        self.opGiniFeatureSelection.setupOutputs()
+
+        self.n_features = self.featureLabelMatrix_all_features.shape[1] - 1
+
         if ilastik_currentslicing[-1] != self._xysliceID:
             self._xysliceID = ilastik_currentslicing[-1]
             self.reset_me()
@@ -127,7 +147,8 @@ class FeatureSelectionDialog(QtGui.QDialog):
             else:
                 raise Exception
 
-            self.add_grayscale_layer(self.raw_xy_slice, "raw_data", True)
+
+            self._add_grayscale_layer(self.raw_xy_slice, "raw_data", True)
 
         # now launch the dialog
         super(FeatureSelectionDialog, self).exec_()
@@ -136,6 +157,8 @@ class FeatureSelectionDialog(QtGui.QDialog):
         # this deletes everything from the layerstack
         while(self.layerstack.removeRow(0)):
             pass
+        for i in range(len(self._feature_selection_results)):
+            self.all_feature_sets_combo_box.removeItem(0)
         self._feature_selection_results = []
         self._initialized_all_features_segmentation_layer = False
         self._initialized_current_features_segmentation_layer = False
@@ -279,6 +302,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
             layer.visible = (i == id)
             layer.opacity = 1.
         self._selected_feature_set_id = id
+        self.selected_features_matrix = self._feature_selection_results[id].feature_matrix
 
     def _add_feature_set_to_results(self, feature_set_result):
         self._feature_selection_results.append(feature_set_result)
@@ -310,7 +334,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
             new_layer.name = name
         self.layerstack.append(new_layer)
 
-    def add_grayscale_layer(self, data, name=None, visible=False):
+    def _add_grayscale_layer(self, data, name=None, visible=False):
         assert len(data.shape) == 2
         a, data_shape = createDataSource(data, True)
         self.editor.dataShape = list(data_shape)
@@ -324,13 +348,12 @@ class FeatureSelectionDialog(QtGui.QDialog):
         self._selection_method = self.__selection_methods[self.select_method_cbox.currentIndex()]
         self._update_gui()
 
-
     def retrieve_segmentation(self, feat_matrix):
         # remember the currently selected features so that they are not changed in case the user cancels the dialog
         user_defined_matrix = self.opFeatureSelection.SelectionMatrix.value
 
         # apply new feature matrix and make sure lazyflow applies the changes
-        if np.sum(user_defined_matrix != feat_matrix) == 0:
+        if np.sum(user_defined_matrix != feat_matrix) != 0:
             self.opFeatureSelection.SelectionMatrix.setValue(feat_matrix)
             self.opFeatureSelection.SelectionMatrix.setDirty() # this does not do anything!?!?
             self.opFeatureSelection.setupOutputs()
@@ -353,8 +376,9 @@ class FeatureSelectionDialog(QtGui.QDialog):
                 raise Exception
             segmentation[single_layer_of_segmentation != 0] = i
 
+
         # revert changes to matrix and other operators
-        if np.sum(user_defined_matrix != feat_matrix) == 0:
+        if np.sum(user_defined_matrix != feat_matrix) != 0:
             self.opFeatureSelection.SelectionMatrix.setValue(user_defined_matrix)
             self.opFeatureSelection.SelectionMatrix.setDirty() # this does not do anything!?!?
             self.opFeatureSelection.setupOutputs()
@@ -428,15 +452,9 @@ class FeatureSelectionDialog(QtGui.QDialog):
 
 
     def _run_selection(self):
-        pyqtRemoveInputHook()
-        IPython.embed()
-        pyqtRestoreInputHook()
-        if not self._initialized_feature_matrix:
-            self.current_status_label.setText("Current Status: Feature calculation")
-            self.current_status_label.repaint()
-            self.featureLabelMatrix_all_features = self.opFeatureMatrixCaches.LabelAndFeatureMatrix.value
-            self.n_features = self.featureLabelMatrix_all_features.shape[1] - 1
-            self._initialized_feature_matrix = True
+        # pyqtRemoveInputHook()
+        # IPython.embed()
+        # pyqtRestoreInputHook()
 
 
         # self.opFeatureSelection.change_feature_cache_size()
