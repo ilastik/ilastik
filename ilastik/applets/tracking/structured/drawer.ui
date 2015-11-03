@@ -40,9 +40,6 @@
      <property name="text">
       <string>With Merger Resolution</string>
      </property>
-     <property name="checked">
-      <bool>true</bool>
-     </property>
     </widget>
    </item>
    <item row="18" column="3" colspan="2">
@@ -380,7 +377,7 @@
       <double>1000000.000000000000000</double>
      </property>
      <property name="value">
-      <double>1.000000000000000</double>
+      <double>0.000000000000000</double>
      </property>
     </widget>
    </item>
@@ -435,7 +432,7 @@
       <double>1000000.000000000000000</double>
      </property>
      <property name="value">
-      <double>1.000000000000000</double>
+      <double>0.000000000000000</double>
      </property>
     </widget>
    </item>
@@ -548,7 +545,7 @@
       <double>1000000.000000000000000</double>
      </property>
      <property name="value">
-      <double>1.000000000000000</double>
+      <double>0.000000000000000</double>
      </property>
     </widget>
    </item>
@@ -829,7 +826,7 @@
       <double>1000000.000000000000000</double>
      </property>
      <property name="value">
-      <double>1.000000000000000</double>
+      <double>0.000000000000000</double>
      </property>
     </widget>
    </item>
@@ -845,7 +842,7 @@
       <double>1000000.000000000000000</double>
      </property>
      <property name="value">
-      <double>1.000000000000000</double>
+      <double>0.000000000000000</double>
      </property>
     </widget>
    </item>
@@ -965,7 +962,7 @@
       <string notr="true"/>
      </property>
      <property name="text">
-      <string>Ones</string>
+      <string>Uniform</string>
      </property>
     </widget>
    </item>
