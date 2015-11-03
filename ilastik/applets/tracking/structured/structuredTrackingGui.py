@@ -171,8 +171,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self.operator.labels = self.operator.Labels.value
         self.initializeAnnotations()
 
-
-
         self._drawer.trainingToHardConstraints.setChecked(False)
 
         self.topLevelOperatorView._detectionWeight = self._detectionWeight
@@ -509,10 +507,9 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             self._drawer.maxNearestNeighborsSpinBox.setValue(self._maxNearestNeighbors)
 
         forbidden_cost = 0.0
-        ep_gap = 0.05
+        ep_gap = 0.001
         withTracklets=False
         withMergerResolution=True
-        ndim=2                                  # TODO: test ndim = 3
         transition_parameter = 5.0
         borderAwareWidth = 0.0
 
@@ -521,7 +518,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             sigmas.append(0.0)
         uncertaintyParams = pgmlink.UncertaintyParameter(1, pgmlink.DistrId.PerturbAndMAP, sigmas)
 
-        cplex_timeout=float(20.0)#float(1e75)
+        cplex_timeout=float(1000.0)#float(1e75)
         transitionClassifier = None
 
         detectionWeight = self._detectionWeight
