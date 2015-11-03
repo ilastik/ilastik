@@ -3,9 +3,7 @@ import math
 from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.rtype import List
 from lazyflow.stype import Opaque
-print "------------------------------------------------------------------>BEFORE IMPORT pgmlink"
 import pgmlink
-print "..................................................................>AFTER IMPORT pgmlink"
 from ilastik.applets.tracking.base.opTrackingBase import OpTrackingBase
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 from ilastik.applets.tracking.base.trackingUtilities import relabelMergers
