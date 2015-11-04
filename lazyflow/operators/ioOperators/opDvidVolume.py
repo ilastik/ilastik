@@ -114,8 +114,8 @@ class OpDvidVolume(Operator):
         self.Output.meta.ram_usage_per_requested_pixel = 2 * dtype.type().nbytes * num_channels
 
     def execute(self, slot, subindex, roi, result):
-        if numpy.prod(roi.stop - roi.start) > 1e7:
-            logger.error("Requesting an ENORMOUS volume from DVID: {}\n"\
+        if numpy.prod(roi.stop - roi.start) > 1e9:
+            logger.error("Requesting a very large volume from DVID: {}\n"\
                          "Is that really what you meant to do?"
                          .format( roi ))
             
