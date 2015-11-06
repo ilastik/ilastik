@@ -39,8 +39,8 @@ if [ ! -d "$ILASTIK_RELEASE_DIR/lib" ]; then
 fi
 
 
-CPLEX_LIB_DIR=`echo $CPLEX_ROOT_DIR/cplex/lib/*/static_pic`
-CONCERT_LIB_DIR=`echo $CPLEX_ROOT_DIR/concert/lib/*/static_pic`
+CPLEX_LIB_DIR=`echo $CPLEX_ROOT_DIR/cplex/lib/x86-64*/static_pic`
+CONCERT_LIB_DIR=`echo $CPLEX_ROOT_DIR/concert/lib/x86-64*/static_pic`
 
 #
 # Are we using clang?
@@ -58,9 +58,9 @@ fi
 # Create a shared library from each static cplex library.
 #
 if [ `uname` == "Darwin" ]; then
-    g++ -fpic -shared -Wl,-all_load ${CPLEX_LIB_DIR}/libcplex.a     $STDLIB_ARG -o ${ILASTIK_RELEASE_DIR}/lib/libcplex.dylib    -Wl,-install_name,@loader_path/libcplex.dylib
-    g++ -fpic -shared -Wl,-all_load ${CONCERT_LIB_DIR}/libconcert.a $STDLIB_ARG -o ${ILASTIK_RELEASE_DIR}/lib/libconcert.dylib  -Wl,-install_name,@loader_path/libconcert.dylib
-    g++ -fpic -shared -Wl,-all_load ${CPLEX_LIB_DIR}/libilocplex.a  $STDLIB_ARG -o ${ILASTIK_RELEASE_DIR}/lib/libilocplex.dylib -Wl,-install_name,@loader_path/libilocplex.dylib \
+    g++ -fpic -shared -Wl,-all_load ${CPLEX_LIB_DIR}/libcplex.a     $STDLIB_ARG -o ${ILASTIK_RELEASE_DIR}/lib/libcplex.dylib    -Wl,-no_compact_unwind -Wl,-install_name,@loader_path/libcplex.dylib
+    g++ -fpic -shared -Wl,-all_load ${CONCERT_LIB_DIR}/libconcert.a $STDLIB_ARG -o ${ILASTIK_RELEASE_DIR}/lib/libconcert.dylib  -Wl,-no_compact_unwind -Wl,-install_name,@loader_path/libconcert.dylib
+    g++ -fpic -shared -Wl,-all_load ${CPLEX_LIB_DIR}/libilocplex.a  $STDLIB_ARG -o ${ILASTIK_RELEASE_DIR}/lib/libilocplex.dylib -Wl,-no_compact_unwind -Wl,-install_name,@loader_path/libilocplex.dylib \
         -L${ILASTIK_RELEASE_DIR}/lib -lcplex -lconcert
 else
     g++ -fpic -shared -Wl,-whole-archive ${CPLEX_LIB_DIR}/libcplex.a     -Wl,-no-whole-archive -o ${ILASTIK_RELEASE_DIR}/lib/libcplex.so
