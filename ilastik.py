@@ -73,6 +73,7 @@ def main():
             parsed_args.project = workflow_cmdline_args[0]
             workflow_cmdline_args = []
 
+    parsed_args.project="/groups/branson/home/cervantesj/buffer.ilp"
     # DEVELOPERS:
     # Provide your command-line args here. See examples below.
     

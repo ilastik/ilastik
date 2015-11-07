@@ -173,6 +173,7 @@ class AnimalConservationTrackingWorkflow( Workflow ):
         opTracking.ObjectFeaturesWithDivFeatures.connect( opObjExtraction.RegionFeaturesAll)
         opTracking.ComputedFeatureNames.connect( opObjExtraction.ComputedFeatureNamesVigra )
         opTracking.ComputedFeatureNamesWithDivFeatures.connect( opObjExtraction.ComputedFeatureNamesAll )
+        opTracking.DivisionProbabilities.connect(opCellClassification.Probabilities )
         opTracking.DetectionProbabilities.connect( opCellClassification.Probabilities )
         opTracking.NumLabels.connect( opCellClassification.NumLabels )
 
