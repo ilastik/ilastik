@@ -48,8 +48,8 @@ from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui, H5VolumeSelectionDlg
 
-import IPython
-import featureSelectionDlg
+# import IPython
+from FeatureSelectionDialog import FeatureSelectionDialog
 
 try:
     from volumina.view3d.volumeRendering import RenderingManager
@@ -337,12 +337,7 @@ class PixelClassificationGui(LabelingGui):
     def initFeatSelDlg(self):
         thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
 
-        from FeatureSelectionDialog import FeatureSelectionDialog
         self.featSelDlg = FeatureSelectionDialog(thisOpFeatureSelection, self.topLevelOperatorView)
-
-        '''
-        self.featSelDlg = featureSelectionDlg.FeatureSelectionDlg()
-        self.featSelDlg.accepted.connect(self.selectFeatures)'''
 
     def show_feature_selection_dialog(self):
         self.featSelDlg.exec_()
@@ -351,91 +346,9 @@ class PixelClassificationGui(LabelingGui):
     def update_features_from_dialog(self):
         thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
 
-
         thisOpFeatureSelection.SelectionMatrix.setValue(self.featSelDlg.selected_features_matrix)
         thisOpFeatureSelection.SelectionMatrix.setDirty()
         thisOpFeatureSelection.setupOutputs()
-        '''
-        method = self.featSelDlg.selectedMethod
-
-        QApplication.instance().setOverrideCursor( QCursor(Qt.WaitCursor) )
-
-        pyqtRemoveInputHook()  # i need to do this if i want to get into the ipython shell. This line (and the one on
-        # the bottom) must be removed before release because they freeze the gui
-
-        import IPython
-        import numpy as np
-
-
-        # activate all features
-        current_matrix = thisOpFeatureSelection.SelectionMatrix.value
-        current_matrix[:,1:] = True
-        current_matrix[0, 0] = True
-        current_matrix[1:, 0] = False # do not use any other feature than gauss smooth on sigma=0.3
-        thisOpFeatureSelection.SelectionMatrix.setValue(current_matrix)
-        thisOpFeatureSelection.SelectionMatrix.setDirty() # this does not do anything!?!?
-        IPython.embed()
-        thisOpFeatureSelection.setupOutputs()
-
-
-        # we should be able to modify this via a gui element
-        # this should also be controlled by the gui
-
-        if method == "Filter":
-            self.topLevelOperatorView.opFilterFeatureSelection.NumberOfSelectedFeatures.setValue(8)
-            selected_feature_ids = self.topLevelOperatorView.opFilterFeatureSelection.SelectedFeatureIDs.value
-        elif method == "Wrapper":
-            selected_feature_ids = self.topLevelOperatorView.opWrapperFeatureSelection.SelectedFeatureIDs.value
-        elif method == "Gini":
-            self.topLevelOperatorView.opGiniFeatureSelection.NumberOfSelectedFeatures.setValue(8)
-            selected_feature_ids = self.topLevelOperatorView.opGiniFeatureSelection.SelectedFeatureIDs.value
-        else:
-            raise Exception("invalid feature selection method: %s" % method)
-
-
-        # now it gets pretty messy... There must be another way to identify which values in the feature matrix need to
-        # be modified...
-        feature_channel_names = self.topLevelOperatorView.FeatureImages.meta['channel_names']
-        scales = thisOpFeatureSelection.Scales.value
-        featureIDs = thisOpFeatureSelection.FeatureIds.value
-        current_matrix = thisOpFeatureSelection.SelectionMatrix.value
-        new_matrix = np.zeros(current_matrix.shape, 'bool')  # initialize new matrix as all False
-
-        # now find out where i need to make changes in the matrix
-        # matrix is len(features) by len(scales)
-        for feature in selected_feature_ids:
-            channel_name = feature_channel_names[feature]
-            eq_sign_pos = channel_name.find("=")
-            right_bracket_pos = channel_name.find(")")
-            scale = float(channel_name[eq_sign_pos + 1 : right_bracket_pos])
-            if "Smoothing" in channel_name:
-                featureID = "GaussianSmoothing"
-            elif "Laplacian" in channel_name:
-                featureID = "LaplacianOfGaussian"
-            elif "Magnitude" in channel_name:
-                featureID = "GaussianGradientMagnitude"
-            elif "Difference" in channel_name:
-                featureID = "DifferenceOfGaussians"
-            elif "Structure" in channel_name:
-                featureID = "StructureTensorEigenvalues"
-            elif "Hessian" in channel_name:
-                featureID = "HessianOfGaussianEigenvalues"
-            else:
-                raise Exception("Unkown feature encountered!")
-
-            col_position_in_matrix = scales.index(scale)
-            row_position_in_matrix = featureIDs.index(featureID)
-            new_matrix[row_position_in_matrix, col_position_in_matrix] = True
-
-
-        thisOpFeatureSelection.SelectionMatrix.setValue(new_matrix)
-        thisOpFeatureSelection.SelectionMatrix.setDirty()
-        thisOpFeatureSelection.setupOutputs()
-
-        QApplication.instance().restoreOverrideCursor()
-
-        pyqtRestoreInputHook()
-        '''
 
     def initViewerControlUi(self):
         localDir = os.path.split(__file__)[0]
@@ -683,12 +596,15 @@ class PixelClassificationGui(LabelingGui):
         # If we're changing modes, enable/disable our controls and other applets accordingly
         if self.interactiveModeActive != checked:
             if checked:
+                self.labelingDrawerUi.suggestFeaturesButton.setEnabled(False)
                 self.labelingDrawerUi.labelListView.allowDelete = False
                 self.labelingDrawerUi.AddLabelButton.setEnabled( False )
             else:
                 num_label_classes = self._labelControlUi.labelListModel.rowCount()
                 self.labelingDrawerUi.labelListView.allowDelete = ( num_label_classes > self.minLabelNumber )
                 self.labelingDrawerUi.AddLabelButton.setEnabled( ( num_label_classes < self.maxLabelNumber ) )
+                self.labelingDrawerUi.suggestFeaturesButton.setEnabled(True)
+
         self.interactiveModeActive = checked
 
         self.topLevelOperatorView.FreezePredictions.setValue( not checked )
