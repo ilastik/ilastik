@@ -22,17 +22,20 @@ from ilastik.utility import OpMultiLaneWrapper
 from lazyflow import graph
 
 from os import times
+import re
+
 
 
 # just a container class, nothing fancy here
 class FeatureSelectionResult(object):
-    def __init__(self, feature_matrix, segmentation, parameters, selection_method, oob_err = None, feature_calc_time = None):
+    def __init__(self, feature_matrix, feature_ids, segmentation, parameters, selection_method, oob_err = None, feature_calc_time = None):
         self.feature_matrix = feature_matrix
         self.segmentation = segmentation
         self.parameters = parameters
         self.selection_method = selection_method
         self.oob_err = oob_err
         self.feature_calc_time = feature_calc_time
+        self.feature_ids = feature_ids
 
 
         self.name = self._create_name()
@@ -337,20 +340,23 @@ class FeatureSelectionDialog(QtGui.QDialog):
             self.all_feature_sets_combo_box.resize(500, 100)
             self.select_set_button = QtGui.QPushButton("Select Feature Set")
             self.cancel_button = QtGui.QPushButton("Cancel")
-            # self.current_status_label = QtGui.QLabel("\t\t")
+            show_features_of_selected_set = QtGui.QPushButton("Show Feature Names")
+            show_features_of_selected_set.clicked.connect(self._show_feature_name_dialog)
 
             bottom_widget = QtGui.QWidget()
             bottom_layout = QtGui.QHBoxLayout()
             # bottom_layout.addWidget(self.current_status_label)
             #bottom_layout.addStretch(1)
             bottom_layout.addWidget(self.all_feature_sets_combo_box)
+            bottom_layout.addWidget(show_features_of_selected_set)
             bottom_layout.addWidget(self.select_set_button)
             bottom_layout.addWidget(self.cancel_button)
 
             # bottom_layout.setStretchFactor(self.current_status_label, 1)
-            bottom_layout.setStretchFactor(self.all_feature_sets_combo_box, 2)
-            bottom_layout.setStretchFactor(self.select_set_button, 1)
-            bottom_layout.setStretchFactor(self.cancel_button, 1)
+            bottom_layout.setStretchFactor(self.all_feature_sets_combo_box, 4)
+            bottom_layout.setStretchFactor(show_features_of_selected_set, 1)
+            bottom_layout.setStretchFactor(self.select_set_button, 2)
+            bottom_layout.setStretchFactor(self.cancel_button, 2)
 
             bottom_widget.setLayout(bottom_layout)
 
@@ -367,17 +373,39 @@ class FeatureSelectionDialog(QtGui.QDialog):
 
             self._gui_initialized = True
 
-    def _add_random_layers(self, n=2):
-        '''
-        This function simply adds n noise layers to the layerstack
+    def _show_feature_name_dialog(self):
+        dialog = QtGui.QDialog()
+        dialog.resize(350, 650)
 
-        :param n: number of noise layers
-        '''
-        for i in range(n):
-            f = np.round(np.random.random((450, 450))*10).astype("int")
-            dummy_result = FeatureSelectionResult(None, f, self._selection_params, "None")
-            dummy_result.change_name("dummy_result%d" % i)
-            self._add_feature_set_to_results(dummy_result)
+        ok_button = QtGui.QPushButton("ok")
+        ok_button.clicked.connect(dialog.accept)
+
+        text_edit = QtGui.QTextEdit()
+        text_edit.setReadOnly(True)
+
+        layout = QtGui.QVBoxLayout()
+        layout.addWidget(text_edit)
+        layout.addWidget(ok_button)
+
+        layout.setStretchFactor(text_edit, 1)
+
+        dialog.setLayout(layout)
+
+        if self._selected_feature_set_id is None:
+            text_edit.setText("No feature set selected!")
+        else:
+            selected_ids = np.sort(self._feature_selection_results[self._selected_feature_set_id].feature_ids)
+            text = "<html>"
+            channel_names = self.opPixelClassification.FeatureImages.meta['channel_names']
+
+            for id in selected_ids:
+                this_channel_name = channel_names[id]
+                this_channel_name = this_channel_name.replace("\xcf\x83", "&sigma;")
+                text += this_channel_name + "<br>"
+            text += "</html>"
+            text_edit.setText(text)
+
+        dialog.exec_()
 
     def _add_color_layer(self, data, name=None, visible=False):
         '''
@@ -624,6 +652,29 @@ class FeatureSelectionDialog(QtGui.QDialog):
 
         return new_matrix
 
+    def _convert_featureMatrix_to_featureIDs(self, feature_matrix):
+        feature_channel_names = self.opPixelClassification.FeatureImages.meta['channel_names']
+        feature_ids = ["Gaussian Smoothing", "Laplacian of Gaussian", "Gaussian Gradient Magnitude",
+                       "Difference of Gaussians", "Structure Tensor Eigenvalues", "Hessian of Gaussian Eigenvalues"]
+        scales = self.opFeatureSelection.Scales.value
+        featureIDs = self.opFeatureSelection.FeatureIds.value
+
+        ids = []
+
+        for i in range(feature_matrix.shape[0]):
+            for j in range(feature_matrix.shape[1]):
+                if feature_matrix[i, j]:
+                    id = feature_ids[i]
+                    scale = scales[j]
+                    for k in range(len(feature_channel_names)):
+                        m1 = re.findall(id, feature_channel_names[k])
+                        m2 = re.findall(str(scale), feature_channel_names[k])
+                        if (len(m1) > 0) & (len(m2) > 0):
+                            ids += [k]
+
+
+        return ids
+
     def _auto_select_num_features(self, feature_order):
         '''
         Determines the optimal number of features. This is achieved by sequentially adding features from the
@@ -677,7 +728,9 @@ class FeatureSelectionDialog(QtGui.QDialog):
         if not self._initialized_current_features_segmentation_layer:
             self.opFeatureSelection.setupOutputs()  # deletes cache for realistic feature computation time
             segmentation_current_features, oob_user, time_user = self.retrieve_segmentation(user_defined_matrix)
+            selected_ids = self._convert_featureMatrix_to_featureIDs(user_defined_matrix)
             current_features_result = FeatureSelectionResult(user_defined_matrix,
+                                                             selected_ids,
                                                              segmentation_current_features,
                                                              {'num_of_feat': 'user', 'c': 'None'},
                                                              'user_features', oob_user, time_user)
@@ -725,7 +778,9 @@ class FeatureSelectionDialog(QtGui.QDialog):
         if not self._initialized_all_features_segmentation_layer:
             if np.sum(all_features_active_matrix != user_defined_matrix) != 0:
                 segmentation_all_features, oob_all, time_all = self.retrieve_segmentation(all_features_active_matrix)
+                selected_ids = self._convert_featureMatrix_to_featureIDs(all_features_active_matrix)
                 all_features_result = FeatureSelectionResult(all_features_active_matrix,
+                                                             selected_ids,
                                                  segmentation_all_features,
                                                  {'num_of_feat': 'all', 'c': 'None'},
                                                  'all_features', oob_all, time_all)
@@ -769,6 +824,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
         new_matrix = self._convert_featureIDs_to_featureMatrix(selected_feature_ids)
         new_segmentation, new_oob, new_time = self.retrieve_segmentation(new_matrix)
         new_feature_selection_result = FeatureSelectionResult(new_matrix,
+                                                              selected_feature_ids,
                                                               new_segmentation,
                                                               self._selection_params,
                                                               self._selection_method,
