@@ -438,6 +438,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                                 for track in trackSet:
 
                                     if not foundAllArcs:
+                                        #print "[structuredTrackingGui] Transitions Arc: (", time-1, ",", int(previous_label), ") ---> (", time, ",", int(label), ")"
+                                        print "[structuredTrackingGui] Increasing max nearest neighbors!"
                                         break
 
                                    # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
@@ -587,11 +589,16 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         #     transitionClassifier
         # )
 
-        self._detectionWeight = structuredLearningTracker.weight(0)
-        self._divisionWeight = structuredLearningTracker.weight(1)
-        self._transitionWeight = structuredLearningTracker.weight(2)
-        self._appearanceWeight = structuredLearningTracker.weight(3)
-        self._disappearanceWeight = structuredLearningTracker.weight(4)
+        norm = 0
+        for i in range(5):
+            norm += structuredLearningTracker.weight(i)*structuredLearningTracker.weight(i)
+        norm = math.sqrt(norm)
+
+        self._detectionWeight = structuredLearningTracker.weight(0)/norm
+        self._divisionWeight = structuredLearningTracker.weight(1)/norm
+        self._transitionWeight = structuredLearningTracker.weight(2)/norm
+        self._appearanceWeight = structuredLearningTracker.weight(3)/norm
+        self._disappearanceWeight = structuredLearningTracker.weight(4)/norm
 
         self.mainOperator.detectionWeight = self._detectionWeight
         self.mainOperator.divisionWeight = self._divisionWeight
