@@ -86,15 +86,15 @@ class FeatureSelectionDialog(QtGui.QDialog):
         # and labels matrix required by the feature selection operators
         self.opFeatureMatrixCaches = self.opPixelClassification.opFeatureMatrixCaches
 
-        '''the FeatureSelectionDialog will only display one slice of the dataset. This is for RAM saving reasons. By
-        using only one slice, we can simple predict the segmentation for each feature set and store it in RAM. If we
-        allowed to show the whole dataset, then we would have to copy the opFeatureSelection and opPixelClassification
-        once for each feature set. This would result in too much feature computation time as well as too much RAM
-        usage.
-        However, this shortcoming could be overcome by creating somethíng like an opFeatureSubset. Then we would enable
+        '''FIXME / FixMe: the FeatureSelectionDialog will only display one slice of the dataset. This is for RAM saving
+        reasons. By using only one slice, we can simple predict the segmentation of that slice for each feature set and
+        store it in RAM. If we allowed to show the whole dataset, then we would have to copy the opFeatureSelection and
+        opPixelClassification once for each feature set. This would result in too much feature computation time as
+        well as too much RAM usage.
+        However, this shortcoming could be overcome by creating something like an opFeatureSubset. Then we would enable
         all features in the opFeatureSelection and the feature sets are created by 'filtering' the output of the
         opFeatureSelection. Thereby, provided that features in the opFeatureSelection are cached (are they?) the
-        features would not have to be recalculated for each feature set. (ToDo, but time's up...)'''
+        features would not have to be recalculated for each feature set.'''
         self._xysliceID = -1
 
         self._initialized_all_features_segmentation_layer = False
@@ -263,7 +263,6 @@ class FeatureSelectionDialog(QtGui.QDialog):
             self.c_widget = QtGui.QWidget()
 
             text_c_widget = QtGui.QLabel("Set Size Penalty") # not a good text
-            text_c_widget.setToolTip("small (c < 0.1): finds a large feature set with excellent accuracy (slow prediction)\nlarge (c > 0.1): finds a small feature set with good accuracy (faster prediction)")
             self.spinbox_c_widget = QtGui.QDoubleSpinBox()
             # may have to set increment to 0.01
             self.spinbox_c_widget.setSingleStep(0.03)
@@ -276,8 +275,29 @@ class FeatureSelectionDialog(QtGui.QDialog):
 
             # run button
             self.run_button = QtGui.QPushButton("Run Feature Selection")
-            self.run_button.setToolTip("You can create several feature sets and then compare them using the viewer!")
 
+
+            # text box with explanations
+            text_box = QtGui.QTextEdit()
+            text_box.setReadOnly(True)
+            text_box.setText("<html><b>1) Select the desired feature selection method</b><br>" +
+                             "- Gini Importance: inaccurate but fast<br>" +
+                             "- Filter Method: recommended<br>" +
+                             "- Wrapper Method: slow but provides the best results<br><br>" +
+                             "<b>2) Choose the parameters</b><br>" +
+                             "- choose <u>number of features</u>: we recommend number of features = 0 (if applicable)<br><br>" +
+                             "- choose <u>c</u>: <br>small c (&lt; 0.1): excellent accuracy but larger feature set (=slower predictions) <br>larger c (&gt; 0.1): slightly reduced accuracy but smaller feature set (=faster predictions)<br><br>" +
+                             "<b>3) More feature sets</b><br>" +
+                             "add as many feature sets (with different parameters) as you like<br><br>" +
+                             "<b>4) Compare feature Sets</b><br>" +
+                             "Use the viewer (middle) and the segmentation layers (right) to choose the best feature set<br><br>" +
+                             "<b>5) Finish</b><br>" +
+                             "Select the best set in the box at the bottom and hit 'Select Feature Set'<br><br>"
+                             "<br>" +
+                             "<b>Explanations:</b><br>" +
+                             "<u>oob</u>: out of bag error (in &#37;), lower is better<br>" +
+                             "<u>ctime</u>: feature computation time (in seconds), lower is better<br><br>" +
+                             "If the segmentation (shown in the viewer) differs a lot between the feature sets and the reference (usualls all features) but the oob values are similar then this is an indication that you should place more labels, especially in the regions where there were differences. Return to the feature selection once you added more labels</html>")
 
             # now add these widgets together to form the left_side_layout
             left_side_layout.addWidget(method_label)
@@ -285,7 +305,9 @@ class FeatureSelectionDialog(QtGui.QDialog):
             left_side_layout.addWidget(self.number_of_features_selection_widget)
             left_side_layout.addWidget(self.c_widget)
             left_side_layout.addWidget(self.run_button)
-            left_side_layout.addStretch(1)
+            left_side_layout.addWidget(text_box)
+            left_side_layout.setStretchFactor(text_box, 1)
+            # left_side_layout.addStretch(1)
             # assign that layout to the left side widget
             left_side_panel.setLayout(left_side_layout)
 
@@ -440,6 +462,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
         self.editor.dataShape = list(data_shape)
         new_layer = ColortableLayer(a, self.colortable)
         new_layer.visible = visible
+        new_layer.opacity = 0.5
         if name is not None:
             new_layer.name = name
         self.layerstack.append(new_layer)
@@ -514,7 +537,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
 
         end_time = times()[4]
 
-        oob_err = np.mean(self.opPixelClassification.opTrain.outputs['Classifier'].value.oobs)
+        oob_err = 100. * np.mean(self.opPixelClassification.opTrain.outputs['Classifier'].value.oobs)
 
         # revert changes to matrix and other operators
         if np.sum(user_defined_matrix != feat_matrix) != 0:
@@ -652,6 +675,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
         user_defined_matrix = self.opFeatureSelection.SelectionMatrix.value
 
         if not self._initialized_current_features_segmentation_layer:
+            self.opFeatureSelection.setupOutputs()  # deletes cache for realistic feature computation time
             segmentation_current_features, oob_user, time_user = self.retrieve_segmentation(user_defined_matrix)
             current_features_result = FeatureSelectionResult(user_defined_matrix,
                                                              segmentation_current_features,

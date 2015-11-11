@@ -666,17 +666,17 @@ class OpFilterFeatureSelection(Operator):
         self.SelectedFeatureIDs.meta.shape = (1,)
         self.SelectedFeatureIDs.meta.dtype = list
         self._filter_method = "ICAP"
+        feature_label_matrix = self.FeatureLabelMatrix[0].value
+        labels = feature_label_matrix[:, 0]  # first row is labels
+        data = feature_label_matrix[:, 1:]  # the rest is data
+        self.feature_selector = feature_selection.filter_feature_selection.FilterFeatureSelection(data, labels.astype("int"), self._filter_method)
 
         if self.FilterMethod.connected():
             self._filter_method = self.FilterMethod.value
 
     def execute(self, slot, subindex, roi, result):
-        feature_label_matrix = self.FeatureLabelMatrix[0].value
-        labels = feature_label_matrix[:, 0]  # first row is labels
-        data = feature_label_matrix[:, 1:]  # the rest is data
 
-        feature_selector = feature_selection.filter_feature_selection.FilterFeatureSelection(data, labels.astype("int"), self._filter_method)
-        selected_features = feature_selector.run(self.NumberOfSelectedFeatures.value)
+        selected_features = self.feature_selector.run(self.NumberOfSelectedFeatures.value)
 
         # selected_features_names = [self.FeatureImages[0].meta['channel_names'][i] for i in selected_features]
         # how do I convert feature names to internal feature IDs?
@@ -769,7 +769,28 @@ class OpGiniFeatureSelection(Operator):
         rf.fit(data, labels)
         importances = rf.feature_importances_
 
-        result = [np.argsort(importances)[::-1][:self.NumberOfSelectedFeatures.value]]
+        result = [np.argsort(importances)[-self.NumberOfSelectedFeatures.value:].astype("int")]
+
+        # this was an attempt to use Jaime's recursive feature elimination using gini importance. It provided worse
+        # results than simply choosing the k best features according to their importance, maybe I have a bug??
+        ''' removed_features = np.array([])
+        remaining_features = np.arange(data.shape[1])
+
+        pyqtRemoveInputHook()
+        import IPython
+        IPython.embed()
+        pyqtRestoreInputHook()
+
+        for i in range(data.shape[1]):
+            sorted_importances = np.argsort(importances)
+            removed_features = np.append(removed_features, [remaining_features[sorted_importances[0]]])
+            remaining_features = remaining_features[remaining_features != sorted_importances[0]]
+
+            rf.fit(data[:, remaining_features], labels)
+            importances = rf.feature_importances_
+
+        result = [removed_features[- self.NumberOfSelectedFeatures.value:].astype("int")]
+        '''
         return result
 
     def propagateDirty(self, slot, subindex, roi):
