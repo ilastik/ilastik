@@ -170,7 +170,7 @@
       <attribute name="title">
        <string>Two thresholds</string>
       </attribute>
-      <layout class="QHBoxLayout" name="horizontalLayout">
+      <layout class="QVBoxLayout" name="verticalLayout_3">
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_6">
          <item>
@@ -210,6 +210,13 @@
           </widget>
          </item>
         </layout>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="preserveIdentitiesCheckbox">
+         <property name="text">
+          <string>Preserve Identities</string>
+         </property>
+        </widget>
        </item>
       </layout>
      </widget>

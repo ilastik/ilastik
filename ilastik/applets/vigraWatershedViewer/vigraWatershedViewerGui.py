@@ -71,14 +71,6 @@ class VigraWatershedViewerGui(LayerViewerGui):
         self.topLevelOperatorView = topLevelOperatorView
         op = self.topLevelOperatorView
         
-        op.FreezeCache.setValue(True)
-        op.OverrideLabels.setValue( { 0: (0,0,0,0) } )
-
-        # Default settings (will be overwritten by serializer)
-        op.InputChannelIndexes.setValue( [] )
-        op.SeedThresholdValue.setValue( 0.0 )
-        op.MinSeedSize.setValue( 0 )
-
         # Init padding gui updates
         blockPadding = PreferencesManager().get( 'vigra watershed viewer', 'block padding', 10)
         op.WatershedPadding.notifyDirty( self.updatePaddingGui )
@@ -100,7 +92,6 @@ class VigraWatershedViewerGui(LayerViewerGui):
         
         # Init input channel gui updates
         op.InputChannelIndexes.notifyDirty( self.updateInputChannelGui )
-        op.InputChannelIndexes.setValue( [0] )
         op.InputImage.notifyMetaChanged( bind(self.updateInputChannelGui) )
         self.updateInputChannelGui()
 

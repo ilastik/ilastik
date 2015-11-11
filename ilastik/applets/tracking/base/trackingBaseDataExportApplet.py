@@ -25,12 +25,27 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
     This a specialization of the generic data export applet that
     provides a special viewer for trackign output.
     """
-        
+    def __init__(self, *args, **kwargs):
+        if 'default_export_filename' in kwargs:
+            default_export_filename = kwargs['default_export_filename']
+            del kwargs['default_export_filename']
+
+        super(TrackingBaseDataExportApplet, self).__init__(*args, **kwargs)
+        self.export_op = None
+        self._default_export_filename = default_export_filename
+
+    def set_exporting_operator(self, op):
+        self.export_op = op
+
     def getMultiLaneGui(self):
         if self._gui is None:
             # Gui is a special subclass of the generic gui
             from trackingBaseDataExportGui import TrackingBaseDataExportGui
             self._gui = TrackingBaseDataExportGui( self, self.topLevelOperator )
+
+            assert self.export_op is not None, "Exporting Operator must be set!"
+            self._gui.set_exporting_operator(self.export_op)
+            self._gui.set_default_export_filename(self._default_export_filename)
         return self._gui
 
 

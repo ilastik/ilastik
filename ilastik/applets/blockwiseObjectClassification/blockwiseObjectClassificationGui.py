@@ -73,7 +73,7 @@ class BlockwiseObjectClassificationGui( LayerViewerGui ):
                 # If the user pressed enter inside a spinbox, auto-click "Apply"
                 spinBox.installEventFilter( self )
         
-        #FIXME: we are relying on z being there because of the op5ifyer
+        #FIXME: we are relying on z being there because of the OpReorderAxes
         zIndex = self.topLevelOperatorView.RawImage.meta.axistags.index('z')
         nz = self.topLevelOperatorView.RawImage.meta.shape[zIndex]
         if nz==1:

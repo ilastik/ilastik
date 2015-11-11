@@ -373,6 +373,8 @@ class IlastikShell(QMainWindow):
         # No applet can be enabled unless his disableCount == 0
 
         self._refreshDrawerRecursionGuard = False
+        
+        self._applet_enabled_states = {}
 
         self.setupOpenFileButtons()
         self.updateShellProjectDisplay()
@@ -927,7 +929,9 @@ class IlastikShell(QMainWindow):
 
             applet = self._applets[applet_index]
             # Only show the combo if the applet is lane-aware and there is more than one lane loaded.
-            self.imageSelectionGroup.setVisible(applet.syncWithImageIndex and self.imageSelectionCombo.count() > 1)
+            self.imageSelectionGroup.setVisible(applet.syncWithImageIndex
+                                                and self.imageSelectionCombo.count() > 1
+                                                and self._applets[applet_index].getMultiLaneGui().allowLaneSelectionChange())
 
     def showCentralWidget(self, applet_index):
         if applet_index < len(self._applets):
@@ -1025,6 +1029,7 @@ class IlastikShell(QMainWindow):
         # Add all of the applet bar's items to the toolbox widget
         controlName = app.name
         controlGuiWidget = app.getMultiLaneGui().appletDrawer()
+        assert isinstance(controlGuiWidget, QWidget), "Not a widget: {}".format( controlGuiWidget )
 
         stackedWidget = QStackedWidget()
         stackedWidget.addWidget(controlGuiWidget)
@@ -1100,7 +1105,10 @@ class IlastikShell(QMainWindow):
         newProjectFile = ProjectManager.createBlankProjectFile(newProjectFilePath, workflow_class,
                                                                self._workflow_cmdline_args, h5_file_kwargs)
         self._loadProject(newProjectFile, newProjectFilePath, workflow_class, readOnly=False)
-        self.projectManager.saveProject()
+        
+        # If load failed, projectManager is None 
+        if self.projectManager:
+            self.projectManager.saveProject()
 
     def getProjectPathToCreate(self, defaultPath=None, caption="Create Ilastik Project"):
         """
@@ -1515,7 +1523,11 @@ class IlastikShell(QMainWindow):
                 if response == QMessageBox.Cancel:
                     return False
                 elif response == QMessageBox.Save:
-                    self.onSaveProjectActionTriggered()
+                    saveThread = self.onSaveProjectActionTriggered()
+                    # The save action is performed in a different thread,
+                    # But we're shutting down right now.
+                    # Just block here for the save to complete before we continue to shut down.
+                    saveThread.join()
         try:
             from eventcapture.eventRecordingApp import EventRecordingApp
 
@@ -1548,8 +1560,16 @@ class IlastikShell(QMainWindow):
             self.setAppletEnabled(applet, enabled)
 
     def setAppletEnabled(self, applet, enabled):
+        # We immediately track the enabled status in a member dict instead 
+        #  of checking with the applet gui itself, in case isAppletEnabled() 
+        #  gets called before _setAppletEnabled gets a chance to execute.
+        self._applet_enabled_states[applet] = enabled
+
         # Post this to the gui thread
         self.thunkEventHandler.post(self._setAppletEnabled, applet, enabled)
+
+    def isAppletEnabled(self, applet):
+        return self._applet_enabled_states[applet]
 
     def newServerConnected(self, name):
         # iterate over all other applets and inform about new connection if relevant

@@ -33,7 +33,7 @@ except ImportError as e:
 try:
     import carving 
 except ImportError as e:
-    logger.warn( "Failed to import carving workflow; check cylemon dependency: " + str(e) )
+    logger.warn( "Failed to import carving workflow; check vigra dependency: " + str(e) )
 
 try:
     import tracking.manual
@@ -51,18 +51,16 @@ except ImportError as e:
     logger.warn( "Failed to import automatic tracking workflow (conservation tracking). For this workflow, see the installation"\
                  "instructions on our website ilastik.org; check dependencies: " + str(e) )
 
-# try:
-#     import tracking.chaingraph
-# except ImportError as e:
-#     logger.warn( "Failed to import automatic tracking workflow (chaingraph tracking). For this workflow, see the installation"\
-#              "instructions on our website ilastik.org; check dependencies: " + str(e) )
-
-# Examples
 try:
     import nanshe.nansheWorkflow
 except ImportError as e:
     if ilastik.config.cfg.getboolean('ilastik', 'debug'):
         logger.warn( "Failed to import nanshe workflow. Check dependencies: " + str(e) )
+
+try:
+    import iiboostPixelClassification
+except ImportError as e:
+    logger.warn( "Failed to import the IIBoost Synapse detection workflow.  Check IIBoost dependency." )
 
 import examples.dataConversion
 
@@ -74,4 +72,3 @@ if ilastik.config.cfg.getboolean('ilastik', 'debug'):
     import examples.deviationFromMean
     import examples.labeling
     import examples.connectedComponents
-    import tracking.chaingraph

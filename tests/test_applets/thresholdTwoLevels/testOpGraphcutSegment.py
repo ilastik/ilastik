@@ -60,8 +60,9 @@ def getTestVolume():
     return (fullVolume, fullLabels)
 
 
-@unittest.skipIf(not have_opengm, "OpenGM not available")
 class TestOpGraphCut(unittest.TestCase):
+
+    @unittest.skipIf(not have_opengm, "OpenGM not available")
     def setUp(self):
         self.fullVolume, self.labels = getTestVolume()
 
@@ -78,7 +79,7 @@ class TestOpGraphCut(unittest.TestCase):
 
         # check whether no new blocks introduced
         mask = np.where(self.labels > 0, 0, 1)
-        masked = out * mask
+        masked = out.view(np.ndarray) * mask
         assert_array_equal(masked, 0*masked)
 
         # check whether the interior was labeled 1
@@ -88,8 +89,9 @@ class TestOpGraphCut(unittest.TestCase):
     #TODO test dirty propagation
 
 
-@unittest.skipIf(not have_opengm, "OpenGM not available")
 class TestOpObjectsSegment(unittest.TestCase):
+    
+    @unittest.skipIf(not have_opengm, "OpenGM not available")
     def setUp(self):
         self.vol, self.labels = getTestVolume()
 
@@ -120,7 +122,7 @@ class TestOpObjectsSegment(unittest.TestCase):
 
         # check whether no new blocks introduced
         mask = np.where(self.labels > 0, 0, 1)
-        masked = out * mask
+        masked = out.view(np.ndarray) * mask
         assert_array_equal(masked, 0*masked)
 
         # check whether the interior was labeled 1
@@ -174,3 +176,9 @@ class TestOpObjectsSegment(unittest.TestCase):
             op.LabelImage.connect(piper.Output)
 
     #TODO test dirty propagation
+if __name__ == "__main__":
+    import sys
+    import nose
+    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+    nose.run(defaultTest=__file__)

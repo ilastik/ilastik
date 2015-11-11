@@ -34,7 +34,7 @@ from lazyflow.utility.timer import Timer
 from ilastik.applets.base.applet import DatasetConstraintError
 
 #carving Cython module
-from cylemon.segmentation import MSTSegmentor
+from watershed_segmentor import WatershedSegmentor
 
 import logging
 logger = logging.getLogger(__name__)
@@ -84,12 +84,16 @@ class OpFilter(Operator):
                 # true 3D volume
                 if volume_filter == OpFilter.HESSIAN_BRIGHT:
                     logger.info( "lowest eigenvalue of Hessian of Gaussian" )
-                    result_view[...] = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,:,2]
+                    options = vigra.blockwise.BlockwiseConvolutionOptions3D()
+                    options.stdDev = (sigma, )*3 
+                    result_view[...] = vigra.blockwise.hessianOfGaussianLastEigenvalue(fvol,options)[:,:,:]
                     result_view[:] = numpy.max(result_view) - result_view
                 
                 elif volume_filter == OpFilter.HESSIAN_DARK:
                     logger.info( "greatest eigenvalue of Hessian of Gaussian" )
-                    result_view[...] = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,:,0]
+                    options = vigra.blockwise.BlockwiseConvolutionOptions3D()
+                    options.stdDev = (sigma, )*3 
+                    result_view[...] = vigra.blockwise.hessianOfGaussianFirstEigenvalue(fvol,options)[:,:,:]
                      
                 elif volume_filter == OpFilter.STEP_EDGES:
                     logger.info( "Gaussian Gradient Magnitude" )
@@ -164,9 +168,7 @@ class OpSimpleWatershed(Operator):
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
-        
-        # Use a SIGNED int32 becacuse that's what cylemon.segmentation expects. (Unfortunately.)
-        self.Output.meta.dtype = numpy.int32
+        self.Output.meta.dtype = numpy.uint32
 
     def execute(self, slot, subindex, roi, result):
         assert roi.stop - roi.start == self.Output.meta.shape, "Watershed must be run on the entire volume."
@@ -182,7 +184,7 @@ class OpSimpleWatershed(Operator):
             else:
                 sys.stdout.write("Watershed..."); sys.stdout.flush()
                 
-                labelVolume = vigra.analysis.watersheds(volume_feat[:,:,0])[0].view(dtype=numpy.int32)
+                labelVolume = vigra.analysis.watersheds(volume_feat[:,:,0])[0]#.view(dtype=numpy.int32)
                 result_view[...] = labelVolume[:,:,numpy.newaxis]
                 logger.info( "done {}".format(numpy.max(labelVolume)) )
 
@@ -221,16 +223,21 @@ class OpMstSegmentorProvider(Operator):
                 self.applet.progressSignal.emit(x)
                 self.applet.progress = x
         
-        mst= MSTSegmentor(labelVolume[0,...,0], 
-                          numpy.asarray(volume_feat[0,...,0], numpy.float32), 
-                          edgeWeightFunctor = "minimum",
-                          progressCallback = updateProgressBar)
-        #mst.raw is not set here in order to avoid redundant data storage 
-        mst.raw = None
+       #mst= MSTSegmentor(labelVolume[0,...,0], 
+       #                  numpy.asarray(volume_feat[0,...,0], numpy.float32), 
+       #                  edgeWeightFunctor = "minimum",
+       #                  progressCallback = updateProgressBar)
+       ##mst.raw is not set here in order to avoid redundant data storage 
+       #mst.raw = None
         
+
+        newMst = WatershedSegmentor(labelVolume[0,...,0],numpy.asarray(volume_feat[0,...,0], numpy.float32), 
+                          edgeWeightFunctor = "minimum",progressCallback = updateProgressBar)
+
         #Output is of shape 1
-        result[0] = mst
-        
+        #result[0] = mst
+        newMst.raw = None
+        result[0] = newMst
         return result        
 
     def propagateDirty(self, slot, subindex, roi):
@@ -250,7 +257,7 @@ class OpPreprocessing(Operator):
     WatershedSource = InputSlot(value="filtered") # Choices: "raw", "input", "filtered"
     InvertWatershedSource = InputSlot(value=False)
     
-    #Image after preprocess as cylemon.MST
+    #Image after preprocess 
     PreprocessedData = OutputSlot()
     
     # Display outputs
@@ -402,7 +409,7 @@ class OpPreprocessing(Operator):
         
         # copy over seeds, and saved objects
         if self._prepData[0] is not None:
-            mst.seeds[:] = self._prepData[0].seeds[:]
+            #mst.seeds[:] = self._prepData[0].seeds[:]
             mst.object_lut = self._prepData[0].object_lut
             mst.object_names = self._prepData[0].object_names
             mst.object_seeds_bg_voxels = self._prepData[0].object_seeds_bg_voxels

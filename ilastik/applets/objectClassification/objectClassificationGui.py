@@ -23,12 +23,10 @@ from PyQt4 import uic
 from PyQt4.QtCore import pyqtSignal, pyqtSlot, Qt, QObject, pyqtBoundSignal
 from PyQt4.QtGui import QFileDialog
 from ilastik.shell.gui.ipcManager import IPCFacade, Protocol
-from ilastik.utility.exportingOperator import ExportingGui
 
 from ilastik.widgets.featureTableWidget import FeatureEntry
 from ilastik.widgets.featureDlg import FeatureDlg
 from ilastik.widgets.exportObjectInfoDialog import ExportObjectInfoDialog
-from ilastik.applets.objectExtraction.opObjectExtraction import OpRegionFeatures3d
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
 from ilastik.applets.objectClassification.opObjectClassification import OpObjectClassification
 
@@ -81,7 +79,7 @@ class FeatureSubSelectionDialog(FeatureSelectionDialog):
         self.ui.label_2.setVisible(False)
         self.ui.label_z.setVisible(False)
 
-class ObjectClassificationGui(LabelingGui, ExportingGui):
+class ObjectClassificationGui(LabelingGui):
     """A subclass of LabelingGui for labeling objects.
 
     Handles labeling objects, viewing the predicted results, and
@@ -93,11 +91,6 @@ class ObjectClassificationGui(LabelingGui, ExportingGui):
 
     def centralWidget(self):
         return self
-
-    def appletDrawers(self):
-        # Get the labeling drawer from the base class
-        labelingDrawer = super(ObjectClassificationGui, self).appletDrawers()[0][1]
-        return [("Training", labelingDrawer)]
 
     def stopAndCleanUp(self):
         # Unsubscribe to all signals
@@ -197,6 +190,9 @@ class ObjectClassificationGui(LabelingGui, ExportingGui):
         self.op.ObjectFeatures.notifyDirty(bind(self.checkEnableButtons))
         self.__cleanup_fns.append( partial( op.ObjectFeatures.unregisterDirty, bind(self.checkEnableButtons) ) )
 
+        self.op.NumLabels.notifyReady(bind(self.checkEnableButtons))
+        self.__cleanup_fns.append( partial( op.NumLabels.unregisterReady, bind(self.checkEnableButtons) ) )
+
         self.op.NumLabels.notifyDirty(bind(self.checkEnableButtons))
         self.__cleanup_fns.append( partial( op.NumLabels.unregisterDirty, bind(self.checkEnableButtons) ) )
         
@@ -213,7 +209,7 @@ class ObjectClassificationGui(LabelingGui, ExportingGui):
 
     def menus(self):
         m = QMenu("&Export", self.volumeEditorWidget)
-        m.addAction("Export Object Information").triggered.connect(self.show_export_dialog)
+        #m.addAction("Export Object Information").triggered.connect(self.show_export_dialog)
         if ilastik_config.getboolean("ilastik", "debug"):
             m.addAction("Export All Label Info").triggered.connect( self.exportLabelInfo )
             m.addAction("Import New Label Info").triggered.connect( self.importLabelInfo )
@@ -348,7 +344,6 @@ class ObjectClassificationGui(LabelingGui, ExportingGui):
         self.allowDeleteLastLabelOnly(False or self.op.AllowDeleteLastLabelOnly([]).wait()[0])
 
         self.op._predict_enabled = predict_enabled
-        self.applet.predict_enabled = predict_enabled
         self.applet.appletStateUpdateRequested.emit()
 
     def initAppletDrawerUi(self):
@@ -867,22 +862,14 @@ class ObjectClassificationGui(LabelingGui, ExportingGui):
 
         box.show()
 
-    def get_raw_shape(self):
-        """
-        Implements the ExportingGUI.get_raw_shape
-        :return: the raw shape
-        """
-        return self.op.RawImages.meta.shape
+    @property
+    def gui_applet(self):
+        return self.applet
 
-    def get_feature_names(self):
-        """
-        Implements the ExportingGUI.get_feature_names
-        :return: the feature names
-        :rtype: dict
-        """
-        return self.op.ComputedFeatureNames([]).wait()
-
-
+    def get_export_dialog_title(self):
+    	return "Export Object Information"
+    	
+        
 class BadObjectsDialog(QMessageBox):
     def __init__(self, warning, parent):
         super(BadObjectsDialog, self).__init__(QMessageBox.Warning,
@@ -909,4 +896,3 @@ class BadObjectsDialog(QMessageBox):
                 parts.append(encode_from_qstring(s))
         msg = "\n".join(parts)
         logger.warn(msg)
-        

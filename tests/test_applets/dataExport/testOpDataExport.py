@@ -44,51 +44,57 @@ class TestOpDataExport(object):
     def testBasic(self):
         graph = Graph()
         opExport = OpDataExport(graph=graph)
-        opExport.TransactionSlot.setValue(True)        
-        opExport.WorkingDirectory.setValue( self._tmpdir )
-        
-        # Simulate the important fields of a DatasetInfo object
-        class MockDatasetInfo(object): pass
-        rawInfo = MockDatasetInfo()
-        rawInfo.nickname = 'test_nickname'
-        rawInfo.filePath = './somefile.h5'
-        opExport.RawDatasetInfo.setValue( rawInfo )
-
-        opExport.SelectionNames.setValue(['Mock Export Data'])
-
-        data = numpy.random.random( (100,100) ).astype( numpy.float32 ) * 100
-        data = vigra.taggedView( data, vigra.defaultAxistags('xy') )
-        
-        opExport.Inputs.resize(1)
-        opExport.Inputs[0].setValue(data)
-
-        sub_roi = [(10, 20), (90, 80)]
-        opExport.RegionStart.setValue( sub_roi[0] )
-        opExport.RegionStop.setValue( sub_roi[1] )
-        
-        opExport.ExportDtype.setValue( numpy.uint8 )
-        
-        opExport.OutputFormat.setValue( 'hdf5' )
-        opExport.OutputFilenameFormat.setValue( '{dataset_dir}/{nickname}_export_x{x_start}-{x_stop}_y{y_start}-{y_stop}' )
-        opExport.OutputInternalPath.setValue('volume/data')
-
-        assert opExport.ImageToExport.ready()
-        assert opExport.ExportPath.ready()
-        
-        #print "exporting data to: {}".format( opExport.ExportPath.value )
-        assert opExport.ExportPath.value == self._tmpdir + '/' + rawInfo.nickname + '_export_x10-90_y20-80.h5/volume/data'
-        opExport.run_export()
+        try:
+            opExport.TransactionSlot.setValue(True)        
+            opExport.WorkingDirectory.setValue( self._tmpdir )
+            
+            # Simulate the important fields of a DatasetInfo object
+            class MockDatasetInfo(object): pass
+            rawInfo = MockDatasetInfo()
+            rawInfo.nickname = 'test_nickname'
+            rawInfo.filePath = './somefile.h5'
+            opExport.RawDatasetInfo.setValue( rawInfo )
+    
+            opExport.SelectionNames.setValue(['Mock Export Data'])
+    
+            data = numpy.random.random( (100,100) ).astype( numpy.float32 ) * 100
+            data = vigra.taggedView( data, vigra.defaultAxistags('xy') )
+            
+            opExport.Inputs.resize(1)
+            opExport.Inputs[0].setValue(data)
+    
+            sub_roi = [(10, 20), (90, 80)]
+            opExport.RegionStart.setValue( sub_roi[0] )
+            opExport.RegionStop.setValue( sub_roi[1] )
+            
+            opExport.ExportDtype.setValue( numpy.uint8 )
+            
+            opExport.OutputFormat.setValue( 'hdf5' )
+            opExport.OutputFilenameFormat.setValue( '{dataset_dir}/{nickname}_export_x{x_start}-{x_stop}_y{y_start}-{y_stop}' )
+            opExport.OutputInternalPath.setValue('volume/data')
+    
+            assert opExport.ImageToExport.ready()
+            assert opExport.ExportPath.ready()
+            
+            expected_path = self._tmpdir + '/' + rawInfo.nickname + '_export_x10-90_y20-80.h5/volume/data'
+            computed_path = opExport.ExportPath.value
+            assert os.path.normpath(computed_path) == os.path.normpath(expected_path), \
+                "Expected {}\nGot: {}".format( expected_path, computed_path )
+            opExport.run_export()
+        finally:
+            opExport.cleanUp()
         
         opRead = OpInputDataReader( graph=graph )
-        opRead.FilePath.setValue( opExport.ExportPath.value )
-
-        # Compare with the correct subregion and convert dtype.
-        expected_data = data.view(numpy.ndarray)[roiToSlice(*sub_roi)]
-        expected_data = expected_data.astype(numpy.uint8)
-        read_data = opRead.Output[:].wait()
-        assert (read_data == expected_data).all(), "Read data didn't match exported data!"
-        
-        opRead.cleanUp()
+        try:
+            opRead.FilePath.setValue( computed_path )
+    
+            # Compare with the correct subregion and convert dtype.
+            expected_data = data.view(numpy.ndarray)[roiToSlice(*sub_roi)]
+            expected_data = expected_data.astype(numpy.uint8)
+            read_data = opRead.Output[:].wait()
+            assert (read_data == expected_data).all(), "Read data didn't match exported data!"
+        finally:
+            opRead.cleanUp()
 
 if __name__ == "__main__":
     import sys

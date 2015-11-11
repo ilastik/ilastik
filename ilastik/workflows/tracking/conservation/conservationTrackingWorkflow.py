@@ -1,11 +1,13 @@
+import os
 from lazyflow.graph import Graph
+from lazyflow.utility import PathComponents, make_absolute, format_known_keys
 from ilastik.workflow import Workflow
-from ilastik.applets.dataSelection import DataSelectionApplet
+from ilastik.applets.dataSelection import DataSelectionApplet, DatasetInfo
 from ilastik.applets.tracking.conservation.conservationTrackingApplet import ConservationTrackingApplet
 from ilastik.applets.objectClassification.objectClassificationApplet import ObjectClassificationApplet
 #from ilastik.applets.opticalTranslation.opticalTranslationApplet import OpticalTranslationApplet
 from ilastik.applets.thresholdTwoLevels.thresholdTwoLevelsApplet import ThresholdTwoLevelsApplet
-from lazyflow.operators.adaptors import Op5ifyer
+from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.trackingFeatureExtraction.trackingFeatureExtractionApplet import TrackingFeatureExtractionApplet
 from ilastik.applets.trackingFeatureExtraction import config
 from lazyflow.operators.opReorderAxes import OpReorderAxes
@@ -33,8 +35,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         self.dataSelectionApplet = DataSelectionApplet(self, 
                                                        "Input Data", 
                                                        "Input Data", 
-                                                       batchDataGui=False,
-                                                       force5d=True,
+                                                       forceAxisOrder='txyzc',
                                                        instructionText=data_instructions,
                                                        max_lanes=1
                                                        )
@@ -64,13 +65,20 @@ class ConservationTrackingWorkflowBase( Workflow ):
                                                                      projectFileGroupName="CountClassification")
                 
         self.trackingApplet = ConservationTrackingApplet( workflow=self )
-        opTracking = self.trackingApplet.topLevelOperator
 
-        self.dataExportApplet = TrackingBaseDataExportApplet(self, "Tracking Result Export")
-        
+        self.default_export_filename = '{dataset_dir}/{nickname}-exported_data.csv'
+        self.dataExportApplet = TrackingBaseDataExportApplet(self, 
+                                                             "Tracking Result Export", 
+                                                             default_export_filename=self.default_export_filename)
+
         opDataExport = self.dataExportApplet.topLevelOperator
-        opDataExport.SelectionNames.setValue( ['Tracking Result', 'Merger Result', 'Object Identities'] )
+        opDataExport.SelectionNames.setValue( ['Object Identities', 'Tracking Result', 'Merger Result'] )
         opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
+        
+        # Extra configuration for object export table (as CSV table or HDF5 table)
+        opTracking = self.trackingApplet.topLevelOperator
+        self.dataExportApplet.set_exporting_operator(opTracking)
+        self.dataExportApplet.post_process_lane_export = self.post_process_lane_export
         
         self._applets = []                
         self._applets.append(self.dataSelectionApplet)
@@ -176,18 +184,59 @@ class ConservationTrackingWorkflowBase( Workflow ):
         opTracking.RawImage.connect( op5Raw.Output )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
         opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeaturesVigra )
+        opTracking.ObjectFeaturesWithDivFeatures.connect( opObjExtraction.RegionFeaturesAll)
         opTracking.ComputedFeatureNames.connect( opObjExtraction.ComputedFeatureNamesVigra )
+        opTracking.ComputedFeatureNamesWithDivFeatures.connect( opObjExtraction.ComputedFeatureNamesAll )
         opTracking.DivisionProbabilities.connect( opDivDetection.Probabilities )
         opTracking.DetectionProbabilities.connect( opCellClassification.Probabilities )
         opTracking.NumLabels.connect( opCellClassification.NumLabels )
+
+        # configure export settings
+        settings = {'file path': self.default_export_filename, 'compression': {}, 'file type': 'csv'}
+        selected_features = ['Count', 'RegionCenter']
+        opTracking.configure_table_export_settings(settings, selected_features)
     
         opDataExport.Inputs.resize(3)
-        opDataExport.Inputs[0].connect( opTracking.Output )
-        opDataExport.Inputs[1].connect( opTracking.MergerOutput )
-        opDataExport.Inputs[2].connect( opTracking.LabelImage )
+        opDataExport.Inputs[0].connect( opTracking.RelabeledImage )
+        opDataExport.Inputs[1].connect( opTracking.Output )
+        opDataExport.Inputs[2].connect( opTracking.MergerOutput )
         opDataExport.RawData.connect( op5Raw.Output )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
 
+    def post_process_lane_export(self, lane_index):
+        # FIXME: This probably only works for the non-blockwise export slot.
+        #        We should assert that the user isn't using the blockwise slot.
+        settings, selected_features = self.trackingApplet.topLevelOperator.getLane(lane_index).get_table_export_settings()
+        if settings:
+            self.dataExportApplet.progressSignal.emit(-1)
+            raw_dataset_info = self.dataSelectionApplet.topLevelOperator.DatasetGroup[lane_index][0].value
+            
+            project_path = self.shell.projectManager.currentProjectPath
+            project_dir = os.path.dirname(project_path)
+            dataset_dir = PathComponents(raw_dataset_info.filePath).externalDirectory
+            abs_dataset_dir = make_absolute(dataset_dir, cwd=project_dir)
+
+            known_keys = {}        
+            known_keys['dataset_dir'] = abs_dataset_dir
+            nickname = raw_dataset_info.nickname.replace('*', '')
+            if os.path.pathsep in nickname:
+                nickname = PathComponents(nickname.split(os.path.pathsep)[0]).fileNameBase
+            known_keys['nickname'] = nickname
+            
+            # use partial formatting to fill in non-coordinate name fields
+            name_format = settings['file path']
+            partially_formatted_name = format_known_keys( name_format, known_keys )
+            settings['file path'] = partially_formatted_name
+
+            req = self.trackingApplet.topLevelOperator.getLane(lane_index).export_object_data(
+                        lane_index, 
+                        # FIXME: Even in non-headless mode, we can't show the gui because we're running in a non-main thread.
+                        #        That's not a huge deal, because there's still a progress bar for the overall export.
+                        show_gui=False)
+
+            req.wait()
+            self.dataExportApplet.progressSignal.emit(100)
+    
     def _inputReady(self, nRoles):
         slot = self.dataSelectionApplet.topLevelOperator.ImageGroup
         if len(slot) > 0:

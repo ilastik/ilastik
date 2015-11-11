@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Usage: run_each_unit_test.sh <dir> [first-nonskipped-test]
+# 
+# Run all the tests in the given directory.  
+# If a first-nonskipped-test is given, then skip all tests until that 
+#  file is found, then resume testing.
 #
 # The ilastik test suite shouldn't be run from the standard 'nosetests' command, 
 #  because some of the tests (GUI tests) can't be run that way.
@@ -16,6 +21,8 @@ TESTS_DIR=`dirname $0`
 NOSE_ARG=${1-$TESTS_DIR}
 
 SKIP_GUI_TESTS=${SKIP_GUI_TESTS-0}
+
+SKIP_UNTIL=${2-"RUN_ALL"}
 
 for f in `find $NOSE_ARG -iname "*test*.py" | grep -v nanshe` 
 do
@@ -36,6 +43,18 @@ do
 
   if [ $SKIP_GUI_TESTS -ne 0 ]; then
       if echo $f | grep -iq "gui"; then
+	  continue
+      fi
+  fi
+
+  if [[ "${SKIP_UNTIL}" != "RUN_ALL" ]]; then
+      # Check if this is the file we're looking for.
+      # If so, reset the SKIP_UNTIL variable so we run everything from now on.
+      if echo $f | grep -q "${SKIP_UNTIL}"; then
+	  SKIP_UNTIL="RUN_ALL"
+      else
+          # Still skipping
+          echo "Skipping $f"
 	  continue
       fi
   fi

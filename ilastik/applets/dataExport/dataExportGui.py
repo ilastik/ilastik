@@ -30,7 +30,7 @@ from lazyflow.graph import Slot
 
 from ilastik.utility import bind, log_exception
 from lazyflow.utility import PathComponents
-from ilastik.utility.gui import ThreadRouter, threadRouted, ThunkEvent, ThunkEventHandler
+from ilastik.utility.gui import ThreadRouter, threadRouted, ThunkEvent, ThunkEventHandler, threadRoutedWithRouter
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
@@ -83,6 +83,9 @@ class DataExportGui(QWidget):
     def imageLaneRemoved(self, laneIndex, finalLength):
         pass
 
+    def allowLaneSelectionChange(self):
+        return False
+
     ###########################################
     ###########################################
     
@@ -102,6 +105,7 @@ class DataExportGui(QWidget):
         self.parentApplet = parentApplet
         self.progressSignal = parentApplet.progressSignal
         
+        @threadRoutedWithRouter(self.threadRouter)
         def handleNewDataset( multislot, index ):
             # Make room in the GUI table
             self.batchOutputTableWidget.insertRow( index )
@@ -122,7 +126,8 @@ class DataExportGui(QWidget):
             handleNewDataset( self.topLevelOperator.ExportPath, i )
             if subslot.ready():
                 self.updateTableForSlot(subslot)
-    
+
+        @threadRoutedWithRouter(self.threadRouter)
         def handleLaneRemoved( multislot, index, finalLength ):
             if self.batchOutputTableWidget.rowCount() <= finalLength:
                 return
@@ -140,12 +145,13 @@ class DataExportGui(QWidget):
 
         self.topLevelOperator.Inputs.notifyRemove( bind( handleLaneRemoved ) )
     
-    def _initAppletDrawerUic(self):
+    def _initAppletDrawerUic(self, drawerPath=None):
         """
         Load the ui file for the applet drawer, which we own.
         """
-        localDir = os.path.split(__file__)[0]
-        drawerPath = os.path.join( localDir, "dataExportDrawer.ui")
+        if drawerPath is None:
+            localDir = os.path.split(__file__)[0]
+            drawerPath = os.path.join( localDir, "dataExportDrawer.ui")
         self.drawer = uic.loadUi(drawerPath)
 
         self.drawer.settingsButton.clicked.connect( self._chooseSettings )
@@ -154,6 +160,7 @@ class DataExportGui(QWidget):
         self.drawer.deleteAllButton.clicked.connect( self.deleteAllResults )
         self.drawer.deleteAllButton.setIcon( QIcon(ilastikIcons.Clear) )
         
+        @threadRoutedWithRouter(self.threadRouter)
         def _handleNewSelectionNames( *args ):
             input_names = self.topLevelOperator.SelectionNames.value
             self.drawer.inputSelectionCombo.addItems( input_names )
@@ -340,7 +347,7 @@ class DataExportGui(QWidget):
 
         # Reconnect now that we're finished
         self.batchOutputTableWidget.itemSelectionChanged.connect(self.handleTableSelectionChange)
-        
+
     def exportSlots(self, laneViewList ):
         try:
             # Set the busy flag so the workflow knows not to allow 
@@ -359,7 +366,11 @@ class DataExportGui(QWidget):
             def signalFileProgress(slotIndex, percent):
                 self.progressSignal.emit( (100*slotIndex + percent) / len(laneViewList) ) 
 
+            # Client hook
+            self.parentApplet.prepare_for_entire_export()
+
             for i, opLaneView in enumerate(laneViewList):
+                lane_index = self.topLevelOperator.innerOperators.index(opLaneView)
                 logger.debug("Exporting result {}".format(i))
 
                 # If the operator provides a progress signal, use it.
@@ -367,7 +378,14 @@ class DataExportGui(QWidget):
                 slotProgressSignal.subscribe( partial(signalFileProgress, i) )
 
                 try:
+                    # Client hook
+                    self.parentApplet.prepare_lane_for_export(lane_index)
+
+                    # Export the image
                     opLaneView.run_export()
+                    
+                    # Client hook
+                    self.parentApplet.post_process_lane_export(lane_index)
                 except Exception as ex:
                     if opLaneView.ExportPath.ready():
                         msg = "Failed to generate export file: \n"
@@ -381,6 +399,9 @@ class DataExportGui(QWidget):
 
                 # We're finished with this file. 
                 self.progressSignal.emit( 100*(i+1)/float(len(laneViewList)) )
+
+            # Client hook
+            self.parentApplet.post_process_entire_export()
                 
             # Ensure the shell knows we're really done.
             self.progressSignal.emit(100)
@@ -398,6 +419,13 @@ class DataExportGui(QWidget):
             QApplication.instance().postEvent( self, ThunkEvent( partial(self.setEnabledIfAlive, self, True) ) )
 
 
+    def postProcessLane(self, lane_index):
+        """
+        Called immediately after the result for each lane is exported.
+        Can be overridden by subclasses for post-processing purposes.
+        """
+        pass
+        
     @threadRouted
     def showExportError(self, msg):
         QMessageBox.critical(self, "Failed to export", msg )

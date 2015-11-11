@@ -23,7 +23,7 @@ import vigra
 np = numpy
 
 from lazyflow.graph import Graph
-from lazyflow.operators import Op5ifyer, OpArrayPiper
+from lazyflow.operators import OpArrayPiper
 from ilastik.applets.thresholdTwoLevels.opThresholdTwoLevels \
     import OpThresholdTwoLevels, OpSelectLabels
 
@@ -295,8 +295,8 @@ class TestThresholdOneLevel(Generator1):
             numpy.testing.assert_array_equal(out5d.squeeze(), desiredResult[..., i, :])
 
 
-@unittest.skipIf(not haveGraphCut(), "opengm not available")
 class TestObjectsSegment(TestThresholdOneLevel):
+    @unittest.skipIf(not haveGraphCut(), "opengm not available")
     def setUp(self):
         super(TestObjectsSegment, self).setUp()
         self.curOperator = 2
@@ -313,8 +313,8 @@ class TestObjectsSegment(TestThresholdOneLevel):
         super(TestGraphCut, self).testNoOp()
 
 
-@unittest.skipIf(not haveGraphCut(), "opengm not available")
 class TestGraphCut(TestObjectsSegment):
+    @unittest.skipIf(not haveGraphCut(), "opengm not available")
     def setUp(self):
         super(TestGraphCut, self).setUp()
         self.usePreThreshold = False
@@ -639,8 +639,11 @@ class TestThresholdTwoLevels(Generator2):
             oper.CurOperator.setValue(0)
 
 
-@unittest.skipIf(not have_opengm, "OpenGM not available")
 class TestThresholdGC(Generator2):
+
+    @unittest.skipIf(not have_opengm, "OpenGM not available")
+    def setUp(self):
+        super(TestThresholdGC, self).setUp()
 
     def testWithout(self):
         oper5d = OpThresholdTwoLevels(graph=Graph())
@@ -764,6 +767,13 @@ class TestTTLUseCase(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    #make the program quit on Ctrl+C
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+    import sys
     import nose
-    nose.run(defaultTest=__file__, env={'NOSE_NOCAPTURE': 1})
+    sys.argv.append("--nocapture")    # Don't steal stdout.  Show it on the console as usual.
+    sys.argv.append("--nologcapture") # Don't set the logging level to DEBUG.  Leave it alone.
+    nose.run(defaultTest=__file__)
 

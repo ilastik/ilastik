@@ -127,7 +127,7 @@ class ProjectManager(object):
         # Open the file as an HDF5 file
         try:
             hdf5File = h5py.File(projectFilePath)
-            readOnly = False
+            readOnly = (hdf5File.mode == 'r')
         except IOError:
             # Maybe the project is read-only
             hdf5File = h5py.File(projectFilePath, 'r')
@@ -204,8 +204,8 @@ class ProjectManager(object):
 
         dirtyAppletNames = []
         for applet in self._applets:
-            for item in applet.dataSerializers:
-                if item.isDirty():
+            for serializer in applet.dataSerializers:
+                if serializer.isDirty():
                     dirtyAppletNames.append(applet.name)
         return dirtyAppletNames
 
@@ -228,10 +228,10 @@ class ProjectManager(object):
         try:
             # Applet serializable items are given the whole file (root group) for now
             for aplt in self._applets:
-                for item in aplt.dataSerializers:
-                    assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
-                    if force_all_save or item.isDirty() or item.shouldSerialize(self.currentProjectFile):
-                        item.serializeToHdf5(self.currentProjectFile, self.currentProjectPath)
+                for serializer in aplt.dataSerializers:
+                    assert serializer.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
+                    if force_all_save or serializer.isDirty() or serializer.shouldSerialize(self.currentProjectFile):
+                        serializer.serializeToHdf5(self.currentProjectFile, self.currentProjectPath)
             
             #save the current workflow as standard workflow
             if "workflowName" in self.currentProjectFile:
@@ -243,10 +243,8 @@ class ProjectManager(object):
             raise ProjectManager.SaveError( str(err) )
         finally:
             # save current time
-            try:
+            if "time" in self.currentProjectFile:
                 del self.currentProjectFile["time"]
-            except:
-                pass
             self.currentProjectFile.create_dataset("time", data = time.ctime())
             # Flush any changes we made to disk, but don't close the file.
             self.currentProjectFile.flush()
@@ -275,22 +273,20 @@ class ProjectManager(object):
             try:
                 # Applet serializable items are given the whole file (root group) for now
                 for aplt in self._applets:
-                    for item in aplt.dataSerializers:
-                        assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
+                    for serializer in aplt.dataSerializers:
+                        assert serializer.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
 
-                        if item.isDirty() or item.shouldSerialize(self.currentProjectFile):
+                        if serializer.isDirty() or serializer.shouldSerialize(self.currentProjectFile):
                             # Use a COPY of the serializer, so the original serializer doesn't forget it's dirty state
-                            itemCopy = copy.copy(item)
-                            itemCopy.serializeToHdf5(snapshotFile, snapshotPath)
+                            serializerCopy = copy.copy(serializer)
+                            serializerCopy.serializeToHdf5(snapshotFile, snapshotPath)
             except Exception, err:
                 log_exception( logger, "Project Save Snapshot Action failed due to the exception printed above." )
                 raise ProjectManager.SaveError(str(err))
             finally:
                 # save current time
-                try:
+                if "time" in snapshotFile:
                     del snapshotFile["time"]
-                except:
-                    pass
                 snapshotFile.create_dataset("time", data = time.ctime())
 
                 # Flush any changes we made to disk, but don't close the file.
@@ -340,8 +336,8 @@ class ProjectManager(object):
                 oldFile.copy(self.currentProjectFile[key], key)
         
         for aplt in self._applets:
-            for item in aplt.dataSerializers:
-                item.updateWorkingDirectory(newPath,oldPath)
+            for serializer in aplt.dataSerializers:
+                serializer.updateWorkingDirectory(newPath,oldPath)
         
         # Save the current project state
         self.saveProject()
@@ -385,16 +381,16 @@ class ProjectManager(object):
             # Applet serializable items are given the whole file (root group)
             for aplt in self._applets:
                 with Timer() as timer:
-                    for item in aplt.dataSerializers:
-                        assert item.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
-                        item.ignoreDirty = True
+                    for serializer in aplt.dataSerializers:
+                        assert serializer.base_initialized, "AppletSerializer subclasses must call AppletSerializer.__init__ upon construction."
+                        serializer.ignoreDirty = True
                                             
-                        if item.caresOfHeadless:
-                            item.deserializeFromHdf5(self.currentProjectFile, projectFilePath, self._headless)
+                        if serializer.caresOfHeadless:
+                            serializer.deserializeFromHdf5(self.currentProjectFile, projectFilePath, self._headless)
                         else:
-                            item.deserializeFromHdf5(self.currentProjectFile, projectFilePath)
+                            serializer.deserializeFromHdf5(self.currentProjectFile, projectFilePath)
     
-                        item.ignoreDirty = False
+                        serializer.ignoreDirty = False
                 logger.debug('Deserializing applet "{}" took {} seconds'.format( aplt.name, timer.seconds() ))
             
 
