@@ -227,7 +227,10 @@ class AnnotationsGui(LayerViewerGui):
         
         self._initShortcuts()
         self.editor.posModel.timeChanged.connect(self.updateTime)
-        self.editor.navCtrl.changeTimeRelative(self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[0].name]["time"][0] - self.editor.posModel.time)
+        try:
+            self.editor.navCtrl.changeTimeRelative(self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[0].name]["time"][0] - self.editor.posModel.time)
+        except:
+            pass
 
         self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
         self._initAnnotations()

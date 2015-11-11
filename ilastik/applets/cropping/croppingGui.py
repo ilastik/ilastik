@@ -290,7 +290,6 @@ class CroppingGui(LayerViewerGui):
             self.newCrop()
             self.setCrop()
 
-
     def onCropListDataChanged(self, topLeft, bottomRight):
         """Handle changes to the crop list selections."""
         firstRow = topLeft.row()

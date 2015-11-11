@@ -35,10 +35,8 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
 from ilastik.applets.trackingFeatureExtraction.trackingFeatureExtractionApplet import TrackingFeatureExtractionApplet
 
-class StructuredTrackingWorkflow( Workflow ):
-    workflowName = "Structured Learning Tracking Workflow"
-    workflowDisplayName = "Structured Learning Tracking Workflow [Inputs: Raw Data, Pixel Prediction Map]"
-    workflowDescription = "Structured learning tracking of objects, based on Prediction Maps or (binary) Segmentation Images"
+class StructuredTrackingWorkflowBase( Workflow ):
+    workflowName = "Structured Learning Tracking Workflow BASE"
 
     @property
     def applets(self):
@@ -51,16 +49,24 @@ class StructuredTrackingWorkflow( Workflow ):
     def __init__( self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs ):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
         if 'graph' in kwargs: del kwargs['graph']
-        super(StructuredTrackingWorkflow, self).__init__(shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
+        super(StructuredTrackingWorkflowBase, self).__init__(shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
 
-        data_instructions = 'Use the "Raw Data" tab to load your intensity image(s).\n\n'\
-                            'Use the "Prediction Maps" tab to load your pixel-wise probability image(s).'
+        data_instructions = 'Use the "Raw Data" tab to load your intensity image(s).\n\n'
+        if self.fromBinary:
+            data_instructions += 'Use the "Binary Image" tab to load your segmentation image(s).'
+        else:
+            data_instructions += 'Use the "Prediction Maps" tab to load your pixel-wise probability image(s).'
+
         ## Create applets
         self.dataSelectionApplet = DataSelectionApplet(self,"Input Data","Input Data",batchDataGui=False,force5d=True,instructionText=data_instructions,max_lanes=1)
         opDataSelection = self.dataSelectionApplet.topLevelOperator
-        opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Prediction Maps'] )
+        if self.fromBinary:
+            opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Binary Image'] )
+        else:
+            opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Prediction Maps'] )
 
-        self.thresholdTwoLevelsApplet = ThresholdTwoLevelsApplet( self,"Threshold and Size Filter","ThresholdTwoLevels" )
+        if not self.fromBinary:
+            self.thresholdTwoLevelsApplet = ThresholdTwoLevelsApplet( self,"Threshold and Size Filter","ThresholdTwoLevels" )
 
         self.divisionDetectionApplet = ObjectClassificationApplet(workflow=self,
                                                                      name="Division Detection (optional)",
@@ -94,7 +100,8 @@ class StructuredTrackingWorkflow( Workflow ):
 
         self._applets = []
         self._applets.append(self.dataSelectionApplet)
-        self._applets.append(self.thresholdTwoLevelsApplet)
+        if not self.fromBinary:
+            self._applets.append(self.thresholdTwoLevelsApplet)
         self._applets.append(self.trackingFeatureExtractionApplet)
         self._applets.append(self.divisionDetectionApplet)
         self._applets.append(self.cellClassificationApplet)
@@ -111,7 +118,8 @@ class StructuredTrackingWorkflow( Workflow ):
         opTrackingFeatureExtraction = self.trackingFeatureExtractionApplet.topLevelOperator.getLane(laneIndex)
 
         opAnnotations = self.annotationsApplet.topLevelOperator.getLane(laneIndex)
-        opTwoLevelThreshold = self.thresholdTwoLevelsApplet.topLevelOperator.getLane(laneIndex)
+        if not self.fromBinary:
+            opTwoLevelThreshold = self.thresholdTwoLevelsApplet.topLevelOperator.getLane(laneIndex)
         opDataAnnotationsExport = self.dataExportAnnotationsApplet.topLevelOperator.getLane(laneIndex)
 
         opCropSelection = self.cropSelectionApplet.topLevelOperator.getLane(laneIndex)
@@ -126,17 +134,20 @@ class StructuredTrackingWorkflow( Workflow ):
         opDivDetection = self.divisionDetectionApplet.topLevelOperator.getLane(laneIndex)
         opCellClassification = self.cellClassificationApplet.topLevelOperator.getLane(laneIndex)
 
-        opTwoLevelThreshold.InputImage.connect( opData.ImageGroup[1] )
-        opTwoLevelThreshold.RawInput.connect( opData.ImageGroup[0] ) # Used for display only
+        if not self.fromBinary:
+            opTwoLevelThreshold.InputImage.connect( opData.ImageGroup[1] )
+            opTwoLevelThreshold.RawInput.connect( opData.ImageGroup[0] ) # Used for display only
+            binarySrc = opTwoLevelThreshold.CachedOutput
+        else:
+            binarySrc = opData.ImageGroup[1]
+        # Use Op5ifyers for both input datasets such that they are guaranteed to
+        # have the same axis order after thresholding
+        op5Binary = OpReorderAxes(parent=self)
+        op5Binary.AxisOrder.setValue("txyzc")
+        op5Binary.Input.connect(binarySrc)
 
         opCropSelection.InputImage.connect( opData.ImageGroup[0] )
         opCropSelection.PredictionImage.connect( opData.ImageGroup[1] )
-
-        # Use OpReorderAxis for both input datasets such that they are guaranteed to
-        # have the same axis order after thresholding
-        op5Binary = OpReorderAxes( parent=self )
-        op5Binary.AxisOrder.setValue("txyzc")
-        op5Binary.Input.connect( opTwoLevelThreshold.CachedOutput )
 
         opObjExtraction.RawImage.connect( op5Raw.Output )
         opObjExtraction.BinaryImage.connect( op5Binary.Output )
@@ -241,9 +252,12 @@ class StructuredTrackingWorkflow( Workflow ):
         # If no data, nothing else is ready.
         input_ready = self._inputReady(2) and not self.dataSelectionApplet.busy
 
-        opThresholding = self.thresholdTwoLevelsApplet.topLevelOperator
-        thresholdingOutput = opThresholding.CachedOutput
-        thresholding_ready = input_ready and len(thresholdingOutput) > 0
+        if not self.fromBinary:
+            opThresholding = self.thresholdTwoLevelsApplet.topLevelOperator
+            thresholdingOutput = opThresholding.CachedOutput
+            thresholding_ready = input_ready and len(thresholdingOutput) > 0
+        else:
+            thresholding_ready = True and input_ready
 
         #features_ready = thresholding_ready and \
         #                 len(objectExtractionOutput) > 0
@@ -288,7 +302,8 @@ class StructuredTrackingWorkflow( Workflow ):
         self._shell.enableProjectChanges( not busy )
 
         self._shell.setAppletEnabled(self.dataSelectionApplet, not busy)
-        self._shell.setAppletEnabled(self.thresholdTwoLevelsApplet, input_ready and not busy)
+        if not self.fromBinary:
+            self._shell.setAppletEnabled(self.thresholdTwoLevelsApplet, input_ready and not busy)
         self._shell.setAppletEnabled(self.trackingFeatureExtractionApplet, thresholding_ready and not busy)
         self._shell.setAppletEnabled(self.cellClassificationApplet, tracking_features_ready and not busy)
         self._shell.setAppletEnabled(self.divisionDetectionApplet, tracking_features_ready and not busy)
@@ -300,3 +315,18 @@ class StructuredTrackingWorkflow( Workflow ):
         self._shell.setAppletEnabled(self.trackingApplet, objectCountClassifier_ready and not busy)
         self._shell.setAppletEnabled(self.dataExportTrackingApplet, structured_tracking_ready and not busy and \
                                     self.dataExportTrackingApplet.topLevelOperator.Inputs[0][0].ready() )
+
+class StructuredTrackingWorkflowFromBinary( StructuredTrackingWorkflowBase ):
+    workflowName = "Structured Learning Tracking Workflow from binary image"
+    workflowDisplayName = "Structured Learning Tracking Workflow [Inputs: Raw Data, Binary Image]"
+    workflowDescription = "Structured learning tracking of objects, based on binary images."
+
+    fromBinary = True
+
+class StructuredTrackingWorkflowFromPrediction( StructuredTrackingWorkflowBase ):
+    workflowName = "Structured Learning Tracking Workflow from prediction image"
+    workflowDisplayName = "Structured Learning Tracking Workflow [Inputs: Raw Data, Pixel Prediction Map]"
+    workflowDescription = "Structured learning tracking of objects, based on prediction maps."
+
+    fromBinary = False
+

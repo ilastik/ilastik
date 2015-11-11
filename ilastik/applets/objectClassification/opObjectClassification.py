@@ -336,7 +336,14 @@ class OpObjectClassification(Operator, ExportingOperator,MultiLaneOperatorABC):
 
     def setupOutputs(self):
         self.Warnings.meta.shape = (1,)
+
+        print "BEFORE ----------------------->setupOutputs self.BinaryImages.meta      ",self.BinaryImages.meta
+        print "BEFORE ----------------------->setupOutputs self.RawImages.meta      ",self.RawImages.meta
+        # print "BEFORE setupOutputs self.SegmentationImages.meta",self.SegmentationImages.meta
+        # print "BEFORE setupOutputs self.InputProbabilities.meta",self.InputProbabilities.meta
+        # print "BEFORE setupOutputs self.InputProbabilities.meta",self.InputProbabilities.meta
         self.CachedProbabilities.meta.assignFrom(self.BinaryImages.meta)
+        print "AFTER setupOutputs===========================================",self.CachedProbabilities.meta
 
         axisOrder = [ tag.key for tag in self.RawImages[0].meta.axistags ]
 

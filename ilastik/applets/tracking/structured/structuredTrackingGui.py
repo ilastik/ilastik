@@ -514,8 +514,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         withMergerResolution=True
         ndim=2                                  # TODO: test ndim = 3
         transition_parameter = 5.0
-        borderAwareWidth = 0.0
-
+        borderAwareWidth = self._drawer.bordWidthBox.value()
+        print "borderAwareWidth",borderAwareWidth
         sigmas = pgmlink.VectorOfDouble()
         for i in range(5):
             sigmas.append(0.0)
