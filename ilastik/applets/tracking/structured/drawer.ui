@@ -965,7 +965,7 @@
       <string notr="true"/>
      </property>
      <property name="text">
-      <string>Ones</string>
+      <string>Uniform</string>
      </property>
     </widget>
    </item>
