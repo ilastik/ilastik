@@ -286,6 +286,8 @@ class OpStructuredTracking(OpTrackingBase):
                                         for track in trackSet:
 
                                             if not foundAllArcs:
+                                                #print "[opStructuredTracking] Arc: (", time-1, ",", int(previous_label), ") ---> (", time, ",", int(label), ")"
+                                                print "[opStructuredTracking] Increasing max nearest neighbors!"
                                                 break
 
                                             # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
@@ -320,6 +322,8 @@ class OpStructuredTracking(OpTrackingBase):
                                 divisions = crop["divisions"]
                                 for track in divisions.keys():
                                     if not foundAllArcs:
+                                        #print "[opStructuredTracking] Divisions Arc0: (", time, ",", int(parent), ") ---> (", time+1, ",", int(child0), ")"
+                                        print "[opStructuredTracking] Increasing max nearest neighbors!"
                                         break
                                     division = divisions[track]
                                     time = int(division[1])
@@ -397,6 +401,7 @@ class OpStructuredTracking(OpTrackingBase):
 
         print "get_conservation_tracking_parameters DONE!"
         consTrackerParameters.register_transition_func(self.track_transition_func)
+        consTrackerParameters.register_transition_func_no_weight(self.track_transition_func_no_weight)
 
         fixLabeledNodes = False;
 
