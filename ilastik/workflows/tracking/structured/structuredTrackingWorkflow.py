@@ -26,6 +26,7 @@ from ilastik.applets.tracking.annotations.annotationsApplet import AnnotationsAp
 from ilastik.applets.tracking.structured.structuredTrackingApplet import StructuredTrackingApplet
 from ilastik.applets.objectExtraction.objectExtractionApplet import ObjectExtractionApplet
 from ilastik.applets.thresholdTwoLevels.thresholdTwoLevelsApplet import ThresholdTwoLevelsApplet
+from lazyflow.operators.adaptors import Op5ifyer
 from ilastik.applets.objectClassification.objectClassificationApplet import ObjectClassificationApplet
 from ilastik.applets.cropping.cropSelectionApplet import CropSelectionApplet
 from ilastik.applets.trackingFeatureExtraction import config
@@ -191,8 +192,10 @@ class StructuredTrackingWorkflowBase( Workflow ):
         opCellClassification.RawImages.connect( op5Raw.Output )
         opCellClassification.LabelsAllowedFlags.connect(opData.AllowLabels)
         opCellClassification.SegmentationImages.connect(opTrackingFeatureExtraction.LabelImage)
-        opCellClassification.ObjectFeatures.connect(opTrackingFeatureExtraction.RegionFeaturesVigra)
-        opCellClassification.ComputedFeatureNames.connect(opTrackingFeatureExtraction.ComputedFeatureNamesVigra)
+        # opCellClassification.ObjectFeatures.connect(opTrackingFeatureExtraction.RegionFeaturesVigra)
+        # opCellClassification.ComputedFeatureNames.connect(opTrackingFeatureExtraction.ComputedFeatureNamesVigra)
+        opCellClassification.ObjectFeatures.connect(opTrackingFeatureExtraction.RegionFeaturesAll)
+        opCellClassification.ComputedFeatureNames.connect(opTrackingFeatureExtraction.ComputedFeatureNamesAll)
         opCellClassification.SelectedFeatures.setValue( selected_features_objectcount )
         opCellClassification.SuggestedLabelNames.setValue( ['false detection',] + [str(i) + ' Objects' for i in range(1,10) ] )
         opCellClassification.AllowDeleteLastLabelOnly.setValue(True)
@@ -211,11 +214,13 @@ class StructuredTrackingWorkflowBase( Workflow ):
         opDataAnnotationsExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
 
         opStructuredTracking.RawImage.connect( op5Raw.Output )
-        opStructuredTracking.LabelImage.connect( opObjExtraction.LabelImage )
-        #opStructuredTracking.ObjectFeatures.connect( opObjExtraction.RegionFeaturesVigra )
-        #opStructuredTracking.ComputedFeatureNames.connect( opObjExtraction.ComputedFeatureNamesVigra )
+        # opStructuredTracking.LabelImage.connect( opObjExtraction.LabelImage )
+        # opStructuredTracking.ObjectFeatures.connect( opObjExtraction.RegionFeaturesVigra )
+        # opStructuredTracking.ComputedFeatureNames.connect( opObjExtraction.ComputedFeatureNamesVigra )
+        opStructuredTracking.LabelImage.connect( opTrackingFeatureExtraction.LabelImage )
         opStructuredTracking.ObjectFeatures.connect( opTrackingFeatureExtraction.RegionFeaturesVigra )
         opStructuredTracking.ComputedFeatureNames.connect( opTrackingFeatureExtraction.ComputedFeatureNamesVigra )
+
         opStructuredTracking.DivisionProbabilities.connect( opDivDetection.Probabilities )
         opStructuredTracking.DetectionProbabilities.connect( opCellClassification.Probabilities )
         opStructuredTracking.NumLabels.connect( opCellClassification.NumLabels )
