@@ -163,7 +163,6 @@ class CropSelectionGui(CroppingGui):
         self._cropControlUi.cropListView.colorsChanged.connect(self.onColorsChanged)
 
         self._initCropListView()
-
         # The editor's layerstack is in charge of which layer movement buttons are enabled
         #model = self.editor.layerStack
         #self._viewerControlUi.viewerControls.setupConnections(model)
@@ -442,14 +441,14 @@ class CropSelectionGui(CroppingGui):
         # croppingMarkers.onExtentsChanged works correctly only if called on start OR stop coordinates
         self.editor.cropModel.set_crop_extents([[starts[0], ce[0][1]],[starts[1], ce[1][1]],[starts[2], ce[2][1]]])
         self.editor.cropModel.set_crop_extents([[starts[0],stops[0]],[starts[1],stops[1]],[starts[2],stops[2]]])
+
+        self.editor.navCtrl.changeTimeRelative(self.topLevelOperatorView.Crops.value[self._cropControlUi.cropListModel[row].name]["time"][0] - self.editor.posModel.time)
+        self.editor.cropModel.colorChanged.emit(brushColor)
         if not (self.editor.cropModel._crop_extents[0][0]  == None or self.editor.cropModel.cropZero()):
             cropMidPos = [(b+a)/2 for [a,b] in self.editor.cropModel._crop_extents]
             for i in range(3):
                 self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
         self.editor.navCtrl.panSlicingViews(cropMidPos,[0,1,2])
-
-        self.editor.navCtrl.changeTimeRelative(self.topLevelOperatorView.Crops.value[self._cropControlUi.cropListModel[row].name]["time"][0] - self.editor.posModel.time)
-        self.editor.cropModel.colorChanged.emit(brushColor)
 
     def apply_operator_settings_to_gui(self,*args):
         minValueT, maxValueT, minValueX, maxValueX, minValueY, maxValueY, minValueZ, maxValueZ = [0]*8

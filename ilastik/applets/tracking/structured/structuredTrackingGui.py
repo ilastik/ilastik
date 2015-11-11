@@ -436,6 +436,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                                 for track in trackSet:
 
                                     if not foundAllArcs:
+                                        #print "[structuredTrackingGui] Transitions Arc: (", time-1, ",", int(previous_label), ") ---> (", time, ",", int(label), ")"
+                                        print "[structuredTrackingGui] Increasing max nearest neighbors!"
                                         break
 
                                    # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
@@ -511,8 +513,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         withTracklets=False
         withMergerResolution=True
         transition_parameter = 5.0
-        borderAwareWidth = 0.0
-
+        borderAwareWidth = self._drawer.bordWidthBox.value()
+        print "borderAwareWidth",borderAwareWidth
         sigmas = pgmlink.VectorOfDouble()
         for i in range(5):
             sigmas.append(0.0)

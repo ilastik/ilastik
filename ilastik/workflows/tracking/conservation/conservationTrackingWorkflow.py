@@ -8,7 +8,7 @@ from ilastik.applets.thresholdTwoLevels.thresholdTwoLevelsApplet import Threshol
 from lazyflow.operators.adaptors import Op5ifyer
 from ilastik.applets.trackingFeatureExtraction.trackingFeatureExtractionApplet import TrackingFeatureExtractionApplet
 from ilastik.applets.trackingFeatureExtraction import config
-from lazyflow.operators.opReorderAxes import OpReorderAxes
+#from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
 
 class ConservationTrackingWorkflowBase( Workflow ):

@@ -23,6 +23,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 try:
-    from structuredTrackingWorkflow import StructuredTrackingWorkflow
+    from structuredTrackingWorkflow import StructuredTrackingWorkflowFromPrediction, StructuredTrackingWorkflowFromBinary
 except ImportError as e:
-    logger.warn( "Failed to import structured tracking workflow; check dependencies: " + str(e) )
+    logger.warn( "Failed to import structured tracking workflow. For this workflow, see the installation"\
+             "instructions on our website ilastik.org; check dependencies: " + str(e) )
