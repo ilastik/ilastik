@@ -387,7 +387,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             hypothesesGraph = consTracker.buildGraph(traxelStore, new_max_nearest_neighbors)
 
             maxDist = 200
-            withDivisions = True
+            withDivisions = self._drawer.divisionsBox.isChecked()
             sizeDependent = False
             divThreshold = float(0.5)
 
