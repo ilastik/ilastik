@@ -200,8 +200,8 @@ class OpTrackingBase(Operator, ExportingOperator):
             label2color.append({})
             mergers.append({})
 
+        extra_track_ids = {}
         if export_mode:
-            extra_track_ids = {}
             multi_move = {}
             multi_move_next = {}
             divisions = []
@@ -327,6 +327,8 @@ class OpTrackingBase(Operator, ExportingOperator):
             self.divisions = divisions
             return label2color, extra_track_ids, divisions
 
+        self.track_id = label2color
+        self.extra_track_ids = extra_track_ids
         self.label2color = label2color
         self.mergers = mergers
 
@@ -341,17 +343,19 @@ class OpTrackingBase(Operator, ExportingOperator):
         return self._setLabel2Color(export_mode=True)
 
     def track_children(self, track_id, start=0):
-        for t, _, track, _, child_track1, _, child_track2 in self.divisions[start:]:
-            if track == track_id:
-                children_of = partial(self.track_children, start=t)
-                return [child_track1, child_track2] + \
-                       children_of(child_track1) + children_of(child_track2)
+        if start in self.divisions:
+            for t, _, track, _, child_track1, _, child_track2 in self.divisions[start:]:
+                if track == track_id:
+                    children_of = partial(self.track_children, start=t)
+                    return [child_track1, child_track2] + \
+                           children_of(child_track1) + children_of(child_track2)
         return []
 
     def track_parent(self, track_id):
-        for t, oid, track, _, child_track1, _, child_track2 in self.divisions[:-1]:
-            if track_id in (child_track1, child_track2):
-                return [track] + self.track_parent(track)
+        if not self.divisions == {}:
+            for t, oid, track, _, child_track1, _, child_track2 in self.divisions[:-1]:
+                if track_id in (child_track1, child_track2):
+                    return [track] + self.track_parent(track)
         return []
 
     def track_family(self, track_id):
