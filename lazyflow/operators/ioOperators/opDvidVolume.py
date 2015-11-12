@@ -86,7 +86,7 @@ class OpDvidVolume(Operator):
                                "LAZYFLOW_NO_DVID_EXTENTS: '{}'.  Please use either 0 or 1."
                                .format(os.getenv("LAZYFLOW_NO_DVID_EXTENTS")))
 
-        if no_extents_checking:
+        if no_extents_checking or (None in shape):
             # In headless mode, we allow the users to request regions outside the currently valid regions of the image.
             # For now, the easiest way to allow that is to simply hard-code DVID volumes to have a really large (1M cubed) shape.
             logger.info("Using absurdly large DVID volume extents, to allow out-of-bounds requests.")
