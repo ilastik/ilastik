@@ -275,6 +275,10 @@ class LayerViewerGui(QWidget):
                 display_mode = "random-colortable"
             else:
                 display_mode = "grayscale"
+
+        # Override RGBA --> Grayscale if there's only 1 channel.
+        if display_mode == "rgba" and numChannels == 1:
+            display_mode = "grayscale"
                 
         if display_mode == "grayscale":
             assert not lastChannelIsAlpha, "Can't have an alpha channel if there is no color channel"
