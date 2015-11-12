@@ -399,7 +399,6 @@ class OpStructuredTracking(OpTrackingBase):
 
         print "get_conservation_tracking_parameters DONE!"
         consTrackerParameters.register_transition_func(self.track_transition_func)
-        consTrackerParameters.register_transition_func_no_weight(self.track_transition_func_no_weight)
 
         fixLabeledNodes = False;
 
@@ -446,7 +445,7 @@ class OpStructuredTracking(OpTrackingBase):
                                                 transWeight,
                                                 withTracklets,
                                                 ndim,
-                                                transition_parameter,
+                                                self.transition_parameter,
                                                 True, # with_constraints
                                                 #True) # with_multi_frame_moves
                                                 None) # TransitionClassifier
