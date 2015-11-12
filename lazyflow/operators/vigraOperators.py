@@ -309,6 +309,7 @@ class OpPixelFeaturesPresmoothed(Operator):
         self.Output.meta.assignFrom(self.Input.meta)
         self.Output.meta.dtype = numpy.float32
         self.Output.meta.axistags["c"].description = "" # Discard any semantics related to the input channels
+        self.Output.meta.display_mode = ""
         self.Output.meta.channel_names = channel_names
         self.Output.meta.shape = self.Input.meta.shape[:-1] + (channelCount,)
         self.Output.meta.ideal_blockshape = self._get_ideal_blockshape()
