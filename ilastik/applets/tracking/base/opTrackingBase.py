@@ -230,7 +230,7 @@ class OpTrackingBase(Operator, ExportingOperator):
             divisions = []
 
         for i in time_range:
-            dis = get_dict_value(events[str(i - time_range[0] + 1)], "dis", [])
+            # dis = get_dict_value(events[str(i - time_range[0] + 1)], "dis", [])
             app = get_dict_value(events[str(i - time_range[0] + 1)], "app", [])
             div = get_dict_value(events[str(i - time_range[0] + 1)], "div", [])
             mov = get_dict_value(events[str(i - time_range[0] + 1)], "mov", [])

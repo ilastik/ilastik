@@ -276,7 +276,7 @@ class OpConservationTracking(OpTrackingBase):
                                          "none",  # detection_rf_filename
                                          fov,
                                          "none", # dump traxelstore,
-                                         pgmlink.ConsTrackingSolverType.DynProgSolver
+                                         pgmlink.ConsTrackingSolverType.CplexSolver
                                          )
             g = self.tracker.buildGraph(ts, 2)
 
@@ -313,9 +313,8 @@ class OpConservationTracking(OpTrackingBase):
             uncertaintyParams, # uncertainty parameters
             cplex_timeout, # cplex timeout
             None, # transition classifier
-            pgmlink.ConsTrackingSolverType.DynProgSolver, # Solver
-            1, # num threads
-            False # additional timestep constraint
+            pgmlink.ConsTrackingSolverType.CplexSolver, # Solver
+            1 # num threads
         )
 
         if motionModelWeight > 0:
@@ -449,7 +448,7 @@ class OpConservationTracking(OpTrackingBase):
                 # TODO Reliable distinction between 2d and 3d?
                 if self._ndim == 2:
                     # Assume we have 2d data: bind z to zero
-                    relabel_volume = volume[...,0]
+                    relabel_volume = volume[..., 0]
                 else:
                     # For 3d data use the whole volume
                     relabel_volume = volume
