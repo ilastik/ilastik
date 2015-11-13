@@ -58,6 +58,46 @@ class TestParallelVigraRfLazyflowClassifier(object):
         assert (0 <= probabilities).all() and (probabilities <= 1.0).all()
         assert (numpy.argmax(probabilities, axis=-1)+1 == self.expected_classes).all()
 
+    def test_pickle_fields(self):
+        """
+        Classifier factories are meant to be pickled and restored, but that only 
+        works if the thing we're restoring has the EXACT SAME MEMBERS as the 
+        current version of the class.
+        
+        Any changes to the factory's member variables will change it's pickled representation.
+        Therefore, we store a special member named VERSION as both a class member
+        AND instance member (see LazyflowVectorwiseClassifierFactoryABC.__new__),
+        so we can check for compatibility before attempting to unpickle a factory.
+        
+        In this test, we verify that the pickle interface hasn't changed.
+        
+        IF THIS TEST FAILS:
+            - Think about whether that's what you intended (see below)
+            - Update ParallelVigraRfLazyflowClassifierFactory.VERSION
+            - and then change the version and members listed below.
+        
+        ... but think hard about whether or not the changes you made to
+        ParallelVigraRfLazyflowClassifierFactory are important, because they will 
+        invalidate stored classifiers in existing ilastik project files.
+        (The project file should still load, but a warning will be shown, explaining that 
+        the user will need to train a new classifer.)
+        
+        """
+        factory = ParallelVigraRfLazyflowClassifierFactory(10, variable_importance_enabled=True)
+        members = set(factory.__dict__.keys())
+
+        # Quick way to get the updated set of members.
+        # print members
+        
+        assert ParallelVigraRfLazyflowClassifierFactory.VERSION == 2
+        assert members == set(['VERSION',
+                               '_variable_importance_path',
+                               '_kwargs',
+                               '_variable_importance_enabled',
+                               '_num_trees',
+                               '_label_proportion',
+                               '_num_forests'])
+
 if __name__ == "__main__":
     import sys
     import nose
