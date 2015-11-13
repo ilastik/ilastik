@@ -18,18 +18,31 @@ logger = logging.getLogger(__name__)
 
 
 class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
+    """
+    Trains an RF as a forest-of-forests, so that they can be trained in parallel.
+    """
     VERSION = 2 # This is used to determine compatibility of pickled classifier factories.
                 # You must bump this if any instance members are added/removed/renamed.
     
-    def __init__(self, num_trees_total=100, num_forests=None, variable_importance_path=None, label_proportion=None, variable_importance_enabled=True, **kwargs):      
+    def __init__(self, num_trees_total=100, num_forests=None, variable_importance_path=None, label_proportion=None, variable_importance_enabled=False, **kwargs):      
         """
         num_trees_total: The number of trees to train
+        
         num_forests: How many forests in which to distribute the trees (forests can train and predict in parallel)
                      If not provided, the number of forests is automatically determined 
                      to match the number of available lazyflow worker threads.
+        
+        variable_importance_enabled: If True, RFs are trained with feature-importance calculation enabled,
+                                     and the importances are logged to the console. (Slower.)
+        
+        variable_importance_path: If provided, the feature importance table will also be writen to a file.
+                                  (May only be used with variable_importance_enabled=True) 
+        
         kwargs: Additional keyword args, passed directly to the vigra.RandomForest constructor.
         """
-                
+        assert not variable_importance_path or variable_importance_enabled, \
+            "Can't export the feature importance table if you don't enable feature importance calculation."
+
         self._num_trees = num_trees_total
         self._label_proportion = label_proportion
         self._variable_importance_path = variable_importance_path
@@ -50,14 +63,15 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
         self._label_proportion = label_proportion
         
     def create_and_train(self, X, y, feature_names=None):           
+        logger.debug( "Training parallel vigra RF" )
+
         # Distribute trees as evenly as possible
         tree_counts = numpy.array( [self._num_trees // self._num_forests] * self._num_forests )
         tree_counts[:self._num_trees % self._num_forests] += 1
         assert tree_counts.sum() == self._num_trees
         tree_counts = map(int, tree_counts)
-        tree_counts[:] = (tree_count for tree_count in tree_counts if tree_count != 0)
-        
-        logger.debug( "Training parallel vigra RF" )
+        tree_counts[:] = (tree_count for tree_count in tree_counts if tree_count != 0)        
+
         # Save for future reference
         known_labels = numpy.unique(y)
 
@@ -69,23 +83,6 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
         assert X.ndim == 2
         assert len(X) == len(y)
 
-        # Create N forests
-        forests = []
-        for tree_count in tree_counts:
-            forests.append( vigra.learning.RandomForest(tree_count, **self._kwargs) )
-
-        # Train forests in parallel
-        oobs = [None] * len(forests)
-        importances = [None] * len(forests)
-        
-        def store_training_results(i, training_results):
-            oob, importance_results = training_results
-            oobs[i] = oob
-            importances[i] = importance_results
-
-        def store_oob_results(i, oob):
-            oobs[i] = oob
-
         # Sample X and y
         if self._label_proportion:
             proportion = self._label_proportion
@@ -93,93 +90,93 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
             idx = random.sample(range(X.shape[0]), row_num)
             X = X[idx,:]
             y = y[idx] 
+            assert (numpy.unique(y) == known_labels).all(), \
+                "Sampled labels are not representative of the complete set: some label values are missing!\n"\
+                "Sampled labels include {}, but complete set has {}".format( numpy.unique(y), known_labels )
+
+        # Create N forests to train
+        # (treecount of each might differ)
+        forests = []
+        for tree_count in tree_counts:
+            forests.append( vigra.learning.RandomForest(tree_count, **self._kwargs) )
         
         # Train classifier with feature importance visitor    
         if self._variable_importance_enabled:
             if not feature_names:
+                # Provide default feature names
                 num_features = X.shape[1]
                 feature_names = ["feature-{:02d}".format(i) for i in range(num_features)]
-            
-            with Timer() as train_timer:
-                pool = RequestPool()
-                for i, forest in enumerate(forests):
-                    req = Request( partial(forest.learnRFWithFeatureSelection, X, y) )
-                    # save the training results
-                    req.notify_finished( partial( store_training_results, i ) )
-                    pool.add( req )
-                pool.wait()
-                
-            logger.info("Training took, {} ".format( train_timer.seconds() ) )    
-    
-            weights = numpy.array(tree_counts).astype(float)
-            weights /= weights.sum()
-    
-            named_importances = collections.OrderedDict( zip( feature_names, numpy.average(importances, weights=weights, axis=0) ) )
-            
-            importance_table = self._generate_importance_table( named_importances, sort=True )
-            
-            logger.info("Feature importance measurements during training: \n{}".format(importance_table) )  
-            
-        # train classifier without feature importance visitor       
+
+            oobs, importances = self._train_forests_with_feature_importance( forests, X, y, 
+                                                                             feature_names,
+                                                                             export_path=self._variable_importance_path )            
         else:
-            known_labels = None
+            # train classifier without feature importance visitor
             feature_names = None
-            
-            with Timer() as train_timer:
-                pool = RequestPool()
-                for i, forest in enumerate(forests):
-                    req = Request( partial(forest.learnRF, X, y) )
-                    # save the oob results
-                    req.notify_finished( partial( store_oob_results, i ) )
-                    pool.add( req )
-                pool.wait()  
+            oobs = self._train_forests( forests, X, y )            
                                    
         logger.info( "Training complete. Average OOB: {}".format( numpy.average(oobs) ) )
         return ParallelVigraRfLazyflowClassifier( forests, oobs, known_labels, feature_names )
 
-
-    def _generate_importance_table(self, named_importances_dict, sort=True):
+    @staticmethod
+    def _train_forests(forests, X, y):
         """
-        Return a string of the given importances dict, in csv format, 
-        but also with extra spaces for pretty-printing.
+        Train all RFs (in parallel), and return the oobs.
         """
-        import csv
-        from StringIO import StringIO
+        oobs = [None] * len(forests)
+        def store_oob_results(i, oob):
+            oobs[i] = oob
 
-        CSV_FORMAT = { 'delimiter' : ',', 'lineterminator' : '\n' }
+        with Timer() as train_timer:
+            pool = RequestPool()
+            for i, forest in enumerate(forests):
+                req = Request( partial(forest.learnRF, X, y) )
+                # save the oob results
+                req.notify_finished( partial( store_oob_results, i ) )
+                pool.add( req )
+            pool.wait()          
+        logger.info("Training took, {} seconds".format( train_timer.seconds() ) )
+        return oobs
 
-        feature_name_length = max( map(len, named_importances_dict.keys()) )
-
-        # See vigra/random_forest/rf_visitors.hxx, class VariableImportanceVisitor
-        n_classes = len(named_importances_dict.values()[0]) - 2
-        columns = [ "{: <{width}}".format("Feature Name", width=feature_name_length) ]
-        columns += [ "  Class #{}".format(i) for i in range(n_classes)]
-        columns += [ "   Overall" ]
-        columns += [ "      Gini" ]
+    @staticmethod
+    def _train_forests_with_feature_importance(forests, X, y, feature_names, export_path=None):
+        """
+        Train all RFs (in parallel) and compute feature importances while doing so.
+        The importances table will be logged as INFO, and also exported to a file if export_path is given.
         
-        output = StringIO()
-        csv_writer = csv.writer(output, **CSV_FORMAT)
-        csv_writer.writerow( columns )
-
-        if sort:
-            # Sort by "overall" importance (column -2)
-            sorted_importances = sorted( named_importances_dict.items(),
-                                         key=lambda (k,v): v[-2] )
-            named_importances_dict = collections.OrderedDict( sorted_importances )
-
-        for feature_name, importances in named_importances_dict.items():
-            feature_name = "{: <{width}}".format(feature_name, width=feature_name_length)
-            importance_strings = map( lambda x: "{: .07f}".format(x), importances )
-            importance_strings = map( lambda s: "{: >10}".format(s), importance_strings )
-            csv_writer.writerow( [feature_name] + importance_strings )
+        Returns: oobs and importances
+        """
+        oobs = [None] * len(forests)
+        importances = [None] * len(forests)
+        def store_training_results(i, training_results):
+            oob, importance_results = training_results
+            oobs[i] = oob
+            importances[i] = importance_results
         
-        # Save variable importance table to file
-        if self._variable_importance_path :   
-            file = open(os.path.join(self._variable_importance_path, 'varimp.txt'), 'w')
-            file.write(output.getvalue())
-            file.close()    
+        with Timer() as train_timer:
+            pool = RequestPool()
+            for i, forest in enumerate(forests):
+                req = Request( partial(forest.learnRFWithFeatureSelection, X, y) )
+                # save the training results
+                req.notify_finished( partial( store_training_results, i ) )
+                pool.add( req )
+            pool.wait()
             
-        return output.getvalue()
+        logger.info("Training took, {} seconds".format( train_timer.seconds() ) )
+
+        # Forests may have different numbers of trees,
+        # so take a weighted average of their importances
+        tree_counts = map(lambda f: f.treeCount(), forests)
+        weights = numpy.array(tree_counts).astype(float)
+        weights /= weights.sum()
+
+        named_importances = collections.OrderedDict( zip( feature_names, numpy.average(importances, weights=weights, axis=0) ) )            
+        importance_table = generate_importance_table( named_importances,
+                                                      sort="overall",
+                                                      export_path=export_path )
+        
+        logger.info("Feature importance measurements during training: \n{}".format(importance_table) )
+        return oobs, importances  
 
     def estimated_ram_usage_per_requested_predictionchannel(self):
         return (Request.global_thread_pool.num_workers) * 4
@@ -197,6 +194,58 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
         return not self.__eq__(other)
 
 assert issubclass( ParallelVigraRfLazyflowClassifierFactory, LazyflowVectorwiseClassifierFactoryABC )
+
+def generate_importance_table(named_importances_dict, sort=None, export_path=None):
+    """
+    Return a string of the given importances dict, in csv format, 
+    but also with extra spaces for pretty-printing.
+    
+    named_importances_dict: A dict of { feature_name : importance }, i.e. {str : float}
+    sort: Must be a class index (1..N) or one of "name", "gini", or "overall"
+    export_path: If provided, the table will also be (over)written to the given file path.
+    """
+    import csv
+    from StringIO import StringIO
+
+    CSV_FORMAT = { 'delimiter' : ',', 'lineterminator' : '\n' }
+
+    feature_name_length = max( map(len, named_importances_dict.keys()) )
+
+    # See vigra/random_forest/rf_visitors.hxx, class VariableImportanceVisitor
+    n_classes = len(named_importances_dict.values()[0]) - 2
+    columns = [ "{: <{width}}".format("Feature Name", width=feature_name_length) ]
+    columns += [ "  Class #{}".format(i) for i in range(n_classes)]
+    columns += [ "   Overall" ]
+    columns += [ "      Gini" ]
+    
+    output = StringIO()
+    csv_writer = csv.writer(output, **CSV_FORMAT)
+    csv_writer.writerow( columns )
+
+    if sort:
+        # Sort must be a class number or one of these strings
+        sort_columns = { i:i for i in range(1,n_classes+1) }
+        sort_columns.update( { "name" :     0,
+                               "overall" : -2,
+                               "gini" :    -1 } )
+        assert sort in sort_columns.keys(), "Invalid sort column: '{}'".format(sort)
+        # Sort by "overall" importance (column -2)
+        sorted_importances = sorted( named_importances_dict.items(),
+                                     key=lambda (k,v): v[-2] )
+        named_importances_dict = collections.OrderedDict( sorted_importances )
+
+    for feature_name, importances in named_importances_dict.items():
+        feature_name = "{: <{width}}".format(feature_name, width=feature_name_length)
+        importance_strings = map( lambda x: "{: .07f}".format(x), importances )
+        importance_strings = map( lambda s: "{: >10}".format(s), importance_strings )
+        csv_writer.writerow( [feature_name] + importance_strings )
+    
+    if export_path:   
+        # Save variable importance table to file
+        with open(os.path.join(export_path, 'varimp.txt'), 'w') as export_file:
+            export_file.write(output.getvalue())
+        
+    return output.getvalue()
 
 class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
     """
