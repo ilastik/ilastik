@@ -210,35 +210,38 @@ class OpMstSegmentorProvider(Operator):
 
     def execute(self,slot,subindex,roi,result):
         assert slot == self.MST, "Invalid output slot: {}".format(slot.name)
-        #first thing, show the user that we are waiting for computations to finish        
-        self.applet.progressSignal.emit(0)
-        
-        volume_feat = self.Image( *roiFromShape( self.Image.meta.shape ) ).wait()
-        labelVolume = self.LabelImage( *roiFromShape( self.LabelImage.meta.shape ) ).wait()
 
-        self.applet.progress = 0
-        def updateProgressBar(x):
-            #send signal iff progress is significant
-            if x-self.applet.progress>1 or x==100:
-                self.applet.progressSignal.emit(x)
-                self.applet.progress = x
-        
-       #mst= MSTSegmentor(labelVolume[0,...,0], 
-       #                  numpy.asarray(volume_feat[0,...,0], numpy.float32), 
-       #                  edgeWeightFunctor = "minimum",
-       #                  progressCallback = updateProgressBar)
-       ##mst.raw is not set here in order to avoid redundant data storage 
-       #mst.raw = None
-        
+        #first thing, show the user that we are waiting for computations to finish
+        self.applet.progressSignal.emit(-1)
+        try:
+            volume_feat = self.Image( *roiFromShape( self.Image.meta.shape ) ).wait()
+            labelVolume = self.LabelImage( *roiFromShape( self.LabelImage.meta.shape ) ).wait()
 
-        newMst = WatershedSegmentor(labelVolume[0,...,0],numpy.asarray(volume_feat[0,...,0], numpy.float32), 
-                          edgeWeightFunctor = "minimum",progressCallback = updateProgressBar)
+            self.applet.progress = 0
+            def updateProgressBar(x):
+                #send signal iff progress is significant
+                if x-self.applet.progress>1 or x==100:
+                    self.applet.progressSignal.emit(x)
+                    self.applet.progress = x
 
-        #Output is of shape 1
-        #result[0] = mst
-        newMst.raw = None
-        result[0] = newMst
-        return result        
+           #mst= MSTSegmentor(labelVolume[0,...,0],
+           #                  numpy.asarray(volume_feat[0,...,0], numpy.float32),
+           #                  edgeWeightFunctor = "minimum",
+           #                  progressCallback = updateProgressBar)
+           ##mst.raw is not set here in order to avoid redundant data storage
+           #mst.raw = None
+
+            newMst = WatershedSegmentor(labelVolume[0,...,0],numpy.asarray(volume_feat[0,...,0], numpy.float32),
+                              edgeWeightFunctor = "minimum",progressCallback = updateProgressBar)
+
+            #Output is of shape 1
+            #result[0] = mst
+            newMst.raw = None
+            result[0] = newMst
+            return result
+
+        finally:
+            self.applet.progressSignal.emit(100)
 
     def propagateDirty(self, slot, subindex, roi):
         self.MST.setDirty(slice(None))
