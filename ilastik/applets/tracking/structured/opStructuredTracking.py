@@ -438,6 +438,7 @@ class OpStructuredTracking(OpTrackingBase):
                 self._get_merger_coordinates(coordinate_map,
                                              time_range,
                                              eventsVector)
+                consTrackerParameters.register_transition_func(self.track_transition_func_no_weight)
 
                 eventsVector = self.consTracker.resolve_mergers(eventsVector,
                                                 coordinate_map.get(),
@@ -448,7 +449,8 @@ class OpStructuredTracking(OpTrackingBase):
                                                 self.transition_parameter,
                                                 True, # with_constraints
                                                 #True) # with_multi_frame_moves
-                                                None) # TransitionClassifier
+                                                None, # TransitionClassifier
+                                                consTrackerParameters)
         except Exception as e:
             raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
         
@@ -460,7 +462,6 @@ class OpStructuredTracking(OpTrackingBase):
         self.EventsVector.setValue(events, check_changed=False)
         
     def track_transition_func(self, traxel_1, traxel_2, state):
-        #print "track_transition_func"
         return self.transitionWeight * self.track_transition_func_no_weight(traxel_1, traxel_2, state)
 
     def track_transition_func_no_weight(self, traxel_1, traxel_2, state):
