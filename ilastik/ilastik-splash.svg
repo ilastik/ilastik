@@ -292,7 +292,7 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="0.33728602"
-     inkscape:cx="820.82988"
+     inkscape:cx="596.98425"
      inkscape:cy="492.58835"
      inkscape:document-units="px"
      inkscape:current-layer="layer2"
@@ -339,7 +339,8 @@
        y="215.05829"
        id="text3669"
        inkscape:export-xdpi="28.411983"
-       inkscape:export-ydpi="28.411983"><tspan
+       inkscape:export-ydpi="28.411983"
+       inkscape:export-filename="/Users/bergs/Documents/workspace/ilastik-meta/ilastik/ilastik-splash.png"><tspan
          sodipodi:role="line"
          id="tspan3671"
          x="800.50555"
@@ -353,17 +354,21 @@
        y="441.05829"
        x="800.50555"
        style="font-style:normal;font-weight:normal;font-size:144px;font-family:Berta_Drug;-inkscape-font-specification:Berta_Drug;fill:#ffffff;fill-opacity:1;stroke:none"
-       xml:space="preserve"><tspan
+       xml:space="preserve"
+       inkscape:export-filename="/Users/bergs/Documents/workspace/ilastik-meta/ilastik/ilastik-splash.png"><tspan
          y="441.05829"
          x="800.50555"
          id="tspan4609"
-         sodipodi:role="line">1.1.8rc</tspan></text>
+         sodipodi:role="line">1.1.8</tspan></text>
     <text
        xml:space="preserve"
        style="font-size:36px;font-style:normal;font-weight:normal;text-align:end;text-anchor:end;fill:#000000;fill-opacity:1;stroke:none;font-family:Berta_Drug;-inkscape-font-specification:Berta_Drug"
        x="1547.4659"
        y="665.24396"
-       id="text3681"><tspan
+       id="text3681"
+       inkscape:export-filename="/Users/bergs/Documents/workspace/ilastik-meta/ilastik/ilastik-splash.png"
+       inkscape:export-xdpi="28.411983"
+       inkscape:export-ydpi="28.411983"><tspan
          sodipodi:role="line"
          x="1547.4659"
          y="665.24396"
@@ -393,7 +398,10 @@
        style="font-size:36px;font-style:normal;font-weight:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Berta_Drug;-inkscape-font-specification:Berta_Drug"
        x="1038.0807"
        y="604.62933"
-       id="text2885"><tspan
+       id="text2885"
+       inkscape:export-filename="/Users/bergs/Documents/workspace/ilastik-meta/ilastik/ilastik-splash.png"
+       inkscape:export-xdpi="28.411983"
+       inkscape:export-ydpi="28.411983"><tspan
          sodipodi:role="line"
          id="tspan2887"
          x="1038.0807"
@@ -407,7 +415,8 @@
        id="text2940"
        sodipodi:linespacing="200%"
        inkscape:export-xdpi="28.411983"
-       inkscape:export-ydpi="28.411983"><tspan
+       inkscape:export-ydpi="28.411983"
+       inkscape:export-filename="/Users/bergs/Documents/workspace/ilastik-meta/ilastik/ilastik-splash.png"><tspan
          sodipodi:role="line"
          x="1008.9127"
          y="498.9303"
@@ -486,7 +495,10 @@
     <flowRoot
        xml:space="preserve"
        id="flowRoot3381"
-       style="fill:black;stroke:none;stroke-opacity:1;stroke-width:1px;stroke-linejoin:miter;stroke-linecap:butt;fill-opacity:1;font-family:Sans;font-style:normal;font-weight:normal;font-size:24px;line-height:125%;letter-spacing:0px;word-spacing:0px;-inkscape-font-specification:Times;font-stretch:normal;font-variant:normal;text-anchor:start;text-align:start;writing-mode:lr"><flowRegion
+       style="fill:black;stroke:none;stroke-opacity:1;stroke-width:1px;stroke-linejoin:miter;stroke-linecap:butt;fill-opacity:1;font-family:Sans;font-style:normal;font-weight:normal;font-size:24px;line-height:125%;letter-spacing:0px;word-spacing:0px;-inkscape-font-specification:Times;font-stretch:normal;font-variant:normal;text-anchor:start;text-align:start;writing-mode:lr"
+       inkscape:export-filename="/Users/bergs/Documents/workspace/ilastik-meta/ilastik/ilastik-splash.png"
+       inkscape:export-xdpi="28.411983"
+       inkscape:export-ydpi="28.411983"><flowRegion
          id="flowRegion3383"><rect
            id="rect3385"
            width="374.79764"
@@ -501,7 +513,8 @@
        style="font-style:normal;font-weight:normal;font-size:40px;line-height:200%;font-family:Berta_Drug;-inkscape-font-specification:Berta_Drug;text-align:end;text-anchor:end;display:inline;fill:#000000;fill-opacity:1;stroke:none;enable-background:new"
        xml:space="preserve"
        inkscape:export-xdpi="28.411983"
-       inkscape:export-ydpi="28.411983"><tspan
+       inkscape:export-ydpi="28.411983"
+       inkscape:export-filename="/Users/bergs/Documents/workspace/ilastik-meta/ilastik/ilastik-splash.png"><tspan
          id="tspan3406"
          style="font-size:32px;line-height:150%;text-align:start;text-anchor:start;fill:#ffffff"
          y="210.85999"
@@ -610,7 +623,10 @@
     <flowRoot
        xml:space="preserve"
        id="flowRoot3107"
-       style="fill:black;stroke:none;stroke-opacity:1;stroke-width:1px;stroke-linejoin:miter;stroke-linecap:butt;fill-opacity:1;font-family:Sans;font-style:normal;font-weight:normal;font-size:24px;line-height:125%;letter-spacing:0px;word-spacing:0px;-inkscape-font-specification:Times;font-stretch:normal;font-variant:normal;text-anchor:start;text-align:start;writing-mode:lr"><flowRegion
+       style="fill:black;stroke:none;stroke-opacity:1;stroke-width:1px;stroke-linejoin:miter;stroke-linecap:butt;fill-opacity:1;font-family:Sans;font-style:normal;font-weight:normal;font-size:24px;line-height:125%;letter-spacing:0px;word-spacing:0px;-inkscape-font-specification:Times;font-stretch:normal;font-variant:normal;text-anchor:start;text-align:start;writing-mode:lr"
+       inkscape:export-filename="/Users/bergs/Documents/workspace/ilastik-meta/ilastik/ilastik-splash.png"
+       inkscape:export-xdpi="28.411983"
+       inkscape:export-ydpi="28.411983"><flowRegion
          id="flowRegion3109"><rect
            id="rect3111"
            width="2030.9172"
@@ -623,7 +639,10 @@
        x="1753.9512"
        y="790.35602"
        id="text3466"
-       sodipodi:linespacing="125%"><tspan
+       sodipodi:linespacing="125%"
+       inkscape:export-filename="/Users/bergs/Documents/workspace/ilastik-meta/ilastik/ilastik-splash.png"
+       inkscape:export-xdpi="28.411983"
+       inkscape:export-ydpi="28.411983"><tspan
          sodipodi:role="line"
          id="tspan3468"
          x="1753.9512"
@@ -634,7 +653,10 @@
        x="1436.713"
        y="354.52414"
        id="text3468"
-       sodipodi:linespacing="125%"><tspan
+       sodipodi:linespacing="125%"
+       inkscape:export-filename="/Users/bergs/Documents/workspace/ilastik-meta/ilastik/ilastik-splash.png"
+       inkscape:export-xdpi="28.411983"
+       inkscape:export-ydpi="28.411983"><tspan
          sodipodi:role="line"
          id="tspan3470"
          x="1436.713"
@@ -646,7 +668,10 @@
     <flowRoot
        xml:space="preserve"
        id="flowRoot4329"
-       style="fill:black;stroke:none;stroke-opacity:1;stroke-width:1px;stroke-linejoin:miter;stroke-linecap:butt;fill-opacity:1;font-family:sans-serif;font-style:normal;font-weight:normal;font-size:40px;line-height:125%;letter-spacing:0px;word-spacing:0px"><flowRegion
+       style="fill:black;stroke:none;stroke-opacity:1;stroke-width:1px;stroke-linejoin:miter;stroke-linecap:butt;fill-opacity:1;font-family:sans-serif;font-style:normal;font-weight:normal;font-size:40px;line-height:125%;letter-spacing:0px;word-spacing:0px"
+       inkscape:export-filename="/Users/bergs/Documents/workspace/ilastik-meta/ilastik/ilastik-splash.png"
+       inkscape:export-xdpi="28.411983"
+       inkscape:export-ydpi="28.411983"><flowRegion
          id="flowRegion4331"><rect
            id="rect4333"
            width="1924.183"
