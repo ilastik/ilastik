@@ -153,7 +153,16 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
             metadata = opMetadataInjector.Metadata.value.copy()
             metadata.axistags = vigra.defaultAxistags(updated_axisorder)
             opMetadataInjector.Metadata.setValue( metadata )
+            
+            if opReorderAxes._invalid_axes:
+                settingsDlg.buttonBox.button(QDialogButtonBox.Ok).setEnabled(False)
+                # Red background
+                settingsDlg.axesEdit.setStyleSheet("QLineEdit { background: rgb(255, 128, 128);"
+                                                   "selection-background-color: rgb(128, 128, 255); }")
         settingsDlg.axesEdit.editingFinished.connect( handle_updated_axes )
+        
+        # Initialize
+        handle_updated_axes()
 
         dlg_result = settingsDlg.exec_()
         if dlg_result != LabelImportOptionsDlg.Accepted:
@@ -227,10 +236,16 @@ class LabelImportOptionsDlg(QDialog):
         self._insert_position_boxes = collections.OrderedDict()
         self._insert_mapping_boxes = collections.OrderedDict()
 
-        # Result values
-        output_tagged_shape = writeSeedsSlot.meta.getTaggedShape()
-        writeSeedsShape = map( lambda k: output_tagged_shape[k], dataInputSlot.meta.getAxisKeys() )
-        axisRanges = numpy.array(writeSeedsShape) - dataInputSlot.meta.shape
+        write_seeds_tagged_shape = writeSeedsSlot.meta.getTaggedShape()
+        label_data_tagged_shape = dataInputSlot.meta.getTaggedShape()
+
+        axisRanges = ()
+        for k in label_data_tagged_shape.keys():
+            try:
+                axisRanges += (write_seeds_tagged_shape[k] - label_data_tagged_shape[k],)
+            except KeyError:
+                axisRanges += (0,)
+
         self.imageOffsets = LabelImportOptionsDlg._defaultImageOffsets(axisRanges, srcInputFiles, dataInputSlot)
         self.labelMapping = LabelImportOptionsDlg._defaultLabelMapping(labelInfo)
 
@@ -245,7 +260,7 @@ class LabelImportOptionsDlg(QDialog):
 
         self._dataInputSlot.notifyMetaChanged( self._initInsertPositionMappingWidgets )
         self._dataInputSlot.notifyMetaChanged( self._initWarningLabel )
-
+        
     def closeEvent(self, e):
         # Clean-up
         self._dataInputSlot.unregisterMetaChanged( self._initInsertPositionMappingWidgets )
@@ -306,6 +321,14 @@ class LabelImportOptionsDlg(QDialog):
         self.labelMetaInfoWidget.setEnabled( state == QValidator.Acceptable )
         self.positionWidget.setEnabled( state == QValidator.Acceptable )
         self.buttonBox.button(QDialogButtonBox.Ok).setEnabled( state == QValidator.Acceptable )
+        if state != QValidator.Acceptable:
+            # Red background
+            self.axesEdit.setStyleSheet("QLineEdit { background: rgb(255, 128, 128);"
+                                        "selection-background-color: rgb(128, 128, 255); }")
+        else:
+            # White background
+            self.axesEdit.setStyleSheet("QLineEdit { background: rgb(255, 255, 255);"
+                                        "selection-background-color: rgb(128, 128, 128); }")
         
     class _QAxesValidator(QValidator):
         def __init__(self, expected_length, parent=None):
@@ -370,10 +393,14 @@ class LabelImportOptionsDlg(QDialog):
         if not self._dataInputSlot.ready():
             return
 
-        output_tagged_shape = self._writeSeedsSlot.meta.getTaggedShape()
-        writeSeedsShape = map( lambda k: output_tagged_shape[k], self._dataInputSlot.meta.getAxisKeys() )
-        axisRanges = numpy.array(writeSeedsShape) - self._dataInputSlot.meta.shape
-        maxValues = list(axisRanges)
+        write_seeds_tagged_shape = self._writeSeedsSlot.meta.getTaggedShape()
+        label_data_tagged_shape = self._dataInputSlot.meta.getTaggedShape()
+        axisRanges = ()
+        for k in label_data_tagged_shape.keys():
+            try:
+                axisRanges += (write_seeds_tagged_shape[k] - label_data_tagged_shape[k],)
+            except KeyError:
+                axisRanges += (0,)
 
         # Handle the 'c' axis separately
         inputAxes = self._dataInputSlot.meta.getAxisKeys()
@@ -381,15 +408,15 @@ class LabelImportOptionsDlg(QDialog):
             c_idx = inputAxes.index('c')
         except ValueError:
             inputAxes_noC = inputAxes
-            maxValues_noC = maxValues
+            maxValues_noC = axisRanges
         else:
             inputAxes_noC = inputAxes[:c_idx] + inputAxes[c_idx+1:]  # del(list(inputAxes)[c_idx])
-            maxValues_noC = maxValues[:c_idx] + maxValues[c_idx+1:]  # del(list(maxValues)[c_idx])
+            maxValues_noC = axisRanges[:c_idx] + axisRanges[c_idx+1:]  # del(list(maxValues)[c_idx])
 
         self._initInsertPositionTableWithExtents(inputAxes_noC, maxValues_noC)
         self._initLabelMappingTableWithExtents()
 
-        if (axisRanges < 0).any():
+        if (numpy.asarray(axisRanges) < 0).any():
             self.positionWidget.setEnabled( False )
 
         # The OK button should have the same status as the positionWidget
