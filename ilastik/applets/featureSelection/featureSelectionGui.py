@@ -51,6 +51,8 @@ from ilastik.config import cfg as ilastik_config
 
 from ilastik.applets.base.applet import DatasetConstraintError
 
+from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
+
 #===----------------------------------------------------------------------------------------------------------------===
 #=== FeatureSelectionGui                                                                                            ===
 #===----------------------------------------------------------------------------------------------------------------===
@@ -58,23 +60,6 @@ from ilastik.applets.base.applet import DatasetConstraintError
 class FeatureSelectionGui(LayerViewerGui):
     """
     """
-    
-    # Constants    
-    ScalesList = [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
-
-    # Map feature groups to lists of feature IDs
-    FeatureGroups = [ ( "Color/Intensity",   [ "GaussianSmoothing" ] ),
-                      ( "Edge",    [ "LaplacianOfGaussian", "GaussianGradientMagnitude", "DifferenceOfGaussians" ] ),
-                      ( "Texture", [ "StructureTensorEigenvalues", "HessianOfGaussianEigenvalues" ] ) ]
-
-    # Map feature IDs to feature names
-    FeatureNames = { 'GaussianSmoothing' : 'Gaussian Smoothing',
-                     'LaplacianOfGaussian' : "Laplacian of Gaussian",
-                     'GaussianGradientMagnitude' : "Gaussian Gradient Magnitude",
-                     'DifferenceOfGaussians' : "Difference of Gaussians",
-                     'StructureTensorEigenvalues' : "Structure Tensor Eigenvalues",
-                     'HessianOfGaussianEigenvalues' : "Hessian of Gaussian Eigenvalues" }
-
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
@@ -119,12 +104,12 @@ class FeatureSelectionGui(LayerViewerGui):
 
     def getFeatureIdOrder(self):
         featureIrdOrder = []
-        for group, featureIds in self.FeatureGroups:
+        for group, featureIds in OpFeatureSelection.FeatureGroups:
             featureIrdOrder += featureIds
         return featureIrdOrder
 
     def initFeatureOrder(self):
-        self.topLevelOperatorView.Scales.setValue( self.ScalesList )
+        self.topLevelOperatorView.Scales.setValue( OpFeatureSelection.ScalesList )
         self.topLevelOperatorView.FeatureIds.setValue( self.getFeatureIdOrder() )
             
     def initAppletDrawerUi(self):
@@ -275,13 +260,13 @@ class FeatureSelectionGui(LayerViewerGui):
         
         # Map from groups of feature IDs to groups of feature NAMEs
         groupedNames = []
-        for group, featureIds in self.FeatureGroups:
+        for group, featureIds in OpFeatureSelection.FeatureGroups:
             featureEntries = []
             for featureId in featureIds:
-                featureName = self.FeatureNames[featureId]
+                featureName = OpFeatureSelection.FeatureNames[featureId]
                 featureEntries.append( FeatureEntry(featureName) )
             groupedNames.append( (group, featureEntries) )
-        self.featureDlg.createFeatureTable( groupedNames, self.ScalesList, self.topLevelOperatorView.WINDOW_SIZE )
+        self.featureDlg.createFeatureTable( groupedNames, OpFeatureSelection.ScalesList, self.topLevelOperatorView.WINDOW_SIZE )
         self.featureDlg.setImageToPreView(None)
 
         # Init with no features
@@ -354,7 +339,7 @@ class FeatureSelectionGui(LayerViewerGui):
             
             reorderedMatrix = numpy.zeros(matrix.shape, dtype=bool)
             newrow = 0
-            for group, featureIds in self.FeatureGroups:
+            for group, featureIds in OpFeatureSelection.FeatureGroups:
                 for featureId in featureIds:
                     oldrow = featureOrdering.index(featureId)
                     reorderedMatrix[newrow] = matrix[oldrow]
