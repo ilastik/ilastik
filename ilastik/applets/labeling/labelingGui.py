@@ -152,7 +152,7 @@ class LabelingGui(LayerViewerGui):
         assert labelingSlots.labelEraserValue is not None, "Missing a required slot."
         assert labelingSlots.labelDelete is not None, "Missing a required slot."
         assert labelingSlots.labelNames is not None, "Missing a required slot."
-        assert labelingSlots.labelsAllowed is not None, "Missing a required slot."
+        #assert labelingSlots.labelsAllowed is not None, "Missing a required slot."
 
         self.__cleanup_fns = []
 
@@ -456,19 +456,19 @@ class LabelingGui(LayerViewerGui):
                           Tool.Erase        : "brushing" }
 
         # If the user can't label this image, disable the button and say why its disabled
-        labelsAllowed = False
+        labelsAllowed = True
 
-        labelsAllowedSlot = self._labelingSlots.labelsAllowed
-        if labelsAllowedSlot.ready():
-            labelsAllowed = labelsAllowedSlot.value
+#         labelsAllowedSlot = self._labelingSlots.labelsAllowed
+#         if labelsAllowedSlot.ready():
+#             labelsAllowed = labelsAllowedSlot.value
 
-            if hasattr(self._labelControlUi, "AddLabelButton"):
-                if not labelsAllowed or self._labelControlUi.labelListModel.rowCount() == self.maxLabelNumber:
-                    self._labelControlUi.AddLabelButton.setEnabled(False)
-                if labelsAllowed:
-                    self._labelControlUi.AddLabelButton.setText("Add Label")
-                else:
-                    self._labelControlUi.AddLabelButton.setText("(Labeling Not Allowed)")
+        if hasattr(self._labelControlUi, "AddLabelButton"):
+            if not labelsAllowed or self._labelControlUi.labelListModel.rowCount() == self.maxLabelNumber:
+                self._labelControlUi.AddLabelButton.setEnabled(False)
+            if labelsAllowed:
+                self._labelControlUi.AddLabelButton.setText("Add Label")
+            else:
+                self._labelControlUi.AddLabelButton.setText("(Labeling Not Allowed)")
 
         e = labelsAllowed & (self._labelControlUi.labelListModel.rowCount() > 0)
         self._gui_enableLabeling(e)
@@ -832,9 +832,9 @@ class LabelingGui(LayerViewerGui):
 
         # Side effect 2: Switch to navigation mode if labels aren't
         #  allowed on this image.
-        labelsAllowedSlot = self._labelingSlots.labelsAllowed
-        if labelsAllowedSlot.ready() and not labelsAllowedSlot.value:
-            self._changeInteractionMode(Tool.Navigation)
+#         labelsAllowedSlot = self._labelingSlots.labelsAllowed
+#         if labelsAllowedSlot.ready() and not labelsAllowedSlot.value:
+#             self._changeInteractionMode(Tool.Navigation)
 
         # Raw Input Layer
         if self._rawInputSlot is not None and self._rawInputSlot.ready():

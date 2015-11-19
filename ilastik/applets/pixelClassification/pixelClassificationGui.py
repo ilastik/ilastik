@@ -269,7 +269,6 @@ class PixelClassificationGui(LabelingGui):
         labelSlots.labelEraserValue = topLevelOperatorView.opLabelPipeline.opLabelArray.eraser
         labelSlots.labelDelete = topLevelOperatorView.opLabelPipeline.DeleteLabel
         labelSlots.labelNames = topLevelOperatorView.LabelNames
-        labelSlots.labelsAllowed = topLevelOperatorView.LabelsAllowedFlags
 
         self.__cleanup_fns = []
 
