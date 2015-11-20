@@ -220,7 +220,7 @@ class OpFeatureSelection( OpFeatureSelectionNoCache ):
     This is the top-level operator of the feature selection applet when used in a GUI.
     It provides an extra output for cached data.
     """
-
+    BypassCache = InputSlot(value=False)
     CachedOutputImage = OutputSlot()
 
     def __init__(self, *args, **kwargs):
@@ -229,6 +229,7 @@ class OpFeatureSelection( OpFeatureSelectionNoCache ):
         # Create the cache
         self.opPixelFeatureCache = OpSlicedBlockedArrayCache(parent=self)
         self.opPixelFeatureCache.name = "opPixelFeatureCache"
+        self.opPixelFeatureCache.BypassModeEnabled.connect( self.BypassCache )
 
         # Connect the cache to the feature output
         self.opPixelFeatureCache.Input.connect(self.OutputImage)
