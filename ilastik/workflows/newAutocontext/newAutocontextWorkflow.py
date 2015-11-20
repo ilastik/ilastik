@@ -98,6 +98,14 @@ class NewAutocontextWorkflowBase(Workflow):
             self.pcApplets.append( self.createPixelClassificationApplet(i) )
         opFinalClassify = self.pcApplets[-1].topLevelOperator
 
+        # If *any* stage enters 'live update' mode, make sure they all enter live update mode.
+        def sync_freeze_predictions_settings( slot, *args ):
+            freeze_predictions = slot.value
+            for pcApplet in self.pcApplets:
+                pcApplet.topLevelOperator.FreezePredictions.setValue( freeze_predictions )
+        for pcApplet in self.pcApplets:
+            pcApplet.topLevelOperator.FreezePredictions.notifyDirty( sync_freeze_predictions_settings )
+
         self.dataExportApplet = PixelClassificationDataExportApplet(self, "Prediction Export")
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.PmapColors.connect( opFinalClassify.PmapColors )
@@ -315,7 +323,7 @@ class NewAutocontextWorkflowBase(Workflow):
                                                                  and not batch_processing_busy)
             
             self._shell.setAppletEnabled(pcApplet, stage_flags[stage_index].features_ready \
-                                                   and not downstream_live_update \
+                                                   #and not downstream_live_update \ # Not necessary because live update modes are synced -- labels can't be added in live update.
                                                    and not batch_processing_busy)
 
         self._shell.setAppletEnabled(self.dataExportApplet, stage_flags[-1].predictions_ready and not batch_processing_busy)
