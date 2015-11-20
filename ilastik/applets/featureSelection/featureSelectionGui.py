@@ -310,28 +310,12 @@ class FeatureSelectionGui(LayerViewerGui):
         filename = QFileDialog.getOpenFileName(self, 'Open Feature List', '.', options=options)
         filename = encode_from_qstring(filename)
         
-        #sanity checks on the given file
+        # Check if file exists
         if not filename:
             return
         if not os.path.exists(filename):
             QMessageBox.critical(self, "Open Feature List", "File '%s' does not exist" % filename)
             return
-        f = open(filename, 'r')
-        with f:
-            for line in f:
-                line = line.strip()
-                if len(line) == 0:
-                    continue
-                if not os.path.exists(line):
-                    QMessageBox.critical(self, "Open Feature List", "File '%s', referenced in '%s', does not exist" % (line, filename))
-                    return
-                try:
-                    h = h5py.File(line, 'r')
-                    with h:
-                        assert len(h["data"].shape) == 3
-                except:
-                    QMessageBox.critical(self, "Open Feature List", "File '%s', referenced in '%s', could not be opened as an HDF5 file or does not contain a 3D dataset called 'data'" % (line, filename))
-                    return
 
         self.topLevelOperatorView.FeatureListFilename.setValue(filename)
         self.topLevelOperatorView._setupOutputs()

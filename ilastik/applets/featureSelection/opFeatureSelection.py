@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 #Python
-import os
+import sys
 import logging
 
 #SciPy
@@ -114,38 +114,44 @@ class OpFeatureSelectionNoCache(Operator):
         self.opReorderIn.AxisOrder.setValue(newAxes)
         self.opReorderOut.AxisOrder.setValue(oldAxes)
         self.opReorderLayers.AxisOrder.setValue(oldAxes)
+        
+        # Get features from external file
         if self.FeatureListFilename.ready() and len(self.FeatureListFilename.value) > 0:
-            f = open(self.FeatureListFilename.value, 'r')
-            self._files = []
-            for line in f:
-                line = line.strip()
-                if len(line) > 0:
-                    self._files.append(line)
-            f.close()
-            
+                  
             self.OutputImage.disconnect()
             self.FeatureLayers.disconnect()
             
             axistags = self.InputImage.meta.axistags
+                
+            with h5py.File(self.FeatureListFilename.value,'r') as f:
+                dset_names = []
+                f.visit(dset_names.append)
+                if len(dset_names) != 1:
+                    sys.stderr.write("Input external features HDF5 file should have exactly 1 dataset.\n")
+                    sys.exit(1)                
+                
+                dset = f[dset_names[0]]
+                chnum = dset.shape[-1]
+                shape = dset.shape
+                dtype = dset.dtype.type
             
-            self.FeatureLayers.resize(len(self._files))
-            for i in range(len(self._files)):
-                f = h5py.File(self._files[i], 'r')
-                shape = f["data"].shape
-                assert len(shape) == 3
-                dtype = f["data"].dtype.type
-                f.close()
-                self.FeatureLayers[i].meta.shape    = shape+(1,)
+            # Set the metadata for FeatureLayers. Unlike OutputImage and CachedOutputImage, 
+            # FeatureLayers has one slot per channel and therefore the channel dimension must be 1.
+            self.FeatureLayers.resize(chnum)
+            for i in range(chnum):
+                self.FeatureLayers[i].meta.shape    = shape[:-1]+(1,)
                 self.FeatureLayers[i].meta.dtype    = dtype
                 self.FeatureLayers[i].meta.axistags = axistags 
-                self.FeatureLayers[i].meta.description = os.path.basename(self._files[i]) 
+                self.FeatureLayers[i].meta.display_mode = 'default' 
+                self.FeatureLayers[i].meta.description = "feature_channel_"+str(i)
             
-            self.OutputImage.meta.shape    = (shape) + (len(self._files),)
+            self.OutputImage.meta.shape    = shape
             self.OutputImage.meta.dtype    = dtype 
             self.OutputImage.meta.axistags = axistags 
             
-            self.CachedOutputImage.meta.shape    = (shape) + (len(self._files),)
-            self.CachedOutputImage.meta.axistags = axistags 
+            self.CachedOutputImage.meta.shape    = shape
+            self.CachedOutputImage.meta.axistags = axistags
+                                  
         else:
             # Set the new selection matrix and check if it creates an error.
             selections = self.SelectionMatrix.value
@@ -168,32 +174,28 @@ class OpFeatureSelectionNoCache(Operator):
     def execute(self, slot, subindex, rroi, result):
         if len(self.FeatureListFilename.value) == 0:
             return
-       
-        assert result.dtype == numpy.float32
         
-        key = roiToSlice(rroi.start, rroi.stop)
-            
+        # Set the channel corresponding to the slot(subindex) of the feature layers
         if slot == self.FeatureLayers:
-            index = subindex[0]
-            f = h5py.File(self._files[index], 'r')
-            result[...,0] = f["data"][key[0:3]]
-            return result
-        elif slot == self.OutputImage:
-            assert result.ndim == 4
-            assert result.shape[-1] == len(self._files), "result.shape = %r" % result.shape 
-            assert rroi.start == 0, "rroi = %r" % (rroi,)
-            assert rroi.stop  == len(self._files), "rroi = %r" % (rroi,)
+            rroi.start[-1] = subindex[0]
+            rroi.stop[-1] = subindex[0] + 1 
             
-            j = 0
-            for i in range(key[3].start, key[3].stop):
-                f = h5py.File(self._files[i], 'r')
-                r = f["data"][key[0:3]]
-                assert r.dtype == numpy.float32
-                assert r.ndim == 3
-                f.close()
-                result[:,:,:,j] = r 
-                j += 1
-            return result  
+        key = roiToSlice(rroi.start, rroi.stop)
+        
+        # Read features from external file
+        with h5py.File(self.FeatureListFilename.value, 'r') as f:
+            dset_names = []
+            f.visit(dset_names.append)
+            
+            if len(dset_names) != 1:
+                sys.stderr.write("Input external features HDF5 file should have exactly 1 dataset.")
+                return 
+                
+            dset = f[dset_names[0]]              
+            result[...] = dset[key]
+                        
+        return result
+    
 
 class OpFeatureSelection( OpFeatureSelectionNoCache ):
     """
