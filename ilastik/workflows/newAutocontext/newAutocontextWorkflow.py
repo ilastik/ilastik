@@ -228,7 +228,7 @@ class NewAutocontextWorkflowBase(Workflow):
             opStacker = OpMultiArrayStacker(parent=self)
             opStacker.Images.resize(2)
             opStacker.Images[0].connect( opData.Image )
-            opStacker.Images[1].connect( opUpstreamClassify.HeadlessUint8PredictionProbabilities )
+            opStacker.Images[1].connect( opUpstreamClassify.PredictionProbabilitiesUint8 )
             opStacker.AxisFlag.setValue('c')
             
             opDownstreamFeatures.InputImage.connect( opStacker.Output )
