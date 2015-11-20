@@ -382,12 +382,22 @@ class NewAutocontextWorkflowBase(Workflow):
             logger.info("Completed Batch Processing")
 
     def prepare_for_entire_export(self):
+        # While exporting, we don't want to cache any data.
+        for featureSeletionApplet in self.featureSelectionApplets:
+            featureSeletionApplet.topLevelOperator.BypassCache.setValue(True)
+            
+        # Unfreeze the classifier caches (ensure that we're exporting based on up-to-date labels)
         self.freeze_statuses = []
         for pcApplet in self.pcApplets:
             self.freeze_statuses.append(pcApplet.topLevelOperator.FreezePredictions.value)
             pcApplet.topLevelOperator.FreezePredictions.setValue(False)
 
     def post_process_entire_export(self):
+        # While exporting, we don't want to cache any data.
+        for featureSeletionApplet in self.featureSelectionApplets:
+            featureSeletionApplet.topLevelOperator.BypassCache.setValue(True)
+
+        # Re-freeze classifier caches (if necessary)
         for pcApplet, freeze_status in zip(self.pcApplets, self.freeze_statuses):
             pcApplet.topLevelOperator.FreezePredictions.setValue(freeze_status)
 
