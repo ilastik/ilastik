@@ -36,6 +36,7 @@ from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.featureSelection import FeatureSelectionApplet
 from ilastik.applets.pixelClassification import PixelClassificationApplet, PixelClassificationDataExportApplet
+from ilastik.applets.batchProcessing import BatchProcessingApplet
 
 from lazyflow.graph import Graph
 from lazyflow.roi import TinyVector, fullSlicing
@@ -74,12 +75,14 @@ class NewAutocontextWorkflowBase(Workflow):
 
         # Parse workflow-specific command-line args
         parser = argparse.ArgumentParser()
+        parser.add_argument('--retrain', help="Re-train the classifier based on labels stored in project file, and re-save.", action="store_true")
 
         # Parse the creation args: These were saved to the project file when this project was first created.
         parsed_creation_args, unused_args = parser.parse_known_args(project_creation_args)
         
         # Parse the cmdline args for the current session.
         parsed_args, unused_args = parser.parse_known_args(workflow_cmdline_args)
+        self.retrain = parsed_args.retrain
         
         data_instructions = "Select your input data using the 'Raw Data' tab shown on the right.\n\n"\
                             "Power users: Optionally use the 'Prediction Mask' tab to supply a binary image that tells ilastik where it should avoid computations you don't need."
@@ -120,6 +123,20 @@ class NewAutocontextWorkflowBase(Workflow):
         
         self.dataExportApplet.prepare_for_entire_export = self.prepare_for_entire_export
         self.dataExportApplet.post_process_entire_export = self.post_process_entire_export
+
+        self.batchProcessingApplet = BatchProcessingApplet(self, 
+                                                           "Batch Processing", 
+                                                           self.dataSelectionApplet, 
+                                                           self.dataExportApplet)
+
+        self._applets.append(self.batchProcessingApplet)
+        if unused_args:
+            # We parse the export setting args first.  All remaining args are considered input files by the input applet.
+            self._batch_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args( unused_args )
+            self._batch_input_args, unused_args = self.batchProcessingApplet.parse_known_cmdline_args( unused_args )
+        else:
+            self._batch_input_args = None
+            self._batch_export_args = None
 
         if unused_args:
             logger.warn("Unused command-line args: {}".format( unused_args ))
@@ -307,8 +324,7 @@ class NewAutocontextWorkflowBase(Workflow):
         any_live_update = any(flags.live_update_active for flags in stage_flags)
         
         # The user isn't allowed to touch anything while batch processing is running.
-        #batch_processing_busy = self.batchProcessingApplet.busy
-        batch_processing_busy = False # FIXME
+        batch_processing_busy = self.batchProcessingApplet.busy
         
         self._shell.setAppletEnabled(self.dataSelectionApplet, not any_live_update and not batch_processing_busy)
 
@@ -327,9 +343,7 @@ class NewAutocontextWorkflowBase(Workflow):
                                                    and not batch_processing_busy)
 
         self._shell.setAppletEnabled(self.dataExportApplet, stage_flags[-1].predictions_ready and not batch_processing_busy)
-
-#         if self.batchProcessingApplet is not None:
-#             self._shell.setAppletEnabled(self.batchProcessingApplet, predictions_ready and not batch_processing_busy)
+        self._shell.setAppletEnabled(self.batchProcessingApplet, predictions_ready and not batch_processing_busy)
     
         # Lastly, check for certain "busy" conditions, during which we 
         #  should prevent the shell from closing the project.
@@ -337,7 +351,7 @@ class NewAutocontextWorkflowBase(Workflow):
         busy |= self.dataSelectionApplet.busy
         busy |= any(applet.busy for applet in self.featureSelectionApplets)
         busy |= self.dataExportApplet.busy
-        #busy |= self.batchProcessingApplet.busy
+        busy |= self.batchProcessingApplet.busy
         self._shell.enableProjectChanges( not busy )
 
     def onProjectLoaded(self, projectManager):
@@ -348,7 +362,24 @@ class NewAutocontextWorkflowBase(Workflow):
         the workflow for batch mode and export all results.
         (This workflow's headless mode supports only batch mode for now.)
         """
-        pass
+        if self._headless:
+            # In headless mode, let's see the messages from the training operator.
+            logging.getLogger("lazyflow.operators.classifierOperators").setLevel(logging.DEBUG)
+
+        if self.retrain:
+            self._force_retrain_classifiers()
+        
+        # Configure the data export operator.
+        if self._batch_export_args:
+            self.dataExportApplet.configure_operator_with_parsed_args( self._batch_export_args )
+
+        if self._batch_input_args and self.pcApplet.topLevelOperator.classifier_cache._dirty:
+            logger.warn("Your project file has no classifier.  A new classifier will be trained for this run.")
+
+        if self._headless and self._batch_input_args and self._batch_export_args:
+            logger.info("Beginning Batch Processing")
+            self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
+            logger.info("Completed Batch Processing")
 
     def prepare_for_entire_export(self):
         self.freeze_statuses = []
@@ -359,6 +390,21 @@ class NewAutocontextWorkflowBase(Workflow):
     def post_process_entire_export(self):
         for pcApplet, freeze_status in zip(self.pcApplets, self.freeze_statuses):
             pcApplet.topLevelOperator.FreezePredictions.setValue(freeze_status)
+
+    def _force_retrain_classifiers(self):
+        # Cause the FIRST classifier to be dirty so it is forced to retrain.
+        # (useful if the stored labels were changed outside ilastik)
+        self.pcApplets[0].topLevelOperator.opTrain.ClassifierFactory.setDirty()
+        
+        # Unfreeze all classifier caches.
+        for pcApplet in self.pcApplets:
+            pcApplet.topLevelOperator.FreezePredictions.setValue(False)
+
+        # Request the LAST classifier, which forces training
+        _ = self.pcApplet.topLevelOperator.Classifier.value
+
+        # store new classifiers to project file
+        projectManager.saveProject(force_all_save=False)
 
 
 class AutocontextTwoStage(NewAutocontextWorkflowBase):
