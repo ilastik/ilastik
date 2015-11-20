@@ -43,6 +43,7 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
     Input = InputSlot(allow_mask=True)
     innerBlockShape = InputSlot()
     outerBlockShape = InputSlot()
+    BypassModeEnabled = InputSlot(value=False)
    
     #Outputs
     Output = OutputSlot(allow_mask=True)
@@ -116,6 +117,7 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
             for i,innershape in enumerate(self._innerShapes):
                 op = OpBlockedArrayCache(parent=self)
                 op.inputs["fixAtCurrent"].connect(self.inputs["fixAtCurrent"])
+                op.BypassModeEnabled.connect( self.BypassModeEnabled )
                 self._innerOps.append(op)
                 
                 op.inputs["Input"].connect(self.inputs["Input"])
@@ -191,7 +193,7 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
                 #self.Output.setDirty( slice(None) )
                 pass # Blockshape changes don't trigger dirty notifications
                      # It is considered an error to change the blockshape after the initial configuration.
-            elif slot == self.fixAtCurrent:
+            elif slot is self.fixAtCurrent:
                 self.Output.setDirty( slice(None) )
-            else:
+            elif slot is not self.BypassModeEnabled:
                 assert False, "Unknown dirty input slot"

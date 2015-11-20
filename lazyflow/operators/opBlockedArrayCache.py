@@ -44,17 +44,24 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
     #BlockShape = InputSlot()
     innerBlockShape = InputSlot(optional=True) # Deprecated and ignored below.
     outerBlockShape = InputSlot()
+    BypassModeEnabled = InputSlot(value=False)
     
     Output = OutputSlot(allow_mask=True)
     
     def __init__(self, *args, **kwargs):
         super( OpBlockedArrayCache, self ).__init__(*args, **kwargs)
         
-        # Input ---------> opCacheFixer -> opUnblockedArrayCache -> opSplitRequestsBlockwise -> Output
+        # SCHEMATIC WHEN BypassModeEnabled == False:
+        # 
+        # Input ---------> opCacheFixer -> opUnblockedArrayCache -> opSplitRequestsBlockwise -> (indirectly via execute) -> Output
         #                 /                                        /
         # fixAtCurrent --                                         /
         #                                                        /
         # BlockShape --------------------------------------------
+        
+        # SCHEMATIC WHEN BypassModeEnabled == True:
+        #
+        # Input --> (indirectly via execute) -> Output
         
         self._opCacheFixer = OpCacheFixer( parent=self )
         self._opCacheFixer.Input.connect( self.Input )
@@ -67,17 +74,30 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
         self._opSplitRequestsBlockwise.BlockShape.connect( self.outerBlockShape )
         self._opSplitRequestsBlockwise.Input.connect( self._opUnblockedArrayCache.Output )
 
-        self.Output.connect( self._opSplitRequestsBlockwise.Output )
+        # Instead of connecting our Output directly to our internal pipeline,
+        # We manually forward the data via the execute() function,
+        #  which allows us to implement a bypass for the internal pipeline if Enabled
+        #self.Output.connect( self._opSplitRequestsBlockwise.Output )
+
+        # Since we didn't directly connect the pipeline to our output, explicitly forward dirty notifications 
+        self._opSplitRequestsBlockwise.Output.notifyDirty( lambda slot, roi: self.Output.setDirty(roi.start, roi.stop) )
 
         # This member is used by tests that check RAM usage.
         self.setup_ram_context = RamMeasurementContext()
         self.registerWithMemoryManager()
         
     def setupOutputs(self):
-        pass
+        # Copy metadata from the internal pipeline to the output
+        self.Output.meta.assignFrom( self._opSplitRequestsBlockwise.Output.meta )
 
     def execute(self, slot, subindex, roi, result):
-        assert False, "Shouldn't get here."
+        assert slot is self.Output, "Requesting data from unknown output slot."
+        if self.BypassModeEnabled.value:
+            # Pass data directly from Input to Output
+            self.Input(roi.start, roi.stop).writeInto(result).wait()
+        else:
+            # Pass data from internal pipeline to Output
+            self._opSplitRequestsBlockwise.Output(roi.start, roi.stop).writeInto(result).wait()
 
     def propagateDirty(self, slot, subindex, roi):
         pass
