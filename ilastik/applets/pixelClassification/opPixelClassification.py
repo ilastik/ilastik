@@ -63,6 +63,7 @@ class OpPixelClassification( Operator ):
     PredictionsFromDisk = InputSlot(optional=True, level=1)
 
     PredictionProbabilities = OutputSlot(level=1) # Classification predictions (via feature cache for interactive speed)
+    PredictionProbabilitiesUint8 = OutputSlot(level=1) # Same thing, but converted to uint8 first
 
     PredictionProbabilityChannels = OutputSlot(level=2) # Classification predictions, enumerated by channel
     SegmentationChannels = OutputSlot(level=2) # Binary image of the final selections.
@@ -159,6 +160,7 @@ class OpPixelClassification( Operator ):
 
         # Prediction pipeline outputs -> Top-level outputs
         self.PredictionProbabilities.connect( self.opPredictionPipeline.PredictionProbabilities )
+        self.PredictionProbabilitiesUint8.connect( self.opPredictionPipeline.PredictionProbabilitiesUint8 )
         self.CachedPredictionProbabilities.connect( self.opPredictionPipeline.CachedPredictionProbabilities )
         self.HeadlessPredictionProbabilities.connect( self.opPredictionPipeline.HeadlessPredictionProbabilities )
         self.HeadlessUint8PredictionProbabilities.connect( self.opPredictionPipeline.HeadlessUint8PredictionProbabilities )
@@ -480,6 +482,9 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
 
     PredictionProbabilities = OutputSlot()
     CachedPredictionProbabilities = OutputSlot()
+
+    PredictionProbabilitiesUint8 = OutputSlot()
+    
     PredictionProbabilityChannels = OutputSlot( level=1 )
     SegmentationChannels = OutputSlot( level=1 )
     UncertaintyEstimate = OutputSlot()
@@ -495,6 +500,13 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.predict.PredictionMask.connect(self.PredictionMask)
         self.predict.LabelsCount.connect( self.NumClasses )
         self.PredictionProbabilities.connect( self.predict.PMaps )
+
+        # Alternate headless output: uint8 instead of float.
+        # Note that drange is automatically updated.        
+        self.opConvertToUint8 = OpPixelOperator( parent=self )
+        self.opConvertToUint8.Input.connect( self.predict.PMaps )
+        self.opConvertToUint8.Function.setValue( lambda a: (255*a).astype(numpy.uint8) )
+        self.PredictionProbabilitiesUint8.connect( self.opConvertToUint8.Output )
 
         # Prediction cache for the GUI
         self.prediction_cache_gui = OpSlicedBlockedArrayCache( parent=self )
@@ -576,6 +588,7 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.opUncertaintyCache.inputs["innerBlockShape"].setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ, innerBlockShapeT) )
         self.opUncertaintyCache.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ, innerBlockShapeT) )
 
+        assert self.opConvertToUint8.Output.meta.drange == (0,255)
 
 class OpEnsembleMargin(Operator):
     """
