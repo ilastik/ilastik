@@ -24,12 +24,12 @@ import argparse
 import warnings
 import itertools
 import collections
+from functools import partial
 import logging
-from __builtin__ import False
 from ilastik.applets.pixelClassification.opPixelClassification import OpPixelClassification
 logger = logging.getLogger(__name__)
 
-import numpy
+import numpy as np
 
 from ilastik.config import cfg as ilastik_config
 from ilastik.workflow import Workflow
@@ -39,7 +39,7 @@ from ilastik.applets.pixelClassification import PixelClassificationApplet, Pixel
 from ilastik.applets.batchProcessing import BatchProcessingApplet
 
 from lazyflow.graph import Graph
-from lazyflow.roi import TinyVector, fullSlicing
+from lazyflow.roi import TinyVector, sliceToRoi, roiToSlice
 from lazyflow.operators.generic import OpMultiArrayStacker
 
 class NewAutocontextWorkflowBase(Workflow):
@@ -416,6 +416,76 @@ class NewAutocontextWorkflowBase(Workflow):
         # store new classifiers to project file
         projectManager.saveProject(force_all_save=False)
 
+    def menus(self):
+        """
+        Overridden from Workflow base class
+        """
+        from PyQt4.QtGui import QMenu
+        autocontext_menu = QMenu("Autocontext Utilities")
+        distribute_action = autocontext_menu.addAction("Distribute Labels Across All Stages")
+        distribute_action.triggered.connect( partial(self.distribute_labels_from_current_stage, partition=True) )
+
+        self._autocontext_menu = autocontext_menu # Must retain here as a member or else reference disappears and the menu is deleted.
+        return [self._autocontext_menu]
+        
+    def distribute_labels_from_current_stage(self, partition=True):
+        """
+        Distrubute labels from the currently viewed stage across all other stages.
+        """
+        from PyQt4.QtGui import QMessageBox
+        current_applet = self._applets[self.shell.currentAppletIndex]
+        if current_applet not in self.pcApplets:
+            QMessageBox.critical(self.shell, "Wrong page selected", "The currently active page isn't a Training page.")
+            return
+        
+        num_stages = len(self.pcApplets)
+        current_stage_index = self.pcApplets.index(current_applet)
+        opCurrentPixelClassification = current_applet.topLevelOperator
+
+        for lane_index in range(len(opCurrentPixelClassification.InputImages)):
+            opPcLane = opCurrentPixelClassification.getLane(lane_index)
+
+            # Gather all the labels for this lane
+            blockwise_labels = {}
+            nonzero_slicings = opPcLane.NonzeroLabelBlocks.value
+            for block_slicing in nonzero_slicings:
+                # Convert from slicing to roi-tuple so we can hash it in a dict key
+                block_roi = sliceToRoi( block_slicing, opPcLane.InputImages.meta.shape )
+                block_roi = tuple(map(tuple, block_roi))
+                blockwise_labels[block_roi] = opPcLane.LabelImages[block_slicing].wait()
+
+            # Clear all labels in the current lane, since we'll be overwriting it with a subset of labels
+            # FIXME: We could implement a fast function for this in OpCompressedUserLabelArray...
+            for label_value in range(1,len(opCurrentPixelClassification.LabelNames.value)+1,):
+                opPcLane.opLabelPipeline.opLabelArray.clearLabel(label_value)
+            
+            # Now redistribute those labels across all lanes
+            for block_roi, block_labels in blockwise_labels.items():
+                nonzero_coords = block_labels.nonzero()
+
+                if partition:
+                    num_labels = len(nonzero_coords[0])
+                    destination_stages = np.random.randint(0, num_stages, (num_labels,))
+                
+                for stage_index in range(num_stages):
+                    if not partition:
+                        this_stage_block_labels = block_labels
+                    else:
+                        # Divide into disjoint partitions
+                        # Find the coordinates labels destined for this stage
+                        this_stage_coords = np.transpose(nonzero_coords)[destination_stages == stage_index]
+                        this_stage_coords = tuple(this_stage_coords.transpose())
+
+                        # Extract only the labels destined for this stage
+                        this_stage_block_labels = np.zeros_like(block_labels)
+                        this_stage_block_labels[this_stage_coords] = block_labels[this_stage_coords]
+
+                    # Get the current lane's view of this stage's OpPixelClassification
+                    opPc = self.pcApplets[stage_index].topLevelOperator.getLane(lane_index)
+                    
+                    # Inject
+                    opPc.LabelInputs[roiToSlice(*block_roi)] = this_stage_block_labels
+        
 
 class AutocontextTwoStage(NewAutocontextWorkflowBase):
     workflowName = "AutocontextTwoStage"
