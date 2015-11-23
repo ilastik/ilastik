@@ -27,6 +27,7 @@ import collections
 from functools import partial
 import logging
 from ilastik.applets.pixelClassification.opPixelClassification import OpPixelClassification
+from PyQt4.Qt import QVBoxLayout
 logger = logging.getLogger(__name__)
 
 import numpy as np
@@ -422,25 +423,33 @@ class NewAutocontextWorkflowBase(Workflow):
         """
         from PyQt4.QtGui import QMenu
         autocontext_menu = QMenu("Autocontext Utilities")
-        distribute_action = autocontext_menu.addAction("Distribute Labels Across All Stages")
-        distribute_action.triggered.connect( partial(self.distribute_labels_from_current_stage, partition=True) )
+        distribute_action = autocontext_menu.addAction("Distribute Labels...")
+        distribute_action.triggered.connect( self.distribute_labels_from_current_stage )
 
         self._autocontext_menu = autocontext_menu # Must retain here as a member or else reference disappears and the menu is deleted.
         return [self._autocontext_menu]
         
-    def distribute_labels_from_current_stage(self, partition=True):
+    def distribute_labels_from_current_stage(self):
         """
         Distrubute labels from the currently viewed stage across all other stages.
         """
+        # Late import.
+        # (Don't import PyQt in headless mode.)
         from PyQt4.QtGui import QMessageBox
         current_applet = self._applets[self.shell.currentAppletIndex]
         if current_applet not in self.pcApplets:
             QMessageBox.critical(self.shell, "Wrong page selected", "The currently active page isn't a Training page.")
             return
         
-        num_stages = len(self.pcApplets)
         current_stage_index = self.pcApplets.index(current_applet)
+        destination_stage_indexes, partition = self.get_label_distribution_settings( current_stage_index,
+                                                                                     num_stages=len(self.pcApplets))
+        if destination_stage_indexes is None:
+            return # User cancelled
+        
+        current_applet = self._applets[self.shell.currentAppletIndex]
         opCurrentPixelClassification = current_applet.topLevelOperator
+        num_current_stage_classes = len(opCurrentPixelClassification.LabelNames.value)
 
         for lane_index in range(len(opCurrentPixelClassification.InputImages)):
             opPcLane = opCurrentPixelClassification.getLane(lane_index)
@@ -454,26 +463,27 @@ class NewAutocontextWorkflowBase(Workflow):
                 block_roi = tuple(map(tuple, block_roi))
                 blockwise_labels[block_roi] = opPcLane.LabelImages[block_slicing].wait()
 
-            # Clear all labels in the current lane, since we'll be overwriting it with a subset of labels
-            # FIXME: We could implement a fast function for this in OpCompressedUserLabelArray...
-            for label_value in range(1,len(opCurrentPixelClassification.LabelNames.value)+1,):
-                opPcLane.opLabelPipeline.opLabelArray.clearLabel(label_value)
-            
+            if partition and current_stage_index in destination_stage_indexes:
+                # Clear all labels in the current lane, since we'll be overwriting it with a subset of labels
+                # FIXME: We could implement a fast function for this in OpCompressedUserLabelArray...
+                for label_value in range(1,num_current_stage_classes+1,):
+                    opPcLane.opLabelPipeline.opLabelArray.clearLabel(label_value)
+
             # Now redistribute those labels across all lanes
             for block_roi, block_labels in blockwise_labels.items():
                 nonzero_coords = block_labels.nonzero()
 
                 if partition:
                     num_labels = len(nonzero_coords[0])
-                    destination_stages = np.random.randint(0, num_stages, (num_labels,))
+                    destination_stage_map = np.random.choice(destination_stage_indexes, (num_labels,))
                 
-                for stage_index in range(num_stages):
+                for stage_index in destination_stage_indexes:
                     if not partition:
                         this_stage_block_labels = block_labels
                     else:
                         # Divide into disjoint partitions
                         # Find the coordinates labels destined for this stage
-                        this_stage_coords = np.transpose(nonzero_coords)[destination_stages == stage_index]
+                        this_stage_coords = np.transpose(nonzero_coords)[destination_stage_map == stage_index]
                         this_stage_coords = tuple(this_stage_coords.transpose())
 
                         # Extract only the labels destined for this stage
@@ -483,10 +493,92 @@ class NewAutocontextWorkflowBase(Workflow):
                     # Get the current lane's view of this stage's OpPixelClassification
                     opPc = self.pcApplets[stage_index].topLevelOperator.getLane(lane_index)
                     
+                    num_classes_at_destination = len(opPc.LabelNames.value)
+                    if num_classes_at_destination < num_current_stage_classes:
+                        logger.info("Extending label class list for stage {}".format(stage_index))
+                        old_label_names = list(opPc.LabelNames.value)
+                        current_stage_label_names = opCurrentPixelClassification.LabelNames.value
+                        new_label_names = old_label_names + current_stage_label_names[num_classes_at_destination:num_current_stage_classes]
+                        opPc.LabelNames.setValue(new_label_names)
+                    
                     # Inject
                     opPc.LabelInputs[roiToSlice(*block_roi)] = this_stage_block_labels
-        
+    
+    @staticmethod
+    def get_label_distribution_settings(source_stage_index, num_stages):
+        # Late import.
+        # (Don't import PyQt in headless mode.)
+        from PyQt4.QtGui import QDialog
+        class LabelDistributionOptionsDlg( QDialog ):
+            """
+            A little dialog to let the user specify how the labels should be
+            distributed from the current stages to the other stages.
+            """
+            def __init__(self, source_stage_index, num_stages, *args, **kwargs):
+                super(LabelDistributionOptionsDlg, self).__init__(*args, **kwargs)
 
+                from PyQt4.QtCore import Qt
+                from PyQt4.QtGui import QGroupBox, QCheckBox, QRadioButton, QDialogButtonBox
+            
+                self.setWindowTitle("Distributing from Stage {}".format(source_stage_index+1))
+
+                self.stage_checkboxes = []
+                for stage_index in range(1, num_stages+1):
+                    self.stage_checkboxes.append( QCheckBox("Stage {}".format( stage_index )) )
+                
+                # By default, send labels back into the current stage, at least.
+                self.stage_checkboxes[source_stage_index].setChecked(True)
+                
+                stage_selection_layout = QVBoxLayout()
+                for checkbox in self.stage_checkboxes:
+                    stage_selection_layout.addWidget( checkbox )
+
+                stage_selection_groupbox = QGroupBox("Send labels from Stage {} to:".format( source_stage_index+1 ), self)
+                stage_selection_groupbox.setLayout(stage_selection_layout)
+                
+                self.copy_button = QRadioButton("Copy", self)
+                self.partition_button = QRadioButton("Partition", self)
+                self.partition_button.setChecked(True)
+                distribution_mode_layout = QVBoxLayout()
+                distribution_mode_layout.addWidget(self.copy_button)
+                distribution_mode_layout.addWidget(self.partition_button)
+                
+                distribution_mode_group = QGroupBox("Distribution Mode", self)
+                distribution_mode_group.setLayout(distribution_mode_layout)
+                
+                buttonbox = QDialogButtonBox( Qt.Horizontal, parent=self )
+                buttonbox.setStandardButtons( QDialogButtonBox.Ok | QDialogButtonBox.Cancel )
+                buttonbox.accepted.connect( self.accept )
+                buttonbox.rejected.connect( self.reject )
+                
+                dlg_layout = QVBoxLayout()
+                dlg_layout.addWidget(stage_selection_groupbox)
+                dlg_layout.addWidget(distribution_mode_group)
+                dlg_layout.addWidget(buttonbox)
+                self.setLayout(dlg_layout)
+
+            def distribution_mode(self):
+                if self.copy_button.isChecked():
+                    return "copy"
+                if self.partition_button.isChecked():
+                    return "partition"
+                assert False, "Shouldn't get here."
+            
+            def destination_stages(self):
+                """
+                Return the list of stage_indexes (0-based) that the user checked.
+                """
+                return [ i for i,box in enumerate(self.stage_checkboxes) if box.isChecked() ]
+
+        dlg = LabelDistributionOptionsDlg( source_stage_index, num_stages )
+        if dlg.exec_() == QDialog.Rejected:
+            return (None, None)
+        
+        destination_stage_indexes = dlg.destination_stages()
+        partition = (dlg.distribution_mode() == "partition")
+        return (destination_stage_indexes, partition)
+
+        
 class AutocontextTwoStage(NewAutocontextWorkflowBase):
     workflowName = "AutocontextTwoStage"
     workflowDisplayName = "Autocontext (2-stage)"
