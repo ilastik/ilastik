@@ -341,6 +341,10 @@ class OpPixelClassification( Operator ):
         for laneIndex in range(len(self.InputImages)):
             self.getLane( laneIndex ).opLabelPipeline.opLabelArray.mergeLabels(from_label, into_label)
 
+    def clearLabel(self, label_value):
+        for laneIndex in range(len(self.InputImages)):
+            self.getLane( laneIndex ).opLabelPipeline.opLabelArray.clearLabel(label_value)
+
 class OpLabelPipeline( Operator ):
     RawImage = InputSlot()
     LabelInput = InputSlot()

@@ -63,6 +63,7 @@ class ColorDialog(QDialog):
 
 
 class LabelListView(ListView):
+    clearRequested = pyqtSignal(int, str) # row, name
     mergeRequested = pyqtSignal( int, str, int, str ) # from_row, from_name, to_row, to_name
 
     def __init__(self, parent = None):
@@ -88,23 +89,23 @@ class LabelListView(ListView):
         
 
     def contextMenuEvent(self, event):
-        if not self.support_merges or not self.allowDelete:
-            return
-
         from_index = self._table.indexAt(event.pos())
         if not (0 <= from_index.row() < self.model.rowCount()):
             return
 
         from_name = self.model.data(from_index, Qt.DisplayRole)
         menu = QMenu(parent=self)
-        for to_row in range(self.model.rowCount()):
-            to_index = self.model.index(to_row, LabelListModel.ColumnID.Name)
-            to_name = self.model.data(to_index, Qt.DisplayRole)
-            action = menu.addAction( "Merge {} into {}".format( from_name, to_name ),
-                                     partial( self.mergeRequested.emit, from_index.row(), str(from_name),
-                                                                        to_row,           str(to_name)) )
-            if to_row == from_index.row():
-                action.setEnabled(False)
+        menu.addAction("Clear {}".format(from_name), partial(self.clearRequested.emit, from_index.row(), str(from_name)))
+
+        if self.support_merges and self.allowDelete:
+            for to_row in range(self.model.rowCount()):
+                to_index = self.model.index(to_row, LabelListModel.ColumnID.Name)
+                to_name = self.model.data(to_index, Qt.DisplayRole)
+                action = menu.addAction( "Merge {} into {}".format( from_name, to_name ),
+                                         partial( self.mergeRequested.emit, from_index.row(), str(from_name),
+                                                                            to_row,           str(to_name)) )
+                if to_row == from_index.row():
+                    action.setEnabled(False)
 
         menu.exec_( self.mapToGlobal(event.pos()) )
 
@@ -144,6 +145,7 @@ if __name__ == '__main__':
     w.raise_()
 
     tableView = LabelListView()
+    tableView.support_merges = True
     l.addWidget(tableView)
     tableView.setModel(model)
 

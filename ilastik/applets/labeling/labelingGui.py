@@ -196,6 +196,18 @@ class LabelingGui(LayerViewerGui):
         _labelControlUi.labelListModel.rowsRemoved.connect(self._onLabelRemoved)
         _labelControlUi.labelListModel.elementSelected.connect(self._onLabelSelected)
 
+        def handleClearRequested( row, name ):
+            selection = QMessageBox.warning(self, "Clear labels?",
+                          "All '{}' brush strokes will be erased.  Are you sure?"
+                          .format(name),
+                          QMessageBox.Ok | QMessageBox.Cancel)
+            if selection != QMessageBox.Ok:
+                return
+
+            # This only works if the top-level operator has a 'mergeLabels' function.
+            self.topLevelOperatorView.clearLabel( row+1 )
+        _labelControlUi.labelListView.clearRequested.connect( handleClearRequested )
+
         def handleLabelMergeRequested(from_row, from_name, into_row, into_name):
             from_label = from_row+1
             into_label = into_row+1
@@ -207,7 +219,7 @@ class LabelingGui(LayerViewerGui):
                 return
 
             # This only works if the top-level operator has a 'mergeLabels' function.
-            self.topLevelOperatorView.mergeLabels( from_label, into_label )
+            self.topLevelOperatorView.mergeLabels( from_label+1, into_label+1 )
 
             names = list(self._labelingSlots.labelNames.value)
             names.pop(from_label-1)
