@@ -409,8 +409,6 @@ class TestFullOperator(unittest.TestCase):
         self.classOp.SegmentationImages.setValues([segimg])
         self.classOp.RawImages.setValues([rawimg])
         self.classOp.LabelInputs.setValues([labels])
-        self.classOp.LabelsAllowedFlags.resize(1)
-        self.classOp.LabelsAllowedFlags.setValues([True])
         self.classOp.ObjectFeatures.connect(self.extrOp.RegionFeatures)
         self.classOp.ComputedFeatureNames.connect(self.extrOp.Features)
         self.classOp.SelectedFeatures.setValue(sel_features)

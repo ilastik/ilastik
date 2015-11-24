@@ -82,7 +82,6 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
     # same format as ComputedFeatureNames
     SelectedFeatures = InputSlot(rtype=List, stype=Opaque)
 
-    LabelsAllowedFlags = InputSlot(stype='bool', level=1)
     AllowDeleteLabels = InputSlot(stype='bool', value=True)
     AllowDeleteLastLabelOnly = InputSlot(stype='bool', value=False)
     AllowAddLabel = InputSlot(stype='bool', value=True)

@@ -46,7 +46,6 @@ class OpAutocontextClassification( Operator ):
     
     InputImages = InputSlot(level=1) # Original input data.  Used for display only.
 
-    LabelsAllowedFlags = InputSlot(stype='bool', level=1) # Specifies which images are permitted to be labeled 
     LabelInputs = InputSlot(optional = True, level=1) # Input for providing label data from an external source
 
     FeatureImages = InputSlot(level=1) # Computed feature images (each channel is a different feature)

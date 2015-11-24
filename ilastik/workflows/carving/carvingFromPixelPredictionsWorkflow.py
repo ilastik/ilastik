@@ -107,7 +107,6 @@ if ilastik.config.cfg.getboolean('ilastik', 'debug'):
             opPixelClassification.InputImages.connect( op5.Output )
             opPixelClassification.FeatureImages.connect( opFeatureSelection.OutputImage )
             opPixelClassification.CachedFeatureImages.connect( opFeatureSelection.CachedOutputImage )
-            opPixelClassification.LabelsAllowedFlags.connect( opData.AllowLabels )
             
             # We assume the membrane boundaries are found in the first prediction class (channel 0)
             opSingleChannelSelector = OpSingleChannelSelector(parent=self)
@@ -124,7 +123,6 @@ if ilastik.config.cfg.getboolean('ilastik', 'debug'):
             opCarvingLane.WriteSeeds.connect( opCarvingLane.InputData )
     
             opCarvingLane.MST.connect(opPreprocessing.PreprocessedData)
-            #opCarvingLane.opLabeling.LabelsAllowedFlag.connect( opData.AllowLabels )
             opCarvingLane.UncertaintyType.setValue("none")
             
             self.preprocessingApplet.enableDownstream(False)

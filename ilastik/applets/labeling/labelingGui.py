@@ -130,9 +130,6 @@ class LabelingGui(LayerViewerGui):
             # Slot that gives a list of label names
             self.labelNames = None # labelNames.value
 
-            # Slot to specify which images the user is allowed to label.
-            self.labelsAllowed = None # labelsAllowed.value == True
-
     def __init__(self, parentApplet, labelingSlots, topLevelOperatorView, drawerUiPath=None, rawInputSlot=None, crosshair=True):
         """
         Constructor.
@@ -152,7 +149,6 @@ class LabelingGui(LayerViewerGui):
         assert labelingSlots.labelEraserValue is not None, "Missing a required slot."
         assert labelingSlots.labelDelete is not None, "Missing a required slot."
         assert labelingSlots.labelNames is not None, "Missing a required slot."
-        #assert labelingSlots.labelsAllowed is not None, "Missing a required slot."
 
         self.__cleanup_fns = []
 
@@ -455,51 +451,40 @@ class LabelingGui(LayerViewerGui):
                           Tool.Paint        : "brushing",
                           Tool.Erase        : "brushing" }
 
-        # If the user can't label this image, disable the button and say why its disabled
-        labelsAllowed = True
-
-#         labelsAllowedSlot = self._labelingSlots.labelsAllowed
-#         if labelsAllowedSlot.ready():
-#             labelsAllowed = labelsAllowedSlot.value
-
         if hasattr(self._labelControlUi, "AddLabelButton"):
-            if not labelsAllowed or self._labelControlUi.labelListModel.rowCount() == self.maxLabelNumber:
+            if self._labelControlUi.labelListModel.rowCount() == self.maxLabelNumber:
                 self._labelControlUi.AddLabelButton.setEnabled(False)
-            if labelsAllowed:
-                self._labelControlUi.AddLabelButton.setText("Add Label")
-            else:
-                self._labelControlUi.AddLabelButton.setText("(Labeling Not Allowed)")
+            self._labelControlUi.AddLabelButton.setText("Add Label")
 
-        e = labelsAllowed & (self._labelControlUi.labelListModel.rowCount() > 0)
+        e = self._labelControlUi.labelListModel.rowCount() > 0
         self._gui_enableLabeling(e)
         
-        if labelsAllowed:
-            # Update the applet bar caption
-            if toolId == Tool.Navigation:
-                # update GUI 
-                self._gui_setNavigation()
-                
-            elif toolId == Tool.Paint:
-                # If necessary, tell the brushing model to stop erasing
-                if self.editor.brushingModel.erasing:
-                    self.editor.brushingModel.disableErasing()
-                # Set the brushing size
-                brushSize = self.brushSizes[self.paintBrushSizeIndex]
-                self.editor.brushingModel.setBrushSize(brushSize)
-                # update GUI 
-                self._gui_setBrushing()
+        # Update the applet bar caption
+        if toolId == Tool.Navigation:
+            # update GUI 
+            self._gui_setNavigation()
+            
+        elif toolId == Tool.Paint:
+            # If necessary, tell the brushing model to stop erasing
+            if self.editor.brushingModel.erasing:
+                self.editor.brushingModel.disableErasing()
+            # Set the brushing size
+            brushSize = self.brushSizes[self.paintBrushSizeIndex]
+            self.editor.brushingModel.setBrushSize(brushSize)
+            # update GUI 
+            self._gui_setBrushing()
 
-            elif toolId == Tool.Erase:
-                # If necessary, tell the brushing model to start erasing
-                if not self.editor.brushingModel.erasing:
-                    self.editor.brushingModel.setErasing()
-                # Set the brushing size
-                eraserSize = self.brushSizes[self.eraserSizeIndex]
-                self.editor.brushingModel.setBrushSize(eraserSize)
-                # update GUI 
-                self._gui_setErasing()
-            elif toolId == Tool.Threshold:
-                self._gui_setThresholding()
+        elif toolId == Tool.Erase:
+            # If necessary, tell the brushing model to start erasing
+            if not self.editor.brushingModel.erasing:
+                self.editor.brushingModel.setErasing()
+            # Set the brushing size
+            eraserSize = self.brushSizes[self.eraserSizeIndex]
+            self.editor.brushingModel.setBrushSize(eraserSize)
+            # update GUI 
+            self._gui_setErasing()
+        elif toolId == Tool.Threshold:
+            self._gui_setThresholding()
 
         self.editor.setInteractionMode( modeNames[toolId] )
         self._toolId = toolId
@@ -829,12 +814,6 @@ class LabelingGui(LayerViewerGui):
         # Side effect 1: We want to guarantee that the label list
         #  is up-to-date before our subclass adds his layers
         self._updateLabelList()
-
-        # Side effect 2: Switch to navigation mode if labels aren't
-        #  allowed on this image.
-#         labelsAllowedSlot = self._labelingSlots.labelsAllowed
-#         if labelsAllowedSlot.ready() and not labelsAllowedSlot.value:
-#             self._changeInteractionMode(Tool.Navigation)
 
         # Raw Input Layer
         if self._rawInputSlot is not None and self._rawInputSlot.ready():

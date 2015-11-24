@@ -136,7 +136,6 @@ class CountingGui(LabelingGui):
         labelSlots.labelEraserValue = topLevelOperatorView.opLabelPipeline.opLabelArray.EraserLabelValue
         labelSlots.labelDelete = topLevelOperatorView.opLabelPipeline.opLabelArray.DeleteLabel
         labelSlots.maxLabelValue = topLevelOperatorView.MaxLabelValue
-        labelSlots.labelsAllowed = topLevelOperatorView.LabelsAllowedFlags
         labelSlots.labelNames = topLevelOperatorView.LabelNames
 
 
@@ -1056,71 +1055,60 @@ class CountingGui(LabelingGui):
                       Tool.Box          : "navigation"
                     }
 
-        # If the user can't label this image, disable the button and say why its disabled
-        labelsAllowed = False
+        if hasattr(self._labelControlUi, "AddLabelButton"):
+            self._labelControlUi.AddLabelButton.setEnabled(self.maxLabelNumber > self._labelControlUi.labelListModel.rowCount())
+            self._labelControlUi.AddLabelButton.setText("Add Label")
 
-        labelsAllowedSlot = self._labelingSlots.labelsAllowed
-        if labelsAllowedSlot.ready():
-            labelsAllowed = labelsAllowedSlot.value
-
-            if hasattr(self._labelControlUi, "AddLabelButton"):
-                self._labelControlUi.AddLabelButton.setEnabled(labelsAllowed and self.maxLabelNumber > self._labelControlUi.labelListModel.rowCount())
-                if labelsAllowed:
-                    self._labelControlUi.AddLabelButton.setText("Add Label")
-                else:
-                    self._labelControlUi.AddLabelButton.setText("(Labeling Not Allowed)")
-
-        e = labelsAllowed & (self._labelControlUi.labelListModel.rowCount() > 0)
+        e = self._labelControlUi.labelListModel.rowCount() > 0
         self._gui_enableLabeling(e)
 
-        if labelsAllowed:
-            # Update the applet bar caption
-            if toolId == Tool.Navigation:
-                # update GUI
-                #self.editor.brushingModel.setBrushSize(0)
-                self.editor.setNavigationInterpreter(NavigationInterpreter(self.editor.navCtrl))
-                self._gui_setNavigation()
-                self.setCursor(Qt.ArrowCursor)
+        # Update the applet bar caption
+        if toolId == Tool.Navigation:
+            # update GUI
+            #self.editor.brushingModel.setBrushSize(0)
+            self.editor.setNavigationInterpreter(NavigationInterpreter(self.editor.navCtrl))
+            self._gui_setNavigation()
+            self.setCursor(Qt.ArrowCursor)
 
-            elif toolId == Tool.Paint:
-                # If necessary, tell the brushing model to stop erasing
-                if self.editor.brushingModel.erasing:
-                    self.editor.brushingModel.disableErasing()
-                # Set the brushing size
-                #this is done at the wrong time, drawnNumber has to be changed first before changing
-                #interaction mode
-                if self.editor.brushingModel.drawnNumber==1:
-                    brushSize = 1
-                    self.editor.brushingModel.setBrushSize(brushSize)
+        elif toolId == Tool.Paint:
+            # If necessary, tell the brushing model to stop erasing
+            if self.editor.brushingModel.erasing:
+                self.editor.brushingModel.disableErasing()
+            # Set the brushing size
+            #this is done at the wrong time, drawnNumber has to be changed first before changing
+            #interaction mode
+            if self.editor.brushingModel.drawnNumber==1:
+                brushSize = 1
+                self.editor.brushingModel.setBrushSize(brushSize)
 
-                # update GUI
-                self._gui_setBrushing()
-                self.setCursor(Qt.ArrowCursor)
+            # update GUI
+            self._gui_setBrushing()
+            self.setCursor(Qt.ArrowCursor)
 
-            elif toolId == Tool.Erase:
+        elif toolId == Tool.Erase:
 
-                # If necessary, tell the brushing model to start erasing
-                if not self.editor.brushingModel.erasing:
-                    self.editor.brushingModel.setErasing()
-                # Set the brushing size
-                eraserSize = self.brushSizes[self.eraserSizeIndex]
-                self.editor.brushingModel.setBrushSize(eraserSize)
-                # update GUI
-                self._gui_setErasing()
-                self.setCursor(Qt.ArrowCursor)
+            # If necessary, tell the brushing model to start erasing
+            if not self.editor.brushingModel.erasing:
+                self.editor.brushingModel.setErasing()
+            # Set the brushing size
+            eraserSize = self.brushSizes[self.eraserSizeIndex]
+            self.editor.brushingModel.setBrushSize(eraserSize)
+            # update GUI
+            self._gui_setErasing()
+            self.setCursor(Qt.ArrowCursor)
 
-            elif toolId == Tool.Box:
+        elif toolId == Tool.Box:
 
-                self.setCursor(Qt.CrossCursor)
-                self._labelControlUi.labelListModel.clearSelectionModel()
-                for v in self.editor.crosshairController._imageViews:
-                    v._crossHairCursor.enabled=False
+            self.setCursor(Qt.CrossCursor)
+            self._labelControlUi.labelListModel.clearSelectionModel()
+            for v in self.editor.crosshairController._imageViews:
+                v._crossHairCursor.enabled=False
 
-                #self.setOverrideCursor(Qt.CrossCursor)
-                #QApplication.setOverrideCursor(Qt.CrossCursor)
-                self.editor.brushingModel.setBrushSize(0)
-                self.editor.setNavigationInterpreter(self.boxInterpreter)
-                self._gui_setBox()
+            #self.setOverrideCursor(Qt.CrossCursor)
+            #QApplication.setOverrideCursor(Qt.CrossCursor)
+            self.editor.brushingModel.setBrushSize(0)
+            self.editor.setNavigationInterpreter(self.boxInterpreter)
+            self._gui_setBox()
 
         self.editor.setInteractionMode( modeNames[toolId] )
         self._toolId = toolId

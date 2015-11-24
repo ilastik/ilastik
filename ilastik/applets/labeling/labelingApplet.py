@@ -58,7 +58,6 @@ class LabelingApplet( StandardApplet ):
         labelingSlots.labelOutput = opLabeling.LabelImages
         labelingSlots.labelEraserValue = opLabeling.LabelEraserValue
         labelingSlots.labelDelete = opLabeling.LabelDelete
-        labelingSlots.labelsAllowed = opLabeling.LabelsAllowedFlags
         labelingSlots.labelNames = opLabeling.LabelNames
 
         return LabelingGui( self, labelingSlots, opLabeling, rawInputSlot=opLabeling.InputImages )

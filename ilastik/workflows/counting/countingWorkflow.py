@@ -160,7 +160,6 @@ class CountingWorkflow(Workflow):
 
         opCounting.InputImages.connect(opData.Image)
         opCounting.FeatureImages.connect(opTrainingFeatures.OutputImage)
-        opCounting.LabelsAllowedFlags.connect(opData.AllowLabels)
         opCounting.CachedFeatureImages.connect( opTrainingFeatures.CachedOutputImage )
         #opCounting.UserLabels.connect(opClassify.LabelImages)
         #opCounting.ForegroundLabels.connect(opObjExtraction.LabelImage)

@@ -203,8 +203,6 @@ class TestOpBlockwiseObjectClassification(object):
         opObjectClassification.SelectedFeatures.setValue(self.testingFeatures)
         opObjectClassification.ComputedFeatureNames.connect(self.objExtraction.Features)
         
-        opObjectClassification.LabelsAllowedFlags.setValues( [True] )
-        
         # STEP 2: simulate labeling
         
         object_volume = self.objExtraction.LabelImage[:].wait()
