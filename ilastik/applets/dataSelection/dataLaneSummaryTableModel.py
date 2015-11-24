@@ -143,7 +143,7 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
             return section+1
         infoColumn = section - LaneColumn.NumColumns
         roleIndex = infoColumn // DatasetInfoColumn.NumColumns
-        infoColumn %= LaneColumn.NumColumns
+        infoColumn %= DatasetInfoColumn.NumColumns
         if infoColumn == DatasetInfoColumn.Name:
             if self._op.DatasetRoles.ready():
                 return self._op.DatasetRoles.value[roleIndex]
