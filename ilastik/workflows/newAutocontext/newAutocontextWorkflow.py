@@ -451,6 +451,30 @@ class NewAutocontextWorkflowBase(Workflow):
         opCurrentPixelClassification = current_applet.topLevelOperator
         num_current_stage_classes = len(opCurrentPixelClassification.LabelNames.value)
 
+        # Before we get started, make sure the destination stages have the necessary label classes
+        for stage_index in destination_stage_indexes:
+            # Get this stage's OpPixelClassification
+            opPc = self.pcApplets[stage_index].topLevelOperator
+    
+            # Copy Label Colors
+            current_stage_label_colors = opCurrentPixelClassification.LabelColors.value
+            new_label_colors = list(opPc.LabelColors.value)
+            new_label_colors[:num_current_stage_classes] = current_stage_label_colors[:num_current_stage_classes]
+            opPc.LabelColors.setValue(new_label_colors)
+            
+            # Copy PMap colors
+            current_stage_pmap_colors = opCurrentPixelClassification.PmapColors.value
+            new_pmap_colors = list(opPc.PmapColors.value)
+            new_pmap_colors[:num_current_stage_classes] = current_stage_pmap_colors[:num_current_stage_classes]
+            opPc.PmapColors.setValue(new_pmap_colors)
+    
+            # Copy Label Names                    
+            current_stage_label_names = opCurrentPixelClassification.LabelNames.value
+            new_label_names = list(opPc.LabelNames.value)
+            new_label_names[:num_current_stage_classes] = current_stage_label_names[:num_current_stage_classes]
+            opPc.LabelNames.setValue(new_label_names)
+
+        # For each lane, copy over the labels from the source stage to the destination stages 
         for lane_index in range(len(opCurrentPixelClassification.InputImages)):
             opPcLane = opCurrentPixelClassification.getLane(lane_index)
 
@@ -492,15 +516,7 @@ class NewAutocontextWorkflowBase(Workflow):
 
                     # Get the current lane's view of this stage's OpPixelClassification
                     opPc = self.pcApplets[stage_index].topLevelOperator.getLane(lane_index)
-                    
-                    num_classes_at_destination = len(opPc.LabelNames.value)
-                    if num_classes_at_destination < num_current_stage_classes:
-                        logger.info("Extending label class list for stage {}".format(stage_index))
-                        old_label_names = list(opPc.LabelNames.value)
-                        current_stage_label_names = opCurrentPixelClassification.LabelNames.value
-                        new_label_names = old_label_names + current_stage_label_names[num_classes_at_destination:num_current_stage_classes]
-                        opPc.LabelNames.setValue(new_label_names)
-                    
+
                     # Inject
                     opPc.LabelInputs[roiToSlice(*block_roi)] = this_stage_block_labels
     
