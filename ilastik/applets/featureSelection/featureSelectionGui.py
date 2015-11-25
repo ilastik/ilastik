@@ -308,19 +308,37 @@ class FeatureSelectionGui(LayerViewerGui):
         if ilastik_config.getboolean("ilastik", "debug"):
             options |= QFileDialog.DontUseNativeDialog
 
-        filename = QFileDialog.getOpenFileName(self, 'Open Feature List', '.', options=options)
-        filename = encode_from_qstring(filename)
+        filenames = QFileDialog.getOpenFileNames(self, 'Open Feature Files', '.', options=options)
+        filenames = map(encode_from_qstring, filenames)
         
         # Check if file exists
-        if not filename:
+        if not filenames:
             return
-        if not os.path.exists(filename):
-            QMessageBox.critical(self, "Open Feature List", "File '%s' does not exist" % filename)
-            return
+        
+        for filename in filenames:
+            if not os.path.exists(filename):
+                QMessageBox.critical(self, "Open Feature List", "File '%s' does not exist" % filename)
+                return
 
-        self.topLevelOperatorView.FeatureListFilename.setValue(filename)
-        self.topLevelOperatorView._setupOutputs()
-        self.onFeaturesSelectionsChanged()
+        num_lanes = len(self.parentApplet.topLevelOperator.FeatureListFilename)
+        if num_lanes != len(filenames):
+            QMessageBox.critical(self, "Wrong number of feature files",
+                                 "You must select all pre-computed feature files at once (shift-click).\n"
+                                 "You selected {} file(s), but there are {} image(s) loaded"
+                                 .format(len(filenames), num_lanes))
+            return
+        
+        
+        for filename, slot in zip(filenames, self.parentApplet.topLevelOperator.FeatureListFilename):
+            slot.setValue(filename)
+
+        # Create a dummy SelectionMatrix, just so the operator knows it is configured
+        # This is a little hacky.  We should really make SelectionMatrix optional, 
+        # and then handle the choice correctly in setupOutputs, probably involving 
+        # the Output.meta.NOTREADY flag
+        dummy_matrix = numpy.zeros((6,7), dtype=bool)
+        dummy_matrix[0,0] = True
+        self.parentApplet.topLevelOperator.SelectionMatrix.setValue(True)
 
         # Notify the workflow that some applets may have changed state now.
         # (For example, the downstream pixel classification applet can 
@@ -328,7 +346,9 @@ class FeatureSelectionGui(LayerViewerGui):
         self.parentApplet.appletStateUpdateRequested.emit()
 
     def onFeatureButtonClicked(self):
-        self.topLevelOperatorView.FeatureListFilename.setValue("")
+        # Remove all pre-computed feature files
+        for slot in self.parentApplet.topLevelOperator.FeatureListFilename:
+            slot.disconnect()
         
         # Refresh the feature matrix in case it has changed since the last time we were opened
         # (e.g. if the user loaded a project from disk)
