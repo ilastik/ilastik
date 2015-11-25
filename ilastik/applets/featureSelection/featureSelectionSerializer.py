@@ -45,6 +45,7 @@ class FeatureSelectionSerializer(AppletSerializer):
         self.topLevelOperator.Scales.notifyDirty( bind(handleDirty) )
         self.topLevelOperator.FeatureIds.notifyDirty( bind(handleDirty) )
         self.topLevelOperator.SelectionMatrix.notifyDirty( bind(handleDirty) )
+        self.topLevelOperator.FeatureListFilename.notifyDirty( bind(handleDirty) )
     
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         # Can't store anything without both scales and features
@@ -71,6 +72,10 @@ class FeatureSelectionSerializer(AppletSerializer):
             fname = self.topLevelOperator.FeatureListFilename.value
             if fname:
                 topGroup.create_dataset('FeatureListFilename', data=fname)
+                # Create a dummy SelectionMatrix, just so the operator knows it is configured
+                dummy_matrix = numpy.zeros((6,7), dtype=bool)
+                dummy_matrix[0,0] = True
+                topGroup.create_dataset('SelectionMatrix', data=dummy_matrix)
             
         self._dirty = False
 
@@ -94,7 +99,7 @@ class FeatureSelectionSerializer(AppletSerializer):
         
             # If the matrix isn't there, just return
             try:
-                savedMatrix = topGroup['SelectionMatrix'].value                
+                savedMatrix = topGroup['SelectionMatrix'].value
                 # Check matrix dimensions
                 assert savedMatrix.shape[0] == len(featureIds), "Invalid project data: feature selection matrix dimensions don't make sense"
                 assert savedMatrix.shape[1] == len(scales), "Invalid project data: feature selection matrix dimensions don't make sense"
@@ -117,6 +122,7 @@ class FeatureSelectionSerializer(AppletSerializer):
         if 'FeatureListFilename' in topGroup:
             ffl = topGroup['FeatureListFilename'].value
             self.topLevelOperator.FeatureListFilename.setValue(ffl)
+
 
         self._dirty = False
 

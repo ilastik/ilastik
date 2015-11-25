@@ -224,7 +224,8 @@ class FeatureSelectionGui(LayerViewerGui):
 
         # Determine how many channels this feature has (up to 3)
         featureChannelsPerInputChannel = numFeatureChannels / numInputChannels
-        assert 0 < featureChannelsPerInputChannel <= 3, "The feature selection Gui does not yet support features with more than three channels per input channel." 
+        if not 0 < featureChannelsPerInputChannel <= 3:
+            logger.warn( "The feature selection Gui does not yet support features with more than three channels per input channel. Some features will not be displayed entirely." ) 
 
         for inputChannel in range(numInputChannels):
             # Determine the name for this feature
@@ -409,7 +410,7 @@ class FeatureSelectionGui(LayerViewerGui):
         fff = ( self.topLevelOperatorView.FeatureListFilename.ready() and \
                 len(self.topLevelOperatorView.FeatureListFilename.value) != 0)
         
-        if not self.topLevelOperatorView.SelectionMatrix.ready() and not fff: 
+        if not self.topLevelOperatorView.SelectionMatrix.ready() and not fff:
             self.drawer.caption.setText( "(No features selected)" )
             self.layerstack.clear()
         elif fff:

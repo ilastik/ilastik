@@ -147,11 +147,8 @@ class OpFeatureSelectionNoCache(Operator):
             
             self.OutputImage.meta.shape    = shape
             self.OutputImage.meta.dtype    = dtype 
-            self.OutputImage.meta.axistags = axistags 
+            self.OutputImage.meta.axistags = axistags
             
-            self.CachedOutputImage.meta.shape    = shape
-            self.CachedOutputImage.meta.axistags = axistags
-                                  
         else:
             # Set the new selection matrix and check if it creates an error.
             selections = self.SelectionMatrix.value
