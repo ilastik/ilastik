@@ -402,7 +402,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                 "none",  # detection_rf_filename
                 fieldOfView,
                 "none", # dump traxelstore,
-                pgmlink.StructuredLearningTrackingSolverType.CplexSolver,
+                pgmlink.ConsTrackingSolverType.CplexSolver,
                 ndim)
 
             print "Structured Learning: Adding Training Annotations to Hypotheses Graph"
@@ -514,7 +514,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         withMergerResolution=True
         transition_parameter = 5.0
         borderAwareWidth = self._drawer.bordWidthBox.value()
-        print "borderAwareWidth",borderAwareWidth
+        #print "borderAwareWidth",borderAwareWidth
         sigmas = pgmlink.VectorOfDouble()
         for i in range(5):
             sigmas.append(0.0)
@@ -539,8 +539,11 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         #with_optical_correction = True
         with_constraints = True
+        training_to_hard_constraints = False
+        num_threads = 8
         withNormalization = True
         withClassifierPrior = self._drawer.classifierPriorBox.isChecked()
+        verbose = False
         structuredLearningTrackerParameters = structuredLearningTracker.getStructuredLearningTrackingParameters(
             float(forbidden_cost),
             float(ep_gap),
@@ -558,33 +561,16 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             uncertaintyParams,
             cplex_timeout,
             transitionClassifier,
-            #with_optical_correction,
-            pgmlink.StructuredLearningTrackingSolverType.CplexSolver,
+            pgmlink.ConsTrackingSolverType.CplexSolver,
+            training_to_hard_constraints,
+            num_threads,
             withNormalization,
-            withClassifierPrior
+            withClassifierPrior,
+            verbose
         )
 
-        structuredLearningTrackerParameters.register_explicit_transition_func(self.mainOperator.track_transition_func_no_weight)
+        structuredLearningTrackerParameters.register_transition_func(self.mainOperator.track_transition_func_no_weight)
         structuredLearningTracker.structuredLearning(structuredLearningTrackerParameters)
-
-        # structuredLearningTracker.structuredLearning(
-        #     float(forbidden_cost),
-        #     float(ep_gap),
-        #     withTracklets,
-        #     detectionWeight,
-        #     divisionWeight,
-        #     transitionWeight,
-        #     disappearanceWeight,
-        #     appearanceWeight,
-        #     withMergerResolution,
-        #     ndim,
-        #     transition_parameter,
-        #     borderAwareWidth,
-        #     with_constraints,
-        #     uncertaintyParams,
-        #     cplex_timeout,
-        #     transitionClassifier
-        # )
 
         norm = 0
         for i in range(5):

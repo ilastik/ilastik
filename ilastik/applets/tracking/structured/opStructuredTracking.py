@@ -397,7 +397,6 @@ class OpStructuredTracking(OpTrackingBase):
                                         trainingToHardConstraints,
                                         1) # default: False
 
-        print "get_conservation_tracking_parameters DONE!"
         consTrackerParameters.register_transition_func(self.track_transition_func)
 
         fixLabeledNodes = False;
@@ -407,29 +406,7 @@ class OpStructuredTracking(OpTrackingBase):
 
             eventsVector = self.consTracker.track(consTrackerParameters, fixLabeledNodes )
 
-            # eventsVector = self.consTracker.track(
-            #                                 0,       # forbidden_cost
-            #                                 float(ep_gap), # ep_gap
-            #                                 withTracklets,
-            #                                 detWeight, # detection weight
-            #                                 divWeight,
-            #                                 transWeight,
-            #                                 disappearance_cost, # disappearance cost
-            #                                 appearance_cost, # appearance cost
-            #                                 withMergerResolution,
-            #                                 ndim,
-            #                                 transition_parameter,
-            #                                 borderAwareWidth,
-            #                                 True, #with_constraints
-            #                                 uncertaintyParams,
-            #                                 cplex_timeout,
-            #                                 None, # TransitionClassifier
-            #                                 trainingToHardConstraints,
-            #                                 1) # default: False
-
             eventsVector = eventsVector[0] # we have a vector such that we could get a vector per perturbation
-
-            # extract the coordinates with the given event vector
 
             if withMergerResolution:
                 coordinate_map = pgmlink.TimestepIdCoordinateMap()
@@ -448,7 +425,6 @@ class OpStructuredTracking(OpTrackingBase):
                                                 ndim,
                                                 self.transition_parameter,
                                                 True, # with_constraints
-                                                #True) # with_multi_frame_moves
                                                 None, # TransitionClassifier
                                                 consTrackerParameters)
         except Exception as e:
