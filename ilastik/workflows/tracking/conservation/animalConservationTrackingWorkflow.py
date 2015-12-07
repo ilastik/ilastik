@@ -170,10 +170,10 @@ class AnimalConservationTrackingWorkflow( Workflow ):
         opTracking.RawImage.connect( op5Raw.Output )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
         opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeaturesVigra )
-        opTracking.ObjectFeaturesWithDivFeatures.connect( opObjExtraction.RegionFeaturesAll)
+        #opTracking.ObjectFeaturesWithDivFeatures.connect( opObjExtraction.RegionFeaturesAll)
         opTracking.ComputedFeatureNames.connect( opObjExtraction.ComputedFeatureNamesVigra )
-        opTracking.ComputedFeatureNamesWithDivFeatures.connect( opObjExtraction.ComputedFeatureNamesAll )
-        opTracking.DivisionProbabilities.connect(opCellClassification.Probabilities )
+        #opTracking.ComputedFeatureNamesWithDivFeatures.connect( opObjExtraction.ComputedFeatureNamesAll )
+        #opTracking.DivisionProbabilities.connect(opCellClassification.Probabilities )
         opTracking.DetectionProbabilities.connect( opCellClassification.Probabilities )
         opTracking.NumLabels.connect( opCellClassification.NumLabels )
 

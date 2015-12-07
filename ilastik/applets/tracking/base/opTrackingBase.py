@@ -48,9 +48,9 @@ class OpTrackingBase(Operator, ExportingOperator):
 
     LabelImage = InputSlot()
     ObjectFeatures = InputSlot(stype=Opaque, rtype=List)
-    ObjectFeaturesWithDivFeatures = InputSlot(stype=Opaque, rtype=List)
+    ObjectFeaturesWithDivFeatures = InputSlot(optional=True, stype=Opaque, rtype=List)
     ComputedFeatureNames = InputSlot(rtype=List, stype=Opaque)
-    ComputedFeatureNamesWithDivFeatures = InputSlot(rtype=List, stype=Opaque)
+    ComputedFeatureNamesWithDivFeatures = InputSlot(optional=True, rtype=List, stype=Opaque)
     EventsVector = InputSlot(value={})
     FilteredLabels = InputSlot(value={})
     RawImage = InputSlot()
