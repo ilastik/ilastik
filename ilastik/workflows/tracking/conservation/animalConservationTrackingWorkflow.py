@@ -13,12 +13,8 @@ from ilastik.applets.trackingFeatureExtraction import config
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
 
-class AnimalConservationTrackingWorkflow( Workflow ):
-    workflowName = "Animal Conservation Tracking Workflow"
-    workflowDisplayName = "Animal Conservation Tracking Workflow [Inputs: Raw Data, Pixel Prediction Map]"
-
-    withOptTrans = False
-    fromBinary = False
+class AnimalConservationTrackingWorkflowBase( Workflow ):
+    workflowName = "Animal Conservation Tracking Workflow BASE"
 
     def __init__( self, shell, headless, workflow_cmdline_args, *args, **kwargs ):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
@@ -27,7 +23,7 @@ class AnimalConservationTrackingWorkflow( Workflow ):
         #     self.withOptTrans = kwargs['withOptTrans']
         # if 'fromBinary' in kwargs:
         #     self.fromBinary = kwargs['fromBinary']
-        super(AnimalConservationTrackingWorkflow, self).__init__(shell, headless, graph=graph, *args, **kwargs)
+        super(AnimalConservationTrackingWorkflowBase, self).__init__(shell, headless, graph=graph, *args, **kwargs)
 
         data_instructions = 'Use the "Raw Data" tab to load your intensity image(s).\n\n'
         if self.fromBinary:
@@ -141,17 +137,6 @@ class AnimalConservationTrackingWorkflow( Workflow ):
         if self.withOptTrans:
             opObjExtraction.TranslationVectors.connect(opOptTranslation.TranslationVectors)
         opObjExtraction.FeatureNamesVigra.setValue(feature_names_vigra)
-        feature_dict_division = {}
-        feature_dict_division[config.features_division_name] = { name: {} for name in config.division_features }
-        opObjExtraction.FeatureNamesDivision.setValue(feature_dict_division)
-        
-        
-        selected_features_div = {}
-        for plugin_name in config.selected_features_division.keys():
-            selected_features_div[plugin_name] = { name: {} for name in config.selected_features_division[plugin_name] }
-        # FIXME: do not hard code this
-        for name in [ 'SquaredDistances_' + str(i) for i in range(config.n_best_successors) ]:
-            selected_features_div[config.features_division_name][name] = {}
         
         selected_features_objectcount = {}
         for plugin_name in config.selected_features_objectcount.keys():
@@ -170,10 +155,7 @@ class AnimalConservationTrackingWorkflow( Workflow ):
         opTracking.RawImage.connect( op5Raw.Output )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
         opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeaturesVigra )
-        #opTracking.ObjectFeaturesWithDivFeatures.connect( opObjExtraction.RegionFeaturesAll)
         opTracking.ComputedFeatureNames.connect( opObjExtraction.ComputedFeatureNamesVigra )
-        #opTracking.ComputedFeatureNamesWithDivFeatures.connect( opObjExtraction.ComputedFeatureNamesAll )
-        #opTracking.DivisionProbabilities.connect(opCellClassification.Probabilities )
         opTracking.DetectionProbabilities.connect( opCellClassification.Probabilities )
         opTracking.NumLabels.connect( opCellClassification.NumLabels )
 
@@ -181,6 +163,9 @@ class AnimalConservationTrackingWorkflow( Workflow ):
         settings = {'file path': self.default_export_filename, 'compression': {}, 'file type': 'csv'}
         selected_features = ['Count', 'RegionCenter']
         opTracking.configure_table_export_settings(settings, selected_features)
+        
+        # Set animal tracking parameter in order to disable divisions
+        opTracking.Parameters.value["animalTracking"] = True
     
         opDataExport.Inputs.resize(3)
         opDataExport.Inputs[0].connect( opTracking.RelabeledImage )
@@ -188,6 +173,7 @@ class AnimalConservationTrackingWorkflow( Workflow ):
         opDataExport.Inputs[2].connect( opTracking.MergerOutput )
         opDataExport.RawData.connect( op5Raw.Output )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
+        
 
     def post_process_lane_export(self, lane_index):
         # FIXME: This probably only works for the non-blockwise export slot.
@@ -280,4 +266,18 @@ class AnimalConservationTrackingWorkflow( Workflow ):
                                     self.dataExportApplet.topLevelOperator.Inputs[0][0].ready() )
         
 
+class AnimalConservationTrackingWorkflowFromBinary( AnimalConservationTrackingWorkflowBase ):
+    workflowName = "Animal Conservation Tracking Workflow from Binary Image"
+    workflowDisplayName = "Animal Conservation Tracking Workflow [Inputs: Raw Data, Binary Image]"
+
+    withOptTrans = False
+    fromBinary = True
+
+
+class AnimalConservationTrackingWorkflowFromPrediction( AnimalConservationTrackingWorkflowBase ):
+    workflowName = "Animal Conservation Tracking Workflow from Prediction Image"
+    workflowDisplayName = "Animal Conservation Tracking Workflow [Inputs: Raw Data, Pixel Prediction Map]"
+
+    withOptTrans = False
+    fromBinary = False
 
