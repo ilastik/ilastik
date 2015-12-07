@@ -75,6 +75,7 @@ class PixelClassificationWorkflow(Workflow):
         parser.add_argument('--tree-count', help='Number of trees for Vigra RF classifier.', type=int)
         parser.add_argument('--variable-importance-path', help='Location of variable-importance table.', type=str)
         parser.add_argument('--label-proportion', help='Proportion of feature-pixels used to train the classifier.', type=float)
+        parser.add_argument('--start-server', type=int)
 
         # Parse the creation args: These were saved to the project file when this project was first created.
         parsed_creation_args, unused_args = parser.parse_known_args(project_creation_args)
@@ -91,6 +92,7 @@ class PixelClassificationWorkflow(Workflow):
         self.tree_count = parsed_args.tree_count
         self.variable_importance_path = parsed_args.variable_importance_path
         self.label_proportion = parsed_args.label_proportion
+        self.start_server = parsed_args.start_server
 
         if parsed_args.filter and parsed_args.filter != parsed_creation_args.filter:
             logger.error("Ignoring new --filter setting.  Filter implementation cannot be changed after initial project creation.")
@@ -348,6 +350,10 @@ class PixelClassificationWorkflow(Workflow):
             logger.info("Beginning Batch Processing")
             self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
             logger.info("Completed Batch Processing")
+
+        if self.start_server is not None:
+            from pixelClassificationServer import start_pc_server
+            start_pc_server(self, port=self.start_server)
 
     def prepare_for_entire_export(self):
         self.freeze_status = self.pcApplet.topLevelOperator.FreezePredictions.value
