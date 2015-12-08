@@ -34,6 +34,7 @@ from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.operators.opBlockedHdf5Cache import OpBlockedHdf5Cache
 from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpH5WriterBigDataset
 from lazyflow.utility.timer import Timer
+from lazyflow.utility import Memory
 
 # ilastik
 from ilastik.applets.base.applet import DatasetConstraintError
@@ -233,14 +234,23 @@ class OpMstSegmentorProvider(Operator):
         #first thing, show the user that we are waiting for computations to finish
         self.applet.progressSignal.emit(-1)
         self.applet.progress = 0
-        def updateProgressBar(blk, max_blk, roi, timer):
+        def updateProgressBar(blk, max_blk, roi, mst, timer):
             #send signal iff progress is significant
             p = int(((blk + 1) * 100) / max_blk)
             if p-self.applet.progress>=1 or p==100:
                 self.applet.progressSignal.emit(p)
                 self.applet.progress = p
 
-            logger.info( "Segmentor preprocessed block: {} out of {}, roi: {}, took {} seconds".format( blk, max_blk, roi, timer.seconds() ) )
+            logger.info( "Segmentor preprocessed block: {} out of {}, took {} seconds".format( blk + 1, max_blk, timer.seconds() ) )
+            logger.info( "  roi: {}".format(roi) )
+            logger.info( "  mst: nodes: {} (max id: {}), edges: {} (max id: {})".format(
+                        mst.gridSegmentor.nodeNum(), mst.gridSegmentor.maxNodeId(),
+                        mst.gridSegmentor.edgeNum(), mst.gridSegmentor.maxEdgeId()) )
+            logger.info( "  memory: used {} out of {} total avail (cache: {}, compute: {})".format(
+                        Memory.format(Memory.getMemoryUsage()),
+                        Memory.format(Memory.getAvailableRam()),
+                        Memory.format(Memory.getAvailableRamCaches()),
+                        Memory.format(Memory.getAvailableRamComputation())) )
 
 
         bsz = 256 #block size
@@ -271,7 +281,7 @@ class OpMstSegmentorProvider(Operator):
 
                     mst.preprocess(labelVolume[0,...,0], numpy.asarray(featureVolume[0,...,0], numpy.float32), TinyVector(block_roi[1:-1]))
 
-                    updateProgressBar(b_id, block_count, labels_roi, mstBlockTimer)
+                    updateProgressBar(b_id, block_count, labels_roi, mst, mstBlockTimer)
 
             result[0] = mst
             return result
