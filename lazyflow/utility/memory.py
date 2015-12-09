@@ -59,7 +59,7 @@ class Memory(object):
                           "GiB": "GiB", "TiB": "TiB"}
 
     @classmethod
-    def getMemoryUsage():
+    def getMemoryUsage(cls):
         """
         get current memory usage in bytes
         """
