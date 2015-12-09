@@ -81,9 +81,7 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         if 'disappearanceCost' in parameters.keys():
             self._drawer.disappearanceBox.setValue(parameters['disappearanceCost'])
         
-        if 'animalTracking' in parameters.keys() and parameters['animalTracking'] == True:
-            parameters['withDivisions'] = False
-            self._drawer.divisionsBox.setChecked(parameters['withDivisions'])
+        if 'withAnimalTracking' in parameters.keys() and parameters['withAnimalTracking'] == True:
             self._drawer.divisionsBox.hide()       
         
         return self._drawer
