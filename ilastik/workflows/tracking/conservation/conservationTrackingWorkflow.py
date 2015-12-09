@@ -15,7 +15,7 @@ from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingB
 
 class ConservationTrackingWorkflowBase( Workflow ):
     workflowName = "Automatic Tracking Workflow (Conservation Tracking) BASE"
-    withAnimalTracking = False
+    #withAnimalTracking = False
 
     def __init__( self, shell, headless, workflow_cmdline_args, *args, **kwargs ):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
@@ -57,11 +57,8 @@ class ConservationTrackingWorkflowBase( Workflow ):
         self.objectExtractionApplet = TrackingFeatureExtractionApplet(workflow=self, interactive=False,
                                                                       name="Object Feature Computation")                                                                      
         
-        if not self.withAnimalTracking:
-            self.divisionDetectionApplet = ObjectClassificationApplet(workflow=self,
-                                                                         name="Division Detection (optional)",
-                                                                         projectFileGroupName="DivisionDetection")
-        
+        self.divisionDetectionApplet = self._createDivisionDetectionApplet() # Might be None
+                
         self.cellClassificationApplet = ObjectClassificationApplet(workflow=self,
                                                                      name="Object Count Classification (optional)",
                                                                      projectFileGroupName="CountClassification")
@@ -91,7 +88,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         self._applets.append(self.objectExtractionApplet)
         
         
-        if not self.withAnimalTracking:
+        if self.divisionDetectionApplet:
             self._applets.append(self.divisionDetectionApplet)
             
         self._applets.append(self.cellClassificationApplet)
@@ -101,6 +98,11 @@ class ConservationTrackingWorkflowBase( Workflow ):
     @property
     def applets(self):
         return self._applets
+
+    def _createDivisionDetectionApplet(self):
+        return ObjectClassificationApplet(workflow=self,
+                                          name="Division Detection (optional)",
+                                          projectFileGroupName="DivisionDetection")
     
     @property
     def imageNameListSlot(self):
@@ -114,8 +116,8 @@ class ConservationTrackingWorkflowBase( Workflow ):
             opOptTranslation = self.opticalTranslationApplet.topLevelOperator.getLane(laneIndex)
         opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)
         
-        if not self.withAnimalTracking:    
-            opDivDetection = self.divisionDetectionApplet.topLevelOperator.getLane(laneIndex)
+        if self.divisionDetectionApplet:
+                opDivDetection = self.divisionDetectionApplet.topLevelOperator.getLane(laneIndex)
             
         opCellClassification = self.cellClassificationApplet.topLevelOperator.getLane(laneIndex)
         opTracking = self.trackingApplet.topLevelOperator.getLane(laneIndex)
@@ -153,7 +155,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
             opObjExtraction.TranslationVectors.connect(opOptTranslation.TranslationVectors)
         opObjExtraction.FeatureNamesVigra.setValue(feature_names_vigra)
         
-        if not self.withAnimalTracking:  
+        if self.divisionDetectionApplet:  
             feature_dict_division = {}
             feature_dict_division[config.features_division_name] = { name: {} for name in config.division_features }
             opObjExtraction.FeatureNamesDivision.setValue(feature_dict_division)
@@ -191,10 +193,10 @@ class ConservationTrackingWorkflowBase( Workflow ):
         opCellClassification.AllowDeleteLastLabelOnly.setValue(True)
         opCellClassification.EnableLabelTransfer.setValue(False)
         
-        if not self.withAnimalTracking: 
+        if self.divisionDetectionApplet: 
             opTracking.ObjectFeaturesWithDivFeatures.connect( opObjExtraction.RegionFeaturesAll)
             opTracking.ComputedFeatureNamesWithDivFeatures.connect( opObjExtraction.ComputedFeatureNamesAll )
-            opTracking.DivisionProbabilities.connect( opDivDetection.Probabilities )
+            opTracking.DivisionProbabilities.connect( opDivDetection.Probabilities ) 
 
         opTracking.RawImage.connect( op5Raw.Output )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
@@ -301,7 +303,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         if not self.fromBinary:
             self._shell.setAppletEnabled(self.thresholdTwoLevelsApplet, input_ready and not busy)
             
-        if not self.withAnimalTracking:    
+        if self.divisionDetectionApplet:    
             self._shell.setAppletEnabled(self.divisionDetectionApplet, features_ready and not busy)
         
         self._shell.setAppletEnabled(self.objectExtractionApplet, thresholding_ready and not busy)
@@ -309,6 +311,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         self._shell.setAppletEnabled(self.trackingApplet, objectCountClassifier_ready and not busy)
         self._shell.setAppletEnabled(self.dataExportApplet, tracking_ready and not busy and \
                                     self.dataExportApplet.topLevelOperator.Inputs[0][0].ready() )
+        
         
 
 
