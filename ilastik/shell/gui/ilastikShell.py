@@ -1291,9 +1291,9 @@ class IlastikShell(QMainWindow):
         except ProjectManager.FileMissingError:
             QMessageBox.warning(self, "Missing File", "Could not find project file: " + projectFilePath)
         except:
-            msg = "Corrupted Project", "Unable to open project file: " + projectFilePath
+            msg = "Unable to open project file: " + projectFilePath
             log_exception(logger, msg)
-            QMessageBox.warning(self, msg)
+            QMessageBox.warning(self, "Corrupted Project", msg)
         else:
             #as load project can take a while, show a wait cursor
             QApplication.setOverrideCursor(Qt.WaitCursor)
