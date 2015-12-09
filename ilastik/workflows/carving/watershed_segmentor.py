@@ -1,9 +1,8 @@
-import vigra
-from vigra import graphs as vgraph
-#from vigra import ilastiktools
 import ilastiktools
-import numpy
-from lazyflow.roi import roiToSlice, sliceToRoi
+import gc
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 class WatershedSegmentor(object):
@@ -152,16 +151,37 @@ class WatershedSegmentor(object):
 
     def saveH5G(self, h5g):
         g = h5g
+        gridSeg = self.gridSegmentor
 
+        def saveDataArray(group_name, data_array):
+            gc.collect()
+            logger.info( "  serializing {}... ".format(group_name) )
+            logger.info( "  saving {} - dtype:{} min/max:({},{}) size:{} shape:{}".format(
+                group_name,
+                data_array.dtype, data_array.min(), data_array.max(), data_array.size, data_array.shape ))
+            g.create_dataset(group_name, data = data_array)
+            logger.info( "    flushing... " )
+            g.file.flush()
+
+
+        logger.info( "Saving Watershed Segmentor: group://{}{} - has seg: {} ".format(
+                     g.file.filename, g.name, self.hasSeg) )
+        logger.info( "  mst: nodes: {} (max id: {}), edges: {} (max id: {})".format(
+                        gridSeg.nodeNum(), gridSeg.maxNodeId(),
+                        gridSeg.edgeNum(), gridSeg.maxEdgeId()) )
+
+        logger.info( "  saving numNodes: {} ".format( self.nodeNum ))
         g.attrs["numNodes"] = self.nodeNum
 
-        gridSeg = self.gridSegmentor
-        g.create_dataset("graph", data = gridSeg.serializeGraph())
-        g.create_dataset("edgeWeights", data = gridSeg.getEdgeWeights())
-        g.create_dataset("nodeSeeds", data = gridSeg.getNodeSeeds())
-        g.create_dataset("resultSegmentation", data = gridSeg.getResultSegmentation())
-        
+        saveDataArray("graph", gridSeg.serializeGraph())
+        saveDataArray("edgeWeights", gridSeg.getEdgeWeights())
+        saveDataArray("nodeSeeds", gridSeg.getNodeSeeds())
+        saveDataArray("resultSegmentation", gridSeg.getResultSegmentation())
+
+        logger.info( "  flushing... " )
         g.file.flush()
+        gc.collect()
+        logger.info( "  Finished Saving. " )
 
 
     def setResulFgObj(self, fgNodes):
