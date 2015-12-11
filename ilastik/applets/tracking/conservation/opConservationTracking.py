@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class OpConservationTracking(OpTrackingBase):
-    DivisionProbabilities = InputSlot(stype=Opaque, rtype=List)
+    DivisionProbabilities = InputSlot(optional=True, stype=Opaque, rtype=List)
     DetectionProbabilities = InputSlot(stype=Opaque, rtype=List)
     NumLabels = InputSlot()
 

@@ -81,6 +81,9 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         if 'disappearanceCost' in parameters.keys():
             self._drawer.disappearanceBox.setValue(parameters['disappearanceCost'])
         
+        if 'withAnimalTracking' in parameters.keys() and parameters['withAnimalTracking'] == True:
+            self._drawer.divisionsBox.hide()       
+        
         return self._drawer
 
     def initAppletDrawerUi(self):
