@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 import warnings
+from PyQt4.QtCore import Qt
 from PyQt4.QtGui import QColor
 
 from lazyflow.operators.generic import OpMultiArraySlicer2
@@ -49,11 +50,14 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
         # This code depends on a specific order for the export slots.
         # If those change, update this function!
         selection_names = opLane.SelectionNames.value
-        assert selection_names[0:5] == ['Probabilities', 'Simple Segmentation', 'Uncertainty', 'Features', 'Labels'] # see comment above
+        
+        # see comment above
+        for name, expected in zip(selection_names[0:5], ['Probabilities', 'Simple Segmentation', 'Uncertainty', 'Features', 'Labels']):
+            assert name.startswith(expected), "The Selection Names don't match the expected selection names."
         
         selection = selection_names[ opLane.InputSelection.value ]
 
-        if selection == 'Probabilities':
+        if selection.startswith('Probabilities'):
             exportedLayers = self._initPredictionLayers(opLane.ImageOnDisk)
             for layer in exportedLayers:
                 layer.visible = True
@@ -66,7 +70,7 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
                 layer.name = layer.name + "- Preview"
             layers += previewLayers
 
-        elif selection in ("Simple Segmentation", "Labels"):
+        elif selection.startswith("Simple Segmentation") or selection.startswith("Labels"):
             exportedLayer = self._initColortablelayer(opLane.ImageOnDisk)
             if exportedLayer:
                 exportedLayer.visible = True
@@ -79,7 +83,7 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
                 previewLayer.name = selection + " - Preview"
                 layers.append( previewLayer )
 
-        elif selection == "Uncertainty":
+        elif selection.startswith("Uncertainty"):
             if opLane.ImageToExport.ready():
                 previewUncertaintySource = LazyflowSource(opLane.ImageToExport)
                 previewLayer = AlphaModulatedLayer( previewUncertaintySource,
@@ -102,7 +106,7 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
                 layers.append(exportedLayer)
         
         else: # Features and all other layers.
-            if selection != "Features":
+            if selection.startswith("Features"):
                 warnings.warn("Not sure how to display '{}' result.  Showing with default layer settings."
                               .format(selection))
 
@@ -155,6 +159,12 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
         colors = opLane.PmapColors.value
         names = opLane.LabelNames.value
 
+        if predictionSlot.ready():        
+            num_channels = predictionSlot.meta.getTaggedShape()['c']
+            if num_channels != len(names) or num_channels != len(colors):
+                names = map(lambda n: "Label {}".format(n), range(1, num_channels+1))
+                colors = self._createDefault16ColorColorTable()[:num_channels]
+
         # Use a slicer to provide a separate slot for each channel layer
         opSlicer = OpMultiArraySlicer2( parent=opLane.viewed_operator().parent )
         opSlicer.Input.connect( predictionSlot )
@@ -175,3 +185,28 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
                 layers.append(predictLayer)
 
         return layers
+
+    @staticmethod
+    def _createDefault16ColorColorTable():
+        colors = []
+        # ilastik v0.5 colors
+        colors.append( QColor( Qt.red ) )
+        colors.append( QColor( Qt.green ) )
+        colors.append( QColor( Qt.yellow ) )
+        colors.append( QColor( Qt.blue ) )
+        colors.append( QColor( Qt.magenta ) )
+        colors.append( QColor( Qt.darkYellow ) )
+        colors.append( QColor( Qt.lightGray ) )
+        # Additional colors
+        colors.append( QColor(255, 105, 180) ) #hot pink
+        colors.append( QColor(102, 205, 170) ) #dark aquamarine
+        colors.append( QColor(165,  42,  42) ) #brown
+        colors.append( QColor(0, 0, 128) )     #navy
+        colors.append( QColor(255, 165, 0) )   #orange
+        colors.append( QColor(173, 255,  47) ) #green-yellow
+        colors.append( QColor(128,0, 128) )    #purple
+        colors.append( QColor(240, 230, 140) ) #khaki
+        colors.append( QColor(255, 255, 255) ) #white
+        assert len(colors) == 16
+        colors = map(lambda c: (c.red(), c.green(), c.blue()), colors)
+        return colors

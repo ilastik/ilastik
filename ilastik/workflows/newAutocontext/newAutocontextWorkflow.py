@@ -51,7 +51,9 @@ class NewAutocontextWorkflowBase(Workflow):
     DATA_ROLE_RAW = 0
     DATA_ROLE_PREDICTION_MASK = 1
     
-    EXPORT_NAMES = ['Probabilities', 'Simple Segmentation', 'Uncertainty', 'Features', 'Labels']
+    # First export names must match these for the export GUI, because we re-use the ordinary PC gui
+    # (See PixelClassificationDataExportGui.)
+    EXPORT_NAMES_PER_STAGE = ['Probabilities', 'Simple Segmentation', 'Uncertainty', 'Features', 'Labels']
     
     @property
     def applets(self):
@@ -115,7 +117,14 @@ class NewAutocontextWorkflowBase(Workflow):
         opDataExport.PmapColors.connect( opFinalClassify.PmapColors )
         opDataExport.LabelNames.connect( opFinalClassify.LabelNames )
         opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
-        opDataExport.SelectionNames.setValue( self.EXPORT_NAMES )        
+
+        self.EXPORT_NAMES = []
+        for stage_index in reversed(range(n_stages)):
+            self.EXPORT_NAMES += map(lambda name: "{} Stage {}".format( name, stage_index+1 ), self.EXPORT_NAMES_PER_STAGE)
+        
+        # And finally, one last item for *all* probabilities from all stages.
+        self.EXPORT_NAMES += ["Probabilities All Stages"]
+        opDataExport.SelectionNames.setValue( self.EXPORT_NAMES )
 
         # Expose for shell
         self._applets.append(self.dataSelectionApplet)
@@ -266,12 +275,26 @@ class NewAutocontextWorkflowBase(Workflow):
         opDataExport.RawData.connect( opData.ImageGroup[self.DATA_ROLE_RAW] )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[self.DATA_ROLE_RAW] )
         opDataExport.ConstraintDataset.connect( opData.ImageGroup[self.DATA_ROLE_RAW] )
+
         opDataExport.Inputs.resize( len(self.EXPORT_NAMES) )
-        opDataExport.Inputs[0].connect( opFinalClassify.HeadlessPredictionProbabilities )
-        opDataExport.Inputs[1].connect( opFinalClassify.SimpleSegmentation )
-        opDataExport.Inputs[2].connect( opFinalClassify.HeadlessUncertaintyEstimate )
-        opDataExport.Inputs[3].connect( opFinalClassify.FeatureImages )
-        opDataExport.Inputs[4].connect( opFinalClassify.LabelImages )
+        for reverse_stage_index, (stage_index, pcApplet) in enumerate(reversed(list(enumerate(self.pcApplets)))):
+            opPc = pcApplet.topLevelOperator.getLane(laneIndex)
+            num_items_per_stage = len(self.EXPORT_NAMES_PER_STAGE)
+            opDataExport.Inputs[num_items_per_stage*reverse_stage_index+0].connect( opPc.HeadlessPredictionProbabilities )
+            opDataExport.Inputs[num_items_per_stage*reverse_stage_index+1].connect( opPc.SimpleSegmentation )
+            opDataExport.Inputs[num_items_per_stage*reverse_stage_index+2].connect( opPc.HeadlessUncertaintyEstimate )
+            opDataExport.Inputs[num_items_per_stage*reverse_stage_index+3].connect( opPc.FeatureImages )
+            opDataExport.Inputs[num_items_per_stage*reverse_stage_index+4].connect( opPc.LabelImages )
+
+        # One last export slot for all probabilities, all stages
+        opAllStageStacker = OpMultiArrayStacker(parent=self)
+        opAllStageStacker.Images.resize( len(self.pcApplets) )
+        for stage_index, pcApplet in enumerate(self.pcApplets):
+            opPc = pcApplet.topLevelOperator.getLane(laneIndex)
+            opAllStageStacker.Images[stage_index].connect(opPc.HeadlessPredictionProbabilities)
+            opAllStageStacker.AxisFlag.setValue('c')
+        opDataExport.Inputs[-1].connect( opAllStageStacker.Output )
+        
         for slot in opDataExport.Inputs:
             assert slot.partner is not None
 
@@ -384,8 +407,15 @@ class NewAutocontextWorkflowBase(Workflow):
 
     def prepare_for_entire_export(self):
         # While exporting, we don't want to cache any data.
-        for featureSeletionApplet in self.featureSelectionApplets:
-            featureSeletionApplet.topLevelOperator.BypassCache.setValue(True)
+        export_selection_index = self.dataExportApplet.topLevelOperator.InputSelection.value
+        export_selection_name = self.dataExportApplet.topLevelOperator.SelectionNames.value[ export_selection_index ]
+        if 'all stages' in export_selection_name.lower():
+            # UNLESS we're exporting from more than one stage at a time.
+            # In that case, the caches help avoid unnecessary work (except for the last stage)
+            self.featureSelectionApplets[-1].topLevelOperator.BypassCache.setValue(True)
+        else:
+            for featureSeletionApplet in self.featureSelectionApplets:
+                featureSeletionApplet.topLevelOperator.BypassCache.setValue(True)
             
         # Unfreeze the classifier caches (ensure that we're exporting based on up-to-date labels)
         self.freeze_statuses = []
@@ -394,9 +424,9 @@ class NewAutocontextWorkflowBase(Workflow):
             pcApplet.topLevelOperator.FreezePredictions.setValue(False)
 
     def post_process_entire_export(self):
-        # While exporting, we don't want to cache any data.
+        # While exporting, we disabled caches, but now we can enable them again.
         for featureSeletionApplet in self.featureSelectionApplets:
-            featureSeletionApplet.topLevelOperator.BypassCache.setValue(True)
+            featureSeletionApplet.topLevelOperator.BypassCache.setValue(False)
 
         # Re-freeze classifier caches (if necessary)
         for pcApplet, freeze_status in zip(self.pcApplets, self.freeze_statuses):
