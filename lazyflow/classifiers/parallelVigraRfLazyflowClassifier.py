@@ -229,9 +229,9 @@ def generate_importance_table(named_importances_dict, sort=None, export_path=Non
                                "overall" : -2,
                                "gini" :    -1 } )
         assert sort in sort_columns.keys(), "Invalid sort column: '{}'".format(sort)
-        # Sort by "overall" importance (column -2)
+        sort_column = sort_columns[sort]
         sorted_importances = sorted( named_importances_dict.items(),
-                                     key=lambda (k,v): v[-2] )
+                                     key=lambda (k,v): v[sort_column] )
         named_importances_dict = collections.OrderedDict( sorted_importances )
 
     for feature_name, importances in named_importances_dict.items():
