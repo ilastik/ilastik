@@ -396,8 +396,12 @@ class NewAutocontextWorkflowBase(Workflow):
         if self._batch_export_args:
             self.dataExportApplet.configure_operator_with_parsed_args( self._batch_export_args )
 
-        if self._batch_input_args and self.pcApplet.topLevelOperator.classifier_cache._dirty:
-            logger.warn("Your project file has no classifier.  A new classifier will be trained for this run.")
+        if self._batch_input_args:
+            for pcApplet in self.pcApplets:
+                if pcApplet.topLevelOperator.classifier_cache._dirty:
+                    logger.warn("At least one of your classifiers is not yet trained.  "
+                                "A new classifier will be trained for this run.")
+                    break
 
         if self._headless and self._batch_input_args and self._batch_export_args:
             logger.info("Beginning Batch Processing")
@@ -441,7 +445,7 @@ class NewAutocontextWorkflowBase(Workflow):
             pcApplet.topLevelOperator.FreezePredictions.setValue(False)
 
         # Request the LAST classifier, which forces training
-        _ = self.pcApplet.topLevelOperator.Classifier.value
+        _ = self.pcApplets[-1].topLevelOperator.Classifier.value
 
         # store new classifiers to project file
         projectManager.saveProject(force_all_save=False)
