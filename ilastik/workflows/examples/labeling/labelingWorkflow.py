@@ -52,10 +52,8 @@ class LabelingWorkflow(Workflow):
         
         # Connect top-level operators
         opSingleLaneLabeling.InputImage.connect( opDataSelection.Image )
-        opSingleLaneLabeling.LabelsAllowedFlag.connect( opDataSelection.AllowLabels )
 
         opMultiLabeling.InputImages.connect( opDataSelection.Image )
-        opMultiLabeling.LabelsAllowedFlags.connect( opDataSelection.AllowLabels )
 
     @property
     def applets(self):

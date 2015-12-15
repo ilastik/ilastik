@@ -262,7 +262,6 @@ class ObjectClassificationWorkflow(Workflow):
         opObjExtraction.BinaryImage.connect(binaryslot)
 
         opObjClassification.RawImages.connect(rawslot)
-        opObjClassification.LabelsAllowedFlags.connect(opData.AllowLabels)
         opObjClassification.BinaryImages.connect(binaryslot)
 
         opObjClassification.SegmentationImages.connect(opObjExtraction.LabelImage)
@@ -608,7 +607,6 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         opTrainingFeatures.InputImage.connect(rawslot)
 
         opClassify.InputImages.connect(rawslot)
-        opClassify.LabelsAllowedFlags.connect(opData.AllowLabels)
         opClassify.FeatureImages.connect(opTrainingFeatures.OutputImage)
         opClassify.CachedFeatureImages.connect(opTrainingFeatures.CachedOutputImage)
 

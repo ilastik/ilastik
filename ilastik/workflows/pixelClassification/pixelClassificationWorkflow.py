@@ -220,9 +220,6 @@ class PixelClassificationWorkflow(Workflow):
         opClassify.FeatureImages.connect( opTrainingFeatures.OutputImage )
         opClassify.CachedFeatureImages.connect( opTrainingFeatures.CachedOutputImage )
         
-        # Training flags -> Classification Op (for GUI restrictions)
-        opClassify.LabelsAllowedFlags.connect( opData.AllowLabels )
-
         # Data Export connections
         opDataExport.RawData.connect( opData.ImageGroup[self.DATA_ROLE_RAW] )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[self.DATA_ROLE_RAW] )
@@ -326,16 +323,7 @@ class PixelClassificationWorkflow(Workflow):
             self.pcApplet.topLevelOperator.ClassifierFactory.setDirty()
             
         if self.retrain:
-            # Cause the classifier to be dirty so it is forced to retrain.
-            # (useful if the stored labels were changed outside ilastik)
-            self.pcApplet.topLevelOperator.opTrain.ClassifierFactory.setDirty()
-            
-            # Request the classifier, which forces training
-            self.pcApplet.topLevelOperator.FreezePredictions.setValue(False)
-            _ = self.pcApplet.topLevelOperator.Classifier.value
-
-            # store new classifier to project file
-            projectManager.saveProject(force_all_save=False)
+            self._force_retrain_classifier()
 
         # Configure the data export operator.
         if self._batch_export_args:
@@ -355,6 +343,18 @@ class PixelClassificationWorkflow(Workflow):
 
     def post_process_entire_export(self):
         self.pcApplet.topLevelOperator.FreezePredictions.setValue(self.freeze_status)
+
+    def _force_retrain_classifier(self):
+        # Cause the classifier to be dirty so it is forced to retrain.
+        # (useful if the stored labels were changed outside ilastik)
+        self.pcApplet.topLevelOperator.opTrain.ClassifierFactory.setDirty()
+        
+        # Request the classifier, which forces training
+        self.pcApplet.topLevelOperator.FreezePredictions.setValue(False)
+        _ = self.pcApplet.topLevelOperator.Classifier.value
+
+        # store new classifier to project file
+        projectManager.saveProject(force_all_save=False)
 
     def _print_labels_by_slice(self, search_value):
         """

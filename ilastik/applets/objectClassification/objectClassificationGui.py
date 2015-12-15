@@ -117,7 +117,6 @@ class ObjectClassificationGui(LabelingGui):
         labelSlots.labelDelete = op.DeleteLabel
 
         labelSlots.maxLabelValue = op.NumLabels
-        labelSlots.labelsAllowed = op.LabelsAllowedFlags
         labelSlots.labelNames = op.LabelNames
         
         # We provide our own UI file (which adds an extra control for

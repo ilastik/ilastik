@@ -78,7 +78,6 @@ class AutocontextClassificationGui(LabelingGui):
         labelSlots.labelEraserValue = topLevelOperatorView.opLabelArray.eraser
         labelSlots.labelDelete = topLevelOperatorView.opLabelArray.deleteLabel
         labelSlots.maxLabelValue = topLevelOperatorView.MaxLabelValue
-        labelSlots.labelsAllowed = topLevelOperatorView.LabelsAllowedFlags
 
         # We provide our own UI file (which adds an extra control for interactive mode)
         labelingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'

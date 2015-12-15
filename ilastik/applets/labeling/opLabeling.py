@@ -34,7 +34,6 @@ class OpLabelingTopLevel( Operator ):
     InputImages = InputSlot(level=1) #: Original input data.
     LabelInputs = InputSlot(level=1) #: Input for providing label data from an external source
     
-    LabelsAllowedFlags = InputSlot(level=1, stype='bool') #: Specifies which images are permitted to be labeled 
     LabelEraserValue = InputSlot(value=255) #: The label value that signifies the 'eraser', i.e. voxels to clear labels from
     LabelDelete = InputSlot() #: When this input is set to a value, all labels of that value are deleted from the operator's data.
 
@@ -57,7 +56,6 @@ class OpLabelingTopLevel( Operator ):
         # Connect external inputs -> internal inputs
         self.opLabelLane.InputImage.connect( self.InputImages )
         self.opLabelLane.LabelInput.connect( self.LabelInputs )
-        self.opLabelLane.LabelsAllowedFlag.connect( self.LabelsAllowedFlags )
         self.opLabelLane.LabelEraserValue.connect( self.LabelEraserValue )
         self.opLabelLane.LabelDelete.connect( self.LabelDelete )
 
@@ -127,7 +125,6 @@ class OpLabelingSingleLane( Operator ):
     InputImage = InputSlot() #: Original input data.
     LabelInput = InputSlot(optional = True) #: Input for providing label data from an external source
     
-    LabelsAllowedFlag = InputSlot(stype='bool') #: Specifies which images are permitted to be labeled 
     LabelEraserValue = InputSlot(value=255) #: The label value that signifies the 'eraser', i.e. voxels to clear labels from
     LabelDelete = InputSlot(value=-1) #: When this input is set to a value, all labels of that value are deleted from the operator's data.
 

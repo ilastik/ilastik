@@ -76,8 +76,6 @@ class OpCarving(Operator):
     # uncertainty type
     UncertaintyType = InputSlot()
 
-    LabelsAllowed = InputSlot(value=True)
-
     # O u t p u t s #
 
     #current object + background
@@ -729,8 +727,7 @@ class OpCarving(Operator):
         elif slot == self.RawData or \
              slot == self.InputData or \
              slot == self.FilteredInputData or \
-             slot == self.WriteSeeds or \
-             slot == self.LabelsAllowed:
+             slot == self.WriteSeeds:
             pass
         else:
             assert False, "Unknown input slot: {}".format( slot.name )

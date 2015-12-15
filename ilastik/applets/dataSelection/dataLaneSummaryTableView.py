@@ -66,8 +66,6 @@ class DataLaneSummaryTableView(QTableView):
             
             roleIndex += 1
 
-        # TODO: Implement support for the labelable flag again...
-        self.setColumnHidden(LaneColumn.LabelsAllowed, True)
         self.resizeColumnsToContents()
     
     def selectionChanged(self, selected, deselected):

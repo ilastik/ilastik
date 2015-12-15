@@ -72,7 +72,6 @@ class CarvingGui(LabelingGui):
         labelingSlots.labelNames       = topLevelOperatorView.LabelNames
         labelingSlots.labelDelete      = topLevelOperatorView.opLabelArray.DeleteLabel
         labelingSlots.maxLabelValue    = topLevelOperatorView.opLabelArray.MaxLabelValue
-        labelingSlots.labelsAllowed    = topLevelOperatorView.LabelsAllowed
         
         # We provide our own UI file (which adds an extra control for interactive mode)
         directory = os.path.split(__file__)[0]

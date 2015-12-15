@@ -46,17 +46,37 @@ class OpFeatureSelectionNoCache(Operator):
     name = "OpFeatureSelection"
     category = "Top-level"
 
+    # Constants    
+    ScalesList = [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
+
+    # Map feature groups to lists of feature IDs
+    FeatureGroups = [ ( "Color/Intensity",   [ "GaussianSmoothing" ] ),
+                      ( "Edge",    [ "LaplacianOfGaussian", "GaussianGradientMagnitude", "DifferenceOfGaussians" ] ),
+                      ( "Texture", [ "StructureTensorEigenvalues", "HessianOfGaussianEigenvalues" ] ) ]
+
+    # Map feature IDs to feature names
+    FeatureNames = { 'GaussianSmoothing' : 'Gaussian Smoothing',
+                     'LaplacianOfGaussian' : "Laplacian of Gaussian",
+                     'GaussianGradientMagnitude' : "Gaussian Gradient Magnitude",
+                     'DifferenceOfGaussians' : "Difference of Gaussians",
+                     'StructureTensorEigenvalues' : "Structure Tensor Eigenvalues",
+                     'HessianOfGaussianEigenvalues' : "Hessian of Gaussian Eigenvalues" }
+
+    MinimalFeatures = numpy.zeros( (len(FeatureNames), len(ScalesList)), dtype=bool )
+    MinimalFeatures[0,0] = True
+
     # Multiple input images
     InputImage = InputSlot()
 
     # The following input slots are applied uniformly to all input images
-    Scales = InputSlot() # The list of possible scales to use when computing features
-    FeatureIds = InputSlot() # The list of features to compute
-    SelectionMatrix = InputSlot() # A matrix of bools indicating which features to output.
-                         # The matrix rows correspond to feature types in the order specified by the FeatureIds input.
-                         #  (See OpPixelFeaturesPresmoothed for the available feature types.)
-                         # The matrix columns correspond to the scales provided in the Scales input,
-                         #  which requires that the number of matrix columns must match len(Scales.value)
+    Scales = InputSlot(value=ScalesList) # The list of possible scales to use when computing features
+    FeatureIds = InputSlot(value=FeatureNames.keys()) # The list of features to compute
+    SelectionMatrix = InputSlot(value=MinimalFeatures) # A matrix of bools indicating which features to output.
+                                                       # The matrix rows correspond to feature types in the order specified by the FeatureIds input.
+                                                       #  (See OpPixelFeaturesPresmoothed for the available feature types.)
+                                                       # The matrix columns correspond to the scales provided in the Scales input,
+                                                       #  which requires that the number of matrix columns must match len(Scales.value)
+
     FeatureListFilename = InputSlot(stype="str", optional=True)
     
     # Features are presented in the channels of the output image
@@ -199,7 +219,7 @@ class OpFeatureSelection( OpFeatureSelectionNoCache ):
     This is the top-level operator of the feature selection applet when used in a GUI.
     It provides an extra output for cached data.
     """
-
+    BypassCache = InputSlot(value=False)
     CachedOutputImage = OutputSlot()
 
     def __init__(self, *args, **kwargs):
@@ -208,6 +228,7 @@ class OpFeatureSelection( OpFeatureSelectionNoCache ):
         # Create the cache
         self.opPixelFeatureCache = OpSlicedBlockedArrayCache(parent=self)
         self.opPixelFeatureCache.name = "opPixelFeatureCache"
+        self.opPixelFeatureCache.BypassModeEnabled.connect( self.BypassCache )
 
         # Connect the cache to the feature output
         self.opPixelFeatureCache.Input.connect(self.OutputImage)

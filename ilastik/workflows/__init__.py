@@ -62,6 +62,7 @@ try:
 except ImportError as e:
     logger.warn( "Failed to import the IIBoost Synapse detection workflow.  Check IIBoost dependency." )
 
+import newAutocontext.newAutocontextWorkflow
 
 import examples.dataConversion
 

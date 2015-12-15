@@ -169,7 +169,6 @@ class ConservationTrackingWorkflowBase( Workflow ):
           
             opDivDetection.BinaryImages.connect( op5Binary.Output )
             opDivDetection.RawImages.connect( op5Raw.Output )        
-            opDivDetection.LabelsAllowedFlags.connect(opData.AllowLabels)
             opDivDetection.SegmentationImages.connect(opObjExtraction.LabelImage)
             opDivDetection.ObjectFeatures.connect(opObjExtraction.RegionFeaturesAll)
             opDivDetection.ComputedFeatureNames.connect(opObjExtraction.ComputedFeatureNamesAll)
@@ -184,7 +183,6 @@ class ConservationTrackingWorkflowBase( Workflow ):
             selected_features_objectcount[plugin_name] = { name: {} for name in config.selected_features_objectcount[plugin_name] }
         opCellClassification.BinaryImages.connect( op5Binary.Output )
         opCellClassification.RawImages.connect( op5Raw.Output )
-        opCellClassification.LabelsAllowedFlags.connect(opData.AllowLabels)
         opCellClassification.SegmentationImages.connect(opObjExtraction.LabelImage)
         opCellClassification.ObjectFeatures.connect(opObjExtraction.RegionFeaturesVigra)
         opCellClassification.ComputedFeatureNames.connect(opObjExtraction.ComputedFeatureNamesVigra)
