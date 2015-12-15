@@ -27,7 +27,6 @@ import collections
 from functools import partial
 import logging
 from ilastik.applets.pixelClassification.opPixelClassification import OpPixelClassification
-from PyQt4.Qt import QVBoxLayout
 logger = logging.getLogger(__name__)
 
 import numpy as np
@@ -554,7 +553,7 @@ class NewAutocontextWorkflowBase(Workflow):
     def get_label_distribution_settings(source_stage_index, num_stages):
         # Late import.
         # (Don't import PyQt in headless mode.)
-        from PyQt4.QtGui import QDialog
+        from PyQt4.QtGui import QDialog, QVBoxLayout
         class LabelDistributionOptionsDlg( QDialog ):
             """
             A little dialog to let the user specify how the labels should be
