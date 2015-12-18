@@ -41,6 +41,7 @@ from ilastik.applets.batchProcessing import BatchProcessingApplet
 from lazyflow.graph import Graph
 from lazyflow.roi import TinyVector, sliceToRoi, roiToSlice
 from lazyflow.operators.generic import OpMultiArrayStacker
+from lazyflow.operators.valueProviders import OpMetadataInjector
 
 class NewAutocontextWorkflowBase(Workflow):
     
@@ -292,7 +293,14 @@ class NewAutocontextWorkflowBase(Workflow):
             opPc = pcApplet.topLevelOperator.getLane(laneIndex)
             opAllStageStacker.Images[stage_index].connect(opPc.HeadlessPredictionProbabilities)
             opAllStageStacker.AxisFlag.setValue('c')
-        opDataExport.Inputs[-1].connect( opAllStageStacker.Output )
+
+        # The ideal_blockshape metadata field will be bogus, so just eliminate it
+        # (Otherwise, the channels could be split up in an unfortunate way.)
+        opMetadataOverride = OpMetadataInjector(parent=self)
+        opMetadataOverride.Input.connect( opAllStageStacker.Output )
+        opMetadataOverride.Metadata.setValue( {'ideal_blockshape' : None } )
+        
+        opDataExport.Inputs[-1].connect( opMetadataOverride.Output )
         
         for slot in opDataExport.Inputs:
             assert slot.partner is not None
