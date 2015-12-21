@@ -47,7 +47,7 @@ from ilastik.utility.gui import threadRouted
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.applets.base.applet import ShellRequest
-from lazyflow.operators.adaptors import Op5ifyer
+from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.counting.countingGuiDotsInterface import DotCrosshairController,DotInterpreter
 from ilastik.applets.base.appletSerializer import SerialListSlot
 from PyQt4 import QtGui
@@ -256,10 +256,10 @@ class CountingGui(LabelingGui):
         self.labelingDrawerUi.DensityButton.clicked.connect(self.updateSum)
 
         mainwin=self
-        self.density5d=Op5ifyer(graph=self.op.graph, parent=self.op.parent) #
+        self.density5d=OpReorderAxes(graph=self.op.graph, parent=self.op.parent) #
 
-        self.density5d.input.connect(self.op.Density)
-        self.boxController=BoxController(mainwin.editor,self.density5d.output,self.labelingDrawerUi.boxListModel)
+        self.density5d.Input.connect(self.op.Density)
+        self.boxController=BoxController(mainwin.editor,self.density5d.Output,self.labelingDrawerUi.boxListModel)
         self.boxInterpreter=BoxInterpreter(mainwin.editor.navInterpret,mainwin.editor.posModel,self.boxController,mainwin.centralWidget())
 
         self.navigationInterpreterDefault=self.editor.navInterpret

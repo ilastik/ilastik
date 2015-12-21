@@ -43,6 +43,9 @@ from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThunkEventHandler, threadRouted
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
+from ilastik.applets.labeling.labelingImport import import_labeling_layer
+
+
 # Loggers
 logger = logging.getLogger(__name__)
 
@@ -801,6 +804,9 @@ class LabelingGui(LayerViewerGui):
             labellayer = ColortableLayer(labelsrc, colorTable = self._colorTable16, direct=direct )
             labellayer.name = "Labels"
             labellayer.ref_object = None
+
+            labellayer.contexts.append(("Import...",
+                                        partial( import_labeling_layer, labellayer, self._labelingSlots, self )))
 
             return labellayer, labelsrc
 

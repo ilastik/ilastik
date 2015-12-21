@@ -69,7 +69,6 @@ try:
 except ImportError as e:
     logger.warn( "Failed to import the IIBoost Synapse detection workflow.  Check IIBoost dependency." )
 
-
 import examples.dataConversion
 
 # Examples
@@ -80,4 +79,3 @@ if ilastik.config.cfg.getboolean('ilastik', 'debug'):
     import examples.deviationFromMean
     import examples.labeling
     import examples.connectedComponents
-    import tracking.chaingraph

@@ -363,7 +363,11 @@ class OpLabelPipeline( Operator ):
     
     def setupOutputs(self):
         tagged_shape = self.RawImage.meta.getTaggedShape()
+        # labels are created for one channel (i.e. the label) and only in the
+        # current time slice, so we can set both c and t to 1
         tagged_shape['c'] = 1
+        if 't' in tagged_shape:
+            tagged_shape['t'] = 1
         
         # Aim for blocks that are roughly 1MB
         block_shape = determineBlockShape( tagged_shape.values(), 1e6 )
@@ -549,6 +553,12 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
                        'x' : (256,256),
                        'c' : (100,100) }
 
+        blockDimsTBlock = { 't' : (20,20),
+                            'z' : (1,1),
+                            'y' : (256,256),
+                            'x' : (256,256),
+                            'c' : (100,100) }
+
         innerBlockShapeX = tuple( blockDimsX[k][0] for k in axisOrder )
         outerBlockShapeX = tuple( blockDimsX[k][1] for k in axisOrder )
 
@@ -558,11 +568,14 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         innerBlockShapeZ = tuple( blockDimsZ[k][0] for k in axisOrder )
         outerBlockShapeZ = tuple( blockDimsZ[k][1] for k in axisOrder )
 
-        self.prediction_cache_gui.inputs["innerBlockShape"].setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
-        self.prediction_cache_gui.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
+        innerBlockShapeT = tuple( blockDimsTBlock[k][0] for k in axisOrder )
+        outerBlockShapeT = tuple( blockDimsTBlock[k][1] for k in axisOrder )
 
-        self.opUncertaintyCache.inputs["innerBlockShape"].setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
-        self.opUncertaintyCache.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
+        self.prediction_cache_gui.inputs["innerBlockShape"].setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ, innerBlockShapeT) )
+        self.prediction_cache_gui.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ, innerBlockShapeT) )
+
+        self.opUncertaintyCache.inputs["innerBlockShape"].setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ, innerBlockShapeT) )
+        self.opUncertaintyCache.inputs["outerBlockShape"].setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ, innerBlockShapeT) )
 
 
 class OpEnsembleMargin(Operator):

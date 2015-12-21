@@ -46,6 +46,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             self.editor.dataShape = self.mainOperator.LabelImage.meta.shape
 
         self.applet = self.mainOperator.parent.parent.trackingApplet
+        self._drawer.mergerResolutionBox.setChecked(True)
 
     def _loadUiFile(self):
         localDir = os.path.split(__file__)[0]
@@ -367,7 +368,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                 ndim)
 
             time_range = range (0,self.topLevelOperatorView.LabelImage.meta.shape[0])
-            traxelStore, empty_frame = self.mainOperator._generate_traxelstore(
+            featureStore, traxelStore, empty_frame = self.mainOperator._generate_traxelstore(
                 time_range,
                 (0,self.topLevelOperatorView.LabelImage.meta.shape[1]),#x_range
                 (0,self.topLevelOperatorView.LabelImage.meta.shape[2]),#y_range
@@ -707,7 +708,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             if (to_z - from_z == 0):
                 ndim=2
             
-            try:
+            #try:
+            if True:
                 self.mainOperator.track(
                     time_range = self.time_range,
                     x_range = (from_x, to_x + 1),
@@ -740,11 +742,11 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                     trainingToHardConstraints = self._drawer.trainingToHardConstraints.isChecked(),
                     max_nearest_neighbors = self._maxNearestNeighbors
                     )
-            except Exception:           
-                ex_type, ex, tb = sys.exc_info()
-                traceback.print_tb(tb)            
-                self._criticalMessage("Exception(" + str(ex_type) + "): " + str(ex))       
-                return                     
+            # except Exception:
+            #     ex_type, ex, tb = sys.exc_info()
+            #     traceback.print_tb(tb)
+            #     self._criticalMessage("Exception(" + str(ex_type) + "): " + str(ex))
+            #     return
         
         def _handle_finished(*args):
             self.applet.busy = False

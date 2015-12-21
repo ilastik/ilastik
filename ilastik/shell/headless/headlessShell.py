@@ -116,6 +116,9 @@ class HeadlessShell(object):
         """
         pass
 
+    def isAppletEnabled(self, applet):
+        return False
+
     def enableProjectChanges(self, enabled):
         """
         Provided here to satisfy the ShellABC.

@@ -974,7 +974,7 @@ if __name__ == "__main__":
         
         # To configure data selection, start with empty cmdline args and manually fill them in
         data_selection_args, _ = data_selection_applet.parse_known_cmdline_args([])
-        data_selection_args.input_files = [test_data_path + '/zeros']
+        data_selection_args.raw_data = [test_data_path + '/zeros']
         
         # Configure 
         data_selection_applet.configure_operator_with_parsed_args(data_selection_args)

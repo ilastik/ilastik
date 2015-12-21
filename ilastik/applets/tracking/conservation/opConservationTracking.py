@@ -4,16 +4,42 @@ from lazyflow.rtype import List
 from lazyflow.stype import Opaque
 import pgmlink
 from ilastik.applets.tracking.base.opTrackingBase import OpTrackingBase
-from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
-from ilastik.applets.tracking.base.trackingUtilities import relabelMergers
+from ilastik.applets.tracking.base.trackingUtilities import relabel, highlightMergers
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key, OpRegionFeatures
 from ilastik.applets.tracking.base.trackingUtilities import get_events
 from lazyflow.operators.opCompressedCache import OpCompressedCache
 from lazyflow.roi import sliceToRoi
-
+from PyQt4 import QtGui
+from opRelabeledMergerFeatureExtraction import OpRelabeledMergerFeatureExtraction
 
 import logging
 logger = logging.getLogger(__name__)
 
+def swirl_motion_func_creator(velocityWeight):
+    def swirl_motion_func(traxelA, traxelB, traxelC, traxelD):
+        #print("SwirlMotion evaluated for traxels: {}, {}, {}".format(traxelA, traxelB, traxelC))
+        traxels = [traxelA, traxelB, traxelC, traxelD]
+        positions = [np.array([t.X(), t.Y(), t.Z()]) for t in traxels]
+        vecs = [positions[1] - positions[0], positions[2] - positions[1]]
+
+        # acceleration is change in velocity
+        acc = vecs[1] - vecs[0]
+
+        # assume constant acceleration to find expected velocity vector
+        expected_vel = vecs[1] + acc
+
+        # construct expected position
+        expected_pos = positions[2] + expected_vel
+
+        # penalize deviation from that position
+        deviation = np.linalg.norm(expected_pos - positions[3])
+        #print("\tExpected next traxel at pos {}, but found {}. Distance={}".format(expected_pos, positions[3], deviation))
+        cost = float(velocityWeight) * deviation
+        tIds = [(t.Timestep, t.Id) for t in traxels]
+        #print("Adding cost {} to link between traxels {} at positions {}".format(cost, tIds, positions))
+
+        return cost
+    return swirl_motion_func
 
 class OpConservationTracking(OpTrackingBase):
     DivisionProbabilities = InputSlot(stype=Opaque, rtype=List)
@@ -27,6 +53,13 @@ class OpConservationTracking(OpTrackingBase):
     MergerCachedOutput = OutputSlot() # For the GUI (blockwise access)
     MergerOutput = OutputSlot()
     
+    CoordinateMap = OutputSlot()
+
+    RelabeledInputHdf5 = InputSlot(optional=True)
+    RelabeledCleanBlocks = OutputSlot()
+    RelabeledOutputHdf5 = OutputSlot()
+    RelabeledCachedOutput = OutputSlot() # For the GUI (blockwise access)
+    RelabeledImage = OutputSlot()
 
     def __init__(self, parent=None, graph=None):
         super(OpConservationTracking, self).__init__(parent=parent, graph=graph)
@@ -37,34 +70,76 @@ class OpConservationTracking(OpTrackingBase):
         self.MergerCleanBlocks.connect(self._mergerOpCache.CleanBlocks)
         self.MergerOutputHdf5.connect(self._mergerOpCache.OutputHdf5)
         self.MergerCachedOutput.connect(self._mergerOpCache.Output)
-        
+
+        self._relabeledOpCache = OpCompressedCache( parent=self )
+        self._relabeledOpCache.InputHdf5.connect(self.RelabeledInputHdf5)
+        self._relabeledOpCache.Input.connect(self.RelabeledImage)
+        self.RelabeledCleanBlocks.connect(self._relabeledOpCache.CleanBlocks)
+        self.RelabeledOutputHdf5.connect(self._relabeledOpCache.OutputHdf5)
+        self.RelabeledCachedOutput.connect(self._relabeledOpCache.Output)
         self.tracker = None
+        self._ndim = 3
 
 
     def setupOutputs(self):
         super(OpConservationTracking, self).setupOutputs()
         self.MergerOutput.meta.assignFrom(self.LabelImage.meta)
+        self.RelabeledImage.meta.assignFrom(self.LabelImage.meta)
+        self._ndim = 2 if self.LabelImage.meta.shape[3] == 1 else 3
 
         self._mergerOpCache.BlockShape.setValue( self._blockshape )
+        self._relabeledOpCache.BlockShape.setValue( self._blockshape )
     
     def execute(self, slot, subindex, roi, result):
-        result = super(OpConservationTracking, self).execute(slot, subindex, roi, result)
-        
-        if slot is self.MergerOutput:
-            result = self.LabelImage.get(roi).wait()
+        if slot is self.Output:
             parameters = self.Parameters.value
-            
             trange = range(roi.start[0], roi.stop[0])
+            original = np.zeros(result.shape)
+            original = super(OpConservationTracking, self).execute(slot, subindex, roi, original).copy() # recursive call to get properly labeled image
+            result = self.LabelImage.get(roi).wait()
+            pixel_offsets=roi.start[1:-1]  # offset only in pixels, not time and channel
             for t in trange:
-                if ('time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0] and len(self.mergers) > t and len(self.mergers[t])):
-                    result[t-roi.start[0],...,0] = relabelMergers(result[t-roi.start[0],...,0], self.mergers[t])
+                if ('time_range' in parameters
+                        and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]
+                        and len(self.resolvedto) > t and len(self.resolvedto[t])):
+                    result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, pixel_offsets)
                 else:
                     result[t-roi.start[0],...][:] = 0
-            
-        return result     
+
+            original[result != 0] = result[result != 0]
+            result = original
+        elif slot is self.MergerOutput:
+            parameters = self.Parameters.value
+            trange = range(roi.start[0], roi.stop[0])
+            result = self.LabelImage.get(roi).wait()
+            pixel_offsets=roi.start[1:-1]  # offset only in pixels, not time and channel
+            for t in trange:
+                if ('time_range' in parameters
+                        and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]
+                        and len(self.mergers) > t and len(self.mergers[t])):
+                    if 'withMergerResolution' in parameters.keys() and parameters['withMergerResolution']:
+                        result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, pixel_offsets, True)
+                    else:
+                        result[t-roi.start[0],...,0] = highlightMergers(result[t-roi.start[0],...,0], self.mergers[t])
+                else:
+                    result[t-roi.start[0],...][:] = 0
+        elif slot is self.RelabeledImage:
+            parameters = self.Parameters.value
+            trange = range(roi.start[0], roi.stop[0])
+            result = self.LabelImage.get(roi).wait()
+            pixel_offsets=roi.start[1:-1]  # offset only in pixels, not time and channel
+            for t in trange:
+                if ('time_range' in parameters
+                        and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]
+                        and len(self.resolvedto) > t and len(self.resolvedto[t])
+                        and 'withMergerResolution' in parameters.keys() and parameters['withMergerResolution']):
+                        result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, pixel_offsets, False, True)
+        else:  # default bahaviour
+            result = super(OpConservationTracking, self).execute(slot, subindex, roi, result)
+        return result
 
     def setInSlot(self, slot, subindex, roi, value):
-        assert slot == self.InputHdf5 or slot == self.MergerInputHdf5, "Invalid slot for setInSlot(): {}".format( slot.name )
+        assert slot == self.InputHdf5 or slot == self.MergerInputHdf5 or slot == self.RelabeledInputHdf5, "Invalid slot for setInSlot(): {}".format( slot.name )
 
     def track(self,
             time_range,
@@ -93,13 +168,21 @@ class OpConservationTracking(OpTrackingBase):
             withArmaCoordinates = True,
             appearance_cost = 500,
             disappearance_cost = 500,
-            graph_building_parameter_changed = True
+            motionModelWeight=10.0,
+            force_build_hypotheses_graph = False
             ):
         
         if not self.Parameters.ready():
             raise Exception("Parameter slot is not ready")
         
+        # it is assumed that the self.Parameters object is changed only at this
+        # place (ugly assumption). Therefore we can track any changes in the
+        # parameters as done in the following lines: If the same value for the
+        # key is already written in the parameters dictionary, the
+        # paramters_changed dictionary will get a "False" entry for this key,
+        # otherwise it is set to "True"
         parameters = self.Parameters.value
+
         parameters['maxDist'] = maxDist
         parameters['maxObj'] = maxObj
         parameters['divThreshold'] = divThreshold
@@ -116,7 +199,9 @@ class OpConservationTracking(OpTrackingBase):
         parameters['withArmaCoordinates'] = withArmaCoordinates
         parameters['appearanceCost'] = appearance_cost
         parameters['disappearanceCost'] = disappearance_cost
-                
+
+        do_build_hypotheses_graph = True
+
         if cplex_timeout:
             parameters['cplex_timeout'] = cplex_timeout
         else:
@@ -126,18 +211,18 @@ class OpConservationTracking(OpTrackingBase):
         if withClassifierPrior:
             if not self.DetectionProbabilities.ready() or len(self.DetectionProbabilities([0]).wait()[0]) == 0:
                 raise Exception, 'Classifier not ready yet. Did you forget to train the Object Count Classifier?'
-            if not self.NumLabels.ready() or self.NumLabels.value != (maxObj + 1):
+            if not self.NumLabels.ready() or self.NumLabels.value < (maxObj + 1):
                 raise Exception, 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n'\
-                    'Check whether you have (i) the correct number of label names specified in Object Count Classification, and (ii) provided at least' \
+                    'Check whether you have (i) the correct number of label names specified in Object Count Classification, and (ii) provided at least ' \
                     'one training example for each class.'
-            if len(self.DetectionProbabilities([0]).wait()[0][0]) != (maxObj + 1):
+            if len(self.DetectionProbabilities([0]).wait()[0][0]) < (maxObj + 1):
                 raise Exception, 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n'\
-                    'Check whether you have (i) the correct number of label names specified in Object Count Classification, and (ii) provided at least' \
+                    'Check whether you have (i) the correct number of label names specified in Object Count Classification, and (ii) provided at least ' \
                     'one training example for each class.'            
         
         median_obj_size = [0]
 
-        ts, empty_frame = self._generate_traxelstore(time_range, x_range, y_range, z_range, 
+        fs, ts, empty_frame = self._generate_traxelstore(time_range, x_range, y_range, z_range,
                                                                       size_range, x_scale, y_scale, z_scale, 
                                                                       median_object_size=median_obj_size, 
                                                                       with_div=withDivisions,
@@ -177,7 +262,10 @@ class OpConservationTracking(OpTrackingBase):
         if ndim == 2:
             assert z_range[0] * z_scale == 0 and (z_range[1]-1) * z_scale == 0, "fov of z must be (0,0) if ndim==2"
 
-        if(self.tracker == None or graph_building_parameter_changed):
+        if self.tracker is None:
+            do_build_hypotheses_graph = True
+
+        if do_build_hypotheses_graph:
             print '\033[94m' +"make new graph"+  '\033[0m'
             self.tracker = pgmlink.ConsTracking(maxObj,
                                          sizeDependent,   # size_dependent_detection_prob
@@ -190,9 +278,23 @@ class OpConservationTracking(OpTrackingBase):
                                          "none", # dump traxelstore,
                                          pgmlink.ConsTrackingSolverType.CplexSolver
                                          )
-            self.tracker.buildGraph(ts) # return value ???
+#<<<<<<< HEAD
+#            self.tracker.buildGraph(ts) # return value ???
 
             # add labels and annotations
+#=======
+            g = self.tracker.buildGraph(ts, 2)
+
+        # # DEBUG-STUFF: dump hypotheses graph
+        # hypo_graph_filename = '/Users/chaubold/Desktop/test.hypg'
+        # if hypo_graph_filename:
+        #     import pickle
+        #     print("Saving hypotheses graph to: " + hypo_graph_filename)
+        #     with open(hypo_graph_filename, 'wb') as hg_out:
+        #             pickle.dump(g, hg_out)
+        #             pickle.dump(fov, hg_out)
+        #             pickle.dump(fs, hg_out)
+#>>>>>>> 7cbe7e4e6f6bd264eb06d55b34df55ce2c1dadc2
 
         # create dummy uncertainty parameter object with just one iteration, so no perturbations at all (iter=0 -> MAP)
         sigmas = pgmlink.VectorOfDouble()
@@ -200,47 +302,73 @@ class OpConservationTracking(OpTrackingBase):
             sigmas.append(0.0)
         uncertaintyParams = pgmlink.UncertaintyParameter(1, pgmlink.DistrId.PerturbAndMAP, sigmas)
 
+        params = self.tracker.get_conservation_tracking_parameters(
+            0,       # forbidden_cost
+            float(ep_gap), # ep_gap
+            withTracklets, # with tracklets
+            10.0, # detection weight
+            divWeight, # division weight
+            transWeight, # transition weight
+            disappearance_cost, # disappearance cost
+            appearance_cost, # appearance cost
+            withMergerResolution, # with merger resolution
+            ndim, # ndim
+            transition_parameter, # transition param
+            borderAwareWidth, # border width
+            True, #with_constraints
+            uncertaintyParams, # uncertainty parameters
+            cplex_timeout, # cplex timeout
+            None, # transition classifier
+            pgmlink.ConsTrackingSolverType.CplexSolver, # Solver
+            1 # num threads
+        )
+
+        if motionModelWeight > 0:
+            print("Registering motion model with weight {}".format(motionModelWeight))
+            params.register_motion_model4_func(swirl_motion_func_creator(motionModelWeight), motionModelWeight * 25.0)
+
         try:
-            eventsVector = self.tracker.track(0,       # forbidden_cost
-                                            float(ep_gap), # ep_gap
-                                            withTracklets,
-                                            10.0, # detection weight
-                                            divWeight,
-                                            transWeight,
-                                            disappearance_cost, # disappearance cost
-                                            appearance_cost, # appearance cost
-                                            withMergerResolution,
-                                            ndim,
-                                            transition_parameter,
-                                            borderAwareWidth,
-                                            True, #with_constraints
-                                            uncertaintyParams,
-                                            cplex_timeout,
-                                            None) # TransitionClassifier
+            eventsVector = self.tracker.track(params, False)
+
+            ## plot hypotheses graph
+            # self.tracker.plot_hypotheses_graph(
+            #                 g,
+            #                 "/Users/chaubold/Desktop/test.dot",
+            #                 False, # with tracklets
+            #                 withDivisions, # with divisions
+            #                 10.0, # detection weight
+            #                 divWeight,
+            #                 transWeight,
+            #                 disappearance_cost, # disappearance cost
+            #                 appearance_cost, # appearance cost
+            #                 transition_parameter,
+            #                 borderAwareWidth
+            # )
 
             eventsVector = eventsVector[0] # we have a vector such that we could get a vector per perturbation
 
             # extract the coordinates with the given event vector
             if withMergerResolution:
                 coordinate_map = pgmlink.TimestepIdCoordinateMap()
-                # TODO what should the variable withArmaCoordinates toggle?
-                # is this the intended use?
-                if withArmaCoordinates:
-                    coordinate_map.initialize()
+
                 self._get_merger_coordinates(coordinate_map,
                                              time_range,
                                              eventsVector)
+                self.CoordinateMap.setValue(coordinate_map)
 
-                eventsVector = self.tracker.resolve_mergers(eventsVector,
-                                                coordinate_map.get(),
-                                                float(ep_gap),
-                                                transWeight,
-                                                withTracklets,
-                                                ndim,
-                                                transition_parameter,
-                                                True, # with_constraints
-                                                #True) # with_multi_frame_moves
-                                                None) # TransitionClassifier
+                eventsVector = self.tracker.resolve_mergers(
+                    eventsVector,
+                    params,
+                    coordinate_map.get(),
+                    float(ep_gap),
+                    transWeight,
+                    withTracklets,
+                    ndim,
+                    transition_parameter,
+                    True, # with_constraints
+                    None) # TransitionClassifier
+                    # multi frame moves are gone
+                                                
         except Exception as e:
             raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
         
@@ -250,7 +378,15 @@ class OpConservationTracking(OpTrackingBase):
         events = get_events(eventsVector)
         self.Parameters.setValue(parameters, check_changed=False)
         self.EventsVector.setValue(events, check_changed=False)
-        
+        self.RelabeledImage.setDirty()
+        merger_layer_idx = self.parent.parent.trackingApplet._gui.currentGui().layerstack.findMatchingIndex(lambda x: x.name == "Merger")
+        tracking_layer_idx = self.parent.parent.trackingApplet._gui.currentGui().layerstack.findMatchingIndex(lambda x: x.name == "Tracking")
+        if 'withMergerResolution' in parameters.keys() and not parameters['withMergerResolution']:
+            self.parent.parent.trackingApplet._gui.currentGui().layerstack[merger_layer_idx].colorTable = \
+                self.parent.parent.trackingApplet._gui.currentGui().merger_colortable
+        else:
+            self.parent.parent.trackingApplet._gui.currentGui().layerstack[merger_layer_idx].colorTable = \
+                self.parent.parent.trackingApplet._gui.currentGui().tracking_colortable
 
     def propagateDirty(self, inputSlot, subindex, roi):
         super(OpConservationTracking, self).propagateDirty(inputSlot, subindex, roi)
@@ -299,3 +435,99 @@ class OpConservationTracking(OpTrackingBase):
                                                          t,
                                                          idx,
                                                          int(size[idx,0]))
+
+    def _relabelMergers(self, volume, time, pixel_offsets=[0, 0, 0], onlyMergers=False, noRelabeling=False):
+        if self.CoordinateMap.value.size() == 0:
+            print("Skipping merger relabeling because coordinate map is empty")
+            if onlyMergers:
+                return np.zeros_like(volume)
+            else:
+                return volume
+        if time >= len(self.resolvedto):
+            if onlyMergers:
+                return np.zeros_like(volume)
+            else:
+                return volume
+
+        coordinate_map = self.CoordinateMap.value
+        valid_ids = []
+        for old_id, new_ids in self.resolvedto[time].iteritems():
+            for new_id in new_ids:
+                # TODO Reliable distinction between 2d and 3d?
+                if self._ndim == 2:
+                    # Assume we have 2d data: bind z to zero
+                    relabel_volume = volume[..., 0]
+                else:
+                    # For 3d data use the whole volume
+                    relabel_volume = volume
+                # relabel
+                pgmlink.update_labelimage(
+                    coordinate_map,
+                    relabel_volume,
+                    np.array(pixel_offsets, dtype=np.int64),
+                    int(time),
+                    int(new_id))
+                valid_ids.append(new_id)
+
+        if onlyMergers:
+            # find indices of merger ids, set everything else to zero
+            idx = np.in1d(volume.ravel(), valid_ids).reshape(volume.shape)
+            volume[-idx] = 0
+
+        if noRelabeling:
+            return volume
+        else:
+            return relabel(volume, self.label2color[time])
+
+    def do_export(self, settings, selected_features, progress_slot, lane_index, filename_suffix=""):
+        """
+        Implements ExportOperator.do_export(settings, selected_features, progress_slot
+        Most likely called from ExportOperator.export_object_data
+        :param settings: the settings for the exporter, see
+        :param selected_features:
+        :param progress_slot:
+        :param lane_index: Ignored. (This is a single-lane operator. It is the caller's responsibility to make sure he's calling the right lane.)
+        :param filename_suffix: If provided, appended to the filename (before the extension).
+        :return:
+        """
+
+        assert lane_index == 0, "This has only been tested in tracking workflows with a single image."
+
+        with_divisions = self.Parameters.value["withDivisions"] if self.Parameters.ready() else False
+        with_merger_resolution = self.Parameters.value["withMergerResolution"] if self.Parameters.ready() else False
+
+        if with_divisions:
+            object_feature_slot = self.ObjectFeaturesWithDivFeatures
+        else:
+            object_feature_slot = self.ObjectFeatures
+
+        if with_merger_resolution:
+            label_image = self.RelabeledImage
+
+            opRelabeledRegionFeatures = self._setupRelabeledFeatureSlot(object_feature_slot)
+            object_feature_slot = opRelabeledRegionFeatures.RegionFeatures
+        else:
+            label_image = self.LabelImage
+
+        self._do_export_impl(settings, selected_features, progress_slot, object_feature_slot, label_image, lane_index, filename_suffix)
+
+        if with_merger_resolution:
+            opRelabeledRegionFeatures.cleanUp()
+
+
+    def _setupRelabeledFeatureSlot(self, original_feature_slot):
+        from ilastik.applets.trackingFeatureExtraction import config
+        # when exporting after merger resolving, the stored object features are not up to date for the relabeled objects
+        opRelabeledRegionFeatures = OpRelabeledMergerFeatureExtraction(parent=self)
+        opRelabeledRegionFeatures.RawImage.connect(self.RawImage)
+        opRelabeledRegionFeatures.LabelImage.connect(self.LabelImage)
+        opRelabeledRegionFeatures.RelabeledImage.connect(self.RelabeledImage)
+        opRelabeledRegionFeatures.OriginalRegionFeatures.connect(original_feature_slot)
+        opRelabeledRegionFeatures.ResolvedTo.setValue(self.resolvedto)
+
+        vigra_features = list((set(config.vigra_features)).union(config.selected_features_objectcount[config.features_vigra_name]))
+        feature_names_vigra = {}
+        feature_names_vigra[config.features_vigra_name] = { name: {} for name in vigra_features }
+        opRelabeledRegionFeatures.FeatureNames.setValue(feature_names_vigra)
+
+        return opRelabeledRegionFeatures

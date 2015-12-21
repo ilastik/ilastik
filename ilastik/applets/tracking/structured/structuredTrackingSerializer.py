@@ -18,7 +18,10 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialDictSlot, deleteIfPresent, getOrCreateGroup, SerialHdf5BlockSlot
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialDictSlot, deleteIfPresent,\
+    getOrCreateGroup, SerialHdf5BlockSlot, SerialPickleableSlot
+
+import pgmlink
 
 class SerialDivisionsSlot(SerialSlot):
     def serialize(self, group):
@@ -109,5 +112,8 @@ class StructuredTrackingSerializer(AppletSerializer):
                                      topLevelOperator.MergerCleanBlocks,
                                      name="MergerCachedOutput"),
                           )
+
+        if 'CoordinateMap' in topLevelOperator.outputs:
+            slots.append(SerialPickleableSlot(topLevelOperator.CoordinateMap, 1, pgmlink.TimestepIdCoordinateMap()))
 
         super(StructuredTrackingSerializer, self ).__init__(projectFileGroupName, slots=slots)

@@ -7,6 +7,7 @@ import re
 import traceback
 from PyQt4.QtCore import pyqtSignal
 from ilastik.applets.tracking.base.trackingBaseGui import TrackingBaseGui
+from ilastik.utility import log_exception
 from ilastik.utility.exportingOperator import ExportingGui
 from ilastik.utility.gui.threadRouter import threadRouted
 from ilastik.utility.gui.titledMenu import TitledMenu
@@ -23,13 +24,24 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
     
     withMergers = True
     @threadRouted
-    def _setMergerLegend(self, labels, selection):   
-        for i in range(1,len(labels)+1):
+    def _setMergerLegend(self, labels, selection):
+        param = self.topLevelOperatorView.Parameters.value
+        if 'withMergerResolution' in param.keys():
+            if param['withMergerResolution']:
+                selection = 1
+        elif self._drawer.mergerResolutionBox.isChecked():
+            selection = 1
+
+        for i in range(2,len(labels)+1):
             if i <= selection:
                 labels[i-1].setVisible(True)
             else:
                 labels[i-1].setVisible(False)
-    
+
+        # hide merger legend if selection < 2
+        self._drawer.label_4.setVisible(selection > 1)
+        labels[0].setVisible(selection > 1)
+
     def _loadUiFile(self):
         # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
@@ -78,14 +90,25 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         self._drawer.timeoutBox.textChanged.connect(self._onTimeoutBoxChanged)
 
         if not ilastik_config.getboolean("ilastik", "debug"):
-            assert self._drawer.trackletsBox.isChecked()
-            self._drawer.trackletsBox.hide()
-            
-            assert not self._drawer.hardPriorBox.isChecked()
-            self._drawer.hardPriorBox.hide()
+            def checkboxAssertHandler(checkbox, assertEnabled=True):
+                if checkbox.isChecked() == assertEnabled:
+                    checkbox.hide()
+                else:
+                    checkbox.setEnabled(False)
 
-            assert not self._drawer.opticalBox.isChecked()
-            self._drawer.opticalBox.hide()
+            checkboxAssertHandler(self._drawer.trackletsBox, True)
+
+            if self._drawer.classifierPriorBox.isChecked():
+                self._drawer.hardPriorBox.hide()
+                self._drawer.classifierPriorBox.hide()
+                self._drawer.sizeDepBox.hide()
+            else:
+                self._drawer.hardPriorBox.setEnabled(False)
+                self._drawer.classifierPriorBox.setEnabled(False)
+                self._drawer.sizeDepBox.setEnabled(False)
+
+            checkboxAssertHandler(self._drawer.opticalBox, False)
+            checkboxAssertHandler(self._drawer.mergerResolutionBox, True)
 
             self._drawer.maxDistBox.hide() # hide the maximal distance box
             self._drawer.label_2.hide() # hie the maximal distance label
@@ -105,7 +128,8 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             self._labelSetStyleSheet(self.mergerLabels[i], self.mergerColors[i+1])
         
         self._onMaxObjectsBoxChanged()
-        self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)                
+        self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)
+        self._drawer.mergerResolutionBox.stateChanged.connect(self._onMaxObjectsBoxChanged)
 
     @threadRouted
     def _onTimeoutBoxChanged(self, *args):
@@ -171,7 +195,9 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             withArmaCoordinates = True
             appearanceCost = self._drawer.appearanceBox.value()
             disappearanceCost = self._drawer.disappearanceBox.value()
-    
+
+            motionModelWeight = self._drawer.motionModelWeightBox.value()
+
             ndim=3
             if (to_z - from_z == 0):
                 ndim=2
@@ -204,13 +230,19 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
                     cplex_timeout = cplex_timeout,
                     appearance_cost = appearanceCost,
                     disappearance_cost = disappearanceCost,
-                    graph_building_parameter_changed = True
+                    motionModelWeight=motionModelWeight,
+                    force_build_hypotheses_graph = False
                     )
-            except Exception:           
-                ex_type, ex, tb = sys.exc_info()
-                traceback.print_tb(tb)            
-                self._criticalMessage("Exception(" + str(ex_type) + "): " + str(ex))       
-                return                     
+
+                # update showing the merger legend,
+                # as it might be (no longer) needed if merger resolving
+                # is disabled(enabled)
+                self._setMergerLegend(self.mergerLabels, self._drawer.maxObjectsBox.value())
+            except Exception as ex:
+                log_exception(logger, "Error during tracking.  See above error traceback.")
+                self._criticalMessage("Error during tracking.  See error log.\n\n"
+                                      "Exception was:\n\n{})".format( ex ))
+                return
         
         def _handle_finished(*args):
             self.applet.busy = False
@@ -246,7 +278,27 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         return self.topLevelOperatorView.RawImage.meta.shape
 
     def get_feature_names(self):
+        params = self.topLevelOperatorView.Parameters
+        if params.ready() and params.value["withDivisions"]:
+            return self.topLevelOperatorView.ComputedFeatureNamesWithDivFeatures([]).wait()
         return self.topLevelOperatorView.ComputedFeatureNames([]).wait()
+
+    def get_color(self, pos5d):
+        slicing = tuple(slice(i, i+1) for i in pos5d)
+        color = self.mainOperator.CachedOutput(slicing).wait()
+        return color.flat[0]
+
+    def get_object(self, pos5d):
+        slicing = tuple(slice(i, i+1) for i in pos5d)
+        label = self.mainOperator.RelabeledImage(slicing).wait()
+        return label.flat[0], pos5d[0]
+
+    @property
+    def gui_applet(self):
+        return self.applet
+
+    def get_export_dialog_title(self):
+        return "Export Tracking Information"
 
     def handleEditorRightClick(self, position5d, win_coord):
         debug = ilastik_config.getboolean("ilastik", "debug")
@@ -260,24 +312,34 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             return
 
         try:
-            color = self.mainOperator.label2color[time][obj]
-            tracks = [self.mainOperator.track_id[time][obj]]
             extra = self.mainOperator.extra_track_ids
         except (IndexError, KeyError):
-            color = None
-            tracks = []
             extra = {}
 
+        # if this is a resolved merger, find which of the merged IDs we actually clicked on
         if time in extra and obj in extra[time]:
-            tracks.extend(extra[time][obj])
-        if tracks:
-            children, parents = self.mainOperator.track_family(tracks[0])
+            colors = [self.mainOperator.label2color[time][t] for t in extra[time][obj]]
+            tracks = [self.mainOperator.track_id[time][t] for t in extra[time][obj]]
+            selected_track = self.get_color(position5d)
+            idx = colors.index(selected_track)
+            color = colors[idx]
+            track = tracks[idx]
+        else:
+            try:
+                color = self.mainOperator.label2color[time][obj]
+                track = [self.mainOperator.track_id[time][obj]][0]
+            except (IndexError, KeyError):
+                color = None
+                track = []
+
+        if track:
+            children, parents = self.mainOperator.track_family(track)
         else:
             children, parents = None, None
 
         menu = TitledMenu([
             "Object {} of lineage id {}".format(obj, color),
-            "Track ids: " + (", ".join(map(str, set(tracks))) or "None"),
+            "Track id: " + (str(track) or "None"),
         ])
 
         if not debug:

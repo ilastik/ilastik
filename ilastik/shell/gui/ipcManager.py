@@ -27,11 +27,6 @@ from ilastik.config import cfg as ilastik_config
 logger = logging.getLogger(__name__)
 
 
-def p(*x):  # todo: remove
-    print x
-logger.info = p
-
-
 class IPCFacade(object):
     """
     The Singleton that encapsulates all IPC functionality

@@ -43,13 +43,18 @@ logger = logging.getLogger(__name__)
 #logger.setLevel(logging.DEBUG)
 
 class TestPixelClassificationHeadless(object):
-    dir = tempfile.mkdtemp()
-    PROJECT_FILE = os.path.join(dir, 'test_project.ilp')
+    
+    # Project and data are kept in different directories so we can test both absolute and relative paths.
+    project_dir = tempfile.mkdtemp()
+    data_dir = tempfile.mkdtemp()
+    PROJECT_FILE = os.path.join(project_dir, 'test_project.ilp')
     #SAMPLE_DATA = os.path.split(__file__)[0] + '/synapse_small.npy'
 
     @classmethod
     def setupClass(cls):
         print 'starting setup...'
+        cls.original_cwd = os.getcwd()
+        os.chdir(cls.data_dir)
 
         if hasattr(cls, 'SAMPLE_DATA'):
             cls.using_random_data = False
@@ -70,12 +75,13 @@ class TestPixelClassificationHeadless(object):
 
     @classmethod
     def teardownClass(cls):
+        os.chdir(cls.original_cwd)
         # Clean up: Delete any test files we generated
         removeFiles = [ TestPixelClassificationHeadless.PROJECT_FILE ]
         if cls.using_random_data:
             removeFiles += [ TestPixelClassificationHeadless.SAMPLE_DATA ]
 
-        for f in removeFiles:        
+        for f in removeFiles:
             try:
                 os.remove(f)
             except:
@@ -83,12 +89,12 @@ class TestPixelClassificationHeadless(object):
 
     @classmethod
     def create_random_tst_data(cls):
-        cls.SAMPLE_DATA = os.path.join(cls.dir, 'random_data.npy')
+        cls.SAMPLE_DATA = os.path.join(cls.data_dir, 'random_data.npy')
         cls.data = numpy.random.random((1,200,200,50,1))
         cls.data *= 256
         numpy.save(cls.SAMPLE_DATA, cls.data.astype(numpy.uint8))
         
-        cls.SAMPLE_MASK = os.path.join(cls.dir, 'mask.npy')
+        cls.SAMPLE_MASK = os.path.join(cls.data_dir, 'mask.npy')
         cls.data = numpy.ones((1,200,200,50,1))
         numpy.save(cls.SAMPLE_MASK, cls.data.astype(numpy.uint8))
 
@@ -171,7 +177,8 @@ class TestPixelClassificationHeadless(object):
         args += " --output_filename_format={dataset_dir}/{nickname}_prediction.h5"
         args += " --output_internal_path=volume/pred_volume"
         args += " --raw_data"
-        args += " " + self.SAMPLE_DATA
+        # test that relative path works correctly: should be relative to cwd, not project file.
+        args += " " + os.path.normpath(os.path.relpath(self.SAMPLE_DATA, os.getcwd()))
         args += " --prediction_mask"
         args += " " + self.SAMPLE_MASK
 
@@ -201,15 +208,16 @@ class TestPixelClassificationHeadless(object):
         #args.append( "--sys_tmp_dir=/tmp" )
  
         # Batch export options
+        args.append( '--export_source=Simple Segmentation' )
         args.append( '--output_format=png sequence' ) # If we were actually launching from the command line, 'png sequence' would be in quotes...
-        args.append( "--output_filename_format={dataset_dir}/{nickname}_prediction_z{slice_index}.png" )
+        args.append( "--output_filename_format={dataset_dir}/{nickname}_segmentation_z{slice_index}.png" )
         args.append( "--export_dtype=uint8" )
         args.append( "--output_axis_order=zxyc" )
          
-        args.append( "--pipeline_result_drange=(0.0,1.0)" )
+        args.append( "--pipeline_result_drange=(0,2)" )
         args.append( "--export_drange=(0,255)" )
  
-        args.append( "--cutout_subregion=[(0,50,50,0,0), (1, 150, 150, 50, 2)]" )
+        args.append( "--cutout_subregion=[(0,50,50,0,0), (1, 150, 150, 50, 1)]" )
         args.append( self.SAMPLE_DATA )
  
         sys.argv = ['ilastik.py'] # Clear the existing commandline args so it looks like we're starting fresh.
@@ -219,7 +227,7 @@ class TestPixelClassificationHeadless(object):
         # This will execute the batch mode script
         self.ilastik_startup.main()
  
-        output_path = self.SAMPLE_DATA[:-4] + "_prediction_z{slice_index}.png"
+        output_path = self.SAMPLE_DATA[:-4] + "_segmentation_z{slice_index}.png"
         globstring = output_path.format( slice_index=999 )
         globstring = globstring.replace('999', '*')
  
@@ -231,15 +239,16 @@ class TestPixelClassificationHeadless(object):
         opReorderAxes.AxisOrder.setValue( 'tzyxc' )
         opReorderAxes.Input.connect( opReader.stack )
          
-        readData = opReorderAxes.Output[:].wait()
- 
-        # Check basic attributes
-        assert readData.shape[:-1] == self.data[0:1, 50:150, 50:150, 0:50, 0:2].shape[:-1] # Assume channel is last axis
-        assert readData.shape[-1] == 2, "Wrong number of channels.  Expected 2, got {}".format( readData.shape[-1] )
-         
-        # Clean-up.
-        opReorderAxes.cleanUp()
-        opReader.cleanUp()
+        try:
+            readData = opReorderAxes.Output[:].wait()
+     
+            # Check basic attributes
+            assert readData.shape[:-1] == self.data[0:1, 50:150, 50:150, 0:50, 0:1].shape[:-1] # Assume channel is last axis
+            assert readData.shape[-1] == 1, "Wrong number of channels.  Expected 1, got {}".format( readData.shape[-1] )
+        finally:
+            # Clean-up.
+            opReorderAxes.cleanUp()
+            opReader.cleanUp()
 
 if __name__ == "__main__":
     #make the program quit on Ctrl+C

@@ -9,11 +9,19 @@ but it can work with multiple input volumes if you simply edit RAW_DATA_FILEPATH
 
 Lastly, this script assumes you have only two label classes.  Edit NUM_LABEL_CLASSES to change.
 
-Example usage (Mac):
-    ./ilastik.app/Contents/MacOS/mac_execfile train_headless.py MyNewProject.ilp "/tmp/grayscale_stack/*.png" /tmp/labels.h5/data
+Example usage:
+    # With 2D PNG input.
+    # Label images must have pixel value 0 for non-labeled pixels, and values of 1,2,3, etc. for each label class.
+    # Label images should *not* be RGB.
+    ./ilastik-1.1.7-Linux/bin/python train_headless.py MyNewProject.ilp /tmp/cell-slide.png cell-labels.png
 
-Example usage (Linux):
-    ./ilastik_python.sh train_headless.py MyNewProject.ilp "/tmp/grayscale_stack/*.png" /tmp/labels.h5/data
+    # With HDF5 input:
+    ./ilastik-1.1.7-Linux/bin/python train_headless.py MyNewProject.ilp "/tmp/grayscale_vol.h5/mydataset" /tmp/labels.h5/data
+
+    # With 3D tiff input.
+    ./ilastik-1.1.7-Linux/bin/python train_headless.py MyNewProject.ilp "/tmp/grayscale_sequence/*.tiff" "/tmp/label_img_sequence/*.tiff"
+
+Note for Mac users: Use ./ilastik-1.1.7-OSX.app/Contents/ilastik-release/bin/python
 
 Note: This script does not make any attempt to be efficient with RAM usage.
       (The entire label volume is loaded at once.)  As a result, each image volume you 
@@ -110,8 +118,8 @@ assert isinstance(shell.workflow, PixelClassificationWorkflow)
 data_selection_applet = shell.workflow.dataSelectionApplet
 
 # To configure data selection, start with empty cmdline args and manually fill them in
-data_selection_args, _ = data_selection_applet.parse_known_cmdline_args([])
-data_selection_args.input_files = RAW_DATA_FILEPATHS
+data_selection_args, _ = data_selection_applet.parse_known_cmdline_args([], PixelClassificationWorkflow.ROLE_NAMES)
+data_selection_args.raw_data = RAW_DATA_FILEPATHS
 data_selection_args.preconvert_stacks = True
 
 # Configure 

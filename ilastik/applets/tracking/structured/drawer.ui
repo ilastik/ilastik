@@ -40,6 +40,9 @@
      <property name="text">
       <string>With Merger Resolution</string>
      </property>
+     <property name="checked">
+      <bool>true</bool>
+     </property>
     </widget>
    </item>
    <item row="18" column="3" colspan="2">

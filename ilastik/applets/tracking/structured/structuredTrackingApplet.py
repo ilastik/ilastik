@@ -2,7 +2,6 @@ from ilastik.applets.base.standardApplet import StandardApplet
 from ilastik.applets.tracking.structured.opStructuredTracking import OpStructuredTracking
 from ilastik.applets.tracking.structured.structuredTrackingSerializer import StructuredTrackingSerializer
 
-
 class StructuredTrackingApplet( StandardApplet ):
     def __init__( self, name="Tracking", workflow=None, projectFileGroupName="StructuredTracking" ):
         super(StructuredTrackingApplet, self).__init__( name=name, workflow=workflow )

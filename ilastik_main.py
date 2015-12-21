@@ -4,6 +4,8 @@ import os
 import ilastik.config
 from ilastik.config import cfg as ilastik_config
 
+from lazyflow.utility import Memory
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -43,25 +45,30 @@ def main( parsed_args, workflow_cmdline_args=[] ):
     _init_configfile( parsed_args )
     
     _update_debug_mode( parsed_args )
-    _init_threading_monkeypatch()
+    _init_threading_logging_monkeypatch()
+    _init_threading_h5py_monkeypatch()
     _validate_arg_compatibility( parsed_args )
 
     # Extra initialization functions.
-    # Called during app startup.
-    init_funcs = []
+    # These are called during app startup, but before the shell is created.
+    preinit_funcs = []
+    preinit_funcs.append( _import_opengm ) # Must be first (or at least before vigra).
+    
     lazyflow_config_fn = _prepare_lazyflow_config( parsed_args )
     if lazyflow_config_fn:
-        init_funcs.append( lazyflow_config_fn )    
+        preinit_funcs.append( lazyflow_config_fn )
 
-    init_funcs.append( _monkey_patch_h5py )
-
+    # More initialization functions.
+    # These will be called AFTER the shell is created.
+    # The shell is provided as a parameter to the function.
+    postinit_funcs = []
     load_fn = _prepare_auto_open_project( parsed_args )
     if load_fn:
-        init_funcs.append( load_fn )    
+        postinit_funcs.append( load_fn )
     
     create_fn = _prepare_auto_create_new_project( parsed_args )
     if create_fn:
-        init_funcs.append( create_fn )
+        postinit_funcs.append( create_fn )
 
     _enable_faulthandler()
     _init_excepthooks( parsed_args )
@@ -83,16 +90,22 @@ def main( parsed_args, workflow_cmdline_args=[] ):
         import ilastik
         dummy_module_dir = os.path.join( os.path.split(ilastik.__file__)[0], "headless_dummy_modules" )
         sys.path.insert(0, dummy_module_dir)
+
+        # Run pre-init
+        for f in preinit_funcs:
+            f()
         
         from ilastik.shell.headless.headlessShell import HeadlessShell
         shell = HeadlessShell( workflow_cmdline_args )
-        for f in init_funcs:
+
+        # Run post-init
+        for f in postinit_funcs:
             f(shell)
         return shell
     # Normal launch
     else:
         from ilastik.shell.gui.startShellGui import startShellGui
-        sys.exit(startShellGui(workflow_cmdline_args, eventcapture_mode, playback_args, *init_funcs))
+        sys.exit(startShellGui(workflow_cmdline_args, eventcapture_mode, playback_args, preinit_funcs, postinit_funcs))
 
 def _init_configfile( parsed_args ):
     # If the user provided a custom config path to use instead of the default .ilastikrc,
@@ -147,7 +160,7 @@ def _init_logging( parsed_args ):
         logger.info( "All console output is being redirected to: {}"
                      .format( parsed_args.redirect_output ) )
 
-def _init_threading_monkeypatch():
+def _init_threading_logging_monkeypatch():
     # Monkey-patch thread starts if this special logger is active
     thread_start_logger = logging.getLogger("thread_start")
     if thread_start_logger.isEnabledFor(logging.DEBUG):
@@ -157,6 +170,25 @@ def _init_threading_monkeypatch():
             ordinary_start(self)
             thread_start_logger.debug( "Started thread: id={:x}, name={}".format( self.ident, self.name ) )
         threading.Thread.start = logged_start
+
+def _init_threading_h5py_monkeypatch():
+    """
+    Due to an h5py bug [1], spurious error messages aren't properly 
+    hidden if they occur in any thread other than the main thread.
+    As a workaround, here we monkeypatch threading.Thread.run() to 
+    make sure all threads silence errors from h5py.
+    
+    [1]: https://github.com/h5py/h5py/issues/580
+    See also: https://github.com/ilastik/ilastik/issues/1120
+    """
+    import h5py
+    if h5py.__version__ <= '2.5.0':
+        import threading
+        run_old = threading.Thread.run
+        def run(*args, **kwargs):
+            h5py._errors.silence_errors()
+            run_old(*args, **kwargs)
+        threading.Thread.run = run
 
 def _validate_arg_compatibility( parsed_args ):
     # Check for bad input options
@@ -179,6 +211,14 @@ def _validate_arg_compatibility( parsed_args ):
         sys.stderr.write("Some of the command-line options you provided are not supported in headless mode.  Exiting.")
         sys.exit(1)
 
+def _import_opengm():
+    # Import opengm first if possible, to make sure it is included before vigra.
+    # Otherwise the import fails and we will not get access to GraphCut thresholding
+    try:
+        import opengm
+    except:
+        pass
+
 def _prepare_lazyflow_config( parsed_args ):
     # Check environment variable settings.
     n_threads = os.getenv("LAZYFLOW_THREADS", None)
@@ -198,7 +238,7 @@ def _prepare_lazyflow_config( parsed_args ):
     
     # Note that n_threads == 0 is valid and useful for debugging.
     if (n_threads is not None) or total_ram_mb:
-        def _configure_lazyflow_settings(shell):
+        def _configure_lazyflow_settings():
             import lazyflow
             import lazyflow.request
             if n_threads is not None:
@@ -209,11 +249,14 @@ def _prepare_lazyflow_config( parsed_args ):
                     raise Exception("In your current configuration, RAM is limited to {} MB."
                                     "  Remember to specify RAM in MB, not GB."
                                     .format( total_ram_mb ))
-                logger.info("Configuring lazyflow RAM limit to {} MB".format( total_ram_mb ))
-                lazyflow.AVAILABLE_RAM_MB = total_ram_mb
+                ram = total_ram_mb * 1024**2
+                fmt = Memory.format(ram)
+                logger.info("Configuring lazyflow RAM limit to {}".format(fmt))
+                Memory.setAvailableRam(ram)
         return _configure_lazyflow_settings
     return None
 
+#<<<<<<< HEAD
 def _monkey_patch_h5py(shell):
     """
     This workaround avoids error messages from HDF5 when accessing non-existing
@@ -248,6 +291,8 @@ def _monkey_patch_h5py(shell):
         return old_attr_getitem(attrs, key)
     h5py._hl.attrs.AttributeManager.__getitem__ = new_attr_getitem
 
+#=======
+#>>>>>>> 7cbe7e4e6f6bd264eb06d55b34df55ce2c1dadc2
 def _prepare_auto_open_project( parsed_args ):
     if parsed_args.project is None:
         return None

@@ -66,36 +66,44 @@ class PreprocessingGui(QMainWindow):
                                 self.drawer.filter4,
                                 self.drawer.filter5]
         
-        self.filterbuttons[self.topLevelOperatorView.Filter.value].setChecked(True)
         self.correspondingSigmaMins = [0.9,0.9,0.6,0.1,0.1]
         
         # Set up our handlers
         for f in self.filterbuttons:
             f.clicked.connect(self.handleFilterChanged)
         
-        self.drawer.runButton.clicked.connect(self.handleRunButtonClicked)
+        # Init widget appearance
         self.drawer.runButton.setIcon( QIcon(ilastikIcons.Play) )
-        
-        self.drawer.sigmaSpin.setValue(self.topLevelOperatorView.Sigma.value)
-        self.drawer.sigmaSpin.valueChanged.connect(self.handleSigmaValueChanged)
-
         self.drawer.watershedSourceCombo.addItem("Input Data", userData="input")
         self.drawer.watershedSourceCombo.addItem("Filter Output", userData="filtered")
         self.drawer.watershedSourceCombo.addItem("Raw Data (if available)", userData="raw")
 
-        sourceSetting = self.topLevelOperatorView.WatershedSource.value
-        comboIndex = self.drawer.watershedSourceCombo.findData( sourceSetting )
-        self.drawer.watershedSourceCombo.setCurrentIndex( comboIndex )
+        # Initialize widget values
+        self.updateDrawerFromOperator()
 
+        # Event handlers
+        self.drawer.runButton.clicked.connect(self.handleRunButtonClicked)
+        self.drawer.sigmaSpin.valueChanged.connect(self.handleSigmaValueChanged)
         self.drawer.watershedSourceCombo.currentIndexChanged.connect( self.handleWatershedSourceChange )
-
-        self.drawer.invertWatershedSourceCheckbox.setChecked( self.topLevelOperatorView.InvertWatershedSource.value )
         self.drawer.invertWatershedSourceCheckbox.toggled.connect( self.handleInvertWatershedSourceChange )
+        self.drawer.writeprotectBox.stateChanged.connect(self.handleWriterprotectStateChanged)
 
         #FIXME: for release 0.6, disable this (the reset button made the gui even more complicated)            
         #self.drawer.resetButton.clicked.connect(self.topLevelOperatorView.reset)
 
-        self.drawer.writeprotectBox.stateChanged.connect(self.handleWriterprotectStateChanged)
+        # Slot change handlers (in case the operator is somehow changed *outside* the gui, such as by the workflow.
+        self.topLevelOperatorView.Filter.notifyDirty(self.updateDrawerFromOperator)
+        self.topLevelOperatorView.Sigma.notifyDirty(self.updateDrawerFromOperator)
+        self.topLevelOperatorView.WatershedSource.notifyDirty(self.updateDrawerFromOperator)
+        self.topLevelOperatorView.InvertWatershedSource.notifyDirty(self.updateDrawerFromOperator)
+
+    def updateDrawerFromOperator(self, *args):
+        self.filterbuttons[self.topLevelOperatorView.Filter.value].setChecked(True)
+        self.drawer.sigmaSpin.setValue(self.topLevelOperatorView.Sigma.value)
+        sourceSetting = self.topLevelOperatorView.WatershedSource.value
+        comboIndex = self.drawer.watershedSourceCombo.findData( sourceSetting )
+        self.drawer.watershedSourceCombo.setCurrentIndex( comboIndex )
+        self.drawer.invertWatershedSourceCheckbox.setChecked( self.topLevelOperatorView.InvertWatershedSource.value )
     
     def handleFilterChanged(self):
         choice =  [f.isChecked() for f in self.filterbuttons].index(True)

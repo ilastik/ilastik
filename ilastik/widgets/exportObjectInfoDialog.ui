@@ -24,8 +24,8 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>504</width>
-        <height>376</height>
+        <width>498</width>
+        <height>354</height>
        </rect>
       </property>
       <attribute name="label">
@@ -41,7 +41,7 @@
           </sizepolicy>
          </property>
          <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The location and filename for the dataset&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The location and filename for the dataset. Placeholders {dataset_dir} and {nickname} can be used&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
          <property name="text">
           <string/>
@@ -117,8 +117,8 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>504</width>
-        <height>376</height>
+        <width>175</width>
+        <height>137</height>
        </rect>
       </property>
       <attribute name="label">
@@ -186,8 +186,8 @@
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>504</width>
-        <height>376</height>
+        <width>412</width>
+        <height>203</height>
        </rect>
       </property>
       <attribute name="label">

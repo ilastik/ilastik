@@ -68,9 +68,6 @@
        </item>
        <item row="2" column="0">
         <widget class="QRadioButton" name="patternRadioButton">
-         <property name="text">
-          <string>Specify Pattern:</string>
-         </property>
          <property name="toolTip">
           <string>Unix path name pattern: 
   * matches 0 or more characters, ? matches any 1 character. 
@@ -83,6 +80,9 @@ Examples:
     D:\data\stack_*.jpg
     D:\this\stack_*.pgm;D:\that\stack_*.pgm
 </string>
+         </property>
+         <property name="text">
+          <string>Specify Pattern:</string>
          </property>
         </widget>
        </item>
@@ -126,6 +126,33 @@ Examples:
         </spacer>
        </item>
        <item>
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>Stack Across:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QRadioButton" name="stackAcrossTButton">
+         <property name="text">
+          <string>T</string>
+         </property>
+         <attribute name="buttonGroup">
+          <string notr="true">buttonGroup</string>
+         </attribute>
+        </widget>
+       </item>
+       <item>
+        <widget class="QRadioButton" name="stackAcrossZButton">
+         <property name="text">
+          <string>Z</string>
+         </property>
+         <attribute name="buttonGroup">
+          <string notr="true">buttonGroup</string>
+         </attribute>
+        </widget>
+       </item>
+       <item>
         <widget class="QPushButton" name="cancelButton">
          <property name="text">
           <string>Cancel</string>
@@ -147,4 +174,7 @@ Examples:
  </widget>
  <resources/>
  <connections/>
+ <buttongroups>
+  <buttongroup name="buttonGroup"/>
+ </buttongroups>
 </ui>

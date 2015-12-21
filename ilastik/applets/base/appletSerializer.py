@@ -130,7 +130,7 @@ class SerialSlot(object):
             name = slot.name
         self.name = name
         if subname is None:
-            subname = '{}'
+            subname = '{:04d}'
         self.subname = subname
 
         self._dirty = False
@@ -275,7 +275,9 @@ class SerialSlot(object):
             for i, subslot in enumerate(slot):
                 if i in indexes_to_keys:
                     key = indexes_to_keys[i]
-                    assert key == self.subname.format(i)
+                    # Sadly, we can't use the following assertion because it would break  
+                    #  backwards compatibility with a bug we used to have in the key names.
+                    #assert key == self.subname.format(i)
                     self._deserialize(subgroup[key], subslot)
                 else:
                     # Since there was no data for this subslot in the project file,
@@ -332,7 +334,9 @@ class SerialListSlot(SerialSlot):
         try:
             subgroup = group[self.name]
         except:
-            warnings.warn("Deserialization: Could not locate value for slot '{}'.  Skipping.".format( self.name ))
+            if logger.isEnabledFor(logging.DEBUG):
+                # Only show this warning when debugging serialization
+                warnings.warn("Deserialization: Could not locate value for slot '{}'.  Skipping.".format( self.name ))
             return
         if 'isEmpty' in subgroup.attrs and subgroup.attrs['isEmpty']:
             self.inslot.setValue( self._iterable([]) )
@@ -602,6 +606,23 @@ class SerialClassifierSlot(SerialSlot):
         # retrained.)
         self.cache.forceValue( classifier )
 
+class SerialPickledValueSlot(SerialSlot):
+    """
+    For storing value slots whose data is a python object (not an array or a simple number).
+    """
+    def __init__(self, slot):
+        super(SerialPickledValueSlot, self).__init__(slot)
+    
+    @staticmethod
+    def _saveValue(group, name, value):
+        group.create_dataset(name, data=pickle.dumps(value))
+
+    @staticmethod
+    def _getValue(subgroup, slot):
+        val = subgroup[()]
+        slot.setValue(pickle.loads(val))
+
+
 class SerialCountingSlot(SerialSlot):
     """For saving a random forest classifier."""
     def __init__(self, slot, cache, inslot=None, name=None,
@@ -614,13 +635,17 @@ class SerialCountingSlot(SerialSlot):
             self.name = slot.name
         if self.subname is None:
             self.subname = "wrapper{:04d}"
-        self._bind(cache.Output)
+
+        # We want to bind to the INPUT, not Output:
+        # - if the input becomes dirty, we want to make sure the cache is deleted
+        # - if the input becomes dirty and then the cache is reloaded, we'll save the classifier.
+        self._bind(cache.Input)
 
     def _serialize(self, group, name, slot):
         if self.cache._dirty:
             return
 
-        classifier_forests = self.cache._value
+        classifier_forests = self.cache.Output.value
 
         # Classifier can be None if there isn't any training data yet.
         if classifier_forests is None:
@@ -759,6 +784,43 @@ class SerialClassifierFactorySlot(SerialSlot):
             self._failed_to_deserialize = True
             warnings.warn("This project file uses an old or unsupported classifier storage format. "
                           "The classifier will be stored in the new format when you save your project.")
+        else:
+            slot.setValue( value )
+
+
+class SerialPickleableSlot(SerialSlot):
+    def __init__(self, slot, version, default, name=None):
+        super( SerialPickleableSlot, self ).__init__( slot, name=name )
+        self._failed_to_deserialize = False
+        self._version = version
+        self._default = default
+
+    def _saveValue(self, group, name, value):
+        pickled = pickle.dumps( value )
+        dset = group.create_dataset(name, data=pickled)
+        dset.attrs['version'] = self._version
+        self._failed_to_deserialize = False
+
+    def shouldSerialize(self, group):
+        if self._failed_to_deserialize:
+            return True
+        else:
+            return super(SerialPickleableSlot, self).shouldSerialize(group)
+
+    def _getValue(self, dset, slot):
+        try:
+            # first check that the version of the deserialized and the expected value are the same
+            loaded_version = dset.attrs['version']
+            assert loaded_version == self._version
+
+            # Attempt to unpickle
+            pickled = dset[()]
+            value = pickle.loads(pickled)
+        except:
+            self._failed_to_deserialize = True
+            warnings.warn("This project file uses an old or unsupported storage format. "
+                          "When save the project the next time, it will be stored in the new format.")
+            slot.setValue(self._default)
         else:
             slot.setValue( value )
 

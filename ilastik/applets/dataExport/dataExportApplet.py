@@ -39,7 +39,7 @@ class DataExportApplet( Applet ):
         # Users can temporarily disconnect the 'transaction' 
         #  slot to force all slots to be applied atomically.
         self.topLevelOperator.TransactionSlot.setValue(True)
-        super(DataExportApplet, self).__init__(title, syncWithImageIndex=not isBatch)
+        super(DataExportApplet, self).__init__(title)
 
         self._gui = None
         self._title = title
@@ -67,6 +67,21 @@ class DataExportApplet( Applet ):
             self._gui = DataExportGui( self, self.topLevelOperator )
         return self._gui
 
+    # The following functions act as hooks for subclasses to override or clients to 
+    # monkey-patch for custom behavior before/during/after an export is performed.
+    # (The GUI and/or batch applet will call them at the appropriate time.)
+    def prepare_for_entire_export(self):
+        """Called before the entire export process starts"""
+        pass
+    def prepare_lane_for_export(self, lane_index):
+        """Called before each lane is exported."""
+        pass
+    def post_process_lane_export(self, lane_index):
+        """Called immediately after each lane is exported."""
+        pass
+    def post_process_entire_export(self):
+        """Called after the entire export process finishes."""
+
     @classmethod
     def make_cmdline_parser(cls, starting_parser=None):
         arg_parser = starting_parser or argparse.ArgumentParser()
@@ -83,6 +98,8 @@ class DataExportApplet( Applet ):
         arg_parser.add_argument( '--output_format', help='Export file format', choices=all_format_names, required=False )
         arg_parser.add_argument( '--output_filename_format', help='Output file path, including special placeholders, e.g. /tmp/results_t{t_start}-t{t_stop}.h5', required=False )
         arg_parser.add_argument( '--output_internal_path', help='Specifies dataset name within an hdf5 dataset (applies to hdf5 output only), e.g. /volume/data', required=False )
+
+        arg_parser.add_argument( '--export_source', help='The data to export.  See the dropdown list on the Data Export page for choices.', required=False )
 
         return arg_parser
 
@@ -189,6 +206,18 @@ class DataExportApplet( Applet ):
         # Disconnect the special 'transaction' slot to prevent these 
         #  settings from triggering many calls to setupOutputs.
         opDataExport.TransactionSlot.disconnect()
+
+        if parsed_args.export_source is not None:
+            source_choices = opDataExport.SelectionNames.value
+            source_choices = map(str.lower, source_choices)
+            export_source = parsed_args.export_source.lower()
+            try:
+                source_index = source_choices.index(export_source)
+            except ValueError:
+                raise Exception("Invalid option for --export_source: '{}'\n"
+                                "Valid options are: {}".format( parsed_args.export_source, source_choices ))
+            else:
+                opDataExport.InputSelection.setValue( source_index )
 
         if parsed_args.cutout_subregion:
             opDataExport.RegionStart.setValue( parsed_args.cutout_subregion[0] )

@@ -170,7 +170,7 @@ class DataSelectionSerializer( AppletSerializer ):
                         infoGroup.create_dataset('drange', data=datasetInfo.drange)
 
                     # Pull the axistags from the NonTransposedImage, 
-                    #  which is what the image looks like before 'force5d' is applied, 
+                    #  which is what the image looks like before 'forceAxisOrder' is applied, 
                     #  and before 'c' is automatically appended
                     axistags = self.topLevelOperator._NonTransposedImageGroup[laneIndex][roleIndex].meta.axistags
                     infoGroup.create_dataset('axistags', data=axistags.toJSON())
@@ -181,7 +181,7 @@ class DataSelectionSerializer( AppletSerializer ):
 
         self._dirty = False
 
-    def importStackAsLocalDataset(self, info):
+    def importStackAsLocalDataset(self, info, sequence_axis='t'):
         """
         Add the given stack data to the project file as a local dataset.
         Does not update the topLevelOperator.
@@ -208,11 +208,13 @@ class DataSelectionSerializer( AppletSerializer ):
         if firstPathParts.extension.lower() in OpTiffReader.TIFF_EXTS:
             # Special loader for TIFFs
             opLoader = OpTiffSequenceReader( parent=self.topLevelOperator.parent )
+            opLoader.SequenceAxis.setValue(sequence_axis)
             opLoader.GlobString.setValue(globstring)
             data_slot = opLoader.Output
         else:
             # All other sequences (e.g. pngs, jpegs, etc.)
             opLoader = OpStackLoader( parent=self.topLevelOperator.parent )
+            opLoader.SequenceAxis.setValue(sequence_axis)
             opLoader.globstring.setValue(globstring)
             data_slot = opLoader.stack
 

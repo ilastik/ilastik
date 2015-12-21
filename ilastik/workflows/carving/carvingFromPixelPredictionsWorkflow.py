@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from lazyflow.graph import Graph
-from lazyflow.operators.adaptors import Op5ifyer
+from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 from ilastik.workflow import Workflow
 
@@ -98,13 +98,13 @@ if ilastik.config.cfg.getboolean('ilastik', 'debug'):
             opPreprocessing = self.preprocessingApplet.topLevelOperator.getLane(laneIndex)
             opCarvingLane = self.carvingApplet.topLevelOperator.getLane(laneIndex)
     
-            op5 = Op5ifyer(parent=self)
-            op5.order.setValue("txyzc")
-            op5.input.connect(opData.Image)
+            op5 = OpReorderAxes(parent=self)
+            op5.AxisOrder.setValue("txyzc")
+            op5.Input.connect(opData.Image)
             
             ## Connect operators
-            opFeatureSelection.InputImage.connect( op5.output )
-            opPixelClassification.InputImages.connect( op5.output )
+            opFeatureSelection.InputImage.connect( op5.Output )
+            opPixelClassification.InputImages.connect( op5.Output )
             opPixelClassification.FeatureImages.connect( opFeatureSelection.OutputImage )
             opPixelClassification.CachedFeatureImages.connect( opFeatureSelection.CachedOutputImage )
             opPixelClassification.LabelsAllowedFlags.connect( opData.AllowLabels )
@@ -115,8 +115,8 @@ if ilastik.config.cfg.getboolean('ilastik', 'debug'):
             opSingleChannelSelector.Index.setValue(0)
             
             opPreprocessing.InputData.connect( opSingleChannelSelector.Output )
-            opPreprocessing.RawData.connect( op5.output )
-            opCarvingLane.RawData.connect( op5.output )
+            opPreprocessing.RawData.connect( op5.Output )
+            opCarvingLane.RawData.connect( op5.Output )
             opCarvingLane.InputData.connect( opSingleChannelSelector.Output )
             opCarvingLane.FilteredInputData.connect( opPreprocessing.FilteredImage )
     

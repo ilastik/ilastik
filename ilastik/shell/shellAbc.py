@@ -52,6 +52,9 @@ class ShellABC(object):
     def setAppletEnabled(self, applet, enabled):
         pass
 
+    def isAppletEnabled(self, applet):
+        return False
+
     def enableProjectChanges(self, enabled):
         pass
 

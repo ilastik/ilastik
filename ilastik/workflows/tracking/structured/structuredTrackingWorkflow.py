@@ -18,7 +18,6 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-
 from lazyflow.graph import Graph
 from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
@@ -50,6 +49,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
     def __init__( self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs ):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
         if 'graph' in kwargs: del kwargs['graph']
+
         super(StructuredTrackingWorkflowBase, self).__init__(shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
 
         data_instructions = 'Use the "Raw Data" tab to load your intensity image(s).\n\n'
@@ -59,7 +59,15 @@ class StructuredTrackingWorkflowBase( Workflow ):
             data_instructions += 'Use the "Prediction Maps" tab to load your pixel-wise probability image(s).'
 
         ## Create applets
-        self.dataSelectionApplet = DataSelectionApplet(self,"Input Data","Input Data",batchDataGui=False,force5d=True,instructionText=data_instructions,max_lanes=1)
+        # self.dataSelectionApplet = DataSelectionApplet(self,"Input Data","Input Data",batchDataGui=False,force5d=True,instructionText=data_instructions,max_lanes=1)
+        self.dataSelectionApplet = DataSelectionApplet(self,
+            "Input Data",
+            "Input Data",
+            batchDataGui=False,
+            forceAxisOrder='txyzc',
+            instructionText=data_instructions,
+            max_lanes=1)
+
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         if self.fromBinary:
             opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Binary Image'] )
@@ -86,18 +94,23 @@ class StructuredTrackingWorkflowBase( Workflow ):
         self.annotationsApplet = AnnotationsApplet( name="Training", workflow=self )
         opAnnotations = self.annotationsApplet.topLevelOperator
 
-        self.dataExportAnnotationsApplet = TrackingBaseDataExportApplet(self, "Training Export")
+        self.default_training_export_filename = '{dataset_dir}/{nickname}-training_exported_data.csv'
+        self.dataExportAnnotationsApplet = TrackingBaseDataExportApplet(self, "Training Export",default_export_filename=self.default_training_export_filename)
         opDataExportAnnotations = self.dataExportAnnotationsApplet.topLevelOperator
         opDataExportAnnotations.SelectionNames.setValue( ['Training', 'Object Identities'] )
         opDataExportAnnotations.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
+        self.dataExportAnnotationsApplet.set_exporting_operator(opAnnotations)
 
         self.trackingApplet = StructuredTrackingApplet( name="Tracking - Structured Learning", workflow=self )
         opStructuredTracking = self.trackingApplet.topLevelOperator
 
-        self.dataExportTrackingApplet = TrackingBaseDataExportApplet(self, "Tracking Result Export")
+        self.default_tracking_export_filename = '{dataset_dir}/{nickname}-tracking_exported_data.csv'
+        self.dataExportTrackingApplet = TrackingBaseDataExportApplet(self, "Tracking Result Export",default_export_filename=self.default_tracking_export_filename)
         opDataExportTracking = self.dataExportTrackingApplet.topLevelOperator
         opDataExportTracking.SelectionNames.setValue( ['Tracking Result', 'Merger Result', 'Object Identities'] )
         opDataExportTracking.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
+        self.dataExportTrackingApplet.set_exporting_operator(opStructuredTracking)
+        self.dataExportTrackingApplet.post_process_lane_export = self.post_process_lane_export
 
         self._applets = []
         self._applets.append(self.dataSelectionApplet)
@@ -219,7 +232,14 @@ class StructuredTrackingWorkflowBase( Workflow ):
         # opStructuredTracking.ComputedFeatureNames.connect( opObjExtraction.ComputedFeatureNamesVigra )
         opStructuredTracking.LabelImage.connect( opTrackingFeatureExtraction.LabelImage )
         opStructuredTracking.ObjectFeatures.connect( opTrackingFeatureExtraction.RegionFeaturesVigra )
+        opStructuredTracking.ObjectFeaturesWithDivFeatures.connect( opTrackingFeatureExtraction.RegionFeaturesAll)
         opStructuredTracking.ComputedFeatureNames.connect( opTrackingFeatureExtraction.ComputedFeatureNamesVigra )
+        opStructuredTracking.ComputedFeatureNamesWithDivFeatures.connect( opTrackingFeatureExtraction.ComputedFeatureNamesAll )
+
+        # configure tracking export settings
+        settings = {'file path': self.default_tracking_export_filename, 'compression': {}, 'file type': 'csv'}
+        selected_features = ['Count', 'RegionCenter']
+        opStructuredTracking.configure_table_export_settings(settings, selected_features)
 
         opStructuredTracking.DivisionProbabilities.connect( opDivDetection.Probabilities )
         opStructuredTracking.DetectionProbabilities.connect( opCellClassification.Probabilities )
@@ -236,6 +256,40 @@ class StructuredTrackingWorkflowBase( Workflow ):
         opDataTrackingExport.Inputs[2].connect( opStructuredTracking.LabelImage )
         opDataTrackingExport.RawData.connect( op5Raw.Output )
         opDataTrackingExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
+
+    def post_process_lane_export(self, lane_index):
+        # FIXME: This probably only works for the non-blockwise export slot.
+        #        We should assert that the user isn't using the blockwise slot.
+        settings, selected_features = self.trackingApplet.topLevelOperator.getLane(lane_index).get_table_export_settings()
+        if settings:
+            self.dataExportApplet.progressSignal.emit(-1)
+            raw_dataset_info = self.dataSelectionApplet.topLevelOperator.DatasetGroup[lane_index][0].value
+
+            project_path = self.shell.projectManager.currentProjectPath
+            project_dir = os.path.dirname(project_path)
+            dataset_dir = PathComponents(raw_dataset_info.filePath).externalDirectory
+            abs_dataset_dir = make_absolute(dataset_dir, cwd=project_dir)
+
+            known_keys = {}
+            known_keys['dataset_dir'] = abs_dataset_dir
+            nickname = raw_dataset_info.nickname.replace('*', '')
+            if os.path.pathsep in nickname:
+                nickname = PathComponents(nickname.split(os.path.pathsep)[0]).fileNameBase
+            known_keys['nickname'] = nickname
+
+            # use partial formatting to fill in non-coordinate name fields
+            name_format = settings['file path']
+            partially_formatted_name = format_known_keys( name_format, known_keys )
+            settings['file path'] = partially_formatted_name
+
+            req = self.trackingApplet.topLevelOperator.getLane(lane_index).export_object_data(
+                        lane_index,
+                        # FIXME: Even in non-headless mode, we can't show the gui because we're running in a non-main thread.
+                        #        That's not a huge deal, because there's still a progress bar for the overall export.
+                        show_gui=False)
+
+            req.wait()
+            self.dataExportApplet.progressSignal.emit(100)
 
     def _inputReady(self, nRoles):
         slot = self.dataSelectionApplet.topLevelOperator.ImageGroup
@@ -278,7 +332,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
         objectCountClassifier_ready = tracking_features_ready
 
         opObjectExtraction = self.objectExtractionApplet.topLevelOperator
-        objectExtractionOutput = opObjectExtraction.ComputedFeatureNames
+        objectExtractionOutput = opObjectExtraction.RegionFeatures # ComputedFeatureNamesAll
         features_ready = thresholding_ready and \
                          len(objectExtractionOutput) > 0
 

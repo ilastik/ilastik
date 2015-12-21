@@ -27,7 +27,7 @@ import vigra
 import h5py
 
 from lazyflow.graph import Graph
-from lazyflow.operators import Op5ifyer
+from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 from ilastik.applets import objectExtraction
 from ilastik.applets.objectExtraction.opObjectExtraction import OpObjectExtraction
@@ -156,19 +156,19 @@ class TestOpBlockwiseObjectClassification(object):
         self.graph = graph
 
         # provide 5d input 
-        op5Raw = Op5ifyer( graph=graph )
-        op5Raw.input.setValue( self.test_volume_intensity )
+        op5Raw = OpReorderAxes( graph=graph )
+        op5Raw.Input.setValue( self.test_volume_intensity )
         self.rawSource = op5Raw
         
-        op5Binary = Op5ifyer( graph=graph )
-        op5Binary.input.setValue( self.test_volume_binary )
+        op5Binary = OpReorderAxes( graph=graph )
+        op5Binary.Input.setValue( self.test_volume_binary )
         self.binarySource = op5Binary
         
     def setUpObjExtraction(self):
         opObjectExtraction = OpObjectExtraction( graph=self.graph )
 
-        opObjectExtraction.RawImage.connect( self.rawSource.output )
-        opObjectExtraction.BinaryImage.connect( self.binarySource.output )
+        opObjectExtraction.RawImage.connect( self.rawSource.Output )
+        opObjectExtraction.BinaryImage.connect( self.binarySource.Output )
         opObjectExtraction.BackgroundLabels.setValue( [0] )
         opObjectExtraction.Features.setValue(self.testingFeatures)
         
@@ -187,11 +187,11 @@ class TestOpBlockwiseObjectClassification(object):
         
         # raw image data, i.e. cubes with intensity 1 or 1/2
         opObjectClassification.RawImages.resize(1)
-        opObjectClassification.RawImages[0].connect( self.rawSource.output )
+        opObjectClassification.RawImages[0].connect( self.rawSource.Output )
         
         # threshold images, i.e. cubes with intensity 1
         opObjectClassification.BinaryImages.resize(1)
-        opObjectClassification.BinaryImages.connect( self.binarySource.output )
+        opObjectClassification.BinaryImages.connect( self.binarySource.Output )
         
         # segmentation images from object extraction
         opObjectClassification.SegmentationImages.resize(1)
@@ -201,14 +201,14 @@ class TestOpBlockwiseObjectClassification(object):
         opObjectClassification.ObjectFeatures[0].connect( self.objExtraction.RegionFeatures )
         
         opObjectClassification.SelectedFeatures.setValue(self.testingFeatures)
-        opObjectClassification.ComputedFeatureNames.connect(self.objExtraction.ComputedFeatureNames)
+        opObjectClassification.ComputedFeatureNames.connect(self.objExtraction.Features)
         
         opObjectClassification.LabelsAllowedFlags.setValues( [True] )
         
         # STEP 2: simulate labeling
         
         object_volume = self.objExtraction.LabelImage[:].wait()
-        raw_5d = self.rawSource.output[:].wait()
+        raw_5d = self.rawSource.Output[:].wait()
 
         # Big: Starting at 0,20,40, etc.
         # Small: Starting at 10,30,50, etc.

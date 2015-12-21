@@ -11,7 +11,15 @@ class ExportingOperator(object):
     """
     A Mixin for the Operators that can export h5/csv data
     """
-    def export_object_data(self, settings, selected_features, gui=None):
+    
+    def configure_table_export_settings(settings, selected_features):
+        raise NotImplementedError
+
+    def get_table_export_settings(self):
+        raise NotImplementedError
+        return settings, selected_features
+
+    def export_object_data(self, lane_index, show_gui=False, filename_suffix=""):
         """
         Initialize progress displays and start the actual export in a new thread using the lazyflow.request framework
         :param settings: the settings from the GUI export dialog
@@ -21,23 +29,53 @@ class ExportingOperator(object):
         :param gui: the Progress bar and callbacks for finish/fail/cancel see ExportingGui.show_export_dialog
         :type gui: dict
         """
+        settings, selected_features = self.get_table_export_settings()
+
         self.save_export_progress_dialog(None)
-        if gui is None or "dialog" not in gui:
+        if not show_gui:
             progress_display = ProgressPrinter("Export Progress", xrange(100, -1, -5), 2)
+            gui = None
         else:
+            from ilastik.widgets.progressDialog import ProgressDialog
+            progress = ProgressDialog(["Feature Data", "Labeling Rois", "Raw Image", "Exporting"])
+            progress.set_busy(True)
+            progress.show()
+            gui = {
+                "dialog": progress,
+                "ok": partial(progress.safe_popup, "information", "Information", "Export successful!"),
+                "cancel": partial(progress.safe_popup, "information", "Information", "Export cancelled!"),
+                "fail": partial(progress.safe_popup, "critical", "Critical", "Export failed!"),
+                "unlock": self.unlock_gui,
+                "lock": self.lock_gui
+            }
             progress_display = gui["dialog"]
             self.save_export_progress_dialog(progress_display)
 
-        export = partial(self.do_export, settings, selected_features, progress_display)  # ();return
+        export = partial(self.do_export, settings, selected_features, progress_display, lane_index, filename_suffix)
         request = Request(export)
-        request.notify_failed(gui["fail"] if gui is not None and "fail" in gui else self.export_failed)
+        if gui is not None:
+            if "fail" in gui:
+                request.notify_failed(gui["fail"])
+            if "ok" in gui:
+                request.notify_finished(gui["ok"])
+            if "cancel" in gui:
+                request.notify_cancelled(gui["cancel"])
+            if "unlock" in gui:
+                request.notify_cancelled(gui["unlock"])
+                request.notify_failed(gui["unlock"])
+                request.notify_finished(gui["unlock"])
+            if "lock" in gui:
+                lock = gui["lock"]
+                lock()
         request.notify_failed(self.export_failed)
-        request.notify_finished(gui["ok"] if gui is not None and "ok" in gui else self.export_finished)
-        request.notify_cancelled(gui["cancel"] if gui is not None and "cancel" in gui else self.export_cancelled)
+        request.notify_finished(self.export_finished)
+        request.notify_cancelled(self.export_cancelled)
         request.submit()
 
         if gui is not None and "dialog" in gui:
             progress_display.cancel.connect(request.cancel)
+
+        return request
 
     @staticmethod
     def export_failed(_, exc_info):
@@ -60,7 +98,7 @@ class ExportingOperator(object):
         """
         logger.info("Export cancelled")
 
-    def do_export(self, settings, selected_features, progress_slot):
+    def do_export(self, settings, selected_features, progress_slot, lane_index, filename_suffix=""):
         """
         Implement this in the exporting Operator
         :param settings: the settings for the export,
@@ -71,6 +109,8 @@ class ExportingOperator(object):
         :param progress_slot: an object that can display the export progress.
             usage: progress_slot(progress)
             make sure to call it with progress=0 at the start and progress=100 in the end
+        :param lane_index: Specifies which lane to export.
+        :param filename_suffix: If provided, appended to the filename (before the extension).
         """
         raise NotImplementedError
 
@@ -89,6 +129,14 @@ class ExportingGui(object):
     """
     A Mixin for the GUI that can export h5/csv data
     """
+
+    def get_exporting_operator(self, lane=0):
+        raise NotImplementedError
+
+    @property
+    def gui_applet(self):
+        raise NotImplementedError
+
     def show_export_dialog(self):
         """
         Shows the ExportObjectInfoDialog and calls the operators export_object_data method
@@ -100,31 +148,25 @@ class ExportingGui(object):
         dimensions = self.get_raw_shape()
         feature_names = self.get_feature_names()
 
-        dialog = ExportObjectInfoDialog(dimensions, feature_names)
+        dialog = ExportObjectInfoDialog(dimensions, feature_names, title=self.get_export_dialog_title())
         if not dialog.exec_():
-            return
+            return (None, None)
 
         settings = dialog.settings()
-        selected_features = dialog.checked_features()
+        selected_features = list(dialog.checked_features()) # returns a generator, but that's inconvenient because it can't be serialized.
+        return settings, selected_features
 
-        from ilastik.widgets.progressDialog import ProgressDialog
-        progress = ProgressDialog(["Feature Data", "Labeling Rois", "Raw Image", "Exporting"])
-        progress.set_busy(True)
-        progress.show()
-        gui = {
-            "dialog": progress,
-            "ok": partial(progress.safe_popup, "information", "Information", "Export successful!"),
-            "cancel": partial(progress.safe_popup, "information", "Information", "Export cancelled!"),
-            "fail": partial(progress.safe_popup, "critical", "Critical", "Export failed!")
-        }
-        self.topLevelOperatorView.export_object_data(settings, selected_features, gui)
+    def configure_table_export(self):
+        settings, selected_features = self.show_export_dialog()
+        if settings:
+            self.get_exporting_operator().configure_table_export_settings( settings, selected_features )
 
     def get_raw_shape(self):
         """
         Implement this to provide the shape of the raw image in the show_export_dialog method
         :return: the raw image's shape
 
-        e.g. return self.topLevelOperatorView.RawImage.meta.shape
+        e.g. return self.exportingOperator.RawImage.meta.shape
         """
         raise NotImplementedError
 
@@ -134,6 +176,17 @@ class ExportingGui(object):
         :return: the computed feature names
         :rtype: dict
 
-        e.g. return self.topLevelOperatorView.ComputedFeatureNames([]).wait()
+        e.g. return self.exportingOperator.ComputedFeatureNames([]).wait()
         """
+        raise NotImplementedError
+
+    def unlock_gui(self, *_):
+        self.gui_applet.busy = False
+        self.gui_applet.appletStateUpdateRequested.emit()
+
+    def lock_gui(self):
+        self.gui_applet.busy = True
+        self.gui_applet.appletStateUpdateRequested.emit()
+
+    def get_export_dialog_title(self):
         raise NotImplementedError

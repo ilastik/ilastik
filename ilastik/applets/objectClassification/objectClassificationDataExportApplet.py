@@ -25,12 +25,19 @@ class ObjectClassificationDataExportApplet( DataExportApplet ):
     This a specialization of the generic data export applet that
     provides a special viewer for object classification predictions.
     """
-        
+    def __init__(self, *args, **kwargs):
+        super(ObjectClassificationDataExportApplet, self).__init__(*args, **kwargs)
+        self.exporting_op = None
+
+    def set_exporting_operator(self, op):
+        self.exporting_op = op
+
     def getMultiLaneGui(self):
         if self._gui is None:
             # Gui is a special subclass of the generic gui
             from objectClassificationDataExportGui import ObjectClassificationDataExportGui
             self._gui = ObjectClassificationDataExportGui( self, self.topLevelOperator )
+            self._gui.set_exporting_operator(self.exporting_op)
         return self._gui
 
 
