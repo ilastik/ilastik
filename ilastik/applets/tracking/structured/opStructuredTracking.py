@@ -637,8 +637,6 @@ class OpStructuredTracking(OpTrackingBase):
                                                          int(size[idx,0]))
 
     def _relabelMergers(self, volume, time, pixel_offsets=[0, 0, 0], onlyMergers=False, noRelabeling=False):
-        print "volume",volume
-        print "time",time
         if self.CoordinateMap.value.size == 0:
             print("Skipping merger relabeling because coordinate map is empty")
             if onlyMergers:
