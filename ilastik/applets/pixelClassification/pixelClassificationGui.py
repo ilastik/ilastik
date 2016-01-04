@@ -71,8 +71,8 @@ class ClassifierSelectionDlg(QDialog):
         classifier_listwidget = QListWidget(parent=self)
         classifier_listwidget.setSelectionMode( QListWidget.SingleSelection )
 
-        classifer_factories = self._get_available_classifier_factories()
-        for name, classifier_factory in classifer_factories.items():
+        classifier_factories = self._get_available_classifier_factories()
+        for name, classifier_factory in classifier_factories.items():
             item = QListWidgetItem( name )
             item.setData( Qt.UserRole, QVariant(classifier_factory) )
             classifier_listwidget.addItem(item)
@@ -269,7 +269,6 @@ class PixelClassificationGui(LabelingGui):
         labelSlots.labelEraserValue = topLevelOperatorView.opLabelPipeline.opLabelArray.eraser
         labelSlots.labelDelete = topLevelOperatorView.opLabelPipeline.DeleteLabel
         labelSlots.labelNames = topLevelOperatorView.LabelNames
-        labelSlots.labelsAllowed = topLevelOperatorView.LabelsAllowedFlags
 
         self.__cleanup_fns = []
 
@@ -412,6 +411,15 @@ class PixelClassificationGui(LabelingGui):
                     projectionLayer.visible = False
                     projectionLayer.opacity = 1.0
                     layers.append(projectionLayer)
+
+        # Show the mask over everything except labels
+        maskSlot = self.topLevelOperatorView.PredictionMasks
+        if maskSlot.ready():
+            maskLayer = self._create_binary_mask_layer_from_slot( maskSlot )
+            maskLayer.name = "Mask"
+            maskLayer.visible = True
+            maskLayer.opacity = 1.0
+            layers.append( maskLayer )
 
         # Add the uncertainty estimate layer
         uncertaintySlot = self.topLevelOperatorView.UncertaintyEstimate

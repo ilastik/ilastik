@@ -163,14 +163,22 @@ class ObjectClassificationWorkflow(Workflow):
                 export_arg_parser.add_argument( "--table_filename", help="The location to export the object feature/prediction CSV file.", required=False )
                 export_arg_parser.add_argument( "--export_object_prediction_img", action="store_true" )
                 export_arg_parser.add_argument( "--export_object_probability_img", action="store_true" )
+                export_arg_parser.add_argument( "--export_pixel_probability_img", action="store_true" )
                 
                 # TODO: Support this, too, someday?
                 #export_arg_parser.add_argument( "--export_object_label_img", action="store_true" )
                 
-                if self.input_types == 'raw':
-                    export_arg_parser.add_argument( "--export_pixel_probability_img", action="store_true" )
+                    
                 self._export_args, unused_args = export_arg_parser.parse_known_args(unused_args)
-                self._export_args.export_pixel_probability_img = self._export_args.export_pixel_probability_img or None
+                if self.input_types != 'raw' and self._export_args.export_pixel_probability_img:
+                    raise RuntimeError("Invalid command-line argument: \n"\
+                                       "--export_pixel_probability_img' can only be used with the combined "\
+                                       "'Pixel Classification + Object Classification' workflow.")
+
+                if sum([self._export_args.export_object_prediction_img,
+                        self._export_args.export_object_probability_img,
+                        self._export_args.export_pixel_probability_img]) > 1:
+                    raise RuntimeError("Invalid command-line arguments: Only one type classification output can be exported at a time.")
 
                 # We parse the export setting args first.  All remaining args are considered input files by the input applet.
                 self._batch_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args( unused_args )
@@ -211,34 +219,34 @@ class ObjectClassificationWorkflow(Workflow):
             opPixelClassification = self.pcApplet.topLevelOperator
             if opPixelClassification.classifier_cache.Output.ready() and \
                not opPixelClassification.classifier_cache._dirty:
-                self.stored_pixel_classifer = opPixelClassification.classifier_cache.Output.value
+                self.stored_pixel_classifier = opPixelClassification.classifier_cache.Output.value
             else:
-                self.stored_pixel_classifer = None
+                self.stored_pixel_classifier = None
         
         opObjectClassification = self.objectClassificationApplet.topLevelOperator
         if opObjectClassification.classifier_cache.Output.ready() and \
            not opObjectClassification.classifier_cache._dirty:
-            self.stored_object_classifer = opObjectClassification.classifier_cache.Output.value
+            self.stored_object_classifier = opObjectClassification.classifier_cache.Output.value
         else:
-            self.stored_object_classifer = None
+            self.stored_object_classifier = None
 
     def handleNewLanesAdded(self):
         """
         If new lanes were added, then we invalidated our classifiers unecessarily.
-        Here, we can restore the classifer so it doesn't need to be retrained.
+        Here, we can restore the classifier so it doesn't need to be retrained.
         """
         # If we have stored classifiers, restore them into the workflow now.
-        if self.stored_pixel_classifer:
+        if self.stored_pixel_classifier:
             opPixelClassification = self.pcApplet.topLevelOperator
-            opPixelClassification.classifier_cache.forceValue(self.stored_pixel_classifer)
+            opPixelClassification.classifier_cache.forceValue(self.stored_pixel_classifier)
             # Release reference
-            self.stored_pixel_classifer = None
+            self.stored_pixel_classifier = None
 
-        if self.stored_object_classifer:
+        if self.stored_object_classifier:
             opObjectClassification = self.objectClassificationApplet.topLevelOperator
-            opObjectClassification.classifier_cache.forceValue(self.stored_object_classifer)
+            opObjectClassification.classifier_cache.forceValue(self.stored_object_classifier)
             # Release reference
-            self.stored_object_classifer = None
+            self.stored_object_classifier = None
 
     def connectLane(self, laneIndex):
         rawslot, binaryslot = self.connectInputs(laneIndex)
@@ -254,7 +262,6 @@ class ObjectClassificationWorkflow(Workflow):
         opObjExtraction.BinaryImage.connect(binaryslot)
 
         opObjClassification.RawImages.connect(rawslot)
-        opObjClassification.LabelsAllowedFlags.connect(opData.AllowLabels)
         opObjClassification.BinaryImages.connect(binaryslot)
 
         opObjClassification.SegmentationImages.connect(opObjExtraction.LabelImage)
@@ -600,7 +607,6 @@ class ObjectClassificationWorkflowPixel(ObjectClassificationWorkflow):
         opTrainingFeatures.InputImage.connect(rawslot)
 
         opClassify.InputImages.connect(rawslot)
-        opClassify.LabelsAllowedFlags.connect(opData.AllowLabels)
         opClassify.FeatureImages.connect(opTrainingFeatures.OutputImage)
         opClassify.CachedFeatureImages.connect(opTrainingFeatures.CachedOutputImage)
 

@@ -4,8 +4,6 @@ import os
 import ilastik.config
 from ilastik.config import cfg as ilastik_config
 
-from lazyflow.utility import Memory
-
 import logging
 logger = logging.getLogger(__name__)
 
@@ -15,6 +13,7 @@ parser = argparse.ArgumentParser( description="start an ilastik workflow" )
 # Common options
 parser.add_argument('--headless', help="Don't start the ilastik gui.", action='store_true', default=False)
 parser.add_argument('--project', help='A project file to open on startup.', required=False)
+parser.add_argument('--readonly', help="Open all projects in read-only mode, to ensure you don't accidentally make changes.", default=False)
 
 parser.add_argument('--new_project', help='Create a new project with the specified name.  Must also specify --workflow.', required=False)
 parser.add_argument('--workflow', help='When used with --new_project, specifies the workflow to use.', required=False)
@@ -241,6 +240,8 @@ def _prepare_lazyflow_config( parsed_args ):
         def _configure_lazyflow_settings():
             import lazyflow
             import lazyflow.request
+            from lazyflow.utility import Memory
+
             if n_threads is not None:
                 logger.info("Resetting lazyflow thread pool with {} threads.".format( n_threads ))
                 lazyflow.request.Request.reset_thread_pool(n_threads)
@@ -297,18 +298,19 @@ def _prepare_auto_open_project( parsed_args ):
     if parsed_args.project is None:
         return None
 
+    from lazyflow.utility.pathHelpers import PathComponents, isUrl
+
     # Make sure project file exists.
-    if not os.path.exists(parsed_args.project):
+    if not isUrl(parsed_args.project) and not os.path.exists(parsed_args.project):
         raise RuntimeError("Project file '" + parsed_args.project + "' does not exist.")
 
     parsed_args.project = os.path.expanduser(parsed_args.project)
     #convert path to convenient format
-    from lazyflow.utility.pathHelpers import PathComponents
     path = PathComponents(parsed_args.project).totalPath()
     
     def loadProject(shell):
         # This should work for both the IlastikShell and the HeadlessShell
-        shell.openProjectFile(path)
+        shell.openProjectFile(path, parsed_args.readonly)
     return loadProject
 
 def _prepare_auto_create_new_project( parsed_args ):

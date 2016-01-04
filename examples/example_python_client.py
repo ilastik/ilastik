@@ -13,11 +13,15 @@ import ilastik_main
 from ilastik.applets.dataSelection import DatasetInfo
 from ilastik.workflows.pixelClassification import PixelClassificationWorkflow
 
+# Before we start ilastik, optionally prepare these environment variable settings.
+os.environ["LAZYFLOW_THREADS"] = "2"
+os.environ["LAZYFLOW_TOTAL_RAM_MB"] = "2000"
+
 # Programmatically set the command-line arguments directly into the argparse.Namespace object
 # Provide your project file, and don't forget to specify headless.
 args = ilastik_main.parser.parse_args([])
 args.headless = True
-args.project = '/Users/bergs/MyProject.ilp'
+args.project = '/Users/bergs/MyProject.ilp' # REPLACE WITH YOUR PROJECT FILE
 
 # Instantiate the 'shell', (in this case, an instance of ilastik.shell.HeadlessShell)
 # This also loads the project file into shell.projectManager
@@ -36,9 +40,13 @@ input_data1 = numpy.random.randint(0,255, (200,200,1) ).astype(numpy.uint8)
 input_data2 = numpy.random.randint(0,255, (300,300,1) ).astype(numpy.uint8)
 print input_data1.shape
 
+# In this example, we're using 2D data (with an extra dimension for  channel).
+# Tagging the data this way ensures that ilastik interprets the axes correctly.
 input_data1 = vigra.taggedView( input_data1, 'yxc' )
 input_data2 = vigra.taggedView( input_data2, 'yxc' )
 
+# In case you're curious about which label class is which,
+# let's read the label names from the project file.
 label_names = opPixelClassification.LabelNames.value
 label_colors = opPixelClassification.LabelColors.value
 probability_colors = opPixelClassification.PmapColors.value

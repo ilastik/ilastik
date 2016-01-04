@@ -180,7 +180,6 @@ class OpCounting( Operator ):
 
     LabelInputs = InputSlot(optional = True, level=1) # Input for providing label data from an external source
     BoxLabelInputs = InputSlot(optional = True, level=1) # Input for providing label data from an external source
-    LabelsAllowedFlags = InputSlot(stype='bool', level=1) # Specifies which images are permitted to be labeled 
 
     FeatureImages = InputSlot(level=1) # Computed feature images (each channel is a different feature)
     CachedFeatureImages = InputSlot(level=1) # Cached feature data.

@@ -5,6 +5,7 @@ from collections import OrderedDict
 import logging
 logger = logging.getLogger(__name__)
 
+import numpy
 import vigra
 from lazyflow.request import Request
 from ilastik.utility import log_exception
@@ -55,7 +56,7 @@ class BatchProcessingApplet( Applet ):
         """
         role_names = self.dataSelectionApplet.topLevelOperator.DatasetRoles.value
         role_path_dict = self.dataSelectionApplet.role_paths_from_parsed_args(parsed_args, role_names)
-        self.run_export(role_path_dict, parsed_args.input_axes)
+        return self.run_export(role_path_dict, parsed_args.input_axes)
 
     def run_export(self, role_data_dict, input_axes=None, export_to_array=False ):
         """
@@ -81,8 +82,9 @@ class BatchProcessingApplet( Applet ):
         
         export_to_array: If True do NOT export to disk as usual.
                          Instead, export the results to a list of arrays, which is returned.
+                         If False, return a list of the filenames we produced to.
         """
-        array_results = []
+        results = []
         
         self.progressSignal.emit(0)
         try:
@@ -111,13 +113,16 @@ class BatchProcessingApplet( Applet ):
                         self.progressSignal.emit(100*overall_progress)
 
                     # Now use the new lane to export the batch results for the current file.
-                    array_data = self._run_export_with_empty_batch_lane( role_input_datas,
-                                                                         batch_lane_index,
-                                                                         template_infos,
-                                                                         emit_progress,
-                                                                         export_to_array=export_to_array )
-                    assert array_data is not None or not export_to_array
-                    array_results.append( array_data )
+                    result = self._run_export_with_empty_batch_lane( role_input_datas,
+                                                                      batch_lane_index,
+                                                                      template_infos,
+                                                                      emit_progress,
+                                                                      export_to_array=export_to_array )
+                    if export_to_array:
+                        assert isinstance(result, numpy.ndarray)
+                    else:
+                        assert isinstance(result, str)
+                    results.append( result )
                 finally:
                     # Remove the batch lane.  See docstring above for explanation.
                     try:
@@ -130,13 +135,8 @@ class BatchProcessingApplet( Applet ):
 
             # Call customization hook
             self.dataExportApplet.post_process_entire_export()
-            
-            # If we exported to in-memory array instead of to disk, return the results
-            if export_to_array:
-                return array_results
-            else:
-                return
-            
+
+            return results
         finally:
             self.progressSignal.emit(100)
 
@@ -222,14 +222,15 @@ class BatchProcessingApplet( Applet ):
         self.dataExportApplet.prepare_lane_for_export(batch_lane_index)
 
         # Finally, run the export
-        logger.info("Exporting to {}".format( opDataExportBatchlaneView.ExportPath.value ))
         opDataExportBatchlaneView.progressSignal.subscribe(progress_callback)
 
-        result = None        
         if export_to_array:
+            logger.info("Exporting to in-memory array.")
             result = opDataExportBatchlaneView.run_export_to_array()
         else:
+            logger.info("Exporting to {}".format( opDataExportBatchlaneView.ExportPath.value ))
             opDataExportBatchlaneView.run_export()
+            result = opDataExportBatchlaneView.ExportPath.value
 
         # Call customization hook
         self.dataExportApplet.post_process_lane_export(batch_lane_index)

@@ -48,7 +48,7 @@ class CountingWorkflow(Workflow):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
         if 'graph' in kwargs: del kwargs['graph']
         super( CountingWorkflow, self ).__init__( shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs )
-        self.stored_classifer = None
+        self.stored_classifier = None
 
         # Parse workflow-specific command-line args
         parser = argparse.ArgumentParser()
@@ -132,9 +132,9 @@ class CountingWorkflow(Workflow):
         opCounting = self.countingApplet.topLevelOperator
         if opCounting.classifier_cache.Output.ready() and \
            not opCounting.classifier_cache._dirty:
-            self.stored_classifer = opCounting.classifier_cache.Output.value
+            self.stored_classifier = opCounting.classifier_cache.Output.value
         else:
-            self.stored_classifer = None
+            self.stored_classifier = None
 
     def handleNewLanesAdded(self):
         """
@@ -142,10 +142,10 @@ class CountingWorkflow(Workflow):
         Called immediately after a new lane is added to the workflow and initialized.
         """
         # Restore classifier we saved in prepareForNewLane() (if any)
-        if self.stored_classifer is not None:
-            self.countingApplet.topLevelOperator.classifier_cache.forceValue(self.stored_classifer)
+        if self.stored_classifier is not None:
+            self.countingApplet.topLevelOperator.classifier_cache.forceValue(self.stored_classifier)
             # Release reference
-            self.stored_classifer = None
+            self.stored_classifier = None
 
     def connectLane(self, laneIndex):
         ## Access applet operators
@@ -160,7 +160,6 @@ class CountingWorkflow(Workflow):
 
         opCounting.InputImages.connect(opData.Image)
         opCounting.FeatureImages.connect(opTrainingFeatures.OutputImage)
-        opCounting.LabelsAllowedFlags.connect(opData.AllowLabels)
         opCounting.CachedFeatureImages.connect( opTrainingFeatures.CachedOutputImage )
         #opCounting.UserLabels.connect(opClassify.LabelImages)
         #opCounting.ForegroundLabels.connect(opObjExtraction.LabelImage)

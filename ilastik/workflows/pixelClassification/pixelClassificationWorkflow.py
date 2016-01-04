@@ -46,7 +46,7 @@ class PixelClassificationWorkflow(Workflow):
     DATA_ROLE_RAW = 0
     DATA_ROLE_PREDICTION_MASK = 1
     ROLE_NAMES = ['Raw Data', 'Prediction Mask']
-    EXPORT_NAMES = ['Probabilities', 'Simple Segmentation', 'Uncertainty', 'Features']
+    EXPORT_NAMES = ['Probabilities', 'Simple Segmentation', 'Uncertainty', 'Features', 'Labels']
     
     @property
     def applets(self):
@@ -60,7 +60,7 @@ class PixelClassificationWorkflow(Workflow):
         # Create a graph to be shared by all operators
         graph = Graph()
         super( PixelClassificationWorkflow, self ).__init__( shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs )
-        self.stored_classifer = None
+        self.stored_classifier = None
         self._applets = []
         self._workflow_cmdline_args = workflow_cmdline_args
         # Parse workflow-specific command-line args
@@ -186,9 +186,9 @@ class PixelClassificationWorkflow(Workflow):
         opPixelClassification = self.pcApplet.topLevelOperator
         if opPixelClassification.classifier_cache.Output.ready() and \
            not opPixelClassification.classifier_cache._dirty:
-            self.stored_classifer = opPixelClassification.classifier_cache.Output.value
+            self.stored_classifier = opPixelClassification.classifier_cache.Output.value
         else:
-            self.stored_classifer = None
+            self.stored_classifier = None
         
     def handleNewLanesAdded(self):
         """
@@ -196,10 +196,10 @@ class PixelClassificationWorkflow(Workflow):
         Called immediately after a new lane is added to the workflow and initialized.
         """
         # Restore classifier we saved in prepareForNewLane() (if any)
-        if self.stored_classifer:
-            self.pcApplet.topLevelOperator.classifier_cache.forceValue(self.stored_classifer)
+        if self.stored_classifier:
+            self.pcApplet.topLevelOperator.classifier_cache.forceValue(self.stored_classifier)
             # Release reference
-            self.stored_classifer = None
+            self.stored_classifier = None
 
     def connectLane(self, laneIndex):
         # Get a handle to each operator
@@ -220,9 +220,6 @@ class PixelClassificationWorkflow(Workflow):
         opClassify.FeatureImages.connect( opTrainingFeatures.OutputImage )
         opClassify.CachedFeatureImages.connect( opTrainingFeatures.CachedOutputImage )
         
-        # Training flags -> Classification Op (for GUI restrictions)
-        opClassify.LabelsAllowedFlags.connect( opData.AllowLabels )
-
         # Data Export connections
         opDataExport.RawData.connect( opData.ImageGroup[self.DATA_ROLE_RAW] )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[self.DATA_ROLE_RAW] )
@@ -232,6 +229,7 @@ class PixelClassificationWorkflow(Workflow):
         opDataExport.Inputs[1].connect( opClassify.SimpleSegmentation )
         opDataExport.Inputs[2].connect( opClassify.HeadlessUncertaintyEstimate )
         opDataExport.Inputs[3].connect( opClassify.FeatureImages )
+        opDataExport.Inputs[4].connect( opClassify.LabelImages )
         for slot in opDataExport.Inputs:
             assert slot.partner is not None
 
@@ -325,16 +323,7 @@ class PixelClassificationWorkflow(Workflow):
             self.pcApplet.topLevelOperator.ClassifierFactory.setDirty()
             
         if self.retrain:
-            # Cause the classifier to be dirty so it is forced to retrain.
-            # (useful if the stored labels were changed outside ilastik)
-            self.pcApplet.topLevelOperator.opTrain.ClassifierFactory.setDirty()
-            
-            # Request the classifier, which forces training
-            self.pcApplet.topLevelOperator.FreezePredictions.setValue(False)
-            _ = self.pcApplet.topLevelOperator.Classifier.value
-
-            # store new classifier to project file
-            projectManager.saveProject(force_all_save=False)
+            self._force_retrain_classifier()
 
         # Configure the data export operator.
         if self._batch_export_args:
@@ -354,6 +343,18 @@ class PixelClassificationWorkflow(Workflow):
 
     def post_process_entire_export(self):
         self.pcApplet.topLevelOperator.FreezePredictions.setValue(self.freeze_status)
+
+    def _force_retrain_classifier(self):
+        # Cause the classifier to be dirty so it is forced to retrain.
+        # (useful if the stored labels were changed outside ilastik)
+        self.pcApplet.topLevelOperator.opTrain.ClassifierFactory.setDirty()
+        
+        # Request the classifier, which forces training
+        self.pcApplet.topLevelOperator.FreezePredictions.setValue(False)
+        _ = self.pcApplet.topLevelOperator.Classifier.value
+
+        # store new classifier to project file
+        projectManager.saveProject(force_all_save=False)
 
     def _print_labels_by_slice(self, search_value):
         """

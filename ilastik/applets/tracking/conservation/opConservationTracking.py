@@ -42,7 +42,7 @@ def swirl_motion_func_creator(velocityWeight):
     return swirl_motion_func
 
 class OpConservationTracking(OpTrackingBase):
-    DivisionProbabilities = InputSlot(stype=Opaque, rtype=List)
+    DivisionProbabilities = InputSlot(optional=True, stype=Opaque, rtype=List)
     DetectionProbabilities = InputSlot(stype=Opaque, rtype=List)
     NumLabels = InputSlot()
 

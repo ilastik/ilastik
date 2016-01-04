@@ -27,8 +27,7 @@ from ilastik.utility import bind
 from opDataSelection import DatasetInfo
 
 class LaneColumn():
-    LabelsAllowed = 0
-    NumColumns = 1
+    NumColumns = 0
 
 class DatasetInfoColumn():
     Name = 0
@@ -142,11 +141,9 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
             return None
         if orientation == Qt.Vertical:
             return section+1
-        if section == LaneColumn.LabelsAllowed:
-            return "Labelable"
         infoColumn = section - LaneColumn.NumColumns
         roleIndex = infoColumn // DatasetInfoColumn.NumColumns
-        infoColumn %= LaneColumn.NumColumns
+        infoColumn %= DatasetInfoColumn.NumColumns
         if infoColumn == DatasetInfoColumn.Name:
             if self._op.DatasetRoles.ready():
                 return self._op.DatasetRoles.value[roleIndex]
@@ -155,17 +152,6 @@ class DataLaneSummaryTableModel(QAbstractItemModel):
             
     def _getDisplayRoleData(self, index):
         laneIndex = index.row()
-        
-        if index.column() < LaneColumn.NumColumns:
-            if index.column() == LaneColumn.LabelsAllowed:
-                firstInfoSlot = self._op.DatasetGroup[laneIndex][0]
-                if not firstInfoSlot.ready():
-                    return ""
-                info = firstInfoSlot.value
-                return { True: "True", False : "False" }[ info.allowLabels ]
-            else:
-                assert False
-
         ## Dataset info item
         roleIndex = (index.column() - LaneColumn.NumColumns) // DatasetInfoColumn.NumColumns
         datasetInfoIndex = (index.column() - LaneColumn.NumColumns) % DatasetInfoColumn.NumColumns

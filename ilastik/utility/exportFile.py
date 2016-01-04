@@ -1,3 +1,4 @@
+import collections
 import numpy as np
 import numpy.lib.recfunctions as nlr
 import h5py
@@ -156,19 +157,24 @@ def flatten_dict(dict_, object_count):
 def prepare_list(list_, names, dtypes=None):
     shape = (len(list_),)
     if dtypes is None:
-        if isinstance(list_[0], (tuple, list)):
-            dtypes = [np.dtype(type(i)).name for i in list_[0]]
-        else:
-            dtypes = [np.dtype(type(list_[0])).name]
+        first_row = list_[0]
+        if isinstance(first_row, str) or not isinstance(first_row, collections.Iterable):
+            list_ = zip(*[list_])
+            first_row = list_[0]
+
+        dtypes = []
+        for col, item in enumerate(first_row):
+            dtype_name = np.dtype(type(item)).name
+            if dtype_name == 'string':
+                maxlen = 1
+                for r_index, row_data in enumerate(list_):
+                    maxlen = max(maxlen, len(row_data[col]))
+                dtype_name = 'S{}'.format(maxlen)
+            dtypes.append(dtype_name)
+    
     array = np.zeros(shape, ",".join(dtypes))
     array.dtype = np.dtype([(names[i], dtypes[i]) for i in xrange(len(names))])
-
-    for i, row in enumerate(list_):
-        if len(names) == 1:
-            array[i] = (row, )
-        else:
-            array[i] = row
-
+    array[:] = list_
     return array
 
 

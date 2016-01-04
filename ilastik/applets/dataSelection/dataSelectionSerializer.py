@@ -166,6 +166,7 @@ class DataSelectionSerializer( AppletSerializer ):
                     infoGroup.create_dataset('allowLabels', data=datasetInfo.allowLabels)
                     infoGroup.create_dataset('nickname', data=datasetInfo.nickname)
                     infoGroup.create_dataset('fromstack', data=datasetInfo.fromstack)
+                    infoGroup.create_dataset('display_mode', data=datasetInfo.display_mode)
                     if datasetInfo.drange is not None:
                         infoGroup.create_dataset('drange', data=datasetInfo.drange)
 
@@ -346,6 +347,11 @@ class DataSelectionSerializer( AppletSerializer ):
             pass
         
         try:
+            datasetInfo.display_mode = infoGroup['display_mode'].value
+        except KeyError:
+            pass
+        
+        try:
             datasetInfo.nickname = infoGroup['nickname'].value
         except KeyError:
             datasetInfo.nickname = PathComponents(datasetInfo.filePath).filenameBase
@@ -373,7 +379,7 @@ class DataSelectionSerializer( AppletSerializer ):
             datasetInfo.subvolume_roi = (start, stop)
         except KeyError:
             pass
-        
+
         # If the data is supposed to be in the project,
         #  check for it now.
         if datasetInfo.location == DatasetInfo.Location.ProjectInternal:

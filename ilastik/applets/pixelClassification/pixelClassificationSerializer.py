@@ -57,7 +57,8 @@ class PixelClassificationSerializer(AppletSerializer):
         """
         # If this is an old project file that didn't save the label names to the project,
         #   create some default names.
-        if not self.operator.LabelNames.ready() or len(self.operator.LabelNames.value) == 0:
+        if (not self.operator.LabelNames.ready() or len(self.operator.LabelNames.value) == 0)\
+        and 'LabelSets' in topGroup:
             # How many labels are there?
             # We have to count them.  
             # This is slow, but okay for this special backwards-compatibilty scenario.

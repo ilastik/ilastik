@@ -64,12 +64,10 @@ class ProjectMetadataSerializer(AppletSerializer):
         self.projectMetadata.description = ''
 
     def setDataset(self, group, dataName, dataValue):
-        if dataName not in group.keys():
-            # Create and assign
-            group.create_dataset(dataName, data=dataValue)
-        else:
-            # Assign (this will fail if the dtype doesn't match)
-            group[dataName][()] = dataValue
+        if dataName in group.keys():
+            del group[dataName]
+        # Create and assign
+        group.create_dataset(dataName, data=dataValue)
 
     def getDataset(self, group, dataName):
         try:

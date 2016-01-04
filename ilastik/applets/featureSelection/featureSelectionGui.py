@@ -51,6 +51,8 @@ from ilastik.config import cfg as ilastik_config
 
 from ilastik.applets.base.applet import DatasetConstraintError
 
+from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
+
 #===----------------------------------------------------------------------------------------------------------------===
 #=== FeatureSelectionGui                                                                                            ===
 #===----------------------------------------------------------------------------------------------------------------===
@@ -58,23 +60,6 @@ from ilastik.applets.base.applet import DatasetConstraintError
 class FeatureSelectionGui(LayerViewerGui):
     """
     """
-    
-    # Constants    
-    ScalesList = [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
-
-    # Map feature groups to lists of feature IDs
-    FeatureGroups = [ ( "Color/Intensity",   [ "GaussianSmoothing" ] ),
-                      ( "Edge",    [ "LaplacianOfGaussian", "GaussianGradientMagnitude", "DifferenceOfGaussians" ] ),
-                      ( "Texture", [ "StructureTensorEigenvalues", "HessianOfGaussianEigenvalues" ] ) ]
-
-    # Map feature IDs to feature names
-    FeatureNames = { 'GaussianSmoothing' : 'Gaussian Smoothing',
-                     'LaplacianOfGaussian' : "Laplacian of Gaussian",
-                     'GaussianGradientMagnitude' : "Gaussian Gradient Magnitude",
-                     'DifferenceOfGaussians' : "Difference of Gaussians",
-                     'StructureTensorEigenvalues' : "Structure Tensor Eigenvalues",
-                     'HessianOfGaussianEigenvalues' : "Hessian of Gaussian Eigenvalues" }
-
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
@@ -119,12 +104,12 @@ class FeatureSelectionGui(LayerViewerGui):
 
     def getFeatureIdOrder(self):
         featureIrdOrder = []
-        for group, featureIds in self.FeatureGroups:
+        for group, featureIds in OpFeatureSelection.FeatureGroups:
             featureIrdOrder += featureIds
         return featureIrdOrder
 
     def initFeatureOrder(self):
-        self.topLevelOperatorView.Scales.setValue( self.ScalesList )
+        self.topLevelOperatorView.Scales.setValue( OpFeatureSelection.ScalesList )
         self.topLevelOperatorView.FeatureIds.setValue( self.getFeatureIdOrder() )
             
     def initAppletDrawerUi(self):
@@ -224,7 +209,8 @@ class FeatureSelectionGui(LayerViewerGui):
 
         # Determine how many channels this feature has (up to 3)
         featureChannelsPerInputChannel = numFeatureChannels / numInputChannels
-        assert 0 < featureChannelsPerInputChannel <= 3, "The feature selection Gui does not yet support features with more than three channels per input channel." 
+        if not 0 < featureChannelsPerInputChannel <= 3:
+            logger.warn( "The feature selection Gui does not yet support features with more than three channels per input channel. Some features will not be displayed entirely." ) 
 
         for inputChannel in range(numInputChannels):
             # Determine the name for this feature
@@ -275,13 +261,13 @@ class FeatureSelectionGui(LayerViewerGui):
         
         # Map from groups of feature IDs to groups of feature NAMEs
         groupedNames = []
-        for group, featureIds in self.FeatureGroups:
+        for group, featureIds in OpFeatureSelection.FeatureGroups:
             featureEntries = []
             for featureId in featureIds:
-                featureName = self.FeatureNames[featureId]
+                featureName = OpFeatureSelection.FeatureNames[featureId]
                 featureEntries.append( FeatureEntry(featureName) )
             groupedNames.append( (group, featureEntries) )
-        self.featureDlg.createFeatureTable( groupedNames, self.ScalesList, self.topLevelOperatorView.WINDOW_SIZE )
+        self.featureDlg.createFeatureTable( groupedNames, OpFeatureSelection.ScalesList, self.topLevelOperatorView.WINDOW_SIZE )
         self.featureDlg.setImageToPreView(None)
 
         # Init with no features
@@ -307,35 +293,37 @@ class FeatureSelectionGui(LayerViewerGui):
         if ilastik_config.getboolean("ilastik", "debug"):
             options |= QFileDialog.DontUseNativeDialog
 
-        filename = QFileDialog.getOpenFileName(self, 'Open Feature List', '.', options=options)
-        filename = encode_from_qstring(filename)
+        filenames = QFileDialog.getOpenFileNames(self, 'Open Feature Files', '.', options=options)
+        filenames = map(encode_from_qstring, filenames)
         
-        #sanity checks on the given file
-        if not filename:
+        # Check if file exists
+        if not filenames:
             return
-        if not os.path.exists(filename):
-            QMessageBox.critical(self, "Open Feature List", "File '%s' does not exist" % filename)
-            return
-        f = open(filename, 'r')
-        with f:
-            for line in f:
-                line = line.strip()
-                if len(line) == 0:
-                    continue
-                if not os.path.exists(line):
-                    QMessageBox.critical(self, "Open Feature List", "File '%s', referenced in '%s', does not exist" % (line, filename))
-                    return
-                try:
-                    h = h5py.File(line, 'r')
-                    with h:
-                        assert len(h["data"].shape) == 3
-                except:
-                    QMessageBox.critical(self, "Open Feature List", "File '%s', referenced in '%s', could not be opened as an HDF5 file or does not contain a 3D dataset called 'data'" % (line, filename))
-                    return
+        
+        for filename in filenames:
+            if not os.path.exists(filename):
+                QMessageBox.critical(self, "Open Feature List", "File '%s' does not exist" % filename)
+                return
 
-        self.topLevelOperatorView.FeatureListFilename.setValue(filename)
-        self.topLevelOperatorView._setupOutputs()
-        self.onFeaturesSelectionsChanged()
+        num_lanes = len(self.parentApplet.topLevelOperator.FeatureListFilename)
+        if num_lanes != len(filenames):
+            QMessageBox.critical(self, "Wrong number of feature files",
+                                 "You must select all pre-computed feature files at once (shift-click).\n"
+                                 "You selected {} file(s), but there are {} image(s) loaded"
+                                 .format(len(filenames), num_lanes))
+            return
+        
+        
+        for filename, slot in zip(filenames, self.parentApplet.topLevelOperator.FeatureListFilename):
+            slot.setValue(filename)
+
+        # Create a dummy SelectionMatrix, just so the operator knows it is configured
+        # This is a little hacky.  We should really make SelectionMatrix optional, 
+        # and then handle the choice correctly in setupOutputs, probably involving 
+        # the Output.meta.NOTREADY flag
+        dummy_matrix = numpy.zeros((6,7), dtype=bool)
+        dummy_matrix[0,0] = True
+        self.parentApplet.topLevelOperator.SelectionMatrix.setValue(True)
 
         # Notify the workflow that some applets may have changed state now.
         # (For example, the downstream pixel classification applet can 
@@ -343,7 +331,9 @@ class FeatureSelectionGui(LayerViewerGui):
         self.parentApplet.appletStateUpdateRequested.emit()
 
     def onFeatureButtonClicked(self):
-        self.topLevelOperatorView.FeatureListFilename.setValue("")
+        # Remove all pre-computed feature files
+        for slot in self.parentApplet.topLevelOperator.FeatureListFilename:
+            slot.disconnect()
         
         # Refresh the feature matrix in case it has changed since the last time we were opened
         # (e.g. if the user loaded a project from disk)
@@ -354,7 +344,7 @@ class FeatureSelectionGui(LayerViewerGui):
             
             reorderedMatrix = numpy.zeros(matrix.shape, dtype=bool)
             newrow = 0
-            for group, featureIds in self.FeatureGroups:
+            for group, featureIds in OpFeatureSelection.FeatureGroups:
                 for featureId in featureIds:
                     oldrow = featureOrdering.index(featureId)
                     reorderedMatrix[newrow] = matrix[oldrow]
@@ -425,7 +415,7 @@ class FeatureSelectionGui(LayerViewerGui):
         fff = ( self.topLevelOperatorView.FeatureListFilename.ready() and \
                 len(self.topLevelOperatorView.FeatureListFilename.value) != 0)
         
-        if not self.topLevelOperatorView.SelectionMatrix.ready() and not fff: 
+        if not self.topLevelOperatorView.SelectionMatrix.ready() and not fff:
             self.drawer.caption.setText( "(No features selected)" )
             self.layerstack.clear()
         elif fff:

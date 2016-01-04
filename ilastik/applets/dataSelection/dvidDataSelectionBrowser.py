@@ -1,13 +1,15 @@
 import socket
 import logging
 
-from libdvid import DVIDException, ErrMsg
-from libdvid.voxels import VoxelsAccessor, VoxelsMetadata
+import numpy
+from PyQt4.QtCore import Qt, QEvent
+from PyQt4.QtGui import QVBoxLayout, QGroupBox, QSizePolicy, QMessageBox, QDialogButtonBox, QMouseEvent
+
+from libdvid import DVIDException, ErrMsg, DVIDNodeService
+from libdvid.voxels import VoxelsAccessor, VoxelsMetadata, DVID_BLOCK_WIDTH
 from libdvid.gui.contents_browser import ContentsBrowser
 
 from volumina.widgets.subregionRoiWidget import SubregionRoiWidget
-from PyQt4.QtGui import QVBoxLayout, QGroupBox, QSizePolicy, QMessageBox, QDialogButtonBox
-
 from ilastik.utility import log_exception
 
 logger = logging.getLogger(__name__)
@@ -20,118 +22,126 @@ class DvidDataSelectionBrowser(ContentsBrowser):
         # Initialize the base class...
         super( DvidDataSelectionBrowser, self ).__init__(*args, **kwargs)
 
-        self._roi_widget = SubregionRoiWidget( parent=self )
+        self._subvol_widget = SubregionRoiWidget( parent=self )
 
-        roi_layout = QVBoxLayout()
-        roi_layout.addWidget( self._roi_widget )
-        roi_groupbox = QGroupBox("Specify Region of Interest", parent=self)
-        roi_groupbox.setCheckable(True)
-        roi_groupbox.setChecked(False)
-        roi_groupbox.setEnabled(False)
-        roi_groupbox.toggled.connect( self._update_display )
-        roi_groupbox.setLayout( roi_layout )
-        roi_groupbox.setFixedHeight( 200 )
-        roi_groupbox.setSizePolicy( QSizePolicy.Preferred, QSizePolicy.Minimum )
-        self._roi_groupbox = roi_groupbox
+        subvol_layout = QVBoxLayout()
+        subvol_layout.addWidget( self._subvol_widget )
+        group_title = "Restrict to subvolume (Right-click a volume name above to auto-initialize these subvolume parameters.)"
+        subvol_groupbox = QGroupBox(group_title, parent=self)
+        subvol_groupbox.setCheckable(True)
+        subvol_groupbox.setChecked(False)
+        subvol_groupbox.setEnabled(False)
+        subvol_groupbox.toggled.connect( self._update_status )
+        subvol_groupbox.setLayout( subvol_layout )
+        subvol_groupbox.setFixedHeight( 200 )
+        subvol_groupbox.setSizePolicy( QSizePolicy.Preferred, QSizePolicy.Minimum )
+        self._subvol_groupbox = subvol_groupbox
 
         # Add to the layout
         layout = self.layout()
-        layout.insertWidget( 3, roi_groupbox )
+        layout.insertWidget( 3, subvol_groupbox )
+
+        # Special right-click behavior.
+        self._repo_treewidget.viewport().installEventFilter(self)
 
     def get_subvolume_roi(self):
-        if self._roi_groupbox.isChecked():
-            return self._roi_widget.roi
+        if self._subvol_groupbox.isChecked():
+            return self._subvol_widget.roi
         return None
 
-    def _update_display(self):
-        super( DvidDataSelectionBrowser, self )._update_display()
-        hostname, dset_uuid, dataname, node_uuid = self.get_selection()
+    def eventFilter(self, widget, event):
+        """
+        If the user right-clicks on a volume/roi name, it triggers special behavior:
+        The subvolume widget is automatically initialized with extents matching the
+        right-clicked volume, regardless of the currently selected volume.
+        """
+        if widget is self._repo_treewidget.viewport() \
+        and event.type() == QEvent.MouseButtonPress \
+        and event.button() == Qt.RightButton:
+            item = self._repo_treewidget.itemAt(event.pos())
+            repo_uuid, dataname, typename = item.data(0, Qt.UserRole).toPyObject()
+            is_roi = (typename == 'roi')
+            is_voxels = (typename in ['labelblk', 'uint8blk'])
+            if (is_voxels or is_roi) \
+            and self._buttonbox.button(QDialogButtonBox.Ok).isEnabled():
+                self._update_subvol_widget(repo_uuid, dataname, typename) # FIXME: we're passing the repo id instead of the node id. is that okay?
+                self._subvol_groupbox.setChecked(True)
+                return True
+        return super(DvidDataSelectionBrowser, self).eventFilter(widget, event)
+
+    def _update_status(self):
+        super( DvidDataSelectionBrowser, self )._update_status()
+        hostname, dset_uuid, dataname, node_uuid, typename = self.get_selection()
 
         enable_contents = self._repos_info is not None and dataname != "" and node_uuid != ""
-        self._roi_groupbox.setEnabled(enable_contents)
+        self._subvol_groupbox.setEnabled(enable_contents)
 
         if not dataname or not node_uuid:
-            self._roi_widget.initWithExtents( "", (), (), () )
+            self._subvol_widget.initWithExtents( "", (), (), () )
             return
         
+        self._update_subvol_widget(node_uuid, dataname, typename)
+    
+    def _update_subvol_widget(self, node_uuid, dataname, typename):
+        """
+        Update the subvolume widget with the min/max extents of the given node and dataname.
+        Note: The node and dataname do not necessarily have to match the currently 
+              selected node and dataname.
+              This enables the right-click behavior, which can be used to  
+              limit your data volume to the size of a different data volume.
+        """
         error_msg = None
         try:
-            # Query the server
-            raw_metadata = VoxelsAccessor.get_metadata( hostname, node_uuid, dataname )
-            voxels_metadata = VoxelsMetadata( raw_metadata )
-        except DVIDException as ex:
-            error_msg = ex.message
-        except ErrMsg as ex:
-            error_msg = str(ErrMsg)
-        except VoxelsAccessor.BadRequestError as ex:
-            # DVID will return an error if the selected dataset 
-            #  isn't a 'voxels' dataset and thus has no voxels metadata
-            self._buttonbox.button(QDialogButtonBox.Ok).setEnabled(False)
-            return
+            if typename == "roi":
+                node_service = DVIDNodeService(self._hostname, str(node_uuid))
+                roi_blocks_xyz = numpy.array( node_service.get_roi(str(dataname)) )
+                maxindex = tuple( DVID_BLOCK_WIDTH*(1 + numpy.max( roi_blocks_xyz, axis=0 )) )
+                minindex = (0,0,0) # Rois are always 3D
+                axiskeys = "xyz"
+                # If the current selection is a dataset, then include a channel dimension
+                if self.get_selection().typename != "roi":
+                    axiskeys = "cxyz"
+                    minindex = (0,) + minindex
+                    maxindex = (1,) + maxindex # FIXME: This assumes that the selected data has only 1 channel...
+            else:
+                # Query the server
+                raw_metadata = VoxelsAccessor.get_metadata( self._hostname, node_uuid, dataname )
+                voxels_metadata = VoxelsMetadata( raw_metadata )
+                maxindex = voxels_metadata.shape
+                minindex = voxels_metadata.minindex
+                axiskeys = voxels_metadata.axiskeys
+                # If the current selection is a roi, then remove the channel dimension
+                if self.get_selection().typename == "roi":
+                    axiskeys = "xyz"
+                    minindex = minindex[1:]
+                    maxindex = maxindex[1:]
+        except (DVIDException, ErrMsg) as ex:
+            error_msg = str(ex)
+            log_exception(logger)
         else:
             self._buttonbox.button(QDialogButtonBox.Ok).setEnabled(True)
 
         if error_msg:
+            self._buttonbox.button(QDialogButtonBox.Ok).setEnabled(False)
             QMessageBox.critical(self, "DVID Error", error_msg)
-            self._roi_widget.initWithExtents( "", (), (), () )
+            self._subvol_widget.initWithExtents( "", (), (), () )
             return
 
-        self._roi_widget.initWithExtents( voxels_metadata.axiskeys, voxels_metadata.shape,
-                                          voxels_metadata.minindex, voxels_metadata.shape )
+        self._subvol_widget.initWithExtents( axiskeys, maxindex, minindex, maxindex )
 
 if __name__ == "__main__":
-    """
-    This main section permits simple command-line control.
-    usage: contents_browser.py [-h] [--mock-server-hdf5=MOCK_SERVER_HDF5] hostname:port
-    
-    If --mock-server-hdf5 is provided, the mock server will be launched with the provided hdf5 file.
-    Otherwise, the DVID server should already be running on the provided hostname.
-    """
-    import sys
-    import argparse
-    from PyQt4.QtGui import QApplication
+    # Make the program quit on Ctrl+C
+    import signal
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--mock-server-hdf5", required=False)
-    parser.add_argument("--mode", choices=["select_existing", "specify_new"], default="select_existing")
-    parser.add_argument("hostname", metavar="hostname:port")
-    
-    sys.argv.append("emdata2:8000")
-
-    DEBUG = False
-    if DEBUG and len(sys.argv) == 1:
-        # default debug args
-        parser.print_help()
-        print ""
-        print "*******************************************************"
-        print "No args provided.  Starting with special debug args...."
-        print "*******************************************************"
-        sys.argv.append("--mock-server-hdf5=/magnetic/mockdvid_gigacube_fortran.h5")
-        #sys.argv.append("--mode=specify_new")
-        sys.argv.append("localhost:8000")
-
-    parsed_args = parser.parse_args()
-    
-    server_proc = None
-    if parsed_args.mock_server_hdf5:
-        from mockserver.h5mockserver import H5MockServer
-        hostname, port = parsed_args.hostname.split(":")
-        server_proc, shutdown_event = H5MockServer.create_and_start( parsed_args.mock_server_hdf5,
-                                                     hostname,
-                                                     int(port),
-                                                     same_process=False,
-                                                     disable_server_logging=False )
-    
+    from PyQt4.QtGui import QApplication    
     app = QApplication([])
-    browser = DvidDataSelectionBrowser([parsed_args.hostname], parsed_args.mode)
+    browser = DvidDataSelectionBrowser(["localhost:8000", "emdata2:7000"],
+                                       default_nodes={ "localhost:8000" : '57c4c6a0740d4509a02da6b9453204cb'},
+                                       mode="select_existing")
 
-    try:
-        if browser.exec_() == DvidDataSelectionBrowser.Accepted:
-            print "The dialog was accepted with result: ", browser.get_selection()
-            print "Subvolume roi:", browser.get_subvolume_roi()
-        else:
-            print "The dialog was rejected."
-    finally:
-        if server_proc:
-            shutdown_event.set()
-            server_proc.join()
+    if browser.exec_() == DvidDataSelectionBrowser.Accepted:
+        print "The dialog was accepted with result: ", browser.get_selection()
+        print "And subvolume: ", browser.get_subvolume_roi()
+    else:
+        print "The dialog was rejected."

@@ -22,6 +22,7 @@
 import os
 import tempfile
 from functools import partial
+from collections import defaultdict
 import numpy
 
 #PyQt
@@ -71,7 +72,6 @@ class CarvingGui(LabelingGui):
         labelingSlots.labelNames       = topLevelOperatorView.LabelNames
         labelingSlots.labelDelete      = topLevelOperatorView.opLabelArray.DeleteLabel
         labelingSlots.maxLabelValue    = topLevelOperatorView.opLabelArray.MaxLabelValue
-        labelingSlots.labelsAllowed    = topLevelOperatorView.LabelsAllowed
         
         # We provide our own UI file (which adds an extra control for interactive mode)
         directory = os.path.split(__file__)[0]
@@ -99,13 +99,21 @@ class CarvingGui(LabelingGui):
                                        self.labelingDrawerUi.segment.click,
                                        self.labelingDrawerUi.segment,
                                        self.labelingDrawerUi.segment  ) )
+
         
-        try:
-            self.render = True
-            self._shownObjects3D = {}
-            self._renderMgr = RenderingManager( self.editor.view3d)
-        except:
-            self.render = False
+        # Disable 3D view by default
+        self.render = False
+        tagged_shape = defaultdict(lambda: 1)
+        tagged_shape.update( topLevelOperatorView.InputData.meta.getTaggedShape() )
+        is_3d = (tagged_shape['x'] > 1 and tagged_shape['y'] > 1 and tagged_shape['z'] > 1)
+
+        if is_3d:
+            try:
+                self._renderMgr = RenderingManager( self.editor.view3d )
+                self._shownObjects3D = {}
+                self.render = True
+            except:
+                self.render = False
 
         # Segmentation is toggled on by default in _after_init, below.
         # (We can't enable it until the layers are all present.)
@@ -600,7 +608,7 @@ class CarvingGui(LabelingGui):
         ctable = self._doneSegmentationLayer.colorTable
 
         for name, label in self._shownObjects3D.iteritems():
-            color = QColor(ctable[op.MST.value.objects[name]])
+            color = QColor(ctable[op.MST.value.object_names[name]])
             color = (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0)
             self._renderMgr.setColor(label, color)
 

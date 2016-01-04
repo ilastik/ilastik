@@ -41,9 +41,7 @@ class LayerViewerWorkflow(Workflow):
         # Create applets 
         self.dataSelectionApplet = DataSelectionApplet(self, 
                                                        "Input Data", 
-                                                       "Input Data", 
-                                                       supportIlastik05Import=True, 
-                                                       forceAxisOrder='tzyxc')
+                                                       "Input Data")
         self.viewerApplet = LayerViewerApplet(self)
         self.dataExportApplet = DataExportApplet(self, "Data Export")
         opDataExport = self.dataExportApplet.topLevelOperator

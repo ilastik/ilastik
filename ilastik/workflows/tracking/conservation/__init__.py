@@ -6,3 +6,9 @@ try:
 except ImportError as e:
     logger.warn( "Failed to import automatic tracking workflow (conservation tracking). For this workflow, see the installation"\
              "instructions on our website ilastik.org; check dependencies: " + str(e) )
+
+try:
+    from animalConservationTrackingWorkflow import AnimalConservationTrackingWorkflowFromPrediction, AnimalConservationTrackingWorkflowFromBinary
+except ImportError as e:
+    logger.warn( "Failed to import automatic tracking workflow (conservation tracking). For this workflow, see the installation"\
+             "instructions on our website ilastik.org; check dependencies: " + str(e) )

@@ -73,6 +73,7 @@ import examples.dataConversion
 
 # Examples
 if ilastik.config.cfg.getboolean('ilastik', 'debug'):
+    import newAutocontext.newAutocontextWorkflow
     import vigraWatershed
     import examples.layerViewer
     import examples.thresholdMasking

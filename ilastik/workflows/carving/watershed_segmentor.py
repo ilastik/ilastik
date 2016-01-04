@@ -20,11 +20,23 @@ class WatershedSegmentor(object):
         self.hasSeg = False
 
         if h5file is None:
+            ndim  = 3
             self.supervoxelUint32 = labels
             self.volumeFeat = volume_feat.squeeze()
-            self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
-            self.gridSegmentor.preprocessing(self.supervoxelUint32,self.volumeFeat)
+            if self.volumeFeat.ndim == 3:
+                self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
+                self.gridSegmentor.preprocessing(self.supervoxelUint32,self.volumeFeat)
 
+            elif self.volumeFeat.ndim == 2:
+                ndim = 2
+                self.gridSegmentor = ilastiktools.GridSegmentor_2D_UInt32()
+                self.gridSegmentor.preprocessing(self.supervoxelUint32.squeeze(),self.volumeFeat)
+
+            else:
+                raise RuntimeError("internal error")
+
+
+            
             # fixe! which of both??!
             self.nodeNum = self.gridSegmentor.nodeNum()
             self.numNodes = self.nodeNum
@@ -34,19 +46,24 @@ class WatershedSegmentor(object):
             self.numNodes = h5file.attrs["numNodes"]
             self.nodeNum = self.numNodes
             self.supervoxelUint32 = h5file['labels'][:]
-
-            self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
-
+            if(self.supervoxelUint32.squeeze().ndim == 3):
+                self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
+            else:
+                self.gridSegmentor = ilastiktools.GridSegmentor_2D_UInt32()
             graphS = h5file['graph'][:]
             edgeWeights = h5file['edgeWeights'][:]
             nodeSeeds = h5file['nodeSeeds'][:]
             resultSegmentation = h5file['resultSegmentation'][:]
 
            
-
-            self.gridSegmentor.preprocessingFromSerialization(labels=self.supervoxelUint32,
-                serialization=graphS, edgeWeights=edgeWeights, nodeSeeds=nodeSeeds, 
-                resultSegmentation=resultSegmentation)
+            if(self.supervoxelUint32.squeeze().ndim == 3):
+                self.gridSegmentor.preprocessingFromSerialization(labels=self.supervoxelUint32,
+                    serialization=graphS, edgeWeights=edgeWeights, nodeSeeds=nodeSeeds, 
+                    resultSegmentation=resultSegmentation)
+            else:
+                self.gridSegmentor.preprocessingFromSerialization(labels=self.supervoxelUint32.squeeze(),
+                    serialization=graphS, edgeWeights=edgeWeights, nodeSeeds=nodeSeeds, 
+                    resultSegmentation=resultSegmentation)
 
             self.hasSeg = resultSegmentation.max()>0
 
@@ -60,15 +77,27 @@ class WatershedSegmentor(object):
         self.gridSegmentor.clearSegmentation()
 
     def addSeeds(self, roi, brushStroke):
-        roiBegin  = roi.start[1:4]
-        roiEnd  = roi.stop[1:4]
+        if isinstance(self.gridSegmentor, ilastiktools.GridSegmentor_3D_UInt32):
+            roiBegin  = roi.start[1:4]
+            roiEnd  = roi.stop[1:4]
+        else:
+            roiBegin  = roi.start[1:3]
+            roiEnd  = roi.stop[1:3]
+
         roiShape = [e-b for b,e in zip(roiBegin,roiEnd)]
         brushStroke = brushStroke.reshape(roiShape)
         self.gridSegmentor.addSeeds(brushStroke=brushStroke,roiBegin=roiBegin, 
                                     roiEnd=roiEnd, maxValidLabel=2)
 
     def getVoxelSegmentation(self, roi, out = None):
-        return self.gridSegmentor.getSegmentation(roiBegin=roi.start[1:4],roiEnd=roi.stop[1:4], out=out)
+        if isinstance(self.gridSegmentor, ilastiktools.GridSegmentor_3D_UInt32):
+            roiBegin  = roi.start[1:4]
+            roiEnd  = roi.stop[1:4]
+            return self.gridSegmentor.getSegmentation(roiBegin=roiBegin,roiEnd=roiEnd, out=out)
+        else:
+            roiBegin  = roi.start[1:3]
+            roiEnd  = roi.stop[1:3]
+            return self.gridSegmentor.getSegmentation(roiBegin=roiBegin,roiEnd=roiEnd, out=out)[:,:,None]
 
 
     def setSeeds(self,fgSeeds, bgSeeds):

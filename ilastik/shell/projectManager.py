@@ -25,15 +25,20 @@ import platform
 import h5py
 import logging
 import time
+import tempfile
 logger = logging.getLogger(__name__)
-
-import traceback
 
 import ilastik
 from ilastik import isVersionCompatible
 from ilastik.utility import log_exception
 from ilastik.workflow import getWorkflowFromName
 from lazyflow.utility.timer import Timer, timeLogged
+
+try:
+    import libdvid
+    _has_dvid_support = True
+except:
+    _has_dvid_support = False
 
 class ProjectManager(object):
     """
@@ -111,7 +116,7 @@ class ProjectManager(object):
         return str( projectFile['workflowName'][()] )
 
     @classmethod
-    def openProjectFile(cls, projectFilePath):
+    def openProjectFile(cls, projectFilePath, forceReadOnly=False):
         """
         Class method.
         Attempt to open the given path to an existing project file.
@@ -126,12 +131,15 @@ class ProjectManager(object):
 
         # Open the file as an HDF5 file
         try:
-            hdf5File = h5py.File(projectFilePath)
-            readOnly = (hdf5File.mode == 'r')
+            if forceReadOnly:
+                mode = 'r'
+            else:
+                mode = 'r+'
+            hdf5File = h5py.File(projectFilePath, mode)
         except IOError:
-            # Maybe the project is read-only
+            # Maybe we tried 'r+', but the project is read-only
             hdf5File = h5py.File(projectFilePath, 'r')
-            readOnly = True
+        readOnly = (hdf5File.mode == 'r')
 
         projectVersion = "0.5"
         if "ilastikVersion" in hdf5File.keys():
@@ -149,6 +157,42 @@ class ProjectManager(object):
             workflow_class = getWorkflowFromName(workflowName)
         
         return (hdf5File, workflow_class, readOnly)
+
+    @classmethod
+    def downloadProjectFromDvid(cls, hostname, node_uuid, keyvalue_name, project_key=None, local_filepath=None):
+        """
+        Download a file from a dvid keyvalue data instance and store it to the given local_filepath.
+        If no local_filepath is given, create a new temporary file.
+        Returns the path to the downloaded file.
+        """
+        node_service = libdvid.DVIDNodeService(hostname, node_uuid)
+        keys = node_service.get_keys(keyvalue_name)
+        
+        if not project_key:
+            if len(keys) == 1:
+                # Only one key, so let's try it.
+                project_key = keys[0]
+            else:
+                # Try to find a key that looks like a project file.
+                possible_project_keys = filter(lambda s: s.endswith('.ilp'), keys)
+                if len(possible_project_keys) == 1:
+                    project_key = possible_project_keys[0]
+                else:
+                    # Too many or too few keys ending with .ilp -- can't decide which one to use!
+                    raise RuntimeError("Can't infer project key name from keys in key/value instance.")
+        
+        if project_key not in keys:
+            raise ProjectManager.FileMissingError("Key/value instance does not have required key: {}".format(PROJECT_FILE_KEY))
+
+        file_data = node_service.get(keyvalue_name, project_key)
+        if local_filepath is None:
+            tempdir = tempfile.mkdtemp()
+            local_filepath = os.path.join(tempdir, project_key)
+        
+        with open(local_filepath, 'w') as local_file:
+            local_file.write(file_data)
+        
+        return local_filepath
 
     #########################
     ## Public methods

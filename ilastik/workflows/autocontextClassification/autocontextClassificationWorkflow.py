@@ -95,9 +95,6 @@ class AutocontextClassificationWorkflow(Workflow):
         # Feature Images -> Classification Op (for training, prediction)
         opClassify.FeatureImages.connect( opTrainingFeatures.OutputImage )
         opClassify.CachedFeatureImages.connect( opTrainingFeatures.CachedOutputImage )
-        
-        # Training flags -> Classification Op (for GUI restrictions)
-        opClassify.LabelsAllowedFlags.connect( opData.AllowLabels )
 
     def _initBatchWorkflow(self):
         """

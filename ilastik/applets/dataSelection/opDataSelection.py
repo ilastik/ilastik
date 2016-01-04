@@ -69,6 +69,7 @@ class DatasetInfo(object):
         self.axistags = None
         self.subvolume_roi = None
         self.location = Location.FileSystem
+        self.display_mode = 'default' # choices: default, grayscale, rgba, random-colortable, binary-mask.
 
         if self.preloaded_array is not None:
             self.filePath = "" # set property to ensure unique _datasetId
@@ -84,6 +85,7 @@ class DatasetInfo(object):
             file_list = None
             if '*' in filepath:
                 file_list = glob.glob(filepath)
+                file_list = sorted(file_list)
             if not isUrl(filepath) and os.path.pathsep in filepath:
                 file_list = filepath.split(os.path.pathsep)
             
@@ -93,7 +95,10 @@ class DatasetInfo(object):
     
                 # Convert all paths to absolute 
                 file_list = map(lambda f: make_absolute(f, cwd), file_list)
-                filepath = os.path.pathsep.join( file_list )
+                if '*' in filepath:
+                    filepath = make_absolute(filepath, cwd)
+                else:
+                    filepath = os.path.pathsep.join( file_list )
     
                 # Add an underscore for each wildcard digit
                 prefix = os.path.commonprefix(file_list)
@@ -279,40 +284,37 @@ class OpDataSelection(Operator):
             
             # Inject metadata if the dataset info specified any.
             # Also, inject if if dtype is uint8, which we can reasonably assume has drange (0,255)
-            if datasetInfo.normalizeDisplay is not None or \
-               datasetInfo.drange is not None or \
-               datasetInfo.axistags is not None or \
-               (providerSlot.meta.drange is None and providerSlot.meta.dtype == numpy.uint8):
-                metadata = {}
-                if datasetInfo.drange is not None:
-                    metadata['drange'] = datasetInfo.drange
-                elif providerSlot.meta.dtype == numpy.uint8:
-                    # SPECIAL case for uint8 data: Provide a default drange.
-                    # The user can always override this herself if she wants.
-                    metadata['drange'] = (0,255)
-                if datasetInfo.normalizeDisplay is not None:
-                    metadata['normalizeDisplay'] = datasetInfo.normalizeDisplay
-                if datasetInfo.axistags is not None:
-                    if len(datasetInfo.axistags) != len(providerSlot.meta.shape):
-                        raise Exception( "Your dataset's provided axistags ({}) do not have the "
-                                         "correct dimensionality for your dataset, which has {} dimensions."
-                                         .format( "".join(tag.key for tag in datasetInfo.axistags), len(providerSlot.meta.shape) ) )
-                    metadata['axistags'] = datasetInfo.axistags
-                if datasetInfo.subvolume_roi is not None:
-                    metadata['subvolume_roi'] = datasetInfo.subvolume_roi
-                    
-                    # FIXME: We are overwriting the axistags metadata to intentionally allow 
-                    #        the user to change our interpretation of which axis is which.
-                    #        That's okay, but technically there's a special corner case if 
-                    #        the user redefines the channel axis index.  
-                    #        Technically, it invalidates the meaning of meta.ram_usage_per_requested_pixel.
-                    #        For most use-cases, that won't really matter, which is why I'm not worrying about it right now.
+            metadata = {}
+            metadata['display_mode'] = datasetInfo.display_mode
+            if datasetInfo.drange is not None:
+                metadata['drange'] = datasetInfo.drange
+            elif providerSlot.meta.dtype == numpy.uint8:
+                # SPECIAL case for uint8 data: Provide a default drange.
+                # The user can always override this herself if she wants.
+                metadata['drange'] = (0,255)
+            if datasetInfo.normalizeDisplay is not None:
+                metadata['normalizeDisplay'] = datasetInfo.normalizeDisplay
+            if datasetInfo.axistags is not None:
+                if len(datasetInfo.axistags) != len(providerSlot.meta.shape):
+                    raise Exception( "Your dataset's provided axistags ({}) do not have the "
+                                     "correct dimensionality for your dataset, which has {} dimensions."
+                                     .format( "".join(tag.key for tag in datasetInfo.axistags), len(providerSlot.meta.shape) ) )
+                metadata['axistags'] = datasetInfo.axistags
+            if datasetInfo.subvolume_roi is not None:
+                metadata['subvolume_roi'] = datasetInfo.subvolume_roi
                 
-                opMetadataInjector = OpMetadataInjector( parent=self )
-                opMetadataInjector.Input.connect( providerSlot )
-                opMetadataInjector.Metadata.setValue( metadata )
-                providerSlot = opMetadataInjector.Output
-                self._opReaders.append( opMetadataInjector )
+                # FIXME: We are overwriting the axistags metadata to intentionally allow 
+                #        the user to change our interpretation of which axis is which.
+                #        That's okay, but technically there's a special corner case if 
+                #        the user redefines the channel axis index.  
+                #        Technically, it invalidates the meaning of meta.ram_usage_per_requested_pixel.
+                #        For most use-cases, that won't really matter, which is why I'm not worrying about it right now.
+            
+            opMetadataInjector = OpMetadataInjector( parent=self )
+            opMetadataInjector.Input.connect( providerSlot )
+            opMetadataInjector.Metadata.setValue( metadata )
+            providerSlot = opMetadataInjector.Output
+            self._opReaders.append( opMetadataInjector )
 
             self._NonTransposedImage.connect(providerSlot)
             

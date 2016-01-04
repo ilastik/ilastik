@@ -130,9 +130,9 @@ class DatasetInfoEditorWidget(QDialog):
         self.storageComboBox.currentIndexChanged.connect( self._applyStorageComboToTempOps )
         self._updateStorageCombo()
         
-        self._initChannelDisplayCombo()
-        self.channelDisplayComboBox.currentIndexChanged.connect( self._applyChannelDescriptionToTempOps )
-        self._updateChannelDisplayCombo()
+        self._initDisplayModeCombo()
+        self.displayModeComboBox.currentIndexChanged.connect( self._applyDisplayModeToTempOps )
+        self._updateDisplayModeCombo()
         
         self.rangeMinSpinBox.setSpecialValueText( "--" )
         self.rangeMaxSpinBox.setSpecialValueText( "--" )
@@ -496,7 +496,7 @@ class DatasetInfoEditorWidget(QDialog):
             self.axesEdit.installEventFilter(self)
             # Either way, show the axes
             self._updateAxes()
-            self._updateChannelDisplayCombo()
+            self._updateDisplayModeCombo()
 
     def _handleClearRangeButton(self):
         self.rangeMinSpinBox.setValue( self.rangeMinSpinBox.minimum() )
@@ -865,10 +865,12 @@ class DatasetInfoEditorWidget(QDialog):
         finally:
             self._updateStorageCombo()
         
-    def _initChannelDisplayCombo(self):
-        self.channelDisplayComboBox.addItem("Default", userData="default")
-        self.channelDisplayComboBox.addItem("Grayscale", userData="grayscale")
-        self.channelDisplayComboBox.addItem("RGBA", userData="rgba")
+    def _initDisplayModeCombo(self):
+        self.displayModeComboBox.addItem("Default", userData="default")
+        self.displayModeComboBox.addItem("Grayscale", userData="grayscale")
+        self.displayModeComboBox.addItem("RGBA", userData="rgba")
+        self.displayModeComboBox.addItem("Random Colortable", userData="random-colortable")
+        self.displayModeComboBox.addItem("Binary Mask", userData="binary-mask")
     
     def _initNormalizeDisplayCombo(self):
         self.normalizeDisplayComboBox.addItem("Default", userData="default")
@@ -876,39 +878,30 @@ class DatasetInfoEditorWidget(QDialog):
         self.normalizeDisplayComboBox.addItem("False", userData="False")
         self.normalizeDisplayComboBox.setCurrentIndex(1)
         
-    def _updateChannelDisplayCombo(self):
-        channel_description = None
+    def _updateDisplayModeCombo(self):
+        # If all lanes have the same mode, then show it.
+        # Otherwise, show nothing.
+        mode = None
         for laneIndex, op in self.tempOps.items():
-            tags = op.Dataset.value.axistags or op.Image.meta.axistags
-            if 'c' not in [tag.key for tag in tags]:
-                channel_description = None
-                self.channelDisplayComboBox.setEnabled(False)
-                self.channelDisplayComboBox.setCurrentIndex(-1)
-                return
-
-        self.channelDisplayComboBox.setEnabled(True)
-        for laneIndex, op in self.tempOps.items():
-            cmp_description = op.Image.meta.axistags['c'].description
-            if cmp_description == "":
-                cmp_description = "default"
-            if channel_description is None:
-                channel_description = cmp_description
-            elif channel_description != cmp_description:
-                channel_description = None
+            cmp_mode = op.Image.meta.display_mode or "default"
+            mode = mode or cmp_mode
+            if mode != cmp_mode:
+                # Mismatch.  No common mode for all lanes.
+                mode = None
                 break
 
-        if channel_description is None:
-            self.channelDisplayComboBox.setCurrentIndex(-1)
+        if mode is None:
+            self.displayModeComboBox.setCurrentIndex(-1)
         else:
-            index = self.channelDisplayComboBox.findData( channel_description )
-            self.channelDisplayComboBox.setCurrentIndex(index)
+            index = self.displayModeComboBox.findData( mode )
+            self.displayModeComboBox.setCurrentIndex(index)
 
 
-    def _applyChannelDescriptionToTempOps(self, index):
+    def _applyDisplayModeToTempOps(self, index):
         if index == -1:
             return
         
-        newChannelDescription = str( self.channelDisplayComboBox.itemData( index ).toString() )
+        newDisplayMode = str( self.displayModeComboBox.itemData( index ).toString() )
         
         # Save a copy of our settings
         oldInfos = {}
@@ -919,13 +912,8 @@ class DatasetInfoEditorWidget(QDialog):
         try:
             for laneIndex, op in self.tempOps.items():
                 info = copy.copy( op.Dataset.value )
-                if info.axistags is None or \
-                   info.axistags.index('c') >= len(info.axistags) or \
-                   info.axistags['c'].description != newChannelDescription:
-                    if info.axistags is None:
-                        info.axistags = op.Image.meta.original_axistags
-                    if info.axistags.index('c') < len(info.axistags):
-                        info.axistags['c'].description = newChannelDescription
+                if info.display_mode != newDisplayMode:
+                    info.display_mode = newDisplayMode
                     op.Dataset.setValue( info )
             self._error_fields.discard('Channel Display')
             return True
@@ -943,7 +931,7 @@ class DatasetInfoEditorWidget(QDialog):
             return False
         
         finally:
-            self._updateChannelDisplayCombo()
+            self._updateDisplayModeCombo()
         
 
 if __name__ == "__main__":

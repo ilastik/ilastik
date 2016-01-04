@@ -45,6 +45,7 @@ class FeatureSelectionSerializer(AppletSerializer):
         self.topLevelOperator.Scales.notifyDirty( bind(handleDirty) )
         self.topLevelOperator.FeatureIds.notifyDirty( bind(handleDirty) )
         self.topLevelOperator.SelectionMatrix.notifyDirty( bind(handleDirty) )
+        self.topLevelOperator.FeatureListFilename.notifyDirty( bind(handleDirty) )
     
     def _serializeToHdf5(self, topGroup, hdf5File, projectFilePath):
         # Can't store anything without both scales and features
@@ -68,9 +69,11 @@ class FeatureSelectionSerializer(AppletSerializer):
             topGroup.create_dataset('SelectionMatrix', data=self.topLevelOperator.SelectionMatrix.value)
             
         if self.topLevelOperator.FeatureListFilename.ready():
-            fname = self.topLevelOperator.FeatureListFilename.value
-            if fname:
-                topGroup.create_dataset('FeatureListFilename', data=fname)
+            fnames = []
+            for slot in self.topLevelOperator.FeatureListFilename:
+                fnames.append(slot.value)
+            if fnames:
+                topGroup.create_dataset('FeatureListFilename', data=fnames)
             
         self._dirty = False
 
@@ -92,32 +95,41 @@ class FeatureSelectionSerializer(AppletSerializer):
             if not self.topLevelOperator.FeatureIds.ready():
                 self.topLevelOperator.FeatureIds.setValue(featureIds)
         
-            # If the matrix isn't there, just return
-            try:
-                savedMatrix = topGroup['SelectionMatrix'].value                
-                # Check matrix dimensions
-                assert savedMatrix.shape[0] == len(featureIds), "Invalid project data: feature selection matrix dimensions don't make sense"
-                assert savedMatrix.shape[1] == len(scales), "Invalid project data: feature selection matrix dimensions don't make sense"
-            except KeyError:
-                pass
-            else:
-                # If the feature order has changed since this project was last saved,
-                #  then we need to re-order the features.
-                # The 'new' order is provided by the operator
-                newFeatureOrder = list(self.topLevelOperator.FeatureIds.value)
-
-                newMatrixShape = ( len(newFeatureOrder), len(scales) )
-                newMatrix = numpy.zeros(newMatrixShape, dtype=bool)
-                for oldFeatureIndex, featureId in enumerate(featureIds):
-                    newFeatureIndex = newFeatureOrder.index(featureId)
-                    newMatrix[newFeatureIndex] = savedMatrix[oldFeatureIndex]
-
-                self.topLevelOperator.SelectionMatrix.setValue(newMatrix)
+            if 'FeatureListFilename' in topGroup:
+                filenames = topGroup['FeatureListFilename'][:]
+                for slot, filename in zip(self.topLevelOperator.FeatureListFilename, filenames):
+                    slot.setValue(filename)
                 
-        if 'FeatureListFilename' in topGroup:
-            ffl = topGroup['FeatureListFilename'].value
-            self.topLevelOperator.FeatureListFilename.setValue(ffl)
-
+                # Create a dummy SelectionMatrix, just so the operator knows it is configured
+                # This is a little hacky.  We should really make SelectionMatrix optional, 
+                # and then handle the choice correctly in setupOutputs, probably involving 
+                # the Output.meta.NOTREADY flag
+                dummy_matrix = numpy.zeros((6,7), dtype=bool)
+                dummy_matrix[0,0] = True
+                self.topLevelOperator.SelectionMatrix.setValue(dummy_matrix)                
+            else:
+                # If the matrix isn't there, just return
+                try:
+                    savedMatrix = topGroup['SelectionMatrix'].value
+                    # Check matrix dimensions
+                    assert savedMatrix.shape[0] == len(featureIds), "Invalid project data: feature selection matrix dimensions don't make sense"
+                    assert savedMatrix.shape[1] == len(scales), "Invalid project data: feature selection matrix dimensions don't make sense"
+                except KeyError:
+                    pass
+                else:
+                    # If the feature order has changed since this project was last saved,
+                    #  then we need to re-order the features.
+                    # The 'new' order is provided by the operator
+                    newFeatureOrder = list(self.topLevelOperator.FeatureIds.value)
+    
+                    newMatrixShape = ( len(newFeatureOrder), len(scales) )
+                    newMatrix = numpy.zeros(newMatrixShape, dtype=bool)
+                    for oldFeatureIndex, featureId in enumerate(featureIds):
+                        newFeatureIndex = newFeatureOrder.index(featureId)
+                        newMatrix[newFeatureIndex] = savedMatrix[oldFeatureIndex]
+    
+                    self.topLevelOperator.SelectionMatrix.setValue(newMatrix)
+                
         self._dirty = False
 
     def isDirty(self):
