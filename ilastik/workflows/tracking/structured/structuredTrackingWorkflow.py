@@ -188,7 +188,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
 
         opDivDetection.BinaryImages.connect( op5Binary.Output )
         opDivDetection.RawImages.connect( op5Raw.Output )
-        opDivDetection.LabelsAllowedFlags.connect(opData.AllowLabels)
+#        opDivDetection.LabelsAllowedFlags.connect(opData.AllowLabels)
         opDivDetection.SegmentationImages.connect(opTrackingFeatureExtraction.LabelImage)
         opDivDetection.ObjectFeatures.connect(opTrackingFeatureExtraction.RegionFeaturesAll)
         opDivDetection.ComputedFeatureNames.connect(opTrackingFeatureExtraction.ComputedFeatureNamesAll)
@@ -203,7 +203,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
             selected_features_objectcount[plugin_name] = { name: {} for name in config.selected_features_objectcount[plugin_name] }
         opCellClassification.BinaryImages.connect( op5Binary.Output )
         opCellClassification.RawImages.connect( op5Raw.Output )
-        opCellClassification.LabelsAllowedFlags.connect(opData.AllowLabels)
+#        opCellClassification.LabelsAllowedFlags.connect(opData.AllowLabels)
         opCellClassification.SegmentationImages.connect(opTrackingFeatureExtraction.LabelImage)
         # opCellClassification.ObjectFeatures.connect(opTrackingFeatureExtraction.RegionFeaturesVigra)
         # opCellClassification.ComputedFeatureNames.connect(opTrackingFeatureExtraction.ComputedFeatureNamesVigra)
