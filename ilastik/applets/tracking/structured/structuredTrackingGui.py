@@ -510,7 +510,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             self._drawer.maxNearestNeighborsSpinBox.setValue(self._maxNearestNeighbors)
 
         forbidden_cost = 0.0
-        ep_gap = 0.001
+        ep_gap = 0.05
         withTracklets=False
         withMergerResolution=True
         transition_parameter = 5.0
@@ -570,7 +570,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             verbose
         )
 
-        structuredLearningTrackerParameters.register_transition_func(self.mainOperator.track_transition_func_no_weight)
+        #structuredLearningTrackerParameters.register_transition_func(self.mainOperator.track_transition_func_no_weight)
         structuredLearningTracker.structuredLearning(structuredLearningTrackerParameters)
 
         norm = 0
