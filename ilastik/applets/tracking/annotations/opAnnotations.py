@@ -38,6 +38,7 @@ class OpAnnotations(Operator):
     RawImage = InputSlot()
     ActiveTrack = InputSlot(stype='int', value=0)
     ObjectFeatures = InputSlot(stype=Opaque, rtype=List)
+    ComputedFeatureNames = InputSlot(rtype=List, stype=Opaque)
     Crops = InputSlot()
     
     TrackImage = OutputSlot()
@@ -46,6 +47,18 @@ class OpAnnotations(Operator):
     UntrackedImage = OutputSlot()
 
     Annotations = OutputSlot(stype=Opaque)
+
+    # Use a slot for storing the export settings in the project file.
+    ExportSettings = OutputSlot()
+    # Override functions ExportingOperator mixin
+    def configure_table_export_settings(self, settings, selected_features):
+        self.ExportSettings.setValue( (settings, selected_features) )
+    def get_table_export_settings(self):
+        if self.ExportSettings.ready():
+            (settings, selected_features) = self.ExportSettings.value
+            return (settings, selected_features)
+        else:
+            return None, None
 
     def __init__(self, parent=None, graph=None):
         super(OpAnnotations, self).__init__(parent=parent, graph=graph)
@@ -215,3 +228,80 @@ class OpAnnotations(Operator):
             logger.info( "at timestep {}, {} traxels found".format( t, count ) )
             
         return oid2tids, alltids
+
+    def save_export_progress_dialog(self, dialog):
+        """
+        Implements ExportOperator.save_export_progress_dialog
+        Without this the progress dialog would be hidden after the export
+        :param dialog: the ProgressDialog to save
+        """
+        self.export_progress_dialog = dialog
+
+    @staticmethod
+    def lookup_oid_for_tid(oid2tid, tid, t):
+        mapping = oid2tid[t]
+        for oid, tids in mapping.iteritems():
+            if tid in tids:
+                return oid
+        raise ValueError("TID {} at t={} not found!".format(tid, t))
+
+    def do_export(self, settings, selected_features, progress_slot, lane_index, filename_suffix=""):
+        """
+        Implements ExportOperator.do_export(settings, selected_features, progress_slot
+        Most likely called from ExportOperator.export_object_data
+        :param settings: the settings for the exporter, see
+        :param selected_features:
+        :param progress_slot:
+        :param lane_index: Ignored. (This is a single-lane operator. It is the caller's responsibility to make sure he's calling the right lane.)
+        :param filename_suffix: If provided, appended to the filename (before the extension).
+        :return:
+        """
+
+        obj_count = list(objects_per_frame(self.LabelImage))  # slow
+        divisions = self.divisions
+        t_range = (0, self.LabelImage.meta.shape[self.LabelImage.meta.axistags.index("t")])
+        oid2tid, _ = self._getObjects(t_range, None)  # slow
+        tracks = [0 if map(len, i.values())==[] else max(map(len, i.values())) for i in oid2tid.values()]
+        if tracks==[]:
+            max_tracks = 0
+        else:
+            max_tracks = max(tracks)
+        ids = ilastik_ids(obj_count)
+
+        file_path = settings["file path"]
+        if filename_suffix:
+            path, ext = os.path.splitext(file_path)
+            file_path = path + "-" + filename_suffix + ext
+
+        export_file = ExportFile(file_path)
+        export_file.ExportProgress.subscribe(progress_slot)
+        export_file.InsertionProgress.subscribe(progress_slot)
+
+        export_file.add_columns("table", range(sum(obj_count)), Mode.List, Default.KnimeId)
+        export_file.add_columns("table", list(ids), Mode.List, Default.IlastikId)
+        export_file.add_columns("table", oid2tid, Mode.IlastikTrackingTable,
+                                {"max": max_tracks, "counts": obj_count, "extra ids": {},
+                                 "range": t_range})
+        export_file.add_columns("table", self.ObjectFeatures, Mode.IlastikFeatureTable,
+                                {"selection": selected_features})
+
+        if divisions:
+            ott = partial(self.lookup_oid_for_tid, oid2tid)
+            divs = [(value[1], ott(key, value[1]), key, ott(value[0][0], value[1] + 1), value[0][0],
+                     ott(value[0][1], value[1] + 1), value[0][1])
+                    for key, value in sorted(divisions.iteritems(), key=itemgetter(0))]
+            assert sum(Default.ManualDivMap) == len(divs[0])
+            names = list(compress(Default.DivisionNames["names"], Default.ManualDivMap))
+            export_file.add_columns("divisions", divs, Mode.List, extra={"names": names})
+
+        if settings["file type"] == "h5":
+            export_file.add_rois(Default.LabelRoiPath, self.LabelImage, "table", settings["margin"], "labeling")
+            if settings["include raw"]:
+                export_file.add_image(Default.RawPath, self.RawImage)
+            else:
+                export_file.add_rois(Default.RawRoiPath, self.RawImage, "table", settings["margin"])
+        export_file.write_all(settings["file type"], settings["compression"])
+
+        export_file.ExportProgress.unsubscribe(progress_slot)
+        export_file.InsertionProgress.unsubscribe(progress_slot)
+

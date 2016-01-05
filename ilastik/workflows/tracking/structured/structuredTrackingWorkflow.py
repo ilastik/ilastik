@@ -218,6 +218,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
         opAnnotations.BinaryImage.connect( op5Binary.Output )
         opAnnotations.LabelImage.connect( opObjExtraction.LabelImage )
         opAnnotations.ObjectFeatures.connect( opObjExtraction.RegionFeatures )
+        opAnnotations.ComputedFeatureNames.connect(opObjExtraction.Features)
         opAnnotations.Crops.connect( opCropSelection.Crops)
 
         opDataAnnotationsExport.Inputs.resize(2)
