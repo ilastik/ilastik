@@ -182,11 +182,15 @@ class TestPixelClassificationHeadless(object):
         args += " --prediction_mask"
         args += " " + self.SAMPLE_MASK
 
+        old_sys_argv = list(sys.argv)
         sys.argv = ['ilastik.py'] # Clear the existing commandline args so it looks like we're starting fresh.
         sys.argv += args.split()
 
         # Start up the ilastik.py entry script as if we had launched it from the command line
-        self.ilastik_startup.main()
+        try:
+            self.ilastik_startup.main()
+        finally:
+            sys.argv = old_sys_argv
         
         # Examine the output for basic attributes
         output_path = self.SAMPLE_DATA[:-4] + "_prediction.h5"
@@ -199,6 +203,9 @@ class TestPixelClassificationHeadless(object):
         
     @timeLogged(logger)
     def testLotsOfOptions(self):
+        #OLD_LAZYFLOW_STATUS_MONITOR_SECONDS = os.getenv("LAZYFLOW_STATUS_MONITOR_SECONDS", None)
+        #os.environ["LAZYFLOW_STATUS_MONITOR_SECONDS"] = "1"
+        
         # NOTE: In this test, cmd-line args to nosetests will also end up getting "parsed" by ilastik.
         #       That shouldn't be an issue, since the pixel classification workflow ignores unrecognized options.
         #       See if __name__ == __main__ section, below.
@@ -220,12 +227,18 @@ class TestPixelClassificationHeadless(object):
         args.append( "--cutout_subregion=[(0,50,50,0,0), (1, 150, 150, 50, 1)]" )
         args.append( self.SAMPLE_DATA )
  
+        old_sys_argv = list(sys.argv)
         sys.argv = ['ilastik.py'] # Clear the existing commandline args so it looks like we're starting fresh.
         sys.argv += args
  
         # Start up the ilastik.py entry script as if we had launched it from the command line
         # This will execute the batch mode script
-        self.ilastik_startup.main()
+        try:
+            self.ilastik_startup.main()
+        finally:
+            sys.argv = old_sys_argv
+#             if OLD_LAZYFLOW_STATUS_MONITOR_SECONDS:
+#                 os.environ["LAZYFLOW_STATUS_MONITOR_SECONDS"] = OLD_LAZYFLOW_STATUS_MONITOR_SECONDS
  
         output_path = self.SAMPLE_DATA[:-4] + "_segmentation_z{slice_index}.png"
         globstring = output_path.format( slice_index=999 )
