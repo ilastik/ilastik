@@ -186,6 +186,13 @@ class CacheMemoryManager(threading.Thread):
             # check current memory state
             cache_memory = Memory.getAvailableRamCaches()
 
+            logger.debug( "Process memory usage is {:0.2f} GB (out of {:0.2f})"
+                          .format( Memory.getMemoryUsage()/2.**30, Memory.getAvailableRam()/2.**30 ) )
+            msg = "Caches are using {} memory".format( Memory.format(total) )
+            if cache_memory > 0:
+                msg += " ({:.1f}% of allowed)".format( total*100.0/cache_memory )
+            logger.debug(msg)
+
             if total <= self._max_usage * cache_memory:
                 return
 
@@ -205,13 +212,6 @@ class CacheMemoryManager(threading.Thread):
             c = None
             caches = None
 
-            msg = "Caches are using {} memory".format(
-                Memory.format(total))
-            if cache_memory > 0:
-                 msg += " ({:.1f}% of allowed)".format(
-                    total*100.0/cache_memory)
-            logger.debug(msg)
-
             while (total > self._target_usage * cache_memory
                    and len(q) > 0):
                 t, info, cleanupFun = q.pop()
@@ -224,11 +224,11 @@ class CacheMemoryManager(threading.Thread):
             cleanupFun = None
             q = None
 
-            msg = ("Done cleaning up, cache memory usage is now at "
-                   "{}".format(Memory.format(total)))
+            msg = "Done cleaning up, cache memory usage is now at {}"\
+                  .format( Memory.format(total))
             if cache_memory > 0:
-                 msg += " ({:.1f}% of allowed)".format(
-                    total*100.0/cache_memory)
+                msg += " ({:.1f}% of allowed)"\
+                       .format( total*100.0/cache_memory )
             logger.debug(msg)
         except:
             log_exception(logger)
