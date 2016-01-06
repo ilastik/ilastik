@@ -172,7 +172,7 @@ class OpFeatureSelectionNoCache(Operator):
         else:
             # Set the new selection matrix and check if it creates an error.
             selections = self.SelectionMatrix.value
-            self.opPixelFeatures.Matrix.setValue( selections, check_changed=False )
+            self.opPixelFeatures.Matrix.setValue( selections )
             invalid_scales = self.opPixelFeatures.getInvalidScales()
             if invalid_scales:
                 msg = "Some of your selected feature scales are too large for your dataset.\n"\
