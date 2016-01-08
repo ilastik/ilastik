@@ -566,7 +566,7 @@ class OpTrackingBase(Operator, ExportingOperator):
         :return:
         """
 
-        assert lane_index == 0, "This has only been tested in tracking workflows with a single image."
+        #assert lane_index == 0, "This has only been tested in tracking workflows with a single image."
 
         with_divisions = self.Parameters.value["withDivisions"] if self.Parameters.ready() else False
         if with_divisions:

@@ -12,6 +12,7 @@ from ilastik.applets.trackingFeatureExtraction.trackingFeatureExtractionApplet i
 from ilastik.applets.trackingFeatureExtraction import config
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
+from ilastik.applets.batchProcessing import BatchProcessingApplet
 
 class ConservationTrackingWorkflowBase( Workflow ):
     workflowName = "Automatic Tracking Workflow (Conservation Tracking) BASE"
@@ -38,7 +39,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
                                                        "Input Data", 
                                                        forceAxisOrder='txyzc',
                                                        instructionText=data_instructions,
-                                                       max_lanes=1
+                                                       max_lanes=None
                                                        )
         
         opDataSelection = self.dataSelectionApplet.topLevelOperator
@@ -73,10 +74,13 @@ class ConservationTrackingWorkflowBase( Workflow ):
         opDataExport = self.dataExportApplet.topLevelOperator
         opDataExport.SelectionNames.setValue( ['Object Identities', 'Tracking Result', 'Merger Result'] )
         opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
+
+        self.batchProcessingApplet = BatchProcessingApplet(self, "Batch Processing", self.dataSelectionApplet, self.dataExportApplet)
         
         # Extra configuration for object export table (as CSV table or HDF5 table)
         opTracking = self.trackingApplet.topLevelOperator
         self.dataExportApplet.set_exporting_operator(opTracking)
+        self.dataExportApplet.prepare_lane_for_export = self.prepare_lane_for_export
         self.dataExportApplet.post_process_lane_export = self.post_process_lane_export
         
         self._applets = []                
@@ -94,6 +98,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         self._applets.append(self.cellClassificationApplet)
         self._applets.append(self.trackingApplet)
         self._applets.append(self.dataExportApplet)
+        self._applets.append(self.batchProcessingApplet)
         
     @property
     def applets(self):
@@ -185,7 +190,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         opCellClassification.RawImages.connect( op5Raw.Output )
         opCellClassification.SegmentationImages.connect(opObjExtraction.LabelImage)
         opCellClassification.ObjectFeatures.connect(opObjExtraction.RegionFeaturesVigra)
-        opCellClassification.ComputedFeatureNames.connect(opObjExtraction.ComputedFeatureNamesVigra)
+        opCellClassification.ComputedFeatureNames.connect(opObjExtraction.FeatureNamesVigra)
         opCellClassification.SelectedFeatures.setValue( selected_features_objectcount )        
         opCellClassification.SuggestedLabelNames.setValue( ['false detection',] + [str(i) + ' Objects' for i in range(1,10) ] )
         opCellClassification.AllowDeleteLastLabelOnly.setValue(True)
@@ -199,7 +204,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         opTracking.RawImage.connect( op5Raw.Output )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
         opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeaturesVigra )
-        opTracking.ComputedFeatureNames.connect( opObjExtraction.ComputedFeatureNamesVigra )
+        opTracking.ComputedFeatureNames.connect( opObjExtraction.FeatureNamesVigra)
         opTracking.DetectionProbabilities.connect( opCellClassification.Probabilities )
         opTracking.NumLabels.connect( opCellClassification.NumLabels )
 
@@ -215,13 +220,59 @@ class ConservationTrackingWorkflowBase( Workflow ):
         opDataExport.RawData.connect( op5Raw.Output )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
          
+    def prepare_lane_for_export(self, lane_index):
+        parameters = self.trackingApplet.topLevelOperator.Parameters.value
+        
+        maxt = self.trackingApplet.topLevelOperator[lane_index].LabelImage.meta.shape[0] 
+        maxx = self.trackingApplet.topLevelOperator[lane_index].LabelImage.meta.shape[1] 
+        maxy = self.trackingApplet.topLevelOperator[lane_index].LabelImage.meta.shape[2] 
+        maxz = self.trackingApplet.topLevelOperator[lane_index].LabelImage.meta.shape[3] 
+        time_enum = range(maxt)
+        x_range = (0, maxx)
+        y_range = (0, maxy)
+        z_range = (0, maxz)
+        
+        ndim = 3
+        if ( z_range[1] - z_range[0] ) > 1:
+            ndim = 2
+        
+        self.trackingApplet.topLevelOperator[lane_index].track(
+            time_range = time_enum,
+            x_range = x_range,
+            y_range = y_range,
+            z_range = z_range,
+            size_range = parameters['size_range'],
+            x_scale = parameters['scales'][0],
+            y_scale = parameters['scales'][1],
+            z_scale = parameters['scales'][2],
+            maxDist=parameters['maxDist'],         
+            maxObj = parameters['maxObj'],               
+            divThreshold=parameters['divThreshold'],
+            avgSize=parameters['avgSize'],                
+            withTracklets=parameters['withTracklets'], 
+            sizeDependent=parameters['sizeDependent'],
+            divWeight=parameters['divWeight'],
+            transWeight=parameters['transWeight'],
+            withDivisions=parameters['withDivisions'],
+            withOpticalCorrection=parameters['withOpticalCorrection'],
+            withClassifierPrior=parameters['withClassifierPrior'],
+            ndim=ndim,
+            withMergerResolution=parameters['withMergerResolution'],
+            borderAwareWidth = parameters['borderAwareWidth'],
+            withArmaCoordinates = parameters['withArmaCoordinates'],
+            cplex_timeout = parameters['cplex_timeout'],
+            appearance_cost = parameters['appearanceCost'],
+            disappearance_cost = parameters['disappearanceCost'],
+            force_build_hypotheses_graph = False,
+            withBatchProcessing = True
+        )
 
     def post_process_lane_export(self, lane_index):
         # FIXME: This probably only works for the non-blockwise export slot.
         #        We should assert that the user isn't using the blockwise slot.
         settings, selected_features = self.trackingApplet.topLevelOperator.getLane(lane_index).get_table_export_settings()
         if settings:
-            self.dataExportApplet.progressSignal.emit(-1)
+            self.dataExportApplet.progressSignal.emit(0)
             raw_dataset_info = self.dataSelectionApplet.topLevelOperator.DatasetGroup[lane_index][0].value
             
             project_path = self.shell.projectManager.currentProjectPath
@@ -287,14 +338,13 @@ class ConservationTrackingWorkflowBase( Workflow ):
         objectCountClassifier_ready = features_ready
 
         opTracking = self.trackingApplet.topLevelOperator
-        tracking_ready = objectCountClassifier_ready and \
-                           len(opTracking.EventsVector) > 0
-                           
+        tracking_ready = objectCountClassifier_ready                          
 
         busy = False
         busy |= self.dataSelectionApplet.busy
         busy |= self.trackingApplet.busy
         busy |= self.dataExportApplet.busy
+        busy |= self.batchProcessingApplet.busy
         self._shell.enableProjectChanges( not busy )
 
         self._shell.setAppletEnabled(self.dataSelectionApplet, not busy)
@@ -309,7 +359,8 @@ class ConservationTrackingWorkflowBase( Workflow ):
         self._shell.setAppletEnabled(self.trackingApplet, objectCountClassifier_ready and not busy)
         self._shell.setAppletEnabled(self.dataExportApplet, tracking_ready and not busy and \
                                     self.dataExportApplet.topLevelOperator.Inputs[0][0].ready() )
-        
+        self._shell.setAppletEnabled(self.batchProcessingApplet, tracking_ready and not busy and \
+                                    self.dataExportApplet.topLevelOperator.Inputs[0][0].ready() )
         
 
 

@@ -13,7 +13,7 @@ class TrackingFeatureExtractionApplet( StandardApplet ):
 
     @property
     def broadcastingSlots( self ):
-        return []
+        return ['FeatureNamesVigra', 'FeatureNamesDivision']
 
     @property
     def singleLaneGuiClass( self ):
