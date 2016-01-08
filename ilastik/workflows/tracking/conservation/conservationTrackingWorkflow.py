@@ -185,7 +185,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         opCellClassification.RawImages.connect( op5Raw.Output )
         opCellClassification.SegmentationImages.connect(opObjExtraction.LabelImage)
         opCellClassification.ObjectFeatures.connect(opObjExtraction.RegionFeaturesVigra)
-        opCellClassification.ComputedFeatureNames.connect(opObjExtraction.ComputedFeatureNamesVigra)
+        opCellClassification.ComputedFeatureNames.connect(opObjExtraction.FeatureNamesVigra)
         opCellClassification.SelectedFeatures.setValue( selected_features_objectcount )        
         opCellClassification.SuggestedLabelNames.setValue( ['false detection',] + [str(i) + ' Objects' for i in range(1,10) ] )
         opCellClassification.AllowDeleteLastLabelOnly.setValue(True)
@@ -199,7 +199,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         opTracking.RawImage.connect( op5Raw.Output )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
         opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeaturesVigra )
-        opTracking.ComputedFeatureNames.connect( opObjExtraction.ComputedFeatureNamesVigra )
+        opTracking.ComputedFeatureNames.connect( opObjExtraction.FeatureNamesVigra)
         opTracking.DetectionProbabilities.connect( opCellClassification.Probabilities )
         opTracking.NumLabels.connect( opCellClassification.NumLabels )
 
