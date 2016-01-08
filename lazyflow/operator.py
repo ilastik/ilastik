@@ -493,7 +493,7 @@ class Operator(object):
         def set_output_unready(s):
             for ss in s._subSlots:
                 set_output_unready(ss)
-            if s.partner is None:
+            if s.partner is None and s._value is None:
                 was_ready = s.meta._ready
                 s.meta._ready &= (s.partner is not None)
                 if was_ready and not s.meta._ready:
