@@ -18,10 +18,14 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ##############################################################################
-from PyQt4.QtGui import QWidget
+from functools import partial
+
+from PyQt4.QtGui import QWidget, QLabel, QSpinBox, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy
+
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 import logging
+from PyQt4.Qt import QDoubleSpinBox, QHBoxLayout
 logger = logging.getLogger(__name__)
 
 class MulticutGui(LayerViewerGui):
@@ -37,19 +41,65 @@ class MulticutGui(LayerViewerGui):
         # Unsubscribe to all signals
         for fn in self.__cleanup_fns:
             fn()
+
+        # Base class
+        super( MulticutGui, self ).stopAndCleanUp()
     
     ###########################################
     ###########################################
     
     def __init__(self, parentApplet, topLevelOperatorView):
-        super(MulticutGui, self).__init__( parentApplet, topLevelOperatorView )
-        self.topLevelOperatorView = topLevelOperatorView
-
-        # Remember to unsubscribe during shutdown
         self.__cleanup_fns = []
+        self.topLevelOperatorView = topLevelOperatorView
+        super(MulticutGui, self).__init__( parentApplet, topLevelOperatorView )
 
     def initAppletDrawerUi(self):
-        self._drawer = QWidget(parent=self)
+        """
+        Overridden from base class (LayerViewerGui)
+        """
+        op = self.topLevelOperatorView
+
+        # Beta controls
+        beta_label = QLabel(text="Beta:")
+        beta_box = QDoubleSpinBox()
+        beta_box.setDecimals(2)
+        beta_box.setMinimum(0.01)
+        beta_box.setMaximum(0.99)
+        beta_box.setSingleStep(0.1)
+        
+        # Keep in sync: operator <--> gui
+        beta_box.valueChanged.connect( self.configure_operator_from_gui )
+        op.Beta.notifyDirty( self.configure_gui_from_operator )
+        self.__cleanup_fns.append( partial( op.Beta.unregisterDirty, self.configure_gui_from_operator ) )
+        
+        beta_layout = QHBoxLayout()
+        beta_layout.addWidget(beta_label)
+        beta_layout.addSpacerItem( QSpacerItem(10, 0, QSizePolicy.Expanding) )
+        beta_layout.addWidget(beta_box)
+
+        # Layout
+        layout = QVBoxLayout()
+        layout.addLayout(beta_layout)
+        layout.addSpacerItem( QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding) )
+        
+        # Finally, the whole drawer widget
+        drawer = QWidget(parent=self)
+        drawer.setLayout(layout)
+
+        # Save these members for later use
+        self._drawer = drawer
+        self._beta_box = beta_box
+
+        # Initialize everything with the operator's initial values
+        self.configure_gui_from_operator()
+
+    def configure_gui_from_operator(self, *args):
+        op = self.topLevelOperatorView
+        self._beta_box.setValue( op.Beta.value )
+
+    def configure_operator_from_gui(self):
+        op = self.topLevelOperatorView
+        op.Beta.setValue( self._beta_box.value() )
 
     def setupLayers(self):
         layers = []
@@ -59,7 +109,7 @@ class MulticutGui(LayerViewerGui):
         if op.Output.ready():
             layer = self.createStandardLayerFromSlot( op.Output )
             layer.name = "Multicut Segmentation"
-            layer.visible = True
+            layer.visible = False # Off by default...
             layer.opacity = 0.5
             layers.append(layer)
             del layer
