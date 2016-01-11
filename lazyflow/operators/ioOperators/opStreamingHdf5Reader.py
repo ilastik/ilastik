@@ -104,7 +104,7 @@ class OpStreamingHdf5Reader(Operator):
         
         # Same for display_mode
         if 'display_mode' in self._hdf5File[internalPath].attrs:
-            self.OutputImage.meta.display_mode = tuple( self._hdf5File[internalPath].attrs['display_mode'] )
+            self.OutputImage.meta.display_mode = str( self._hdf5File[internalPath].attrs['display_mode'] )
         
         total_volume = numpy.prod(numpy.array(self._hdf5File[internalPath].shape))
         chunks = self._hdf5File[internalPath].chunks
