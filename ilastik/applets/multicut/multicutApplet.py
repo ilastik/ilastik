@@ -21,7 +21,7 @@
 from ilastik.applets.base.standardApplet import StandardApplet
 
 from opMulticut import OpCachedMulticut
-#from multicutSerializer import MulticutSerializer
+from multicutSerializer import MulticutSerializer
 
 class MulticutApplet( StandardApplet ):
     """
@@ -29,9 +29,7 @@ class MulticutApplet( StandardApplet ):
     """
     def __init__( self, workflow, guiName, projectFileGroupName ):
         super(MulticutApplet, self).__init__(guiName, workflow)
-
-        #self._serializableItems = [ MulticutSerializer(self.topLevelOperator, projectFileGroupName) ]
-        self._serializableItems = []
+        self._serializableItems = [ MulticutSerializer(self.topLevelOperator, projectFileGroupName) ]
 
     @property
     def singleLaneOperatorClass(self):
