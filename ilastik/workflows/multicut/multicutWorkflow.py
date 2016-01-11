@@ -87,6 +87,18 @@ class MulticutWorkflow(Workflow):
         self._applets.append(self.dataExportApplet)
         self._applets.append(self.batchProcessingApplet)
 
+        # -- Parse command-line arguments
+        #    (Command-line args are applied in onProjectLoaded(), below.)
+        if workflow_cmdline_args:
+            self._data_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args( workflow_cmdline_args )
+            self._batch_input_args, unused_args = self.dataSelectionApplet.parse_known_cmdline_args( unused_args, role_names )
+        else:
+            unused_args = None
+            self._batch_input_args = None
+            self._data_export_args = None
+
+        if unused_args:
+            logger.warn("Unused command-line args: {}".format( unused_args ))
 
     def connectLane(self, laneIndex):
         """
@@ -109,3 +121,19 @@ class MulticutWorkflow(Workflow):
         for slot in opDataExport.Inputs:
             assert slot.partner is not None
         
+    def onProjectLoaded(self, projectManager):
+        """
+        Overridden from Workflow base class.  Called by the Project Manager.
+        
+        If the user provided command-line arguments, use them to configure 
+        the workflow inputs and output settings.
+        """
+        # Configure the data export operator.
+        if self._data_export_args:
+            self.dataExportApplet.configure_operator_with_parsed_args( self._data_export_args )
+
+        if self._headless and self._batch_input_args and self._data_export_args:
+            logger.info("Beginning Batch Processing")
+            self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
+            logger.info("Completed Batch Processing")
+
