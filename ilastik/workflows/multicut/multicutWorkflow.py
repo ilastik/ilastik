@@ -22,6 +22,8 @@ from ilastik.workflow import Workflow
 
 from ilastik.applets.dataSelection import DataSelectionApplet
 from ilastik.applets.multicut import MulticutApplet
+from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
+from ilastik.applets.batchProcessing import BatchProcessingApplet
 
 from lazyflow.graph import Graph
 
@@ -51,27 +53,59 @@ class MulticutWorkflow(Workflow):
         super(MulticutWorkflow, self).__init__( shell, headless, workflow_cmdline_args, project_creation_workflow, graph=graph, *args, **kwargs)
         self._applets = []
 
-        # Create applets 
-        self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", supportIlastik05Import=True, batchDataGui=False)
-        self.multicutApplet = MulticutApplet(self, "Multicut Segmentation", "Multicut Segmentation")
+        # -- DataSelection applet
+        #
+        self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data")
 
         # Dataset inputs
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue( self.ROLE_NAMES )
 
-        # Expose to shell
+        # -- Multicut applet
+        #
+        self.multicutApplet = MulticutApplet(self, "Multicut Segmentation", "Multicut Segmentation")
+
+        # -- DataExport applet
+        #
+        self.dataExportApplet = DataExportApplet(self, "Data Export")
+
+        # Configure global DataExport settings
+        opDataExport = self.dataExportApplet.topLevelOperator
+        opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
+        opDataExport.SelectionNames.setValue( self.EXPORT_NAMES )
+
+        # -- BatchProcessing applet
+        #
+        self.batchProcessingApplet = BatchProcessingApplet(self,
+                                                           "Batch Processing",
+                                                           self.dataSelectionApplet,
+                                                           self.dataExportApplet)
+
+        # -- Expose applets to shell
         self._applets.append(self.dataSelectionApplet)
         self._applets.append(self.multicutApplet)
+        self._applets.append(self.dataExportApplet)
+        self._applets.append(self.batchProcessingApplet)
+
 
     def connectLane(self, laneIndex):
         """
         Override from base class.
         """
-        opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
+        opDataSelection = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opMulticut = self.multicutApplet.topLevelOperator.getLane(laneIndex)
+        opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
 
-        # Connect top-level operators
-        opMulticut.RawData.connect( opData.ImageGroup[self.DATA_ROLE_RAW] )
-        opMulticut.Probabilities.connect( opData.ImageGroup[self.DATA_ROLE_PROBABILITIES] )
-        opMulticut.Superpixels.connect( opData.ImageGroup[self.DATA_ROLE_SUPERPIXELS] )
+        # multicut inputs
+        opMulticut.RawData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
+        opMulticut.Probabilities.connect( opDataSelection.ImageGroup[self.DATA_ROLE_PROBABILITIES] )
+        opMulticut.Superpixels.connect( opDataSelection.ImageGroup[self.DATA_ROLE_SUPERPIXELS] )
 
+        # DataExport inputs
+        opDataExport.RawData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
+        opDataExport.RawDatasetInfo.connect( opDataSelection.DatasetGroup[self.DATA_ROLE_RAW] )        
+        opDataExport.Inputs.resize( len(self.EXPORT_NAMES) )
+        opDataExport.Inputs[0].connect( opMulticut.Output )
+        for slot in opDataExport.Inputs:
+            assert slot.partner is not None
+        
