@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+import os
 from lazyflow.graph import Graph
 from ilastik.workflow import Workflow
 from ilastik.applets.dataSelection import DataSelectionApplet
@@ -262,8 +263,10 @@ class StructuredTrackingWorkflowBase( Workflow ):
         # FIXME: This probably only works for the non-blockwise export slot.
         #        We should assert that the user isn't using the blockwise slot.
         settings, selected_features = self.trackingApplet.topLevelOperator.getLane(lane_index).get_table_export_settings()
+        from lazyflow.utility import PathComponents, make_absolute, format_known_keys
+
         if settings:
-            self.dataExportApplet.progressSignal.emit(-1)
+            self.dataExportTrackingApplet.progressSignal.emit(-1)
             raw_dataset_info = self.dataSelectionApplet.topLevelOperator.DatasetGroup[lane_index][0].value
 
             project_path = self.shell.projectManager.currentProjectPath
@@ -290,7 +293,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
                         show_gui=False)
 
             req.wait()
-            self.dataExportApplet.progressSignal.emit(100)
+            self.dataExportTrackingApplet.progressSignal.emit(100)
 
     def _inputReady(self, nRoles):
         slot = self.dataSelectionApplet.topLevelOperator.ImageGroup
