@@ -30,7 +30,7 @@ from lazyflow.graph import Graph
 class MulticutWorkflow(Workflow):
     workflowName = "Multicut"
     workflowDescription = "A bare-bones workflow for testing the multicut applet"
-    defaultAppletIndex = 1 # show DataSelection by default
+    defaultAppletIndex = 0 # show DataSelection by default
 
     DATA_ROLE_RAW = 0
     DATA_ROLE_PROBABILITIES = 1
@@ -137,3 +137,31 @@ class MulticutWorkflow(Workflow):
             self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
             logger.info("Completed Batch Processing")
 
+    def handleAppletStateUpdateRequested(self):
+        """
+        Overridden from Workflow base class
+        Called when an applet has fired the :py:attr:`Applet.appletStateUpdateRequested`
+        """
+        opDataSelection = self.dataSelectionApplet.topLevelOperator
+        opDataExport = self.dataExportApplet.topLevelOperator
+        opMulticut = self.multicutApplet.topLevelOperator
+
+        # If no data, nothing else is ready.
+        input_ready = len(opDataSelection.ImageGroup) > 0 and not self.dataSelectionApplet.busy
+
+        # The user isn't allowed to touch anything while batch processing is running.
+        batch_processing_busy = self.batchProcessingApplet.busy
+
+        self._shell.setAppletEnabled( self.dataSelectionApplet,   not batch_processing_busy )
+        self._shell.setAppletEnabled( self.multicutApplet,        not batch_processing_busy and input_ready )
+        self._shell.setAppletEnabled( self.dataExportApplet,      not batch_processing_busy and input_ready )
+        self._shell.setAppletEnabled( self.batchProcessingApplet, not batch_processing_busy and input_ready )
+
+        # Lastly, check for certain "busy" conditions, during which we
+        #  should prevent the shell from closing the project.
+        busy = False
+        busy |= self.dataSelectionApplet.busy
+        busy |= self.multicutApplet.busy
+        busy |= self.dataExportApplet.busy
+        busy |= self.batchProcessingApplet.busy
+        self._shell.enableProjectChanges( not busy )
