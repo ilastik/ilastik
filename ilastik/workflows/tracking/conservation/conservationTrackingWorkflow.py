@@ -14,18 +14,21 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
 from ilastik.applets.batchProcessing import BatchProcessingApplet
 
+import logging
+logger = logging.getLogger(__name__)
+
 class ConservationTrackingWorkflowBase( Workflow ):
     workflowName = "Automatic Tracking Workflow (Conservation Tracking) BASE"
     #withAnimalTracking = False
 
-    def __init__( self, shell, headless, workflow_cmdline_args, *args, **kwargs ):
+    def __init__( self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs ):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
         if 'graph' in kwargs: del kwargs['graph']
         # if 'withOptTrans' in kwargs:
         #     self.withOptTrans = kwargs['withOptTrans']
         # if 'fromBinary' in kwargs:
         #     self.fromBinary = kwargs['fromBinary']
-        super(ConservationTrackingWorkflowBase, self).__init__(shell, headless, graph=graph, *args, **kwargs)
+        super(ConservationTrackingWorkflowBase, self).__init__(shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
 
         data_instructions = 'Use the "Raw Data" tab to load your intensity image(s).\n\n'
         if self.fromBinary:
@@ -72,7 +75,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
                                                              default_export_filename=self.default_export_filename)
 
         opDataExport = self.dataExportApplet.topLevelOperator
-        opDataExport.SelectionNames.setValue( ['Object Identities', 'Tracking Result', 'Merger Result'] )
+        opDataExport.SelectionNames.setValue( ['Object-Identities', 'Tracking-Result', 'Merger-Result'] )
         opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
 
         self.batchProcessingApplet = BatchProcessingApplet(self, "Batch Processing", self.dataSelectionApplet, self.dataExportApplet)
@@ -99,6 +102,18 @@ class ConservationTrackingWorkflowBase( Workflow ):
         self._applets.append(self.trackingApplet)
         self._applets.append(self.dataExportApplet)
         self._applets.append(self.batchProcessingApplet)
+        
+        # Parse export and batch command-line arguments for headless mode
+        if workflow_cmdline_args:
+            self._data_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args( workflow_cmdline_args )
+            self._batch_input_args, unused_args = self.batchProcessingApplet.parse_known_cmdline_args( workflow_cmdline_args )
+        else:
+            unused_args = None
+            self._data_export_args = None
+            self._batch_input_args = None
+
+        if unused_args:
+            logger.warn("Unused command-line args: {}".format( unused_args ))
         
     @property
     def applets(self):
@@ -312,6 +327,24 @@ class ConservationTrackingWorkflowBase( Workflow ):
             input_ready = False
 
         return input_ready
+
+    def onProjectLoaded(self, projectManager):
+        """
+        Overridden from Workflow base class.  Called by the Project Manager.
+        
+        If the user provided command-line arguments, use them to configure 
+        the workflow inputs and output settings.
+        """
+
+        # Configure the data export operator.
+        if self._data_export_args:
+            self.dataExportApplet.configure_operator_with_parsed_args( self._data_export_args )
+
+        # Configure headless mode.
+        if self._headless and self._batch_input_args and self._data_export_args:
+            logger.info("Beginning Batch Processing")
+            self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
+            logger.info("Completed Batch Processing")
 
     def handleAppletStateUpdateRequested(self):
         """
