@@ -264,6 +264,11 @@ class OpPixelClassification( Operator ):
                 validShape = slot.meta.getTaggedShape()
                 break
 
+        if 't' in thisLaneTaggedShape:
+            del thisLaneTaggedShape['t']
+        if 't' in validShape:
+            del validShape['t']
+
         if validShape['c'] != thisLaneTaggedShape['c']:
             raise DatasetConstraintError(
                  "Pixel Classification",
@@ -279,7 +284,7 @@ class OpPixelClassification( Operator ):
                  .format( len(thisLaneTaggedShape), len(validShape) ) )
         
         mask_slot = self.PredictionMasks[laneIndex]
-        input_shape = tuple(thisLaneTaggedShape.values())
+        input_shape = self.InputImages[laneIndex].meta.shape
         if mask_slot.ready() and mask_slot.meta.shape[:-1] != input_shape[:-1]:
             raise DatasetConstraintError(
                  "Pixel Classification",
