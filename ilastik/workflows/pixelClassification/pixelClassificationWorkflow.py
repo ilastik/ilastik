@@ -323,7 +323,7 @@ class PixelClassificationWorkflow(Workflow):
             self.pcApplet.topLevelOperator.ClassifierFactory.setDirty()
             
         if self.retrain:
-            self._force_retrain_classifier()
+            self._force_retrain_classifier(projectManager)
 
         # Configure the data export operator.
         if self._batch_export_args:
@@ -344,7 +344,7 @@ class PixelClassificationWorkflow(Workflow):
     def post_process_entire_export(self):
         self.pcApplet.topLevelOperator.FreezePredictions.setValue(self.freeze_status)
 
-    def _force_retrain_classifier(self):
+    def _force_retrain_classifier(self, projectManager):
         # Cause the classifier to be dirty so it is forced to retrain.
         # (useful if the stored labels were changed outside ilastik)
         self.pcApplet.topLevelOperator.opTrain.ClassifierFactory.setDirty()
