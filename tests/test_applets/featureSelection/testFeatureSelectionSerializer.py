@@ -22,7 +22,7 @@ import os
 import numpy
 import h5py
 from lazyflow.graph import Graph
-from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
+from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection, getFeatureIdOrder
 from ilastik.applets.featureSelection.featureSelectionSerializer import FeatureSelectionSerializer
 
 class TestFeatureSelectionSerializer(object):
@@ -44,38 +44,38 @@ class TestFeatureSelectionSerializer(object):
             # Create an operator to work with and give it some input
             graph = Graph()
             operatorToSave = OpFeatureSelection(graph=graph, filter_implementation='Original')
-        
-            # Configure scales        
-            scales = [0.1, 0.2, 0.3, 0.4, 0.5]
-            operatorToSave.Scales.setValue(scales)
-        
-            # Configure feature types
-            featureIds = [ 'GaussianSmoothing',
-                           'LaplacianOfGaussian' ]
-            operatorToSave.FeatureIds.setValue(featureIds)
-        
+
+            scales = operatorToSave.Scales.value
+            featureIds = operatorToSave.FeatureIds.value
+
             # All False (no features selected)
-            selectionMatrix = numpy.zeros((2, 5), dtype=bool)
+            selectionMatrix = operatorToSave.SelectionMatrix.value.copy()
         
             # Change a few to True
             selectionMatrix[0,0] = True
-            selectionMatrix[1,0] = True
-            selectionMatrix[0,2] = True
-            selectionMatrix[1,4] = True
+            selectionMatrix[1,1] = True
+            selectionMatrix[2,2] = True
+            selectionMatrix[3,3] = True
+            selectionMatrix[4,4] = True
+            selectionMatrix[5,5] = True
             operatorToSave.SelectionMatrix.setValue(selectionMatrix)
             
             # Serialize!
             serializer = FeatureSelectionSerializer(operatorToSave, 'FeatureSelections')
             serializer.serializeToHdf5(testProject, testProjectName)
-            
+
+        with h5py.File(testProjectName, 'r') as testProject:
             assert (testProject['FeatureSelections/Scales'].value == scales).all()
             assert (testProject['FeatureSelections/FeatureIds'].value == featureIds).all()
             assert (testProject['FeatureSelections/SelectionMatrix'].value == selectionMatrix).all()
         
             # Deserialize into a fresh operator
             operatorToLoad = OpFeatureSelection(graph=graph, filter_implementation='Original')
+
             deserializer = FeatureSelectionSerializer(operatorToLoad, 'FeatureSelections')
             deserializer.deserializeFromHdf5(testProject, testProjectName)
+            assert operatorToLoad.FeatureIds.value == getFeatureIdOrder(), \
+                "Feature IDs were deserialized to a strange order!"
             
             assert isinstance(operatorToLoad.Scales.value, list)
             assert isinstance(operatorToLoad.FeatureIds.value, list)
