@@ -146,8 +146,6 @@ class OpTrackingFeatureExtraction(Operator):
     RegionFeaturesDivision = OutputSlot(stype=Opaque, rtype=List)
     RegionFeaturesAll = OutputSlot(stype=Opaque, rtype=List)
     
-    
-    ComputedFeatureNamesVigra = OutputSlot(rtype=List, stype=Opaque)
     ComputedFeatureNamesAll = OutputSlot(rtype=List, stype=Opaque)
 
     BlockwiseRegionFeaturesVigra = OutputSlot() # For compatibility with tracking workflow, the RegionFeatures output
@@ -188,7 +186,6 @@ class OpTrackingFeatureExtraction(Operator):
         self.ObjectCenterImage.connect(self._objectExtraction.ObjectCenterImage)
         self.LabelImage.connect(self._objectExtraction.LabelImage)
         self.BlockwiseRegionFeaturesVigra.connect(self._objectExtraction.BlockwiseRegionFeatures)     
-        self.ComputedFeatureNamesVigra.connect(self._objectExtraction.Features)
         self.RegionFeaturesVigra.connect(self._objectExtraction.RegionFeatures)    
                 
         self._opDivFeats.LabelImage.connect(self.LabelImage)
@@ -212,7 +209,7 @@ class OpTrackingFeatureExtraction(Operator):
         
     def execute(self, slot, subindex, roi, result):
         if slot == self.ComputedFeatureNamesAll:
-            feat_names_vigra = self.ComputedFeatureNamesVigra([]).wait()
+            feat_names_vigra = self.FeatureNamesVigra([]).wait()
             feat_names_div = self.FeatureNamesDivision([]).wait()        
             for plugin_name in feat_names_vigra.keys():
                 assert plugin_name not in feat_names_div, "feature name dictionaries must be mutually exclusive"
@@ -240,7 +237,7 @@ class OpTrackingFeatureExtraction(Operator):
             assert False, "Shouldn't get here."
 
     def propagateDirty(self, slot, subindex, roi):
-        if slot == self.ComputedFeatureNamesVigra or slot == self.FeatureNamesDivision:
+        if slot == self.FeatureNamesVigra or slot == self.FeatureNamesDivision:
             self.ComputedFeatureNamesAll.setDirty(roi)
     
     def setInSlot(self, slot, subindex, roi, value):
