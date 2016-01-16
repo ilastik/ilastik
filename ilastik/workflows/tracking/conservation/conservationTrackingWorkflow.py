@@ -36,6 +36,10 @@ class ConservationTrackingWorkflowBase( Workflow ):
         else:
             data_instructions += 'Use the "Prediction Maps" tab to load your pixel-wise probability image(s).'
 
+        # Variables to store division and cell classifiers to prevent retraining every-time batch processing runs
+        self.stored_division_classifier = None
+        self.stored_cell_classifier = None
+
         ## Create applets 
         self.dataSelectionApplet = DataSelectionApplet(self, 
                                                        "Input Data", 
@@ -127,6 +131,43 @@ class ConservationTrackingWorkflowBase( Workflow ):
     @property
     def imageNameListSlot(self):
         return self.dataSelectionApplet.topLevelOperator.ImageName
+
+    def prepareForNewLane(self, laneIndex):
+        # Store division and cell classifiers
+        if self.divisionDetectionApplet:
+            opDivisionClassification = self.divisionDetectionApplet.topLevelOperator
+            if opDivisionClassification.classifier_cache.Output.ready() and \
+               not opDivisionClassification.classifier_cache._dirty:
+                self.stored_division_classifier = opDivisionClassification.classifier_cache.Output.value
+            else:
+                self.stored_division_classifier = None
+                
+        opCellClassification = self.cellClassificationApplet.topLevelOperator
+        if opCellClassification.classifier_cache.Output.ready() and \
+           not opCellClassification.classifier_cache._dirty:
+            self.stored_cell_classifier = opCellClassification.classifier_cache.Output.value
+        else:
+            self.stored_cell_classifier = None
+
+    def handleNewLanesAdded(self):
+        """
+        If new lanes were added, then we invalidated our classifiers unecessarily.
+        Here, we can restore the classifier so it doesn't need to be retrained.
+        """
+        
+        # If we have stored division and cell classifiers, restore them into the workflow now.
+        if self.stored_division_classifier:
+            opDivisionClassification = self.divisionDetectionApplet.topLevelOperator
+            opDivisionClassification.classifier_cache.forceValue(self.stored_division_classifier)
+            # Release reference
+            self.stored_division_classifier = None
+        
+        # If we have stored division and cell classifiers, restore them into the workflow now.
+        if self.stored_cell_classifier:
+            opCellClassification = self.cellClassificationApplet.topLevelOperator
+            opCellClassification.classifier_cache.forceValue(self.stored_cell_classifier)
+            # Release reference
+            self.stored_cell_classifier = None
     
     def connectLane(self, laneIndex):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
