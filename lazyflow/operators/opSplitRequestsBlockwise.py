@@ -55,6 +55,9 @@ class OpSplitRequestsBlockwise(Operator):
     
     def setupOutputs(self):
         self.Output.meta.assignFrom( self.Input.meta )
+        if len(self.BlockShape.value) != len(self.Input.meta.shape):
+            self.Output.meta.NOTREADY = True
+            return
         self.Output.meta.ideal_blockshape = tuple(numpy.minimum(self.BlockShape.value, self.Input.meta.shape))
 
         # Estimate ram usage per requested pixel
