@@ -64,12 +64,48 @@ class ConservationTrackingWorkflowBase( Workflow ):
                                                                    
         self.objectExtractionApplet = TrackingFeatureExtractionApplet(workflow=self, interactive=False,
                                                                       name="Object Feature Computation")                                                                      
+
+        vigra_features = list((set(config.vigra_features)).union(config.selected_features_objectcount[config.features_vigra_name])) 
+        feature_names_vigra = {}
+        feature_names_vigra[config.features_vigra_name] = { name: {} for name in vigra_features }
+        
+        opObjectExtraction = self.objectExtractionApplet.topLevelOperator
+        opObjectExtraction.FeatureNamesVigra.setValue(feature_names_vigra)
         
         self.divisionDetectionApplet = self._createDivisionDetectionApplet() # Might be None
+
+        if self.divisionDetectionApplet:
+            feature_dict_division = {}
+            feature_dict_division[config.features_division_name] = { name: {} for name in config.division_features }
+            opObjectExtraction.FeatureNamesDivision.setValue(feature_dict_division)
+               
+            selected_features_div = {}
+            for plugin_name in config.selected_features_division.keys():
+                selected_features_div[plugin_name] = { name: {} for name in config.selected_features_division[plugin_name] }
+            # FIXME: do not hard code this
+            for name in [ 'SquaredDistances_' + str(i) for i in range(config.n_best_successors) ]:
+                selected_features_div[config.features_division_name][name] = {}
+
+            opDivisionDetection = self.divisionDetectionApplet.topLevelOperator
+            opDivisionDetection.SelectedFeatures.setValue(selected_features_div)
+            opDivisionDetection.LabelNames.setValue(['Not Dividing', 'Dividing'])        
+            opDivisionDetection.AllowDeleteLabels.setValue(False)
+            opDivisionDetection.AllowAddLabel.setValue(False)
+            opDivisionDetection.EnableLabelTransfer.setValue(False)
                 
         self.cellClassificationApplet = ObjectClassificationApplet(workflow=self,
                                                                      name="Object Count Classification (optional)",
                                                                      projectFileGroupName="CountClassification")
+
+        selected_features_objectcount = {}
+        for plugin_name in config.selected_features_objectcount.keys():
+            selected_features_objectcount[plugin_name] = { name: {} for name in config.selected_features_objectcount[plugin_name] }
+
+        opCellClassification = self.cellClassificationApplet.topLevelOperator 
+        opCellClassification.SelectedFeatures.setValue( selected_features_objectcount )
+        opCellClassification.SuggestedLabelNames.setValue( ['false detection',] + [str(i) + ' Objects' for i in range(1,10) ] )
+        opCellClassification.AllowDeleteLastLabelOnly.setValue(True)
+        opCellClassification.EnableLabelTransfer.setValue(False)
                 
         self.trackingApplet = ConservationTrackingApplet( workflow=self )
 
@@ -207,50 +243,23 @@ class ConservationTrackingWorkflowBase( Workflow ):
             opOptTranslation.BinaryImage.connect(op5Binary.Output)
         
         # # Connect operators ##       
-        vigra_features = list((set(config.vigra_features)).union(config.selected_features_objectcount[config.features_vigra_name])) 
-        feature_names_vigra = {}
-        feature_names_vigra[config.features_vigra_name] = { name: {} for name in vigra_features }
         opObjExtraction.RawImage.connect(op5Raw.Output)
         opObjExtraction.BinaryImage.connect(op5Binary.Output)
         if self.withOptTrans:
             opObjExtraction.TranslationVectors.connect(opOptTranslation.TranslationVectors)
-        opObjExtraction.FeatureNamesVigra.setValue(feature_names_vigra)
         
-        if self.divisionDetectionApplet:  
-            feature_dict_division = {}
-            feature_dict_division[config.features_division_name] = { name: {} for name in config.division_features }
-            opObjExtraction.FeatureNamesDivision.setValue(feature_dict_division)
-               
-            selected_features_div = {}
-            for plugin_name in config.selected_features_division.keys():
-                selected_features_div[plugin_name] = { name: {} for name in config.selected_features_division[plugin_name] }
-            # FIXME: do not hard code this
-            for name in [ 'SquaredDistances_' + str(i) for i in range(config.n_best_successors) ]:
-                selected_features_div[config.features_division_name][name] = {}
-          
+        if self.divisionDetectionApplet:            
             opDivDetection.BinaryImages.connect( op5Binary.Output )
             opDivDetection.RawImages.connect( op5Raw.Output )        
             opDivDetection.SegmentationImages.connect(opObjExtraction.LabelImage)
             opDivDetection.ObjectFeatures.connect(opObjExtraction.RegionFeaturesAll)
             opDivDetection.ComputedFeatureNames.connect(opObjExtraction.ComputedFeatureNamesAll)
-            opDivDetection.SelectedFeatures.setValue(selected_features_div)
-            opDivDetection.LabelNames.setValue(['Not Dividing', 'Dividing'])        
-            opDivDetection.AllowDeleteLabels.setValue(False)
-            opDivDetection.AllowAddLabel.setValue(False)
-            opDivDetection.EnableLabelTransfer.setValue(False)
         
-        selected_features_objectcount = {}
-        for plugin_name in config.selected_features_objectcount.keys():
-            selected_features_objectcount[plugin_name] = { name: {} for name in config.selected_features_objectcount[plugin_name] }
         opCellClassification.BinaryImages.connect( op5Binary.Output )
         opCellClassification.RawImages.connect( op5Raw.Output )
         opCellClassification.SegmentationImages.connect(opObjExtraction.LabelImage)
         opCellClassification.ObjectFeatures.connect(opObjExtraction.RegionFeaturesVigra)
         opCellClassification.ComputedFeatureNames.connect(opObjExtraction.FeatureNamesVigra)
-        opCellClassification.SelectedFeatures.setValue( selected_features_objectcount )        
-        opCellClassification.SuggestedLabelNames.setValue( ['false detection',] + [str(i) + ' Objects' for i in range(1,10) ] )
-        opCellClassification.AllowDeleteLastLabelOnly.setValue(True)
-        opCellClassification.EnableLabelTransfer.setValue(False)
         
         if self.divisionDetectionApplet: 
             opTracking.ObjectFeaturesWithDivFeatures.connect( opObjExtraction.RegionFeaturesAll)
@@ -287,7 +296,6 @@ class ConservationTrackingWorkflowBase( Workflow ):
         x_range = (0, maxx)
         y_range = (0, maxy)
         z_range = (0, maxz)
-        
         ndim = 3
         if ( z_range[1] - z_range[0] ) > 1:
             ndim = 2
