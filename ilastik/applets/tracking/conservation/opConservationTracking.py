@@ -203,8 +203,7 @@ class OpConservationTracking(OpTrackingBase):
                                                                       median_object_size=median_obj_size, 
                                                                       with_div=withDivisions,
                                                                       with_opt_correction=withOpticalCorrection,
-                                                                      with_classifier_prior=withClassifierPrior,
-                                                                      with_batch_processing=withBatchProcessing)
+                                                                      with_classifier_prior=withClassifierPrior)
         
         if empty_frame:
             raise Exception, 'cannot track frames with 0 objects, abort.'
