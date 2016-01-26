@@ -397,20 +397,18 @@ class OpTrackingBase(Operator, ExportingOperator):
                               max_traxel_id_at=None,
                               with_opt_correction=False,
                               with_coordinate_list=False,
-                              with_classifier_prior=False,
-                              with_batch_processing = False):
+                              with_classifier_prior=False):
 
         if not self.Parameters.ready():
             raise Exception("Parameter slot is not ready")
 
-        if not with_batch_processing:
-            parameters = self.Parameters.value
-            parameters['scales'] = [x_scale, y_scale, z_scale]
-            parameters['time_range'] = [min(time_range), max(time_range)]
-            parameters['x_range'] = x_range
-            parameters['y_range'] = y_range
-            parameters['z_range'] = z_range
-            parameters['size_range'] = size_range
+        parameters = self.Parameters.value
+        parameters['scales'] = [x_scale, y_scale, z_scale]
+        parameters['time_range'] = [min(time_range), max(time_range)]
+        parameters['x_range'] = x_range
+        parameters['y_range'] = y_range
+        parameters['z_range'] = z_range
+        parameters['size_range'] = size_range
 
         logger.info("generating traxels")
         logger.info("fetching region features and division probabilities")

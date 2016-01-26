@@ -286,8 +286,6 @@ class ConservationTrackingWorkflowBase( Workflow ):
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
          
     def prepare_lane_for_export(self, lane_index):
-        parameters = self.trackingApplet.topLevelOperator.Parameters.value
-        
         maxt = self.trackingApplet.topLevelOperator[lane_index].LabelImage.meta.shape[0] 
         maxx = self.trackingApplet.topLevelOperator[lane_index].LabelImage.meta.shape[1] 
         maxy = self.trackingApplet.topLevelOperator[lane_index].LabelImage.meta.shape[2] 
@@ -299,6 +297,14 @@ class ConservationTrackingWorkflowBase( Workflow ):
         ndim = 3
         if ( z_range[1] - z_range[0] ) > 1:
             ndim = 2
+        
+        parameters = self.trackingApplet.topLevelOperator.Parameters.value
+        
+        # Save state of axis ranges
+        self.prev_time_range = parameters['time_range']
+        self.prev_x_range = parameters['x_range']
+        self.prev_y_range = parameters['y_range']
+        self.prev_z_range = parameters['z_range']
         
         self.trackingApplet.topLevelOperator[lane_index].track(
             time_range = time_enum,
@@ -364,6 +370,13 @@ class ConservationTrackingWorkflowBase( Workflow ):
 
             req.wait()
             self.dataExportApplet.progressSignal.emit(100)
+            
+            # Restore state of axis ranges
+            parameters = self.trackingApplet.topLevelOperator.Parameters.value
+            parameters['time_range'] = self.prev_time_range
+            parameters['x_range'] = self.prev_x_range
+            parameters['y_range'] = self.prev_y_range
+            parameters['z_range'] = self.prev_z_range          
     
     def _inputReady(self, nRoles):
         slot = self.dataSelectionApplet.topLevelOperator.ImageGroup
