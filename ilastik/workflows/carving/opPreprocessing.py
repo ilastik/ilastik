@@ -228,6 +228,7 @@ class OpMstSegmentorProvider(Operator):
         self.MST.meta.shape = (1,)
         self.MST.meta.dtype = object
 
+    @Operator.forbidParallelExecute
     def execute(self, slot, subindex, unused_roi, result):
         assert slot == self.MST, "Invalid output slot: {}".format(slot.name)
 
@@ -241,11 +242,13 @@ class OpMstSegmentorProvider(Operator):
                 self.applet.progressSignal.emit(p)
                 self.applet.progress = p
 
+            gridSeg = mst.gridSegmentor
+
             logger.info( "Segmentor preprocessed block: {} out of {}, took {} seconds".format( blk + 1, max_blk, timer.seconds() ) )
             logger.info( "  roi: {}".format(roi) )
             logger.info( "  mst: nodes: {} (max id: {}), edges: {} (max id: {})".format(
-                        mst.gridSegmentor.nodeNum(), mst.gridSegmentor.maxNodeId(),
-                        mst.gridSegmentor.edgeNum(), mst.gridSegmentor.maxEdgeId()) )
+                        gridSeg.nodeNum(), gridSeg.maxNodeId(),
+                        gridSeg.edgeNum(), gridSeg.edgeNum()) )#gridSeg.maxEdgeId()) ) # TODO: why does gridSeg.maxEdgeId() crash?
             logger.info( "  memory: used {} out of {} total avail (cache: {}, compute: {})".format(
                         Memory.format(Memory.getMemoryUsage()),
                         Memory.format(Memory.getAvailableRam()),

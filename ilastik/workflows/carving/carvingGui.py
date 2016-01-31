@@ -110,7 +110,8 @@ class CarvingGui(LabelingGui):
             try:
                 self._renderMgr = RenderingManager( self.editor.view3d )
                 self._shownObjects3D = {}
-                self.render = True
+                # TODO: fix
+                #self.render = True
             except:
                 self.render = False
 
