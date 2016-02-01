@@ -28,12 +28,23 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
     withMergers = True
     @threadRouted
     def _setMergerLegend(self, labels, selection):   
-        for i in range(1,len(labels)+1):
+        param = self.topLevelOperatorView.Parameters.value
+        if 'withMergerResolution' in param.keys():
+            if param['withMergerResolution']:
+                selection = 1
+        elif self._drawer.mergerResolutionBox.isChecked():
+            selection = 1
+
+        for i in range(2,len(labels)+1):
             if i <= selection:
                 labels[i-1].setVisible(True)
             else:
                 labels[i-1].setVisible(False)
-    
+
+        # hide merger legend if selection < 2
+        self._drawer.label_4.setVisible(selection > 1)
+        labels[0].setVisible(selection > 1)
+
     def __init__(self, parentApplet, topLevelOperatorView):
         """
         """
@@ -104,14 +115,25 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._drawer.timeoutBox.textChanged.connect(self._onTimeoutBoxChanged)
 
         if not ilastik_config.getboolean("ilastik", "debug"):
-            #assert self._drawer.trackletsBox.isChecked()
-            self._drawer.trackletsBox.hide()
-            
-            assert not self._drawer.hardPriorBox.isChecked()
-            self._drawer.hardPriorBox.hide()
+            def checkboxAssertHandler(checkbox, assertEnabled=True):
+                if checkbox.isChecked() == assertEnabled:
+                    checkbox.hide()
+                else:
+                    checkbox.setEnabled(False)
 
-            assert not self._drawer.opticalBox.isChecked()
-            self._drawer.opticalBox.hide()
+            checkboxAssertHandler(self._drawer.trackletsBox, True)
+
+            if self._drawer.classifierPriorBox.isChecked():
+                self._drawer.hardPriorBox.hide()
+                self._drawer.classifierPriorBox.hide()
+                self._drawer.sizeDepBox.hide()
+            else:
+                self._drawer.hardPriorBox.setEnabled(False)
+                self._drawer.classifierPriorBox.setEnabled(False)
+                self._drawer.sizeDepBox.setEnabled(False)
+
+            checkboxAssertHandler(self._drawer.opticalBox, False)
+            checkboxAssertHandler(self._drawer.mergerResolutionBox, True)
 
             self._drawer.maxDistBox.hide()
             self._drawer.label_2.hide()
@@ -133,6 +155,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             self._labelSetStyleSheet(self.mergerLabels[i], self.mergerColors[i+1])
         
         self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)
+        self._drawer.mergerResolutionBox.stateChanged.connect(self._onMaxObjectsBoxChanged)
+
         self._drawer.StructuredLearningButton.clicked.connect(self._onRunStructuredLearningButtonPressed)
         self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()
 
@@ -141,7 +165,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._drawer.transWeightBox.valueChanged.connect(self._onTransitionWeightBoxChanged)                
         self._drawer.appearanceBox.valueChanged.connect(self._onAppearanceWeightBoxChanged)                
         self._drawer.disappearanceBox.valueChanged.connect(self._onDisappearanceWeightBoxChanged)                
-        self._drawer.maxObjectsBox.valueChanged.connect(self._onMaxObjectsBoxChanged)
         self._drawer.maxNearestNeighborsSpinBox.valueChanged.connect(self._onMaxNearestNeighborsSpinBoxChanged)
 
         self._drawer.OnesButton.clicked.connect(self._onOnesButtonPressed)
@@ -351,8 +374,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         foundAllArcs = False;
         new_max_nearest_neighbors = self._maxNearestNeighbors-1
-
-        while not foundAllArcs:
+        maxObjOK = True
+        while not foundAllArcs and maxObjOK:
             new_max_nearest_neighbors += 1
             consTracker = pgmlink.ConsTracking(
                 maxObj,
@@ -434,6 +457,15 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                                 center = self.features[time]['Default features']['RegionCenter'][label]
                                 trackCount = len(trackSet)
 
+                                print "trackCount", trackCount
+                                if trackCount > maxObj:
+                                    print "Your track count for object", label, "in time frame", time, "is", trackCount,"=|",trackSet,"|, which is greater than maximum object number",maxObj,"defined by object count classifier!"
+                                    print "Either remove track(s) from this object or train the object count classifier with more labels!"
+                                    maxObjOK = False
+                                    raise Exception, "Your track count for object "+str(label)+" in time frame " +str(time)+ " equals "+str(trackCount)+"=|"+str(trackSet)+"|," + \
+                                            " which is greater than the maximum object number "+str(maxObj)+" defined by object count classifier! " + \
+                                            "Either remove track(s) from this object or train the object count classifier with more labels!"
+
                                 for track in trackSet:
 
                                     if not foundAllArcs:
@@ -449,6 +481,17 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                                         previousTrackSet = labels[time-1][previous_label]
                                         intersectionSet = trackSet.intersection(previousTrackSet)
                                         trackCountIntersection = len(intersectionSet)
+
+                                        print "trackCountIntersection", trackCountIntersection
+                                        if trackCountIntersection > maxObj:
+                                            print "Your track count for transition (", previous_label,time-1,") ---> (",label, time, ") is", trackCountIntersection,"=|",intersectionSet,"|, which is greater than maximum object number",maxObj,"defined by object count classifier!"
+                                            print "Either remove track(s) from these objects or train the object count classifier with more labels!"
+                                            maxObjOK = False
+                                            raise Exception, "Your track count for transition ("+str(previous_label)+","+str(time-1)+") ---> ("+str(label)+","+str(time)+") is "+str(trackCountIntersection)+"=|"+str(intersectionSet)+"|, " + \
+                                                    "which is greater than maximum object number "+str(maxObj)+" defined by object count classifier!" + \
+                                                    "Either remove track(s) from these objects or train the object count classifier with more labels!"
+
+
                                         #print "addArcLabel",time-1, int(previous_label), int(label), float(trackCountIntersection)
                                         foundAllArcs &= structuredLearningTracker.addArcLabel(time-1, int(previous_label), int(label), float(trackCountIntersection))
                                         if not foundAllArcs:
@@ -458,15 +501,20 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
                                 if type[0] == "FIRST":
                                     structuredLearningTracker.addFirstLabels(time, int(label), float(trackCount))
+                                    #print "addFirstLabels",time, int(label), float(trackCount)
                                     if time > self.mainOperator.Crops.value[cropKey]["time"][0]:
+                                        #print "addDisappearanceLabel",time, int(label),0.0
                                         structuredLearningTracker.addDisappearanceLabel(time, int(label), 0.0)
 
                                 elif type[0] == "LAST":
                                     structuredLearningTracker.addLastLabels(time, int(label), float(trackCount))
+                                    #print "addLastLabels",time, int(label), float(trackCount)
                                     if time < self.mainOperator.Crops.value[cropKey]["time"][1]:
+                                        #print "addAppearanceLabel",time, int(label),0.0
                                         structuredLearningTracker.addAppearanceLabel(time, int(label), 0.0)
 
                                 elif type[0] == "INTERMEDIATE":
+                                    #print "addIntermediateLabels",time, int(label),float(trackCount)
                                     structuredLearningTracker.addIntermediateLabels(time, int(label), float(trackCount))
 
                     if foundAllArcs and "divisions" in crop.keys():
@@ -642,9 +690,10 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         firstTime = -1
         for t in range(crop["time"][1],time,-1):
-            for label in labels[t]:
-                if track in labels[t][label]:
-                    firstTime = t
+            if t in labels.keys():
+                for label in labels[t]:
+                    if track in labels[t][label]:
+                        firstTime = t
 
         if firstTime == -1:
             if type == "FIRST":
@@ -689,7 +738,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             if len(str(self._drawer.timeoutBox.text())):
                 cplex_timeout = int(self._drawer.timeoutBox.text())
 
-            withTracklets = False; #self._drawer.trackletsBox.isChecked()
+            withTracklets = True #self._drawer.trackletsBox.isChecked()
             sizeDependent = self._drawer.sizeDepBox.isChecked()
             hardPrior = self._drawer.hardPriorBox.isChecked()
             classifierPrior = self._drawer.classifierPriorBox.isChecked()
@@ -784,6 +833,23 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
     def get_feature_names(self):
         return self.topLevelOperatorView.ComputedFeatureNames([]).wait()
 
+    def get_color(self, pos5d):
+        slicing = tuple(slice(i, i+1) for i in pos5d)
+        color = self.mainOperator.CachedOutput(slicing).wait()
+        return color.flat[0]
+
+    def get_object(self, pos5d):
+        slicing = tuple(slice(i, i+1) for i in pos5d)
+        label = self.mainOperator.RelabeledImage(slicing).wait()
+        return label.flat[0], pos5d[0]
+
+    @property
+    def gui_applet(self):
+        return self.applet
+
+    def get_export_dialog_title(self):
+        return "Export Tracking Information"
+
     def handleEditorRightClick(self, position5d, win_coord):
         debug = ilastik_config.getboolean("ilastik", "debug")
 
@@ -796,24 +862,34 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             return
 
         try:
-            color = self.mainOperator.label2color[time][obj]
-            tracks = [self.mainOperator.track_id[time][obj]]
             extra = self.mainOperator.extra_track_ids
         except (IndexError, KeyError):
-            color = None
-            tracks = []
             extra = {}
 
+        # if this is a resolved merger, find which of the merged IDs we actually clicked on
         if time in extra and obj in extra[time]:
-            tracks.extend(extra[time][obj])
-        if tracks:
-            children, parents = self.mainOperator.track_family(tracks[0])
+            colors = [self.mainOperator.label2color[time][t] for t in extra[time][obj]]
+            tracks = [self.mainOperator.track_id[time][t] for t in extra[time][obj]]
+            selected_track = self.get_color(position5d)
+            idx = colors.index(selected_track)
+            color = colors[idx]
+            track = tracks[idx]
+        else:
+            try:
+                color = self.mainOperator.label2color[time][obj]
+                track = [self.mainOperator.track_id[time][obj]][0]
+            except (IndexError, KeyError):
+                color = None
+                track = []
+
+        if track:
+            children, parents = self.mainOperator.track_family(track)
         else:
             children, parents = None, None
 
         menu = TitledMenu([
             "Object {} of lineage id {}".format(obj, color),
-            "Track ids: " + (", ".join(map(str, set(tracks))) or "None"),
+            "Track id: " + (str(track) or "None"),
         ])
 
         if not debug:
@@ -851,3 +927,4 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             menu.addAction("Start IPC Server", IPCFacade().start)
 
         menu.exec_(win_coord)
+
