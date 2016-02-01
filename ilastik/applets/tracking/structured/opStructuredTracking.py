@@ -661,9 +661,6 @@ class OpStructuredTracking(OpTrackingBase):
                     # For 3d data use the whole volume
                     relabel_volume = volume
                 # relabel
-                print "np.array(pixel_offsets, dtype=np.int64)",np.array(pixel_offsets, dtype=np.int64)
-                print "relabel_volume",relabel_volume
-                print "coordinate_map",coordinate_map
                 pgmlink.update_labelimage(
                     coordinate_map,
                     relabel_volume,
