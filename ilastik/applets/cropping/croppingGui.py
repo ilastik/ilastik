@@ -286,7 +286,7 @@ class CroppingGui(LayerViewerGui):
             self._cropControlUi.cropListView.selectRow(0)
             self._maxCropNumUsed = len(crops)
         else:
-            self.editor.cropModel.set_volume_shape_3d([0,0,0],self.editor.dataShape[1:4])
+            self.editor.cropModel.set_volume_shape_3d(self.editor.dataShape[1:4])
             self.newCrop()
             self.setCrop()
 
