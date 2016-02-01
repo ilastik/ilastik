@@ -51,10 +51,10 @@ class OpMulticut(Operator):
         rag = vigra.graphs.regionAdjacencyGraph(gridGraph, superpixels)
         gridGraphEdgeIndicator = vigra.graphs.edgeFeaturesFromImage(gridGraph, probabilities)
 
-        p0 = rag.accumulateEdgeFeatures(gridGraphEdgeIndicator)
-        p0 = np.clip(p0, 0.001, 0.999)
-        p1 = 1.0 - p0
-
+        p1 = rag.accumulateEdgeFeatures(gridGraphEdgeIndicator)
+        p1 = np.clip(p1, 0.001, 0.999)
+        p0 = 1.0 - p1
+        
         nVar = rag.nodeNum
         gm = opengm.gm( np.ones(nVar)*nVar )
 
