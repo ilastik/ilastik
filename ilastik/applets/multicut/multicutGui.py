@@ -21,7 +21,7 @@
 from functools import partial
 
 from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QWidget, QLabel, QSpinBox, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy, QColor
+from PyQt4.QtGui import QWidget, QLabel, QSpinBox, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy, QColor, QPen
 
 from volumina.pixelpipeline.datasources import LazyflowSource
 from volumina.layer import SegmentationEdgesLayer
@@ -110,7 +110,9 @@ class MulticutGui(LayerViewerGui):
 
         # Final segmentation -- Edges
         if op.Output.ready():
-            layer = SegmentationEdgesLayer( LazyflowSource(op.Output), default_color=QColor(Qt.blue) )
+            default_pen = QPen(SegmentationEdgesLayer.DEFAULT_PEN)
+            default_pen.setColor(Qt.blue)
+            layer = SegmentationEdgesLayer( LazyflowSource(op.Output), default_pen )
             layer.name = "Multicut Edges"
             layer.visible = False # Off by default...
             layer.opacity = 1.0
@@ -119,7 +121,9 @@ class MulticutGui(LayerViewerGui):
         
         # Superpixels -- Edges
         if op.Superpixels.ready():
-            layer = SegmentationEdgesLayer( LazyflowSource(op.Superpixels), default_color=QColor(Qt.yellow) )
+            default_pen = QPen(SegmentationEdgesLayer.DEFAULT_PEN)
+            default_pen.setColor(Qt.yellow)
+            layer = SegmentationEdgesLayer( LazyflowSource(op.Superpixels), default_pen )
             layer.name = "Superpixel Edges"
             layer.visible = True
             layer.opacity = 1.0
@@ -148,7 +152,7 @@ class MulticutGui(LayerViewerGui):
         if op.Probabilities.ready():
             layer = self.createStandardLayerFromSlot( op.Probabilities )
             layer.name = "Membrane Probabilities"
-            layer.visible = True
+            layer.visible = False
             layer.opacity = 1.0
             layers.append(layer)
             del layer
