@@ -51,7 +51,7 @@ class OpMulticut(Operator):
         rag = vigra.graphs.regionAdjacencyGraph(gridGraph, superpixels)
         gridGraphEdgeIndicator = vigra.graphs.edgeFeaturesFromImage(gridGraph, probabilities)
 
-        p0 = rag.accumulateEdgeFeatures(gridGraphEdgeIndicator) / 255.0
+        p0 = rag.accumulateEdgeFeatures(gridGraphEdgeIndicator)
         p0 = np.clip(p0, 0.001, 0.999)
         p1 = 1.0 - p0
 
