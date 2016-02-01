@@ -50,15 +50,19 @@ class OpMulticut(Operator):
         # get region adjacency graph from super-pixel labels
         rag = vigra.graphs.regionAdjacencyGraph(gridGraph, superpixels)
         gridGraphEdgeIndicator = vigra.graphs.edgeFeaturesFromImage(gridGraph, probabilities)
+        assert gridGraphEdgeIndicator.shape == probabilities.shape + (probabilities.ndim,)
 
         p1 = rag.accumulateEdgeFeatures(gridGraphEdgeIndicator)
         p1 = np.clip(p1, 0.001, 0.999)
         p0 = 1.0 - p1
         
+        assert p0.shape == p1.shape == (rag.edgeNum,)
+
         nVar = rag.nodeNum
         gm = opengm.gm( np.ones(nVar)*nVar )
 
         uvIds = rag.uvIds()
+        assert uvIds.shape == (rag.edgeNum, 2)
         uvIds = np.sort( uvIds, axis=1 )
         
         beta = self.Beta.value
