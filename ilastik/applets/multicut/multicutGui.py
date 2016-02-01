@@ -20,8 +20,11 @@
 ##############################################################################
 from functools import partial
 
-from PyQt4.QtGui import QWidget, QLabel, QSpinBox, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy
+from PyQt4.QtCore import Qt
+from PyQt4.QtGui import QWidget, QLabel, QSpinBox, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy, QColor
 
+from volumina.pixelpipeline.datasources import LazyflowSource
+from volumina.layer import SegmentationEdgesLayer
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 import logging
@@ -104,8 +107,26 @@ class MulticutGui(LayerViewerGui):
     def setupLayers(self):
         layers = []
         op = self.topLevelOperatorView
+
+        # Final segmentation -- Edges
+        if op.Output.ready():
+            layer = SegmentationEdgesLayer( LazyflowSource(op.Output), default_color=QColor(Qt.blue) )
+            layer.name = "Multicut Edges"
+            layer.visible = False # Off by default...
+            layer.opacity = 1.0
+            layers.append(layer)
+            del layer
         
-        # Final segmentation
+        # Superpixels -- Edges
+        if op.Superpixels.ready():
+            layer = SegmentationEdgesLayer( LazyflowSource(op.Superpixels), default_color=QColor(Qt.yellow) )
+            layer.name = "Superpixel Edges"
+            layer.visible = True
+            layer.opacity = 1.0
+            layers.append(layer)
+            del layer
+
+        # Final segmentation -- Label Image
         if op.Output.ready():
             layer = self.createStandardLayerFromSlot( op.Output )
             layer.name = "Multicut Segmentation"
@@ -113,7 +134,7 @@ class MulticutGui(LayerViewerGui):
             layer.opacity = 0.5
             layers.append(layer)
             del layer
-
+ 
         # Superpixels
         if op.Superpixels.ready():
             layer = self.createStandardLayerFromSlot( op.Superpixels )
@@ -122,11 +143,11 @@ class MulticutGui(LayerViewerGui):
             layer.opacity = 0.5
             layers.append(layer)
             del layer
-
+ 
         # Probabilities
         if op.Probabilities.ready():
             layer = self.createStandardLayerFromSlot( op.Probabilities )
-            layer.name = "Probabilities"
+            layer.name = "Membrane Probabilities"
             layer.visible = True
             layer.opacity = 1.0
             layers.append(layer)
