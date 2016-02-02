@@ -20,15 +20,17 @@
 ##############################################################################
 from functools import partial
 
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QWidget, QLabel, QSpinBox, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy, QColor, QPen
+import numpy as np
 
+from PyQt4.QtCore import Qt
+from PyQt4.QtGui import QWidget, QLabel, QDoubleSpinBox, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy, QColor, QPen
+
+from ilastik.utility.gui import threadRouted
 from volumina.pixelpipeline.datasources import LazyflowSource
 from volumina.layer import SegmentationEdgesLayer
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 import logging
-from PyQt4.Qt import QDoubleSpinBox, QHBoxLayout
 logger = logging.getLogger(__name__)
 
 class MulticutGui(LayerViewerGui):
@@ -96,6 +98,42 @@ class MulticutGui(LayerViewerGui):
         # Initialize everything with the operator's initial values
         self.configure_gui_from_operator()
 
+        self._init_probability_colortable()
+
+    def _init_probability_colortable(self):
+        self.probability_colortable = []
+        for v in np.linspace(0.0, 1.0, num=101):
+            self.probability_colortable.append( QColor(255*(v), 255*(1.0-v), 0) )
+        
+        self.probability_pen_table = []
+        for color in self.probability_colortable:
+            pen = QPen(SegmentationEdgesLayer.DEFAULT_PEN)
+            pen.setColor(color)
+            self.probability_pen_table.append(pen)
+
+        # When the edge probabilities are dirty, update the probability edge layer pens
+        op = self.topLevelOperatorView
+        op.EdgeProbabilitiesDict.notifyDirty( self.update_probability_edges )
+        self.__cleanup_fns.append( partial( op.EdgeProbabilitiesDict.unregisterDirty, self.update_probability_edges ) )
+
+    # Configure the handler for updated probability maps
+    # FIXME: Should we make a new Layer subclass that handles this colortable mapping for us?  Yes.
+    def update_probability_edges(self, *args):
+        op = self.topLevelOperatorView
+        if not self.superpixel_edge_layer:
+            return
+        edge_probs = op.EdgeProbabilitiesDict.value
+        new_pens = {}
+        for id_pair, probability in edge_probs.items():
+            new_pens[id_pair] = self.probability_pen_table[int(probability * 100)]
+        self.apply_new_probability_edges(new_pens)
+    
+    @threadRouted
+    def apply_new_probability_edges(self, new_pens):
+        # This function is threadRouted because you can't 
+        # touch the layer colortable outside the main thread.
+        self.superpixel_edge_layer.pen_table.update(new_pens)
+
     def configure_gui_from_operator(self, *args):
         op = self.topLevelOperatorView
         self._beta_box.setValue( op.Beta.value )
@@ -118,14 +156,26 @@ class MulticutGui(LayerViewerGui):
             layer.opacity = 1.0
             layers.append(layer)
             del layer
-        
+
+        # Superpixels -- Edge Probabilities
+        # We use the RAG's superpixels, which may have different IDs
+        self.superpixel_edge_layer = None
+        if op.RagSuperpixels.ready() and op.EdgeProbabilitiesDict.ready():
+            layer = SegmentationEdgesLayer( LazyflowSource(op.RagSuperpixels) )
+            layer.name = "Superpixel Edge Probabilities"
+            layer.visible = True
+            layer.opacity = 1.0
+            self.superpixel_edge_layer = layer
+            layers.append(layer)
+            del layer
+                
         # Superpixels -- Edges
-        if op.Superpixels.ready():
+        if op.RagSuperpixels.ready():
             default_pen = QPen(SegmentationEdgesLayer.DEFAULT_PEN)
             default_pen.setColor(Qt.yellow)
-            layer = SegmentationEdgesLayer( LazyflowSource(op.Superpixels), default_pen )
+            layer = SegmentationEdgesLayer( LazyflowSource(op.RagSuperpixels), default_pen )
             layer.name = "Superpixel Edges"
-            layer.visible = True
+            layer.visible = False
             layer.opacity = 1.0
             layers.append(layer)
             del layer
@@ -139,10 +189,10 @@ class MulticutGui(LayerViewerGui):
             layers.append(layer)
             del layer
  
-        # Superpixels
-        if op.Superpixels.ready():
-            layer = self.createStandardLayerFromSlot( op.Superpixels )
-            layer.name = "Superpixels"
+        # Input Superpixels
+        if op.InputSuperpixels.ready():
+            layer = self.createStandardLayerFromSlot( op.InputSuperpixels )
+            layer.name = "Input Superpixels"
             layer.visible = True
             layer.opacity = 0.5
             layers.append(layer)

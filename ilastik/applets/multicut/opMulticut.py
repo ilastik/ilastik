@@ -6,21 +6,25 @@ import opengm
 import vigra.graphs
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
+from lazyflow.roi import roiToSlice
 from lazyflow.operators import OpCompressedCache, OpValueCache
 
 class OpMulticut(Operator):
     Beta = InputSlot(value=0.1)
     VoxelData = InputSlot()
-    Superpixels = InputSlot()
+    InputSuperpixels = InputSlot()
     
     Output = OutputSlot() # Pixelwise output (not RAG, etc.)
     EdgeProbabilitiesDict = OutputSlot() # A dict of id_pair -> probabilities
+
+    RagSuperpixels = OutputSlot() # Rag can't necessarily use the input superpixels,
+                                  # since it needs consecutive IDs, starting at 0.
     
     def __init__(self, *args, **kwargs):
         super( OpMulticut, self ).__init__(*args, **kwargs)
 
         self.opCreateRag = OpCreateRag(parent=self)
-        self.opCreateRag.Superpixels.connect( self.Superpixels )
+        self.opCreateRag.InputSuperpixels.connect( self.InputSuperpixels )
         
         self.opRagCache = OpValueCache(parent=self)
         self.opRagCache.Input.connect( self.opCreateRag.Rag )
@@ -39,12 +43,15 @@ class OpMulticut(Operator):
         self.opEdgeProbabilitiesCache.Input.connect( self.opComputeEdgeProbabilities.EdgeProbabilities )
     
     def setupOutputs(self):
-        assert self.Superpixels.meta.dtype == np.uint32
-        assert self.Superpixels.meta.getAxisKeys()[-1] == 'c'
+        assert self.InputSuperpixels.meta.dtype == np.uint32
+        assert self.InputSuperpixels.meta.getAxisKeys()[-1] == 'c'
 
-        self.Output.meta.assignFrom(self.Superpixels.meta)
-        self.Output.meta.display_mode = 'random-colortable'
+        self.RagSuperpixels.meta.assignFrom(self.InputSuperpixels.meta)
+        self.RagSuperpixels.meta.display_mode = 'random-colortable'
         
+        self.Output.meta.assignFrom(self.InputSuperpixels.meta)
+        self.Output.meta.display_mode = 'random-colortable'
+
         self.EdgeProbabilitiesDict.meta.dtype = object
         self.EdgeProbabilitiesDict.meta.shape = (1,)
     
@@ -53,6 +60,8 @@ class OpMulticut(Operator):
             self._executeOutput(roi, result)
         elif slot == self.EdgeProbabilitiesDict:
             self._executeEdgeProbabilitiesDict(roi, result)
+        elif slot == self.RagSuperpixels:
+            self._executeRagSuperpixels(roi, result)
         else:
             assert False, "Unknown output slot: {}".format( slot )
 
@@ -61,7 +70,9 @@ class OpMulticut(Operator):
         rag = self.opRagCache.Output.value
         agglomerated_labels = self.agglomerate_with_multicut(rag, edge_probabilities, self.Beta.value)
         result[:] = agglomerated_labels[...,None]
-        result[:] += 1 # RAG labels are 0-based, but we want 1-based
+        
+        # FIXME: Is it okay to produce 0-based supervoxels?
+        #result[:] += 1 # RAG labels are 0-based, but we want 1-based
         
     def _executeEdgeProbabilitiesDict(self, roi, result):
         edge_probabilities = self.opEdgeProbabilitiesCache.Output.value
@@ -72,6 +83,10 @@ class OpMulticut(Operator):
 
         id_pairs = map(tuple, uvIds)
         result[0] = dict(zip(id_pairs, edge_probabilities))
+
+    def _executeRagSuperpixels(self, roi, result):
+        rag = self.opRagCache.Output.value
+        result[:] = rag.labels[...,None][roiToSlice(roi.start, roi.stop)]
         
     @classmethod
     def agglomerate_with_multicut(cls, rag, edge_probabilities, beta):
@@ -114,17 +129,17 @@ class OpMulticut(Operator):
         self.EdgeProbabilitiesDict.setDirty()
 
 class OpCreateRag(Operator):
-    Superpixels = InputSlot()
+    InputSuperpixels = InputSlot()
     Rag = OutputSlot()
     
     def setupOutputs(self):
-        assert self.Superpixels.meta.dtype == np.uint32
-        assert self.Superpixels.meta.getAxisKeys()[-1] == 'c'
+        assert self.InputSuperpixels.meta.dtype == np.uint32
+        assert self.InputSuperpixels.meta.getAxisKeys()[-1] == 'c'
         self.Rag.meta.shape = (1,)
         self.Rag.meta.dtype = object
     
     def execute(self, slot, subindex, roi, result):
-        superpixels = self.Superpixels[:].wait()[...,0] # Drop channel
+        superpixels = self.InputSuperpixels[:].wait()[...,0] # Drop channel
         
         # Apparently we must ensure that the superpixel values are contiguous
         if superpixels.max() != len(np.unique(superpixels)):
@@ -217,10 +232,11 @@ class OpCachedMulticut(Operator):
     Beta = InputSlot(value=0.1)
     RawData = InputSlot(optional=True) # Used by the GUI for display only
     VoxelData = InputSlot()
-    Superpixels = InputSlot()
+    InputSuperpixels = InputSlot()
     
     Output = OutputSlot()
     EdgeProbabilitiesDict = OutputSlot()
+    RagSuperpixels = OutputSlot()
     
     def __init__(self, *args, **kwargs):
         super( OpCachedMulticut, self ).__init__(*args, **kwargs)
@@ -234,26 +250,27 @@ class OpCachedMulticut(Operator):
         self._opMulticut = OpMulticut(parent=self)
         self._opMulticut.Beta.connect( self.Beta )
         self._opMulticut.VoxelData.connect( self.VoxelData )
-        self._opMulticut.Superpixels.connect( self.Superpixels )
+        self._opMulticut.InputSuperpixels.connect( self.InputSuperpixels )
         
         self._opCache = OpCompressedCache(parent=self)
         self._opCache.Input.connect( self._opMulticut.Output )
         self.Output.connect( self._opCache.Output )
 
         self._opEdgeProbabilitiesDictCache = OpValueCache(parent=self)
-        self._opEdgeProbabilitiesDictCache.Input.connect( self.EdgeProbabilitiesDict )
+        self._opEdgeProbabilitiesDictCache.Input.connect( self._opMulticut.EdgeProbabilitiesDict )
 
         self.EdgeProbabilitiesDict.connect( self._opEdgeProbabilitiesDictCache.Output )
+        self.RagSuperpixels.connect( self._opMulticut.RagSuperpixels )
 
     def setupOutputs(self):
         # Sanity checks
         assert self.VoxelData.meta.getAxisKeys()[-1] == 'c'
-        assert self.Superpixels.meta.getAxisKeys()[-1] == 'c'
-        assert self.VoxelData.meta.shape[:-1] == self.Superpixels.meta.shape[:-1], \
+        assert self.InputSuperpixels.meta.getAxisKeys()[-1] == 'c'
+        assert self.VoxelData.meta.shape[:-1] == self.InputSuperpixels.meta.shape[:-1], \
             "Probability and Superpixel images must have matching shapes (except channels).\n"\
-            "{} != {}".format( self.VoxelData.meta.shape, self.Superpixels.meta.shape )
+            "{} != {}".format( self.VoxelData.meta.shape, self.InputSuperpixels.meta.shape )
 
-        self._opCache.BlockShape.setValue( self.Superpixels.meta.shape )
+        self._opCache.BlockShape.setValue( self.InputSuperpixels.meta.shape )
 
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here."
@@ -285,10 +302,10 @@ if __name__ == "__main__":
     from lazyflow.graph import Graph
     op = OpCachedMulticut(graph=Graph())
     op.VoxelData.setValue( probabilities )
-    op.Superpixels.setValue( superpixels )
+    op.InputSuperpixels.setValue( superpixels )
     assert op.Output.ready()
     result = op.Output[:].wait()
     
-    assert result.min() == 1
+    assert result.min() == 0
     
     print "DONE."
