@@ -8,8 +8,6 @@ import vigra.graphs
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpCompressedCache
 
-PROBABILITY_EDGE_CHANNEL = 0
-
 class OpMulticut(Operator):
     Beta = InputSlot(value=0.1)
     Probabilities = InputSlot()
@@ -24,18 +22,16 @@ class OpMulticut(Operator):
         assert self.Superpixels.meta.dtype == np.uint32
         self.Output.meta.assignFrom(self.Superpixels.meta)
         self.Output.meta.display_mode = 'random-colortable'
+        assert self.Probabilities.meta.getAxisKeys()[-1] == 'c'
+        assert self.Superpixels.meta.getAxisKeys()[-1] == 'c'
     
     def execute(self, slot, subindex, roi, result):
-        pmap_req = self.Probabilities[..., PROBABILITY_EDGE_CHANNEL]
         sp_req = self.Superpixels[:]
-
-        pmap_req.submit()
-        sp_req.submit()
         
-        probabilities = pmap_req.wait()[...,0]
-        assert probabilities.shape == self.Probabilities.meta.shape[:-1]
-
-        superpixels = sp_req.wait()[...,0]
+        # Since result has same shape/dtype as superpixels,
+        # we can use it as temporary storage here to save RAM.
+        sp_req.writeInto(result)
+        superpixels = sp_req.wait()[...,0] # Drop channel
         
         # Apparently we must ensure that the superpixel values are contiguous
         if superpixels.max() != len(np.unique(superpixels)):
@@ -45,17 +41,61 @@ class OpMulticut(Operator):
         # FIXME: Does vigra.graphs.regionAdjacencyGraph require superpixels starting at 0?
         superpixels -= 1 # start at 0??
 
-        gridGraph = vigra.graphs.gridGraph(probabilities.shape)
+        gridGraph = vigra.graphs.gridGraph(superpixels.shape)
+        rag = vigra.graphs.regionAdjacencyGraph(gridGraph, superpixels) # TODO: This is expensive.  Would it be worthwhile to cache it?
 
-        # get region adjacency graph from super-pixel labels
-        rag = vigra.graphs.regionAdjacencyGraph(gridGraph, superpixels)
-        gridGraphEdgeIndicator = vigra.graphs.edgeFeaturesFromImage(gridGraph, probabilities)
-        assert gridGraphEdgeIndicator.shape == probabilities.shape + (probabilities.ndim,)
-
-        p1 = rag.accumulateEdgeFeatures(gridGraphEdgeIndicator)
-        p1 = np.clip(p1, 0.001, 0.999)
-        p0 = 1.0 - p1
+        probabilities = self.Probabilities[:].wait()
+        edge_features = self.compute_edge_features(rag, probabilities)
+        edge_probabilities = self.compute_edge_probabilities(edge_features)
         
+        agglomerated_labels = self.agglomerate_with_multicut(rag, edge_probabilities, self.Beta.value)
+        result[:] = agglomerated_labels[...,None]
+        result[:] += 1 # RAG labels are 0-based, but we want 1-based
+
+    @classmethod
+    def compute_edge_features(cls, rag, voxel_data):
+        """
+        voxel_data: Must include a channel axis, which must be the last axis
+        
+        For now this function doesn't do anything except accumulate the channels of the voxel data.
+        """
+        # First, transpose so that channel comes first.
+        voxel_channels = voxel_data.transpose(-1, *range(voxel_data.ndim-1))
+
+        edge_features = []
+        gridGraph = vigra.graphs.gridGraph(voxel_channels[0].shape)
+
+        # Iterate over channels
+        for channel_data in voxel_channels:
+            gridGraphEdgeIndicator = vigra.graphs.edgeFeaturesFromImage(gridGraph, channel_data)
+            assert gridGraphEdgeIndicator.shape == channel_data.shape + (channel_data.ndim,)
+            accumulated_edges = rag.accumulateEdgeFeatures(gridGraphEdgeIndicator)
+            edge_features.append(accumulated_edges)
+
+        return edge_features
+
+    @classmethod
+    def compute_edge_probabilities(cls, edge_features):
+        # This function is just a stand-in for now.
+        # It is just returns the first edge feature, so ideally it should just be a probability on it's own.
+        assert len(edge_features) == 1, "This is just a stand-in"
+        edge_probabilities = edge_features[0]
+        return edge_probabilities
+        
+    @classmethod
+    def agglomerate_with_multicut(cls, rag, edge_probabilities, beta):
+        """
+        rag: from vigra.graphs.regionAdjacencyGraph()
+        edge_probabilities: Same format as from rag.accumulateEdgeFeatures(gridGraphEdgeIndicator)
+                            That is, an array (rag.edgeNum,), in the same order as rag.uvIds()
+                            Should indicate probability of each edge being ON.
+        beta: The multicut 'beta' parameter (0.0 < beta < 1.0)
+        
+        Returns: A label image of the same shape as rag.labels, type uint32
+        """
+        p1 = edge_probabilities # Edge ON
+        p1 = np.clip(p1, 0.001, 0.999)
+        p0 = 1.0 - p1 # Edge OFF
         assert p0.shape == p1.shape == (rag.edgeNum,)
 
         nVar = rag.nodeNum
@@ -65,7 +105,6 @@ class OpMulticut(Operator):
         assert uvIds.shape == (rag.edgeNum, 2)
         uvIds = np.sort( uvIds, axis=1 )
         
-        beta = self.Beta.value
         w = np.log(p0/p1) + np.log( (1-beta)/(beta) )
         pf = opengm.pottsFunctions( [nVar,nVar], np.array([0]), w )
         fids = gm.addFunctions( pf )
@@ -74,7 +113,9 @@ class OpMulticut(Operator):
         inf = opengm.inference.Multicut( gm )
         ret = inf.infer( inf.verboseVisitor() )
         arg = inf.arg().astype('uint32')
-        result[:] = rag.projectLabelsToGridGraph(arg)[...,None] + 1 # RAG labels are 0-based, but we want 1-based
+        agglomerated_labels = rag.projectLabelsToGridGraph(arg)
+        assert agglomerated_labels.shape == rag.labels.shape
+        return agglomerated_labels
 
     def propagateDirty(self, slot, subindex, roi):
         # Everything is dirty...
