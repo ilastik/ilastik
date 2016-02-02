@@ -6,7 +6,7 @@ import opengm
 import vigra.graphs
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpCompressedCache
+from lazyflow.operators import OpCompressedCache, OpValueCache
 
 class OpMulticut(Operator):
     Beta = InputSlot(value=0.1)
@@ -14,72 +14,64 @@ class OpMulticut(Operator):
     Superpixels = InputSlot()
     
     Output = OutputSlot() # Pixelwise output (not RAG, etc.)
+    EdgeProbabilitiesDict = OutputSlot() # A dict of id_pair -> probabilities
     
     def __init__(self, *args, **kwargs):
         super( OpMulticut, self ).__init__(*args, **kwargs)
+
+        self.opCreateRag = OpCreateRag(parent=self)
+        self.opCreateRag.Superpixels.connect( self.Superpixels )
+        
+        self.opRagCache = OpValueCache(parent=self)
+        self.opRagCache.Input.connect( self.opCreateRag.Rag )
+
+        self.opComputeEdgeFeatures = OpComputeEdgeFeatures(parent=self)
+        self.opComputeEdgeFeatures.VoxelData.connect( self.VoxelData )
+        self.opComputeEdgeFeatures.Rag.connect( self.opRagCache.Output )
+        
+        self.opEdgeFeaturesCache = OpValueCache(parent=self)
+        self.opEdgeFeaturesCache.Input.connect( self.opComputeEdgeFeatures.EdgeFeatures )
+        
+        self.opComputeEdgeProbabilities = OpComputeEdgeProbabilities(parent=self)
+        self.opComputeEdgeProbabilities.EdgeFeatures.connect( self.opEdgeFeaturesCache.Output )
+        
+        self.opEdgeProbabilitiesCache = OpValueCache(parent=self)
+        self.opEdgeProbabilitiesCache.Input.connect( self.opComputeEdgeProbabilities.EdgeProbabilities )
     
     def setupOutputs(self):
         assert self.Superpixels.meta.dtype == np.uint32
+        assert self.Superpixels.meta.getAxisKeys()[-1] == 'c'
+
         self.Output.meta.assignFrom(self.Superpixels.meta)
         self.Output.meta.display_mode = 'random-colortable'
-        assert self.VoxelData.meta.getAxisKeys()[-1] == 'c'
-        assert self.Superpixels.meta.getAxisKeys()[-1] == 'c'
+        
+        self.EdgeProbabilitiesDict.meta.dtype = object
+        self.EdgeProbabilitiesDict.meta.shape = (1,)
     
     def execute(self, slot, subindex, roi, result):
-        sp_req = self.Superpixels[:]
-        
-        # Since result has same shape/dtype as superpixels,
-        # we can use it as temporary storage here to save RAM.
-        sp_req.writeInto(result)
-        superpixels = sp_req.wait()[...,0] # Drop channel
-        
-        # Apparently we must ensure that the superpixel values are contiguous
-        if superpixels.max() != len(np.unique(superpixels)):
-            relabeled, fwd, rev = skimage.segmentation.relabel_sequential(superpixels)
-            superpixels = relabeled.astype(np.uint32)
-        
-        # FIXME: Does vigra.graphs.regionAdjacencyGraph require superpixels starting at 0?
-        superpixels -= 1 # start at 0??
+        if slot == self.Output:
+            self._executeOutput(roi, result)
+        elif slot == self.EdgeProbabilitiesDict:
+            self._executeEdgeProbabilitiesDict(roi, result)
+        else:
+            assert False, "Unknown output slot: {}".format( slot )
 
-        gridGraph = vigra.graphs.gridGraph(superpixels.shape)
-        rag = vigra.graphs.regionAdjacencyGraph(gridGraph, superpixels) # TODO: This is expensive.  Would it be worthwhile to cache it?
-
-        voxel_data = self.VoxelData[:].wait()
-        edge_features = self.compute_edge_features(rag, voxel_data)
-        edge_probabilities = self.compute_edge_probabilities(edge_features)
-        
+    def _executeOutput(self, roi, result):
+        edge_probabilities = self.opEdgeProbabilitiesCache.Output.value
+        rag = self.opRagCache.Output.value
         agglomerated_labels = self.agglomerate_with_multicut(rag, edge_probabilities, self.Beta.value)
         result[:] = agglomerated_labels[...,None]
         result[:] += 1 # RAG labels are 0-based, but we want 1-based
-
-    @classmethod
-    def compute_edge_features(cls, rag, voxel_data):
-        """
-        voxel_data: Must include a channel axis, which must be the last axis
         
-        For now this function doesn't do anything except accumulate the channels of the voxel data.
-        """
-        # First, transpose so that channel comes first.
-        voxel_channels = voxel_data.transpose(-1, *range(voxel_data.ndim-1))
+    def _executeEdgeProbabilitiesDict(self, roi, result):
+        edge_probabilities = self.opEdgeProbabilitiesCache.Output.value
+        rag = self.opRagCache.Output.value
+        uvIds = rag.uvIds()
+        assert uvIds.shape == (rag.edgeNum, 2)
+        uvIds = np.sort( uvIds, axis=1 )
 
-        edge_features = []
-        gridGraph = vigra.graphs.gridGraph(voxel_channels[0].shape)
-
-        # Iterate over channels
-        for channel_data in voxel_channels:
-            gridGraphEdgeIndicator = vigra.graphs.edgeFeaturesFromImage(gridGraph, channel_data)
-            assert gridGraphEdgeIndicator.shape == channel_data.shape + (channel_data.ndim,)
-            accumulated_edges = rag.accumulateEdgeFeatures(gridGraphEdgeIndicator)
-            edge_features.append(accumulated_edges)
-
-        return edge_features
-
-    @classmethod
-    def compute_edge_probabilities(cls, edge_features):
-        # This function is just a stand-in for now.
-        # It is just returns the first edge feature, so ideally it should just be a probability on it's own.
-        edge_probabilities = edge_features[0]
-        return edge_probabilities
+        id_pairs = map(tuple, uvIds)
+        result[0] = dict(zip(id_pairs, edge_probabilities))
         
     @classmethod
     def agglomerate_with_multicut(cls, rag, edge_probabilities, beta):
@@ -119,6 +111,102 @@ class OpMulticut(Operator):
     def propagateDirty(self, slot, subindex, roi):
         # Everything is dirty...
         self.Output.setDirty()
+        self.EdgeProbabilitiesDict.setDirty()
+
+class OpCreateRag(Operator):
+    Superpixels = InputSlot()
+    Rag = OutputSlot()
+    
+    def setupOutputs(self):
+        assert self.Superpixels.meta.dtype == np.uint32
+        assert self.Superpixels.meta.getAxisKeys()[-1] == 'c'
+        self.Rag.meta.shape = (1,)
+        self.Rag.meta.dtype = object
+    
+    def execute(self, slot, subindex, roi, result):
+        superpixels = self.Superpixels[:].wait()[...,0] # Drop channel
+        
+        # Apparently we must ensure that the superpixel values are contiguous
+        if superpixels.max() != len(np.unique(superpixels)):
+            relabeled, fwd, rev = skimage.segmentation.relabel_sequential(superpixels)
+            superpixels = relabeled.astype(np.uint32)
+        
+        # FIXME: Does vigra.graphs.regionAdjacencyGraph require superpixels starting at 0?
+        superpixels -= 1 # start at 0??
+
+        gridGraph = vigra.graphs.gridGraph(superpixels.shape)
+        rag = vigra.graphs.regionAdjacencyGraph(gridGraph, superpixels)
+        result[0] = rag
+
+    def propagateDirty(self, slot, subindex, roi):
+        self.Rag.setDirty()
+
+class OpComputeEdgeFeatures(Operator):
+    VoxelData = InputSlot()
+    Rag = InputSlot()
+    EdgeFeatures = OutputSlot()
+    
+    def setupOutputs(self):
+        assert self.VoxelData.meta.getAxisKeys()[-1] == 'c'
+        self.EdgeFeatures.meta.shape = (1,)
+        self.EdgeFeatures.meta.dtype = object
+        
+    def execute(self, slot, subindex, roi, result):
+        voxel_req = self.VoxelData[:]
+        voxel_req.submit()
+
+        rag = self.Rag.value
+        voxel_data = voxel_req.wait()
+
+        edge_features = self.compute_edge_features(rag, voxel_data)
+        result[0] = edge_features
+
+    def propagateDirty(self, slot, subindex, roi):
+        self.EdgeFeatures.setDirty()
+    
+    @classmethod
+    def compute_edge_features(cls, rag, voxel_data):
+        """
+        voxel_data: Must include a channel axis, which must be the last axis
+        
+        For now this function doesn't do anything except accumulate the channels of the voxel data.
+        """
+        # First, transpose so that channel comes first.
+        voxel_channels = voxel_data.transpose(voxel_data.ndim-1, *range(voxel_data.ndim-1))
+
+        edge_features = []
+        gridGraph = vigra.graphs.gridGraph(voxel_channels[0].shape)
+
+        # Iterate over channels
+        for channel_data in voxel_channels:
+            gridGraphEdgeIndicator = vigra.graphs.edgeFeaturesFromImage(gridGraph, channel_data)
+            assert gridGraphEdgeIndicator.shape == channel_data.shape + (channel_data.ndim,)
+            accumulated_edges = rag.accumulateEdgeFeatures(gridGraphEdgeIndicator)
+            edge_features.append(accumulated_edges)
+
+        return edge_features
+
+class OpComputeEdgeProbabilities(Operator):
+    EdgeFeatures = InputSlot()
+    EdgeProbabilities = OutputSlot()
+    
+    def setupOutputs(self):
+        self.EdgeProbabilities.meta.shape = (1,)
+        self.EdgeProbabilities.meta.dtype = object
+
+    def execute(self, slot, subindex, roi, result):
+        edge_features = self.EdgeFeatures.value
+        result[0] = self.compute_edge_probabilities(edge_features)
+    
+    def propagateDirty(self, slot, subindex, roi):
+        self.EdgeProbabilities.setDirty()
+
+    @classmethod
+    def compute_edge_probabilities(cls, edge_features):
+        # This function is just a stand-in for now.
+        # It is just returns the first edge feature, so ideally it should just be a probability on it's own.
+        edge_probabilities = edge_features[0]
+        return edge_probabilities
 
 class OpCachedMulticut(Operator):
     """
@@ -132,6 +220,7 @@ class OpCachedMulticut(Operator):
     Superpixels = InputSlot()
     
     Output = OutputSlot()
+    EdgeProbabilitiesDict = OutputSlot()
     
     def __init__(self, *args, **kwargs):
         super( OpCachedMulticut, self ).__init__(*args, **kwargs)
@@ -150,6 +239,11 @@ class OpCachedMulticut(Operator):
         self._opCache = OpCompressedCache(parent=self)
         self._opCache.Input.connect( self._opMulticut.Output )
         self.Output.connect( self._opCache.Output )
+
+        self._opEdgeProbabilitiesDictCache = OpValueCache(parent=self)
+        self._opEdgeProbabilitiesDictCache.Input.connect( self.EdgeProbabilitiesDict )
+
+        self.EdgeProbabilitiesDict.connect( self._opEdgeProbabilitiesDictCache.Output )
 
     def setupOutputs(self):
         # Sanity checks
