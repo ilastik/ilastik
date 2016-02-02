@@ -30,6 +30,8 @@ from volumina.pixelpipeline.datasources import LazyflowSource
 from volumina.layer import SegmentationEdgesLayer
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
+from lazyflow.request import Request
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -119,14 +121,18 @@ class MulticutGui(LayerViewerGui):
     # Configure the handler for updated probability maps
     # FIXME: Should we make a new Layer subclass that handles this colortable mapping for us?  Yes.
     def update_probability_edges(self, *args):
-        op = self.topLevelOperatorView
-        if not self.superpixel_edge_layer:
-            return
-        edge_probs = op.EdgeProbabilitiesDict.value
-        new_pens = {}
-        for id_pair, probability in edge_probs.items():
-            new_pens[id_pair] = self.probability_pen_table[int(probability * 100)]
-        self.apply_new_probability_edges(new_pens)
+        def _impl():
+            op = self.topLevelOperatorView
+            if not self.superpixel_edge_layer:
+                return
+            edge_probs = op.EdgeProbabilitiesDict.value
+            new_pens = {}
+            for id_pair, probability in edge_probs.items():
+                new_pens[id_pair] = self.probability_pen_table[int(probability * 100)]
+            self.apply_new_probability_edges(new_pens)
+
+        # submit the worklaod in a request and return immediately
+        Request(_impl).submit()
     
     @threadRouted
     def apply_new_probability_edges(self, new_pens):
@@ -166,6 +172,7 @@ class MulticutGui(LayerViewerGui):
             layer.visible = True
             layer.opacity = 1.0
             self.superpixel_edge_layer = layer
+            self.update_probability_edges() # Initialize
             layers.append(layer)
             del layer
                 

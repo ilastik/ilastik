@@ -20,7 +20,7 @@
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
-from opMulticut import OpCachedMulticut
+from opMulticut import OpMulticut
 from multicutSerializer import MulticutSerializer
 
 class MulticutApplet( StandardApplet ):
@@ -33,7 +33,7 @@ class MulticutApplet( StandardApplet ):
 
     @property
     def singleLaneOperatorClass(self):
-        return OpCachedMulticut
+        return OpMulticut
 
     @property
     def broadcastingSlots(self):
