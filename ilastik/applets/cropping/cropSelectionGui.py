@@ -331,6 +331,7 @@ class CropSelectionGui(CroppingGui):
             cropMidPos = [(b+a)/2 for [a,b] in self.editor.cropModel._crop_extents]
             for i in range(3):
                 self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
+            self.editor.navCtrl.changeTime(self.editor.cropModel._crop_times[0])
         self._setDirty(self.topLevelOperatorView.Crops,[])
 
     def _setDirty(self, slot, timesteps):
@@ -376,12 +377,14 @@ class CropSelectionGui(CroppingGui):
         if delta > 0:
             self.editor.navCtrl.changeTimeRelative(delta)
         self.topLevelOperatorView.MinValueT.setValue(self._cropControlUi._minSliderT.value())
+        self.editor.cropModel.set_roi_t([self._cropControlUi._minSliderT.value(),self.editor.cropModel.get_roi_t()[1]])
 
     def _onMaxSliderTMoved(self):
         delta = self._cropControlUi._maxSliderT.value() - self.editor.posModel.time
         if delta < 0:
             self.editor.navCtrl.changeTimeRelative(delta)
         self.topLevelOperatorView.MaxValueT.setValue(self._cropControlUi._maxSliderT.value())
+        self.editor.cropModel.set_roi_t([self.editor.cropModel.get_roi_t()[0],self._cropControlUi._maxSliderT.value()])
 
     def _onMinSliderXMoved(self):
         [(minValueX,minValueY,minValueZ),(maxValueX,maxValueY,maxValueZ)] = self.editor.cropModel.get_roi_3d()
@@ -442,7 +445,9 @@ class CropSelectionGui(CroppingGui):
         self.editor.cropModel.set_crop_extents([[starts[0], ce[0][1]],[starts[1], ce[1][1]],[starts[2], ce[2][1]]])
         self.editor.cropModel.set_crop_extents([[starts[0],stops[0]],[starts[1],stops[1]],[starts[2],stops[2]]])
 
-        self.editor.navCtrl.changeTimeRelative(self.topLevelOperatorView.Crops.value[self._cropControlUi.cropListModel[row].name]["time"][0] - self.editor.posModel.time)
+        times = self.topLevelOperatorView.Crops.value[self._cropControlUi.cropListModel[row].name]["time"]
+        self.editor.cropModel.set_crop_times(times)
+        self.editor.navCtrl.changeTimeRelative(times[0] - self.editor.posModel.time)
         self.editor.cropModel.colorChanged.emit(brushColor)
         if not (self.editor.cropModel._crop_extents[0][0]  == None or self.editor.cropModel.cropZero()):
             cropMidPos = [(b+a)/2 for [a,b] in self.editor.cropModel._crop_extents]
