@@ -10,7 +10,7 @@ from lazyflow.operators import OpCompressedCache
 
 class OpMulticut(Operator):
     Beta = InputSlot(value=0.1)
-    Probabilities = InputSlot()
+    VoxelData = InputSlot()
     Superpixels = InputSlot()
     
     Output = OutputSlot() # Pixelwise output (not RAG, etc.)
@@ -22,7 +22,7 @@ class OpMulticut(Operator):
         assert self.Superpixels.meta.dtype == np.uint32
         self.Output.meta.assignFrom(self.Superpixels.meta)
         self.Output.meta.display_mode = 'random-colortable'
-        assert self.Probabilities.meta.getAxisKeys()[-1] == 'c'
+        assert self.VoxelData.meta.getAxisKeys()[-1] == 'c'
         assert self.Superpixels.meta.getAxisKeys()[-1] == 'c'
     
     def execute(self, slot, subindex, roi, result):
@@ -44,8 +44,8 @@ class OpMulticut(Operator):
         gridGraph = vigra.graphs.gridGraph(superpixels.shape)
         rag = vigra.graphs.regionAdjacencyGraph(gridGraph, superpixels) # TODO: This is expensive.  Would it be worthwhile to cache it?
 
-        probabilities = self.Probabilities[:].wait()
-        edge_features = self.compute_edge_features(rag, probabilities)
+        voxel_data = self.VoxelData[:].wait()
+        edge_features = self.compute_edge_features(rag, voxel_data)
         edge_probabilities = self.compute_edge_probabilities(edge_features)
         
         agglomerated_labels = self.agglomerate_with_multicut(rag, edge_probabilities, self.Beta.value)
@@ -78,7 +78,6 @@ class OpMulticut(Operator):
     def compute_edge_probabilities(cls, edge_features):
         # This function is just a stand-in for now.
         # It is just returns the first edge feature, so ideally it should just be a probability on it's own.
-        assert len(edge_features) == 1, "This is just a stand-in"
         edge_probabilities = edge_features[0]
         return edge_probabilities
         
@@ -129,7 +128,7 @@ class OpCachedMulticut(Operator):
     """
     Beta = InputSlot(value=0.1)
     RawData = InputSlot(optional=True) # Used by the GUI for display only
-    Probabilities = InputSlot()
+    VoxelData = InputSlot()
     Superpixels = InputSlot()
     
     Output = OutputSlot()
@@ -145,7 +144,7 @@ class OpCachedMulticut(Operator):
         
         self._opMulticut = OpMulticut(parent=self)
         self._opMulticut.Beta.connect( self.Beta )
-        self._opMulticut.Probabilities.connect( self.Probabilities )
+        self._opMulticut.VoxelData.connect( self.VoxelData )
         self._opMulticut.Superpixels.connect( self.Superpixels )
         
         self._opCache = OpCompressedCache(parent=self)
@@ -154,11 +153,11 @@ class OpCachedMulticut(Operator):
 
     def setupOutputs(self):
         # Sanity checks
-        assert self.Probabilities.meta.getAxisKeys()[-1] == 'c'
+        assert self.VoxelData.meta.getAxisKeys()[-1] == 'c'
         assert self.Superpixels.meta.getAxisKeys()[-1] == 'c'
-        assert self.Probabilities.meta.shape[:-1] == self.Superpixels.meta.shape[:-1], \
+        assert self.VoxelData.meta.shape[:-1] == self.Superpixels.meta.shape[:-1], \
             "Probability and Superpixel images must have matching shapes (except channels).\n"\
-            "{} != {}".format( self.Probabilities.meta.shape, self.Superpixels.meta.shape )
+            "{} != {}".format( self.VoxelData.meta.shape, self.Superpixels.meta.shape )
 
         self._opCache.BlockShape.setValue( self.Superpixels.meta.shape )
 
@@ -191,7 +190,7 @@ if __name__ == "__main__":
     
     from lazyflow.graph import Graph
     op = OpCachedMulticut(graph=Graph())
-    op.Probabilities.setValue( probabilities )
+    op.VoxelData.setValue( probabilities )
     op.Superpixels.setValue( superpixels )
     assert op.Output.ready()
     result = op.Output[:].wait()

@@ -148,10 +148,10 @@ class MulticutGui(LayerViewerGui):
             layers.append(layer)
             del layer
  
-        # Probabilities
-        if op.Probabilities.ready():
-            layer = self.createStandardLayerFromSlot( op.Probabilities )
-            layer.name = "Membrane Probabilities"
+        # Voxel data
+        if op.VoxelData.ready():
+            layer = self.createStandardLayerFromSlot( op.VoxelData )
+            layer.name = "Voxel Data"
             layer.visible = False
             layer.opacity = 1.0
             layers.append(layer)

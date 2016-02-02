@@ -110,7 +110,7 @@ class MulticutWorkflow(Workflow):
 
         # multicut inputs
         opMulticut.RawData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
-        opMulticut.Probabilities.connect( opDataSelection.ImageGroup[self.DATA_ROLE_PROBABILITIES] )
+        opMulticut.VoxelData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_PROBABILITIES] )
         opMulticut.Superpixels.connect( opDataSelection.ImageGroup[self.DATA_ROLE_SUPERPIXELS] )
 
         # DataExport inputs
