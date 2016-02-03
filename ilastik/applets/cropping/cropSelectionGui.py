@@ -364,19 +364,49 @@ class CropSelectionGui(CroppingGui):
                 (self.topLevelOperatorView.MaxValueT.value,self.topLevelOperatorView.MaxValueX.value,self.topLevelOperatorView.MaxValueY.value,self.topLevelOperatorView.MaxValueZ.value)]
 
     def updateTime(self):
-        delta = self._cropControlUi._minSliderT.value() - self.editor.posModel.time
-        if delta > 0:
-            self.editor.navCtrl.changeTimeRelative(delta)
-        else:
-            delta = self._cropControlUi._maxSliderT.value() - self.editor.posModel.time
-            if delta < 0:
+        inputImageSlot = self.topLevelOperatorView.InputImage
+        tagged_shape = inputImageSlot.meta.getTaggedShape()
+        minValueT = 0
+        maxValueT = tagged_shape['t'] - 1
+
+        if self.editor.cropModel.get_scroll_time_outside_crop():
+            delta = minValueT - self.editor.posModel.time
+            times = self.editor.cropModel.get_roi_t()
+            if times[0] <= self.editor.posModel.time and self.editor.posModel.time <= times[1]:
+                for imgView in self.editor.imageViews:
+                    imgView._croppingMarkers._shading_item.set_paint_full_frame(False)
+            else:
+                for imgView in self.editor.imageViews:
+                    imgView._croppingMarkers._shading_item.set_paint_full_frame(True)
+
+            if delta > 0:
                 self.editor.navCtrl.changeTimeRelative(delta)
+            else:
+                delta = maxValueT - self.editor.posModel.time
+                if delta < 0:
+                    self.editor.navCtrl.changeTimeRelative(delta)
+        else:
+            for imgView in self.editor.imageViews:
+                imgView._croppingMarkers._shading_item.set_paint_full_frame(False)
+            delta = self._cropControlUi._minSliderT.value() - self.editor.posModel.time
+            if delta > 0:
+                self.editor.navCtrl.changeTimeRelative(delta)
+            else:
+                delta = self._cropControlUi._maxSliderT.value() - self.editor.posModel.time
+                if delta < 0:
+                    self.editor.navCtrl.changeTimeRelative(delta)
 
     def _onMinSliderTMoved(self):
         delta = self._cropControlUi._minSliderT.value() - self.editor.posModel.time
         if delta > 0:
             self.editor.navCtrl.changeTimeRelative(delta)
         self.topLevelOperatorView.MinValueT.setValue(self._cropControlUi._minSliderT.value())
+        if self._cropControlUi._minSliderT.value() <= self.editor.posModel.time and self.editor.posModel.time <= self.editor.cropModel.get_roi_t()[1]:
+            for imgView in self.editor.imageViews:
+                imgView._croppingMarkers._shading_item.set_paint_full_frame(False)
+        else:
+            for imgView in self.editor.imageViews:
+                imgView._croppingMarkers._shading_item.set_paint_full_frame(True)
         self.editor.cropModel.set_roi_t([self._cropControlUi._minSliderT.value(),self.editor.cropModel.get_roi_t()[1]])
 
     def _onMaxSliderTMoved(self):
@@ -384,6 +414,12 @@ class CropSelectionGui(CroppingGui):
         if delta < 0:
             self.editor.navCtrl.changeTimeRelative(delta)
         self.topLevelOperatorView.MaxValueT.setValue(self._cropControlUi._maxSliderT.value())
+        if self.editor.cropModel.get_roi_t()[0] <= self.editor.posModel.time and self.editor.posModel.time <= self._cropControlUi._maxSliderT.value():
+            for imgView in self.editor.imageViews:
+                imgView._croppingMarkers._shading_item.set_paint_full_frame(False)
+        else:
+            for imgView in self.editor.imageViews:
+                imgView._croppingMarkers._shading_item.set_paint_full_frame(True)
         self.editor.cropModel.set_roi_t([self.editor.cropModel.get_roi_t()[0],self._cropControlUi._maxSliderT.value()])
 
     def _onMinSliderXMoved(self):
@@ -447,6 +483,7 @@ class CropSelectionGui(CroppingGui):
 
         times = self.topLevelOperatorView.Crops.value[self._cropControlUi.cropListModel[row].name]["time"]
         self.editor.cropModel.set_crop_times(times)
+        self.editor.cropModel.set_scroll_time_outside_crop(True)
         self.editor.navCtrl.changeTimeRelative(times[0] - self.editor.posModel.time)
         self.editor.cropModel.colorChanged.emit(brushColor)
         if not (self.editor.cropModel._crop_extents[0][0]  == None or self.editor.cropModel.cropZero()):
@@ -536,7 +573,7 @@ class CropSelectionGui(CroppingGui):
         if cropImageSlot.ready():
             cropImageLayer = self.createStandardLayerFromSlot( cropImageSlot )
             cropImageLayer.name = "Crop"
-            cropImageLayer.visible = False #True
+            cropImageLayer.visible = False
             cropImageLayer.opacity = 0.25
             layers.append(cropImageLayer)
 
@@ -552,7 +589,6 @@ class CropSelectionGui(CroppingGui):
         # Show the raw input data
         inputImageSlot = self.topLevelOperatorView.InputImage
         if inputImageSlot.ready():
-            #print " ..... SLT .....> in if inputImageSlot.ready()"
             inputLayer = self.createStandardLayerFromSlot( inputImageSlot )
             inputLayer.name = "Raw Input"
             inputLayer.visible = True

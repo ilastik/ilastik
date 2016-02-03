@@ -441,6 +441,7 @@ class AnnotationsGui(LayerViewerGui):
 
         times = self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[row].name]["time"]
         self.editor.cropModel.set_crop_times(times)
+        self.editor.cropModel.set_scroll_time_outside_crop(False)
         self.editor.navCtrl.changeTimeRelative(times[0] - self.editor.posModel.time)
 
         self.editor.cropModel.colorChanged.emit(brushColor)
