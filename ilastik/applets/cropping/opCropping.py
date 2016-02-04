@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpCompressedUserCropArray
+from lazyflow.operators import OpCompressedUserLabelArray
 from ilastik.utility.operatorSubView import OperatorSubView
 #from ilastik.utility import OpMultiLaneWrapper
 
@@ -125,7 +125,7 @@ class OpCroppingTopLevel( Operator ):
 class OpCroppingSingleLane( Operator ):
     """
     This is a single-lane operator that can be used with the cropping applet gui.
-    It is basically a wrapper around the ``OpCompressedUserCropArray`` (lazyflow), 
+    It is basically a wrapper around the ``OpCompressedUserLabelArray`` (lazyflow),
     with the 'shape' and 'blockshape' input slots taken care of for you.
     """
     name="OpCroppingSingleLane"
@@ -161,7 +161,7 @@ class OpCroppingSingleLane( Operator ):
         self._blockDims = blockDims
 
         # Create internal operator
-        self.opCropArray = OpCompressedUserCropArray( parent=self )
+        self.opCropArray = OpCompressedUserLabelArray( parent=self )
         self.opCropArray.Input.connect( self.CropInput )
         self.opCropArray.eraser.connect(self.CropEraserValue)
         self.opCropArray.deleteCrop.connect(self.CropDelete)

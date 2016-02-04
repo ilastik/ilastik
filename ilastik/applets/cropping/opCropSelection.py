@@ -23,7 +23,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from ilastik.utility import OpMultiLaneWrapper
 
 import numpy
-from lazyflow.operators import OpCompressedUserCropArray
+from lazyflow.operators import OpCompressedUserLabelArray
 #from lazyflow.operators import OpValueCache, OpTrainClassifierBlocked, OpClassifierPredict,\
 #                               OpSlicedBlockedArrayCache, OpMultiArraySlicer2, \
 #                               OpPixelOperator, OpMaxChannelIndicatorOperator, OpCompressedUserLabelArray
@@ -177,11 +177,11 @@ class OpCropPipeline( Operator ):
     def __init__(self, *args, **kwargs):
         super( OpCropPipeline, self ).__init__( *args, **kwargs )
 
-        self.opCropArray = OpCompressedUserCropArray( parent=self )
+        self.opCropArray = OpCompressedUserLabelArray( parent=self )
         self.opCropArray.Input.connect( self.CropInput )
         self.opCropArray.eraser.setValue(100)
 
-        self.opCropArray.deleteCrop.connect( self.DeleteCrop )
+        self.opCropArray.deleteLabel.connect( self.DeleteCrop )
 
         # Connect external outputs to their internal sources
         self.Output.connect( self.opCropArray.Output )
