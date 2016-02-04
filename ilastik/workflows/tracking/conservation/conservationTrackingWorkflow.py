@@ -286,17 +286,18 @@ class ConservationTrackingWorkflowBase( Workflow ):
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
          
     def prepare_lane_for_export(self, lane_index):
-        maxt = self.trackingApplet.topLevelOperator[lane_index].LabelImage.meta.shape[0] 
-        maxx = self.trackingApplet.topLevelOperator[lane_index].LabelImage.meta.shape[1] 
-        maxy = self.trackingApplet.topLevelOperator[lane_index].LabelImage.meta.shape[2] 
-        maxz = self.trackingApplet.topLevelOperator[lane_index].LabelImage.meta.shape[3] 
+        maxt = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[0] 
+        maxx = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[1] 
+        maxy = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[2] 
+        maxz = self.trackingApplet.topLevelOperator[lane_index].RawImage.meta.shape[3] 
         time_enum = range(maxt)
         x_range = (0, maxx)
         y_range = (0, maxy)
         z_range = (0, maxz)
-        ndim = 3
+
+        ndim = 2
         if ( z_range[1] - z_range[0] ) > 1:
-            ndim = 2
+            ndim = 3
         
         parameters = self.trackingApplet.topLevelOperator.Parameters.value
         
