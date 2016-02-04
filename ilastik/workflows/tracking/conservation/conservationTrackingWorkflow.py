@@ -12,19 +12,23 @@ from ilastik.applets.trackingFeatureExtraction.trackingFeatureExtractionApplet i
 from ilastik.applets.trackingFeatureExtraction import config
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
+from ilastik.applets.batchProcessing import BatchProcessingApplet
+
+import logging
+logger = logging.getLogger(__name__)
 
 class ConservationTrackingWorkflowBase( Workflow ):
     workflowName = "Automatic Tracking Workflow (Conservation Tracking) BASE"
     #withAnimalTracking = False
 
-    def __init__( self, shell, headless, workflow_cmdline_args, *args, **kwargs ):
+    def __init__( self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs ):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
         if 'graph' in kwargs: del kwargs['graph']
         # if 'withOptTrans' in kwargs:
         #     self.withOptTrans = kwargs['withOptTrans']
         # if 'fromBinary' in kwargs:
         #     self.fromBinary = kwargs['fromBinary']
-        super(ConservationTrackingWorkflowBase, self).__init__(shell, headless, graph=graph, *args, **kwargs)
+        super(ConservationTrackingWorkflowBase, self).__init__(shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
 
         data_instructions = 'Use the "Raw Data" tab to load your intensity image(s).\n\n'
         if self.fromBinary:
@@ -32,13 +36,17 @@ class ConservationTrackingWorkflowBase( Workflow ):
         else:
             data_instructions += 'Use the "Prediction Maps" tab to load your pixel-wise probability image(s).'
 
+        # Variables to store division and cell classifiers to prevent retraining every-time batch processing runs
+        self.stored_division_classifier = None
+        self.stored_cell_classifier = None
+
         ## Create applets 
         self.dataSelectionApplet = DataSelectionApplet(self, 
                                                        "Input Data", 
                                                        "Input Data", 
                                                        forceAxisOrder='txyzc',
                                                        instructionText=data_instructions,
-                                                       max_lanes=1
+                                                       max_lanes=None
                                                        )
         
         opDataSelection = self.dataSelectionApplet.topLevelOperator
@@ -56,12 +64,48 @@ class ConservationTrackingWorkflowBase( Workflow ):
                                                                    
         self.objectExtractionApplet = TrackingFeatureExtractionApplet(workflow=self, interactive=False,
                                                                       name="Object Feature Computation")                                                                      
+
+        vigra_features = list((set(config.vigra_features)).union(config.selected_features_objectcount[config.features_vigra_name])) 
+        feature_names_vigra = {}
+        feature_names_vigra[config.features_vigra_name] = { name: {} for name in vigra_features }
+        
+        opObjectExtraction = self.objectExtractionApplet.topLevelOperator
+        opObjectExtraction.FeatureNamesVigra.setValue(feature_names_vigra)
         
         self.divisionDetectionApplet = self._createDivisionDetectionApplet() # Might be None
+
+        if self.divisionDetectionApplet:
+            feature_dict_division = {}
+            feature_dict_division[config.features_division_name] = { name: {} for name in config.division_features }
+            opObjectExtraction.FeatureNamesDivision.setValue(feature_dict_division)
+               
+            selected_features_div = {}
+            for plugin_name in config.selected_features_division.keys():
+                selected_features_div[plugin_name] = { name: {} for name in config.selected_features_division[plugin_name] }
+            # FIXME: do not hard code this
+            for name in [ 'SquaredDistances_' + str(i) for i in range(config.n_best_successors) ]:
+                selected_features_div[config.features_division_name][name] = {}
+
+            opDivisionDetection = self.divisionDetectionApplet.topLevelOperator
+            opDivisionDetection.SelectedFeatures.setValue(selected_features_div)
+            opDivisionDetection.LabelNames.setValue(['Not Dividing', 'Dividing'])        
+            opDivisionDetection.AllowDeleteLabels.setValue(False)
+            opDivisionDetection.AllowAddLabel.setValue(False)
+            opDivisionDetection.EnableLabelTransfer.setValue(False)
                 
         self.cellClassificationApplet = ObjectClassificationApplet(workflow=self,
                                                                      name="Object Count Classification (optional)",
                                                                      projectFileGroupName="CountClassification")
+
+        selected_features_objectcount = {}
+        for plugin_name in config.selected_features_objectcount.keys():
+            selected_features_objectcount[plugin_name] = { name: {} for name in config.selected_features_objectcount[plugin_name] }
+
+        opCellClassification = self.cellClassificationApplet.topLevelOperator 
+        opCellClassification.SelectedFeatures.setValue( selected_features_objectcount )
+        opCellClassification.SuggestedLabelNames.setValue( ['false detection',] + [str(i) + ' Objects' for i in range(1,10) ] )
+        opCellClassification.AllowDeleteLastLabelOnly.setValue(True)
+        opCellClassification.EnableLabelTransfer.setValue(False)
                 
         self.trackingApplet = ConservationTrackingApplet( workflow=self )
 
@@ -71,12 +115,15 @@ class ConservationTrackingWorkflowBase( Workflow ):
                                                              default_export_filename=self.default_export_filename)
 
         opDataExport = self.dataExportApplet.topLevelOperator
-        opDataExport.SelectionNames.setValue( ['Object Identities', 'Tracking Result', 'Merger Result'] )
+        opDataExport.SelectionNames.setValue( ['Object-Identities', 'Tracking-Result', 'Merger-Result'] )
         opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
+
+        self.batchProcessingApplet = BatchProcessingApplet(self, "Batch Processing", self.dataSelectionApplet, self.dataExportApplet)
         
         # Extra configuration for object export table (as CSV table or HDF5 table)
         opTracking = self.trackingApplet.topLevelOperator
         self.dataExportApplet.set_exporting_operator(opTracking)
+        self.dataExportApplet.prepare_lane_for_export = self.prepare_lane_for_export
         self.dataExportApplet.post_process_lane_export = self.post_process_lane_export
         
         self._applets = []                
@@ -94,6 +141,19 @@ class ConservationTrackingWorkflowBase( Workflow ):
         self._applets.append(self.cellClassificationApplet)
         self._applets.append(self.trackingApplet)
         self._applets.append(self.dataExportApplet)
+        self._applets.append(self.batchProcessingApplet)
+        
+        # Parse export and batch command-line arguments for headless mode
+        if workflow_cmdline_args:
+            self._data_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args( workflow_cmdline_args )
+            self._batch_input_args, unused_args = self.batchProcessingApplet.parse_known_cmdline_args( workflow_cmdline_args )
+        else:
+            unused_args = None
+            self._data_export_args = None
+            self._batch_input_args = None
+
+        if unused_args:
+            logger.warn("Unused command-line args: {}".format( unused_args ))
         
     @property
     def applets(self):
@@ -107,6 +167,43 @@ class ConservationTrackingWorkflowBase( Workflow ):
     @property
     def imageNameListSlot(self):
         return self.dataSelectionApplet.topLevelOperator.ImageName
+
+    def prepareForNewLane(self, laneIndex):
+        # Store division and cell classifiers
+        if self.divisionDetectionApplet:
+            opDivisionClassification = self.divisionDetectionApplet.topLevelOperator
+            if opDivisionClassification.classifier_cache.Output.ready() and \
+               not opDivisionClassification.classifier_cache._dirty:
+                self.stored_division_classifier = opDivisionClassification.classifier_cache.Output.value
+            else:
+                self.stored_division_classifier = None
+                
+        opCellClassification = self.cellClassificationApplet.topLevelOperator
+        if opCellClassification.classifier_cache.Output.ready() and \
+           not opCellClassification.classifier_cache._dirty:
+            self.stored_cell_classifier = opCellClassification.classifier_cache.Output.value
+        else:
+            self.stored_cell_classifier = None
+
+    def handleNewLanesAdded(self):
+        """
+        If new lanes were added, then we invalidated our classifiers unecessarily.
+        Here, we can restore the classifier so it doesn't need to be retrained.
+        """
+        
+        # If we have stored division and cell classifiers, restore them into the workflow now.
+        if self.stored_division_classifier:
+            opDivisionClassification = self.divisionDetectionApplet.topLevelOperator
+            opDivisionClassification.classifier_cache.forceValue(self.stored_division_classifier)
+            # Release reference
+            self.stored_division_classifier = None
+        
+        # If we have stored division and cell classifiers, restore them into the workflow now.
+        if self.stored_cell_classifier:
+            opCellClassification = self.cellClassificationApplet.topLevelOperator
+            opCellClassification.classifier_cache.forceValue(self.stored_cell_classifier)
+            # Release reference
+            self.stored_cell_classifier = None
     
     def connectLane(self, laneIndex):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
@@ -146,50 +243,23 @@ class ConservationTrackingWorkflowBase( Workflow ):
             opOptTranslation.BinaryImage.connect(op5Binary.Output)
         
         # # Connect operators ##       
-        vigra_features = list((set(config.vigra_features)).union(config.selected_features_objectcount[config.features_vigra_name])) 
-        feature_names_vigra = {}
-        feature_names_vigra[config.features_vigra_name] = { name: {} for name in vigra_features }
         opObjExtraction.RawImage.connect(op5Raw.Output)
         opObjExtraction.BinaryImage.connect(op5Binary.Output)
         if self.withOptTrans:
             opObjExtraction.TranslationVectors.connect(opOptTranslation.TranslationVectors)
-        opObjExtraction.FeatureNamesVigra.setValue(feature_names_vigra)
         
-        if self.divisionDetectionApplet:  
-            feature_dict_division = {}
-            feature_dict_division[config.features_division_name] = { name: {} for name in config.division_features }
-            opObjExtraction.FeatureNamesDivision.setValue(feature_dict_division)
-               
-            selected_features_div = {}
-            for plugin_name in config.selected_features_division.keys():
-                selected_features_div[plugin_name] = { name: {} for name in config.selected_features_division[plugin_name] }
-            # FIXME: do not hard code this
-            for name in [ 'SquaredDistances_' + str(i) for i in range(config.n_best_successors) ]:
-                selected_features_div[config.features_division_name][name] = {}
-          
+        if self.divisionDetectionApplet:            
             opDivDetection.BinaryImages.connect( op5Binary.Output )
             opDivDetection.RawImages.connect( op5Raw.Output )        
             opDivDetection.SegmentationImages.connect(opObjExtraction.LabelImage)
             opDivDetection.ObjectFeatures.connect(opObjExtraction.RegionFeaturesAll)
             opDivDetection.ComputedFeatureNames.connect(opObjExtraction.ComputedFeatureNamesAll)
-            opDivDetection.SelectedFeatures.setValue(selected_features_div)
-            opDivDetection.LabelNames.setValue(['Not Dividing', 'Dividing'])        
-            opDivDetection.AllowDeleteLabels.setValue(False)
-            opDivDetection.AllowAddLabel.setValue(False)
-            opDivDetection.EnableLabelTransfer.setValue(False)
         
-        selected_features_objectcount = {}
-        for plugin_name in config.selected_features_objectcount.keys():
-            selected_features_objectcount[plugin_name] = { name: {} for name in config.selected_features_objectcount[plugin_name] }
         opCellClassification.BinaryImages.connect( op5Binary.Output )
         opCellClassification.RawImages.connect( op5Raw.Output )
         opCellClassification.SegmentationImages.connect(opObjExtraction.LabelImage)
         opCellClassification.ObjectFeatures.connect(opObjExtraction.RegionFeaturesVigra)
-        opCellClassification.ComputedFeatureNames.connect(opObjExtraction.ComputedFeatureNamesVigra)
-        opCellClassification.SelectedFeatures.setValue( selected_features_objectcount )        
-        opCellClassification.SuggestedLabelNames.setValue( ['false detection',] + [str(i) + ' Objects' for i in range(1,10) ] )
-        opCellClassification.AllowDeleteLastLabelOnly.setValue(True)
-        opCellClassification.EnableLabelTransfer.setValue(False)
+        opCellClassification.ComputedFeatureNames.connect(opObjExtraction.FeatureNamesVigra)
         
         if self.divisionDetectionApplet: 
             opTracking.ObjectFeaturesWithDivFeatures.connect( opObjExtraction.RegionFeaturesAll)
@@ -199,7 +269,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         opTracking.RawImage.connect( op5Raw.Output )
         opTracking.LabelImage.connect( opObjExtraction.LabelImage )
         opTracking.ObjectFeatures.connect( opObjExtraction.RegionFeaturesVigra )
-        opTracking.ComputedFeatureNames.connect( opObjExtraction.ComputedFeatureNamesVigra )
+        opTracking.ComputedFeatureNames.connect( opObjExtraction.FeatureNamesVigra)
         opTracking.DetectionProbabilities.connect( opCellClassification.Probabilities )
         opTracking.NumLabels.connect( opCellClassification.NumLabels )
 
@@ -215,13 +285,64 @@ class ConservationTrackingWorkflowBase( Workflow ):
         opDataExport.RawData.connect( op5Raw.Output )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
          
+    def prepare_lane_for_export(self, lane_index):
+        maxt = self.trackingApplet.topLevelOperator[lane_index].LabelImage.meta.shape[0] 
+        maxx = self.trackingApplet.topLevelOperator[lane_index].LabelImage.meta.shape[1] 
+        maxy = self.trackingApplet.topLevelOperator[lane_index].LabelImage.meta.shape[2] 
+        maxz = self.trackingApplet.topLevelOperator[lane_index].LabelImage.meta.shape[3] 
+        time_enum = range(maxt)
+        x_range = (0, maxx)
+        y_range = (0, maxy)
+        z_range = (0, maxz)
+        ndim = 3
+        if ( z_range[1] - z_range[0] ) > 1:
+            ndim = 2
+        
+        parameters = self.trackingApplet.topLevelOperator.Parameters.value
+        
+        # Save state of axis ranges
+        self.prev_time_range = parameters['time_range']
+        self.prev_x_range = parameters['x_range']
+        self.prev_y_range = parameters['y_range']
+        self.prev_z_range = parameters['z_range']
+        
+        self.trackingApplet.topLevelOperator[lane_index].track(
+            time_range = time_enum,
+            x_range = x_range,
+            y_range = y_range,
+            z_range = z_range,
+            size_range = parameters['size_range'],
+            x_scale = parameters['scales'][0],
+            y_scale = parameters['scales'][1],
+            z_scale = parameters['scales'][2],
+            maxDist=parameters['maxDist'],         
+            maxObj = parameters['maxObj'],               
+            divThreshold=parameters['divThreshold'],
+            avgSize=parameters['avgSize'],                
+            withTracklets=parameters['withTracklets'], 
+            sizeDependent=parameters['sizeDependent'],
+            divWeight=parameters['divWeight'],
+            transWeight=parameters['transWeight'],
+            withDivisions=parameters['withDivisions'],
+            withOpticalCorrection=parameters['withOpticalCorrection'],
+            withClassifierPrior=parameters['withClassifierPrior'],
+            ndim=ndim,
+            withMergerResolution=parameters['withMergerResolution'],
+            borderAwareWidth = parameters['borderAwareWidth'],
+            withArmaCoordinates = parameters['withArmaCoordinates'],
+            cplex_timeout = parameters['cplex_timeout'],
+            appearance_cost = parameters['appearanceCost'],
+            disappearance_cost = parameters['disappearanceCost'],
+            force_build_hypotheses_graph = False,
+            withBatchProcessing = True
+        )
 
     def post_process_lane_export(self, lane_index):
         # FIXME: This probably only works for the non-blockwise export slot.
         #        We should assert that the user isn't using the blockwise slot.
         settings, selected_features = self.trackingApplet.topLevelOperator.getLane(lane_index).get_table_export_settings()
         if settings:
-            self.dataExportApplet.progressSignal.emit(-1)
+            self.dataExportApplet.progressSignal.emit(0)
             raw_dataset_info = self.dataSelectionApplet.topLevelOperator.DatasetGroup[lane_index][0].value
             
             project_path = self.shell.projectManager.currentProjectPath
@@ -249,6 +370,13 @@ class ConservationTrackingWorkflowBase( Workflow ):
 
             req.wait()
             self.dataExportApplet.progressSignal.emit(100)
+            
+            # Restore state of axis ranges
+            parameters = self.trackingApplet.topLevelOperator.Parameters.value
+            parameters['time_range'] = self.prev_time_range
+            parameters['x_range'] = self.prev_x_range
+            parameters['y_range'] = self.prev_y_range
+            parameters['z_range'] = self.prev_z_range          
     
     def _inputReady(self, nRoles):
         slot = self.dataSelectionApplet.topLevelOperator.ImageGroup
@@ -261,6 +389,24 @@ class ConservationTrackingWorkflowBase( Workflow ):
             input_ready = False
 
         return input_ready
+
+    def onProjectLoaded(self, projectManager):
+        """
+        Overridden from Workflow base class.  Called by the Project Manager.
+        
+        If the user provided command-line arguments, use them to configure 
+        the workflow inputs and output settings.
+        """
+
+        # Configure the data export operator.
+        if self._data_export_args:
+            self.dataExportApplet.configure_operator_with_parsed_args( self._data_export_args )
+
+        # Configure headless mode.
+        if self._headless and self._batch_input_args and self._data_export_args:
+            logger.info("Beginning Batch Processing")
+            self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
+            logger.info("Completed Batch Processing")
 
     def handleAppletStateUpdateRequested(self):
         """
@@ -287,14 +433,13 @@ class ConservationTrackingWorkflowBase( Workflow ):
         objectCountClassifier_ready = features_ready
 
         opTracking = self.trackingApplet.topLevelOperator
-        tracking_ready = objectCountClassifier_ready and \
-                           len(opTracking.EventsVector) > 0
-                           
+        tracking_ready = objectCountClassifier_ready                          
 
         busy = False
         busy |= self.dataSelectionApplet.busy
         busy |= self.trackingApplet.busy
         busy |= self.dataExportApplet.busy
+        busy |= self.batchProcessingApplet.busy
         self._shell.enableProjectChanges( not busy )
 
         self._shell.setAppletEnabled(self.dataSelectionApplet, not busy)
@@ -309,7 +454,8 @@ class ConservationTrackingWorkflowBase( Workflow ):
         self._shell.setAppletEnabled(self.trackingApplet, objectCountClassifier_ready and not busy)
         self._shell.setAppletEnabled(self.dataExportApplet, tracking_ready and not busy and \
                                     self.dataExportApplet.topLevelOperator.Inputs[0][0].ready() )
-        
+        self._shell.setAppletEnabled(self.batchProcessingApplet, tracking_ready and not busy and \
+                                    self.dataExportApplet.topLevelOperator.Inputs[0][0].ready() )
         
 
 

@@ -235,7 +235,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
         opStructuredTracking.LabelImage.connect( opTrackingFeatureExtraction.LabelImage )
         opStructuredTracking.ObjectFeatures.connect( opTrackingFeatureExtraction.RegionFeaturesVigra )
         opStructuredTracking.ObjectFeaturesWithDivFeatures.connect( opTrackingFeatureExtraction.RegionFeaturesAll)
-        opStructuredTracking.ComputedFeatureNames.connect( opTrackingFeatureExtraction.ComputedFeatureNamesVigra )
+        opStructuredTracking.ComputedFeatureNames.connect( opTrackingFeatureExtraction.FeatureNamesVigra )
         opStructuredTracking.ComputedFeatureNamesWithDivFeatures.connect( opTrackingFeatureExtraction.ComputedFeatureNamesAll )
 
         # configure tracking export settings

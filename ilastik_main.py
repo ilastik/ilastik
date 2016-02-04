@@ -222,6 +222,7 @@ def _prepare_lazyflow_config( parsed_args ):
     # Check environment variable settings.
     n_threads = os.getenv("LAZYFLOW_THREADS", None)
     total_ram_mb = os.getenv("LAZYFLOW_TOTAL_RAM_MB", None)
+    status_interval_secs = int( os.getenv("LAZYFLOW_STATUS_MONITOR_SECONDS", "0") )
 
     # Convert str -> int
     if n_threads is not None:
@@ -236,11 +237,17 @@ def _prepare_lazyflow_config( parsed_args ):
     total_ram_mb = total_ram_mb or ilastik_config.getint('lazyflow', 'total_ram_mb')
     
     # Note that n_threads == 0 is valid and useful for debugging.
-    if (n_threads is not None) or total_ram_mb:
+    if (n_threads is not None) or total_ram_mb or status_interval_secs:
         def _configure_lazyflow_settings():
             import lazyflow
             import lazyflow.request
             from lazyflow.utility import Memory
+            from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
+
+            if status_interval_secs:
+                memory_logger = logging.getLogger('lazyflow.operators.cacheMemoryManager')
+                memory_logger.setLevel(logging.DEBUG)
+                CacheMemoryManager().setRefreshInterval(status_interval_secs)
 
             if n_threads is not None:
                 logger.info("Resetting lazyflow thread pool with {} threads.".format( n_threads ))

@@ -222,7 +222,7 @@ def get_default_config( prefix="",
     return default_log_config
 
 def init(format_prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ERRORS, logfile_path=DEFAULT_LOGFILE_PATH):
-    if output_mode == "/dev/null":
+    if logfile_path == "/dev/null":
         assert output_mode != OutputMode.LOGFILE, "Must enable a logging mode."
         output_mode = OutputMode.CONSOLE
 

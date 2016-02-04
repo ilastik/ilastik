@@ -457,7 +457,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                                 center = self.features[time]['Default features']['RegionCenter'][label]
                                 trackCount = len(trackSet)
 
-                                print "trackCount", trackCount
                                 if trackCount > maxObj:
                                     print "Your track count for object", label, "in time frame", time, "is", trackCount,"=|",trackSet,"|, which is greater than maximum object number",maxObj,"defined by object count classifier!"
                                     print "Either remove track(s) from this object or train the object count classifier with more labels!"
@@ -482,7 +481,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                                         intersectionSet = trackSet.intersection(previousTrackSet)
                                         trackCountIntersection = len(intersectionSet)
 
-                                        print "trackCountIntersection", trackCountIntersection
                                         if trackCountIntersection > maxObj:
                                             print "Your track count for transition (", previous_label,time-1,") ---> (",label, time, ") is", trackCountIntersection,"=|",intersectionSet,"|, which is greater than maximum object number",maxObj,"defined by object count classifier!"
                                             print "Either remove track(s) from these objects or train the object count classifier with more labels!"
@@ -664,7 +662,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         return -1
 
     def _type(self, cropKey, time, track):
-        # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
+        # returns [type, previous_label] (if type=="LAST" or "INTERMEDIATE" else [type])
         type = None
         if track == -1:
             return ["FALSE_DETECTION"]
@@ -757,45 +755,45 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             if (to_z - from_z == 0):
                 ndim=2
             
-            #try:
-            if True:
-                self.mainOperator.track(
-                    time_range = self.time_range,
-                    x_range = (from_x, to_x + 1),
-                    y_range = (from_y, to_y + 1),
-                    z_range = (from_z, to_z + 1),
-                    size_range = (from_size, to_size + 1),
-                    x_scale = self._drawer.x_scale.value(),
-                    y_scale = self._drawer.y_scale.value(),
-                    z_scale = self._drawer.z_scale.value(),
-                    maxDist=maxDist,         
-                    maxObj = maxObj,               
-                    divThreshold=divThreshold,
-                    avgSize=avgSize,                
-                    withTracklets=withTracklets,
-                    sizeDependent=sizeDependent,
-                    detWeight=detWeight,
-                    divWeight=divWeight,
-                    transWeight=transWeight,
-                    withDivisions=withDivisions,
-                    withOpticalCorrection=withOpticalCorrection,
-                    withClassifierPrior=classifierPrior,
-                    ndim=ndim,
-                    withMergerResolution=withMergerResolution,
-                    borderAwareWidth = borderAwareWidth,
-                    withArmaCoordinates = withArmaCoordinates,
-                    cplex_timeout = cplex_timeout,
-                    appearance_cost = appearanceCost,
-                    disappearance_cost = disappearanceCost,
-                    graph_building_parameter_changed = True,
-                    trainingToHardConstraints = self._drawer.trainingToHardConstraints.isChecked(),
-                    max_nearest_neighbors = self._maxNearestNeighbors
-                    )
-            # except Exception:
-            #     ex_type, ex, tb = sys.exc_info()
-            #     traceback.print_tb(tb)
-            #     self._criticalMessage("Exception(" + str(ex_type) + "): " + str(ex))
-            #     return
+            try:
+                if True:
+                    self.mainOperator.track(
+                        time_range = self.time_range,
+                        x_range = (from_x, to_x + 1),
+                        y_range = (from_y, to_y + 1),
+                        z_range = (from_z, to_z + 1),
+                        size_range = (from_size, to_size + 1),
+                        x_scale = self._drawer.x_scale.value(),
+                        y_scale = self._drawer.y_scale.value(),
+                        z_scale = self._drawer.z_scale.value(),
+                        maxDist=maxDist,
+                        maxObj = maxObj,
+                        divThreshold=divThreshold,
+                        avgSize=avgSize,
+                        withTracklets=withTracklets,
+                        sizeDependent=sizeDependent,
+                        detWeight=detWeight,
+                        divWeight=divWeight,
+                        transWeight=transWeight,
+                        withDivisions=withDivisions,
+                        withOpticalCorrection=withOpticalCorrection,
+                        withClassifierPrior=classifierPrior,
+                        ndim=ndim,
+                        withMergerResolution=withMergerResolution,
+                        borderAwareWidth = borderAwareWidth,
+                        withArmaCoordinates = withArmaCoordinates,
+                        cplex_timeout = cplex_timeout,
+                        appearance_cost = appearanceCost,
+                        disappearance_cost = disappearanceCost,
+                        graph_building_parameter_changed = True,
+                        trainingToHardConstraints = self._drawer.trainingToHardConstraints.isChecked(),
+                        max_nearest_neighbors = self._maxNearestNeighbors
+                        )
+            except Exception:
+                ex_type, ex, tb = sys.exc_info()
+                traceback.print_tb(tb)
+                self._criticalMessage("Exception(" + str(ex_type) + "): " + str(ex))
+                return
         
         def _handle_finished(*args):
             self.applet.busy = False

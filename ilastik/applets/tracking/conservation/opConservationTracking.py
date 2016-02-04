@@ -169,7 +169,8 @@ class OpConservationTracking(OpTrackingBase):
             appearance_cost = 500,
             disappearance_cost = 500,
             motionModelWeight=10.0,
-            force_build_hypotheses_graph = False
+            force_build_hypotheses_graph = False,
+            withBatchProcessing = False
             ):
         
         if not self.Parameters.ready():
@@ -267,34 +268,18 @@ class OpConservationTracking(OpTrackingBase):
 
         if do_build_hypotheses_graph:
             print '\033[94m' +"make new graph"+  '\033[0m'
-            self.tracker = pgmlink.ConsTracking(maxObj,
-                                         sizeDependent,   # size_dependent_detection_prob
+            self.tracker = pgmlink.ConsTracking(int(maxObj),
+                                         bool(sizeDependent),   # size_dependent_detection_prob
                                          float(median_obj_size[0]), # median_object_size
                                          float(maxDist),
-                                         withDivisions,
+                                         bool(withDivisions),
                                          float(divThreshold),
                                          "none",  # detection_rf_filename
                                          fov,
                                          "none", # dump traxelstore,
                                          pgmlink.ConsTrackingSolverType.CplexSolver
                                          )
-#<<<<<<< HEAD
-#            self.tracker.buildGraph(ts) # return value ???
-
-            # add labels and annotations
-#=======
             g = self.tracker.buildGraph(ts, 2)
-
-        # # DEBUG-STUFF: dump hypotheses graph
-        # hypo_graph_filename = '/Users/chaubold/Desktop/test.hypg'
-        # if hypo_graph_filename:
-        #     import pickle
-        #     print("Saving hypotheses graph to: " + hypo_graph_filename)
-        #     with open(hypo_graph_filename, 'wb') as hg_out:
-        #             pickle.dump(g, hg_out)
-        #             pickle.dump(fov, hg_out)
-        #             pickle.dump(fs, hg_out)
-#>>>>>>> 7cbe7e4e6f6bd264eb06d55b34df55ce2c1dadc2
 
         # create dummy uncertainty parameter object with just one iteration, so no perturbations at all (iter=0 -> MAP)
         sigmas = pgmlink.VectorOfDouble()
@@ -330,21 +315,6 @@ class OpConservationTracking(OpTrackingBase):
         try:
             eventsVector = self.tracker.track(params, False)
 
-            ## plot hypotheses graph
-            # self.tracker.plot_hypotheses_graph(
-            #                 g,
-            #                 "/Users/chaubold/Desktop/test.dot",
-            #                 False, # with tracklets
-            #                 withDivisions, # with divisions
-            #                 10.0, # detection weight
-            #                 divWeight,
-            #                 transWeight,
-            #                 disappearance_cost, # disappearance cost
-            #                 appearance_cost, # appearance cost
-            #                 transition_parameter,
-            #                 borderAwareWidth
-            # )
-
             eventsVector = eventsVector[0] # we have a vector such that we could get a vector per perturbation
 
             # extract the coordinates with the given event vector
@@ -367,8 +337,7 @@ class OpConservationTracking(OpTrackingBase):
                     transition_parameter,
                     True, # with_constraints
                     None) # TransitionClassifier
-                    # multi frame moves are gone
-                                                
+
         except Exception as e:
             raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
         
@@ -379,14 +348,16 @@ class OpConservationTracking(OpTrackingBase):
         self.Parameters.setValue(parameters, check_changed=False)
         self.EventsVector.setValue(events, check_changed=False)
         self.RelabeledImage.setDirty()
-        merger_layer_idx = self.parent.parent.trackingApplet._gui.currentGui().layerstack.findMatchingIndex(lambda x: x.name == "Merger")
-        tracking_layer_idx = self.parent.parent.trackingApplet._gui.currentGui().layerstack.findMatchingIndex(lambda x: x.name == "Tracking")
-        if 'withMergerResolution' in parameters.keys() and not parameters['withMergerResolution']:
-            self.parent.parent.trackingApplet._gui.currentGui().layerstack[merger_layer_idx].colorTable = \
-                self.parent.parent.trackingApplet._gui.currentGui().merger_colortable
-        else:
-            self.parent.parent.trackingApplet._gui.currentGui().layerstack[merger_layer_idx].colorTable = \
-                self.parent.parent.trackingApplet._gui.currentGui().tracking_colortable
+        
+        if not withBatchProcessing:
+            merger_layer_idx = self.parent.parent.trackingApplet._gui.currentGui().layerstack.findMatchingIndex(lambda x: x.name == "Merger")
+            tracking_layer_idx = self.parent.parent.trackingApplet._gui.currentGui().layerstack.findMatchingIndex(lambda x: x.name == "Tracking")
+            if 'withMergerResolution' in parameters.keys() and not parameters['withMergerResolution']:
+                self.parent.parent.trackingApplet._gui.currentGui().layerstack[merger_layer_idx].colorTable = \
+                    self.parent.parent.trackingApplet._gui.currentGui().merger_colortable
+            else:
+                self.parent.parent.trackingApplet._gui.currentGui().layerstack[merger_layer_idx].colorTable = \
+                    self.parent.parent.trackingApplet._gui.currentGui().tracking_colortable
 
     def propagateDirty(self, inputSlot, subindex, roi):
         super(OpConservationTracking, self).propagateDirty(inputSlot, subindex, roi)
@@ -491,7 +462,7 @@ class OpConservationTracking(OpTrackingBase):
         :return:
         """
 
-        assert lane_index == 0, "This has only been tested in tracking workflows with a single image."
+        #assert lane_index == 0, "This has only been tested in tracking workflows with a single image."
 
         with_divisions = self.Parameters.value["withDivisions"] if self.Parameters.ready() else False
         with_merger_resolution = self.Parameters.value["withMergerResolution"] if self.Parameters.ready() else False

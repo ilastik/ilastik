@@ -187,14 +187,10 @@ class OpTrackingBase(Operator, ExportingOperator):
             self.Output.setDirty(roi)
         elif inputSlot is self.EventsVector:
             self._setLabel2Color()
-#<<<<<<< HEAD
-            #self._setLabel2Color(export_mode=True)
-#=======
             try:
                 self._setLabel2Color(export_mode=True)
             except:
                 print("Warning: some label information might be wrong...")
-#>>>>>>> 7cbe7e4e6f6bd264eb06d55b34df55ce2c1dadc2
 
     def setInSlot(self, slot, subindex, roi, value):
         assert slot == self.InputHdf5, "Invalid slot for setInSlot(): {}".format(slot.name)
@@ -580,10 +576,6 @@ class OpTrackingBase(Operator, ExportingOperator):
         :param filename_suffix: If provided, appended to the filename (before the extension).
         :return:
         """
-# <<<<<<< HEAD
-#
-# =======
-# >>>>>>> 2380ee17d45d2b61ca9d8a41027ced7101a6eea7
         assert lane_index == 0, "This has only been tested in tracking workflows with a single image."
 
         with_divisions = self.Parameters.value["withDivisions"] if self.Parameters.ready() else False
@@ -595,11 +587,7 @@ class OpTrackingBase(Operator, ExportingOperator):
         self._do_export_impl(settings, selected_features, progress_slot, object_feature_slot, self.LabelImage, lane_index, filename_suffix)
 
 
-# <<<<<<< HEAD
     def _do_export_impl(self, settings, selected_features, progress_slot, object_feature_slot, label_image_slot, lane_index, filename_suffix=""):
-# =======
-#     def _do_export_impl(self, settings, selected_features, progress_slot, object_feature_slot, label_image_slot):
-# >>>>>>> 2380ee17d45d2b61ca9d8a41027ced7101a6eea7
         from ilastik.utility.exportFile import objects_per_frame, ExportFile, ilastik_ids, Mode, Default, \
             flatten_dict, division_flatten_dict
 

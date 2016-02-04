@@ -117,17 +117,14 @@ def flatten_ilastik_feature_table(table, selection, signal):
     return feature_table
 
 
-def objects_per_frame(labeling_image):
-    t_index = labeling_image.meta.axistags.index("t")
-    data = labeling_image([]).wait()
-    frames = data.shape[t_index]
+def objects_per_frame(label_image_slot):
+    t_index = label_image_slot.meta.axistags.index("t")
+    assert t_index == 0, "This function assumes that the first axis is time."    
 
-    if t_index != 0:
-        raise RuntimeError("FAIL")
-
-    for t in xrange(frames):
-        yield data[t].max()
-        #yield len(np.unique(data[t]))
+    num_frames = label_image_slot.meta.shape[0]
+    for t in xrange(num_frames):
+        frame_data = label_image_slot[t:t+1].wait()
+        yield frame_data.max()
 
 
 def division_flatten_dict(divisions, dict_):

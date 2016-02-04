@@ -32,7 +32,6 @@ from ilastik.widgets.cropListView import CropListView
 from ilastik.applets.cropping.croppingGui import CroppingGui
 from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted
-from lazyflow.operators import OpCompressedUserCropArray
 #from lazyflow.operators import OpValueCache, OpTrainClassifierBlocked, OpClassifierPredict,\
 #                               OpSlicedBlockedArrayCache, OpMultiArraySlicer2, \
 #                               OpPixelOperator, OpMaxChannelIndicatorOperator, OpCompressedUserLabelArray
