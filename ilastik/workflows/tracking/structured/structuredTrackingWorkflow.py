@@ -59,8 +59,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
         else:
             data_instructions += 'Use the "Prediction Maps" tab to load your pixel-wise probability image(s).'
 
-        ## Create applets
-        # self.dataSelectionApplet = DataSelectionApplet(self,"Input Data","Input Data",batchDataGui=False,force5d=True,instructionText=data_instructions,max_lanes=1)
+        # Create applets
         self.dataSelectionApplet = DataSelectionApplet(self,
             "Input Data",
             "Input Data",
@@ -189,7 +188,6 @@ class StructuredTrackingWorkflowBase( Workflow ):
 
         opDivDetection.BinaryImages.connect( op5Binary.Output )
         opDivDetection.RawImages.connect( op5Raw.Output )
-#        opDivDetection.LabelsAllowedFlags.connect(opData.AllowLabels)
         opDivDetection.SegmentationImages.connect(opTrackingFeatureExtraction.LabelImage)
         opDivDetection.ObjectFeatures.connect(opTrackingFeatureExtraction.RegionFeaturesAll)
         opDivDetection.ComputedFeatureNames.connect(opTrackingFeatureExtraction.ComputedFeatureNamesAll)
@@ -204,10 +202,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
             selected_features_objectcount[plugin_name] = { name: {} for name in config.selected_features_objectcount[plugin_name] }
         opCellClassification.BinaryImages.connect( op5Binary.Output )
         opCellClassification.RawImages.connect( op5Raw.Output )
-#        opCellClassification.LabelsAllowedFlags.connect(opData.AllowLabels)
         opCellClassification.SegmentationImages.connect(opTrackingFeatureExtraction.LabelImage)
-        # opCellClassification.ObjectFeatures.connect(opTrackingFeatureExtraction.RegionFeaturesVigra)
-        # opCellClassification.ComputedFeatureNames.connect(opTrackingFeatureExtraction.ComputedFeatureNamesVigra)
         opCellClassification.ObjectFeatures.connect(opTrackingFeatureExtraction.RegionFeaturesAll)
         opCellClassification.ComputedFeatureNames.connect(opTrackingFeatureExtraction.ComputedFeatureNamesAll)
         opCellClassification.SelectedFeatures.setValue( selected_features_objectcount )
@@ -229,9 +224,6 @@ class StructuredTrackingWorkflowBase( Workflow ):
         opDataAnnotationsExport.RawDatasetInfo.connect( opData.DatasetGroup[0] )
 
         opStructuredTracking.RawImage.connect( op5Raw.Output )
-        # opStructuredTracking.LabelImage.connect( opObjExtraction.LabelImage )
-        # opStructuredTracking.ObjectFeatures.connect( opObjExtraction.RegionFeaturesVigra )
-        # opStructuredTracking.ComputedFeatureNames.connect( opObjExtraction.ComputedFeatureNamesVigra )
         opStructuredTracking.LabelImage.connect( opTrackingFeatureExtraction.LabelImage )
         opStructuredTracking.ObjectFeatures.connect( opTrackingFeatureExtraction.RegionFeaturesVigra )
         opStructuredTracking.ObjectFeaturesWithDivFeatures.connect( opTrackingFeatureExtraction.RegionFeaturesAll)
@@ -322,9 +314,6 @@ class StructuredTrackingWorkflowBase( Workflow ):
         else:
             thresholding_ready = True and input_ready
 
-        #features_ready = thresholding_ready and \
-        #                 len(objectExtractionOutput) > 0
-
         opTrackingFeatureExtraction = self.trackingFeatureExtractionApplet.topLevelOperator
         trackingFeatureExtractionOutput = opTrackingFeatureExtraction.ComputedFeatureNamesAll
         tracking_features_ready = thresholding_ready and len(trackingFeatureExtractionOutput) > 0
@@ -336,7 +325,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
         objectCountClassifier_ready = tracking_features_ready
 
         opObjectExtraction = self.objectExtractionApplet.topLevelOperator
-        objectExtractionOutput = opObjectExtraction.RegionFeatures # ComputedFeatureNamesAll
+        objectExtractionOutput = opObjectExtraction.RegionFeatures
         features_ready = thresholding_ready and \
                          len(objectExtractionOutput) > 0
 
@@ -353,11 +342,6 @@ class StructuredTrackingWorkflowBase( Workflow ):
                            len(opStructuredTracking.EventsVector) > 0
         busy = False
         busy |= self.dataSelectionApplet.busy
-        #busy |= self.thresholdTwoLevelsApplet.busy
-        #busy |= self.trackingFeatureExtractionApplet.busy
-        #busy |= self.divisionDetectionApplet.busy
-        #busy |= self.cellClassificationApplet.busy
-        #busy |= self.cropSelectionApplet.busy
         busy |= self.annotationsApplet.busy
         busy |= self.dataExportAnnotationsApplet.busy
         busy |= self.trackingApplet.busy

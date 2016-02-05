@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+__author__ = 'jales'
 
 import logging
 logger = logging.getLogger(__name__)

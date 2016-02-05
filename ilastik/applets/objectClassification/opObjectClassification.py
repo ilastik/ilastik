@@ -123,10 +123,8 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
     LabelNames = OutputSlot()
     LabelColors = OutputSlot()
     PmapColors = OutputSlot()
-
-#<<<<<<< HEAD
     MaxNumObj = OutputSlot()
-#=======
+
     # Use a slot for storing the export settings in the project file.
     ExportSettings = OutputSlot()
     # Override functions ExportingOperator mixin
@@ -143,7 +141,6 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
         assert slot is self.ExportSettings, \
             "Should be no need to execute this slot: {}".format( slot.name )
         result[0] = numpy.array(None, None)
-#>>>>>>> 7cbe7e4e6f6bd264eb06d55b34df55ce2c1dadc2
 
     def __init__(self, *args, **kwargs):
         super(OpObjectClassification, self).__init__(*args, **kwargs)
@@ -356,9 +353,6 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
 
     def setupOutputs(self):
         self.Warnings.meta.shape = (1,)
-
-        #self.CachedProbabilities.meta.assignFrom(self.BinaryImages.meta)#not in master
-
         axisOrder = [ tag.key for tag in self.RawImages[0].meta.axistags ]
 
         blockDimsX = { 't' : (1,1),
@@ -392,8 +386,6 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
         self.opPredictionImageCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
         self.opProbChannelsImageCache.innerBlockShape.setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
         self.opProbChannelsImageCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
-
-        #self.NumLabels.setValue( len(self.LabelNames.value) )
         self.MaxNumObj.setValue( len(self.LabelNames.value) - 1)
 
     def setInSlot(self, slot, subindex, roi, value):

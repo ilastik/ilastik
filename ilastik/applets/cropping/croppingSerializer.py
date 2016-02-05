@@ -26,8 +26,7 @@ class CroppingSerializer(AppletSerializer):
 
     """
     def __init__(self, operator, projectFileGroupName):
-        slots = [SerialBlockSlot(#operator.CropImages,
-                                 operator.CropInputs,
+        slots = [SerialBlockSlot(operator.CropInputs,
                                  operator.NonzeroCropBlocks,
                                  name='CropSets',
                                  subname='crops{:03d}',)

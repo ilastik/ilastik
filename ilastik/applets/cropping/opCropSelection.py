@@ -24,9 +24,7 @@ from ilastik.utility import OpMultiLaneWrapper
 
 import numpy
 from lazyflow.operators import OpCompressedUserLabelArray
-#from lazyflow.operators import OpValueCache, OpTrainClassifierBlocked, OpClassifierPredict,\
-#                               OpSlicedBlockedArrayCache, OpMultiArraySlicer2, \
-#                               OpPixelOperator, OpMaxChannelIndicatorOperator, OpCompressedUserLabelArray
+
 class OpCropSelection(Operator):
     """
     Given an input image and visible crop lines,
@@ -39,8 +37,6 @@ class OpCropSelection(Operator):
     PredictionImage = InputSlot()
 
     CropInputs = InputSlot(optional = True)
-    #CropImages = InputSlot()
-    #CropNames = InputSlot()
     CropsAllowedFlags = InputSlot(optional = True)
     NonzeroCropBlocks = OutputSlot(level=1) # A list if slices that contain non-zero label values
 
@@ -70,21 +66,17 @@ class OpCropSelection(Operator):
 
 
 
-    #def __init__( self, *args, **kwargs ):
     def __init__( self, parent=None, graph=None ):
         super(OpCropSelection, self).__init__(parent=parent, graph=graph)
         # Hook up Cropping Pipeline
         self.opCropPipeline = OpMultiLaneWrapper( OpCropPipeline, parent=self, broadcastingSlotNames=['DeleteCrop'] )
-        self.opCropPipeline = OpCropPipeline(parent=self)#, broadcastingSlotNames=['DeleteCrop'] )
+        self.opCropPipeline = OpCropPipeline(parent=self)
         self.CropNames.setValue( [] )
         self.CropColors.setValue( [] )
         self.PmapColors.setValue( [] )
         self.NonzeroCropBlocks.connect( self.opCropPipeline.nonzeroBlocks )
 
         self.Crops.setValue( dict())
-        #self.TestCrops.setValue( dict({"Crop 1" : { "time": (0,49), "starts":(0,0,0), "stops":(99,99,99), "cropColor":(0,255,0), "pmapColor":(0,255,0)}}))
-
-        #self.CropInputs.connect( self.InputImage )
 
         def _updateNumClasses(*args):
             """
@@ -93,8 +85,6 @@ class OpCropSelection(Operator):
             we use this function to call setValue().
             """
             numClasses = len(self.CropNames.value)
-            #self.opTrain.MaxLabel.setValue( numClasses )
-            #self.opPredictionPipeline.NumClasses.setValue( numClasses )
             self.NumClasses.setValue( numClasses )
         self.CropNames.notifyDirty( _updateNumClasses )
 

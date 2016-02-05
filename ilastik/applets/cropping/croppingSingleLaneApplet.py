@@ -20,7 +20,6 @@
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 from opCropping import OpCroppingSingleLane
-#from croppingSerializer import CroppingSerializer
 
 class CroppingSingleLaneApplet( StandardApplet ):
     """

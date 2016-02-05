@@ -55,7 +55,6 @@ class CroppingApplet( StandardApplet ):
         
         croppingSlots = CroppingGui.CroppingSlots()
         croppingSlots.cropInput = opCropping.CropInputs
-        #croppingSlots.cropOutput = opCropping.CropImages
         croppingSlots.cropEraserValue = opCropping.CropEraserValue
         croppingSlots.cropDelete = opCropping.CropDelete
         croppingSlots.cropsAllowed = opCropping.CropsAllowedFlags

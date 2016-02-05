@@ -29,7 +29,6 @@ class PyCropListViewPlugin(QPyDesignerCustomWidgetPlugin):
     def __init__(self, parent = None):
         QPyDesignerCustomWidgetPlugin.__init__(self)
         self.initialized = False
-        print ".........................................> loading PyCropListViewPlugin"
 
     def initialize(self, core):
         if self.initialized:

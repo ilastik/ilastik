@@ -264,7 +264,6 @@ def _prepare_lazyflow_config( parsed_args ):
         return _configure_lazyflow_settings
     return None
 
-#<<<<<<< HEAD
 def _monkey_patch_h5py(shell):
     """
     This workaround avoids error messages from HDF5 when accessing non-existing
@@ -299,8 +298,6 @@ def _monkey_patch_h5py(shell):
         return old_attr_getitem(attrs, key)
     h5py._hl.attrs.AttributeManager.__getitem__ = new_attr_getitem
 
-#=======
-#>>>>>>> 7cbe7e4e6f6bd264eb06d55b34df55ce2c1dadc2
 def _prepare_auto_open_project( parsed_args ):
     if parsed_args.project is None:
         return None

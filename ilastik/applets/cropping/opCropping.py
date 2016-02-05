@@ -21,7 +21,6 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpCompressedUserLabelArray
 from ilastik.utility.operatorSubView import OperatorSubView
-#from ilastik.utility import OpMultiLaneWrapper
 
 class OpCroppingTopLevel( Operator ):
     """
@@ -39,7 +38,6 @@ class OpCroppingTopLevel( Operator ):
     CropDelete = InputSlot() #: When this input is set to a value, all crops of that value are deleted from the operator's data.
 
     # Output slots
-    #CropImages = OutputSlot(level=1) #: Stored crops from the user
     NonzeroCropBlocks = OutputSlot(level=1) #: A list if slices that contain non-zero crop values
 
     CropNames = OutputSlot()
@@ -49,7 +47,6 @@ class OpCroppingTopLevel( Operator ):
         super( OpCroppingTopLevel, self ).__init__( *args, **kwargs )
 
         # Use a wrapper to create a cropping operator for each image lane
-    #    self.opCropLane = OpMultiLaneWrapper( OpCroppingSingleLane, operator_kwargs={'blockDims' : blockDims}, parent=self )
         self.opCropLane = OpCroppingSingleLane ( parent=self, blockDims=blockDims )
 
         # Special connection: Crop Input must get its metadata (shape, axistags) from the main input image.
@@ -68,7 +65,6 @@ class OpCroppingTopLevel( Operator ):
         self.CropDelete.setValue(-1)
 
         # Connect internal outputs -> external outputs
-        #self.CropImages.connect( self.opCropLane.CropImage )
         self.NonzeroCropBlocks.connect( self.opCropLane.NonzeroCropBlocks )
 
         self.CropColors.setValue( [] )

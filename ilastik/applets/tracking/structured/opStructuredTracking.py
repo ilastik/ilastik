@@ -73,7 +73,6 @@ class OpStructuredTracking(OpTrackingBase):
         self.RelabeledCleanBlocks.connect(self._relabeledOpCache.CleanBlocks)
         self.RelabeledOutputHdf5.connect(self._relabeledOpCache.OutputHdf5)
         self.RelabeledCachedOutput.connect(self._relabeledOpCache.Output)
-        #self.tracker = None
         self._ndim = 3
 
         self.consTracker = None
@@ -124,7 +123,9 @@ class OpStructuredTracking(OpTrackingBase):
             parameters = self.Parameters.value
             trange = range(roi.start[0], roi.stop[0])
             original = np.zeros(result.shape)
-            original = super(OpStructuredTracking, self).execute(slot, subindex, roi, original).copy() # recursive call to get properly labeled image
+            # recursive call to get properly labeled image
+            original = super(OpStructuredTracking, self).execute(slot, subindex, roi, original).copy()
+
             result = self.LabelImage.get(roi).wait()
             pixel_offsets=roi.start[1:-1]  # offset only in pixels, not time and channel
             for t in trange:
@@ -150,7 +151,6 @@ class OpStructuredTracking(OpTrackingBase):
                         result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, pixel_offsets, True)
                     else:
                         result[t-roi.start[0],...,0] = highlightMergers(result[t-roi.start[0],...,0], self.mergers[t])
-                    #result[t-roi.start[0],...,0] = relabelMergers(result[t-roi.start[0],...,0], self.mergers[t])
                 else:
                     result[t-roi.start[0],...][:] = 0
         elif slot is self.RelabeledImage:
@@ -295,9 +295,6 @@ class OpStructuredTracking(OpTrackingBase):
         if ndim == 2:
             assert z_range[0] * z_scale == 0 and (z_range[1]-1) * z_scale == 0, "fov of z must be (0,0) if ndim==2"
 
-        # if self.constracker is None:
-        #     do_build_hypotheses_graph = True
-
         if(self.consTracker == None or graph_building_parameter_changed):# or do_build_hypotheses_graph):
 
             foundAllArcs = False;
@@ -354,7 +351,6 @@ class OpStructuredTracking(OpTrackingBase):
                                         for track in trackSet:
 
                                             if not foundAllArcs:
-                                                #print "[opStructuredTracking] Arc: (", time-1, ",", int(previous_label), ") ---> (", time, ",", int(label), ")"
                                                 print "[opStructuredTracking] Increasing max nearest neighbors!"
                                                 break
 
@@ -369,7 +365,6 @@ class OpStructuredTracking(OpTrackingBase):
 
                                                 foundAllArcs &= self.consTracker.addArcLabel(time-1, int(previous_label), int(label), float(trackCountIntersection))
                                                 if not foundAllArcs:
-                                                    #print "[opStructuredTracking] Arc: (", time-1, ",", int(previous_label), ") ---> (", time, ",", int(label), ")"
                                                     print "[opStructuredTracking] Increasing max nearest neighbors!"
                                                     break
 
@@ -390,7 +385,6 @@ class OpStructuredTracking(OpTrackingBase):
                                 divisions = crop["divisions"]
                                 for track in divisions.keys():
                                     if not foundAllArcs:
-                                        #print "[opStructuredTracking] Divisions Arc0: (", time, ",", int(parent), ") ---> (", time+1, ",", int(child0), ")"
                                         print "[opStructuredTracking] Increasing max nearest neighbors!"
                                         break
                                     division = divisions[track]
@@ -407,7 +401,6 @@ class OpStructuredTracking(OpTrackingBase):
                                         self.consTracker.addAppearanceLabel(time+1, child0, 1.0)
                                         foundAllArcs &= self.consTracker.addArcLabel(time, parent, child0, 1.0)
                                         if not foundAllArcs:
-                                            #print "[opStructuredTracking] Divisions Arc0: (", time, ",", int(parent), ") ---> (", time+1, ",", int(child0), ")"
                                             print "[opStructuredTracking] Increasing max nearest neighbors!"
                                             break
 
@@ -416,7 +409,6 @@ class OpStructuredTracking(OpTrackingBase):
                                         self.consTracker.addAppearanceLabel(time+1, child1, 1.0)
                                         foundAllArcs &= self.consTracker.addArcLabel(time, parent, child1, 1.0)
                                         if not foundAllArcs:
-                                            #print "[opStructuredTracking] Divisions Arc1: (", time, ",", int(parent), ") ---> (", time+1, ",", int(child1), ")"
                                             print "[opStructuredTracking] Increasing max nearest neighbors!"
                                             break
 
@@ -467,7 +459,8 @@ class OpStructuredTracking(OpTrackingBase):
                                         trainingToHardConstraints,
                                         1) # default: False
 
-        #consTrackerParameters.register_transition_func(self.track_transition_func) # will be needed for python defined TRANSITION function
+        # will be needed for python defined TRANSITION function
+        # consTrackerParameters.register_transition_func(self.track_transition_func)
 
         fixLabeledNodes = False;
 
@@ -478,8 +471,6 @@ class OpStructuredTracking(OpTrackingBase):
 
             if withMergerResolution:
                 coordinate_map = pgmlink.TimestepIdCoordinateMap()
-                #if withArmaCoordinates:
-                #    coordinate_map.initialize()
                 self._get_merger_coordinates(coordinate_map,
                                              time_range,
                                              eventsVector)
@@ -534,7 +525,6 @@ class OpStructuredTracking(OpTrackingBase):
 
         result = - math.log(arg,math.exp(1))
 
-        #print "track_transition_func_no_weight"
         if result == -0:
             return 0.0
         else:

@@ -26,12 +26,7 @@ class CropSelectionSerializer(AppletSerializer):
     Serializes to an ilastik v0.6 project file.
     """
     def __init__(self, operator, projectFileGroupName):
-        slots = [#SerialSlot(
-                 #   operator.CropNames,
-                 #   transform=str),
-                 #SerialListSlot(operator.CropColors, transform=lambda x: tuple(x.flat)),
-                 #SerialSlot(operator.PmapColors, transform=lambda x: tuple(x.flat)),
-                 SerialDictSlot(operator.Crops),
+        slots = [SerialDictSlot(operator.Crops),
                  SerialSlot(operator.MinValueT, selfdepends=True),
                  SerialSlot(operator.MaxValueT, selfdepends=True),
                  SerialSlot(operator.MinValueX, selfdepends=True),
@@ -40,13 +35,6 @@ class CropSelectionSerializer(AppletSerializer):
                  SerialSlot(operator.MaxValueY, selfdepends=True),
                  SerialSlot(operator.MinValueZ, selfdepends=True),
                  SerialSlot(operator.MaxValueZ, selfdepends=True),
-                 #SerialBlockSlot(operator.CropImage,
-                 #                operator.CropInputs,
-                 #                operator.NonzeroCropBlocks,
-                 #                name='CropSets',
-                 #                subname='crops{:03d}',
-                 #                selfdepends=False,
-                 #                shrink_to_bb=True)
                  ]
 
         super(CropSelectionSerializer, self).__init__(projectFileGroupName,

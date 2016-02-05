@@ -109,11 +109,6 @@ class TrackingBaseGui( LayerViewerGui ):
 
             mergerLayer = ColortableLayer( self.mergersrc, merger_ct )
             mergerLayer.name = "Merger"
-#<<<<<<< HEAD
-            # mergerLayer.visible = False
-            # layers.append(mergerLayer)
-#=======
-#>>>>>>> 7cbe7e4e6f6bd264eb06d55b34df55ce2c1dadc2
 
             if 'withMergerResolution' in parameters.keys() and not parameters['withMergerResolution']:
                 mergerLayer.visible = True
@@ -139,18 +134,6 @@ class TrackingBaseGui( LayerViewerGui ):
             trackingLayer.opacity = 1.0
             layers.append(trackingLayer)
 
-# <<<<<<< HEAD
-#         if self.topLevelOperatorView.LabelImage.ready():
-#             self.objectssrc = LazyflowSource( self.topLevelOperatorView.LabelImage )
-#             ct = colortables.create_random_16bit()
-#             ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent
-#             objLayer = ColortableLayer( self.objectssrc, ct )
-#             objLayer.name = "Objects"
-#             objLayer.opacity = 1.0
-#             objLayer.visible = False
-#             layers.append(objLayer)
-#
-# =======
         if "RelabeledImage" in self.topLevelOperatorView.outputs:
             if self.topLevelOperatorView.RelabeledCachedOutput.ready():
                 self.objectssrc = LazyflowSource( self.topLevelOperatorView.RelabeledCachedOutput )
@@ -166,7 +149,6 @@ class TrackingBaseGui( LayerViewerGui ):
         objLayer.opacity = 1.0
         objLayer.visible = False
         layers.append(objLayer)
-# >>>>>>> 7cbe7e4e6f6bd264eb06d55b34df55ce2c1dadc2
 
         if self.mainOperator.RawImage.ready():
             rawLayer = self.createStandardLayerFromSlot(self.mainOperator.RawImage)

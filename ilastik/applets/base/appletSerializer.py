@@ -219,7 +219,6 @@ class SerialSlot(object):
             try:
                 self._saveValue(group, name, slot.value)
             except:
-                raise
                 self._saveValue(group, name, slot(()).wait())
         else:
             subgroup = group.create_group(name)

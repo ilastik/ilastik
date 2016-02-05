@@ -19,10 +19,8 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
-#Python
 from os import path
 
-#PyQt
 from PyQt4 import uic
 from PyQt4.QtCore import pyqtSignal
 from PyQt4.QtGui import QWidget, QButtonGroup

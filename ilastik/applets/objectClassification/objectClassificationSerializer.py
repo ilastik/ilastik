@@ -58,7 +58,6 @@ class ObjectClassificationSerializer(AppletSerializer):
                            operator.InputProbabilities,
                            transform=int),
             SerialSlot(operator.MaxNumObj),
-            #SerialDictSlotWithoutDeserialization(operator.Probabilities, operator, transform=str)
             SerialPickledValueSlot(operator.ExportSettings)
         ]
 

@@ -230,19 +230,16 @@ class OpTrackingBase(Operator, ExportingOperator):
             divisions = []
 
         for i in time_range:
-            # dis = get_dict_value(events[str(i - time_range[0] + 1)], "dis", [])
             app = get_dict_value(events[str(i - time_range[0] + 1)], "app", [])
             div = get_dict_value(events[str(i - time_range[0] + 1)], "div", [])
             mov = get_dict_value(events[str(i - time_range[0] + 1)], "mov", [])
             merger = get_dict_value(events[str(i - time_range[0])], "merger", [])
             res = get_dict_value(events[str(i - time_range[0])], "res", {})
 
-            # logger.info(" {} dis at {}".format(len(dis), i))
-            # logger.info(" {} app at {}".format(len(app), i))
-            # logger.info(" {} div at {}".format(len(div), i))
-            # logger.info(" {} mov at {}".format(len(mov), i))
-            # logger.info(" {} merger at {}".format(len(merger), i))
-            # logger.info(" {} multiMoves at {}\n".format(len(multi), i))
+            logger.info(" {} app at {}".format(len(app), i))
+            logger.info(" {} div at {}".format(len(div), i))
+            logger.info(" {} mov at {}".format(len(mov), i))
+            logger.info(" {} merger at {}".format(len(merger), i))
 
             label2color.append({})
             mergers.append({})
@@ -465,7 +462,6 @@ class OpTrackingBase(Operator, ExportingOperator):
             if ct.size:
                 ct = ct[1:, ...]
 
-            # logger.info("at timestep {}, {} traxels found".format(t, rc.shape[0]))
             count = 0
             filtered_labels_at = []
             for idx in range(rc.shape[0]):
@@ -510,7 +506,6 @@ class OpTrackingBase(Operator, ExportingOperator):
                     tr.add_feature_array("divProb", 1)
                     # idx+1 because rc and ct start from 1, divProbs starts from 0
                     tr.set_feature_value("divProb", 0, float(divProbs[t][idx + 1][1]))
-#print "--->",tr.get_feature_value("divProb", 0)
 
                 if with_classifier_prior:
                     tr.add_feature_array("detProb", len(detProbs[t][idx + 1]))
@@ -576,7 +571,6 @@ class OpTrackingBase(Operator, ExportingOperator):
         :param filename_suffix: If provided, appended to the filename (before the extension).
         :return:
         """
-        assert lane_index == 0, "This has only been tested in tracking workflows with a single image."
 
         with_divisions = self.Parameters.value["withDivisions"] if self.Parameters.ready() else False
         if with_divisions:

@@ -39,7 +39,6 @@ from ilastik.widgets.cropListView import Crop
 from ilastik.widgets.cropListModel import CropListModel
 from ilastik.applets.cropping.cropSelectionWidget import CropSelectionWidget
 
-
 # ilastik
 from ilastik.utility import bind, log_exception
 from ilastik.utility.gui import ThunkEventHandler, threadRouted
@@ -47,8 +46,6 @@ from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 # Loggers
 logger = logging.getLogger(__name__)
-
-#===----------------------------------------------------------------------------------------------------------------===
 
 class Tool():
     """Enumerate the types of toolbar buttons."""
@@ -186,10 +183,8 @@ class CroppingGui(LayerViewerGui):
 
         # Register for thunk events (easy UI calls from non-GUI threads)
         self.thunkEventHandler = ThunkEventHandler(self)
-        #    self._changeInteractionMode(Tool.Navigation)
 
     def _initCropUic(self, drawerUiPath):
-        #_cropControlUi = uic.loadUi(drawerUiPath)
 
         self.cropSelectionWidget = CropSelectionWidget()
 
@@ -201,65 +196,7 @@ class CroppingGui(LayerViewerGui):
         self._cropControlUi.cropListModel=model
         self._cropControlUi.cropListModel.rowsRemoved.connect(self._onCropRemoved)
         self._cropControlUi.cropListModel.elementSelected.connect(self._onCropSelected)
-
-        # Connect Applet GUI to our event handlers
-        #if hasattr(_cropControlUi, "AddCropButton"):
-        #    _cropControlUi.AddCropButton.setIcon( QIcon(ilastikIcons.AddSel) )
-        #self._cropControlUi.AddCropButton.clicked.connect( bind(self._addNewCrop) )
-
         self._cropControlUi.cropListModel.dataChanged.connect(self.onCropListDataChanged)
-
-        # Initialize the arrow tool button with an icon and handler
-        #iconPath = os.path.split(__file__)[0] + "/icons/arrow.png"
-        #arrowIcon = QIcon(iconPath)
-        #_cropControlUi.arrowToolButton.setIcon(arrowIcon)
-        #_cropControlUi.arrowToolButton.setCheckable(True)
-        #_cropControlUi.arrowToolButton.clicked.connect( lambda checked: self._handleToolButtonClicked(checked, Tool.Navigation) )
-
-        # Initialize the paint tool button with an icon and handler
-        #paintBrushIconPath = os.path.split(__file__)[0] + "/icons/paintbrush.png"
-        #paintBrushIcon = QIcon(paintBrushIconPath)
-        #_cropControlUi.paintToolButton.setIcon(paintBrushIcon)
-        #_cropControlUi.paintToolButton.setCheckable(True)
-        #_cropControlUi.paintToolButton.clicked.connect( lambda checked: self._handleToolButtonClicked(checked, Tool.Paint) )
-
-        # Initialize the erase tool button with an icon and handler
-        #eraserIconPath = os.path.split(__file__)[0] + "/icons/eraser.png"
-        #eraserIcon = QIcon(eraserIconPath)
-        #_cropControlUi.eraserToolButton.setIcon(eraserIcon)
-        #_cropControlUi.eraserToolButton.setCheckable(True)
-        #_cropControlUi.eraserToolButton.clicked.connect( lambda checked: self._handleToolButtonClicked(checked, Tool.Erase) )
-
-        # Initialize the thresholding tool
-        #if hasattr(_cropControlUi, "thresToolButton"):
-        #    thresholdIconPath = os.path.split(__file__)[0] \
-        #      + "/icons/threshold.png"
-        #    thresholdIcon = QIcon(thresholdIconPath)
-        #    _cropControlUi.thresToolButton.setIcon(thresholdIcon)
-        #    _cropControlUi.thresToolButton.setCheckable(True)
-        #    _cropControlUi.thresToolButton.clicked.connect( lambda checked: self._handleToolButtonClicked(checked, Tool.Threshold) )
-
-
-        # This maps tool types to the buttons that enable them
-        #if hasattr(_cropControlUi, "thresToolButton"):
-        #    self.toolButtons = { Tool.Navigation : _cropControlUi.arrowToolButton,
-        #                         Tool.Paint      : _cropControlUi.paintToolButton,
-        #                         Tool.Erase      : _cropControlUi.eraserToolButton,
-        #                         Tool.Threshold  : _cropControlUi.thresToolButton}
-        #else:
-        #    self.toolButtons = { Tool.Navigation : _cropControlUi.arrowToolButton,
-        #                         Tool.Paint      : _cropControlUi.paintToolButton,
-        #                         Tool.Erase      : _cropControlUi.eraserToolButton}
-        #
-        #self.brushSizes = [ 1, 3, 5, 7, 11, 23, 31, 61 ]
-
-        #for size in self.brushSizes:
-        #    _cropControlUi.brushSizeComboBox.addItem( str(size) )
-
-        #_cropControlUi.brushSizeComboBox.currentIndexChanged.connect(self._onBrushSizeChange)
-
-        #self.paintBrushSizeIndex = PreferencesManager().get( 'cropping', 'paint brush size', default=0 )
-        #self.eraserSizeIndex = PreferencesManager().get( 'cropping', 'eraser brush size', default=4 )
         self.toolButtons = None
 
     def _initCropListView(self):
@@ -274,10 +211,7 @@ class CroppingGui(LayerViewerGui):
                         QColor(crops[key]["cropColor"][0],crops[key]["cropColor"][1],crops[key]["cropColor"][2]),
                         pmapColor=QColor(crops[key]["pmapColor"][0],crops[key]["pmapColor"][1],crops[key]["pmapColor"][2])
                 )
-
                 self._cropControlUi.cropListModel.insertRow( newRow, crop )
-                #self._cropControlUi.cropListModel.setData(self._cropControlUi.cropListModel.index(newRow,self._cropControlUi.cropListModel.ColumnID.Name), key )
-                #self._cropControlUi.cropListModel.setData(self._cropControlUi.cropListModel.index(newRow,self._cropControlUi.cropListModel.ColumnID.Color), QColor(crops[key]["cropColor"][0],crops[key]["cropColor"][1],crops[key]["cropColor"][2]) )
 
             self._cropControlUi.cropListModel.elementSelected.connect(self._onCropSelected)
             self._cropControlUi.cropListView.setModel(self._cropControlUi.cropListModel)
@@ -325,14 +259,6 @@ class CroppingGui(LayerViewerGui):
                                           self.croppingDrawerUi.AddCropButton.click,
                                           self.croppingDrawerUi.AddCropButton,
                                           self.croppingDrawerUi.AddCropButton ) )
-
-        #mgr.register( "n", ActionInfo( shortcutGroupName,
-        #                               "Navigation Cursor",
-        #                               "Navigation Cursor",
-        #                               self.croppingDrawerUi.arrowToolButton.click,
-        #                               self.croppingDrawerUi.arrowToolButton,
-        #                               self.croppingDrawerUi.arrowToolButton ) )
-
         self._cropShortcuts = []
 
     def _updateCropShortcuts(self):
@@ -366,9 +292,6 @@ class CroppingGui(LayerViewerGui):
         The user has selected another applet or is closing the whole app.
         Save all preferences.
         """
-        #with PreferencesManager() as prefsMgr:
-            #prefsMgr.set('cropping', 'paint brush size', self.paintBrushSizeIndex)
-            #prefsMgr.set('cropping', 'eraser brush size', self.eraserSizeIndex)
         super(CroppingGui, self).hideEvent(event)
 
     @threadRouted
@@ -404,44 +327,6 @@ class CroppingGui(LayerViewerGui):
          e = cropsAllowed & (self._cropControlUi.cropListModel.rowCount() > 0)
          self._gui_enableCropping(e)
 
-    #     if cropsAllowed:
-    #         # Update the applet bar caption
-    #         if toolId == Tool.Navigation:
-    #             # update GUI
-    #             self._gui_setNavigation()
-    #
-    #         elif toolId == Tool.Paint:
-    #             # If necessary, tell the brushing model to stop erasing
-    #             if self.editor.brushingModel.erasing:
-    #                 self.editor.brushingModel.disableErasing()
-    #             # Set the brushing size
-    #             brushSize = self.brushSizes[self.paintBrushSizeIndex]
-    #             self.editor.brushingModel.setBrushSize(brushSize)
-    #             # update GUI
-    #             self._gui_setBrushing()
-    #
-    #         elif toolId == Tool.Erase:
-    #             # If necessary, tell the brushing model to start erasing
-    #             if not self.editor.brushingModel.erasing:
-    #                 self.editor.brushingModel.setErasing()
-    #             # Set the brushing size
-    #             eraserSize = self.brushSizes[self.eraserSizeIndex]
-    #             self.editor.brushingModel.setBrushSize(eraserSize)
-    #             # update GUI
-    #             self._gui_setErasing()
-    #         elif toolId == Tool.Threshold:
-    #             self._gui_setThresholding()
-    #
-    #     self.editor.setInteractionMode( modeNames[toolId] )
-    #     self._toolId = toolId
-
-    # def _gui_enableCropping(self, enable):
-    #     self._cropControlUi.paintToolButton.setEnabled(enable)
-    #     self._cropControlUi.eraserToolButton.setEnabled(enable)
-    #     self._cropControlUi.brushSizeCaption.setEnabled(enable)
-    #     self._cropControlUi.brushSizeComboBox.setEnabled(enable)
-
-
     def _resetCropSelection(self):
         logger.debug("Resetting crop selection")
         if len(self._cropControlUi.cropListModel) > 0:
@@ -456,9 +341,7 @@ class CroppingGui(LayerViewerGui):
         We need to add/remove crops until we have the right number
         """
         # Get the number of crops in the crop data
-        # (Or the number of the crops the user has added.)
-        #names = self._croppingSlots.cropNames.value
-        #numCrops = len(self._croppingSlots.cropNames.value)
+        # (Or the number of crops the user has added.)
         names = sorted(self.topLevelOperatorView.Crops.value.keys())
         numCrops = len(names)
 
@@ -531,12 +414,9 @@ class CroppingGui(LayerViewerGui):
 
 
         self._maxCropNumUsed += 1
-
         self._updateCropShortcuts()
-       
-        e = self._cropControlUi.cropListModel.rowCount() > 0
-        #self._gui_enableCropping(e)
 
+        e = self._cropControlUi.cropListModel.rowCount() > 0
         QApplication.restoreOverrideCursor()
 
     def getNextCropName(self):
@@ -550,23 +430,6 @@ class CroppingGui(LayerViewerGui):
             for n in nums:
                 maxNum = max(maxNum, int(n))
         return "Crop {}".format(maxNum+1)
-
-    #def getNextCropColor(self):
-    #    print "getNextCropColor"
-    #    """
-    #    Return a QColor to use for the next crop.
-    #    """
-    #    numCrops = len(self._cropControlUi.cropListModel)
-    #    print "len(self._cropControlUi.cropListModel)",len(self._cropControlUi.cropListModel)
-    #    if numCrops >= len(self._colorTable16)-1:
-    #        # If the color table isn't large enough to handle all our crops,
-    #        #  append a random color
-     #       randomColor = QColor(numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255))
-     #       self._colorTable16.append( randomColor.rgba() )
-#
-#        color = QColor()
-#        color.setRgba(self._colorTable16[numCrops+1]) # First entry is transparent (for zero crop)
-#        return color
 
     def getNextPmapColor(self):
         """
@@ -661,14 +524,6 @@ class CroppingGui(LayerViewerGui):
             #  Otherwise, you can never delete the same crop twice in a row.
             #  (Only *changes* to the input are acted upon.)
             self._croppingSlots.cropDelete.setValue(-1)
-            
-            #cropNames = self._croppingSlots.cropNames.value
-            #cropNames.pop(start)
-            #self._croppingSlots.cropNames.setValue(cropNames, check_changed=False)
-
-            #cropNames = self._croppingSlots.cropNames.value
-            #cropNames.pop(start)
-            #self._croppingSlots.cropNames.setValue(cropNames, check_changed=False)
 
     def getLayer(self, name):
         """find a layer by name"""

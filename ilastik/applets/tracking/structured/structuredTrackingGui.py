@@ -468,7 +468,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                                 for track in trackSet:
 
                                     if not foundAllArcs:
-                                        #print "[structuredTrackingGui] Transitions Arc: (", time-1, ",", int(previous_label), ") ---> (", time, ",", int(label), ")"
                                         print "[structuredTrackingGui] Increasing max nearest neighbors!"
                                         break
 
@@ -490,29 +489,22 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                                                     "Either remove track(s) from these objects or train the object count classifier with more labels!"
 
 
-                                        #print "addArcLabel",time-1, int(previous_label), int(label), float(trackCountIntersection)
                                         foundAllArcs &= structuredLearningTracker.addArcLabel(time-1, int(previous_label), int(label), float(trackCountIntersection))
                                         if not foundAllArcs:
-                                            #print "[structuredTrackingGui] Transitions Arc: (", time-1, ",", int(previous_label), ") ---> (", time, ",", int(label), ")"
                                             print "[structuredTrackingGui] Increasing max nearest neighbors!"
                                             break
 
                                 if type[0] == "FIRST":
                                     structuredLearningTracker.addFirstLabels(time, int(label), float(trackCount))
-                                    #print "addFirstLabels",time, int(label), float(trackCount)
                                     if time > self.mainOperator.Crops.value[cropKey]["time"][0]:
-                                        #print "addDisappearanceLabel",time, int(label),0.0
                                         structuredLearningTracker.addDisappearanceLabel(time, int(label), 0.0)
 
                                 elif type[0] == "LAST":
                                     structuredLearningTracker.addLastLabels(time, int(label), float(trackCount))
-                                    #print "addLastLabels",time, int(label), float(trackCount)
                                     if time < self.mainOperator.Crops.value[cropKey]["time"][1]:
-                                        #print "addAppearanceLabel",time, int(label),0.0
                                         structuredLearningTracker.addAppearanceLabel(time, int(label), 0.0)
 
                                 elif type[0] == "INTERMEDIATE":
-                                    #print "addIntermediateLabels",time, int(label),float(trackCount)
                                     structuredLearningTracker.addIntermediateLabels(time, int(label), float(trackCount))
 
                     if foundAllArcs and "divisions" in crop.keys():
@@ -537,7 +529,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                                 structuredLearningTracker.addAppearanceLabel(time+1, child0, 1.0)
                                 foundAllArcs &= structuredLearningTracker.addArcLabel(time, parent, child0, 1.0)
                                 if not foundAllArcs:
-                                    #print "[structuredTrackingGui] Divisions Arc0: (", time, ",", int(parent), ") ---> (", time+1, ",", int(child0), ")"
                                     print "[structuredTrackingGui] Increasing max nearest neighbors!"
                                     break
 
@@ -546,7 +537,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                                 structuredLearningTracker.addAppearanceLabel(time+1, child1, 1.0)
                                 foundAllArcs &= structuredLearningTracker.addArcLabel(time, parent, child1, 1.0)
                                 if not foundAllArcs:
-                                    #print "[structuredTrackingGui] Divisions Arc1: (", time, ",", int(parent), ") ---> (", time+1, ",", int(child1), ")"
                                     print "[structuredTrackingGui] Increasing max nearest neighbors!"
                                     break
         print "max nearest neighbors=",new_max_nearest_neighbors
@@ -561,13 +551,12 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         withMergerResolution=True
         transition_parameter = 5.0
         borderAwareWidth = self._drawer.bordWidthBox.value()
-        #print "borderAwareWidth",borderAwareWidth
         sigmas = pgmlink.VectorOfDouble()
         for i in range(5):
             sigmas.append(0.0)
         uncertaintyParams = pgmlink.UncertaintyParameter(1, pgmlink.DistrId.PerturbAndMAP, sigmas)
 
-        cplex_timeout=float(1000.0)#float(1e75)
+        cplex_timeout=float(1000.0)
         transitionClassifier = None
 
         detectionWeight = self._detectionWeight
@@ -584,7 +573,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
             structuredLearningTracker.exportCrop(fieldOfView)
 
-        #with_optical_correction = True
         with_constraints = True
         training_to_hard_constraints = False
         num_threads = 8
@@ -616,6 +604,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             verbose
         )
 
+        # will be needed for python defined TRANSITION function
         #structuredLearningTrackerParameters.register_transition_func(self.mainOperator.track_transition_func_no_weight)
         structuredLearningTracker.structuredLearning(structuredLearningTrackerParameters)
 
@@ -736,7 +725,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             if len(str(self._drawer.timeoutBox.text())):
                 cplex_timeout = int(self._drawer.timeoutBox.text())
 
-            withTracklets = True #self._drawer.trackletsBox.isChecked()
+            withTracklets = True
             sizeDependent = self._drawer.sizeDepBox.isChecked()
             hardPrior = self._drawer.hardPriorBox.isChecked()
             classifierPrior = self._drawer.classifierPriorBox.isChecked()

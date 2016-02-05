@@ -32,9 +32,6 @@ from ilastik.widgets.cropListView import CropListView
 from ilastik.applets.cropping.croppingGui import CroppingGui
 from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted
-#from lazyflow.operators import OpValueCache, OpTrainClassifierBlocked, OpClassifierPredict,\
-#                               OpSlicedBlockedArrayCache, OpMultiArraySlicer2, \
-#                               OpPixelOperator, OpMaxChannelIndicatorOperator, OpCompressedUserLabelArray
 from ilastik.widgets.cropListModel import CropListModel
 
 def _listReplace(old, new):
@@ -101,10 +98,7 @@ class CropSelectionGui(CroppingGui):
 
     def initAppletDrawerUi(self):
         localDir = os.path.split(__file__)[0]
-        self._drawer = self._cropControlUi#uic.loadUi(localDir+"/drawer.ui")
-
-        #self.cropSelectionWidget = CropSelectionWidget(self)
-        #self.uiPath = self.cropSelectionWidget.uiPath
+        self._drawer = self._cropControlUi
 
         data_has_z_axis = True
         if self.topLevelOperatorView.InputImage.ready():
@@ -140,8 +134,6 @@ class CropSelectionGui(CroppingGui):
         layout.addWidget( self._cropControlUi )
         layout.addSpacerItem( QSpacerItem(0,0,vPolicy=QSizePolicy.Expanding) )
 
-        #self._drawer.setLayout( layout )
-
         self.setDefaultValues()
         self.apply_operator_settings_to_gui()
 
@@ -162,14 +154,6 @@ class CropSelectionGui(CroppingGui):
         self._cropControlUi.cropListView.colorsChanged.connect(self.onColorsChanged)
 
         self._initCropListView()
-        # The editor's layerstack is in charge of which layer movement buttons are enabled
-        #model = self.editor.layerStack
-        #self._viewerControlUi.viewerControls.setupConnections(model)
-
-        #if hasattr(_cropControlUi, "AddCropButton"):
-        #    _cropControlUi.AddCropButton.setIcon( QIcon(ilastikIcons.AddSel) )
-        #    _cropControlUi.AddCropButton.clicked.connect( bind(self._addNewCrop) )
-        #_cropControlUi.cropListModel.dataChanged.connect(self.onCropListDataChanged)
 
     def onColorsChanged(self, index):
         color = self._cropControlUi.cropListView._table.model().data(index,Qt.EditRole)[0]
@@ -185,9 +169,6 @@ class CropSelectionGui(CroppingGui):
         if self.topLevelOperatorView.CropNames.ready():
             enabled = True
             enabled &= len(self.topLevelOperatorView.CropNames.value) > 0
-            #enabled &= len(self.topLevelOperatorView.CropNames.value) >= 2
-            #enabled &= numpy.all(numpy.asarray(self.topLevelOperatorView.CachedFeatureImages.meta.shape) > 0)
-            # FIXME: also check that each label has scribbles?
 
         self._cropControlUi.cropListView.update()
 
@@ -463,7 +444,6 @@ class CropSelectionGui(CroppingGui):
         return [[start, stop] for dim, start, stop in zip("xyz", starts, stops)]
 
     def _onCropSelected(self, row):
-        #logger.debug("switching to crop=%r" % (self._cropControlUi.cropListModel[row]))
 
         self._cropControlUi._minSliderT.setValue(self.topLevelOperatorView.Crops.value[self._cropControlUi.cropListModel[row].name]["time"][0])
         self._cropControlUi._maxSliderT.setValue(self.topLevelOperatorView.Crops.value[self._cropControlUi.cropListModel[row].name]["time"][1])
