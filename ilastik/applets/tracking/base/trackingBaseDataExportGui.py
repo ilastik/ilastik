@@ -43,9 +43,9 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
 
     def get_feature_names(self):
         op = self.get_exporting_operator()
-        try:
+        if op.ComputedFeatureNamesWithDivFeatures:
             slot = op.ComputedFeatureNamesWithDivFeatures
-        except AttributeError:
+        else:
             slot = op.ComputedFeatureNames
         return slot([]).wait()
 
