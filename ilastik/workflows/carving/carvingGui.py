@@ -106,12 +106,14 @@ class CarvingGui(LabelingGui):
         tagged_shape.update( topLevelOperatorView.InputData.meta.getTaggedShape() )
         is_3d = (tagged_shape['x'] > 1 and tagged_shape['y'] > 1 and tagged_shape['z'] > 1)
 
+        # TODO: fix
+        #is_3d = False;
+
         if is_3d:
             try:
                 self._renderMgr = RenderingManager( self.editor.view3d )
                 self._shownObjects3D = {}
-                # TODO: fix
-                #self.render = True
+                self.render = True
             except:
                 self.render = False
 
@@ -538,10 +540,20 @@ class CarvingGui(LabelingGui):
         self._shownObjects3D = dict((k, v) for k, v in self._shownObjects3D.iteritems()
                                     if k in op.MST.value.object_lut.keys())
 
+        # TODO: dynamically adjust lut dtype; calcualte lut_max_index correctly; trim size rather than assert
+        lut_max_index = len(self._shownObjects3D)
+        assert lut_max_index < 32
+        if  lut_max_index > 15:
+            lut_dtype = numpy.uint32
+        elif lut_max_index > 7:
+            lut_dtype = numpy.uint16
+        else:
+            lut_dtype = numpy.uint8
+
         # TODO: resolve discrepancy between previous and current versions (current version seems to glitch out until labels are cleared; possibly project file has old-style labels?)
-        #lut = numpy.zeros(op.MST.value.nodeNum + 1, dtype=numpy.int32) # NOTE: previous ilastiktools watershed
-        #lut = numpy.zeros(op.MST.value.nodeNum, dtype=numpy.int32) # NOTE: current ilastiktools watershed
-        lut = numpy.zeros(op.MST.value.getSuperVoxelSeg().size, dtype=numpy.int32) # TODO: remove hack
+        #lut = numpy.zeros(op.MST.value.nodeNum + 1, dtype=numpy.int8) # NOTE: previous ilastiktools watershed
+        #lut = numpy.zeros(op.MST.value.nodeNum, dtype=numpy.int8) # NOTE: current ilastiktools watershed
+        lut = numpy.zeros(op.MST.value.getSuperVoxelSeg().size, dtype=lut_dtype)
 
         for name, label in self._shownObjects3D.iteritems():
             objectSupervoxels = op.MST.value.objects[name]
@@ -551,7 +563,7 @@ class CarvingGui(LabelingGui):
             # Add segmentation as label, which is green
             supervoxelSeg = op.MST.value.getSuperVoxelSeg()
             lut[:] = numpy.where( supervoxelSeg == 2, self._segmentation_3d_label, lut )
-        import vigra
+        #import vigra
         # TODO: read labels blockwise
         labels = op.MST.value.supervoxelUint32.value[0,...,0]
         self._renderMgr.volume = lut[labels] # (Advanced indexing)

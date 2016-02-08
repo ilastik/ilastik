@@ -20,29 +20,26 @@ class WatershedSegmentor(object):
 
         if h5file is None:
             self.supervoxelUint32 = labels
-            self.volumeFeat = volume_feat.squeeze()
-            if self.volumeFeat.ndim == 3:
+            ndim = self.supervoxelUint32.value.squeeze().ndim
+            if ndim == 3:
                 self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
-                self.gridSegmentor.init()
-
-            elif self.volumeFeat.ndim == 2:
+            elif ndim == 2:
                 self.gridSegmentor = ilastiktools.GridSegmentor_2D_UInt32()
-                self.gridSegmentor.init()
-                # TODO: remove after preprocess fixed                
-                #self.gridSegmentor.preprocessing(self.supervoxelUint32.squeeze(),self.volumeFeat)
-
             else:
                 raise RuntimeError("internal error")
 
+            self.gridSegmentor.init()
             self.nodeNum = self.gridSegmentor.nodeNum()
             self.hasSeg = False
         else:
             self.supervoxelUint32 = labels
-
-            if(self.supervoxelUint32.squeeze().ndim == 3):
+            ndim = self.supervoxelUint32.value.squeeze().ndim
+            if ndim == 3:
                 self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
-            else:
+            elif ndim == 2:
                 self.gridSegmentor = ilastiktools.GridSegmentor_2D_UInt32()
+            else:
+                raise RuntimeError("internal error")
 
             self.nodeNum = h5file.attrs["numNodes"]
 

@@ -248,7 +248,7 @@ class OpMstSegmentorProvider(Operator):
             logger.info( "  roi: {}".format(roi) )
             logger.info( "  mst: nodes: {} (max id: {}), edges: {} (max id: {})".format(
                         gridSeg.nodeNum(), gridSeg.maxNodeId(),
-                        gridSeg.edgeNum(), gridSeg.edgeNum()) )#gridSeg.maxEdgeId()) ) # TODO: why does gridSeg.maxEdgeId() crash?
+                        gridSeg.edgeNum(), gridSeg.maxEdgeId()) ) 
             logger.info( "  memory: used {} out of {} total avail (cache: {}, compute: {})".format(
                         Memory.format(Memory.getMemoryUsage()),
                         Memory.format(Memory.getAvailableRam()),
