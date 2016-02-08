@@ -67,13 +67,7 @@ def filter_labels(a, min_size, max_size=None):
     if min_size == 0 and (max_size is None or max_size > numpy.prod(a.shape)): # shortcut for efficiency
         return a
 
-    try:
-        component_sizes = numpy.bincount( a.ravel() )
-    except TypeError:
-        # On 32-bit systems, must explicitly convert from uint32 to int
-        # (This fix is just for VM testing.)
-        component_sizes = numpy.bincount( numpy.asarray(a.ravel(), dtype=int) )
-
+    component_sizes = numpy.bincount( a.ravel(order='K') )
     bad_sizes = component_sizes < min_size
     if max_size is not None:
         numpy.logical_or( bad_sizes, component_sizes > max_size, out=bad_sizes )
