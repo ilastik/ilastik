@@ -71,12 +71,7 @@ def remove_wrongly_sized_connected_components(a, min_size, max_size=None, in_pla
             numpy.place(a,a,1)
         return a
 
-    try:
-        component_sizes = numpy.bincount( a.reshape(-1, order='A') )
-    except TypeError:
-        # On 32-bit systems, must explicitly convert from uint32 to int
-        # (This fix is just for VM testing.)
-        component_sizes = numpy.bincount( numpy.asarray(a.reshape(-1, order='A'), dtype=int) )
+    component_sizes = numpy.bincount( a.ravel(order='K') )
     bad_sizes = component_sizes < min_size
     if max_size is not None:
         numpy.logical_or( bad_sizes, component_sizes > max_size, out=bad_sizes )
