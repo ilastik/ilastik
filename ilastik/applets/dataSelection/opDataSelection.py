@@ -296,6 +296,11 @@ class OpDataSelection(Operator):
                 metadata['normalizeDisplay'] = datasetInfo.normalizeDisplay
             if datasetInfo.axistags is not None:
                 if len(datasetInfo.axistags) != len(providerSlot.meta.shape):
+                    # This usually only happens when we copied a DatasetInfo from another lane,
+                    # and used it as a 'template' to initialize this lane.
+                    # This happens in the BatchProcessingApplet when it attempts to guess the axistags of 
+                    # batch images based on the axistags chosen by the user in the interactive images.
+                    # If the interactive image tags don't make sense for the batch image, you get this error.
                     raise Exception( "Your dataset's provided axistags ({}) do not have the "
                                      "correct dimensionality for your dataset, which has {} dimensions."
                                      .format( "".join(tag.key for tag in datasetInfo.axistags), len(providerSlot.meta.shape) ) )
