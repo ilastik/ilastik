@@ -22,13 +22,14 @@
 import sys
 import threading
 from functools import partial
+import math
 
 #SciPy
 import numpy
 import vigra
 
 #lazyflow
-from lazyflow.roi import getIntersectingBlocks, getBlockBounds, roiFromShape, enlargeRoiForHalo, TinyVector
+from lazyflow.roi import getIntersectingBlocks, getBlockBounds, roiFromShape, sliceToRoi, roiToSlice, enlargeRoiForHalo, TinyVector
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.operators.opBlockedHdf5Cache import OpBlockedHdf5Cache
@@ -75,8 +76,13 @@ class OpFilter(Operator):
             assert ax[i].isSpatial()
         assert ax[4].key == "c" and sh[4] == 1
 
-        volume5d = self.Input(*(roi.start, roi.stop)).wait()
+        #User selected values
         sigma = self.Sigma.value
+        volume_filter = self.Filter.value
+
+        roi_halo, roi_orig = enlargeRoiForHalo(roi.start, roi.stop, self.Input.meta.shape, sigma, return_result_roi=True)
+
+        volume5d = self.Input(*roi_halo).wait()
         volume = volume5d[0,:,:,:,0]
         result_view = result[0,:,:,:,0]
         
@@ -84,59 +90,67 @@ class OpFilter(Operator):
 
         fvol = numpy.asarray(volume, numpy.float32)
 
-        #Choose filter selected by user
-        volume_filter = self.Filter.value
-
         logger.info( " applying filter on shape: %r, size: %r MB" % (fvol.shape, fvol.nbytes / 1024**2 ) )
         with Timer() as filterTimer:
             if fvol.shape[2] > 1:
                 # true 3D volume
+                roi_orig_slice = roiToSlice(*roi_orig)[1:-1]
                 if volume_filter == OpFilter.HESSIAN_BRIGHT:
                     logger.info( " lowest eigenvalue of Hessian of Gaussian" )
                     options = vigra.blockwise.BlockwiseConvolutionOptions3D()
-                    options.stdDev = (sigma, )*3 
-                    result_view[...] = vigra.blockwise.hessianOfGaussianLastEigenvalue(fvol,options)[:,:,:]
+                    options.stdDev = (sigma, )*3
+                    #TODO: verify working blockwise (fix local inversion; should be 255 - result_view)
+                    result_view[...] = vigra.blockwise.hessianOfGaussianLastEigenvalue(fvol,options)[roi_orig_slice]
                     result_view[:] = numpy.max(result_view) - result_view
                 
                 elif volume_filter == OpFilter.HESSIAN_DARK:
                     logger.info( " greatest eigenvalue of Hessian of Gaussian" )
                     options = vigra.blockwise.BlockwiseConvolutionOptions3D()
                     options.stdDev = (sigma, )*3 
-                    result_view[...] = vigra.blockwise.hessianOfGaussianFirstEigenvalue(fvol,options)[:,:,:]
-                     
+                    result_view[...] = vigra.blockwise.hessianOfGaussianFirstEigenvalue(fvol,options)[roi_orig_slice]
+
                 elif volume_filter == OpFilter.STEP_EDGES:
                     logger.info( " Gaussian Gradient Magnitude" )
-                    result_view[...] = vigra.filters.gaussianGradientMagnitude(fvol,sigma)
+                    #TODO: verify working blockwise
+                    result_view[...] = vigra.filters.gaussianGradientMagnitude(fvol,sigma)[roi_orig_slice]
                     
                 elif volume_filter == OpFilter.RAW:
                     logger.info( " Gaussian Smoothing" )
-                    result_view[...] = vigra.filters.gaussianSmoothing(fvol,sigma)
+                    #TODO: verify working blockwise
+                    result_view[...] = vigra.filters.gaussianSmoothing(fvol,sigma)[roi_orig_slice]
                     
                 elif volume_filter == OpFilter.RAW_INVERTED:
                     logger.info( " negative Gaussian Smoothing" )
-                    result_view[...] = vigra.filters.gaussianSmoothing(-fvol,sigma)
+                    #TODO: verify working blockwise
+                    result_view[...] = vigra.filters.gaussianSmoothing(-fvol,sigma)[roi_orig_slice]
             else:
                 # 2D Image
+                #TODO: verify working blockwise
                 fvol = fvol[:,:,0]
                 if volume_filter == OpFilter.HESSIAN_BRIGHT:
                     logger.info( " lowest eigenvalue of Hessian of Gaussian" )
+                    #TODO: get working blockwise (see 3D example)
                     volume_feat = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,1]
                     volume_feat[:] = numpy.max(volume_feat) - volume_feat
                 
                 elif volume_filter == OpFilter.HESSIAN_DARK:
                     logger.info( " greatest eigenvalue of Hessian of Gaussian" )
+                    #TODO: get working blockwise (see 3D example)
                     volume_feat = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,0]
                      
                 elif volume_filter == OpFilter.STEP_EDGES:
                     logger.info( " Gaussian Gradient Magnitude" )
+                    #TODO: get working blockwise (see 3D example)
                     volume_feat = vigra.filters.gaussianGradientMagnitude(fvol,sigma)
                     
                 elif volume_filter == OpFilter.RAW:
                     logger.info( " Gaussian Smoothing" )
+                    #TODO: get working blockwise (see 3D example)
                     volume_feat = vigra.filters.gaussianSmoothing(fvol,sigma)
                     
                 elif volume_filter == OpFilter.RAW_INVERTED:
                     logger.info( " negative Gaussian Smoothing" )
+                    #TODO: get working blockwise (see 3D example)
                     volume_feat = vigra.filters.gaussianSmoothing(-fvol,sigma)
 
                 result_view[:,:,0] = volume_feat
@@ -158,8 +172,13 @@ class OpNormalize255(Operator):
     def execute(self, slot, subindex, roi, result):
         # Save memory: use result as a temporary
         self.Input( roi.start, roi.stop ).writeInto(result).wait()
+
         volume_max = numpy.max(result)
         volume_min = numpy.min(result)
+
+        # TODO: fix hack
+        volume_min = -12
+        volume_max = 38
 
         # result[...] = (result - volume_min) * 255.0 / (volume_max-volume_min)
         # Avoid temporaries...
@@ -257,7 +276,7 @@ class OpMstSegmentorProvider(Operator):
 
 
         bsz = 256 #block size
-        halo_size = (0,1,1,1,0)
+        halo_size = (False, True, True, True, False)
         block_shape = (1,bsz,bsz,bsz,1)
         block_starts = getIntersectingBlocks( block_shape, roiFromShape(self.Image.meta.shape) )
 
@@ -454,11 +473,10 @@ class OpPreprocessing(Operator):
         self.PreprocessedData.meta.dtype = object
 
         # TODO: this needs to match with bsz shape from OpMstSegmentorProvider.execute
-        innerCacheBlockShape = (256,256,256,256,256)
-        outerCacheBlockShape = (512,512,512,512,512)
-        # TODO: remove testing values
-        innerCacheBlockShape = (256,256,256,256,256)
-        outerCacheBlockShape = (256,256,256,256,256)
+        bsz = 256 #block size
+        # TODO: check if inner and outer must be the same size (any benefit to making inner smaller?)
+        innerCacheBlockShape = (bsz,bsz,bsz,bsz,bsz)
+        outerCacheBlockShape = (bsz,bsz,bsz,bsz,bsz)
 
         self._opFilterCache.fixAtCurrent.setValue(False)
         self._opFilterCache.innerBlockShape.setValue( innerCacheBlockShape )
