@@ -84,8 +84,12 @@ class TrackingBaseDataExportGui( DataExportGui, ExportingGui ):
         dimensions = self.get_raw_shape()
         feature_names = self.get_feature_names()        
 
+        op = self.get_exporting_operator()
+        settings, selected_features = op.get_table_export_settings()
+                
         dialog = ExportObjectInfoDialog(dimensions, 
-                                        feature_names, 
+                                        feature_names,
+                                        selected_features=selected_features, 
                                         title=self.get_export_dialog_title(), 
                                         filename=self._default_export_filename)
         if not dialog.exec_():

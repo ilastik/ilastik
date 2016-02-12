@@ -33,7 +33,7 @@ class ExportObjectInfoDialog(QDialog):
     :param filename: The filename to use as default
     :type filename: str or None
     """
-    def __init__(self, dimensions, feature_table, req_features=None, title=None, parent=None, filename=None):
+    def __init__(self, dimensions, feature_table, req_features=None, selected_features=None, title=None, parent=None, filename=None):
         super(ExportObjectInfoDialog, self).__init__(parent)
 
         ui_class, widget_class = uic.loadUiType(os.path.split(__file__)[0] + "/exportObjectInfoDialog.ui")
@@ -47,8 +47,11 @@ class ExportObjectInfoDialog(QDialog):
         if req_features is None:
             req_features = []
         req_features.extend(DEFAULT_REQUIRED_FEATURES)
+        
+        if selected_features is None:
+            selected_features = []
 
-        self._setup_features(feature_table, req_features)
+        self._setup_features(feature_table, req_features, selected_features)
         self.ui.featureView.setHeaderLabels(("Select Features",))
         self.ui.featureView.expandAll()
 
@@ -120,7 +123,7 @@ class ExportObjectInfoDialog(QDialog):
                 text = data.text()
             self.ui.exportPath.setText(text)
 
-    def _setup_features(self, features, reqs, max_depth=2, parent=None):
+    def _setup_features(self, features, req_features, selected_features, max_depth=2, parent=None):
         if max_depth == 2 and not features:
             item = QTreeWidgetItem(parent)
             item.setText(0, "All Default Features will be exported.")
@@ -134,10 +137,12 @@ class ExportObjectInfoDialog(QDialog):
         for entry, child in features.iteritems():
             item = QTreeWidgetItem(parent)
             item.setText(0, entry)
-            self._setup_features(child, reqs, max_depth-1, item)
+            self._setup_features(child, req_features, selected_features, max_depth-1, item)
             if child == {} or max_depth == 1:  # no children
                 state = Qt.Unchecked
-                if entry in reqs:
+                if entry in selected_features:
+                    state = Qt.Checked
+                if entry in req_features:
                     state = Qt.Checked
                     item.setDisabled(True)
                     item.setText(0, "%s%s" % (item.text(0), REQ_MSG))
