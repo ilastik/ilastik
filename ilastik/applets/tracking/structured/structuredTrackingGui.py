@@ -429,7 +429,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                 pgmlink.ConsTrackingSolverType.CplexSolver,
                 ndim)
 
-            print "Structured Learning: Adding Training Annotations to Hypotheses Graph"
+            logger.info("Structured Learning: Adding Training Annotations to Hypotheses Graph")
 
             # could be merged with code in opStructuredTracking
             structuredLearningTracker.addLabels()
@@ -458,8 +458,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                                 trackCount = len(trackSet)
 
                                 if trackCount > maxObj:
-                                    print "Your track count for object", label, "in time frame", time, "is", trackCount,"=|",trackSet,"|, which is greater than maximum object number",maxObj,"defined by object count classifier!"
-                                    print "Either remove track(s) from this object or train the object count classifier with more labels!"
+                                    logger.info("Your track count for object {} in time frame {} is {} =| {} |, which is greater than maximum object number {} defined by object count classifier!".format(label,time,trackCount,trackSet,maxObj))
+                                    logger.info("Either remove track(s) from this object or train the object count classifier with more labels!")
                                     maxObjOK = False
                                     raise Exception, "Your track count for object "+str(label)+" in time frame " +str(time)+ " equals "+str(trackCount)+"=|"+str(trackSet)+"|," + \
                                             " which is greater than the maximum object number "+str(maxObj)+" defined by object count classifier! " + \
@@ -468,10 +468,10 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                                 for track in trackSet:
 
                                     if not foundAllArcs:
-                                        print "[structuredTrackingGui] Increasing max nearest neighbors!"
+                                        logger.info("[structuredTrackingGui] Increasing max nearest neighbors!")
                                         break
 
-                                   # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
+                                    # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
                                     type = self._type(cropKey, time, track) # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
 
                                     if type[0] == "LAST" or type[0] == "INTERMEDIATE":
@@ -481,8 +481,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                                         trackCountIntersection = len(intersectionSet)
 
                                         if trackCountIntersection > maxObj:
-                                            print "Your track count for transition (", previous_label,time-1,") ---> (",label, time, ") is", trackCountIntersection,"=|",intersectionSet,"|, which is greater than maximum object number",maxObj,"defined by object count classifier!"
-                                            print "Either remove track(s) from these objects or train the object count classifier with more labels!"
+                                            logger.info("Your track count for transition ( {},{} ) ---> ( {},{} ) is {} =| {} |, which is greater than maximum object number {} defined by object count classifier!".format(previous_label,time-1,label,time,trackCountIntersection,intersectionSet,maxObj))
+                                            logger.info("Either remove track(s) from these objects or train the object count classifier with more labels!")
                                             maxObjOK = False
                                             raise Exception, "Your track count for transition ("+str(previous_label)+","+str(time-1)+") ---> ("+str(label)+","+str(time)+") is "+str(trackCountIntersection)+"=|"+str(intersectionSet)+"|, " + \
                                                     "which is greater than maximum object number "+str(maxObj)+" defined by object count classifier!" + \
@@ -491,7 +491,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
                                         foundAllArcs &= structuredLearningTracker.addArcLabel(time-1, int(previous_label), int(label), float(trackCountIntersection))
                                         if not foundAllArcs:
-                                            print "[structuredTrackingGui] Increasing max nearest neighbors!"
+                                            logger.info("[structuredTrackingGui] Increasing max nearest neighbors!")
                                             break
 
                                 if type[0] == "FIRST":
@@ -529,7 +529,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                                 structuredLearningTracker.addAppearanceLabel(time+1, child0, 1.0)
                                 foundAllArcs &= structuredLearningTracker.addArcLabel(time, parent, child0, 1.0)
                                 if not foundAllArcs:
-                                    print "[structuredTrackingGui] Increasing max nearest neighbors!"
+                                    logger.info("[structuredTrackingGui] Increasing max nearest neighbors!")
                                     break
 
                                 child1 = int(self.getLabelInCrop(cropKey, time+1, division[0][1]))
@@ -537,9 +537,9 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                                 structuredLearningTracker.addAppearanceLabel(time+1, child1, 1.0)
                                 foundAllArcs &= structuredLearningTracker.addArcLabel(time, parent, child1, 1.0)
                                 if not foundAllArcs:
-                                    print "[structuredTrackingGui] Increasing max nearest neighbors!"
+                                    logger.info("[structuredTrackingGui] Increasing max nearest neighbors!")
                                     break
-        print "max nearest neighbors=",new_max_nearest_neighbors
+        logger.info("max nearest neighbors=".format(new_max_nearest_neighbors))
 
         if new_max_nearest_neighbors > self._maxNearestNeighbors:
             self._maxNearestNeighbors = new_max_nearest_neighbors
@@ -631,17 +631,12 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._drawer.appearanceBox.setValue(self._appearanceWeight);
         self._drawer.disappearanceBox.setValue(self._disappearanceWeight);
 
-        print "structured learning tracking weights:                          normalized:"
-        print "   detection weight     = ", structuredLearningTracker.weight(0)
-        print "                                                     = ", self._detectionWeight
-        print "   division weight      = ", structuredLearningTracker.weight(1)
-        print "                                                     = ", self._divisionWeight
-        print "   transition weight    = ", structuredLearningTracker.weight(2)
-        print "                                                     = ", self._transitionWeight
-        print "   appearance weight    = ", structuredLearningTracker.weight(3)
-        print "                                                     = ", self._appearanceWeight
-        print "   disappearance weight = ", structuredLearningTracker.weight(4)
-        print "                                                     = ", self._disappearanceWeight
+        logger.info("Structured Learning Tracking Weights (normalized):")
+        logger.info("   detection weight     = {}".format(self._detectionWeight))
+        logger.info("   detection weight     = {}".format(self._divisionWeight))
+        logger.info("   detection weight     = {}".format(self._transitionWeight))
+        logger.info("   detection weight     = {}".format(self._appearanceWeight))
+        logger.info("   detection weight     = {}".format(self._disappearanceWeight))
 
     def getLabelInCrop(self, cropKey, time, track):
         labels = self.mainOperator.Annotations.value[cropKey]["labels"][time]
@@ -671,7 +666,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         if lastTime == -1:
             type = "FIRST"
         elif lastTime < time-1:
-            print "ERROR: Your annotations are not complete. See time frame:", time-1
+            logger.info("ERROR: Your annotations are not complete. See time frame {}.".format(time-1))
         elif lastTime == time-1:
             type =  "INTERMEDIATE"
 
@@ -688,7 +683,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             else:
                 return ["LAST", lastLabel]
         elif firstTime > time+1:
-            print "ERROR: Your annotations are not complete. See time frame:", time+1
+            logger.info("ERROR: Your annotations are not complete. See time frame {}.".format(time+1))
         elif firstTime == time+1:
             if type ==  "INTERMEDIATE":
                 return ["INTERMEDIATE",lastLabel]

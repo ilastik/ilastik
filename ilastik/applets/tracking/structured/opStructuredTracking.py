@@ -302,7 +302,7 @@ class OpStructuredTracking(OpTrackingBase):
 
             while not foundAllArcs:
                 new_max_nearest_neighbors += 1
-                print '\033[94m' +"make new graph"+  '\033[0m'
+                logger.info( '\033[94m' +"make new graph"+  '\033[0m' )
 
                 self.consTracker = pgmlink.ConsTracking(
                     maxObj,
@@ -324,7 +324,7 @@ class OpStructuredTracking(OpTrackingBase):
                 foundAllArcs = True;
                 if trainingToHardConstraints:
 
-                    print "Tracking: Adding Training Annotations to Hypotheses Graph"
+                    logger.info("Tracking: Adding Training Annotations to Hypotheses Graph")
 
                     # could be merged with code in structuredTrackingGui
                     self.consTracker.addLabels()
@@ -351,7 +351,7 @@ class OpStructuredTracking(OpTrackingBase):
                                         for track in trackSet:
 
                                             if not foundAllArcs:
-                                                print "[opStructuredTracking] Increasing max nearest neighbors!"
+                                                logger.info("[opStructuredTracking] Increasing max nearest neighbors!")
                                                 break
 
                                             # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
@@ -365,7 +365,7 @@ class OpStructuredTracking(OpTrackingBase):
 
                                                 foundAllArcs &= self.consTracker.addArcLabel(time-1, int(previous_label), int(label), float(trackCountIntersection))
                                                 if not foundAllArcs:
-                                                    print "[opStructuredTracking] Increasing max nearest neighbors!"
+                                                    logger.info("[opStructuredTracking] Increasing max nearest neighbors!")
                                                     break
 
                                         if type[0] == "FIRST":
@@ -385,7 +385,7 @@ class OpStructuredTracking(OpTrackingBase):
                                 divisions = crop["divisions"]
                                 for track in divisions.keys():
                                     if not foundAllArcs:
-                                        print "[opStructuredTracking] Increasing max nearest neighbors!"
+                                        logger.info("[opStructuredTracking] Increasing max nearest neighbors!")
                                         break
                                     division = divisions[track]
                                     time = int(division[1])
@@ -401,7 +401,7 @@ class OpStructuredTracking(OpTrackingBase):
                                         self.consTracker.addAppearanceLabel(time+1, child0, 1.0)
                                         foundAllArcs &= self.consTracker.addArcLabel(time, parent, child0, 1.0)
                                         if not foundAllArcs:
-                                            print "[opStructuredTracking] Increasing max nearest neighbors!"
+                                            logger.info("[opStructuredTracking] Increasing max nearest neighbors!")
                                             break
 
                                         child1 = int(self.getLabelInCrop(cropKey, time+1, division[0][1]))
@@ -409,15 +409,16 @@ class OpStructuredTracking(OpTrackingBase):
                                         self.consTracker.addAppearanceLabel(time+1, child1, 1.0)
                                         foundAllArcs &= self.consTracker.addArcLabel(time, parent, child1, 1.0)
                                         if not foundAllArcs:
-                                            print "[opStructuredTracking] Increasing max nearest neighbors!"
+                                            logger.info("[opStructuredTracking] Increasing max nearest neighbors!")
                                             break
 
 
-                print "max nearest neighbors=",new_max_nearest_neighbors
+                logger.info("max nearest neighbors={}".format(new_max_nearest_neighbors))
 
+        drawer = self.parent.parent.trackingApplet._gui.currentGui()._drawer
         if new_max_nearest_neighbors > max_nearest_neighbors:
             max_nearest_neighbors = new_max_nearest_neighbors
-            self.parent.parent.trackingApplet._gui.currentGui()._drawer.maxNearestNeighborsSpinBox.setValue(max_nearest_neighbors)
+            drawer.maxNearestNeighborsSpinBox.setValue(max_nearest_neighbors)
             self.parent.parent.trackingApplet._gui.currentGui()._maxNearestNeighbors = max_nearest_neighbors
 
         # create dummy uncertainty parameter object with just one iteration, so no perturbations at all (iter=0 -> MAP)
@@ -426,17 +427,17 @@ class OpStructuredTracking(OpTrackingBase):
             sigmas.append(0.0)
         uncertaintyParams = pgmlink.UncertaintyParameter(1, pgmlink.DistrId.PerturbAndMAP, sigmas)
 
-        self.detectionWeight = self.parent.parent.trackingApplet._gui.currentGui()._drawer.detWeightBox.value()
-        self.divisionWeight = self.parent.parent.trackingApplet._gui.currentGui()._drawer.divWeightBox.value()
-        self.transitionWeight = self.parent.parent.trackingApplet._gui.currentGui()._drawer.transWeightBox.value()
-        self.appearanceWeight = self.parent.parent.trackingApplet._gui.currentGui()._drawer.appearanceBox.value()
-        self.disappearanceWeight = self.parent.parent.trackingApplet._gui.currentGui()._drawer.disappearanceBox.value()
+        self.detectionWeight = drawer.detWeightBox.value()
+        self.divisionWeight = drawer.divWeightBox.value()
+        self.transitionWeight = drawer.transWeightBox.value()
+        self.appearanceWeight = drawer.appearanceBox.value()
+        self.disappearanceWeight = drawer.disappearanceBox.value()
 
-        print "detectionWeight=",self.detectionWeight
-        print "divisionWeight=",self.divisionWeight
-        print "transitionWeight=",self.transitionWeight
-        print "appearanceWeight=",self.appearanceWeight
-        print "disappearanceWeight=",self.disappearanceWeight
+        logger.info("detectionWeight= {}".format(self.detectionWeight))
+        logger.info("divisionWeight={}".format(self.divisionWeight))
+        logger.info("transitionWeight={}".format(self.transitionWeight))
+        logger.info("appearanceWeight={}".format(self.appearanceWeight))
+        logger.info("disappearanceWeight={}".format(self.disappearanceWeight))
 
         consTrackerParameters = self.consTracker.get_conservation_tracking_parameters(
                                         0,# forbidden_cost
@@ -559,7 +560,7 @@ class OpStructuredTracking(OpTrackingBase):
         if lastTime == -1:
             type = "FIRST"
         elif lastTime < time-1:
-            print "ERROR: Your annotations are not complete. See time frame:", time-1
+            logger.info("ERROR: Your annotations are not complete. See time frame {}.".format(time-1))
         elif lastTime == time-1:
             type =  "INTERMEDIATE"
 
@@ -575,7 +576,7 @@ class OpStructuredTracking(OpTrackingBase):
             else:
                 return ["LAST", lastLabel]
         elif firstTime > time+1:
-            print "ERROR: Your annotations are not complete. See time frame:", time+1
+            logger.info("ERROR: Your annotations are not complete. See time frame {}.".format(time+1))
         elif firstTime == time+1:
             if type ==  "INTERMEDIATE":
                 return ["INTERMEDIATE",lastLabel]
@@ -628,7 +629,7 @@ class OpStructuredTracking(OpTrackingBase):
 
     def _relabelMergers(self, volume, time, pixel_offsets=[0, 0, 0], onlyMergers=False, noRelabeling=False):
         if self.CoordinateMap.value.size == 0:
-            print("Skipping merger relabeling because coordinate map is empty")
+            logger.info("Skipping merger relabeling because coordinate map is empty.")
             if onlyMergers:
                 return np.zeros_like(volume)
             else:

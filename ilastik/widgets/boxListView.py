@@ -154,8 +154,6 @@ class BoxListView(ListView):
     def tableViewCellDoubleClicked(self, modelIndex):
         if modelIndex.column() == self.model.ColumnID.Color:
 
-           #print "RESETTING", modelIndex.row(), self._table.model()[modelIndex.row()].linewidth
-
             self._colorDialog.setColor(self._table.model()[modelIndex.row()].color)
             self._colorDialog.setFontColor(self._table.model()[modelIndex.row()].fontcolor)
             self._colorDialog.setLineWidth(self._table.model()[modelIndex.row()].linewidth)
