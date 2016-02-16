@@ -151,7 +151,7 @@ class AnnotationsGui(LayerViewerGui):
     def _onInitializeAnnotations(self):
 
         if self.topLevelOperatorView.Annotations.value != {}:
-            print "WARNING: All your annotations will be lost! You can save the project, then save it under a new name and continue without loss of current annotations."
+            logger.info("WARNING: All your annotations will be lost! You can save the project, then save it under a new name and continue without loss of current annotations.")
             self.mainOperator.Annotations.setValue({})
         self.mainOperator.Divisions.setValue({})
         self.mainOperator.Labels.setValue({})

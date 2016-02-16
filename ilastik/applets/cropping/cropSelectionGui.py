@@ -34,6 +34,9 @@ from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted
 from ilastik.widgets.cropListModel import CropListModel
 
+import logger
+logger = logging.getLogger(__name__)
+
 def _listReplace(old, new):
     if len(old) > len(new):
         return new + old[len(new):]
@@ -439,7 +442,7 @@ class CropSelectionGui(CroppingGui):
                 self.topLevelOperatorView.MinValueZ.setValue(start)
                 self.topLevelOperatorView.MaxValueZ.setValue(stop)
             else:
-                print "ERROR: Setting up an axis that does NOT exist!"
+                logger.info("ERROR: Setting up an axis that does NOT exist!")
 
         return [[start, stop] for dim, start, stop in zip("xyz", starts, stops)]
 
