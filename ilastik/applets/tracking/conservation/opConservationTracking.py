@@ -17,7 +17,6 @@ logger = logging.getLogger(__name__)
 
 def swirl_motion_func_creator(velocityWeight):
     def swirl_motion_func(traxelA, traxelB, traxelC, traxelD):
-        #print("SwirlMotion evaluated for traxels: {}, {}, {}".format(traxelA, traxelB, traxelC))
         traxels = [traxelA, traxelB, traxelC, traxelD]
         positions = [np.array([t.X(), t.Y(), t.Z()]) for t in traxels]
         vecs = [positions[1] - positions[0], positions[2] - positions[1]]
@@ -33,10 +32,8 @@ def swirl_motion_func_creator(velocityWeight):
 
         # penalize deviation from that position
         deviation = np.linalg.norm(expected_pos - positions[3])
-        #print("\tExpected next traxel at pos {}, but found {}. Distance={}".format(expected_pos, positions[3], deviation))
         cost = float(velocityWeight) * deviation
         tIds = [(t.Timestep, t.Id) for t in traxels]
-        #print("Adding cost {} to link between traxels {} at positions {}".format(cost, tIds, positions))
 
         return cost
     return swirl_motion_func
@@ -309,7 +306,7 @@ class OpConservationTracking(OpTrackingBase):
         )
 
         if motionModelWeight > 0:
-            print("Registering motion model with weight {}".format(motionModelWeight))
+            logger.info("Registering motion model with weight {}".format(motionModelWeight))
             params.register_motion_model4_func(swirl_motion_func_creator(motionModelWeight), motionModelWeight * 25.0)
 
         try:
@@ -409,7 +406,7 @@ class OpConservationTracking(OpTrackingBase):
 
     def _relabelMergers(self, volume, time, pixel_offsets=[0, 0, 0], onlyMergers=False, noRelabeling=False):
         if self.CoordinateMap.value.size() == 0:
-            print("Skipping merger relabeling because coordinate map is empty")
+            logger.info("Skipping merger relabeling because coordinate map is empty")
             if onlyMergers:
                 return np.zeros_like(volume)
             else:

@@ -190,7 +190,7 @@ class OpTrackingBase(Operator, ExportingOperator):
             try:
                 self._setLabel2Color(export_mode=True)
             except:
-                print("Warning: some label information might be wrong...")
+                logger.debug("Warning: some label information might be wrong...")
 
     def setInSlot(self, slot, subindex, roi, value):
         assert slot == self.InputHdf5, "Invalid slot for setInSlot(): {}".format(slot.name)
