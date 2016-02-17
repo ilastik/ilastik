@@ -66,7 +66,7 @@ class OpTrackingBase(Operator, ExportingOperator):
     Output = OutputSlot()
 
     # Use a slot for storing the export settings in the project file.
-    ExportSettings = OutputSlot()
+    ExportSettings = InputSlot()
 
     # Override functions ExportingOperator mixin
     def configure_table_export_settings(self, settings, selected_features):
@@ -188,6 +188,7 @@ class OpTrackingBase(Operator, ExportingOperator):
         elif inputSlot is self.EventsVector:
             self._setLabel2Color()
             self._setLabel2Color(export_mode=True)
+
 
     def setInSlot(self, slot, subindex, roi, value):
         assert slot == self.InputHdf5, "Invalid slot for setInSlot(): {}".format(slot.name)

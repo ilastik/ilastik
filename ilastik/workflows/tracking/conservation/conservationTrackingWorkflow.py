@@ -118,13 +118,16 @@ class ConservationTrackingWorkflowBase( Workflow ):
         opDataExport.SelectionNames.setValue( ['Object-Identities', 'Tracking-Result', 'Merger-Result'] )
         opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
 
-        self.batchProcessingApplet = BatchProcessingApplet(self, "Batch Processing", self.dataSelectionApplet, self.dataExportApplet)
-        
         # Extra configuration for object export table (as CSV table or HDF5 table)
         opTracking = self.trackingApplet.topLevelOperator
         self.dataExportApplet.set_exporting_operator(opTracking)
         self.dataExportApplet.prepare_lane_for_export = self.prepare_lane_for_export
         self.dataExportApplet.post_process_lane_export = self.post_process_lane_export
+        
+        # configure export settings
+        settings = {'file path': self.default_export_filename, 'compression': {}, 'file type': 'csv'}
+        selected_features = ['Count', 'RegionCenter', 'RegionRadii', 'RegionAxes']                  
+        opTracking.ExportSettings.setValue( (settings, selected_features) )
         
         self._applets = []                
         self._applets.append(self.dataSelectionApplet)
@@ -137,6 +140,8 @@ class ConservationTrackingWorkflowBase( Workflow ):
         
         if self.divisionDetectionApplet:
             self._applets.append(self.divisionDetectionApplet)
+        
+        self.batchProcessingApplet = BatchProcessingApplet(self, "Batch Processing", self.dataSelectionApplet, self.dataExportApplet)
             
         self._applets.append(self.cellClassificationApplet)
         self._applets.append(self.trackingApplet)
@@ -272,11 +277,6 @@ class ConservationTrackingWorkflowBase( Workflow ):
         opTracking.ComputedFeatureNames.connect( opObjExtraction.FeatureNamesVigra)
         opTracking.DetectionProbabilities.connect( opCellClassification.Probabilities )
         opTracking.NumLabels.connect( opCellClassification.NumLabels )
-
-        # configure export settings
-        settings = {'file path': self.default_export_filename, 'compression': {}, 'file type': 'csv'}
-        selected_features = ['Count', 'RegionCenter']
-        opTracking.configure_table_export_settings(settings, selected_features)
     
         opDataExport.Inputs.resize(3)
         opDataExport.Inputs[0].connect( opTracking.RelabeledImage )
