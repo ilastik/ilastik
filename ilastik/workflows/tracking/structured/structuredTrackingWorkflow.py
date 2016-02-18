@@ -26,7 +26,6 @@ from ilastik.applets.tracking.annotations.annotationsApplet import AnnotationsAp
 from ilastik.applets.tracking.structured.structuredTrackingApplet import StructuredTrackingApplet
 from ilastik.applets.objectExtraction.objectExtractionApplet import ObjectExtractionApplet
 from ilastik.applets.thresholdTwoLevels.thresholdTwoLevelsApplet import ThresholdTwoLevelsApplet
-from lazyflow.operators.adaptors import Op5ifyer
 from ilastik.applets.objectClassification.objectClassificationApplet import ObjectClassificationApplet
 from ilastik.applets.cropping.cropSelectionApplet import CropSelectionApplet
 from ilastik.applets.trackingFeatureExtraction import config
