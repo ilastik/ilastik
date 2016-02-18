@@ -147,6 +147,7 @@ class OpTrackingFeatureExtraction(Operator):
     RegionFeaturesAll = OutputSlot(stype=Opaque, rtype=List)
     
     ComputedFeatureNamesAll = OutputSlot(rtype=List, stype=Opaque)
+    ComputedFeatureNamesNoDivisions = OutputSlot(rtype=List, stype=Opaque)
 
     BlockwiseRegionFeaturesVigra = OutputSlot() # For compatibility with tracking workflow, the RegionFeatures output
                                                 # has rtype=List, indexed by t.
@@ -205,6 +206,7 @@ class OpTrackingFeatureExtraction(Operator):
                
     def setupOutputs(self, *args, **kwargs):
         self.ComputedFeatureNamesAll.meta.assignFrom(self.FeatureNamesVigra.meta)
+        self.ComputedFeatureNamesNoDivisions.meta.assignFrom(self.FeatureNamesVigra.meta)
         self.RegionFeaturesAll.meta.assignFrom(self.RegionFeaturesVigra.meta)
         
     def execute(self, slot, subindex, roi, result):
@@ -216,10 +218,12 @@ class OpTrackingFeatureExtraction(Operator):
             for plugin_name in feat_names_div.keys():
                 assert plugin_name not in feat_names_vigra, "feature name dictionaries must be mutually exclusive"
             result = dict(feat_names_vigra.items() + feat_names_div.items())
-            # FIXME do not hard-code this
-            for name in [ 'SquaredDistances_' + str(i) for i in range(config.n_best_successors) ]:
-                result[config.features_division_name][name] = {}
-            
+
+            return result
+        elif slot == self.ComputedFeatureNamesNoDivisions:
+            feat_names_vigra = self.FeatureNamesVigra([]).wait()
+            result = dict(feat_names_vigra.items())
+
             return result
         elif slot == self.RegionFeaturesAll:
             feat_vigra = self.RegionFeaturesVigra(roi).wait()
@@ -239,7 +243,8 @@ class OpTrackingFeatureExtraction(Operator):
     def propagateDirty(self, slot, subindex, roi):
         if slot == self.FeatureNamesVigra or slot == self.FeatureNamesDivision:
             self.ComputedFeatureNamesAll.setDirty(roi)
-    
+            self.ComputedFeatureNamesNoDivisions.setDirty(roi)
+
     def setInSlot(self, slot, subindex, roi, value):
         assert slot == self.LabelInputHdf5 or slot == self.RegionFeaturesCacheInputVigra or \
             slot == self.RegionFeaturesCacheInputDivision, "Invalid slot for setInSlot(): {}".format(slot.name)

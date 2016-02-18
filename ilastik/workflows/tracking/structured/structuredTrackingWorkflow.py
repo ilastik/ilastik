@@ -30,7 +30,7 @@ from lazyflow.operators.adaptors import Op5ifyer
 from ilastik.applets.objectClassification.objectClassificationApplet import ObjectClassificationApplet
 from ilastik.applets.cropping.cropSelectionApplet import CropSelectionApplet
 from ilastik.applets.trackingFeatureExtraction import config
-from ilastik.applets.trackingFeatureExtraction.trackingFeatureExtractionApplet import TrackingFeatureExtractionApplet
+from ilastik.applets.tracking.structured import config as configStructured
 
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
@@ -79,11 +79,13 @@ class StructuredTrackingWorkflowBase( Workflow ):
 
         self.divisionDetectionApplet = ObjectClassificationApplet(workflow=self,
                                                                      name="Division Detection (optional)",
-                                                                     projectFileGroupName="DivisionDetection")
+                                                                     projectFileGroupName="DivisionDetection",
+                                                                     selectedFeatures=configStructured.selectedFeaturesDiv)
 
         self.cellClassificationApplet = ObjectClassificationApplet(workflow=self,
                                                                      name="Object Count Classification (optional)",
-                                                                     projectFileGroupName="CountClassification")
+                                                                     projectFileGroupName="CountClassification",
+                                                                     selectedFeatures=configStructured.selectedFeaturesObjectCount)
 
         self.cropSelectionApplet = CropSelectionApplet(self,"Crop Selection","CropSelection")
 
@@ -178,34 +180,23 @@ class StructuredTrackingWorkflowBase( Workflow ):
         feature_dict_division[config.features_division_name] = { name: {} for name in config.division_features }
         opTrackingFeatureExtraction.FeatureNamesDivision.setValue(feature_dict_division)
 
-        selected_features_div = {}
-        for plugin_name in config.selected_features_division.keys():
-            selected_features_div[plugin_name] = { name: {} for name in config.selected_features_division[plugin_name] }
-
-        # FIXME: do not hard code this
-        for name in [ 'SquaredDistances_' + str(i) for i in range(config.n_best_successors) ]:
-            selected_features_div[config.features_division_name][name] = {}
-
         opDivDetection.BinaryImages.connect( op5Binary.Output )
         opDivDetection.RawImages.connect( op5Raw.Output )
         opDivDetection.SegmentationImages.connect(opTrackingFeatureExtraction.LabelImage)
         opDivDetection.ObjectFeatures.connect(opTrackingFeatureExtraction.RegionFeaturesAll)
         opDivDetection.ComputedFeatureNames.connect(opTrackingFeatureExtraction.ComputedFeatureNamesAll)
-        opDivDetection.SelectedFeatures.setValue(selected_features_div)
+        opDivDetection.SelectedFeatures.setValue(configStructured.selectedFeaturesDiv)
         opDivDetection.LabelNames.setValue(['Not Dividing', 'Dividing'])
         opDivDetection.AllowDeleteLabels.setValue(False)
         opDivDetection.AllowAddLabel.setValue(False)
         opDivDetection.EnableLabelTransfer.setValue(False)
 
-        selected_features_objectcount = {}
-        for plugin_name in config.selected_features_objectcount.keys():
-            selected_features_objectcount[plugin_name] = { name: {} for name in config.selected_features_objectcount[plugin_name] }
         opCellClassification.BinaryImages.connect( op5Binary.Output )
         opCellClassification.RawImages.connect( op5Raw.Output )
         opCellClassification.SegmentationImages.connect(opTrackingFeatureExtraction.LabelImage)
         opCellClassification.ObjectFeatures.connect(opTrackingFeatureExtraction.RegionFeaturesAll)
-        opCellClassification.ComputedFeatureNames.connect(opTrackingFeatureExtraction.ComputedFeatureNamesAll)
-        opCellClassification.SelectedFeatures.setValue( selected_features_objectcount )
+        opCellClassification.ComputedFeatureNames.connect(opTrackingFeatureExtraction.ComputedFeatureNamesNoDivisions)
+        opCellClassification.SelectedFeatures.setValue(configStructured.selectedFeaturesObjectCount )
         opCellClassification.SuggestedLabelNames.setValue( ['false detection',] + [str(i) + ' Objects' for i in range(1,10) ] )
         opCellClassification.AllowDeleteLastLabelOnly.setValue(True)
         opCellClassification.EnableLabelTransfer.setValue(False)

@@ -29,9 +29,12 @@ class ObjectClassificationApplet(StandardApplet):
     def __init__(self,
                  name="Object Classification",
                  workflow=None,
-                 projectFileGroupName="ObjectClassification"):
+                 projectFileGroupName="ObjectClassification",
+                 selectedFeatures=dict()):
         self._topLevelOperator = OpObjectClassification(parent=workflow)
         self.connected_to_knime = False
+        self._selectedFeatures = selectedFeatures
+
         super(ObjectClassificationApplet, self).__init__(name=name, workflow=workflow)
 
         self._serializableItems = [
