@@ -162,8 +162,50 @@ class OpFilter(Operator):
     def propagateDirty(self, slot, subindex, roi):
         self.Output.setDirty(slice(None))
 
-class OpNormalize255(Operator):
+
+# TODO: Split into variadic operators: OpBlockwiseFold, OpStats
+class OpBlockwiseTotalStats(Operator):
+    MINIMUM = 'minimum'
+    MAXIMUM = 'maximum'
+
     Input = InputSlot()
+    Output = OutputSlot(stype='object')
+
+    def setupOutputs(self):
+        self.Output.meta.shape = (1,)
+        self.Output.meta.dtype = object
+
+    def execute(self, slot, subindex, unused_roi, result):
+        assert slot == self.Output, "Invalid output slot: {}".format(slot.name)
+
+        bsz = 256 #block size
+        halo_size = (False, True, True, True, False)
+        block_shape = (1,bsz,bsz,bsz,1)
+        block_starts = getIntersectingBlocks( block_shape, roiFromShape(self.Input.meta.shape) )
+
+        stats = {self.MINIMUM:sys.float_info.max, self.MAXIMUM:sys.float_info.min}
+
+        block_count = len(block_starts)
+        for b_id, block in enumerate(block_starts):
+            input_roi = getBlockBounds(self.Input.meta.shape, block_shape, block)
+            inputVolume = self.Input( *input_roi ).wait()
+
+            stats[self.MINIMUM] = min(stats[self.MINIMUM], numpy.min(inputVolume))
+            stats[self.MAXIMUM] = max(stats[self.MAXIMUM], numpy.max(inputVolume))
+
+        result[0] = stats
+        return result
+
+    def propagateDirty(self, slot, subindex, unused_roi):
+        self.Output.setDirty(slice(None))
+
+
+class OpNormalize255(Operator):
+    MINIMUM = 'minimum'
+    MAXIMUM = 'maximum'
+
+    Input = InputSlot()
+    TotalStats = InputSlot(value={MINIMUM:-128.0, MAXIMUM:127.0}) # numpy.min(result)
     Output = OutputSlot()
 
     def setupOutputs(self):
@@ -173,22 +215,19 @@ class OpNormalize255(Operator):
         # Save memory: use result as a temporary
         self.Input( roi.start, roi.stop ).writeInto(result).wait()
 
-        volume_max = numpy.max(result)
-        volume_min = numpy.min(result)
+        stats = self.TotalStats().wait()[0]
+        offset = -(stats[self.MINIMUM])
+        range = (stats[self.MAXIMUM] - stats[self.MINIMUM])
 
-        # TODO: fix hack
-        volume_min = -12
-        volume_max = 38
-
-        # result[...] = (result - volume_min) * 255.0 / (volume_max-volume_min)
+        # result[...] = (result + offset) * (255.0 / range)
         # Avoid temporaries...
-        result[:] -= volume_min
-        result[:] *= 255.0
-        result[:] /= (volume_max - volume_min)
+        result[:] += offset
+        result[:] *= (255.0 / range)
         return result
 
     def propagateDirty(self, slot, subindex, roi):
-        self.Output.setDirty(roi.start, roi.stop)
+        self.Output.setDirty(slice(None))
+
 
 class OpSimpleWatershed(Operator):
     Input = InputSlot()
@@ -337,17 +376,18 @@ class OpPreprocessing(Operator):
     WatershedImage = OutputSlot()
 
     ###########################################################################
-    # OverlayData         InputData          Sigma   Filter
-    #      \               \   \----------\ \     /
-    #      v               v              v v    v
-    # opOverlayFilter*  opInputFilter*    opFilter
-    #      \               \                 \
-    #      v               v                 v
-    # opOverlayNormalize  opInputNormalize  opFilterNormalize
-    #          \               \               \
-    #          \               \                v
-    #          \               \              opFilterCache
-    #          \               \                /    \    \
+    # OverlayData            InputData              Sigma   Filter
+    #      \                    \   \-----------------\ \     /
+    #      v                    v                     v v    v
+    #  opOverlayFilter*      opInputFilter*           opFilter
+    #      \    \                \    \                  \   \
+    #      \ opOverlayFilterStats \  opInputFilterStats   \ opFilterStats
+    #      v    v                  v    v                  v   v
+    #  opOverlayNormalize    opInputNormalize       opFilterNormalize
+    #          \                 \                    \
+    #          \                 \                    v
+    #          \                 \              opFilterCache
+    #          \                 \              /    \    \
     #          \-------------->\<---------------/    \     \
     #                          v                     \      v
     #            (SELECT by WatershedSource)         \    FilteredImage
@@ -402,8 +442,13 @@ class OpPreprocessing(Operator):
         self._opFilter.Sigma.connect( self.Sigma )
         self._opFilter.Filter.connect( self.Filter )
 
+        self._opFilterStats = OpBlockwiseTotalStats(parent=self)
+        self._opFilterStats.Input.connect( self._opFilter.Output )
+
         self._opFilterNormalize = OpNormalize255( parent=self )
         self._opFilterNormalize.Input.connect( self._opFilter.Output )
+        self._opFilterNormalize.TotalStats.connect( self._opFilterStats.Output )
+
 
         self._opFilterCache = OpBlockedArrayCache( parent=self )
 
@@ -411,15 +456,23 @@ class OpPreprocessing(Operator):
         self._opOverlayFilter.Input.connect( self.OverlayData )
         self._opOverlayFilter.Sigma.connect( self.Sigma )
         
+        self._opOverlayNormalizeStats = OpBlockwiseTotalStats(parent=self)
+        self._opOverlayNormalizeStats.Input.connect( self._opOverlayFilter.Output )
+
         self._opOverlayNormalize = OpNormalize255( parent=self )
         self._opOverlayNormalize.Input.connect( self._opOverlayFilter.Output )
-        
+        self._opOverlayNormalize.TotalStats.connect( self._opOverlayNormalizeStats.Output )
+
         self._opInputFilter = OpFilter( parent=self )
         self._opInputFilter.Input.connect( self.InputData )
         self._opInputFilter.Sigma.connect( self.Sigma )
 
+        self._opInputNormalizeStats = OpBlockwiseTotalStats(parent=self)
+        self._opInputNormalizeStats.Input.connect( self._opInputFilter.Output )
+
         self._opInputNormalize = OpNormalize255( parent=self )
         self._opInputNormalize.Input.connect( self._opInputFilter.Output )
+        self._opInputNormalize.TotalStats.connect( self._opInputNormalizeStats.Output )
 
         self._opWatershedSourceCache = OpBlockedArrayCache( parent=self )
 
