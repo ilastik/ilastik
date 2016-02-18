@@ -99,6 +99,10 @@ class TestOpBlockedArrayCache(unittest.TestCase):
         data = opCache.Output( slicing ).wait()
         assert opProvider.accessCount == expectedAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, expectedAccessCount)
 
+    def testCompressed(self):
+        self.opCache.CompressionEnabled.setValue(True)
+        self.testCacheAccess()
+
     def testDirtySource(self):
         opCache = self.opCache
         opProvider = self.opProvider        

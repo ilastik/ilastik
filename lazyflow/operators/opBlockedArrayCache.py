@@ -45,6 +45,7 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
     innerBlockShape = InputSlot(optional=True) # Deprecated and ignored below.
     outerBlockShape = InputSlot()
     BypassModeEnabled = InputSlot(value=False)
+    CompressionEnabled = InputSlot(value=False)
     
     Output = OutputSlot(allow_mask=True)
     
@@ -68,6 +69,7 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
         self._opCacheFixer.fixAtCurrent.connect( self.fixAtCurrent )
 
         self._opUnblockedArrayCache = OpUnblockedArrayCache( parent=self )
+        self._opUnblockedArrayCache.CompressionEnabled.connect( self.CompressionEnabled )
         self._opUnblockedArrayCache.Input.connect( self._opCacheFixer.Output )
 
         self._opSplitRequestsBlockwise = OpSplitRequestsBlockwise( always_request_full_blocks=True, parent=self )

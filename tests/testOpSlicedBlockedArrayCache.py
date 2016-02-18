@@ -41,7 +41,7 @@ class TestOpSlicedBlockedArrayCache(object):
 
     def setUp(self):
         self.dataShape = (1,100,100,10,1)
-        self.data = (numpy.random.random(self.dataShape) * 100).astype(int)
+        self.data = (numpy.random.random(self.dataShape) * 100).astype(numpy.uint32)
         self.data = self.data.view(vigra.VigraArray)
         self.data.axistags = vigra.defaultAxistags('txyzc')
 
@@ -98,6 +98,10 @@ class TestOpSlicedBlockedArrayCache(object):
         # Same request should come from cache, so access count is unchanged
         data = opCache.Output( slicing ).wait()
         assert opProvider.accessCount == oldAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, oldAccessCount)
+
+    def testCompressed(self):
+        self.opCache.CompressionEnabled.setValue(True)
+        self.testCacheAccess()
 
     def testDirtySource(self):
         opCache = self.opCache

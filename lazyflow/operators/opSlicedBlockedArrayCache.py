@@ -44,6 +44,7 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
     innerBlockShape = InputSlot()
     outerBlockShape = InputSlot()
     BypassModeEnabled = InputSlot(value=False)
+    CompressionEnabled = InputSlot(value=False)
    
     #Outputs
     Output = OutputSlot(allow_mask=True)
@@ -118,6 +119,7 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
                 op = OpBlockedArrayCache(parent=self)
                 op.inputs["fixAtCurrent"].connect(self.inputs["fixAtCurrent"])
                 op.BypassModeEnabled.connect( self.BypassModeEnabled )
+                op.CompressionEnabled.connect( self.CompressionEnabled )
                 self._innerOps.append(op)
                 
                 op.inputs["Input"].connect(self.inputs["Input"])
@@ -195,5 +197,5 @@ class OpSlicedBlockedArrayCache(Operator, ObservableCache):
                      # It is considered an error to change the blockshape after the initial configuration.
             elif slot is self.fixAtCurrent:
                 self.Output.setDirty( slice(None) )
-            elif slot is not self.BypassModeEnabled:
+            elif slot not in (self.BypassModeEnabled, self.CompressionEnabled):
                 assert False, "Unknown dirty input slot"

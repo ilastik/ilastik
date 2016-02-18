@@ -23,6 +23,7 @@
 import time
 import collections
 import numpy
+import vigra
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators.opCache import ManagedBlockedCache
@@ -48,6 +49,7 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
     since every unique result is cached separately.
     """
     Input = InputSlot(allow_mask=True)
+    CompressionEnabled = InputSlot(value=False) # If True, compression will be enabled for certain dtypes
     Output = OutputSlot(allow_mask=True)
     
     def __init__(self, *args, **kwargs):
@@ -91,7 +93,8 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
         # Handle identical simultaneous requests
         with block_lock:
             try:
-                self.Output.stype.copy_data(result, self._block_data[block_roi])
+                # Extra [:] here is in case we are decompressing from a chunkedarray
+                self.Output.stype.copy_data(result, self._block_data[block_roi][:])
                 return
             except KeyError: # Not yet stored: Request it now.
 
@@ -104,14 +107,22 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
                     # (For example, see OpCacheFixer.)
                     return
                 
-                block = result.copy()
+                if self.CompressionEnabled.value and numpy.dtype(result.dtype) in [numpy.dtype(numpy.uint8),
+                                                                                   numpy.dtype(numpy.uint32),
+                                                                                   numpy.dtype(numpy.float32)]:
+                    compressed_block = vigra.ChunkedArrayCompressed( result.shape, vigra.Compression.LZ4, result.dtype )
+                    compressed_block[:] = result
+                    block_storage_data = compressed_block
+                else:
+                    block_storage_data = result.copy()
+
                 with self._lock:
                     # Store the data.
                     # First double-check that the block wasn't removed from the 
                     #   cache while we were requesting it. 
                     # (Could have happened via propagateDirty() or eventually the arrayCacheMemoryMgr)
                     if block_roi in self._block_locks:
-                        self._block_data[block_roi] = block
+                        self._block_data[block_roi] = block_storage_data
             self._last_access_times[block_roi] = time.time()
 
     def propagateDirty(self, slot, subindex, roi):
@@ -140,7 +151,7 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
         for k in self._block_data.keys():
             try:
                 block = self._block_data[k]
-                bytes_per_pixel = block.dtype.itemsize
+                bytes_per_pixel = numpy.dtype(block.dtype).itemsize
                 portion = block.size * bytes_per_pixel
             except (KeyError, AttributeError):
                 # what could have happened and why it's fine
@@ -176,7 +187,7 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
             if key not in self._block_locks:
                 return 0
             block = self._block_data[key]
-            bytes_per_pixel = block.dtype.itemsize
+            bytes_per_pixel = numpy.dtype(block.dtype).itemsize
             mem = block.size * bytes_per_pixel
             del self._block_data[key]
             del self._block_locks[key]
