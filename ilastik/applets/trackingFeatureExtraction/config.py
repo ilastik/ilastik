@@ -4,7 +4,7 @@ compress_labels = False
 # all these features are precalculated in opExtractObjects
 '''
 
-vigra_features = ['Count', 'RegionCenter', 'Mean', 'Variance', 'RegionRadii', 'Maximum', 'Minimum', 'Skewness', 'Sum', 'Coord<Principal<Kurtosis>>', 'Coord<Principal<Skewness>>', 'Kurtosis']
+vigra_features = ['Count', 'RegionCenter', 'Mean', 'Variance', 'RegionRadii', 'Maximum', 'Minimum', 'Skewness', 'Sum', 'Coord<Principal<Kurtosis>>', 'Coord<Principal<Skewness>>', 'Kurtosis', 'RegionAxes']
 features_vigra_name = 'Standard Object Features'
 
 other_features = []
@@ -15,10 +15,10 @@ division_features = ['ParentChildrenRatio_Count', 'ParentChildrenRatio_Mean', 'C
                    'ParentChildrenAngle_RegionCenter', 'ChildrenRatio_SquaredDistances', 'SquaredDistances_0', 'SquaredDistances_1', 'SquaredDistances_2']
 
 selected_features_division[features_division_name] = division_features
-selected_features_division[features_vigra_name] = [ 'Count', 'Mean', 'Variance' ]
+selected_features_division[features_vigra_name] = ['Count', 'Mean', 'Variance']
 
 selected_features_objectcount = {}
-selected_features_objectcount[features_vigra_name] = ['Count', 'Mean', 'Variance', 'RegionRadii' ]
+selected_features_objectcount[features_vigra_name] = ['Count', 'Mean', 'Variance', 'RegionRadii']
 
 # anisotropy scales
 image_scale = [1.0, 1.0, 1.0]

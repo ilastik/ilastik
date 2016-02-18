@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.appletSerializer import AppletSerializer,\
-    SerialDictSlot, SerialSlot, SerialHdf5BlockSlot, SerialPickleableSlot
+    SerialDictSlot, SerialSlot, SerialHdf5BlockSlot, SerialPickleableSlot, SerialPickledValueSlot
 
 import pgmlink
 
@@ -33,7 +33,9 @@ class TrackingSerializer(AppletSerializer):
                                      name="CachedOutput"),
                  SerialDictSlot(mainOperator.EventsVector, transform=str, selfdepends=True),
                  SerialDictSlot(mainOperator.FilteredLabels, transform=str, selfdepends=True),
+                 SerialPickledValueSlot(mainOperator.ExportSettings)
                  ]
+        
 
         if 'MergerOutput' in mainOperator.outputs:
             slots.append(SerialHdf5BlockSlot(mainOperator.MergerOutputHdf5,
