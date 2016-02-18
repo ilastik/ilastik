@@ -21,6 +21,7 @@
 from ilastik.workflow import Workflow
 
 from ilastik.applets.dataSelection import DataSelectionApplet
+from ilastik.applets.edgeTraining import EdgeTrainingApplet
 from ilastik.applets.multicut import MulticutApplet
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from ilastik.applets.batchProcessing import BatchProcessingApplet
@@ -35,7 +36,8 @@ class MulticutWorkflow(Workflow):
     DATA_ROLE_RAW = 0
     DATA_ROLE_PROBABILITIES = 1
     DATA_ROLE_SUPERPIXELS = 2
-    ROLE_NAMES = ['Raw Data', 'Probabilities', 'Superpixels']
+    DATA_ROLE_GROUNDTRUTH = 3
+    ROLE_NAMES = ['Raw Data', 'Probabilities', 'Superpixels', 'Groundtruth']
     EXPORT_NAMES = ['Multicut Segmentation']
 
     @property
@@ -61,6 +63,10 @@ class MulticutWorkflow(Workflow):
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue( self.ROLE_NAMES )
 
+        # -- Edge training applet
+        # 
+        self.edgeTrainingApplet = EdgeTrainingApplet(self, "Edge Training", "Edge Training")
+
         # -- Multicut applet
         #
         self.multicutApplet = MulticutApplet(self, "Multicut Segmentation", "Multicut Segmentation")
@@ -83,6 +89,7 @@ class MulticutWorkflow(Workflow):
 
         # -- Expose applets to shell
         self._applets.append(self.dataSelectionApplet)
+        self._applets.append(self.edgeTrainingApplet)
         self._applets.append(self.multicutApplet)
         self._applets.append(self.dataExportApplet)
         self._applets.append(self.batchProcessingApplet)
@@ -105,13 +112,22 @@ class MulticutWorkflow(Workflow):
         Override from base class.
         """
         opDataSelection = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
+        opEdgeTraining = self.edgeTrainingApplet.topLevelOperator.getLane(laneIndex)
         opMulticut = self.multicutApplet.topLevelOperator.getLane(laneIndex)
         opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
 
+        # edge training inputs
+        opEdgeTraining.RawData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
+        opEdgeTraining.VoxelData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_PROBABILITIES] )
+        opEdgeTraining.InputSuperpixels.connect( opDataSelection.ImageGroup[self.DATA_ROLE_SUPERPIXELS] )
+        opEdgeTraining.GroundtruthSegmentation.connect( opDataSelection.ImageGroup[self.DATA_ROLE_GROUNDTRUTH] )
+
         # multicut inputs
+        opMulticut.RagSuperpixels.connect( opEdgeTraining.RagSuperpixels )
+        opMulticut.Rag.connect( opEdgeTraining.Rag )
+        opMulticut.EdgeProbabilities.connect( opEdgeTraining.EdgeProbabilities )
+        opMulticut.EdgeProbabilitiesDict.connect( opEdgeTraining.EdgeProbabilitiesDict )
         opMulticut.RawData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
-        opMulticut.VoxelData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_PROBABILITIES] )
-        opMulticut.InputSuperpixels.connect( opDataSelection.ImageGroup[self.DATA_ROLE_SUPERPIXELS] )
 
         # DataExport inputs
         opDataExport.RawData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
@@ -144,6 +160,7 @@ class MulticutWorkflow(Workflow):
         """
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataExport = self.dataExportApplet.topLevelOperator
+        opEdgeTraining = self.edgeTrainingApplet.topLevelOperator
         opMulticut = self.multicutApplet.topLevelOperator
 
         # If no data, nothing else is ready.
@@ -153,8 +170,9 @@ class MulticutWorkflow(Workflow):
         batch_processing_busy = self.batchProcessingApplet.busy
 
         self._shell.setAppletEnabled( self.dataSelectionApplet,   not batch_processing_busy )
-        self._shell.setAppletEnabled( self.multicutApplet,        not batch_processing_busy and input_ready )
-        self._shell.setAppletEnabled( self.dataExportApplet,      not batch_processing_busy and input_ready )
+        self._shell.setAppletEnabled( self.edgeTrainingApplet,    not batch_processing_busy and input_ready )
+        self._shell.setAppletEnabled( self.multicutApplet,        not batch_processing_busy and input_ready and opEdgeTraining.EdgeProbabilities.ready() )
+        self._shell.setAppletEnabled( self.dataExportApplet,      not batch_processing_busy and input_ready and opMulticut.Output.ready())
         self._shell.setAppletEnabled( self.batchProcessingApplet, not batch_processing_busy and input_ready )
 
         # Lastly, check for certain "busy" conditions, during which we

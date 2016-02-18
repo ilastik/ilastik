@@ -23,7 +23,7 @@ from functools import partial
 import numpy as np
 
 from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QWidget, QLabel, QDoubleSpinBox, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy, QColor, QPen
+from PyQt4.QtGui import QWidget, QLabel, QDoubleSpinBox, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy, QColor, QPen, QPushButton
 
 from ilastik.utility.gui import threadRouted
 from volumina.pixelpipeline.datasources import LazyflowSource
@@ -35,7 +35,7 @@ from lazyflow.request import Request
 import logging
 logger = logging.getLogger(__name__)
 
-class MulticutGui(LayerViewerGui):
+class EdgeTrainingGui(LayerViewerGui):
 
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
@@ -50,15 +50,16 @@ class MulticutGui(LayerViewerGui):
             fn()
 
         # Base class
-        super( MulticutGui, self ).stopAndCleanUp()
+        super( EdgeTrainingGui, self ).stopAndCleanUp()
     
     ###########################################
     ###########################################
     
     def __init__(self, parentApplet, topLevelOperatorView):
         self.__cleanup_fns = []
+        self.parentApplet = parentApplet
         self.topLevelOperatorView = topLevelOperatorView
-        super(MulticutGui, self).__init__( parentApplet, topLevelOperatorView )
+        super(EdgeTrainingGui, self).__init__( parentApplet, topLevelOperatorView )
 
     def initAppletDrawerUi(self):
         """
@@ -66,27 +67,12 @@ class MulticutGui(LayerViewerGui):
         """
         op = self.topLevelOperatorView
 
-        # Beta controls
-        beta_label = QLabel(text="Beta:")
-        beta_box = QDoubleSpinBox()
-        beta_box.setDecimals(2)
-        beta_box.setMinimum(0.01)
-        beta_box.setMaximum(0.99)
-        beta_box.setSingleStep(0.1)
+        # Controls
+        train_from_gt_button = QPushButton("Train from Groundtruth", clicked=self._handle_train_from_gt_clicked)
         
-        # Keep in sync: operator <--> gui
-        beta_box.valueChanged.connect( self.configure_operator_from_gui )
-        op.Beta.notifyDirty( self.configure_gui_from_operator )
-        self.__cleanup_fns.append( partial( op.Beta.unregisterDirty, self.configure_gui_from_operator ) )
-        
-        beta_layout = QHBoxLayout()
-        beta_layout.addWidget(beta_label)
-        beta_layout.addSpacerItem( QSpacerItem(10, 0, QSizePolicy.Expanding) )
-        beta_layout.addWidget(beta_box)
-
         # Layout
         layout = QVBoxLayout()
-        layout.addLayout(beta_layout)
+        layout.addWidget(train_from_gt_button)
         layout.addSpacerItem( QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding) )
         
         # Finally, the whole drawer widget
@@ -95,7 +81,6 @@ class MulticutGui(LayerViewerGui):
 
         # Save these members for later use
         self._drawer = drawer
-        self._beta_box = beta_box
 
         # Initialize everything with the operator's initial values
         self.configure_gui_from_operator()
@@ -142,26 +127,21 @@ class MulticutGui(LayerViewerGui):
 
     def configure_gui_from_operator(self, *args):
         op = self.topLevelOperatorView
-        self._beta_box.setValue( op.Beta.value )
 
     def configure_operator_from_gui(self):
         op = self.topLevelOperatorView
-        op.Beta.setValue( self._beta_box.value() )
+
+    def _handle_train_from_gt_clicked(self):
+        op = self.topLevelOperatorView
+        op.trainFromGroundtruth()
+        self.update_probability_edges()
+        
+        # Now that we've trained the classifier, the workflow may wish to enable downstream applets.
+        self.parentApplet.appletStateUpdateRequested.emit()
 
     def setupLayers(self):
         layers = []
         op = self.topLevelOperatorView
-
-        # Final segmentation -- Edges
-        if op.Output.ready():
-            default_pen = QPen(SegmentationEdgesLayer.DEFAULT_PEN)
-            default_pen.setColor(Qt.blue)
-            layer = SegmentationEdgesLayer( LazyflowSource(op.Output), default_pen )
-            layer.name = "Multicut Edges"
-            layer.visible = False # Off by default...
-            layer.opacity = 1.0
-            layers.append(layer)
-            del layer
 
         # Superpixels -- Edge Probabilities
         # We use the RAG's superpixels, which may have different IDs
@@ -186,22 +166,31 @@ class MulticutGui(LayerViewerGui):
             layer.opacity = 1.0
             layers.append(layer)
             del layer
-
-        # Final segmentation -- Label Image
-        if op.Output.ready():
-            layer = self.createStandardLayerFromSlot( op.Output )
-            layer.name = "Multicut Segmentation"
-            layer.visible = False # Off by default...
+ 
+        # Groundtruth
+        if op.InputSuperpixels.ready():
+            layer = self.createStandardLayerFromSlot( op.GroundtruthSegmentation )
+            layer.name = "Groundtruth"
+            layer.visible = True
             layer.opacity = 0.5
             layers.append(layer)
             del layer
  
         # Input Superpixels
-        if op.RagSuperpixels.ready():
-            layer = self.createStandardLayerFromSlot( op.RagSuperpixels )
-            layer.name = "Superpixels"
+        if op.InputSuperpixels.ready():
+            layer = self.createStandardLayerFromSlot( op.InputSuperpixels )
+            layer.name = "Input Superpixels"
             layer.visible = True
             layer.opacity = 0.5
+            layers.append(layer)
+            del layer
+ 
+        # Voxel data
+        if op.VoxelData.ready():
+            layer = self.createStandardLayerFromSlot( op.VoxelData )
+            layer.name = "Voxel Data"
+            layer.visible = False
+            layer.opacity = 1.0
             layers.append(layer)
             del layer
 
