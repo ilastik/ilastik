@@ -12,7 +12,7 @@ other_features = []
 features_division_name = 'Cell Division Features'
 selected_features_division = {}
 division_features = ['ParentChildrenRatio_Count', 'ParentChildrenRatio_Mean', 'ChildrenRatio_Count', 'ChildrenRatio_Mean', \
-                   'ParentChildrenAngle_RegionCenter', 'ChildrenRatio_SquaredDistances']
+                   'ParentChildrenAngle_RegionCenter', 'ChildrenRatio_SquaredDistances', 'SquaredDistances_0', 'SquaredDistances_1', 'SquaredDistances_2']
 
 selected_features_division[features_division_name] = division_features
 selected_features_division[features_vigra_name] = ['Count', 'Mean', 'Variance']

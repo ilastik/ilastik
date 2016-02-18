@@ -31,6 +31,8 @@ from ilastik.applets.objectExtraction.opObjectExtraction import default_features
 from ilastik.applets.objectClassification.opObjectClassification import OpObjectClassification
 
 import os
+import vigra
+
 import numpy
 import weakref
 from functools import partial
@@ -38,6 +40,7 @@ from functools import partial
 from ilastik.config import cfg as ilastik_config
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
+from ilastik.plugins import pluginManager
 
 import logging
 logger = logging.getLogger(__name__)
@@ -282,13 +285,52 @@ class ObjectClassificationGui(LabelingGui):
         if mainOperator.SelectedFeatures.ready():
             selectedFeatures = mainOperator.SelectedFeatures([]).wait()
         else:
-            selectedFeatures = None
+            selectedFeatures = dict()
 
-        ndim = 3
-        at = mainOperator.RawImages.meta.axistags
-        z_shape = mainOperator.RawImages.meta.shape[at.index('z')]
-        if z_shape==1:
+        #computedFeatures = dict()
+        plugins = pluginManager.getPluginsOfCategory('ObjectFeatures')
+        taggedShape = mainOperator.RawImages.meta.getTaggedShape()
+        fakeimgshp = [taggedShape['x'], taggedShape['y']]
+        fakelabelsshp = [taggedShape['x'], taggedShape['y']]
+
+        if 'z' in taggedShape and taggedShape['z']>1:
+            fakeimgshp.append(taggedShape['z'])
+            fakelabelsshp.append(taggedShape['z'])
+            ndim = 3
+        else:
             ndim = 2
+        if 'c' in taggedShape and taggedShape['c']>1:
+            fakeimgshp.append(taggedShape['c'])
+
+        fakeimg = numpy.empty(fakeimgshp, dtype=numpy.float32)
+        fakelabels = numpy.empty(fakelabelsshp, dtype=numpy.uint32)
+
+        if ndim==3:
+            fakelabels = vigra.taggedView(fakelabels, 'xyz')
+            if len(fakeimgshp)==4:
+                fakeimg = vigra.taggedView(fakeimg, 'xyzc')
+            else:
+                fakeimg = vigra.taggedView(fakeimg, 'xyz')
+        if ndim==2:
+            fakelabels = vigra.taggedView(fakelabels, 'xy')
+            if len(fakeimgshp)==3:
+                fakeimg = vigra.taggedView(fakeimg, 'xyc')
+            else:
+                fakeimg = vigra.taggedView(fakeimg, 'xy')
+
+        for pluginInfo in plugins:
+            availableFeatures = pluginInfo.plugin_object.availableFeatures(fakeimg, fakelabels)
+            if len(availableFeatures) > 0:
+                if pluginInfo.name in self.applet._selectedFeatures.keys() and not pluginInfo.name in computedFeatures.keys():
+                    computedFeatures[pluginInfo.name] = availableFeatures
+
+                if not pluginInfo.name in selectedFeatures:
+                        selectedFeatures[pluginInfo.name]=dict()
+                        if pluginInfo.name in self.applet._selectedFeatures.keys():
+                            for feature in self.applet._selectedFeatures[pluginInfo.name].keys():
+                                if feature in availableFeatures.keys():
+                                    selectedFeatures[pluginInfo.name][feature] = availableFeatures[feature]
+
         dlg = FeatureSubSelectionDialog(computedFeatures,
                                         selectedFeatures=selectedFeatures, ndim=ndim)
         dlg.exec_()
