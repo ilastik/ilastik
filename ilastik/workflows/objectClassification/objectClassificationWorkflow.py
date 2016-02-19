@@ -447,7 +447,7 @@ class ObjectClassificationWorkflow(Workflow):
         # TODO: Here, we hard-code to select from the first lane only.
         opBatchClassify = self.opBatchClassify[0]
         
-        from lazyflow.utility.io.blockwiseFileset import vectorized_pickle_dumps
+        from lazyflow.utility.io_uti.blockwiseFileset import vectorized_pickle_dumps
         # Assume that roi always starts as a multiple of the blockshape
         block_shape = opBatchClassify.get_blockshape()
         assert all(block_shape == blockwise_fileset.description.sub_block_shape), "block shapes don't match"
