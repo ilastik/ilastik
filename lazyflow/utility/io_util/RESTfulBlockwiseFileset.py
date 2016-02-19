@@ -26,8 +26,8 @@ import functools
 import threading
 import numpy
 import Queue
-from lazyflow.utility.io.blockwiseFileset import BlockwiseFileset, BlockwiseFilesetFactory
-from lazyflow.utility.io.RESTfulVolume import RESTfulVolume
+from lazyflow.utility.io_util.blockwiseFileset import BlockwiseFileset, BlockwiseFilesetFactory
+from lazyflow.utility.io_util.RESTfulVolume import RESTfulVolume
 from lazyflow.roi import getIntersectingBlocks
 from lazyflow.utility import FileLock
 from lazyflow.utility.jsonConfig import JsonConfigParser

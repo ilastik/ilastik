@@ -151,7 +151,7 @@ if __name__ == "__main__":
     requests_logger.setLevel( logging.WARN )
 
     # tiledVolume logging
-    tiledVolumeLogger = logging.getLogger("lazyflow.utility.io.tiledVolume")
+    tiledVolumeLogger = logging.getLogger("lazyflow.utility.io_util.tiledVolume")
     tiledVolumeLogger.addHandler( handler )
     tiledVolumeLogger.setLevel( logging.ERROR )
 

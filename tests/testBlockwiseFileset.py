@@ -30,7 +30,7 @@ import h5py
 import nose
 
 from lazyflow.utility import PathComponents
-from lazyflow.utility.io.blockwiseFileset import BlockwiseFileset
+from lazyflow.utility.io_util.blockwiseFileset import BlockwiseFileset
 from lazyflow.roi import sliceToRoi, roiToSlice, getIntersectingBlocks
 
 import logging

@@ -112,7 +112,7 @@ IO Utilities
 
 These utilities provide access to special data formats supported by lazyflow.
 
-.. currentmodule:: lazyflow.utility.io
+.. currentmodule:: lazyflow.utility.io_util
 
 Blockwise Data Format
 ---------------------

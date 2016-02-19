@@ -47,7 +47,7 @@ import os
 import re
 import logging
 
-from lazyflow.utility.io.multiprocessHdf5File import MultiProcessHdf5File
+from lazyflow.utility.io_util.multiprocessHdf5File import MultiProcessHdf5File
 
 class OpInputDataReader(Operator):
     """

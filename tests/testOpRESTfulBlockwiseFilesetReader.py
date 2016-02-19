@@ -30,7 +30,7 @@ import nose
 
 from lazyflow.graph import Graph
 from lazyflow.roi import getIntersectingBlocks
-from lazyflow.utility.io import RESTfulBlockwiseFileset
+from lazyflow.utility.io_util import RESTfulBlockwiseFileset
 from lazyflow.operators.ioOperators import OpRESTfulBlockwiseFilesetReader
 
 import logging
@@ -53,7 +53,7 @@ class TestOpBlockwiseFilesetReader(object):
             raise nose.SkipTest
                 
         try:
-            from lazyflow.utility.io.blockwiseFileset import BlockwiseFileset
+            from lazyflow.utility.io_util.blockwiseFileset import BlockwiseFileset
             BlockwiseFileset._prepare_system()
         except ValueError:
             # If the system isn't configured to allow lots of open files, we can't run this test.

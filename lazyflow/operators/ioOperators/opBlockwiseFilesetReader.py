@@ -22,7 +22,7 @@
 import os
 import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.utility.io.blockwiseFileset import BlockwiseFileset
+from lazyflow.utility.io_util.blockwiseFileset import BlockwiseFileset
 from lazyflow.operators import OpDummyData
 
 import logging

@@ -26,7 +26,7 @@ import tempfile
 import numpy
 import h5py
 from lazyflow.roi import sliceToRoi    
-from lazyflow.utility.io.RESTfulVolume import RESTfulVolume
+from lazyflow.utility.io_util.RESTfulVolume import RESTfulVolume
 
 import logging
 logger = logging.getLogger(__name__)
@@ -35,8 +35,8 @@ logger.setLevel(logging.INFO)
 
 ## Uncomment to enable debug logging for this test.
 #logger.setLevel(logging.DEBUG)
-#logging.getLogger("lazyflow.utility.io.RESTfulVolume").addHandler( logging.StreamHandler( sys.stdout ) )
-#logging.getLogger("lazyflow.utility.io.RESTfulVolume").setLevel(logging.DEBUG)
+#logging.getLogger("lazyflow.utility.io_util.RESTfulVolume").addHandler( logging.StreamHandler( sys.stdout ) )
+#logging.getLogger("lazyflow.utility.io_util.RESTfulVolume").setLevel(logging.DEBUG)
 
 class TestRESTfulVolume(object):
     

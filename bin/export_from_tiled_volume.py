@@ -2,7 +2,7 @@ import os
 import numpy
 import h5py
 from lazyflow.utility import Timer
-from lazyflow.utility.io import TiledVolume
+from lazyflow.utility.io_util import TiledVolume
 
 import logging
 logger = logging.getLogger(__name__)

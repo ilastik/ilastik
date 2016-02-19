@@ -8,7 +8,7 @@ import SimpleHTTPServer
 import SocketServer
 import nose
 
-from lazyflow.utility.io.tiledVolume import TiledVolume
+from lazyflow.utility.io_util.tiledVolume import TiledVolume
 from lazyflow.utility import PathComponents, export_to_tiles
 from lazyflow.utility.jsonConfig import JsonConfigParser
 from lazyflow.roi import roiToSlice
@@ -408,7 +408,7 @@ if __name__ == "__main__":
     requests_logger.setLevel( logging.WARN )
 
     # tiledVolume logging
-    tiledVolumeLogger = logging.getLogger("lazyflow.utility.io.tiledVolume")
+    tiledVolumeLogger = logging.getLogger("lazyflow.utility.io_util.tiledVolume")
     tiledVolumeLogger.addHandler( handler )
     tiledVolumeLogger.setLevel( logging.ERROR )
 

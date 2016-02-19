@@ -35,7 +35,7 @@ import sys
 import logging
 import argparse
 
-from lazyflow.utility.io import BlockwiseFileset, BlockwiseFilesetFactory
+from lazyflow.utility.io_util import BlockwiseFileset, BlockwiseFilesetFactory
 
 # DEBUG:
 #sys.argv.append( "--format=blockwise-subset" )
@@ -43,7 +43,7 @@ from lazyflow.utility.io import BlockwiseFileset, BlockwiseFilesetFactory
 #sys.argv.append( "[(0,1024*20,1024*20),(1233, 1024*20+256*2, 1024*20+256*2)]" )
 #sys.argv.append( "/tmp/test_export" )
 
-logger = logging.getLogger("lazyflow.utility.io.blockwiseFileset")
+logger = logging.getLogger("lazyflow.utility.io_util.blockwiseFileset")
 logger.addHandler(logging.StreamHandler(sys.stdout))
 logger.setLevel(logging.INFO)
 

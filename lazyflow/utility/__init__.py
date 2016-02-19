@@ -30,7 +30,7 @@ from tracer import Tracer, traceLogged
 from pathHelpers import PathComponents, getPathVariants, isUrl, make_absolute
 from roiRequestBatch import RoiRequestBatch
 from bigRequestStreamer import BigRequestStreamer
-import io
+import io_util
 from lazyflow.utility.fastWhere import fastWhere
 from format_known_keys import format_known_keys
 from timer import Timer, timeLogged

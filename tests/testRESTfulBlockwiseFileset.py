@@ -36,8 +36,8 @@ logger.addHandler( logging.StreamHandler( sys.stdout ) )
 logger.setLevel(logging.INFO)
 logger.setLevel(logging.DEBUG)
 
-from lazyflow.utility.io.blockwiseFileset import BlockwiseFileset
-from lazyflow.utility.io.RESTfulBlockwiseFileset import RESTfulBlockwiseFileset
+from lazyflow.utility.io_util.blockwiseFileset import BlockwiseFileset
+from lazyflow.utility.io_util.RESTfulBlockwiseFileset import RESTfulBlockwiseFileset
 
 class TestRESTFullBlockwiseFilset(object):
     

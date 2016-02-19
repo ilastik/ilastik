@@ -30,7 +30,7 @@ import nose
 
 from lazyflow.graph import Graph
 from lazyflow.roi import getIntersectingBlocks
-from lazyflow.utility.io.blockwiseFileset import BlockwiseFileset
+from lazyflow.utility.io_util.blockwiseFileset import BlockwiseFileset
 from lazyflow.operators.ioOperators import OpBlockwiseFilesetReader
 
 import logging

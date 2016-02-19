@@ -21,7 +21,7 @@
 ###############################################################################
 import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.utility.io.tiledVolume import TiledVolume
+from lazyflow.utility.io_util.tiledVolume import TiledVolume
 import logging
 logger = logging.getLogger(__name__)
 
