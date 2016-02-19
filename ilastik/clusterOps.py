@@ -30,7 +30,7 @@ import numpy
 from lazyflow.rtype import Roi, SubRegion
 from lazyflow.graph import Operator, InputSlot, OutputSlot, OrderedSignal
 from lazyflow.utility import BigRequestStreamer
-from lazyflow.utility.io.blockwiseFileset import BlockwiseFileset
+from lazyflow.utility.io_util.blockwiseFileset import BlockwiseFileset
 from lazyflow.utility.timer import Timer
 from lazyflow.utility.pathHelpers import getPathVariants
 
