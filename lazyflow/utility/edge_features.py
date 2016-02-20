@@ -11,7 +11,7 @@ def edge_id_mask( label_img, axis ):
 
     - A 'left-hand' mask indicating where the edges are located
       (i.e. a boolean array indicating voxels that are just to the left of an edge)
-      Note that this mask be less wide (by 1 pixel) than label_img along the chosen axis.
+      Note that this mask is less wide (by 1 pixel) than label_img along the chosen axis.
       
     - An array of of edge ids (u,v) corresonding to the voxel ids of every voxel in the mask,
       in the same order as mask.nonzero() would return.
@@ -65,11 +65,12 @@ def unique_edge_labels( all_edge_ids ):
     # This sort isn't necessary, but it's convenient for debugging.
     combined_df.sort(columns=['id1', 'id2'], inplace=True)
 
-    # TODO: Instead of adding a new column here, we might save some RAM if we re-index and then add the index as a column
-    combined_df['edge_label'] = np.arange(1, 1+len(combined_df), dtype=np.uint32)
+    # TODO: Instead of adding a new column here, we might save some RAM 
+    #       if we re-index and then add the index as a column
+    combined_df['edge_label'] = np.arange(0, len(combined_df), dtype=np.uint32)
     return combined_df
 
-def compute_edge_features_along_axis( label_img, value_img, feature_names, histogram_range=None, axis=0):
+def compute_edge_vigra_features_along_axis( label_img, value_img, feature_names, histogram_range=None, axis=0):
     """
     Find the edges in the direction of the given axis and
     compute region features for the pixels adjacent to the edge.
@@ -130,15 +131,14 @@ def compute_edge_features_along_axis( label_img, value_img, feature_names, histo
     
     return acc, edge_label_lookup, histogram_range
 
-def compute_edge_features( label_img, value_img, feature_names=['Count', 'Mean', 'Variance', 'Quantiles'] ):
+def compute_edge_vigra_features( label_img, value_img, feature_names=['Count', 'Mean', 'Variance', 'Quantiles'] ):
     """
     For the given supervoxels (label_img) and underlying singleband data (value_img),
     compute the given features using the vigra RegionFeatureAccumulator framework.
     
     Returns:
         - A RegionFeatureAccumulator with the statistics for all edges in the volume
-        - A pandas.DataFrame that can be used to map from region labels to edge_ids (i.e. u,v pairs)
-          The columns of the DataFrame are: ['id1','id2','edge_label']
+        - The array edge ids [shape=(N,2)], in the same order as the accumulator results
     
     Caveats:
         - The edges and features along each axis are computed separately, and merged as a final step.
@@ -152,7 +152,7 @@ def compute_edge_features( label_img, value_img, feature_names=['Count', 'Mean',
     edge_label_lookups = []
     histogram_range = None
     for axis in range(label_img.ndim):
-        acc, lookup, histogram_range = compute_edge_features_along_axis( label_img, value_img, feature_names, histogram_range, axis )
+        acc, lookup, histogram_range = compute_edge_vigra_features_along_axis( label_img, value_img, feature_names, histogram_range, axis )
         axis_accumulators.append(acc)
         edge_label_lookups.append(lookup)    
 
@@ -183,8 +183,90 @@ def compute_edge_features( label_img, value_img, feature_names=['Count', 'Mean',
 
         final_acc.merge( acc, axis_to_final_index_array )
     
-    # return the final accumulator, and the final_edge_label lookup
-    return final_acc, final_edge_label_lookup_df
+    # return the final accumulator, and the edge ids
+    return final_acc, final_edge_label_lookup_df[['id1', 'id2']].values
+
+def compute_sp_vigra_features( label_img, value_img, feature_names=['Count', 'Mean', 'Variance', 'Quantiles'] ):
+    acc = vigra.analysis.extractRegionFeatures( value_img, label_img, features=feature_names )
+    return acc
+
+def compute_highlevel_edge_features( label_img, value_img, highlevel_features ):
+    """
+    Computes features for edges, including superpixel features.
+    Returns a pandas dataframe.  The first two columns are 'id1' and 'id2', and the other columns are the computed features.
+    
+    Supported feature names:
+    (edge_|sp_) + ( count|sum|mean|variance|kurtosis|skewness
+                    |quantiles_10|quantiles_25|quantiles_50|quantiles_75|quantiles_90 )
+    For example: highlevel_features = ['edge_count', 'edge_mean', 'sp_quantiles_75']
+    
+    All 'sp' feature names result in two columns, for the sum and difference between the two superpixels adjacent to the edge.
+    Additionally, the 'count' sp feature is reduced via cube-root (as in the multicut paper).
+    Same for the 'sum' feature.
+    """
+    edge_highlevel_features = filter(lambda name: name.startswith('edge_'), highlevel_features)
+    edge_highlevel_features = map(lambda name: name[len('edge_'):], edge_highlevel_features) # drop 'edge_' prefix
+    edge_vigra_features = map(lambda name: name.split('_')[0], edge_highlevel_features ) # drop quantile suffixes like '_25'
+    edge_vigra_features = list(set(edge_vigra_features)) # drop duplicates (from multiple quantile selections)
+
+    edge_acc, edge_ids = compute_edge_features( label_img, value_img, edge_vigra_features )
+
+    sp_highlevel_features = filter(lambda name: name.startswith('sp_'), highlevel_features)
+    sp_highlevel_features = map(lambda name: name[len('sp_'):], edge_highlevel_features) # drop 'sp_' prefix
+    sp_vigra_features = map(lambda name: name.split('_')[0], sp_highlevel_features ) # drop quantile suffixes like '_25'
+    sp_vigra_features = list(set(sp_vigra_features)) # drop duplicates (from multiple quantile selections)
+    
+    sp_acc = compute_sp_vigra_features( label_img, value_img, sp_vigra_features )
+
+    # Create a dataframe to store the result    
+    edge_df = pd.DataFrame(edge_ids, columns=['id1', 'id2'])
+    
+    # Adding columns for edge features is easy, just add them verbatim
+    for edge_feature in edge_highlevel_features:
+        if edge_feature.startswith('quantiles'):
+            quantile_suffix = edge_feature.split('_')[1]
+            q_index = ['0', '10', '25', '50', '75', '90', '100'].index(quantile_suffix)
+            edge_df['edge_' + edge_feature] = edge_acc['quantile'][:, q_index]
+        else:
+            edge_df['edge_' + edge_feature] = edge_acc[edge_feature][:, q_index]
+
+    # Adding columns for sp features is trickier: Start with a separate DataFrame of the sp feature columns
+    sp_df = pd.DataFrame({ 'sp_id' : np.arange(sp_acc.maxRegionLabel(), dtype=np.uint32) })
+    
+    # Add a column for each sp feature we'll need
+    for sp_feature in sp_highlevel_features:
+        if sp_feature.startswith('quantiles'):
+            quantile_suffix = sp_feature.split('_')[1]
+            q_index = ['0', '10', '25', '50', '75', '90', '100'].index(quantile_suffix)
+            sp_df['sp_' + sp_feature] = sp_acc['quantile'][:, q_index]
+        else:
+            sp_df['sp_' + sp_feature] = sp_acc[sp_feature][:, q_index]
+
+    # Add two columns to the edge_df for every sp_df column (for id1 and id2)
+    edge_df = pd.merge( edge_df, sp_df, left_on=['id1'], right_on=['sp_id'], how='left', copy=False)
+    edge_df = pd.merge( edge_df, sp_df, left_on=['id2'], right_on=['sp_id'], how='left', copy=False, suffixes=('_sp1', '_sp2'))
+    del edge_df['sp_id_sp1']
+    del edge_df['sp_id_sp2']
+
+    # Now create sum/difference columns
+    for sp_feature in sp_highlevel_features:
+        sp_feature_sum = edge_df[sp_feature + '_sp1'] + edge_df[sp_feature + '_sp2']
+        if sp_feature in ('count', 'sum'):
+            # Special case for count
+            sp_feature_sum = np.power(sp_feature_sum, np.float32(1./3), out=sp_feature_sum)
+        edge_df[sp_feature + '_sum'] = sp_feature_sum
+
+        sp_feature_difference = edge_df[sp_feature + '_sp1'] - edge_df[sp_feature + '_sp2']
+        if sp_feature in ('count', 'sum'):
+            sp_feature_difference = np.abs(sp_feature_difference, out=sp_feature_difference)
+            sp_feature_difference = np.power(sp_feature_difference, np.float32(1./3), out=sp_feature_difference)
+        edge_df[sp_feature + '_difference'] = sp_feature_difference
+
+        # Don't need these any more
+        del edge_df[sp_feature + '_sp1']
+        del edge_df[sp_feature + '_sp2']
+    
+    return edge_df
 
 if __name__ == "__main__":
     import sys
@@ -192,26 +274,37 @@ if __name__ == "__main__":
     logger.setLevel(logging.DEBUG)
     
     import h5py
-    watershed_path = '/magnetic/data/flyem/chris-two-stage-ilps/volumes/subvol/256/watershed-256.h5'
-    #watershed_path = '/magnetic/data/flyem/chris-two-stage-ilps/volumes/subvol/512/watershed-512.h5'
+    #watershed_path = '/magnetic/data/flyem/chris-two-stage-ilps/volumes/subvol/256/watershed-256.h5'
+    watershed_path = '/magnetic/data/flyem/chris-two-stage-ilps/volumes/subvol/512/watershed-512.h5'
 
-    grayscale_path = '/magnetic/data/flyem/chris-two-stage-ilps/volumes/subvol/256/grayscale-256.h5'
+    #grayscale_path = '/magnetic/data/flyem/chris-two-stage-ilps/volumes/subvol/256/grayscale-256.h5'
+    grayscale_path = '/magnetic/data/flyem/chris-two-stage-ilps/volumes/subvol/512/grayscale-512.h5'
     
     logger.info("Loading watershed...")
     with h5py.File(watershed_path, 'r') as f:
-        watershed = f['watershed'][:256, :256, :256, 0]
+        watershed = f['watershed'][:]
+        if watershed.shape[-1] == 1:
+            watershed = watershed[...,0]
 
     logger.info("Loading grayscale...")
     with h5py.File(grayscale_path, 'r') as f:
-        grayscale = f['grayscale'][:256, :256, :256, 0]
+        grayscale = f['grayscale'][:]
+        if grayscale.shape[-1] == 1:
+            grayscale = grayscale[...,0]
 
     from lazyflow.utility import Timer
     with Timer() as timer:
         #ec = edge_coords_nd(watershed)
         #ids = edge_ids(watershed)
-        acc, lookup_df = compute_edge_features(watershed, grayscale)
+        acc, lookup_df = compute_edge_vigra_features(watershed, grayscale)
     print "time was: {}".format( timer.seconds() )
 
+    import vigra
+    with Timer() as timer:
+        gridGraph = vigra.graphs.gridGraph(watershed.shape)
+        rag = vigra.graphs.regionAdjacencyGraph(gridGraph, watershed)
+        #ids = rag.uvIds()
+    print "vigra time was: {}".format( timer.seconds() )
 
 
 
