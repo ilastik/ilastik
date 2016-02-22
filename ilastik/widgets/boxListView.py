@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 import os
-import logger
+import logging
 
 from PyQt4.QtGui import QTableView, QColorDialog, \
     QAbstractItemView, QVBoxLayout, QPushButton, \

@@ -34,7 +34,7 @@ from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted
 from ilastik.widgets.cropListModel import CropListModel
 
-import logger
+import logging
 logger = logging.getLogger(__name__)
 
 def _listReplace(old, new):
