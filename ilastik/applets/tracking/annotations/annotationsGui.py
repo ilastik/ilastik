@@ -785,7 +785,7 @@ class AnnotationsGui(LayerViewerGui):
             self._setDirty(self.mainOperator.TrackImage, range(t,maxt))
             self._setDirty(self.mainOperator.UntrackedImage, range(t, maxt))
             self._setDirty(self.mainOperator.Labels, range(t,maxt))
-        
+
         elif selection in delSubtrackToStart.keys():
             track2remove = delSubtrackToStart[selection]
             for time in range(0,t+1):

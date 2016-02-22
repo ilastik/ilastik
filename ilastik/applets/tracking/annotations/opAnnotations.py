@@ -42,8 +42,8 @@ class OpAnnotations(Operator):
     Crops = InputSlot()
     
     TrackImage = OutputSlot()
-    Labels = OutputSlot()
-    Divisions = OutputSlot()
+    Labels = OutputSlot(stype=Opaque, rtype=List)
+    Divisions = OutputSlot(stype=Opaque, rtype=List)
     UntrackedImage = OutputSlot()
 
     Annotations = OutputSlot(stype=Opaque)
@@ -174,10 +174,10 @@ class OpAnnotations(Operator):
             self.Labels.setDirty( roi )
         elif slot.name == "Divisions":
             self.Divisions.setDirty( roi )
-        else:
-            self.Labels.setDirty( slice(None) )
-            self.Divisions.setDirty( slice(None) )
-            self.Annotations.setDirty( slice(None) )
+        # else:
+        #     self.Labels.setDirty( slice(None) )
+        #     self.Divisions.setDirty( slice(None) )
+        #     self.Annotations.setDirty( slice(None) )
 
     def _relabel(self, volume, replace):
         mp = np.arange(0, np.amax(volume) + 1, dtype=volume.dtype)

@@ -25,8 +25,8 @@ class OpStructuredTracking(OpTrackingBase):
     DetectionProbabilities = InputSlot(stype=Opaque, rtype=List)
     NumLabels = InputSlot()
     Crops = InputSlot()
-    Labels = InputSlot()
-    Divisions = InputSlot()
+    Labels = InputSlot(stype=Opaque, rtype=List)
+    Divisions = InputSlot(stype=Opaque, rtype=List)
     Annotations = InputSlot(stype=Opaque)
     MaxNumObj = InputSlot()
 
