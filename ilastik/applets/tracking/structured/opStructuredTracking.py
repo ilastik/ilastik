@@ -490,8 +490,11 @@ class OpStructuredTracking(OpTrackingBase):
                     None) # TransitionClassifier
 
         except Exception as e:
-            raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
-        
+            if trainingToHardConstraints:
+                raise Exception, 'Tracking: Your annotations are not consistent with the tracking model!'
+            else:
+                raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
+
         if len(eventsVector) == 0:
             raise Exception, 'Tracking terminated unsuccessfully: Events vector has zero length.'
         
