@@ -168,7 +168,7 @@ class EdgeTrainingGui(LayerViewerGui):
             del layer
  
         # Groundtruth
-        if op.InputSuperpixels.ready():
+        if op.GroundtruthSegmentation.ready():
             layer = self.createStandardLayerFromSlot( op.GroundtruthSegmentation )
             layer.name = "Groundtruth"
             layer.visible = True
