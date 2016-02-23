@@ -491,7 +491,8 @@ class OpStructuredTracking(OpTrackingBase):
 
         except Exception as e:
             if trainingToHardConstraints:
-                raise Exception, 'Tracking: Your annotations are not consistent with the tracking model!'
+                raise Exception, 'Tracking: Your training can not be extended to a feasible solution! ' + \
+                                 'Turn training to hard constraints off or correct your tracking training. '
             else:
                 raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
 
