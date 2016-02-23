@@ -287,7 +287,6 @@ class ObjectClassificationGui(LabelingGui):
         else:
             selectedFeatures = dict()
 
-        #computedFeatures = dict()
         plugins = pluginManager.getPluginsOfCategory('ObjectFeatures')
         taggedShape = mainOperator.RawImages.meta.getTaggedShape()
         fakeimgshp = [taggedShape['x'], taggedShape['y']]
