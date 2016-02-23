@@ -67,6 +67,7 @@ selectedFeaturesObjectCount = {
         'Count': {},
         'Variance': {},
         'Mean': {},
-        'RegionRadii': {}
+        'RegionRadii': {},
+        'RegionAxes': {}
     }
 }
