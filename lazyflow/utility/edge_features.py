@@ -105,6 +105,7 @@ def compute_edge_vigra_features_along_axis( axis, edge_mask, edge_ids, value_img
        The columns of the DataFrame are: ['id1', 'id2', 'edge_label'], where 'id1' and 'id2' are supervoxel ids.
      - The histogram range used for any histogram features.
     """
+    feature_names = map(str.lower, feature_names)
     edge_values = extract_edge_values_for_axis(axis, edge_mask, value_img)
 
     logger.debug("Axis {}: Generating edge label IDs...".format( axis ))    
@@ -118,7 +119,7 @@ def compute_edge_vigra_features_along_axis( axis, edge_mask, edge_ids, value_img
     # Sanity check
     assert edge_values.shape == edge_labels.shape
 
-    if not histogram_range and set(['Quantiles', 'Histogram']) & set(feature_names):
+    if not histogram_range and set(['quantiles', 'histogram']) & set(feature_names):
         histogram_range = [float(edge_values.min()), float(edge_values.max())]
 
     if not histogram_range:
@@ -150,6 +151,7 @@ def compute_edge_vigra_features( label_img, value_img, feature_names=['Count', '
         - For histogram features, the histogram min/max values are initialized from the min/max edge
           values along axis 0, and re-used for axes 1..N
     """
+    feature_names = map(str.lower, feature_names)
     assert label_img.shape == value_img.shape
     
     logger.debug("Computing per-axis features...")    
@@ -198,6 +200,7 @@ def compute_sp_vigra_features( label_img, value_img, feature_names=['Count', 'Me
     Note: Here we flatten the arrays before passing them to vigra,
           so coordinate-based features won't work.
     """
+    feature_names = map(str.lower, feature_names)
     value_img = value_img.astype(np.float32, copy=False)
     acc = vigra.analysis.extractRegionFeatures( value_img.reshape(1,-1, order='A'),
                                                 label_img.reshape(1,-1, order='A'),
@@ -218,6 +221,7 @@ def compute_highlevel_edge_features( label_img, value_img, highlevel_features ):
     Additionally, the 'count' sp feature is reduced via cube-root (as in the multicut paper).
     Same for the 'sum' feature.
     """
+    highlevel_features = map(str.lower, highlevel_features)
     edge_highlevel_features = filter(lambda name: name.startswith('edge_'), highlevel_features)
     edge_highlevel_features = map(lambda name: name[len('edge_'):], edge_highlevel_features) # drop 'edge_' prefix
     edge_vigra_features = map(lambda name: name.split('_')[0], edge_highlevel_features ) # drop quantile suffixes like '_25'
@@ -233,7 +237,7 @@ def compute_highlevel_edge_features( label_img, value_img, highlevel_features ):
         if edge_feature.startswith('quantiles'):
             quantile_suffix = edge_feature.split('_')[1]
             q_index = ['0', '10', '25', '50', '75', '90', '100'].index(quantile_suffix)
-            edge_df['edge_' + edge_feature] = edge_acc['quantile'][:, q_index]
+            edge_df['edge_' + edge_feature] = edge_acc['quantiles'][:, q_index]
         else:
             edge_df['edge_' + edge_feature] = edge_acc[edge_feature]
 
@@ -243,13 +247,14 @@ def compute_highlevel_sp_features( label_img, value_img, highlevel_features ):
     """
     highlevel_features
     """
+    highlevel_features = map(str.lower, highlevel_features)
     sp_highlevel_features = filter(lambda name: name.startswith('sp_'), highlevel_features)
     sp_highlevel_features = map(lambda name: name[len('sp_'):], sp_highlevel_features) # drop 'sp_' prefix
     sp_vigra_features = map(lambda name: name.split('_')[0], sp_highlevel_features ) # drop quantile suffixes like '_25'
     sp_vigra_features = list(set(sp_vigra_features)) # drop duplicates (from multiple quantile selections)
     if not sp_vigra_features:
         # No superpixel features.  We're done.
-        return None
+        return None, sp_highlevel_features
     
     logger.debug("Computing SP features...")
     sp_acc = compute_sp_vigra_features( label_img, value_img, sp_vigra_features )
@@ -264,7 +269,7 @@ def compute_highlevel_sp_features( label_img, value_img, highlevel_features ):
         if sp_feature.startswith('quantiles'):
             quantile_suffix = sp_feature.split('_')[1]
             q_index = ['0', '10', '25', '50', '75', '90', '100'].index(quantile_suffix)
-            sp_df['sp_' + sp_feature] = sp_acc['quantile'][:, q_index]
+            sp_df['sp_' + sp_feature] = sp_acc['quantiles'][:, q_index]
         else:
             sp_df['sp_' + sp_feature] = sp_acc[sp_feature]
 
@@ -276,6 +281,7 @@ def append_sp_features_onto_edge_features( edge_df, sp_df, sp_highlevel_features
     sp_df: The dataframe with raw superpixel features
     sp_highlevel_features: Feature names without 'sp' prefix or '_sp1' suffix
     """
+    sp_highlevel_features = map(str.lower, sp_highlevel_features)
     # Add two columns to the edge_df for every sp_df column (for id1 and id2)
     edge_df = pd.merge( edge_df, sp_df, left_on=['id1'], right_on=['sp_id'], how='left', copy=False)
     edge_df = pd.merge( edge_df, sp_df, left_on=['id2'], right_on=['sp_id'], how='left', copy=False, suffixes=('_sp1', '_sp2'))
@@ -338,7 +344,9 @@ if __name__ == "__main__":
         #ec = edge_coords_nd(watershed)
         #ids = edge_ids(watershed)
         feature_names = []
-        feature_names += ['edge_count', 'edge_sum', 'edge_mean', 'edge_variance', 'edge_kurtosis', 'edge_skewness']
+        feature_names += ['edge_count', 'edge_sum', 'edge_mean', 'edge_variance',
+                          'edge_quantiles_10', 'edge_quantiles_25', 'edge_quantiles_50', 'edge_quantiles_75', 'edge_quantiles_90',
+                           ]
         #feature_names += ['sp_count', 'sp_sum', 'sp_mean', 'sp_variance', 'sp_kurtosis', 'sp_skewness']
         feature_names += ['sp_count']
         features_df = compute_highlevel_features(watershed, grayscale, feature_names)
