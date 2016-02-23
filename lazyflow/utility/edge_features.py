@@ -41,7 +41,7 @@ def edge_id_mask( label_img, axis ):
 
 def unique_edge_labels( all_edge_ids ):
     """
-    Given a *list* of edge_id arrays (each of which has shape (N,2)
+    Given a *list* of edge_id arrays (each of which has shape (N,2))
     Merge all edge_id arrays into a single pandas.DataFrame with
     columns ['id1', 'id2', and 'edge_label], where `edge_label`
     is a unique ID number for each edge_id pair.
@@ -70,29 +70,9 @@ def unique_edge_labels( all_edge_ids ):
     combined_df['edge_label'] = np.arange(0, len(combined_df), dtype=np.uint32)
     return combined_df
 
-def compute_edge_vigra_features_along_axis( label_img, value_img, feature_names, histogram_range=None, axis=0):
+def extract_edge_values_for_axis( axis, edge_mask, value_img ):
     """
-    Find the edges in the direction of the given axis and
-    compute region features for the pixels adjacent to the edge.
-    
-    Returns:
-     - A vigra RegionFeaturesAccumulator containing the edge statistics.
-       Each edge will be assigned a unique label id (an integer).
-     - A pandas DataFrame that can be used to map from edge_label to edge_id pairs (u,v).
-       The columns of the DataFrame are: ['id1', 'id2', 'edge_label'], where 'id1' and 'id2' are supervoxel ids.
-     - The histogram range used for any histogram features.
     """
-    logger.debug("Axis {}: Computing edge mask...".format( axis ))
-    edge_mask, edge_ids = edge_id_mask( label_img, axis )
-
-    logger.debug("Axis {}: Generating edge label IDs...".format( axis ))    
-    edge_label_lookup = unique_edge_labels( [edge_ids] )
-    
-    index_u32 = pd.Index(np.arange(len(edge_ids)), dtype=np.uint32)
-    df_edges = pd.DataFrame(edge_ids, columns=['id1', 'id2'], index=index_u32)
-    df_edges_with_labels = pd.merge(df_edges, edge_label_lookup, on=['id1', 'id2'], how='left')
-    edge_labels = df_edges_with_labels['edge_label'].values
-
     left_slicing = ((slice(None),) * axis) + (np.s_[:-1],)
     right_slicing = ((slice(None),) * axis) + (np.s_[1:],)
 
@@ -111,6 +91,31 @@ def compute_edge_vigra_features_along_axis( label_img, value_img, feature_names,
     # In theory, we could compute the full set of features separately for left and right-hand voxel sets and 
     # then merge the two, but that seems like overkill.
     edge_values = (edge_values_left + edge_values_right) / 2
+    return edge_values
+
+def compute_edge_vigra_features_along_axis( axis, edge_mask, edge_ids, value_img, feature_names, histogram_range=None ):
+    """
+    Find the edges in the direction of the given axis and
+    compute region features for the pixels adjacent to the edge.
+    
+    Returns:
+     - A vigra RegionFeaturesAccumulator containing the edge statistics.
+       Each edge will be assigned a unique label id (an integer).
+     - A pandas DataFrame that can be used to map from edge_label to edge_id pairs (u,v).
+       The columns of the DataFrame are: ['id1', 'id2', 'edge_label'], where 'id1' and 'id2' are supervoxel ids.
+     - The histogram range used for any histogram features.
+    """
+    edge_values = extract_edge_values_for_axis(axis, edge_mask, value_img)
+
+    logger.debug("Axis {}: Generating edge label IDs...".format( axis ))    
+    edge_label_lookup = unique_edge_labels( [edge_ids] )
+
+    index_u32 = pd.Index(np.arange(len(edge_ids)), dtype=np.uint32)
+    df_edges = pd.DataFrame(edge_ids, columns=['id1', 'id2'], index=index_u32)
+    df_edges_with_labels = pd.merge(df_edges, edge_label_lookup, on=['id1', 'id2'], how='left')
+    edge_labels = df_edges_with_labels['edge_label'].values
+
+    # Sanity check
     assert edge_values.shape == edge_labels.shape
 
     if not histogram_range and set(['Quantiles', 'Histogram']) & set(feature_names):
@@ -122,8 +127,8 @@ def compute_edge_vigra_features_along_axis( label_img, value_img, feature_names,
     
     logger.debug("Axis {}: Computing region features...".format( axis ))    
     # Must add singleton y-axis here because vigra doesn't support 1D data
-    acc = vigra.analysis.extractRegionFeatures( edge_values.reshape(1,-1),
-                                                edge_labels.reshape(1,-1),
+    acc = vigra.analysis.extractRegionFeatures( edge_values.reshape(1,-1, order='A'),
+                                                edge_labels.reshape(1,-1, order='A'),
                                                 #ignoreLabel=0, # Would be necessary if we were working with the full image.
                                                 features=feature_names,
                                                 histogramRange=histogram_range )
@@ -152,7 +157,9 @@ def compute_edge_vigra_features( label_img, value_img, feature_names=['Count', '
     edge_label_lookups = []
     histogram_range = None
     for axis in range(label_img.ndim):
-        acc, lookup, histogram_range = compute_edge_vigra_features_along_axis( label_img, value_img, feature_names, histogram_range, axis )
+        logger.debug("Axis {}: Computing edge mask...".format( axis ))
+        edge_mask, edge_ids = edge_id_mask( label_img, axis )
+        acc, lookup, histogram_range = compute_edge_vigra_features_along_axis( axis, edge_mask, edge_ids, value_img, feature_names, histogram_range )
         axis_accumulators.append(acc)
         edge_label_lookups.append(lookup)    
 
@@ -187,7 +194,14 @@ def compute_edge_vigra_features( label_img, value_img, feature_names=['Count', '
     return final_acc, final_edge_label_lookup_df[['id1', 'id2']].values
 
 def compute_sp_vigra_features( label_img, value_img, feature_names=['Count', 'Mean', 'Variance', 'Quantiles'] ):
-    acc = vigra.analysis.extractRegionFeatures( value_img, label_img, features=feature_names )
+    """
+    Note: Here we flatten the arrays before passing them to vigra,
+          so coordinate-based features won't work.
+    """
+    value_img = value_img.astype(np.float32, copy=False)
+    acc = vigra.analysis.extractRegionFeatures( value_img.reshape(1,-1, order='A'),
+                                                label_img.reshape(1,-1, order='A'),
+                                                features=feature_names )
     return acc
 
 def compute_highlevel_edge_features( label_img, value_img, highlevel_features ):
@@ -209,14 +223,7 @@ def compute_highlevel_edge_features( label_img, value_img, highlevel_features ):
     edge_vigra_features = map(lambda name: name.split('_')[0], edge_highlevel_features ) # drop quantile suffixes like '_25'
     edge_vigra_features = list(set(edge_vigra_features)) # drop duplicates (from multiple quantile selections)
 
-    edge_acc, edge_ids = compute_edge_features( label_img, value_img, edge_vigra_features )
-
-    sp_highlevel_features = filter(lambda name: name.startswith('sp_'), highlevel_features)
-    sp_highlevel_features = map(lambda name: name[len('sp_'):], edge_highlevel_features) # drop 'sp_' prefix
-    sp_vigra_features = map(lambda name: name.split('_')[0], sp_highlevel_features ) # drop quantile suffixes like '_25'
-    sp_vigra_features = list(set(sp_vigra_features)) # drop duplicates (from multiple quantile selections)
-    
-    sp_acc = compute_sp_vigra_features( label_img, value_img, sp_vigra_features )
+    edge_acc, edge_ids = compute_edge_vigra_features( label_img, value_img, edge_vigra_features )
 
     # Create a dataframe to store the result    
     edge_df = pd.DataFrame(edge_ids, columns=['id1', 'id2'])
@@ -228,10 +235,29 @@ def compute_highlevel_edge_features( label_img, value_img, highlevel_features ):
             q_index = ['0', '10', '25', '50', '75', '90', '100'].index(quantile_suffix)
             edge_df['edge_' + edge_feature] = edge_acc['quantile'][:, q_index]
         else:
-            edge_df['edge_' + edge_feature] = edge_acc[edge_feature][:, q_index]
+            edge_df['edge_' + edge_feature] = edge_acc[edge_feature]
 
-    # Adding columns for sp features is trickier: Start with a separate DataFrame of the sp feature columns
-    sp_df = pd.DataFrame({ 'sp_id' : np.arange(sp_acc.maxRegionLabel(), dtype=np.uint32) })
+    return edge_df, edge_highlevel_features
+
+def compute_highlevel_sp_features( label_img, value_img, highlevel_features ):
+    """
+    highlevel_features
+    """
+    sp_highlevel_features = filter(lambda name: name.startswith('sp_'), highlevel_features)
+    sp_highlevel_features = map(lambda name: name[len('sp_'):], sp_highlevel_features) # drop 'sp_' prefix
+    sp_vigra_features = map(lambda name: name.split('_')[0], sp_highlevel_features ) # drop quantile suffixes like '_25'
+    sp_vigra_features = list(set(sp_vigra_features)) # drop duplicates (from multiple quantile selections)
+    if not sp_vigra_features:
+        # No superpixel features.  We're done.
+        return None
+    
+    logger.debug("Computing SP features...")
+    sp_acc = compute_sp_vigra_features( label_img, value_img, sp_vigra_features )
+
+    logger.debug("Converting SP features to edge features...")
+
+    # Create an almost-empty dataframe to store the sp features
+    sp_df = pd.DataFrame({ 'sp_id' : np.arange(sp_acc.maxRegionLabel()+1, dtype=np.uint32) })
     
     # Add a column for each sp feature we'll need
     for sp_feature in sp_highlevel_features:
@@ -240,8 +266,16 @@ def compute_highlevel_edge_features( label_img, value_img, highlevel_features ):
             q_index = ['0', '10', '25', '50', '75', '90', '100'].index(quantile_suffix)
             sp_df['sp_' + sp_feature] = sp_acc['quantile'][:, q_index]
         else:
-            sp_df['sp_' + sp_feature] = sp_acc[sp_feature][:, q_index]
+            sp_df['sp_' + sp_feature] = sp_acc[sp_feature]
 
+    return sp_df, sp_highlevel_features
+
+def append_sp_features_onto_edge_features( edge_df, sp_df, sp_highlevel_features ):
+    """
+    edge_df: The dataframe with edge features. First columns must be 'id1', 'id2'
+    sp_df: The dataframe with raw superpixel features
+    sp_highlevel_features: Feature names without 'sp' prefix or '_sp1' suffix
+    """
     # Add two columns to the edge_df for every sp_df column (for id1 and id2)
     edge_df = pd.merge( edge_df, sp_df, left_on=['id1'], right_on=['sp_id'], how='left', copy=False)
     edge_df = pd.merge( edge_df, sp_df, left_on=['id2'], right_on=['sp_id'], how='left', copy=False, suffixes=('_sp1', '_sp2'))
@@ -250,22 +284,29 @@ def compute_highlevel_edge_features( label_img, value_img, highlevel_features ):
 
     # Now create sum/difference columns
     for sp_feature in sp_highlevel_features:
-        sp_feature_sum = edge_df[sp_feature + '_sp1'] + edge_df[sp_feature + '_sp2']
+        sp_feature_sum = edge_df['sp_' + sp_feature + '_sp1'].values + edge_df['sp_' + sp_feature + '_sp2'].values
         if sp_feature in ('count', 'sum'):
             # Special case for count
             sp_feature_sum = np.power(sp_feature_sum, np.float32(1./3), out=sp_feature_sum)
-        edge_df[sp_feature + '_sum'] = sp_feature_sum
+        edge_df['sp_' + sp_feature + '_sum'] = sp_feature_sum
 
-        sp_feature_difference = edge_df[sp_feature + '_sp1'] - edge_df[sp_feature + '_sp2']
+        sp_feature_difference = edge_df['sp_' + sp_feature + '_sp1'].values - edge_df['sp_' + sp_feature + '_sp2'].values
         if sp_feature in ('count', 'sum'):
             sp_feature_difference = np.abs(sp_feature_difference, out=sp_feature_difference)
             sp_feature_difference = np.power(sp_feature_difference, np.float32(1./3), out=sp_feature_difference)
-        edge_df[sp_feature + '_difference'] = sp_feature_difference
+        edge_df['sp_' + sp_feature + '_difference'] = sp_feature_difference
 
         # Don't need these any more
-        del edge_df[sp_feature + '_sp1']
-        del edge_df[sp_feature + '_sp2']
+        del edge_df['sp_' + sp_feature + '_sp1']
+        del edge_df['sp_' + sp_feature + '_sp2']
     
+    return edge_df
+
+def compute_highlevel_features( label_img, value_img, highlevel_features ):
+    edge_df, edge_features = compute_highlevel_edge_features( label_img, value_img, highlevel_features )
+    sp_df, sp_highlevel_features = compute_highlevel_sp_features(  label_img, value_img, highlevel_features  )
+    if sp_df is not None:
+        edge_df = append_sp_features_onto_edge_features( edge_df, sp_df, sp_highlevel_features )
     return edge_df
 
 if __name__ == "__main__":
@@ -274,11 +315,11 @@ if __name__ == "__main__":
     logger.setLevel(logging.DEBUG)
     
     import h5py
-    #watershed_path = '/magnetic/data/flyem/chris-two-stage-ilps/volumes/subvol/256/watershed-256.h5'
-    watershed_path = '/magnetic/data/flyem/chris-two-stage-ilps/volumes/subvol/512/watershed-512.h5'
+    watershed_path = '/magnetic/data/flyem/chris-two-stage-ilps/volumes/subvol/256/watershed-256.h5'
+    #watershed_path = '/magnetic/data/flyem/chris-two-stage-ilps/volumes/subvol/512/watershed-512.h5'
 
-    #grayscale_path = '/magnetic/data/flyem/chris-two-stage-ilps/volumes/subvol/256/grayscale-256.h5'
-    grayscale_path = '/magnetic/data/flyem/chris-two-stage-ilps/volumes/subvol/512/grayscale-512.h5'
+    grayscale_path = '/magnetic/data/flyem/chris-two-stage-ilps/volumes/subvol/256/grayscale-256.h5'
+    #grayscale_path = '/magnetic/data/flyem/chris-two-stage-ilps/volumes/subvol/512/grayscale-512.h5'
     
     logger.info("Loading watershed...")
     with h5py.File(watershed_path, 'r') as f:
@@ -296,7 +337,13 @@ if __name__ == "__main__":
     with Timer() as timer:
         #ec = edge_coords_nd(watershed)
         #ids = edge_ids(watershed)
-        acc, lookup_df = compute_edge_vigra_features(watershed, grayscale)
+        feature_names = []
+        feature_names += ['edge_count', 'edge_sum', 'edge_mean', 'edge_variance', 'edge_kurtosis', 'edge_skewness']
+        #feature_names += ['sp_count', 'sp_sum', 'sp_mean', 'sp_variance', 'sp_kurtosis', 'sp_skewness']
+        feature_names += ['sp_count']
+        features_df = compute_highlevel_features(watershed, grayscale, feature_names)
+        print features_df.columns.values
+        
     print "time was: {}".format( timer.seconds() )
 
     import vigra
