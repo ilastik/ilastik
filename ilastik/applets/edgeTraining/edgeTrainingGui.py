@@ -167,6 +167,15 @@ class EdgeTrainingGui(LayerViewerGui):
             layers.append(layer)
             del layer
  
+        # Naive Segmentation
+        if op.NaiveSegmentation.ready():
+            layer = self.createStandardLayerFromSlot( op.NaiveSegmentation )
+            layer.name = "Naive Segmentation"
+            layer.visible = False
+            layer.opacity = 0.5
+            layers.append(layer)
+            del layer
+         
         # Groundtruth
         if op.GroundtruthSegmentation.ready():
             layer = self.createStandardLayerFromSlot( op.GroundtruthSegmentation )

@@ -1,11 +1,14 @@
 import numpy as np
 
-import vigra.graphs
+import networkx as nx
 import skimage.segmentation
+
+import vigra
+import vigra.graphs
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiToSlice
-from lazyflow.operators import OpCompressedCache, OpValueCache
+from lazyflow.operators import OpCompressedCache, OpValueCache, OpBlockedArrayCache
 from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
 
 from ilastik.applets.edgeTraining.util import edge_decisions
@@ -27,6 +30,8 @@ class OpEdgeTraining(Operator):
     RagSuperpixels = OutputSlot() # The rag can't necessarily use the input superpixels
                                   # (since it needs consecutive IDs, starting at 0),
                                   # so we relabel the superpixels.  This is the relabeled version.
+
+    NaiveSegmentation = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super( OpEdgeTraining, self ).__init__(*args, **kwargs)
@@ -61,9 +66,19 @@ class OpEdgeTraining(Operator):
         self.opEdgeProbabilitiesDictCache = OpValueCache(parent=self)
         self.opEdgeProbabilitiesDictCache.Input.connect( self.opEdgeProbabilitiesDict.EdgeProbabilitiesDict )
 
+        self.opNaiveSegmentation = OpNaiveSegmentation(parent=self)
+        self.opNaiveSegmentation.InputSuperpixels.connect( self.InputSuperpixels )
+        self.opNaiveSegmentation.Rag.connect( self.opRagCache.Output )
+        self.opNaiveSegmentation.EdgeProbabilities.connect( self.opEdgeProbabilitiesCache.Output )
+
+        self.opNaiveSegmentationCache = OpBlockedArrayCache(parent=self)
+        self.opNaiveSegmentationCache.CompressionEnabled.setValue(True)
+        self.opNaiveSegmentationCache.Input.connect( self.opNaiveSegmentation.Output )
+
         self.Rag.connect( self.opRagCache.Output )
-        self.EdgeProbabilities.connect( self.opPredictEdgeProbabilities.EdgeProbabilities )        
+        self.EdgeProbabilities.connect( self.opEdgeProbabilitiesCache.Output )        
         self.EdgeProbabilitiesDict.connect( self.opEdgeProbabilitiesDictCache.Output )
+        self.NaiveSegmentation.connect( self.opNaiveSegmentationCache.Output )
 
     def setupOutputs(self):
         assert self.InputSuperpixels.meta.dtype == np.uint32
@@ -71,9 +86,12 @@ class OpEdgeTraining(Operator):
 
         self.RagSuperpixels.meta.assignFrom(self.InputSuperpixels.meta)
         self.RagSuperpixels.meta.display_mode = 'random-colortable'
-        
+
+        self.opNaiveSegmentationCache.outerBlockShape.setValue( self.InputSuperpixels.meta.shape )
+
+
     def execute(self, slot, subindex, roi, result):
-        if slot == self.RagSuperpixels:
+        if slot is self.RagSuperpixels:
             self._executeRagSuperpixels(roi, result)
         else:
             assert False, "Unknown output slot: {}".format( slot )
@@ -143,7 +161,10 @@ class OpCreateRag(Operator):
         self.Rag.meta.dtype = object
     
     def execute(self, slot, subindex, roi, result):
-        superpixels = self.InputSuperpixels[:].wait()[...,0] # Drop channel
+        superpixels = self.InputSuperpixels[:].wait()
+        superpixels = vigra.taggedView( superpixels,
+                                        self.InputSuperpixels.meta.axistags )
+        superpixels = superpixels[...,0] # Drop channel
         
         # Apparently we must ensure that the superpixel values are contiguous
         if superpixels.max() != len(np.unique(superpixels)):
@@ -162,50 +183,51 @@ class OpCreateRag(Operator):
     def propagateDirty(self, slot, subindex, roi):
         self.Rag.setDirty()
 
+
 class OpComputeEdgeFeatures(Operator):
     VoxelData = InputSlot()
     Rag = InputSlot()
     EdgeFeatures = OutputSlot()
-    
+     
     def setupOutputs(self):
         assert self.VoxelData.meta.getAxisKeys()[-1] == 'c'
         self.EdgeFeatures.meta.shape = (1,)
         self.EdgeFeatures.meta.dtype = object
-        
+         
     def execute(self, slot, subindex, roi, result):
         voxel_req = self.VoxelData[:]
         voxel_req.submit()
-
+ 
         rag = self.Rag.value
         voxel_data = voxel_req.wait()
-
+ 
         logger.info("Computing edge features...")
         edge_features = self.compute_edge_features(rag, voxel_data)
         result[0] = edge_features
-
+ 
     def propagateDirty(self, slot, subindex, roi):
         self.EdgeFeatures.setDirty()
-    
+     
     @classmethod
     def compute_edge_features(cls, rag, voxel_data):
         """
         voxel_data: Must include a channel axis, which must be the last axis
-        
+         
         For now this function doesn't do anything except accumulate the channels of the voxel data.
         """
         # First, transpose so that channel comes first.
         voxel_channels = voxel_data.transpose(voxel_data.ndim-1, *range(voxel_data.ndim-1))
-
+ 
         edge_features = []
         gridGraph = vigra.graphs.gridGraph(voxel_channels[0].shape)
-
+ 
         # Iterate over channels
         for channel_data in voxel_channels:
             gridGraphEdgeIndicator = vigra.graphs.edgeFeaturesFromImage(gridGraph, channel_data)
             assert gridGraphEdgeIndicator.shape == channel_data.shape + (channel_data.ndim,)
             accumulated_edges = rag.accumulateEdgeFeatures(gridGraphEdgeIndicator)
             edge_features.append(accumulated_edges)
-
+ 
         return np.concatenate(map(lambda a: a[:, None], edge_features), axis=1)
 
 class OpEdgeProbabilitiesDict(Operator):
@@ -236,3 +258,44 @@ class OpEdgeProbabilitiesDict(Operator):
     def propagateDirty(self, slot, subindex, roi):
         self.EdgeProbabilitiesDict.setDirty()
 
+class OpNaiveSegmentation(Operator):
+    InputSuperpixels = InputSlot() # Just needed for slot metadata; our superpixels are taken from rag.
+    Rag = InputSlot()
+    EdgeProbabilities = InputSlot()
+    Output = OutputSlot()
+
+    def setupOutputs(self):
+        self.Output.meta.assignFrom(self.InputSuperpixels.meta)
+        self.Output.meta.display_mode = 'random-colortable'
+        
+    def execute(self, slot, subindex, roi, result):
+        assert slot is self.Output
+        edge_predictions = self.EdgeProbabilities.value
+        rag = self.Rag.value
+        sp_vol = rag.labels[...,None][roiToSlice(roi.start, roi.stop)]
+        edge_labels = (edge_predictions > 0.5)
+        label_img_from_edge_labels(sp_vol[...,0], rag.uvIds(), edge_labels, out=result[...,0])
+
+    def propagateDirty(self, slot, subindex, roi):
+        self.Output.setDirty()
+
+def label_img_from_edge_labels( supervoxels, edge_ids, edge_labels, out=None ):
+    inactive_edge_ids = edge_ids[np.nonzero( np.logical_not(edge_labels) )]
+
+    logger.info("Finding connected components...")
+    g = nx.Graph( list(inactive_edge_ids) ) 
+    
+    # If any supervoxels are completely independent,
+    # they haven't been added to the graph yet.
+    # Add them now.
+    g.add_nodes_from(np.arange(np.max(supervoxels)), dtype=edge_ids.dtype)
+    
+    sp_mapping = {}
+    for i, sp_ids in enumerate(nx.connected_components(g)):
+        for sp_id in sp_ids:
+            sp_mapping[int(sp_id)] = i
+    del g
+
+    logger.info("Relabeling supervoxels with connected components...")
+    segmentation_img = vigra.analysis.applyMapping( supervoxels, sp_mapping, out=out )
+    return segmentation_img
