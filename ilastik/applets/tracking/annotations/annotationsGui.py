@@ -241,6 +241,9 @@ class AnnotationsGui(LayerViewerGui):
         self.__cleanup_fns.append( partial( self.topLevelOperatorView.Labels.unregisterDirty, bind(self._updateLabels) ) )
         self.__cleanup_fns.append( partial( self.topLevelOperatorView.Crops.unregisterDirty, bind(self._cropListViewInit) ) )
 
+        self.volumeEditorWidget.quadViewStatusBar.setToolTipTimeButtonsCrop(True)
+        self.volumeEditorWidget.quadViewStatusBar.setToolTipTimeSliderCrop(True)
+
     def stopAndCleanUp(self):
         super(AnnotationsGui, self).stopAndCleanUp()
 

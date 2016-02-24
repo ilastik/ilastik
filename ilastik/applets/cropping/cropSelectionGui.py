@@ -99,6 +99,8 @@ class CropSelectionGui(CroppingGui):
             except:
                 self.render = False
 
+        self.volumeEditorWidget.quadViewStatusBar.setToolTipTimeButtonsCrop(True)
+
     def initAppletDrawerUi(self):
         localDir = os.path.split(__file__)[0]
         self._drawer = self._cropControlUi
