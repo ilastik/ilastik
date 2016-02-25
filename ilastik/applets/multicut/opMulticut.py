@@ -1,9 +1,7 @@
+import warnings
 import numpy as np
 
-import skimage.segmentation
-
 import opengm
-import vigra.graphs
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiToSlice
@@ -68,36 +66,46 @@ class OpMulticutAgglomerator(Operator):
     @classmethod
     def agglomerate_with_multicut(cls, rag, edge_probabilities, beta):
         """
-        rag: from vigra.graphs.regionAdjacencyGraph()
-        edge_probabilities: Same format as from rag.accumulateEdgeFeatures(gridGraphEdgeIndicator)
-                            That is, an array (rag.edgeNum,), in the same order as rag.uvIds()
+        rag: lazyflow.edge_features.Rag
+        
+        edge_probabilities: 1D array, same order as rag.edge_ids().
                             Should indicate probability of each edge being ON.
+        
         beta: The multicut 'beta' parameter (0.0 < beta < 1.0)
         
-        Returns: A label image of the same shape as rag.labels, type uint32
+        Returns: A label image of the same shape as rag.label_img, type uint32
         """
+        num_edges = rag.num_edges()
+        edge_ids = rag.edge_ids()
+        assert edge_ids.shape == (num_edges, 2)
+
         p1 = edge_probabilities # Edge ON
         p1 = np.clip(p1, 0.001, 0.999)
         p0 = 1.0 - p1 # Edge OFF
-        assert p0.shape == p1.shape == (rag.edgeNum,)
+        assert p0.shape == p1.shape == (num_edges,)
 
-        nVar = rag.nodeNum
+        # The Rag is allowed to contain non-consecutive superpixel labels
+        # But for OpenGM, we require nVar > max_id
+        # Therefore, use max_sp_id(), not num_sp()
+        nVar = rag.max_sp_id()+1
+        if rag.num_sp() != rag.max_sp_id()+1:
+            warnings.warn( "Superpixel IDs are not consective. GM will contain excess variables to fill the gaps."
+                           " (num_sp = {}, max_sp_id = {})".format( rag.num_sp(), rag.max_sp_id() ) )
+        
         gm = opengm.gm( np.ones(nVar)*nVar )
-
-        uvIds = rag.uvIds()
-        assert uvIds.shape == (rag.edgeNum, 2)
-        uvIds.sort(axis=1)
         
         w = np.log(p0/p1) + np.log( (1-beta)/(beta) )
         pf = opengm.pottsFunctions( [nVar,nVar], np.array([0]), w )
         fids = gm.addFunctions( pf )
-        gm.addFactors( fids, uvIds )
+        gm.addFactors( fids, edge_ids )
 
         inf = opengm.inference.Multicut( gm )
         ret = inf.infer( inf.verboseVisitor() )
-        arg = inf.arg().astype('uint32')
-        agglomerated_labels = rag.projectLabelsToGridGraph(arg)
-        assert agglomerated_labels.shape == rag.labels.shape
+        if ret.name != "NORMAL":
+            raise RuntimeError("OpenGM inference failed with status: {}".format( ret.name ))
+        mapping_index_array = inf.arg().astype(np.uint32)
+        agglomerated_labels = mapping_index_array[rag.label_img]
+        assert agglomerated_labels.shape == rag.label_img.shape
         return agglomerated_labels
 
 if __name__ == "__main__":
