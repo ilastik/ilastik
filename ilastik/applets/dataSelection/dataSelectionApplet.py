@@ -124,7 +124,7 @@ class DataSelectionApplet( Applet ):
             for arg_name in arg_names:
                 if getattr(parsed_args, arg_name):
                     # FIXME: This error message could be more helpful.
-                    role_args = map( self._role_name_to_arg_name, role_names )
+                    role_args = map( cls._role_name_to_arg_name, role_names )
                     role_args = map( lambda s: '--' + s, role_args )
                     role_args_str = ", ".join( role_args )
                     raise Exception("Invalid command line arguments: All roles must be configured explicitly.\n"

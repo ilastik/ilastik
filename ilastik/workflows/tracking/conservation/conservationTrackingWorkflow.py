@@ -51,7 +51,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         if self.fromBinary:
-            opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Binary Image'] )
+            opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Segmentation Image'] )
         else:
             opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Prediction Maps'] )
                 
