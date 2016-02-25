@@ -5,7 +5,7 @@ import numpy as np
 import networkx as nx
 import vigra
 
-from lazyflow.utility.edge_features import edge_id_mask, unique_edge_labels, label_vol_mapping
+from lazyflow.utility.edge_features import edge_mask_for_axis, edge_ids_for_axis, unique_edge_labels, label_vol_mapping
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +20,9 @@ def edge_decisions( overseg_vol, groundtruth_vol, asdict=True ):
     """
     sp_edges_per_axis = []
     for axis in range(overseg_vol.ndim):
-        mask, sp_edges = edge_id_mask(overseg_vol, axis)
-        del mask
+        edge_mask = edge_mask_for_axis(overseg_vol, axis)
+        sp_edges = edge_ids_for_axis(overseg_vol, edge_mask, axis)
+        del edge_mask
         sp_edges_per_axis.append( sp_edges )
     unique_sp_edges = unique_edge_labels(sp_edges_per_axis)[['id1', 'id2']].values
 
