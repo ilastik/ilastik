@@ -6,11 +6,14 @@ import vigra
 import logging
 logger = logging.getLogger(__name__)
 
+from lazyflow.utility.helpers import nonzero_coord_array
+
 class Rag(object):
     
     # axis: int
-    # mask: ndarray of bool, same shape as labels
-    #       OR index array tuple (see comments about save_ram flag)
+    # mask: Either of the following:
+    #       - ndarray of bool (same shape as labels) OR
+    #       - index array tuple (see comments below about save_ram flag)
     # ids: ndarray of edge_id pairs, same order as mask.nonzero()
     # label_lookup: DataFrame with columns 'id1', 'id2', 'edge_label' (no duplicate rows)
     AxisEdgeData = collections.namedtuple('AxisEdgeData', 'axis mask ids label_lookup')
@@ -39,7 +42,7 @@ class Rag(object):
                 # The reduced RAM saves time when extracting the values from a value_img.
                 # For my 512**3 test case, the index array saves 0.5 seconds.
                 # Obviously, for larger volumes (say, 1 GB) the RAM savings is bigger (~3 GB).
-                edge_mask_nonzero = edge_mask.nonzero()[0].base.transpose()
+                edge_mask_nonzero = nonzero_coord_array(edge_mask).transpose()
                 if (np.array(label_img.shape) < 2**16).all():
                     edge_mask_nonzero = edge_mask_nonzero.astype(np.uint16)
                 else:
