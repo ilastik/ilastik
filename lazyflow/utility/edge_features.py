@@ -94,13 +94,18 @@ class Rag(object):
         # We don't assume that SP ids are consecutive, so it's not the same as label_img.max()        
         unique_left = self.final_edge_label_lookup_df['id1'].unique()
         unique_right = self.final_edge_label_lookup_df['id2'].unique()
-        self._num_sp = len( pd.Series( np.concatenate((unique_left, unique_right))).unique() )
+        unique_sp_ids = pd.Series( np.concatenate((unique_left, unique_right))).unique()
+        self._num_sp = len( unique_sp_ids )
+        self._max_sp_id = unique_sp_ids.max()
 
     def num_edges(self):
         return len(self.final_edge_label_lookup_df)
 
     def num_sp(self):
         return self._num_sp
+    
+    def max_sp_id(self):
+        return self._max_sp_id
 
     def edge_ids(self):
         return self._edge_ids
