@@ -283,8 +283,8 @@ def compute_edge_vigra_features_along_axis( axis, edge_mask, edge_ids, edge_labe
     
     logger.debug("Axis {}: Computing region features...".format( axis ))
     # Must add singleton y-axis here because vigra doesn't support 1D data
-    acc = vigra.analysis.extractRegionFeatures( edge_values.reshape(1,-1, order='A'),
-                                                edge_labels.reshape(1,-1, order='A'),
+    acc = vigra.analysis.extractRegionFeatures( edge_values.reshape((1,-1), order='A'),
+                                                edge_labels.reshape((1,-1), order='A'),
                                                 #ignoreLabel=0, # Would be necessary if we were working with the full image.
                                                 features=feature_names,
                                                 histogramRange=histogram_range )
@@ -371,8 +371,8 @@ def compute_sp_vigra_features( label_img, value_img, feature_names=['Count', 'Me
                 "Coordinate-based SP features are not currently supported!"
     
     value_img = value_img.astype(np.float32, copy=False)
-    acc = vigra.analysis.extractRegionFeatures( value_img.reshape(1,-1, order='A'),
-                                                label_img.reshape(1,-1, order='A'),
+    acc = vigra.analysis.extractRegionFeatures( value_img.reshape((1,-1), order='A'),
+                                                label_img.reshape((1,-1), order='A'),
                                                 features=feature_names )
     return acc
 
