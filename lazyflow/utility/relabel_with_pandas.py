@@ -2,6 +2,9 @@ import numpy as np
 
 def relabel_with_pandas(labels, mapping, out=None):
     """
+    Deprecated!  This function isn't as fast as I thought it was.
+                 Use vigra.analysis.applyMapping() instead!
+    
     Map all the elements of `labels` to new values, based on a mapping dict.
     To relabel in-place, set `out=labels`.
     Requires the 'pandas' python library.
@@ -49,29 +52,30 @@ def _relabel_inplace(labels, mapping):
     """
     Relabel the given *contiguous* array in-place according to the given mapping dict.
 
-    Caveats
-    -------
-    - 'labels' must be contiguous
-    - This function uses low-level pandas functions, which may or may not
-      experience API-breaking changes in subsequent versions of pandas.
+    FIXME: Ugh. This function doesn't really do its work in-place.
+           Need a better implementation.
     
-    Performance notes
-    -----------------
-    For comparison, I wrote a custom C++ function that performs relabeling on C-order uint32 data.
-    For tiny maps (e.g. len(mapping) == 10), this function is 3x slower.
-    For medium-sized maps (e.g. len(mapping) == 1e4), this function is on-par.
-    For very large maps (e.g. len(mapping) == 1e6), this function is 20% faster.
+    For an input uint32 array with N pixels, this function will need 8*N bytes for the
+    'index' column and 4*N bytes for the intermediate result.
+    That is, twice the size of the input.
     """
     # Late import
     # For now, pandas is not an official dependency of lazyflow
     import pandas as pd
-        
+
     assert labels.flags.contiguous
     flat_view = labels.reshape(-1, order='A')
     assert flat_view.flags.owndata is False
-    mapping_series = pd.Series(mapping, index=mapping.keys())
-    indexer = mapping_series.index.get_indexer(flat_view)
-    pd.core.common.take_1d(mapping_series.values, indexer, out=flat_view)
+
+    original_series = pd.Series(flat_view)
+    new_series = original_series.map(mapping)
+    flat_view[:] = new_series.values
+    return
+
+    df_labels = pd.DataFrame({'labels':flat_view}, index=index_u32)
+    df_mapping = pd.DataFrame(mapping.items(), columns=['labels', 'newlabels'])
+    df_newlabels = df_labels.merge(df_mapping, how='left', on='labels', copy=False)
+    flat_view[:] = df_newlabels['newlabels'].values
 
 if __name__ == "__main__":
     import sys
