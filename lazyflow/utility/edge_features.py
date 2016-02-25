@@ -575,6 +575,8 @@ if __name__ == "__main__":
     import sys
     logger.addHandler( logging.StreamHandler(sys.stdout) )
     logger.setLevel(logging.DEBUG)
+
+    from lazyflow.utility import Timer
     
     import h5py
     #watershed_path = '/magnetic/data/flyem/chris-two-stage-ilps/volumes/subvol/256/watershed-256.h5'
@@ -590,6 +592,23 @@ if __name__ == "__main__":
         watershed = watershed[...,0]
     watershed = vigra.taggedView( watershed, 'zyx' )
 
+    logger.info("Consecutivizing watershed...")
+    with Timer() as timer:
+        ws_unique = pd.Series(watershed.reshape((-1), order='A')).unique()
+        ws_unique.sort()
+        print "unique took", timer.seconds()
+    ws_max = ws_unique.max()
+    if ws_max > len(ws_unique): # We allow the watershed to be either 0-based or 1-based.
+        with Timer() as timer:
+            mapping = { old: new for new, old in enumerate(ws_unique) }
+            vigra.analysis.applyMapping(watershed, mapping, out=watershed)
+            
+            ## Alternative technique: index array
+            #mapping_array = np.zeros( (ws_max+1,), dtype=np.uint32 )
+            #mapping_array[ws_unique] = np.arange( len(ws_unique), dtype=np.uint32 )
+            #watershed[:] = mapping_array[watershed]
+        print "remapping took", timer.seconds()
+
     logger.info("Loading grayscale...")
     with h5py.File(grayscale_path, 'r') as f:
         grayscale = f['grayscale'][:]
@@ -603,8 +622,6 @@ if __name__ == "__main__":
                        ]
     #feature_names += ['sp_count', 'sp_sum', 'sp_mean', 'sp_variance', 'sp_kurtosis', 'sp_skewness']
     feature_names += ['sp_count']
-
-    from lazyflow.utility import Timer
 
     with Timer() as timer:
         logger.info("Creating python Rag...")
@@ -620,14 +637,14 @@ if __name__ == "__main__":
     print ""
     print ""
     
-    with Timer() as timer:
-        #ec = edge_coords_nd(watershed)
-        #ids = edge_ids(watershed)
-        features_df = compute_highlevel_features(watershed, grayscale, feature_names)
-        print features_df.columns.values
-    print "time was: {}".format( timer.seconds() )
-
-    assert (features_df.values == edge_features_df.values).all()
+#     with Timer() as timer:
+#         #ec = edge_coords_nd(watershed)
+#         #ids = edge_ids(watershed)
+#         features_df = compute_highlevel_features(watershed, grayscale, feature_names)
+#         print features_df.columns.values
+#     print "time was: {}".format( timer.seconds() )
+# 
+#     assert (features_df.values == edge_features_df.values).all()
 
 #     with Timer() as timer:
 #         get_edge_ids(watershed)
