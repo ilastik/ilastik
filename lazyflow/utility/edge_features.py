@@ -8,6 +8,32 @@ logger = logging.getLogger(__name__)
 
 from lazyflow.utility.helpers import nonzero_coord_array
 
+def contingency_table(vol1, vol2, maxlabels=None):
+    """
+    Return a 2D array 'table' such that table[i,j] represents
+    the count of overlapping pixels with value i in vol1 and value j in vol2. 
+    """
+    maxlabels = maxlabels or (vol1.max(), vol2.max())
+    table = np.zeros( (maxlabels[0]+1, maxlabels[1]+1), dtype=np.uint32 )
+    
+    # np.add.at() will accumulate counts at the given array coordinates
+    np.add.at(table, [vol1.reshape(-1), vol2.reshape(-1)], 1 )
+    return table
+
+def label_vol_mapping(vol_from, vol_to):
+    """
+    Determine how remap voxel IDs in vol_from into corresponding
+    IDs in vol_to, according to maxiumum overlap.
+    (Note that this is not a commutative operation.)
+    
+    Returns: A 1D index array such that mapping[i] = j, where i
+             is a voxel ID in vol_from, and j is the corresponding ID in vol_to.
+    """
+    table = contingency_table(vol_from, vol_to)
+    mapping = np.argmax(table, axis=1)
+    return mapping
+
+
 class Rag(object):
     
     # axis: int
@@ -78,6 +104,16 @@ class Rag(object):
 
     def edge_ids(self):
         return self._edge_ids
+
+    def edge_decisions_from_groundtruth(self, groundtruth_vol, asdict=False):
+        sp_to_gt_mapping = label_vol_mapping(self.label_img, groundtruth_vol)
+
+        unique_sp_edges = self.edge_ids()
+        decisions = sp_to_gt_mapping[unique_sp_edges[:, 0]] != sp_to_gt_mapping[unique_sp_edges[:, 1]]
+    
+        if asdict:
+            return dict( izip(imap(tuple, unique_sp_edges), decisions) )
+        return decisions
 
     def compute_edge_vigra_features(self, value_img, feature_names=['Count', 'Mean', 'Variance', 'Quantiles']):
         assert hasattr(value_img, 'axistags'), \
