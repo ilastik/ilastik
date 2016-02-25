@@ -3,8 +3,6 @@ import numpy as np
 import pandas as pd
 import vigra
 
-from lazyflow.utility import Timer
-
 import logging
 logger = logging.getLogger(__name__)
 
@@ -19,8 +17,10 @@ class Rag(object):
     
     def __init__( self, label_img, save_ram=True ):
         """
-        Constructor.  See comments below about save_ram
+        Constructor.  See comments below about save_ram.
         """
+        assert hasattr(label_img, 'axistags'), \
+            "For optimal performance, make sure label_img is a VigraArray with accurate axistags"
         self.label_img = label_img
 
         self.axis_edge_datas = []
@@ -45,13 +45,15 @@ class Rag(object):
                 else:
                     edge_mask_nonzero = edge_mask_nonzero.astype(np.uint32)
                 edge_mask = tuple(edge_mask_nonzero)
-            
+                
             self.axis_edge_datas.append( Rag.AxisEdgeData(axis, edge_mask, edge_ids, label_lookup) )
         
         # Columns: id1, id2, edge_label
         self.final_edge_label_lookup_df = unique_edge_labels( map(lambda t: t.ids, self.axis_edge_datas) )
 
     def compute_edge_vigra_features(self, value_img, feature_names=['Count', 'Mean', 'Variance', 'Quantiles']):
+        assert hasattr(value_img, 'axistags'), \
+            "For optimal performance, make sure value_img is a VigraArray with accurate axistags"
         logger.debug("Computing per-axis features...")
         axis_accumulators = []
         histogram_range = None
@@ -77,6 +79,9 @@ class Rag(object):
         Additionally, the 'count' sp feature is reduced via cube-root (as in the multicut paper).
         Same for the 'sum' feature.
         """
+        assert hasattr(value_img, 'axistags'), \
+            "For optimal performance, make sure value_img is a VigraArray with accurate axistags"
+        
         highlevel_features = map(str.lower, highlevel_features)
         edge_highlevel_features = filter(lambda name: name.startswith('edge_'), highlevel_features)
         edge_highlevel_features = map(lambda name: name[len('edge_'):], edge_highlevel_features) # drop 'edge_' prefix
@@ -103,6 +108,9 @@ class Rag(object):
         """
         highlevel_features
         """
+        assert hasattr(value_img, 'axistags'), \
+            "For optimal performance, make sure value_img is a VigraArray with accurate axistags"
+        
         highlevel_features = map(str.lower, highlevel_features)
         sp_highlevel_features = filter(lambda name: name.startswith('sp_'), highlevel_features)
         sp_highlevel_features = map(lambda name: name[len('sp_'):], sp_highlevel_features) # drop 'sp_' prefix
@@ -131,6 +139,9 @@ class Rag(object):
         return sp_df, sp_highlevel_features
 
     def compute_highlevel_features(self, value_img, highlevel_features):
+        assert hasattr(value_img, 'axistags'), \
+            "For optimal performance, make sure value_img is a VigraArray with accurate axistags"
+
         highlevel_features = list(set(highlevel_features))
         edge_df, edge_features = self.compute_highlevel_edge_features(value_img, highlevel_features)
         sp_df, sp_highlevel_features = self.compute_highlevel_sp_features(value_img, highlevel_features)
@@ -242,6 +253,17 @@ def compute_edge_vigra_features_along_axis( axis, edge_mask, edge_ids, edge_labe
      - The histogram range used for any histogram features.
     """
     feature_names = map(str.lower, feature_names)
+    for feature_name in feature_names:
+        for nonsupported_name in ('coord', 'region'):
+            # This could be fixed by the following:
+            # - Combine the mask and edge_labels into a label volume (same shape as mask)
+            # - Compute coordinate-based features separately
+            # - If *weighted* coordinate-based features are also needed, then need to combine 
+            #   mask and edge_values into a edge_value volume (same shape as mask)
+            # But the performance implications could be severe...
+            assert nonsupported_name not in feature_name, \
+                "Coordinate-based edge features are not currently supported!"
+
     edge_values = extract_edge_values_for_axis(axis, edge_mask, value_img)
 
     index_u32 = pd.Index(np.arange(len(edge_ids)), dtype=np.uint32)
@@ -341,6 +363,13 @@ def compute_sp_vigra_features( label_img, value_img, feature_names=['Count', 'Me
           so coordinate-based features won't work.
     """
     feature_names = map(str.lower, feature_names)
+    for feature_name in feature_names:
+        for nonsupported_name in ('coord', 'region'):
+            # This could be fixed easily (just don't flatten the data)
+            # but we should check the performance implications.
+            assert nonsupported_name not in feature_name, \
+                "Coordinate-based SP features are not currently supported!"
+    
     value_img = value_img.astype(np.float32, copy=False)
     acc = vigra.analysis.extractRegionFeatures( value_img.reshape(1,-1, order='A'),
                                                 label_img.reshape(1,-1, order='A'),
@@ -488,14 +517,16 @@ if __name__ == "__main__":
     logger.info("Loading watershed...")
     with h5py.File(watershed_path, 'r') as f:
         watershed = f['watershed'][:]
-        if watershed.shape[-1] == 1:
-            watershed = watershed[...,0]
+    if watershed.shape[-1] == 1:
+        watershed = watershed[...,0]
+    watershed = vigra.taggedView( watershed, 'zyx' )
 
     logger.info("Loading grayscale...")
     with h5py.File(grayscale_path, 'r') as f:
         grayscale = f['grayscale'][:]
-        if grayscale.shape[-1] == 1:
-            grayscale = grayscale[...,0]
+    if grayscale.shape[-1] == 1:
+        grayscale = grayscale[...,0]
+    grayscale = vigra.taggedView( grayscale, 'zyx' )
 
     feature_names = []
     feature_names += ['edge_count', 'edge_sum', 'edge_mean', 'edge_variance',
