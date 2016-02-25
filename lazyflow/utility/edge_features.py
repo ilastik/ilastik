@@ -52,7 +52,32 @@ class Rag(object):
             self.axis_edge_datas.append( Rag.AxisEdgeData(axis, edge_mask, edge_ids, label_lookup) )
         
         # Columns: id1, id2, edge_label
-        self.final_edge_label_lookup_df = unique_edge_labels( map(lambda t: t.ids, self.axis_edge_datas) )
+        final_edge_label_lookup_df = unique_edge_labels( map(lambda t: t.ids, self.axis_edge_datas) )
+
+        # Tiny optimization:
+        # We will be accessing edge_ids over and over, so let's extract them now
+        self._edge_ids = final_edge_label_lookup_df[['id1', 'id2']].values
+
+        # Now, to avoid having multiple copies of edge_ids in RAM,
+        # re-create final_edge_label_lookup_df using the cached edge_ids array
+        self.final_edge_label_lookup_df = pd.DataFrame( {'id1': self._edge_ids[:,0],
+                                                         'id2': self._edge_ids[:,1],
+                                                         'edge_label': final_edge_label_lookup_df['edge_label'] } )
+
+        # Compute the number of superpixels.
+        # We don't assume that SP ids are consecutive, so it's not the same as label_img.max()        
+        unique_left = self.final_edge_label_lookup_df['id1'].unique()
+        unique_right = self.final_edge_label_lookup_df['id2'].unique()
+        self._num_sp = len( pd.Series( np.concatenate((unique_left, unique_right))).unique() )
+
+    def num_edges(self):
+        return len(self.final_edge_label_lookup_df)
+
+    def num_sp(self):
+        return self._num_sp
+
+    def edge_ids(self):
+        return self._edge_ids
 
     def compute_edge_vigra_features(self, value_img, feature_names=['Count', 'Mean', 'Variance', 'Quantiles']):
         assert hasattr(value_img, 'axistags'), \
