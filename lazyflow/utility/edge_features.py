@@ -54,7 +54,8 @@ class Rag(object):
 
         self.axis_edge_datas = []
         for axis in range(label_img.ndim):
-            edge_mask, edge_ids = edge_id_mask(label_img, axis)
+            edge_mask = edge_mask_for_axis(label_img, axis)
+            edge_ids = edge_ids_for_axis(label_img, edge_mask, axis)
             label_lookup = unique_edge_labels( [edge_ids] )
             
             if save_ram:
@@ -218,31 +219,42 @@ class Rag(object):
             edge_df = append_sp_features_onto_edge_features( edge_df, sp_df, sp_highlevel_features )
         return edge_df
 
-def edge_id_mask( label_img, axis ):
+def edge_mask_for_axis( label_img, axis ):
     """
-    Find all supervoxel edges along the given axis and return the following:
-
-    - A 'left-hand' mask indicating where the edges are located
-      (i.e. a boolean array indicating voxels that are just to the left of an edge)
-      Note that this mask is less wide (by 1 pixel) than label_img along the chosen axis.
-      
-    - An array of of edge ids (u,v) corresonding to the voxel ids of every voxel in the mask,
-      in the same order as mask.nonzero() would return.
-      The edge ids are sorted such that u < v. 
+    Find all supervoxel edges along the given axis and return
+    a 'left-hand' mask indicating where the edges are located
+    (i.e. a boolean array indicating voxels that are just to the left of an edge).
+    Note that this mask is less wide (by 1 pixel) than label_img along the chosen axis.
     """
     if axis < 0:
         axis += label_img.ndim
     assert label_img.ndim > axis
     
     if label_img.shape[axis] == 1:
-        edge_mask = np.zeros_like(label_img)
-        edge_ids = np.ndarray( (0, 2), dtype=label_img.dtype )
-        return edge_mask, edge_ids
+        return np.zeros_like(label_img)
 
     left_slicing = ((slice(None),) * axis) + (np.s_[:-1],)
     right_slicing = ((slice(None),) * axis) + (np.s_[1:],)
 
     edge_mask = (label_img[left_slicing] != label_img[right_slicing])
+    return edge_mask
+
+def edge_ids_for_axis(label_img, edge_mask, axis):
+    """
+    Given an 'left-hand' edge_mask indicating where edges are located along the given axis,
+    return an array of of edge ids (u,v) corresonding to the voxel ids of every voxel under the mask,
+    in the same order as mask.nonzero().
+    The edge ids are sorted such that u < v. 
+    """
+    if axis < 0:
+        axis += label_img.ndim
+    assert label_img.ndim > axis
+
+    if label_img.shape[axis] == 1:
+        return np.ndarray( (0, 2), dtype=label_img.dtype )
+
+    left_slicing = ((slice(None),) * axis) + (np.s_[:-1],)
+    right_slicing = ((slice(None),) * axis) + (np.s_[1:],)
 
     num_edges = np.count_nonzero(edge_mask)
     edge_ids = np.ndarray(shape=(num_edges, 2), dtype=np.uint32 )
@@ -250,7 +262,7 @@ def edge_id_mask( label_img, axis ):
     edge_ids[:, 1] = label_img[right_slicing][edge_mask]
     edge_ids.sort(axis=1)
 
-    return edge_mask, edge_ids
+    return edge_ids
 
 def unique_edge_labels( all_edge_ids ):
     """
@@ -384,7 +396,8 @@ def compute_edge_vigra_features( label_img, value_img, feature_names=['Count', '
     histogram_range = None
     for axis in range(label_img.ndim):
         logger.debug("Axis {}: Computing edge mask...".format( axis ))
-        edge_mask, edge_ids = edge_id_mask( label_img, axis )
+        edge_mask = edge_mask_for_axis(label_img, axis)
+        edge_ids = edge_ids_for_axis(label_img, edge_mask, axis)
         lookup = unique_edge_labels( [edge_ids] )
         acc, histogram_range = compute_edge_vigra_features_along_axis( axis, edge_mask, edge_ids, lookup, value_img, feature_names, histogram_range )
         
@@ -565,7 +578,8 @@ def get_edge_ids( label_img ):
     """
     all_edge_ids = []
     for axis in range(label_img.ndim):
-        edge_mask, edge_ids = edge_id_mask( label_img, axis )
+        edge_mask = edge_mask_for_axis(label_img, axis)
+        edge_ids = edge_ids_for_axis(label_img, edge_mask, axis)
         lookup = unique_edge_labels( [edge_ids] )
         all_edge_ids.append(lookup[['id1', 'id2']].values)
     final_edge_label_lookup_df = unique_edge_labels( all_edge_ids )
@@ -579,11 +593,11 @@ if __name__ == "__main__":
     from lazyflow.utility import Timer
     
     import h5py
-    #watershed_path = '/magnetic/data/flyem/chris-two-stage-ilps/volumes/subvol/256/watershed-256.h5'
-    watershed_path = '/magnetic/data/flyem/chris-two-stage-ilps/volumes/subvol/512/watershed-512.h5'
+    watershed_path = '/magnetic/data/flyem/chris-two-stage-ilps/volumes/subvol/256/watershed-256.h5'
+    #watershed_path = '/magnetic/data/flyem/chris-two-stage-ilps/volumes/subvol/512/watershed-512.h5'
 
-    #grayscale_path = '/magnetic/data/flyem/chris-two-stage-ilps/volumes/subvol/256/grayscale-256.h5'
-    grayscale_path = '/magnetic/data/flyem/chris-two-stage-ilps/volumes/subvol/512/grayscale-512.h5'
+    grayscale_path = '/magnetic/data/flyem/chris-two-stage-ilps/volumes/subvol/256/grayscale-256.h5'
+    #grayscale_path = '/magnetic/data/flyem/chris-two-stage-ilps/volumes/subvol/512/grayscale-512.h5'
     
     logger.info("Loading watershed...")
     with h5py.File(watershed_path, 'r') as f:
