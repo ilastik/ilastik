@@ -1,44 +1,36 @@
+import logging
+from itertools import imap, izip
+
 import numpy as np
-from volumina.utility.edge_coords import edge_ids
+import vigra
 
-def contingency_table(vol1, vol2, maxlabels=None):
-    """
-    Return a 2D array 'table' such that table[i,j] represents
-    the count of overlapping pixels with value i in vol1 and value j in vol2. 
-    """
-    maxlabels = maxlabels or (vol1.max(), vol2.max())
-    table = np.zeros( (maxlabels[0]+1, maxlabels[1]+1), dtype=np.uint32 )
-    
-    # np.add.at() will accumulate counts at the given array coordinates
-    np.add.at(table, [vol1.reshape(-1), vol2.reshape(-1)], 1 )
-    return table
+from lazyflow.utility.edge_features import edge_id_mask, unique_edge_labels, label_vol_mapping
 
-def label_vol_mapping(vol_from, vol_to):
-    """
-    Determine how remap voxel IDs in vol_from into corresponding
-    IDs in vol_to, according to maxiumum overlap.
-    (Note that this is not a commutative operation.)
-    
-    Returns: A 1D index array such that mapping[i] = j, where i
-             is a voxel ID in vol_from, and j is the corresponding ID in vol_to.
-    """
-    table = contingency_table(vol_from, vol_to)
-    mapping = np.argmax(table, axis=1)
-    return mapping
+logger = logging.getLogger(__name__)
 
-def edge_decisions( overseg_vol, groundtruth_vol ):
+def edge_decisions( overseg_vol, groundtruth_vol, asdict=True ):
     """
     Given an oversegmentation and a reference segmentation,
     return a dict of {(id1, id2) : bool} indicating whether or
     not edge (id1,id2) is ON in the reference segmentation.
+    
+    If asdict=False, return separate ndarrays for edge_ids 
+    and boolean decisions instead of combined dict. 
     """
+    sp_edges_per_axis = []
+    for axis in range(overseg_vol.ndim):
+        mask, sp_edges = edge_id_mask(overseg_vol, axis)
+        del mask
+        sp_edges_per_axis.append( sp_edges )
+    unique_sp_edges = unique_edge_labels(sp_edges_per_axis)[['id1', 'id2']].values
+
     sp_to_gt_mapping = label_vol_mapping(overseg_vol, groundtruth_vol)
-    sp_edges = edge_ids(overseg_vol)
-    decisions = {}
-    for (id1, id2) in sp_edges:
-        # Edge is ON if these two superpixels map to different segment IDs in the groundtruth
-        decisions[(id1, id2)] = (sp_to_gt_mapping[id1] != sp_to_gt_mapping[id2])
-    return decisions
+    decisions = sp_to_gt_mapping[unique_sp_edges[0]] != sp_to_gt_mapping[unique_sp_edges[1]]
+
+    if asdict:    
+        return dict( izip(imap(tuple, unique_sp_edges), decisions) )
+    return unique_sp_edges, decisions
+
 
 if __name__ == "__main__":
     # 1 2
@@ -56,4 +48,16 @@ if __name__ == "__main__":
     assert (label_vol_mapping(vol1, vol2) == [0,2,3,4,5]).all()
     assert (label_vol_mapping(vol1[3:], vol2[:-3]) == [0,2,3,4,5]).all()
     assert (label_vol_mapping(vol1[6:], vol2[:-6]) == [0,2,3,2,3]).all()
+    
+    # 7 7
+    # 4 5
+    vol2[( vol2 == 2 ).nonzero()] = 7
+    vol2[( vol2 == 3 ).nonzero()] = 7
+
+    assert (label_vol_mapping(vol1, vol2) == [0,7,7,4,5]).all()
+    
+    decision_dict = edge_decisions(vol1, vol2, asdict=True)
+    
+    edge_ids, decisions = edge_decisions(vol1, vol2, asdict=False)
+    relabel_volume_from_edge_decisions( vol1, edge_ids, decisions )
     print "DONE"
