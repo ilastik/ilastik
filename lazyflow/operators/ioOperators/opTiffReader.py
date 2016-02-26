@@ -136,7 +136,7 @@ class OpTiffReader(Operator):
                 tiff_page_ndindex = roi_page_ndindex + page_index_roi[0]
                 tiff_page_list_index = numpy.ravel_multi_index(tiff_page_ndindex, self._non_page_shape)
                 logger.debug( "Reading page: {} = {}".format( tuple(tiff_page_ndindex), tiff_page_list_index ) )
-                page_data = vigra.impex.readImage(self._filepath, dtype='NATIVE', index=tiff_page_list_index, order='C')
+                page_data = vigra.impex.readImage(self._filepath, dtype='NATIVE', index=int(tiff_page_list_index), order='C')
             else:
                 # Only a single page
                 page_data = vigra.impex.readImage(self._filepath, dtype='NATIVE', index=0, order='C')
