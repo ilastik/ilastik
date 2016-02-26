@@ -28,17 +28,13 @@ class EdgeTrainingApplet( StandardApplet ):
     Supervoxel edge training applet
     """
     def __init__( self, workflow, guiName, projectFileGroupName ):
+        self._topLevelOperator = OpEdgeTraining( parent=workflow )
         super(EdgeTrainingApplet, self).__init__(guiName, workflow)
         self._serializableItems = [ EdgeTrainingSerializer(self.topLevelOperator, projectFileGroupName) ]
 
-    # FIXME: We should override topLevelOperator directly
     @property
-    def singleLaneOperatorClass(self):
-        return OpEdgeTraining
-
-    @property
-    def broadcastingSlots(self):
-        return []
+    def topLevelOperator(self):
+        return self._topLevelOperator
 
     @property
     def singleLaneGuiClass(self):

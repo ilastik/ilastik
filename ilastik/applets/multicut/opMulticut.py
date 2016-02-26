@@ -10,7 +10,7 @@ from lazyflow.operators import OpCompressedCache, OpValueCache
 class OpMulticut(Operator):
     Beta = InputSlot(value=0.1)
     Rag = InputSlot() # value slot.  Rag object.
-    RagSuperpixels = InputSlot() # Must be the superpixels used for the RAG (i.e. consecutive labels, starting at 0)
+    Superpixels = InputSlot()
     EdgeProbabilities = InputSlot()
     EdgeProbabilitiesDict = InputSlot() # A dict of id_pair -> probabilities
     RawData = InputSlot(optional=True) # Used by the GUI for display only
@@ -21,7 +21,7 @@ class OpMulticut(Operator):
         super( OpMulticut, self ).__init__(*args, **kwargs)
 
         self.opMulticutAgglomerator = OpMulticutAgglomerator(parent=self)
-        self.opMulticutAgglomerator.Superpixels.connect( self.RagSuperpixels )
+        self.opMulticutAgglomerator.Superpixels.connect( self.Superpixels )
         self.opMulticutAgglomerator.Beta.connect( self.Beta )
         self.opMulticutAgglomerator.Rag.connect( self.Rag )
         self.opMulticutAgglomerator.EdgeProbabilities.connect( self.EdgeProbabilities )

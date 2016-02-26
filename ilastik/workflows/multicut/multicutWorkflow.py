@@ -119,11 +119,11 @@ class MulticutWorkflow(Workflow):
         # edge training inputs
         opEdgeTraining.RawData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
         opEdgeTraining.VoxelData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_PROBABILITIES] )
-        opEdgeTraining.InputSuperpixels.connect( opDataSelection.ImageGroup[self.DATA_ROLE_SUPERPIXELS] )
+        opEdgeTraining.Superpixels.connect( opDataSelection.ImageGroup[self.DATA_ROLE_SUPERPIXELS] )
         opEdgeTraining.GroundtruthSegmentation.connect( opDataSelection.ImageGroup[self.DATA_ROLE_GROUNDTRUTH] )
 
         # multicut inputs
-        opMulticut.RagSuperpixels.connect( opEdgeTraining.RagSuperpixels )
+        opMulticut.Superpixels.connect( opEdgeTraining.Superpixels )
         opMulticut.Rag.connect( opEdgeTraining.Rag )
         opMulticut.EdgeProbabilities.connect( opEdgeTraining.EdgeProbabilities )
         opMulticut.EdgeProbabilitiesDict.connect( opEdgeTraining.EdgeProbabilitiesDict )

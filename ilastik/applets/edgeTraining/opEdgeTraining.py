@@ -1,4 +1,5 @@
 from itertools import izip, imap
+from functools import partial
 import numpy as np
 
 import networkx as nx
@@ -8,11 +9,15 @@ import vigra
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiToSlice
-from lazyflow.operators import OpCompressedCache, OpValueCache, OpBlockedArrayCache
+from lazyflow.operators import OpValueCache, OpBlockedArrayCache
 from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
 
 from lazyflow.utility import edge_features
 from lazyflow.utility.edge_features import compute_highlevel_edge_features
+
+from ilastik.applets.base.applet import DatasetConstraintError
+from ilastik.utility.operatorSubView import OperatorSubView
+from ilastik.utility import OpMultiLaneWrapper
 
 from ilastik.applets.edgeTraining.util import edge_decisions, relabel_volume_from_edge_decisions
 
@@ -20,108 +25,133 @@ import logging
 logger = logging.getLogger(__name__)
 
 class OpEdgeTraining(Operator):
-    VoxelData = InputSlot()
-    InputSuperpixels = InputSlot()
-    GroundtruthSegmentation = InputSlot(optional=True)
+    VoxelData = InputSlot(level=1)
+    Superpixels = InputSlot(level=1)
+    GroundtruthSegmentation = InputSlot(level=1, optional=True)
     #EdgeLabels = InputSlot(optional=True)
-    RawData = InputSlot(optional=True) # Used by the GUI for display only
+    RawData = InputSlot(level=1, optional=True) # Used by the GUI for display only
     
-    EdgeProbabilities = OutputSlot()
-    EdgeProbabilitiesDict = OutputSlot() # A dict of id_pair -> probabilities
+    EdgeProbabilities = OutputSlot(level=1)
+    EdgeProbabilitiesDict = OutputSlot(level=1) # A dict of id_pair -> probabilities
 
-    Rag = OutputSlot()
-    RagSuperpixels = OutputSlot() # The rag can't necessarily use the input superpixels
-                                  # (since it needs consecutive IDs, starting at 0),
-                                  # so we relabel the superpixels.  This is the relabeled version.
+    Rag = OutputSlot(level=1)
 
-    NaiveSegmentation = OutputSlot()
+    NaiveSegmentation = OutputSlot(level=1)
 
     def __init__(self, *args, **kwargs):
         super( OpEdgeTraining, self ).__init__(*args, **kwargs)
 
-        self.opCreateRag = OpCreateRag(parent=self)
-        self.opCreateRag.InputSuperpixels.connect( self.InputSuperpixels )
         
-        self.opRagCache = OpValueCache(parent=self)
+        self.opCreateRag = OpMultiLaneWrapper( OpCreateRag, parent=self )
+        self.opCreateRag.Superpixels.connect( self.Superpixels )
+        
+        self.opRagCache = OpMultiLaneWrapper( OpValueCache, parent=self )
         self.opRagCache.Input.connect( self.opCreateRag.Rag )
         
-        self.opComputeEdgeFeatures = OpComputeEdgeFeatures(parent=self)
+        self.opComputeEdgeFeatures = OpMultiLaneWrapper( OpComputeEdgeFeatures, parent=self )
         self.opComputeEdgeFeatures.VoxelData.connect( self.VoxelData )
         self.opComputeEdgeFeatures.Rag.connect( self.opRagCache.Output )
         
-        self.opEdgeFeaturesCache = OpValueCache(parent=self)
+        self.opEdgeFeaturesCache = OpMultiLaneWrapper( OpValueCache, parent=self )
         self.opEdgeFeaturesCache.Input.connect( self.opComputeEdgeFeatures.EdgeFeatures )
 
         # classifier cache input is set after training.
         self.opClassifierCache = OpValueCache(parent=self)
         
-        self.opPredictEdgeProbabilities = OpPredictEdgeProbabilities(parent=self)
+        self.opPredictEdgeProbabilities = OpMultiLaneWrapper( OpPredictEdgeProbabilities, parent=self )
         self.opPredictEdgeProbabilities.EdgeClassifier.connect( self.opClassifierCache.Output )
         self.opPredictEdgeProbabilities.EdgeFeatures.connect( self.opEdgeFeaturesCache.Output )
         
-        self.opEdgeProbabilitiesCache = OpValueCache(parent=self)
+        self.opEdgeProbabilitiesCache = OpMultiLaneWrapper( OpValueCache, parent=self )
         self.opEdgeProbabilitiesCache.Input.connect( self.opPredictEdgeProbabilities.EdgeProbabilities )
 
-        self.opEdgeProbabilitiesDict = OpEdgeProbabilitiesDict(parent=self)
+        self.opEdgeProbabilitiesDict = OpMultiLaneWrapper( OpEdgeProbabilitiesDict, parent=self )
         self.opEdgeProbabilitiesDict.Rag.connect( self.opRagCache.Output )
         self.opEdgeProbabilitiesDict.EdgeProbabilities.connect( self.opEdgeProbabilitiesCache.Output )
         
-        self.opEdgeProbabilitiesDictCache = OpValueCache(parent=self)
+        self.opEdgeProbabilitiesDictCache = OpMultiLaneWrapper( OpValueCache, parent=self )
         self.opEdgeProbabilitiesDictCache.Input.connect( self.opEdgeProbabilitiesDict.EdgeProbabilitiesDict )
 
-        self.opNaiveSegmentation = OpNaiveSegmentation(parent=self)
-        self.opNaiveSegmentation.InputSuperpixels.connect( self.InputSuperpixels )
+        self.opNaiveSegmentation = OpMultiLaneWrapper( OpNaiveSegmentation, parent=self )
+        self.opNaiveSegmentation.Superpixels.connect( self.Superpixels )
         self.opNaiveSegmentation.Rag.connect( self.opRagCache.Output )
         self.opNaiveSegmentation.EdgeProbabilities.connect( self.opEdgeProbabilitiesCache.Output )
 
-        self.opNaiveSegmentationCache = OpBlockedArrayCache(parent=self)
+        self.opNaiveSegmentationCache = OpMultiLaneWrapper( OpBlockedArrayCache, parent=self, broadcastingSlotNames=['CompressionEnabled'] )
         self.opNaiveSegmentationCache.CompressionEnabled.setValue(True)
         self.opNaiveSegmentationCache.Input.connect( self.opNaiveSegmentation.Output )
 
         self.Rag.connect( self.opRagCache.Output )
-        self.EdgeProbabilities.connect( self.opEdgeProbabilitiesCache.Output )        
+        self.EdgeProbabilities.connect( self.opEdgeProbabilitiesCache.Output )
         self.EdgeProbabilitiesDict.connect( self.opEdgeProbabilitiesDictCache.Output )
         self.NaiveSegmentation.connect( self.opNaiveSegmentationCache.Output )
 
+        # All input multi-slots should be kept in sync
+        # Output multi-slots will auto-sync via the graph
+        multiInputs = filter( lambda s: s.level >= 1, self.inputs.values() )
+        for s1 in multiInputs:
+            for s2 in multiInputs:
+                if s1 != s2:
+                    def insertSlot( a, b, position, finalsize ):
+                        a.insertSlot(position, finalsize)
+                    s1.notifyInserted( partial(insertSlot, s2 ) )
+                    
+                    def removeSlot( a, b, position, finalsize ):
+                        a.removeSlot(position, finalsize)
+                    s1.notifyRemoved( partial(removeSlot, s2 ) )
+
     def setupOutputs(self):
-        assert self.InputSuperpixels.meta.dtype == np.uint32
-        assert self.InputSuperpixels.meta.getAxisKeys()[-1] == 'c'
-
-        self.RagSuperpixels.meta.assignFrom(self.InputSuperpixels.meta)
-        self.RagSuperpixels.meta.display_mode = 'random-colortable'
-
-        self.opNaiveSegmentationCache.outerBlockShape.setValue( self.InputSuperpixels.meta.shape )
-
+        for sp_slot, seg_cache_blockshape_slot in zip(self.Superpixels, self.opNaiveSegmentationCache.outerBlockShape):
+            assert sp_slot.meta.dtype == np.uint32
+            assert sp_slot.meta.getAxisKeys()[-1] == 'c'
+            seg_cache_blockshape_slot.setValue( sp_slot.meta.shape )
 
     def execute(self, slot, subindex, roi, result):
-        if slot is self.RagSuperpixels:
-            self._executeRagSuperpixels(roi, result)
-        else:
-            assert False, "Unknown output slot: {}".format( slot )
+        assert False, "Shouldn't get here, but requesting slot: {}".format( slot )
 
-    def _executeRagSuperpixels(self, roi, result):
-        rag = self.opRagCache.Output.value
-        result[:] = rag.label_img[...,None][roiToSlice(roi.start, roi.stop)]
-        
     def propagateDirty(self, slot, subindex, roi):
         pass
     
     def trainFromGroundtruth(self):
-        logger.info("Loading groundtruth...")
-        gt_vol = self.GroundtruthSegmentation[:].wait()
+        all_edge_features = []
+        all_edge_decisions = []
 
-        rag = self.opRagCache.Output.value
-        edge_features = self.opEdgeFeaturesCache.Output.value
+        for lane_index in range( len(self.GroundtruthSegmentation) ):
+            logger.info("Loading groundtruth...")
+            gt_vol = self.GroundtruthSegmentation[lane_index][:].wait()
+    
+            rag = self.opRagCache.Output[lane_index].value
+            edge_features = self.opEdgeFeaturesCache.Output[lane_index].value
+    
+            logger.info("Computing edge decisions from groundtruth...")
+            decisions = rag.edge_decisions_from_groundtruth(gt_vol, asdict=False)
+            assert len(edge_features) == len(decisions)
 
-        logger.info("Computing edge decisions from groundtruth...")
-        decisions = rag.edge_decisions_from_groundtruth(gt_vol, asdict=False)
-        assert len(edge_features) == len(decisions)
-        
+            all_edge_features.append(edge_features)
+            all_edge_decisions.append(decisions)
+            
         logger.info( "Training edge classifier with {} features and {} labels..."
                      .format( edge_features.shape[-1], len(decisions) ) )
+
+
+        combined_features = np.concatenate(all_edge_features)
+        combined_decisions = np.concatenate(all_edge_decisions)
+
         classifier_factory = ParallelVigraRfLazyflowClassifierFactory()
-        classifier = classifier_factory.create_and_train( edge_features, decisions )
+        classifier = classifier_factory.create_and_train( combined_features, combined_decisions )
         self.opClassifierCache.Input.setValue( classifier )
+
+    def addLane(self, laneIndex):
+        numLanes = len(self.VoxelData)
+        assert numLanes == laneIndex, "Image lanes must be appended."        
+        self.VoxelData.resize(numLanes+1)
+        
+    def removeLane(self, laneIndex, finalLength):
+        self.VoxelData.removeSlot(laneIndex, finalLength)
+
+    def getLane(self, laneIndex):
+        return OperatorSubView(self, laneIndex)
+
 
 class OpPredictEdgeProbabilities(Operator):
     EdgeClassifier = InputSlot()
@@ -145,19 +175,19 @@ class OpPredictEdgeProbabilities(Operator):
         self.EdgeProbabilities.setDirty()
 
 class OpCreateRag(Operator):
-    InputSuperpixels = InputSlot()
+    Superpixels = InputSlot()
     Rag = OutputSlot()
     
     def setupOutputs(self):
-        assert self.InputSuperpixels.meta.dtype == np.uint32
-        assert self.InputSuperpixels.meta.getAxisKeys()[-1] == 'c'
+        assert self.Superpixels.meta.dtype == np.uint32
+        assert self.Superpixels.meta.getAxisKeys()[-1] == 'c'
         self.Rag.meta.shape = (1,)
         self.Rag.meta.dtype = object
     
     def execute(self, slot, subindex, roi, result):
-        superpixels = self.InputSuperpixels[:].wait()
+        superpixels = self.Superpixels[:].wait()
         superpixels = vigra.taggedView( superpixels,
-                                        self.InputSuperpixels.meta.axistags )
+                                        self.Superpixels.meta.axistags )
         superpixels = superpixels[...,0] # Drop channel
         
 
@@ -228,13 +258,13 @@ class OpEdgeProbabilitiesDict(Operator):
         self.EdgeProbabilitiesDict.setDirty()
 
 class OpNaiveSegmentation(Operator):
-    InputSuperpixels = InputSlot() # Just needed for slot metadata; our superpixels are taken from rag.
+    Superpixels = InputSlot() # Just needed for slot metadata; our superpixels are taken from rag.
     Rag = InputSlot()
     EdgeProbabilities = InputSlot()
     Output = OutputSlot()
 
     def setupOutputs(self):
-        self.Output.meta.assignFrom(self.InputSuperpixels.meta)
+        self.Output.meta.assignFrom(self.Superpixels.meta)
         self.Output.meta.display_mode = 'random-colortable'
         
     def execute(self, slot, subindex, roi, result):
@@ -242,7 +272,7 @@ class OpNaiveSegmentation(Operator):
         edge_predictions = self.EdgeProbabilities.value
         rag = self.Rag.value
         sp_vol = rag.label_img[...,None][roiToSlice(roi.start, roi.stop)]
-        sp_vol = vigra.taggedView(sp_vol, self.InputSuperpixels.meta.axistags)
+        sp_vol = vigra.taggedView(sp_vol, self.Superpixels.meta.axistags)
         edge_labels = (edge_predictions > 0.5)
         
         result = vigra.taggedView(result, self.Output.meta.axistags)

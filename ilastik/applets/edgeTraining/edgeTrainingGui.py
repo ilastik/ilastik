@@ -144,10 +144,9 @@ class EdgeTrainingGui(LayerViewerGui):
         op = self.topLevelOperatorView
 
         # Superpixels -- Edge Probabilities
-        # We use the RAG's superpixels, which may have different IDs
         self.superpixel_edge_layer = None
-        if op.RagSuperpixels.ready() and op.EdgeProbabilitiesDict.ready():
-            layer = SegmentationEdgesLayer( LazyflowSource(op.RagSuperpixels) )
+        if op.Superpixels.ready() and op.EdgeProbabilitiesDict.ready():
+            layer = SegmentationEdgesLayer( LazyflowSource(op.Superpixels) )
             layer.name = "Superpixel Edge Probabilities"
             layer.visible = True
             layer.opacity = 1.0
@@ -157,10 +156,10 @@ class EdgeTrainingGui(LayerViewerGui):
             del layer
                 
         # Superpixels -- Edges
-        if op.RagSuperpixels.ready():
+        if op.Superpixels.ready():
             default_pen = QPen(SegmentationEdgesLayer.DEFAULT_PEN)
             default_pen.setColor(Qt.yellow)
-            layer = SegmentationEdgesLayer( LazyflowSource(op.RagSuperpixels), default_pen )
+            layer = SegmentationEdgesLayer( LazyflowSource(op.Superpixels), default_pen )
             layer.name = "Superpixel Edges"
             layer.visible = False
             layer.opacity = 1.0
@@ -180,15 +179,6 @@ class EdgeTrainingGui(LayerViewerGui):
         if op.GroundtruthSegmentation.ready():
             layer = self.createStandardLayerFromSlot( op.GroundtruthSegmentation )
             layer.name = "Groundtruth"
-            layer.visible = True
-            layer.opacity = 0.5
-            layers.append(layer)
-            del layer
- 
-        # Input Superpixels
-        if op.InputSuperpixels.ready():
-            layer = self.createStandardLayerFromSlot( op.InputSuperpixels )
-            layer.name = "Input Superpixels"
             layer.visible = True
             layer.opacity = 0.5
             layers.append(layer)
