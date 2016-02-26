@@ -69,6 +69,7 @@ except:
     from opReorderAxes import OpReorderAxes
     from opLabelVolume import OpLabelVolume
     from opResize import OpResize
+    from opRelabelConsecutive import OpRelabelConsecutive
 
     ops = list(itersubclasses(Operator))
     '''
