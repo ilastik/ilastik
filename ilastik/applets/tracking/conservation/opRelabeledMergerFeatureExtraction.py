@@ -34,7 +34,7 @@ class OpDifference(Operator):
         self.ImageB.notifyReady(self._checkConstraints)
 
     def setupOutputs(self):
-        self.Output.meta.assignFrom(self.ImageA.meta)
+        self.Output.meta.assignFrom(self.ImageB.meta)
 
     def _checkConstraints(self, *args):
         if self.ImageA.ready() and self.ImageB.ready():
@@ -48,11 +48,9 @@ class OpDifference(Operator):
     def execute(self, slot, subindex, roi, result):
         if slot == self.Output:
             imageA = self.ImageA.get(roi).wait()
-            imageB = self.ImageB.get(roi).wait()
+            self.ImageB.get(roi).writeInto(result).wait()
 
-            result = imageB
-            result[imageB == imageA] = 0  # only differing indices are of interest
-
+            result[result == imageA] = 0  # only differing indices are of interest
             return result
 
     def propagateDirty(self, inputSlot, subindex, roi):
@@ -61,12 +59,6 @@ class OpDifference(Operator):
 
     def setInSlot(self, slot, subindex, roi, value):
         assert False, "OpDifference does not allow setInSlot()"
-
-    def cleanUp(self):
-        self.ImageA.disconnect()
-        self.ImageB.disconnect()
-        super( OpDifference, self ).cleanUp()
-
 
 class OpZeroBasedConsecutiveIndexRelabeling(Operator):
     """
