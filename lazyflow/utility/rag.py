@@ -232,9 +232,12 @@ class Rag(object):
         suffixed_vigra_feature_names = map(str.lower, suffixed_vigra_feature_names)
         vigra_feature_names = Rag._process_suffixed_vigra_feature_names(suffixed_vigra_feature_names)
 
-        final_edge_acc = self.accumulate_edge_vigra_features( value_img, vigra_feature_names )
         edge_df = pd.DataFrame(self.edge_ids, columns=['id1', 'id2'])
-        Rag._add_features_to_dataframe(suffixed_vigra_feature_names, final_edge_acc, edge_df, 'edge_')            
+
+        if vigra_feature_names:
+            final_edge_acc = self.accumulate_edge_vigra_features( value_img, vigra_feature_names )
+            Rag._add_features_to_dataframe(suffixed_vigra_feature_names, final_edge_acc, edge_df, 'edge_')
+        
         return edge_df
 
     def accumulate_edge_vigra_features(self, value_img, vigra_feature_names=['Count', 'Mean', 'Variance', 'Quantiles']):
@@ -491,12 +494,12 @@ if __name__ == "__main__":
     grayscale = vigra.taggedView( grayscale, 'zyx' )
 
     feature_names = []
-    feature_names += ['edge_count', 'edge_sum', 'edge_mean', 'edge_variance',
-                      'minimum', 'maximum', 'edge_quantiles_25', 'edge_quantiles_50', 'edge_quantiles_75', 'edge_quantiles_100',
-                       ]
+    #feature_names += ['edge_count', 'edge_sum', 'edge_mean', 'edge_variance',
+    #                  'minimum', 'maximum', 'edge_quantiles_25', 'edge_quantiles_50', 'edge_quantiles_75', 'edge_quantiles_100',
+    #                   ]
     #feature_names += ['sp_count', 'sp_sum', 'sp_mean', 'sp_variance', 'sp_kurtosis', 'sp_skewness']
-    #feature_names += ['sp_count', 'sp_variance', 'sp_quantiles_25']
-    feature_names += ['sp_count']
+    feature_names += ['sp_count', 'sp_variance', 'sp_quantiles_25']
+    #feature_names += ['sp_count']
 
     with Timer() as timer:
         logger.info("Creating python Rag...")
