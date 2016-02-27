@@ -42,12 +42,13 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
     fixAtCurrent = InputSlot(value=False)
     Input = InputSlot(allow_mask=True)
     #BlockShape = InputSlot()
-    innerBlockShape = InputSlot(optional=True) # Deprecated and ignored below.
-    outerBlockShape = InputSlot()
+    outerBlockShape = InputSlot(optional=True) # If not provided, will be set to Input.meta.shape
     BypassModeEnabled = InputSlot(value=False)
     CompressionEnabled = InputSlot(value=False)
     
     Output = OutputSlot(allow_mask=True)
+
+    innerBlockShape = InputSlot(optional=True) # Deprecated and ignored below.
     
     def __init__(self, *args, **kwargs):
         super( OpBlockedArrayCache, self ).__init__(*args, **kwargs)
@@ -89,6 +90,8 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
         self.registerWithMemoryManager()
         
     def setupOutputs(self):
+        if not self.outerBlockShape.ready():
+            self.outerBlockShape.setValue( self.Input.meta.shape )
         # Copy metadata from the internal pipeline to the output
         self.Output.meta.assignFrom( self._opSplitRequestsBlockwise.Output.meta )
 
