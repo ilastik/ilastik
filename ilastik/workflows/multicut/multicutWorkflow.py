@@ -27,6 +27,7 @@ from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from ilastik.applets.batchProcessing import BatchProcessingApplet
 
 from lazyflow.graph import Graph
+from lazyflow.operators import OpRelabelConsecutive, OpBlockedArrayCache
 
 class MulticutWorkflow(Workflow):
     workflowName = "Multicut"
@@ -116,10 +117,18 @@ class MulticutWorkflow(Workflow):
         opMulticut = self.multicutApplet.topLevelOperator.getLane(laneIndex)
         opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
 
+        # Just for the sake of efficiency during the multicut, relabel the superpixels to be consecutive.
+        opRelabelConsecutive = OpRelabelConsecutive( parent=self )
+        opRelabelConsecutive.Input.connect( opDataSelection.ImageGroup[self.DATA_ROLE_SUPERPIXELS] )
+
+        opRelabeledSuperpixelsCache = OpBlockedArrayCache( parent=self )
+        opRelabeledSuperpixelsCache.CompressionEnabled.setValue(True)
+        opRelabeledSuperpixelsCache.Input.connect( opRelabelConsecutive.Output )
+
         # edge training inputs
         opEdgeTraining.RawData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
         opEdgeTraining.VoxelData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_PROBABILITIES] )
-        opEdgeTraining.Superpixels.connect( opDataSelection.ImageGroup[self.DATA_ROLE_SUPERPIXELS] )
+        opEdgeTraining.Superpixels.connect( opRelabeledSuperpixelsCache.Output )
         opEdgeTraining.GroundtruthSegmentation.connect( opDataSelection.ImageGroup[self.DATA_ROLE_GROUNDTRUTH] )
 
         # multicut inputs
