@@ -36,7 +36,7 @@ class Rag(object):
     
     edge_label_lookup_df: A pandas DataFrame listing pairs of adjacent superpixels 
                           and a column of uint32 values to uniquely identify each edge.
-                          Columns: 'id1', 'id2', 'edge_label'
+                          Columns: 'sp1', 'sp2', 'edge_label'
     """
     
     # axis: int
@@ -44,7 +44,7 @@ class Rag(object):
     #       - ndarray of bool (same shape as labels) OR
     #       - index array tuple (see comments below about save_ram flag)
     # ids: ndarray of edge_id pairs, same order as mask.nonzero()
-    # label_lookup: DataFrame with columns 'id1', 'id2', 'edge_label' (no duplicate rows)
+    # label_lookup: DataFrame with columns 'sp1', 'sp2', 'edge_label' (no duplicate rows)
     AxisEdgeData = collections.namedtuple('AxisEdgeData', 'axis mask ids label_lookup')
     
     def __init__( self, label_img, save_ram=True ):
@@ -90,23 +90,23 @@ class Rag(object):
                 
             self.axis_edge_datas.append( Rag.AxisEdgeData(axis, edge_mask, edge_ids, label_lookup) )
         
-        # Columns: id1, id2, edge_label
+        # Columns: sp1, sp2, edge_label
         final_edge_label_lookup_df = unique_edge_labels( map(lambda t: t.ids, self.axis_edge_datas) )
 
         # Tiny optimization:
         # We will be accessing edge_ids over and over, so let's extract them now
-        self._edge_ids = final_edge_label_lookup_df[['id1', 'id2']].values
+        self._edge_ids = final_edge_label_lookup_df[['sp1', 'sp2']].values
 
         # Now, to avoid having multiple copies of edge_ids in RAM,
         # re-create final_edge_label_lookup_df using the cached edge_ids array
-        self._final_edge_label_lookup_df = pd.DataFrame( {'id1': self._edge_ids[:,0],
-                                                         'id2': self._edge_ids[:,1],
-                                                         'edge_label': final_edge_label_lookup_df['edge_label'] } )
+        self._final_edge_label_lookup_df = pd.DataFrame( {'sp1': self._edge_ids[:,0],
+                                                          'sp2': self._edge_ids[:,1],
+                                                          'edge_label': final_edge_label_lookup_df['edge_label'] } )
 
         # Compute the number of superpixels.
         # We don't assume that SP ids are consecutive, so it's not the same as label_img.max()        
-        unique_left = self._final_edge_label_lookup_df['id1'].unique()
-        unique_right = self._final_edge_label_lookup_df['id2'].unique()
+        unique_left = self._final_edge_label_lookup_df['sp1'].unique()
+        unique_right = self._final_edge_label_lookup_df['sp2'].unique()
         self._sp_ids = pd.Series( np.concatenate((unique_left, unique_right))).unique()
         self._sp_ids.sort()
         self._num_sp = len( self._sp_ids )
@@ -156,7 +156,7 @@ class Rag(object):
         The result is returned in the same order as self.edge_ids.
         An OFF edge means that the two superpixels are merged in the reference volume.
         
-        If asdict=True, return the result as a dict of {(id1, id2) : bool}
+        If asdict=True, return the result as a dict of {(sp1, sp2) : bool}
         """
         sp_to_gt_mapping = label_vol_mapping(self.label_img, groundtruth_vol)
 
@@ -215,7 +215,7 @@ class Rag(object):
     def compute_highlevel_edge_features(self, value_img, suffixed_vigra_feature_names):
         """
         Computes features for edges.  Returns a pandas dataframe.
-        The first two columns are 'id1' and 'id2', and the other columns are the computed features.
+        The first two columns are 'sp1' and 'sp2', and the other columns are the computed features.
         
         Supported feature names:
         (edge_|sp_) + ( count|sum|mean|variance|kurtosis|skewness
@@ -232,7 +232,7 @@ class Rag(object):
         suffixed_vigra_feature_names = map(str.lower, suffixed_vigra_feature_names)
         vigra_feature_names = Rag._process_suffixed_vigra_feature_names(suffixed_vigra_feature_names)
 
-        edge_df = pd.DataFrame(self.edge_ids, columns=['id1', 'id2'])
+        edge_df = pd.DataFrame(self.edge_ids, columns=['sp1', 'sp2'])
 
         if vigra_feature_names:
             final_edge_acc = self.accumulate_edge_vigra_features( value_img, vigra_feature_names )
@@ -277,7 +277,7 @@ class Rag(object):
          - A vigra RegionFeaturesAccumulator containing the edge statistics.
            Each edge will be assigned a unique label id (an integer).
          - A pandas DataFrame that can be used to map from edge_label to edge_id pairs (u,v).
-           The columns of the DataFrame are: ['id1', 'id2', 'edge_label'], where 'id1' and 'id2' are supervoxel ids.
+           The columns of the DataFrame are: ['sp1', 'sp2', 'edge_label'], where 'sp1' and 'sp2' are supervoxel ids.
          - The histogram range used for any histogram features.
         """
         _axis, edge_mask, edge_ids, edge_label_lookup = self.axis_edge_datas[axis]
@@ -298,8 +298,8 @@ class Rag(object):
         edge_values = extract_edge_values_for_axis(axis, edge_mask, value_img)
     
         index_u32 = pd.Index(np.arange(len(edge_ids)), dtype=np.uint32)
-        df_edges = pd.DataFrame(edge_ids, columns=['id1', 'id2'], index=index_u32)
-        df_edges_with_labels = pd.merge(df_edges, edge_label_lookup, on=['id1', 'id2'], how='left')
+        df_edges = pd.DataFrame(edge_ids, columns=['sp1', 'sp2'], index=index_u32)
+        df_edges_with_labels = pd.merge(df_edges, edge_label_lookup, on=['sp1', 'sp2'], how='left')
         edge_labels = df_edges_with_labels['edge_label'].values
     
         # Sanity check
@@ -354,10 +354,10 @@ class Rag(object):
         final_acc = axis_accumulators[0].createAccumulator()
         for acc, this_axis_lookup_df in zip(axis_accumulators, edge_label_lookups):
             # Columns of this combined_lookup_df will be:
-            # ['id1', 'id2', 'edge_label_this_axis', 'edge_label_final']
+            # ['sp1', 'sp2', 'edge_label_this_axis', 'edge_label_final']
             combined_lookup_df = pd.merge( this_axis_lookup_df,
                                            self._final_edge_label_lookup_df,
-                                           on=['id1', 'id2'],
+                                           on=['sp1', 'sp2'],
                                            how='left',
                                            suffixes=('_this_axis', '_final'))
             
@@ -431,15 +431,15 @@ class Rag(object):
     @classmethod
     def _append_sp_features_onto_edge_features(cls, edge_df, sp_df, suffixed_vigra_features):
         """
-        edge_df: The dataframe with edge features. First columns must be 'id1', 'id2'
+        edge_df: The dataframe with edge features. First columns must be 'sp1', 'sp2'
         sp_df: The dataframe with raw superpixel features
         suffixed_vigra_features: Feature names without 'sp_' prefix or '_sp1' suffix,
                                  but possibly with quantile suffix, e.g. '_25'.
         """
         suffixed_vigra_features = map(str.lower, suffixed_vigra_features)
-        # Add two columns to the edge_df for every sp_df column (for id1 and id2)
-        edge_df = pd.merge( edge_df, sp_df, left_on=['id1'], right_on=['sp_id'], how='left', copy=False)
-        edge_df = pd.merge( edge_df, sp_df, left_on=['id2'], right_on=['sp_id'], how='left', copy=False, suffixes=('_sp1', '_sp2'))
+        # Add two columns to the edge_df for every sp_df column (for sp1 and sp2)
+        edge_df = pd.merge( edge_df, sp_df, left_on=['sp1'], right_on=['sp_id'], how='left', copy=False)
+        edge_df = pd.merge( edge_df, sp_df, left_on=['sp2'], right_on=['sp_id'], how='left', copy=False, suffixes=('_sp1', '_sp2'))
         del edge_df['sp_id_sp1']
         del edge_df['sp_id_sp2']
     

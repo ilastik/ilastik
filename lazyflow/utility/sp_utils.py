@@ -75,7 +75,7 @@ def unique_edge_labels( all_edge_ids ):
     """
     Given a *list* of edge_id arrays (each of which has shape (N,2))
     Merge all edge_id arrays into a single pandas.DataFrame with
-    columns ['id1', 'id2', and 'edge_label], where `edge_label`
+    columns ['sp1', 'sp2', and 'edge_label], where `edge_label`
     is a unique ID number for each edge_id pair.
     (The DataFrame will have no duplicate entries.)
     """
@@ -84,7 +84,7 @@ def unique_edge_labels( all_edge_ids ):
         assert edge_ids.shape[1] == 2
         num_edges = len(edge_ids)
         index_u32 = pd.Index(np.arange(num_edges), dtype=np.uint32)
-        df = pd.DataFrame(edge_ids, columns=['id1', 'id2'], index=index_u32)
+        df = pd.DataFrame(edge_ids, columns=['sp1', 'sp2'], index=index_u32)
         df.drop_duplicates(inplace=True)
         all_dfs.append( df )
 
@@ -95,7 +95,7 @@ def unique_edge_labels( all_edge_ids ):
         combined_df.drop_duplicates(inplace=True)
 
     # This sort isn't necessary, but it's convenient for debugging.
-    combined_df.sort(columns=['id1', 'id2'], inplace=True)
+    combined_df.sort(columns=['sp1', 'sp2'], inplace=True)
 
     # TODO: Instead of adding a new column here, we might save some RAM 
     #       if we re-index and then add the index as a column
@@ -131,14 +131,14 @@ def extract_edge_values_for_axis( axis, edge_mask, value_img ):
 def get_edge_ids( label_img ):
     """
     Convenience function.
-    Returns a DataFrame with columns ['id1', 'id2', 'edge_label'], sorted by ('id1', 'id2')
+    Returns a DataFrame with columns ['sp1', 'sp2', 'edge_label'], sorted by ('sp1', 'sp2')
     """
     all_edge_ids = []
     for axis in range(label_img.ndim):
         edge_mask = edge_mask_for_axis(label_img, axis)
         edge_ids = edge_ids_for_axis(label_img, edge_mask, axis)
         lookup = unique_edge_labels( [edge_ids] )
-        all_edge_ids.append(lookup[['id1', 'id2']].values)
+        all_edge_ids.append(lookup[['sp1', 'sp2']].values)
     final_edge_label_lookup_df = unique_edge_labels( all_edge_ids )
     return final_edge_label_lookup_df
 
