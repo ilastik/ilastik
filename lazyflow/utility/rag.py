@@ -23,6 +23,8 @@ class Rag(object):
     ----------
     label_img: The label volume
     
+    sp_ids: 1D ndarray of (possibly non-consecutive) superpixel ID values, sorted.
+
     max_sp: The maximum superpixel ID in the label volume
 
     num_sp: The number of superpixels in the volume.
@@ -60,7 +62,7 @@ class Rag(object):
         """
         assert hasattr(label_img, 'axistags'), \
             "For optimal performance, make sure label_img is a VigraArray with accurate axistags"
-        self.label_img = label_img
+        self._label_img = label_img
 
         self.axis_edge_datas = []
         for axis in range(label_img.ndim):
@@ -105,13 +107,18 @@ class Rag(object):
         # We don't assume that SP ids are consecutive, so it's not the same as label_img.max()        
         unique_left = self._final_edge_label_lookup_df['id1'].unique()
         unique_right = self._final_edge_label_lookup_df['id2'].unique()
-        unique_sp_ids = pd.Series( np.concatenate((unique_left, unique_right))).unique()
-        self._num_sp = len( unique_sp_ids )
-        self._max_sp = unique_sp_ids.max()
+        self._sp_ids = pd.Series( np.concatenate((unique_left, unique_right))).unique()
+        self._sp_ids.sort()
+        self._num_sp = len( self._sp_ids )
+        self._max_sp = self._sp_ids.max()
 
     @property
-    def num_edges(self):
-        return len(self._final_edge_label_lookup_df)
+    def label_img(self):
+        return self._label_img
+
+    @property
+    def sp_ids(self):
+        return self._sp_ids
 
     @property
     def num_sp(self):
@@ -120,6 +127,10 @@ class Rag(object):
     @property
     def max_sp(self):
         return self._max_sp
+
+    @property
+    def num_edges(self):
+        return len(self._final_edge_label_lookup_df)
 
     @property
     def edge_ids(self):
