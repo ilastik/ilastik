@@ -1,6 +1,13 @@
 import numpy
 
-def blockwise_view( a, blockshape, require_aligned_blocks=True ):
+try:
+    # If you use vigra, we do special handling to preserve axistags
+    import vigra
+    _vigra_available = True
+except ImportError:
+    _vigra_available = False
+
+def blockwise_view( a, blockshape, aslist=False, require_aligned_blocks=True ):
     """
     Return a 2N-D view of the given N-D array, rearranged so each ND block (tile) 
     of the original array is indexed by its block address using the first N 
@@ -13,7 +20,12 @@ def blockwise_view( a, blockshape, require_aligned_blocks=True ):
     
     Args:
         a: The ND array
+
         blockshape: The tile shape
+        
+        aslist: If True, return all blocks as a list of ND blocks
+                instead of a 2D array indexed by ND block coordinate.
+
         require_aligned_blocks: If True, check to make sure no data is "left over" 
                                 in each row/column/etc. of the output view.
                                 That is, the blockshape must divide evenly into the full array shape.
@@ -48,7 +60,8 @@ def blockwise_view( a, blockshape, require_aligned_blocks=True ):
     """
     assert a.flags['C_CONTIGUOUS'], "This function relies on the memory layout of the array."
     blockshape = tuple(blockshape)
-    view_shape = tuple(numpy.array(a.shape) / blockshape) + blockshape
+    outershape = tuple(numpy.array(a.shape) / blockshape)
+    view_shape = outershape + blockshape
 
     if require_aligned_blocks:
         assert (numpy.mod(a.shape, blockshape) == 0).all(), \
@@ -63,9 +76,18 @@ def blockwise_view( a, blockshape, require_aligned_blocks=True ):
 
     # This is where the magic happens.
     # Generate a view with our new strides (outer+inner).
-    return numpy.lib.stride_tricks.as_strided(a, 
+    view = numpy.lib.stride_tricks.as_strided(a,
                                               shape=view_shape, 
                                               strides=(inter_block_strides+intra_block_strides))
+
+    # Special handling for VigraArrays
+    if _vigra_available and isinstance(a, vigra.VigraArray) and hasattr(a, 'axistags'):
+        view_axistags = vigra.AxisTags([vigra.AxisInfo() for _ in blockshape] + list(a.axistags))
+        view = vigra.taggedView(view, view_axistags)
+
+    if aslist:
+        return map(view.__getitem__, numpy.ndindex(outershape))
+    return view
 
 if __name__ == "__main__":
     import doctest

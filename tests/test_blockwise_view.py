@@ -69,6 +69,21 @@ def test_3d():
     c_order_copy = view.copy('C')
     assert c_order_copy.flags['C_CONTIGUOUS']
 
+
+def test_3d_aslist():
+    """
+    Verify that the blocks returned in the list format match the ones returned in the array format.
+    """
+    orig_data = numpy.random.random( (6, 9, 16) )
+    blockshape = (2,3,4)
+    final_shape = tuple(numpy.array(orig_data.shape) / blockshape) + blockshape
+    assert final_shape == (3,3,4,2,3,4), final_shape
+
+    array_view = blockwise_view( orig_data, blockshape )
+    block_list = blockwise_view( orig_data, blockshape, aslist=True )
+
+    assert (numpy.array(block_list) == array_view.reshape((-1,) + blockshape)).all()
+
 if __name__ == "__main__":
     import sys
     import nose
