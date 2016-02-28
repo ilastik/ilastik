@@ -94,7 +94,8 @@ def unique_edge_labels( all_edge_ids ):
         combined_df = pd.concat(all_dfs)
         combined_df.drop_duplicates(inplace=True)
 
-    # This sort isn't necessary, but it's convenient for debugging.
+    # This sort isn't necessary for most use-cases,
+    # but it's convenient for debugging.
     combined_df.sort(columns=['sp1', 'sp2'], inplace=True)
 
     # TODO: Instead of adding a new column here, we might save some RAM 
