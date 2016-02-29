@@ -76,7 +76,6 @@ class AnnotationsGui(LayerViewerGui):
         self._drawer.exportButton.pressed.connect(self._onExportButtonPressed)
         self._drawer.exportTifButton.pressed.connect(self._onExportTifButtonPressed)
         self._drawer.gotoLabel.pressed.connect(self._onGotoLabel)
-        self._drawer.nextUnlabeledButton.pressed.connect(self._onNextUnlabeledPressed)
         self._drawer.saveAnnotations.pressed.connect(self._onSaveAnnotations)
 
         self.editor.showCropLines(True)
@@ -138,12 +137,6 @@ class AnnotationsGui(LayerViewerGui):
                                        self,
                                        None ) ) 
         
-        mgr.register( "g", ActionInfo( shortcutGroupName,
-                                       "Go To Next Unlabeled Object",
-                                       "Go To Next Unlabeled Object",
-                                       self._onNextUnlabeledPressed,
-                                       self,
-                                       None ) )
     def __init__(self, parentApplet, topLevelOperatorView):
         self.topLevelOperatorView = topLevelOperatorView
         self._previousCrop = -1
@@ -1464,26 +1457,6 @@ class AnnotationsGui(LayerViewerGui):
         self._drawer.logOutput.moveCursor(QtGui.QTextCursor.End)
         logger.info( prompt )
 
-
-    def _onNextUnlabeledPressed(self):
-        nextCoords = None
-        for t in range(self.mainOperator.UntrackedImage.meta.shape[0]):            
-            roi = SubRegion(self.mainOperator.UntrackedImage, start=[t,0,0,0,0], stop=[t+1,] + list(self.mainOperator.UntrackedImage.meta.shape[1:]))
-            untrackedImage = self.mainOperator.UntrackedImage.get(roi).wait()
-            untrackedCoords = numpy.nonzero(untrackedImage)
-            # FIXME: assumes t,x,y,z,c                        
-            if len(untrackedCoords[1]) > 0:
-                nextCoords = [untrackedCoords[1][0], untrackedCoords[2][0], untrackedCoords[3][0]]
-                nextLabelT = t 
-                break
-        
-        if nextCoords is not None:
-            self._setPosModel(time=nextLabelT, slicingPos=nextCoords, cursorPos=nextCoords)
-            self.editor.navCtrl.panSlicingViews(nextCoords, [0,1,2])
-        else:
-            self._log('There are no more untracked objects! :-)')   
-        
-        
     def _criticalMessage(self, prompt):
         self.emit( QtCore.SIGNAL('postCriticalMessage(QString)'), prompt)
 
@@ -1497,7 +1470,6 @@ class AnnotationsGui(LayerViewerGui):
                    self._drawer.delTrack,
                    self._drawer.newTrack,
                    self._drawer.markMisdetection,
-                   self._drawer.nextUnlabeledButton,
                    self._drawer.divEvent,
                    ]
                 

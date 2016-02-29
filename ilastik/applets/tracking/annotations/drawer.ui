@@ -121,13 +121,6 @@
        </property>
       </widget>
      </item>
-     <item>
-      <widget class="QPushButton" name="nextUnlabeledButton">
-       <property name="text">
-        <string>Go to Next Unlabeled Object</string>
-       </property>
-      </widget>
-     </item>
     </layout>
    </item>
    <item row="4" column="0">
@@ -393,7 +386,6 @@
   <tabstop>delTrack</tabstop>
   <tabstop>divEvent</tabstop>
   <tabstop>markMisdetection</tabstop>
-  <tabstop>nextUnlabeledButton</tabstop>
   <tabstop>logOutput</tabstop>
   <tabstop>divisionsList</tabstop>
   <tabstop>timeBox</tabstop>
