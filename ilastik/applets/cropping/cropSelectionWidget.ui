@@ -417,7 +417,7 @@
         </sizepolicy>
        </property>
        <property name="text">
-        <string>Set Crop</string>
+        <string>Save Crop</string>
        </property>
       </widget>
      </item>
