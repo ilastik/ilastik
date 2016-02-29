@@ -252,13 +252,21 @@ class CroppingGui(LayerViewerGui):
         shortcutGroupName = "Cropping"
 
         if hasattr(self.croppingDrawerUi, "AddCropButton"):
-
-            mgr.register("a", ActionInfo( shortcutGroupName,
+            mgr.register("n", ActionInfo( shortcutGroupName,
                                           "New Crop",
-                                          "Add New Crop Class",
+                                          "Add a new crop.",
                                           self.croppingDrawerUi.AddCropButton.click,
                                           self.croppingDrawerUi.AddCropButton,
                                           self.croppingDrawerUi.AddCropButton ) )
+
+        if hasattr(self.croppingDrawerUi, "SetCropButton"):
+            mgr.register("s", ActionInfo( shortcutGroupName,
+                                          "Save Crop",
+                                          "Save the current crop.",
+                                          self.croppingDrawerUi.SetCropButton.click,
+                                          self.croppingDrawerUi.SetCropButton,
+                                          self.croppingDrawerUi.SetCropButton ) )
+
         self._cropShortcuts = []
 
     def _updateCropShortcuts(self):

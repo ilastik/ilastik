@@ -373,6 +373,9 @@
          <verstretch>0</verstretch>
         </sizepolicy>
        </property>
+       <property name="toolTip">
+        <string/>
+       </property>
        <property name="text">
         <string>New Crop</string>
        </property>
@@ -415,6 +418,9 @@
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
+       </property>
+       <property name="toolTip">
+        <string/>
        </property>
        <property name="text">
         <string>Save Crop</string>
