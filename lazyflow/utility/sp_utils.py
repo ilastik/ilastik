@@ -51,7 +51,11 @@ def edge_ids_for_axis(label_img, edge_mask, axis):
     Given an 'left-hand' edge_mask indicating where edges are located along the given axis,
     return an array of of edge ids (u,v) corresonding to the voxel ids of every voxel under the mask,
     in the same order as mask.nonzero().
-    The edge ids are sorted such that u < v. 
+    
+    The edge ids returned in scan-order (i.e. like .nonzero()), but are *not* sorted such that u < v.
+    Instead, each edge id (u,v) is ordered from 'left' to 'right'.
+    
+    Do get sorted ids, call edge_ids.sort(axis=1)
     """
     if axis < 0:
         axis += label_img.ndim
@@ -67,7 +71,9 @@ def edge_ids_for_axis(label_img, edge_mask, axis):
     edge_ids = np.ndarray(shape=(num_edges, 2), dtype=np.uint32 )
     edge_ids[:, 0] = label_img[left_slicing][edge_mask]
     edge_ids[:, 1] = label_img[right_slicing][edge_mask]
-    edge_ids.sort(axis=1)
+
+    # Do NOT sort. Edges are returned in left-to-right order.
+    # edge_ids.sort(axis=1)
 
     return edge_ids
 
@@ -138,6 +144,7 @@ def get_edge_ids( label_img ):
     for axis in range(label_img.ndim):
         edge_mask = edge_mask_for_axis(label_img, axis)
         edge_ids = edge_ids_for_axis(label_img, edge_mask, axis)
+        edge_ids.sort(axis=1)
         lookup = unique_edge_labels( [edge_ids] )
         all_edge_ids.append(lookup[['sp1', 'sp2']].values)
     final_edge_label_lookup_df = unique_edge_labels( all_edge_ids )
