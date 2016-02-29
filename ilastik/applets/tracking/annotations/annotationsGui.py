@@ -77,16 +77,12 @@ class AnnotationsGui(LayerViewerGui):
         self._drawer.exportTifButton.pressed.connect(self._onExportTifButtonPressed)
         self._drawer.gotoLabel.pressed.connect(self._onGotoLabel)
         self._drawer.nextUnlabeledButton.pressed.connect(self._onNextUnlabeledPressed)
-        self._drawer.initializeAnnotations.pressed.connect(self._onInitializeAnnotations)
         self._drawer.saveAnnotations.pressed.connect(self._onSaveAnnotations)
 
         self.editor.showCropLines(True)
         self.editor.cropModel.editableChanged.emit (False)
 
         self.editor.posModel.timeChanged.connect(self.updateTime)
-
-        #self._drawer.cropListModel.rowsRemoved.connect(self._onCropRemoved)
-        #self._drawer.cropListModel.elementSelected.connect(self._onCropSelected)
 
         self._cropListViewInit()
 
@@ -148,49 +144,6 @@ class AnnotationsGui(LayerViewerGui):
                                        self._onNextUnlabeledPressed,
                                        self,
                                        None ) )
-    def _onInitializeAnnotations(self):
-
-        if self.topLevelOperatorView.Annotations.value != {}:
-            logger.info("WARNING: All your annotations will be lost! You can save the project, then save it under a new name and continue without loss of current annotations.")
-            self.mainOperator.Annotations.setValue({})
-        self.mainOperator.Divisions.setValue({})
-        self.mainOperator.Labels.setValue({})
-
-        self.mainOperator.divisions = {}
-        #self.mainOperator.labels = {t:{} for t in range(self.mainOperator.LabelImage.meta.shape[0])}
-        self.labelsWithDivisions = {}
-        self.divs = []
-
-        self._cropListViewInit()
-        roi = {}
-        roi["start"]=(0,0,0,0,0)
-        roi["stop"]=self.mainOperator.TrackImage.meta.shape
-
-        self.divLock = False
-        self.misdetLock = False
-        self.misdetIdx = -1
-
-        self.mainOperator.initOutputs()
-
-        self._reset()
-
-        #self._onMetaChanged(self.mainOperator.LabelImage)
-
-        #self.mainOperator.setupOutputs()
-        #self._reset()
-
-        self.currentLabels = {}
-        self.currentDivisions = {}
-
-        self._setDirty(self.mainOperator.LabelImage, range(self.mainOperator.TrackImage.meta.shape[0]))
-        self._setDirty(self.mainOperator.Labels, range(self.mainOperator.TrackImage.meta.shape[0]))
-        self._setDirty(self.mainOperator.Divisions, range(self.mainOperator.TrackImage.meta.shape[0]))
-        self._setDirty(self.mainOperator.TrackImage, range(self.mainOperator.TrackImage.meta.shape[0]))
-        self._setDirty(self.mainOperator.UntrackedImage, range(self.mainOperator.TrackImage.meta.shape[0]))
-
-        self.setupLayers()
-        self._onCropSelected(0)
-
     def __init__(self, parentApplet, topLevelOperatorView):
         self.topLevelOperatorView = topLevelOperatorView
         self._previousCrop = -1

@@ -36,18 +36,7 @@
     <widget class="CropListView" name="cropListView"/>
    </item>
    <item row="1" column="0">
-    <layout class="QVBoxLayout" name="verticalLayout_8">
-     <item>
-      <widget class="QPushButton" name="initializeAnnotations">
-       <property name="enabled">
-        <bool>true</bool>
-       </property>
-       <property name="text">
-        <string>Initialize Training</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
+    <layout class="QVBoxLayout" name="verticalLayout_8"/>
    </item>
    <item row="2" column="0">
     <layout class="QVBoxLayout" name="verticalLayout_9">
