@@ -9,8 +9,8 @@ try:
 except ImportError:
     # For now, pandas is optional, but Rag doesn't work without it.
     _has_pandas = False
-
-from lazyflow.utility.rag import Rag
+else:
+    from lazyflow.utility.rag import Rag
 
 class TestRag(object):
     
