@@ -447,7 +447,7 @@ class Rag(object):
         Given a DataFrame with edge features and another DataFrame with superpixel features,
         add columns to the edge_df for each of the specified (superpixel) feature names.
         
-        For each sp feature, two columns are added to the output, for the sum and difference
+        For each sp feature, two columns are added to the output, for the sum and (absolute) difference
         between the feature values for the two superpixels adjacent to the edge.
         (See 'output' feature naming convention notes above for column names.)
 
@@ -488,8 +488,8 @@ class Rag(object):
             edge_df['sp_' + sp_feature + '_sum'] = sp_feature_sum
     
             sp_feature_difference = edge_df['sp_' + sp_feature + '_sp1'].values - edge_df['sp_' + sp_feature + '_sp2'].values
+            sp_feature_difference = np.abs(sp_feature_difference, out=sp_feature_difference)
             if sp_feature in ('count', 'sum'):
-                sp_feature_difference = np.abs(sp_feature_difference, out=sp_feature_difference)
                 sp_feature_difference = np.power(sp_feature_difference, np.float32(1./ndim), out=sp_feature_difference)
             edge_df['sp_' + sp_feature + '_difference'] = sp_feature_difference
     

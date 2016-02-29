@@ -98,6 +98,18 @@ class TestRag(object):
             assert sp_sum_sum == np.power(sp1*sp_counts[sp1] + sp2*sp_counts[sp2], 1./superpixels.ndim)
             assert sp_sum_difference == np.power(np.abs(sp1*sp_counts[sp1] - sp2*sp_counts[sp2]), 1./superpixels.ndim)
 
+        # MEAN
+        features_df = rag.compute_highlevel_features(values, ['sp_mean'])
+        assert len(features_df) == len(rag.edge_ids)
+        assert (features_df.columns.values == ['sp1', 'sp2', 'sp_mean_sum', 'sp_mean_difference']).all()
+        assert (features_df[['sp1', 'sp2']].values == rag.edge_ids).all()
+
+        # No normalization for other features...
+        # Should there be?
+        for index, sp1, sp2, sp_mean_sum, sp_mean_difference in features_df.itertuples():
+            assert sp_mean_sum == sp1 + sp2
+            assert sp_mean_difference == np.abs(np.float32(sp1) - sp2)
+
     def test_edge_features(self):
         superpixels = self.generate_superpixels((100,200), 200)
         rag = Rag( superpixels )
