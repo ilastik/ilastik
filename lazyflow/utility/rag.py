@@ -280,7 +280,7 @@ class Rag(object):
 
     def _accumulate_edge_vigra_features(self, value_img, vigra_feature_names):
         """
-        Return a vigra RegionFeaturesAccumulator with the results of all features.
+        Return a vigra RegionFeaturesAccumulator with the results of all features,
         computed over the edge pixels of the given value_img.
         The accumulator's 'region' indexes will correspond to self.edge_label_lookup_df['edge_label']
         
@@ -291,94 +291,40 @@ class Rag(object):
         
         vigra_feature_names: Feature names exactly as passed to vigra.analysis.extractRegionFeatures()
         """
-        logger.debug("Computing per-axis features...")
+        # Must extract all edge values first,
+        # so we can compute a global histogram_range
+        all_edge_values = []
+        for axis_data in self.axis_edge_datas:
+            logger.debug("Axis {}: Extracting values...".format( axis_data.axis ))
+            all_edge_values.append( extract_edge_values_for_axis(axis_data.axis, axis_data.mask, value_img) )
 
+        histogram_range = "globalminmax"
+        if set(['quantiles', 'histogram']) & set(vigra_feature_names):
+            logger.info("Computing global histogram range...")
+            histogram_range = [min(map(lambda values: values.min(), all_edge_values)),
+                               max(map(lambda values: values.max(), all_edge_values))]
+        
         axis_accumulators = []
-        histogram_range = None
-        for axis in range(self.label_img.ndim):
-            # The histogram_range is computed from the first axis edges,
-            # and re-used for subsequent axes.
-            # (The histogram_range for any given axis will be close enough to the global 
-            # histogram_range, except for pathological cases, such as rectangular superpixels.)
-            acc, histogram_range = self._compute_edge_vigra_features_along_axis( axis,
-                                                                                value_img,
-                                                                                vigra_feature_names,
-                                                                                histogram_range )
+        for axis_info, edge_values in zip(self.axis_edge_datas, all_edge_values):
+            # We could use the default pandas index, but that's int64
+            # Forcing uint32 for the index should save RAM.
+            index_u32 = pd.Index(np.arange(len(axis_info.ids)), dtype=np.uint32)
+            df_edges = pd.DataFrame(axis_info.ids, columns=['sp1', 'sp2'], index=index_u32)
+            df_edges_with_labels = pd.merge(df_edges, axis_info.label_lookup, on=['sp1', 'sp2'], how='left')
+            edge_labels = df_edges_with_labels['edge_label'].values
+            assert edge_values.shape == edge_labels.shape
+        
+            logger.debug("Axis {}: Computing region features...".format( axis_info.axis ))
+            # Must add singleton y-axis here because vigra doesn't support 1D data
+            acc = vigra.analysis.extractRegionFeatures( edge_values.reshape((1,-1), order='A'),
+                                                        edge_labels.reshape((1,-1), order='A'),
+                                                        #ignoreLabel=0, # Would be necessary if we were working with the dense edge mask image instead of extracted labels.
+                                                        features=vigra_feature_names,
+                                                        histogramRange=histogram_range )
             axis_accumulators.append(acc)
 
         final_acc = self._merge_edge_vigra_features( axis_accumulators )
         return final_acc
-
-    def _compute_edge_vigra_features_along_axis(self, axis, value_img, vigra_feature_names, histogram_range=None):
-        """
-        Find the edges in the direction of the given axis and
-        compute region features for the pixels adjacent to the edges.
-        
-        Returns a tuple:
-
-         - A vigra RegionFeaturesAccumulator containing the edge statistics.
-           Each edge will be assigned a unique label id (an integer).
-
-         - The histogram range that was used for any histogram features.
-           (See parameter explanation below.)
-
-        Parameters
-        ----------
-        axis: The axis to compute features along.
-        
-        value_img: ND array, same shape as self.label_img.
-                   Pixel values are converted to float32 internally.
-        
-        vigra_feature_names: Feature names exactly as passed to vigra.analysis.extractRegionFeatures()
-        
-        histogram_range: If None, histogram_range will be determined automatically as needed (and returned).
-                         Otherwise, must be a range [min,max] to use for all histogram features (e.g. 'quantiles').
-                         In that case, the returned histogram_range will simply be identical to the one you gave.
-        """
-        _axis, edge_mask, edge_ids, edge_label_lookup = self.axis_edge_datas[axis]
-        assert _axis == axis
-    
-        for feature_name in vigra_feature_names:
-            for nonsupported_name in ('coord', 'region'):
-                # This could be fixed by the following:
-                # - Combine the mask and edge_labels into a label volume (same shape as mask)
-                # - Compute coordinate-based features separately
-                # - Edges with multiple 'faces' will have strange or undefined coordinate features.
-                # - If *weighted* coordinate-based features are also needed, then need to combine 
-                #   mask and edge_values into a edge_value volume (same shape as mask)
-                # But the performance implications could be severe...
-                assert nonsupported_name not in feature_name.lower(), \
-                    "Coordinate-based edge features are not currently supported!"
-    
-        edge_values = extract_edge_values_for_axis(axis, edge_mask, value_img)
-    
-        # We could use the default pandas index, but that's int64
-        # Forcing uint32 for the index should save RAM.
-        index_u32 = pd.Index(np.arange(len(edge_ids)), dtype=np.uint32)
-        df_edges = pd.DataFrame(edge_ids, columns=['sp1', 'sp2'], index=index_u32)
-        df_edges_with_labels = pd.merge(df_edges, edge_label_lookup, on=['sp1', 'sp2'], how='left')
-        edge_labels = df_edges_with_labels['edge_label'].values
-    
-        # Sanity check
-        assert edge_values.shape == edge_labels.shape
-    
-        if not histogram_range and set(['quantiles', 'histogram']) & set(vigra_feature_names):
-            histogram_range = [float(edge_values.min()), float(edge_values.max())]
-    
-        if not histogram_range:
-            # Not using a histogram, but vigra needs a default value.
-            histogram_range = "globalminmax"
-        
-        logger.debug("Axis {}: Computing region features...".format( axis ))
-        # Must add singleton y-axis here because vigra doesn't support 1D data
-        acc = vigra.analysis.extractRegionFeatures( edge_values.reshape((1,-1), order='A'),
-                                                    edge_labels.reshape((1,-1), order='A'),
-                                                    #ignoreLabel=0, # Would be necessary if we were working with the full image.
-                                                    features=vigra_feature_names,
-                                                    histogramRange=histogram_range )
-        
-        
-        return acc, histogram_range
 
     def _compute_highlevel_sp_features(self, value_img, generic_vigra_feature_names):
         """
