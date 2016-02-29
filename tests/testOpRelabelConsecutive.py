@@ -4,6 +4,14 @@ from lazyflow.operators import OpRelabelConsecutive
 
 class TestOpRelabelConsecutive(object):
     
+    @classmethod
+    def setupClass(cls):
+        try:
+            import pandas
+        except ImportError:
+            import nose
+            raise nose.SkipTest
+    
     def test_simple(self):
         op = OpRelabelConsecutive(graph=Graph())
         

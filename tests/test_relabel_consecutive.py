@@ -2,6 +2,11 @@ import numpy as np
 from lazyflow.utility import relabel_consecutive
 
 def test_relabel_consecutive():
+    try:
+        import pandas
+    except ImportError:
+        import nose
+        raise nose.SkipTest
     labels = np.array([1,1,2,3], dtype=np.uint32)
     relabeled = relabel_consecutive(labels, start_label=1)
     assert (relabeled == [1,1,2,3]).all()

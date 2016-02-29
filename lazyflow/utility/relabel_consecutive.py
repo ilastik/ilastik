@@ -1,4 +1,3 @@
-import pandas as pd
 import vigra
 
 def relabel_consecutive(label_img, start_label=0, out=None):
@@ -6,7 +5,9 @@ def relabel_consecutive(label_img, start_label=0, out=None):
     Relabel the given label_img to have consectuive label values.
     start_label: The lowest label value in the returned array.
     """
-    # pandas.Series.unique() is 2x faster than numpy.unique(), even after manual sort
+    import pandas as pd
+    
+    # pandas.Series.unique() is 2x faster than numpy.unique(), even after explicit sort
     unique_labels = pd.Series(label_img.reshape((-1), order='A')).unique()
     unique_labels.sort()
 
