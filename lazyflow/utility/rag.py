@@ -310,7 +310,7 @@ class Rag(object):
             # Forcing uint32 for the index should save RAM.
             index_u32 = pd.Index(np.arange(len(axis_info.ids)), dtype=np.uint32)
             df_edges = pd.DataFrame(axis_info.ids, columns=['sp1', 'sp2'], index=index_u32)
-            df_edges_with_labels = pd.merge(df_edges, axis_info.label_lookup, on=['sp1', 'sp2'], how='left')
+            df_edges_with_labels = pd.merge(df_edges, axis_info.label_lookup, on=['sp1', 'sp2'], how='left') # pd.merge() is like SQL 'join'
             edge_labels = df_edges_with_labels['edge_label'].values
             assert edge_values.shape == edge_labels.shape
         
@@ -375,6 +375,7 @@ class Rag(object):
         for acc, this_axis_lookup_df in zip(axis_accumulators, edge_label_lookups):
             # Columns of this combined_lookup_df will be:
             # ['sp1', 'sp2', 'edge_label_this_axis', 'edge_label_final']
+            # note: pd.merge() is like a SQL 'join' operation.
             combined_lookup_df = pd.merge( this_axis_lookup_df,
                                            self._final_edge_label_lookup_df,
                                            on=['sp1', 'sp2'],
@@ -474,6 +475,7 @@ class Rag(object):
               Used to normalize the 'count' and 'sum' features.
         """
         # Add two columns to the edge_df for every sp_df column (for sp1 and sp2)
+        # note: pd.merge() is like a SQL 'join' operation.
         edge_df = pd.merge( edge_df, sp_df, left_on=['sp1'], right_on=['sp_id'], how='left', copy=False)
         edge_df = pd.merge( edge_df, sp_df, left_on=['sp2'], right_on=['sp_id'], how='left', copy=False, suffixes=('_sp1', '_sp2'))
         del edge_df['sp_id_sp1']
@@ -481,16 +483,22 @@ class Rag(object):
     
         # Now create sum/difference columns
         for sp_feature in generic_vigra_features:
-            sp_feature_sum = edge_df['sp_' + sp_feature + '_sp1'].values + edge_df['sp_' + sp_feature + '_sp2'].values
+            sp_feature_sum = ( edge_df['sp_' + sp_feature + '_sp1'].values
+                             + edge_df['sp_' + sp_feature + '_sp2'].values )
             if sp_feature in ('count', 'sum'):
                 # Special case for count
-                sp_feature_sum = np.power(sp_feature_sum, np.float32(1./ndim), out=sp_feature_sum)
+                sp_feature_sum = np.power(sp_feature_sum,
+                                          np.float32(1./ndim),
+                                          out=sp_feature_sum)
             edge_df['sp_' + sp_feature + '_sum'] = sp_feature_sum
     
-            sp_feature_difference = edge_df['sp_' + sp_feature + '_sp1'].values - edge_df['sp_' + sp_feature + '_sp2'].values
+            sp_feature_difference = ( edge_df['sp_' + sp_feature + '_sp1'].values
+                                    - edge_df['sp_' + sp_feature + '_sp2'].values )
             sp_feature_difference = np.abs(sp_feature_difference, out=sp_feature_difference)
             if sp_feature in ('count', 'sum'):
-                sp_feature_difference = np.power(sp_feature_difference, np.float32(1./ndim), out=sp_feature_difference)
+                sp_feature_difference = np.power(sp_feature_difference,
+                                                 np.float32(1./ndim),
+                                                 out=sp_feature_difference)
             edge_df['sp_' + sp_feature + '_difference'] = sp_feature_difference
     
             # Don't need these any more
