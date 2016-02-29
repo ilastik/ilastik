@@ -26,7 +26,7 @@ def test_2d():
     blocks=numpy.lib.stride_tricks.as_strided(a, shape=shape, strides=strides)
     logger.debug("reference blocks:\n{}".format(blocks))
     
-    view = blockwise_view(a, (bh,bw), False)
+    view = blockwise_view(a, (bh,bw), require_aligned_blocks=False)
     logger.debug("blockwise_view:\n{}".format(view))
     
     assert view.shape == blocks.shape
