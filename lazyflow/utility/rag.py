@@ -206,7 +206,7 @@ class Rag(object):
                                 All 'sp' feature names result in *two* output columns, for the sum and difference
                                 between the two superpixels adjacent to the edge.
                                 
-                                As a special case, the 'sp_count' feature is reduced via cube-root
+                                As a special case, the 'sp_count' feature is reduced via cube-root (or square-root)
                                 (as done in the multicut paper). Same goes for the 'sp_sum' feature.
         """
         assert hasattr(value_img, 'axistags'), \
@@ -222,7 +222,7 @@ class Rag(object):
 
         # Merge
         if sp_df is not None:
-            edge_df = Rag._append_sp_features_onto_edge_features( edge_df, sp_df, sp_generic_vigra_feature_names )
+            edge_df = Rag._append_sp_features_onto_edge_features( edge_df, sp_df, sp_generic_vigra_feature_names, self.label_img.ndim )
 
         return edge_df
 
@@ -496,7 +496,7 @@ class Rag(object):
                 df[output_name] = acc[generic_name]
 
     @classmethod
-    def _append_sp_features_onto_edge_features(cls, edge_df, sp_df, generic_vigra_features):
+    def _append_sp_features_onto_edge_features(cls, edge_df, sp_df, generic_vigra_features, ndim):
         """
         Given a DataFrame with edge features and another DataFrame with superpixel features,
         add columns to the edge_df for each of the specified (superpixel) feature names.
@@ -506,7 +506,7 @@ class Rag(object):
         (See 'output' feature naming convention notes above for column names.)
 
         As a special case, the 'count' and 'sum' sp features are normalized first by taking
-        their cube roots, as indicated in the Multicut paper.
+        their cube roots (or square roots), as indicated in the Multicut paper.
         
         Returns the augmented edge_df.
 
@@ -523,6 +523,9 @@ class Rag(object):
         generic_vigra_features: Superpixel feature names without 'sp_' prefix or '_sp1' suffix,
                                  but possibly with quantile suffix, e.g. '_25'.
                                  See feature naming convention notes above for details.
+        
+        ndim: The dimensionality of the original label volume (an integer).
+              Used to normalize the 'count' and 'sum' features.
         """
         # Add two columns to the edge_df for every sp_df column (for sp1 and sp2)
         edge_df = pd.merge( edge_df, sp_df, left_on=['sp1'], right_on=['sp_id'], how='left', copy=False)
@@ -535,13 +538,13 @@ class Rag(object):
             sp_feature_sum = edge_df['sp_' + sp_feature + '_sp1'].values + edge_df['sp_' + sp_feature + '_sp2'].values
             if sp_feature in ('count', 'sum'):
                 # Special case for count
-                sp_feature_sum = np.power(sp_feature_sum, np.float32(1./3), out=sp_feature_sum)
+                sp_feature_sum = np.power(sp_feature_sum, np.float32(1./ndim), out=sp_feature_sum)
             edge_df['sp_' + sp_feature + '_sum'] = sp_feature_sum
     
             sp_feature_difference = edge_df['sp_' + sp_feature + '_sp1'].values - edge_df['sp_' + sp_feature + '_sp2'].values
             if sp_feature in ('count', 'sum'):
                 sp_feature_difference = np.abs(sp_feature_difference, out=sp_feature_difference)
-                sp_feature_difference = np.power(sp_feature_difference, np.float32(1./3), out=sp_feature_difference)
+                sp_feature_difference = np.power(sp_feature_difference, np.float32(1./ndim), out=sp_feature_difference)
             edge_df['sp_' + sp_feature + '_difference'] = sp_feature_difference
     
             # Don't need these any more
