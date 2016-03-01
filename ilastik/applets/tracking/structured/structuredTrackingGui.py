@@ -183,6 +183,10 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._drawer.appearanceBox.setValue(self._appearanceWeight)
         self._drawer.disappearanceBox.setValue(self._disappearanceWeight)
 
+        self._drawer.ZerosButton.setToolTip("Initial weights are chosen as all zeros.")
+        self._drawer.RandomButton.setToolTip("Initial weights are chosen randomly on the interval (0,1).")
+        self._drawer.OnesButton.setToolTip("Initial weights are chosen uniformly (normalized all ones vector).")
+
         self._maxNumObj = self.topLevelOperatorView.MaxNumObj.value
         self._drawer.maxObjectsBox.setValue(self.topLevelOperatorView.MaxNumObj.value)
         self._onMaxObjectsBoxChanged()
