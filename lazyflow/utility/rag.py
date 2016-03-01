@@ -67,6 +67,9 @@ class Rag(object):
                    Label values do not need to be consecutive, but *excessively* high label values
                    will require extra RAM when computing features, due to zeros in the RegionFeatureAccumulators.
         """
+        if isinstance(label_img, str) and label_img == '__will_deserialize__':
+            return
+
         assert hasattr(label_img, 'axistags'), \
             "For optimal performance, make sure label_img is a VigraArray with accurate axistags"
         assert set(label_img.axistags.keys()).issubset('zyx'), \
@@ -92,29 +95,25 @@ class Rag(object):
             edge_datas.append( (edge_mask_coords, edge_ids, edge_forwardness) )
 
         self._init_final_edge_label_lookup_df(edge_datas)
+        self._init_final_edge_ids()
         self._init_axial_edge_dfs(edge_datas)
-        
-        # Cache the unique sp ids to expose as an attribute
-        unique_left = self._final_edge_label_lookup_df['sp1'].unique()
-        unique_right = self._final_edge_label_lookup_df['sp2'].unique()
-        self._sp_ids = pd.Series( np.concatenate((unique_left, unique_right)) ).unique()
-        self._sp_ids.sort()
-        
-        # We don't assume that SP ids are consecutive,
-        # so num_sp is not the same as label_img.max()        
-        self._num_sp = len(self._sp_ids)
-        self._max_sp = self._sp_ids.max()
-        
+        self._init_sp_attributes()
+    
     def _init_final_edge_label_lookup_df(self, edge_datas):
         """
         Initialize the edge_label_lookup_df attribute.
         """
         all_edge_ids = map(lambda t: t[1], edge_datas)
-        final_edge_label_lookup_df = unique_edge_labels( all_edge_ids )
+        self._final_edge_label_lookup_df = unique_edge_labels( all_edge_ids )
 
+    def _init_final_edge_ids(self):
+        """
+        Initialize the edge_ids, and as a little optimization, RE-initialize the 
+        final_edge_lookup, so its columns can be a view of the edge_ids
+        """
         # Tiny optimization:
         # Users will be accessing edge_ids over and over, so let's extract them now
-        self._edge_ids = final_edge_label_lookup_df[['sp1', 'sp2']].values
+        self._edge_ids = self._final_edge_label_lookup_df[['sp1', 'sp2']].values
 
         # Now, to avoid having multiple copies of _edge_ids in RAM,
         # re-create final_edge_label_lookup_df using the cached edge_ids array
@@ -122,7 +121,7 @@ class Rag(object):
         self._final_edge_label_lookup_df = pd.DataFrame( index=index_u32,
                                                          data={'sp1': self._edge_ids[:,0],
                                                                'sp2': self._edge_ids[:,1],
-                                                               'edge_label': final_edge_label_lookup_df['edge_label'].values } )
+                                                               'edge_label': self._final_edge_label_lookup_df['edge_label'].values } )
 
     def _init_axial_edge_dfs(self, edge_datas):
         """
@@ -156,7 +155,19 @@ class Rag(object):
             axial_edge_df.columns = pd.MultiIndex.from_tuples(list(zip(*combined_columns)))
 
             self.axial_edge_dfs.append( axial_edge_df )
+
+    def _init_sp_attributes(self):
+        # Cache the unique sp ids to expose as an attribute
+        unique_left = self._final_edge_label_lookup_df['sp1'].unique()
+        unique_right = self._final_edge_label_lookup_df['sp2'].unique()
+        self._sp_ids = pd.Series( np.concatenate((unique_left, unique_right)) ).unique()
+        self._sp_ids.sort()
         
+        # We don't assume that SP ids are consecutive,
+        # so num_sp is not the same as label_img.max()        
+        self._num_sp = len(self._sp_ids)
+        self._max_sp = self._sp_ids.max()
+
     @property
     def label_img(self):
         return self._label_img
@@ -185,13 +196,6 @@ class Rag(object):
     def edge_label_lookup_df(self):
         return self._final_edge_label_lookup_df
 
-    def serialize_hdf5(self, h5py_group):
-        raise NotImplementedError # FIXME
-
-    @classmethod
-    def deserialize_hdf5(cls, h5py_group):
-        raise NotImplementedError # FIXME
-
     def edge_decisions_from_groundtruth(self, groundtruth_vol, asdict=False):
         """
         Given a reference segmentation, return a boolean array of "decisions"
@@ -203,7 +207,7 @@ class Rag(object):
         
         If asdict=True, return the result as a dict of {(sp1, sp2) : bool}
         """
-        sp_to_gt_mapping = label_vol_mapping(self.label_img, groundtruth_vol)
+        sp_to_gt_mapping = label_vol_mapping(self._label_img, groundtruth_vol)
 
         unique_sp_edges = self.edge_ids
         decisions = sp_to_gt_mapping[unique_sp_edges[:, 0]] != sp_to_gt_mapping[unique_sp_edges[:, 1]]
@@ -219,7 +223,7 @@ class Rag(object):
         
         Parameters
         ----------
-        value_img: ND array, same shape as Rag.label_img.
+        value_img: ND array, same shape as self.label_img.
                    Pixel values are converted to float32 internally.
         
         highlevel_feature_names: A list of feaature names to compute.
@@ -251,7 +255,7 @@ class Rag(object):
         """
         assert hasattr(value_img, 'axistags'), \
             "For optimal performance, make sure value_img is a VigraArray with accurate axistags"
-        assert self.label_img.axistags.keys() == value_img.axistags.keys(), \
+        assert self._label_img.axistags.keys() == value_img.axistags.keys(), \
             "value_img must have same axistags as label_img (in the same order)"
         
         # Get generic names for each category (edge/sp)
@@ -264,7 +268,7 @@ class Rag(object):
 
         # Merge
         if sp_df is not None:
-            edge_df = Rag._append_sp_features_onto_edge_features( edge_df, sp_df, sp_generic_vigra_feature_names, self.label_img.ndim )
+            edge_df = Rag._append_sp_features_onto_edge_features( edge_df, sp_df, sp_generic_vigra_feature_names, self._label_img.ndim )
         return edge_df
 
     ##
@@ -428,7 +432,7 @@ class Rag(object):
         
         value_img = value_img.astype(np.float32, copy=False)
         acc = vigra.analysis.extractRegionFeatures( value_img.reshape((1,-1), order='A'),
-                                                    self.label_img.reshape((1,-1), order='A'),
+                                                    self._label_img.reshape((1,-1), order='A'),
                                                     features=vigra_feature_names )
         return acc
 
@@ -561,7 +565,162 @@ class Rag(object):
         # drop duplicates (from multiple quantile selections)
         return list(set(vigra_feature_names))
 
+    def serialize_hdf5(self, h5py_group, store_labels=False, compression='lzf', compression_opts=None):
+        """
+        Serialize the Rag to the given hdf5 group.
 
+        store_labels: If True, the labels will be stored as a (compressed) h5py Dataset.
+                      If False, the labels are *not* stored, but you are responsible 
+                      for loading them separately when calling dataframe_to_hdf5(),
+                      unless you don't plan to use superpixel features.
+        """
+        # Edge DFs
+        axial_df_parent_group = h5py_group.create_group('axial_edge_dfs')
+        for axis, axial_edge_df in enumerate(self.axial_edge_dfs):
+            df_group = axial_df_parent_group.create_group('{}'.format(axis))
+            Rag.dataframe_to_hdf5(df_group, axial_edge_df)
+
+        # Final lookup DF
+        lookup_df_group = h5py_group.create_group('final_edge_label_lookup_df')
+        Rag.dataframe_to_hdf5(lookup_df_group, self._final_edge_label_lookup_df)
+
+        # label_img metadata
+        labels_dset = h5py_group.create_dataset('label_img',
+                                                shape=self._label_img.shape,
+                                                dtype=self._label_img.dtype,
+                                                compression=compression,
+                                                compression_opts=compression_opts)
+        labels_dset.attrs['axistags'] = self.label_img.axistags.toJSON()
+        labels_dset.attrs['valid_data'] = False
+
+        # label_img contents        
+        if store_labels:
+            # Copy and compress.
+            labels_dset[:] = self._label_img
+            labels_dset.attrs['valid_data'] = True
+
+    @classmethod
+    def deserialize_hdf5(cls, h5py_group, label_img=None):
+        """
+        Classmethod.
+        
+        Deserialize the Rag from the given h5py group,
+        which was written via Rag.serialize_to_hdf5.
+
+        label_img: If not None, don't load labels from hdf5, use this volume instead.
+                   Useful for when serialize_hdf5() was called with store_labels=False. 
+        """
+        rag = Rag('__will_deserialize__')
+        
+        # Edge DFs
+        rag.axial_edge_dfs =[]
+        axial_df_parent_group = h5py_group['axial_edge_dfs']
+        for groupname, df_group in sorted(axial_df_parent_group.items()):
+            rag.axial_edge_dfs.append( Rag.dataframe_from_hdf5(df_group) )
+
+        # Final lookup DF
+        rag._final_edge_label_lookup_df = Rag.dataframe_from_hdf5( h5py_group['final_edge_label_lookup_df'] )
+        
+        # label_img
+        label_dset = h5py_group['label_img']
+        axistags = vigra.AxisTags.fromJSON(label_dset.attrs['axistags'])
+        if label_dset.attrs['valid_data']:
+            assert not label_img, \
+                "The labels were already stored to hdf5. Why are you also providing them externally?"
+            label_img = label_dset[:]
+            rag._label_img = vigra.taggedView( label_img, axistags )
+        elif label_img is not None:
+            assert hasattr(label_img, 'axistags'), \
+                "For optimal performance, make sure label_img is a VigraArray with accurate axistags"
+            assert set(label_img.axistags.keys()).issubset('zyx'), \
+                "Only axes z,y,x are permitted, not {}".format( label_img.axistags.keys() )
+            rag._label_img = label_img
+        else:
+            rag._label_img = Rag._EmptyLabels(label_dset.shape, label_dset.dtype, axistags)
+
+        # Other attributes
+        rag._init_final_edge_ids()
+        rag._init_sp_attributes()
+
+        return rag
+
+    @classmethod
+    def dataframe_to_hdf5(cls, h5py_group, df):
+        """
+        Helper function to serialize a pandas.DataFrame to an h5py.Group.
+
+        Known to work for the DataFrames used in this file,
+        including the MultiIndex columns in the axial_edge_dfs.
+        Not tested with more complicated DataFrame structures. 
+        """
+        h5py_group['row_index'] = df.index.values
+        h5py_group['column_index'] = repr(df.columns.values)
+        columns_group = h5py_group.create_group('columns')
+        for col_index, col_name in enumerate(df.columns.values):
+            columns_group['{:03}'.format(col_index)] = df[col_name].values
+
+    @classmethod
+    def dataframe_from_hdf5(cls, h5py_group):
+        """
+        Helper function to deserialize a pandas.DataFrame from an h5py.Group,
+        as written by Rag.dataframe_to_hdf5().
+
+        Known to work for the DataFrames used in this file,
+        including the MultiIndex columns in the axial_edge_dfs.
+        Not tested with more complicated DataFrame structures. 
+        """
+        from numpy import array # We use eval() for the column index, which uses 'array'
+        row_index_values = h5py_group['row_index'][:]
+        column_index_names = list(eval(h5py_group['column_index'][()]))
+        if isinstance(column_index_names[0], np.ndarray):
+            column_index_names = map(tuple, column_index_names)
+            column_index = pd.MultiIndex.from_tuples(column_index_names)
+        elif isinstance(column_index_names[0], str):
+            column_index = column_index_names
+        else:
+            raise NotImplementedError("I don't know how to handle that type of column index.: {}"
+                                      .format(h5py_group['column_index'][()]))
+
+        columns_group = h5py_group['columns']
+        col_values = []
+        for _, col_values_dset in sorted(columns_group.items()):
+            col_values.append( col_values_dset[:] )
+        
+        return pd.DataFrame( index=row_index_values,
+                             columns=column_index,
+                             data={ name: values for name,values in zip(column_index_names, col_values) } )
+
+    class _EmptyLabels(object):
+        """
+        A little stand-in for a labels object, in case the user wants
+        to deserialize the Rag without a copy of the original labels.
+        All functions in Rag can work with this object, except for
+        SP computation, which needs the original label image.
+        """
+        def __init__(self, shape, dtype, axistags):
+            object.__setattr__(self, 'shape', shape)
+            object.__setattr__(self, 'dtype', dtype)
+            object.__setattr__(self, 'axistags', axistags)
+            object.__setattr__(self, 'ndim', len(shape))
+
+        def _raise_NotImplemented(self, *args, **kwargs):
+            raise NotImplementedError("Labels were not deserialized from hdf5.")
+        
+        # Accessing any function or attr other than those defined in __init__ will fail.
+        __add__ = __radd__ = __mul__ = __rmul__ = __div__ = __rdiv__ = \
+        __truediv__ = __rtruediv__ = __floordiv__ = __rfloordiv__ = \
+        __mod__ = __rmod__ = __pos__ = __neg__ = __call__ = \
+        __getitem__ = __lt__ = __le__ = __gt__ = __ge__ = \
+        __complex__ = __pow__ = __rpow__ = \
+        __str__ = __repr__ = __int__ = __float__ = \
+        __setattr__ = \
+            _raise_NotImplemented
+        
+        def __getattr__(self, k):
+            try:
+                return object.__getattr__(self, k)
+            except AttributeError:
+                self._raise_NotImplemented()
 
 if __name__ == "__main__":
     import sys
