@@ -15,15 +15,7 @@ class Rag(object):
     
     Initialized with an ND label image of superpixels, and stores
     the edges between superpixels.
-    
-    Internally, the edges along each axis are found and stored separately.
-    (See the Rag.AxisEdgeData type.)
-    
-    TODO: - Should SP features like 'mean' be weighted by SP size 
-            before averaged across the edge?
-          - Support for anisotropic features will be easy.
-            Need to add 'axes' parameter to compute_highlevel_features()
-    
+
     Attributes
     ----------
     label_img: The label volume
@@ -55,6 +47,66 @@ class Rag(object):
                         'mask_coord': N columns (e.g. 'z', 'y', 'x') using a multi-level index.
                                       Stores coordinates of pixel just to the 'left' of
                                       each pixel edge (or 'before', 'above', etc. depending on the axis).
+
+    Implementation notes
+    --------------------
+    Internally, the edges along each axis are found independently and stored
+    in separate pandas.DataFrame objects (one per axis in the volume).
+    Every pixel face between two different superpixels is stored as a separate
+    row in one of those DataFrames.
+    
+    This data structure's total RAM usage is proportional to the number of
+    pixel faces on superpixel boundaries in the volume (i.e. the manhattan 
+    distance of all superpixel boundaries interior to the label volume).
+    It needs about 23 bytes per pixel face. (Each DataFrame row is 23 bytes.)
+    
+    Here are some example stats for a typical 512^3 cube of isotropic EM data:
+    - 7534 superpixels
+    - 53354 edges between superpixels
+    - 19926582 (~20 million) individual edge pixel faces
+    
+    So, to handle that 0.5 GB label volume, this datastructure needs:
+    20e6 pixel faces * 23 bytes == 0.46 GB of storage.
+    
+    Obviously, a volume with smaller superpixels will require more storage.
+    
+    Limitations
+    -----------
+    - This representation does not check for edge contiguity, so if two 
+      superpixels are connected via multiple 'faces', those faces will both
+      be lumped into one 'edge'.
+
+    - Coordinate-based features (e.g. RegionRadii) are not supported yet,
+      for superpixels or edges.
+
+    - No special treatment for anisotropic data yet.
+
+    - No support for parallelization yet.
+    
+    TODO
+    ----
+    - Should SP features like 'mean' be weighted by SP size 
+      before computing '_sum' and '_difference' columns for each edge?
+    
+    - Need to change API to allow custom feature functions.
+    
+    - Coordinate-based SP features would be easy to add (using vigra), but they aren't supported yet.
+    
+    - Coordinate-based edge features could be added without too much trouble, but not using vigra.
+    
+    - edge_count is computed 'manhattan' style, meaning that it
+      is sensitive to the edge orientation (and so is edge_sum).
+      Should we try to compensate for that somehow?
+      Hmm... probably not. If we implement a RegionRadii edge feature,
+      that's more informative than edge_count anyway, as long as it is
+      implemented correctly (e.g. be sure to de-duplicate the edge coords
+      after concatenating the edge points from each axis)
+    
+    - Basic support for anisotropic features will be easy, but perhaps not RAM efficient.
+      Need to add 'axes' parameter to compute_highlevel_features().
+    
+    - Adding a function to merge two Rags should be trivial, if it seems useful
+      (say, for parallelizing construction.)
     """
 
     def __init__( self, label_img ):
@@ -244,7 +296,7 @@ class Rag(object):
 
         # Compute
         edge_df = self._compute_highlevel_edge_features(value_img, edge_generic_vigra_feature_names)        
-        sp_df = self._compute_highlevel_sp_features(value_img, sp_generic_vigra_feature_names)
+        sp_df = self._compute_generic_sp_features(value_img, sp_generic_vigra_feature_names)
 
         # Merge
         if sp_df is not None:
@@ -377,13 +429,10 @@ class Rag(object):
         """
         for feature_name in vigra_feature_names:
            for nonsupported_name in ('coord', 'region'):
-               # This could be fixed by the following:
-               # - Combine the mask and edge_labels into a label volume (same shape as mask)
-               # - Compute coordinate-based features separately
-               # - Edges with multiple 'faces' will have strange or undefined coordinate features.
-               # - If *weighted* coordinate-based features are also needed, then need to combine 
-               #   mask and edge_values into a edge_value volume (same shape as mask)
-               # But the performance implications could be severe...
+               # We can't use vigra to compute coordinate-based features because 
+               # we've already flattened the edge pixels into a 1D array.
+               # However, the coordinates are already recorded in the axial_edge_df,
+               # so it would be easy to compute RegionRadii directly, without vigra.
                assert nonsupported_name not in feature_name.lower(), \
                    "Coordinate-based edge features are not currently supported!"
 
@@ -424,7 +473,7 @@ class Rag(object):
             final_acc.merge( acc, axis_to_final_index_array )
         return final_acc
 
-    def _compute_highlevel_sp_features(self, value_img, generic_vigra_feature_names):
+    def _compute_generic_sp_features(self, value_img, generic_vigra_feature_names):
         """
         Computes features over all voxels in each superpixel.
         Returns a pandas dataframe with length == self.num_sp
@@ -687,6 +736,9 @@ class Rag(object):
         """
         Helper function to serialize a pandas.DataFrame to an h5py.Group.
 
+        Note: This function uses a custom storage format,
+              not the same format as pandas.DataFrame.to_hdf().
+
         Known to work for the DataFrames used in this file,
         including the MultiIndex columns in the axial_edge_dfs.
         Not tested with more complicated DataFrame structures. 
@@ -702,6 +754,9 @@ class Rag(object):
         """
         Helper function to deserialize a pandas.DataFrame from an h5py.Group,
         as written by Rag.dataframe_to_hdf5().
+
+        Note: This function uses a custom storage format,
+              not the same format as pandas.read_hdf().
 
         Known to work for the DataFrames used in this file,
         including the MultiIndex columns in the axial_edge_dfs.
