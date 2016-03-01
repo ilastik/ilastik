@@ -143,6 +143,36 @@ class TestRag(object):
             assert row['edge_count'] > 0
             assert np.isclose(row['edge_sum'], row['edge_count'] * (sp1+sp2)/2.)
 
+    def test_edge_decisions_from_groundtruth(self):
+        # 1 2
+        # 3 4
+        vol1 = np.zeros((20,20), dtype=np.uint8)
+        vol1[ 0:10,  0:10] = 1
+        vol1[ 0:10, 10:20] = 2
+        vol1[10:20,  0:10] = 3
+        vol1[10:20, 10:20] = 4
+        
+        vol1 = vigra.taggedView(vol1, 'yx')
+        rag = Rag(vol1)
+    
+        # 2 3
+        # 4 5
+        vol2 = vol1.copy() + 1
+
+        decisions = rag.edge_decisions_from_groundtruth(vol2)
+        assert decisions.all()
+
+        # 7 7
+        # 4 5
+        vol2[( vol2 == 2 ).nonzero()] = 7
+        vol2[( vol2 == 3 ).nonzero()] = 7
+        
+        decision_dict = rag.edge_decisions_from_groundtruth(vol2, asdict=True)
+        assert decision_dict[(1,2)] == False
+        assert decision_dict[(1,3)] == True
+        assert decision_dict[(2,4)] == True
+        assert decision_dict[(3,4)] == True
+
     def test_serialization(self):
         raise nose.SkipTest
 
