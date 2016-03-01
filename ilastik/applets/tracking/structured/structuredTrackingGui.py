@@ -205,6 +205,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self.initializeAnnotations()
 
         self._drawer.trainingToHardConstraints.setChecked(False)
+        self._drawer.exportButton.setVisible(False)
+        self._drawer.exportTifButton.setVisible(False)
 
         self.topLevelOperatorView._detectionWeight = self._detectionWeight
         self.topLevelOperatorView._divisionWeight = self._divisionWeight
