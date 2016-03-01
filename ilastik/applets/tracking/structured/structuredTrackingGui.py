@@ -183,9 +183,14 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._drawer.appearanceBox.setValue(self._appearanceWeight)
         self._drawer.disappearanceBox.setValue(self._disappearanceWeight)
 
-        self._drawer.ZerosButton.setToolTip("Initial weights are chosen as all zeros.")
-        self._drawer.RandomButton.setToolTip("Initial weights are chosen randomly on the interval (0,1).")
-        self._drawer.OnesButton.setToolTip("Initial weights are chosen uniformly (normalized all ones vector).")
+        self._drawer.ZerosButton.setToolTip("Initial weights are chosen as all zeros. The weights vector is scalable, that is, " +\
+                                            " the length of the weights vector is not important for the tracking calculation. " + \
+                                            " The only thing that matters is its direction. " + \
+                                            " So starting from all zeros the weights vector should converge quickly towards the correct direction.")
+        self._drawer.RandomButton.setToolTip("Initial weights are chosen randomly on the interval (0,1). " +\
+                                             "This option is usefull in testing the dependency of the convereged vector on the choice of the initial weights values.")
+        self._drawer.OnesButton.setToolTip("Initial weights are chosen uniformly (normalized all ones vector). " +\
+                                           "Usefull for detecting effect of small changes in the training on the tracking result.")
 
         self._maxNumObj = self.topLevelOperatorView.MaxNumObj.value
         self._drawer.maxObjectsBox.setValue(self.topLevelOperatorView.MaxNumObj.value)
