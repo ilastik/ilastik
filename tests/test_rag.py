@@ -175,6 +175,27 @@ class TestRag(object):
         assert decision_dict[(2,4)] == True
         assert decision_dict[(3,4)] == True
 
+    def test_naive_segmentation_from_edge_decisions(self):
+        superpixels = self.generate_superpixels((100,200), 200)
+        rag = Rag( superpixels )
+        
+        # The 'groundtruth' is just divided into quadrants
+        groundtruth = np.zeros_like(superpixels)
+        groundtruth[0:50,   0:100] = 1
+        groundtruth[50:100, 0:100] = 2
+        groundtruth[0:50,   100:200] = 3
+        groundtruth[50:100, 100:200] = 4
+
+        decisions = rag.edge_decisions_from_groundtruth(groundtruth)
+        segmentation = rag.naive_segmentation_from_edge_decisions(decisions)
+        
+        # We don't know where the exact boundary is, but pixels 
+        # near the corners should definitely be homogenous
+        assert (segmentation[:20,   :20] == segmentation[0,  0]).all()
+        assert (segmentation[:20,  -20:] == segmentation[0, -1]).all()
+        assert (segmentation[-20:,  :20] == segmentation[-1, 0]).all()
+        assert (segmentation[-20:, -20:] == segmentation[-1,-1]).all()
+
     def test_serialization_with_labels(self):
         """
         Serialize the rag and labels to hdf5,

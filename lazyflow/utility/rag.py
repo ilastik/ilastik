@@ -196,26 +196,6 @@ class Rag(object):
     def edge_label_lookup_df(self):
         return self._final_edge_label_lookup_df
 
-    def edge_decisions_from_groundtruth(self, groundtruth_vol, asdict=False):
-        """
-        Given a reference segmentation, return a boolean array of "decisions"
-        indicating whether each edge in this RAG should be ON or OFF for best
-        consistency with the groundtruth.
-        
-        The result is returned in the same order as self.edge_ids.
-        An OFF edge means that the two superpixels are merged in the reference volume.
-        
-        If asdict=True, return the result as a dict of {(sp1, sp2) : bool}
-        """
-        sp_to_gt_mapping = label_vol_mapping(self._label_img, groundtruth_vol)
-
-        unique_sp_edges = self.edge_ids
-        decisions = sp_to_gt_mapping[unique_sp_edges[:, 0]] != sp_to_gt_mapping[unique_sp_edges[:, 1]]
-    
-        if asdict:
-            return dict( izip(imap(tuple, unique_sp_edges), decisions) )
-        return decisions
-
     def compute_highlevel_features(self, value_img, highlevel_feature_names):
         """
         The primary API function for computing features.
@@ -270,6 +250,64 @@ class Rag(object):
         if sp_df is not None:
             edge_df = Rag._append_sp_features_onto_edge_features( edge_df, sp_df, sp_generic_vigra_feature_names, self._label_img.ndim )
         return edge_df
+
+    def edge_decisions_from_groundtruth(self, groundtruth_vol, asdict=False):
+        """
+        Given a reference segmentation, return a boolean array of "decisions"
+        indicating whether each edge in this RAG should be ON or OFF for best
+        consistency with the groundtruth.
+        
+        The result is returned in the same order as self.edge_ids.
+        An OFF edge means that the two superpixels are merged in the reference volume.
+        
+        If asdict=True, return the result as a dict of {(sp1, sp2) : bool}
+        """
+        sp_to_gt_mapping = label_vol_mapping(self._label_img, groundtruth_vol)
+
+        unique_sp_edges = self.edge_ids
+        decisions = sp_to_gt_mapping[unique_sp_edges[:, 0]] != sp_to_gt_mapping[unique_sp_edges[:, 1]]
+    
+        if asdict:
+            return dict( izip(imap(tuple, unique_sp_edges), decisions) )
+        return decisions
+
+    def naive_segmentation_from_edge_decisions(self, edge_decisions, out=None ):
+        """
+        Given a list of ON/OFF labels for the Rag edges, compute a new label volume in which
+        all supervoxels with at least one inactive edge between them are merged together.
+        
+        Requires networkx.
+        
+        Parameters
+        ----------
+        edge_decisions: 1D bool array of shape (N,), in the same order as self.edge_ids
+                        1 means "active", i.e. the two superpixels are separated across that edge, at least
+                        0 means "inactive", i.e. the two superpixels will be joined in the final result.
+    
+        out: Optional. Must be same shape as self.dtype, but may have different dtype.
+        """
+        import networkx as nx
+        assert out is None or hasattr(out, 'axistags'), \
+            "Must provide accurate axistags, otherwise performance suffers by 10x"
+        assert edge_decisions.shape == (self._edge_ids.shape[0],)
+    
+        inactive_edge_ids = self.edge_ids[np.nonzero( np.logical_not(edge_decisions) )]
+    
+        logger.debug("Finding connected components in node graph...")
+        g = nx.Graph( list(inactive_edge_ids) ) 
+        
+        # If any supervoxels are completely independent (not merged with any neighbors),
+        # they haven't been added to the graph yet.
+        # Add them now.
+        g.add_nodes_from(self.sp_ids)
+        
+        sp_mapping = {}
+        for i, sp_ids in enumerate(nx.connected_components(g), start=1):
+            for sp_id in sp_ids:
+                sp_mapping[int(sp_id)] = i
+        del g
+    
+        return vigra.analysis.applyMapping( self._label_img, sp_mapping, out=out )
 
     ##
     ## FEATURE NAMING CONVENTIONS:
