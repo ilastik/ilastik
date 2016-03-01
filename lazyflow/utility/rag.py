@@ -18,6 +18,11 @@ class Rag(object):
     Internally, the edges along each axis are found and stored separately.
     (See the Rag.AxisEdgeData type.)
     
+    TODO: - Should SP features like 'mean' be weighted by SP size 
+            before averaged across the edge?
+          - Support for anisotropic features will be easy.
+            Need to add 'axes' parameter to compute_highlevel_features()
+    
     Attributes
     ----------
     label_img: The label volume
@@ -76,6 +81,8 @@ class Rag(object):
             edge_ids.sort()
 
             edge_mask_coords = nonzero_coord_array(edge_mask).transpose()
+            
+            # Save RAM: Convert to the smallest dtype we can get away with.
             if (np.array(label_img.shape) < 2**16).all():
                 edge_mask_coords = edge_mask_coords.astype(np.uint16)
             else:
@@ -83,9 +90,25 @@ class Rag(object):
                 
             edge_datas.append( (edge_mask_coords, edge_ids, edge_forwardness) )
 
+        self._init_final_edge_label_lookup_df(edge_datas)
+        self._init_axial_edge_dfs(edge_datas)
+        
+        # Cache the unique sp ids to expose as an attribute
+        unique_left = self._final_edge_label_lookup_df['sp1'].unique()
+        unique_right = self._final_edge_label_lookup_df['sp2'].unique()
+        self._sp_ids = pd.Series( np.concatenate((unique_left, unique_right)) ).unique()
+        self._sp_ids.sort()
+        
+        # We don't assume that SP ids are consecutive,
+        # so num_sp is not the same as label_img.max()        
+        self._num_sp = len(self._sp_ids)
+        self._max_sp = self._sp_ids.max()
+        
+    def _init_final_edge_label_lookup_df(self, edge_datas):
+        """
+        Initialize the edge_label_lookup_df attribute.
+        """
         all_edge_ids = map(lambda t: t[1], edge_datas)
-
-        # Columns: sp1, sp2, edge_label
         final_edge_label_lookup_df = unique_edge_labels( all_edge_ids )
 
         # Tiny optimization:
@@ -100,6 +123,10 @@ class Rag(object):
                                                                'sp2': self._edge_ids[:,1],
                                                                'edge_label': final_edge_label_lookup_df['edge_label'].values } )
 
+    def _init_axial_edge_dfs(self, edge_datas):
+        """
+        Construct the N axial_edge_df DataFrames (for each axis)
+        """
         # Now create an axial_edge_df for each axis
         self.axial_edge_dfs = []
         for edge_data in edge_datas:
@@ -119,25 +146,16 @@ class Rag(object):
             axial_edge_df = pd.merge(axial_edge_df, self._final_edge_label_lookup_df, on=['sp1', 'sp2'], how='left', copy=False)
             
             # Append columns for coordinates
-            for key, coords, in zip(label_img.axistags.keys(), edge_mask):
+            for key, coords, in zip(self._label_img.axistags.keys(), edge_mask):
                 axial_edge_df[key] = coords
 
             # For easier manipulation of the 'mask_coord' columns, set multi-level index for column names.
-            combined_columns = [['sp1', 'sp2', 'forwardness', 'edge_label'] + len(label_img.axistags)*['mask_coord'],
-                                [  '',     '',            '',           ''] + label_img.axistags.keys() ]
+            combined_columns = [['sp1', 'sp2', 'forwardness', 'edge_label'] + len(self._label_img.axistags)*['mask_coord'],
+                                [  '',     '',            '',           ''] + self._label_img.axistags.keys() ]
             axial_edge_df.columns = pd.MultiIndex.from_tuples(list(zip(*combined_columns)))
 
             self.axial_edge_dfs.append( axial_edge_df )
         
-        # Compute these global attributes and cache them.
-        # We don't assume that SP ids are consecutive, so it's not the same as label_img.max()        
-        unique_left = self._final_edge_label_lookup_df['sp1'].unique()
-        unique_right = self._final_edge_label_lookup_df['sp2'].unique()
-        self._sp_ids = pd.Series( np.concatenate((unique_left, unique_right)) ).unique()
-        self._sp_ids.sort()
-        self._num_sp = len( self._sp_ids )
-        self._max_sp = self._sp_ids.max()
-
     @property
     def label_img(self):
         return self._label_img
