@@ -98,7 +98,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
         self.default_training_export_filename = '{dataset_dir}/{nickname}-training_exported_data.csv'
         self.dataExportAnnotationsApplet = TrackingBaseDataExportApplet(self, "Training Export",default_export_filename=self.default_training_export_filename)
         opDataExportAnnotations = self.dataExportAnnotationsApplet.topLevelOperator
-        opDataExportAnnotations.SelectionNames.setValue( ['Training', 'Object Identities'] )
+        opDataExportAnnotations.SelectionNames.setValue( ['User Training for Tracking', 'Object Identities'] )
         opDataExportAnnotations.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
         self.dataExportAnnotationsApplet.set_exporting_operator(opAnnotations)
 
