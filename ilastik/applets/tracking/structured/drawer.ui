@@ -510,7 +510,7 @@
         <string notr="true"/>
        </property>
        <property name="text">
-        <string>Tracking</string>
+        <string>Track!</string>
        </property>
       </widget>
      </item>
