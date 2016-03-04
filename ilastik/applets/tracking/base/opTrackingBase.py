@@ -150,7 +150,7 @@ class OpTrackingBase(Operator, ExportingOperator):
 
     def execute(self, slot, subindex, roi, result):
         if slot is self.Output:
-            result = self.LabelImage.get(roi).wait()
+            result[:] = self.LabelImage.get(roi).wait()
             if not self.Parameters.ready():
                 raise Exception("Parameter slot is not ready")
             parameters = self.Parameters.value
