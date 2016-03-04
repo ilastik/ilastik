@@ -97,7 +97,7 @@ class BigRequestStreamer(object):
         totalVolume = numpy.prod( numpy.subtract(roi[1], roi[0]) )
         
         if batchSize is None:
-            batchSize=1000
+            batchSize=32
         
         if blockshape is None:
             blockshape = self._determine_blockshape(outputSlot)
