@@ -99,24 +99,28 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
         forests = []
         for tree_count in tree_counts:
             forests.append( vigra.learning.RandomForest(tree_count, **self._kwargs) )
-        
-        # Train classifier with feature importance visitor    
+
+        # Train classifier with feature importance visitor 
+        named_importances = None
+           
         if self._variable_importance_enabled:
             if not feature_names:
                 # Provide default feature names
                 num_features = X.shape[1]
                 feature_names = ["feature-{:02d}".format(i) for i in range(num_features)]
 
-            oobs, importances = self._train_forests_with_feature_importance( forests, X, y, 
+            oobs, named_importances = self._train_forests_with_feature_importance( forests, X, y, 
                                                                              feature_names,
                                                                              export_path=self._variable_importance_path )            
+            
         else:
             # train classifier without feature importance visitor
             feature_names = None
+
             oobs = self._train_forests( forests, X, y )            
-                                   
+                          
         logger.info( "Training complete. Average OOB: {}".format( numpy.average(oobs) ) )
-        return ParallelVigraRfLazyflowClassifier( forests, oobs, known_labels, feature_names )
+        return ParallelVigraRfLazyflowClassifier( forests, oobs, known_labels, feature_names, named_importances )
 
     @staticmethod
     def _train_forests(forests, X, y):
@@ -170,13 +174,15 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
         weights = numpy.array(tree_counts).astype(float)
         weights /= weights.sum()
 
-        named_importances = collections.OrderedDict( zip( feature_names, numpy.average(importances, weights=weights, axis=0) ) )            
+        named_importances = collections.OrderedDict( zip( feature_names, numpy.average(importances, weights=weights, axis=0) ) )   
+                 
         importance_table = generate_importance_table( named_importances,
                                                       sort="overall",
                                                       export_path=export_path )
         
         logger.info("Feature importance measurements during training: \n{}".format(importance_table) )
-        return oobs, importances  
+
+        return oobs, named_importances 
 
     def estimated_ram_usage_per_requested_predictionchannel(self):
         return (Request.global_thread_pool.num_workers) * 4
@@ -252,7 +258,7 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
     """
     Adapt the vigra RandomForest class to the interface lazyflow expects.
     """
-    def __init__(self, forests, oobs, known_labels, feature_names=None):
+    def __init__(self, forests, oobs, known_labels, feature_names=None, named_importances=None):
         self._known_labels = known_labels
         self._forests = forests
         self._feature_names = feature_names
@@ -261,6 +267,9 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
         self._oobs = oobs
         
         self._num_trees = sum( forest.treeCount() for forest in self._forests )
+        
+        # Named importances for the variable importance table
+        self._named_importances = named_importances
     
     def predict_probabilities(self, X):
         logger.debug( "Predicting with parallel vigra RF" )
@@ -305,6 +314,10 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
     @property
     def feature_count(self):
         return self._forests[0].featureCount()
+    
+    @property
+    def named_importances(self):
+        return self._named_importances
 
     def serialize_hdf5(self, h5py_group):
         for forest in self._forests:
