@@ -189,6 +189,7 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
     def __eq__(self, other):
         return (    isinstance(other, type(self))
                 and self._num_trees == other._num_trees
+                and self._variable_importance_enabled == other._variable_importance_enabled
                 and self._kwargs == other._kwargs )
     def __ne__(self, other):
         return not self.__eq__(other)
