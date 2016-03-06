@@ -46,6 +46,7 @@ from ilastik.utility.gui import threadRouted
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui, H5VolumeSelectionDlg
+from ilastik.shell.gui.variableImportanceDialog import VariableImportanceDialog
 
 try:
     from volumina.view3d.volumeRendering import RenderingManager
@@ -121,7 +122,8 @@ class ClassifierSelectionDlg(QDialog):
             import warnings
             warnings.warn("Couldn't import sklearn. Scikit-learn classifiers not available.")
 
-        # Debug classifiers        
+        # Debug classifiers
+        classifiers["Parallel Random Forest with Variable Importance (VIGRA)"] = ParallelVigraRfLazyflowClassifierFactory(100, variable_importance_enabled=True)        
         classifiers["(debug) Single-threaded Random Forest (VIGRA)"] = VigraRfLazyflowClassifierFactory(100)
         classifiers["(debug) Pixelwise Random Forest (VIGRA)"] = VigraRfPixelwiseClassifierFactory(100)
         
@@ -160,13 +162,18 @@ class PixelClassificationGui(LabelingGui):
         # For now classifier selection is only available in debug mode
         if ilastik_config.getboolean('ilastik', 'debug'):
             advanced_menu = QMenu("Advanced", parent=self)
-            
+                        
             def handleClassifierAction():
                 dlg = ClassifierSelectionDlg(self.topLevelOperatorView, parent=self)
                 dlg.exec_()
             
             classifier_action = advanced_menu.addAction("Classifier...")
             classifier_action.triggered.connect( handleClassifierAction )
+            
+            def showVarImpDlg():
+                varImpDlg = VariableImportanceDialog(self.topLevelOperatorView.Classifier.value.named_importances, parent=self)
+                
+            advanced_menu.addAction("Variable Importance Table").triggered.connect(showVarImpDlg)            
             
             def handleImportLabelsAction():
                 # Find the directory of the most recently opened image file
