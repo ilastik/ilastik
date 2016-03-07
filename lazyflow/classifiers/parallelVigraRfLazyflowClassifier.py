@@ -347,6 +347,10 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
         
         # This field is required for all classifiers
         h5py_group['pickled_type'] = pickle.dumps( type(self) )
+        
+        if self._named_importances:
+            h5py_group.create_dataset('named_importances_keys', data=self._named_importances.keys())
+            h5py_group.create_dataset('named_importances_values', data=self._named_importances.values())
 
         os.remove(cachePath)
         os.rmdir(tmpDir)
@@ -387,9 +391,16 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
             # Just provide something obviously invalid.
             oobs = [-1.0] * len(forests)
 
+        try:
+            keys = map(str, h5py_group['named_importances_keys'][:])
+            values = h5py_group['named_importances_values'][:]
+            named_importances = collections.OrderedDict(zip(keys, values))
+        except KeyError:
+            named_importances = None
+
         os.remove(cachePath)
         os.rmdir(tmpDir)
 
-        return ParallelVigraRfLazyflowClassifier( forests, oobs, known_labels, feature_names )
+        return ParallelVigraRfLazyflowClassifier( forests, oobs, known_labels, feature_names, named_importances )
 
 assert issubclass( ParallelVigraRfLazyflowClassifier, LazyflowVectorwiseClassifierABC )
