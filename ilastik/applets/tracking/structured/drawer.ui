@@ -80,6 +80,9 @@
    </item>
    <item row="0" column="0" colspan="5">
     <widget class="QPushButton" name="StructuredLearningButton">
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Calculate tracking weights with &lt;span style=&quot; font-weight:600;&quot;&gt;structured learning&lt;/span&gt; on submodels induced by track training on crops.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
      <property name="styleSheet">
       <string notr="true"/>
      </property>
@@ -158,6 +161,9 @@
    </item>
    <item row="1" column="4">
     <widget class="QPushButton" name="OnesButton">
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Initial weights are chosen &lt;span style=&quot; font-weight:600;&quot;&gt;uniformly&lt;/span&gt; (normalized all ones vector). Usefull for detecting effect of small changes in the training on the tracking result.&lt;/pre&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
      <property name="styleSheet">
       <string notr="true"/>
      </property>
@@ -180,9 +186,12 @@
     </widget>
    </item>
    <item row="12" column="0" colspan="3">
-    <widget class="QLabel" name="label_27">
+    <widget class="QLabel" name="MaxNearestNeighbourLabel">
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Size of the transition neighbourhood determines the number of objects considered in the next time frame as successors and the number of objects considered in the previous time frame as predecessors on a track.&lt;/pre&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
      <property name="text">
-      <string>Max. Nearest Neighbors</string>
+      <string>Transition Neighbourhood</string>
      </property>
     </widget>
    </item>
@@ -201,9 +210,9 @@
     </widget>
    </item>
    <item row="2" column="0">
-    <widget class="QLabel" name="label_26">
+    <widget class="QLabel" name="DetectionLabel">
      <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The weight to&lt;span style=&quot; font-weight:600;&quot;&gt; balance division probabilities&lt;/span&gt; against transitions and detections. High values (≥10) give more weight to the division classifier, low values (≤10) will weigh the transition and detection probabilities higher than the division probabilities.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The weight to &lt;span style=&quot; font-weight:600;&quot;&gt;balance detection probabilities&lt;/span&gt; against division and transition probabilities. Higer values than for division and transition probabilities will favor detections over divisions and transitions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="text">
       <string>Detection</string>
@@ -233,7 +242,7 @@
    <item row="18" column="0" colspan="3">
     <widget class="QLabel" name="label_20">
      <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Absolute number of pixels at the border of the field of view where appearance and disappearance cost less (linearly).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Absolute number of pixels at the border of the field of view where appearance and disappearance costs linearly decrease towards the border (objects centers are taken as input values to the cost function).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="text">
       <string>Border Width (abs.)</string>
@@ -241,9 +250,9 @@
     </widget>
    </item>
    <item row="6" column="0">
-    <widget class="QLabel" name="label_23">
+    <widget class="QLabel" name="DisappearanceLabel">
      <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Costs to allow one object to &lt;span style=&quot; font-weight:600;&quot;&gt;disappear&lt;/span&gt;, i.e. to terminate an existing track other than at the end of the time range or the borders of the field of view. High values (≥500) forbid object disappearances if possible.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Costs to allow one object to &lt;span style=&quot; font-weight:600;&quot;&gt;disappear&lt;/span&gt;, i.e. to terminate an existing track other than at the end of the time range or the borders of the field of view. High values forbid object disappearances if possible.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="text">
       <string>Disappearance</string>
@@ -253,7 +262,7 @@
    <item row="17" column="0" colspan="2">
     <widget class="QLabel" name="label_21">
      <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Timeout in seconds for the &lt;span style=&quot; font-weight:600;&quot;&gt;optimization&lt;/span&gt;. Leave empty for not specifying a timeout (then, the best solution will be found no matter how long it takes). Note that the tracking can take much longer due to pre- and post-processing steps.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Timeout in seconds for the &lt;span style=&quot; font-weight:600;&quot;&gt;optimization&lt;/span&gt;. Leave empty for not specifying a timeout (then, the best solution will be found no matter how long it takes).&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="text">
       <string>Timeout (sec.)</string>
@@ -290,6 +299,9 @@
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
       <widget class="QPushButton" name="TrackButton">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Calculate tracks using detection, division, transition, appearance, and disappearance weights.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
        <property name="styleSheet">
         <string notr="true"/>
        </property>
@@ -300,6 +312,9 @@
      </item>
      <item>
       <widget class="QRadioButton" name="trainingToHardConstraints">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose this optin to use tracking training annotations as part of the tracking solution.&lt;/p&gt;&lt;p&gt;By default training annotations are used only in structured learning for calculating weights.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
        <property name="text">
         <string>Use Training Annotations in Tracking</string>
        </property>
@@ -431,12 +446,15 @@
     </layout>
    </item>
    <item row="1" column="0">
-    <widget class="QLabel" name="label_24">
+    <widget class="QLabel" name="InitialWeightsLabel">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
        <horstretch>0</horstretch>
        <verstretch>0</verstretch>
       </sizepolicy>
+     </property>
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Structured learning optimization is implemented as a gradient descent with user chosen &lt;span style=&quot; font-weight:600;&quot;&gt;initial weights.&lt;/span&gt;&lt;/pre&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="text">
       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Initial Weights:&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -446,7 +464,7 @@
    <item row="15" column="0" colspan="4">
     <widget class="QLabel" name="label_3">
      <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Specify how many objects are maximally contained in one connected component. For instance, if all objects are segmented without any occlusions (or merging), choose 1. If maximally 2 objects are touching in the segmentation, choose 2... Note that this number has to be consistent with the number of classes chosen in the object count classification if the count classifier is selected below.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Specify how many objects are maximally contained in one connected component. For instance, if all objects are segmented without any occlusions (or merging), choose 1. If maximally 2 objects are touching in the segmentation, choose 2... This number has to be consistent with the number of classes chosen in the object count classification.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="text">
       <string>Max. Object per Merger</string>
@@ -578,6 +596,9 @@
    </item>
    <item row="1" column="2">
     <widget class="QPushButton" name="ZerosButton">
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head&gt;&lt;body&gt;&lt;p&gt;Initial weights are chosen as all &lt;span style=&quot; font-weight:600;&quot;&gt;zeros&lt;/span&gt;. The weights vector is scalable, that is, the length of the weights vector is not important for the tracking calculation. The only thing that matters is its direction. So starting from all zeros means starting with no direction bias.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
      <property name="text">
       <string>Zeros</string>
      </property>
@@ -600,9 +621,9 @@
     </widget>
    </item>
    <item row="5" column="0">
-    <widget class="QLabel" name="label_22">
+    <widget class="QLabel" name="AppearanceLabel">
      <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Costs to allow one object to &lt;span style=&quot; font-weight:600;&quot;&gt;appear&lt;/span&gt;, i.e. to start a new track other than at the beginning of the time range or the borders of the field of view. High values (≥500) forbid object appearances if possible.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Costs to allow one object to &lt;span style=&quot; font-weight:600;&quot;&gt;appear&lt;/span&gt;, i.e. to start a new track other than at the beginning of the time range or the borders of the field of view. High values forbid object appearances if possible.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="text">
       <string>Appearance</string>
@@ -911,9 +932,9 @@
     </widget>
    </item>
    <item row="3" column="0">
-    <widget class="QLabel" name="label_6">
+    <widget class="QLabel" name="DivisionLabel">
      <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The weight to&lt;span style=&quot; font-weight:600;&quot;&gt; balance division probabilities&lt;/span&gt; against transitions and detections. High values (≥10) give more weight to the division classifier, low values (≤10) will weigh the transition and detection probabilities higher than the division probabilities.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The weight to &lt;span style=&quot; font-weight:600;&quot;&gt;balance division probabilities&lt;/span&gt; against detection and transition probabilities. Higer values than for detection and transition probabilities will favor divisions over detections and transitions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="text">
       <string>Division</string>
@@ -922,6 +943,9 @@
    </item>
    <item row="1" column="3">
     <widget class="QPushButton" name="RandomButton">
+     <property name="toolTip">
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Initial weights are chosen &lt;span style=&quot; font-weight:600;&quot;&gt;randomly&lt;/span&gt; on the interval (0,1). This option is usefull in testing the dependency of the convereged vector on the choice of the initial weights values.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+     </property>
      <property name="text">
       <string>Random</string>
      </property>
@@ -930,7 +954,7 @@
    <item row="23" column="0" colspan="3">
     <widget class="QCheckBox" name="divisionsBox">
      <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Tick if the objects to be tracked are able to divide. For instance, this option should be checked for the tracking of proliferating cells.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Coose this option if the objects to be tracked are able to divide. For instance, this option should be checked for the tracking of proliferating cells.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="text">
       <string>Divisible Objects</string>
@@ -960,9 +984,9 @@
     <widget class="QLineEdit" name="timeoutBox"/>
    </item>
    <item row="4" column="0">
-    <widget class="QLabel" name="label_7">
+    <widget class="QLabel" name="TransitionLabel">
      <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The weight to&lt;span style=&quot; font-weight:600;&quot;&gt; balance transition probabilities&lt;/span&gt; against divisions and detections. High values (≥10) will make transitions overrule division and detection probabilities, low values (≤10) will weigh detection and division classifier higher than transition probabilities.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The weight to&lt;span style=&quot; font-weight:600;&quot;&gt; balance transition probabilities&lt;/span&gt; against detection and division probabilities. Higer values than for detection and division probabilities will favor transitions over detections and divisions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="text">
       <string>Transition</string>
