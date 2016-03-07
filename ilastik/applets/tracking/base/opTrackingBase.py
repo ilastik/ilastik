@@ -150,7 +150,7 @@ class OpTrackingBase(Operator, ExportingOperator):
 
     def execute(self, slot, subindex, roi, result):
         if slot is self.Output:
-            result = self.LabelImage.get(roi).wait()
+            result[:] = self.LabelImage.get(roi).wait()
             if not self.Parameters.ready():
                 raise Exception("Parameter slot is not ready")
             parameters = self.Parameters.value
@@ -237,10 +237,10 @@ class OpTrackingBase(Operator, ExportingOperator):
             merger = get_dict_value(events[str(i - time_range[0])], "merger", [])
             res = get_dict_value(events[str(i - time_range[0])], "res", {})
 
-            logger.info(" {} app at {}".format(len(app), i))
-            logger.info(" {} div at {}".format(len(div), i))
-            logger.info(" {} mov at {}".format(len(mov), i))
-            logger.info(" {} merger at {}".format(len(merger), i))
+            logger.debug(" {} app at {}".format(len(app), i))
+            logger.debug(" {} div at {}".format(len(div), i))
+            logger.debug(" {} mov at {}".format(len(mov), i))
+            logger.debug(" {} merger at {}".format(len(merger), i))
 
             label2color.append({})
             mergers.append({})
@@ -463,6 +463,7 @@ class OpTrackingBase(Operator, ExportingOperator):
             if ct.size:
                 ct = ct[1:, ...]
 
+            logger.debug("at timestep {}, {} traxels found".format(t, rc.shape[0]))
             count = 0
             filtered_labels_at = []
             for idx in range(rc.shape[0]):
@@ -538,7 +539,7 @@ class OpTrackingBase(Operator, ExportingOperator):
 
             if len(filtered_labels_at) > 0:
                 filtered_labels[str(int(t) - time_range[0])] = filtered_labels_at
-            logger.info("at timestep {}, {} traxels passed filter".format(t, count))
+            logger.debug("at timestep {}, {} traxels passed filter".format(t, count))
             max_traxel_id_at.append(int(rc.shape[0]))
             if count == 0:
                 empty_frame = True
