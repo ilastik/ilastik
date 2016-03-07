@@ -69,7 +69,10 @@ class VariableImportanceDialog(QDialog):
             
         else:
             # Classifier is not trained. Show warning message.
-            warningLabel = QLabel("You need to choose the Parallel Random Forest Classifier with Variable Importance (VIGRA) from the menu Advanced>Classifier...")
+            msg = ('To enable this feature, you must choose the following classifier type via the menu Advanced > Classifier:\n\n'
+                   '"Parallel Random Forest Classifier with Variable Importance (VIGRA)"\n\n'
+                   '...and then RETRAIN your classifier (press "Live Update").')
+            warningLabel = QLabel(msg)
             warningLabel.setAlignment(Qt.AlignCenter)
             warningLabel.setWordWrap(True) 
             layout.addWidget(warningLabel, 3, 0, 1 ,2)
@@ -80,11 +83,7 @@ class VariableImportanceDialog(QDialog):
         layout.addWidget(closeButton, 4, 1)
         
         self.setLayout(layout)
-        
-        # Show the window
-        result = self.exec_()
 
-                
 if __name__ == "__main__":
     from PyQt4.QtGui import QApplication
     
@@ -93,6 +92,11 @@ if __name__ == "__main__":
     app = QApplication([])
     mainWindow = QWidget()
     varImpDlg = VariableImportanceDialog(named_importances, mainWindow)
+    #varImpDlg = VariableImportanceDialog(None, mainWindow)
+    varImpDlg.show()
+    varImpDlg.raise_()
+    
+    app.exec_()
     
 
 

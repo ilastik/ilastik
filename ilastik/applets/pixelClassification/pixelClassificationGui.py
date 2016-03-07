@@ -172,6 +172,7 @@ class PixelClassificationGui(LabelingGui):
             
             def showVarImpDlg():
                 varImpDlg = VariableImportanceDialog(self.topLevelOperatorView.Classifier.value.named_importances, parent=self)
+                varImpDlg.exec_()
                 
             advanced_menu.addAction("Variable Importance Table").triggered.connect(showVarImpDlg)            
             
