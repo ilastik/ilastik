@@ -155,7 +155,6 @@ class OpPixelClassification( Operator ):
         self.opFeatureMatrixCaches = OpMultiLaneWrapper(OpFeatureMatrixCache, parent=self)
         self.opFeatureMatrixCaches.LabelImage.connect(self.opLabelPipeline.Output)
         self.opFeatureMatrixCaches.FeatureImage.connect(self.FeatureImages)
-        self.opFeatureMatrixCaches.NonZeroLabelBlocks.setValue(0) # this slot is not used, but requires a value
         self.opFeatureMatrixCaches.LabelImage.setDirty()  # do I still need this?
 
         
