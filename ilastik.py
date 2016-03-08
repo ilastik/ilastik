@@ -78,6 +78,9 @@ def main():
     
     ## Auto-open an existing project
     #parsed_args.project='/Users/bergs/MyProject.ilp'
+    #parsed_args.project='/magnetic/data/multicut-testdata/2d/MyMulticut2D.ilp'
+    #parsed_args.project = '/Users/bergs/MyMulticutProject.ilp'
+    #parsed_args.project = '/magnetic/data/multicut-testdata/chris-256/MyMulticutProject-chris256.ilp'
 
     ## Headless-mode options
     #parsed_args.headless = True

@@ -45,6 +45,7 @@ try:
 except ImportError as e:
     logger.warn("Failed to import counting workflow; check dependencies: " + str(e))
 
+import multicut
 try:
     import multicut
 except ImportError as e:

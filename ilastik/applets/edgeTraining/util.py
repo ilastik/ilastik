@@ -5,15 +5,15 @@ import numpy as np
 import networkx as nx
 import vigra
 
-from lazyflow.utility.edge_features import edge_mask_for_axis, edge_ids_for_axis, unique_edge_labels, label_vol_mapping
+from ilastikrag.util import edge_mask_for_axis, edge_ids_for_axis, unique_edge_labels, label_vol_mapping
 
 logger = logging.getLogger(__name__)
 
 def edge_decisions( overseg_vol, groundtruth_vol, asdict=True ):
     """
     Given an oversegmentation and a reference segmentation,
-    return a dict of {(id1, id2) : bool} indicating whether or
-    not edge (id1,id2) is ON in the reference segmentation.
+    return a dict of {(sp1, sp2) : bool} indicating whether or
+    not edge (sp1,sp2) is ON in the reference segmentation.
     
     If asdict=False, return separate ndarrays for edge_ids 
     and boolean decisions instead of combined dict. 
@@ -24,7 +24,7 @@ def edge_decisions( overseg_vol, groundtruth_vol, asdict=True ):
         sp_edges = edge_ids_for_axis(overseg_vol, edge_mask, axis)
         del edge_mask
         sp_edges_per_axis.append( sp_edges )
-    unique_sp_edges = unique_edge_labels(sp_edges_per_axis)[['id1', 'id2']].values
+    unique_sp_edges = unique_edge_labels(sp_edges_per_axis)[['sp1', 'sp2']].values
 
     sp_to_gt_mapping = label_vol_mapping(overseg_vol, groundtruth_vol)
     decisions = sp_to_gt_mapping[unique_sp_edges[0]] != sp_to_gt_mapping[unique_sp_edges[1]]

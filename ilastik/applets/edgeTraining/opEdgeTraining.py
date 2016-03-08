@@ -258,7 +258,7 @@ class OpEdgeProbabilitiesDict(Operator):
         rag = self.Rag.value
 
         logger.info("Converting edge probabilities to dict...")
-        edge_ids = rag.edge_ids()
+        edge_ids = rag.edge_ids
         result[0] = dict(izip(imap(tuple, edge_ids), edge_probabilities))
 
     def propagateDirty(self, slot, subindex, roi):
