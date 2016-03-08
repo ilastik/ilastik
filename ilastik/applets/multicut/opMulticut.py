@@ -68,36 +68,34 @@ class OpMulticutAgglomerator(Operator):
         """
         rag: lazyflow.edge_features.Rag
         
-        edge_probabilities: 1D array, same order as rag.edge_ids().
+        edge_probabilities: 1D array, same order as rag.edge_ids.
                             Should indicate probability of each edge being ON.
         
         beta: The multicut 'beta' parameter (0.0 < beta < 1.0)
         
         Returns: A label image of the same shape as rag.label_img, type uint32
         """
-        num_edges = rag.num_edges()
-        edge_ids = rag.edge_ids()
-        assert edge_ids.shape == (num_edges, 2)
+        assert rag.edge_ids.shape == (rag.num_edges, 2)
 
         p1 = edge_probabilities # Edge ON
         p1 = np.clip(p1, 0.001, 0.999)
-        p0 = 1.0 - p1 # Edge OFF
-        assert p0.shape == p1.shape == (num_edges,)
+        p0 = 1.0 - p1 # P(Edge=OFF)
+        assert p0.shape == p1.shape == (rag.num_edges,)
 
         # The Rag is allowed to contain non-consecutive superpixel labels
         # But for OpenGM, we require nVar > max_id
-        # Therefore, use max_sp_id(), not num_sp()
-        nVar = rag.max_sp_id()+1
-        if rag.num_sp() != rag.max_sp_id()+1:
+        # Therefore, use max_sp, not num_sp
+        nVar = rag.max_sp+1
+        if rag.num_sp != rag.max_sp+1:
             warnings.warn( "Superpixel IDs are not consective. GM will contain excess variables to fill the gaps."
-                           " (num_sp = {}, max_sp_id = {})".format( rag.num_sp(), rag.max_sp_id() ) )
+                           " (num_sp = {}, max_sp = {})".format( rag.num_sp, rag.max_sp ) )
         
         gm = opengm.gm( np.ones(nVar)*nVar )
         
         w = np.log(p0/p1) + np.log( (1-beta)/(beta) )
         pf = opengm.pottsFunctions( [nVar,nVar], np.array([0]), w )
         fids = gm.addFunctions( pf )
-        gm.addFactors( fids, edge_ids )
+        gm.addFactors( fids, rag.edge_ids )
 
         inf = opengm.inference.Multicut( gm )
         ret = inf.infer( inf.verboseVisitor() )
@@ -134,8 +132,8 @@ if __name__ == "__main__":
     op.VoxelData.setValue( probabilities )
     op.InputSuperpixels.setValue( superpixels )
     assert op.Output.ready()
-    result = op.Output[:].wait()
+    seg = op.Output[:].wait()
     
-    assert result.min() == 0
+    assert seg.min() == 0
     
     print "DONE."

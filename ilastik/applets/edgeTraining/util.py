@@ -52,7 +52,7 @@ def relabel_volume_from_edge_decisions( supervoxels, edge_ids, edge_decisions, o
                     1 means "active", i.e. the two superpixels are separated across that edge, at least
                     0 means "inactive", i.e. the two superpixels will be joined in the final result.
 
-    out: Optional. Must be same shape as supervoxels, but have different dtype.
+    out: Optional. Must be same shape as supervoxels, but may have different dtype.
     """
     assert hasattr(supervoxels, 'axistags'), \
         "Must provide accurate axistags, otherwise performance suffers by 10x"
