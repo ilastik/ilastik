@@ -122,11 +122,10 @@ class OpStructuredTracking(OpTrackingBase):
         if slot is self.Output:
             parameters = self.Parameters.value
             trange = range(roi.start[0], roi.stop[0])
-            original = np.zeros(result.shape)
-            # recursive call to get properly labeled image
-            original = super(OpStructuredTracking, self).execute(slot, subindex, roi, original).copy()
+            original = np.zeros(result.shape, dtype=slot.meta.dtype)
+            super(OpStructuredTracking, self).execute(slot, subindex, roi, original)
 
-            result = self.LabelImage.get(roi).wait()
+            result[:] = self.LabelImage.get(roi).wait()
             pixel_offsets=roi.start[1:-1]  # offset only in pixels, not time and channel
             for t in trange:
                 if ('time_range' in parameters
@@ -137,9 +136,9 @@ class OpStructuredTracking(OpTrackingBase):
                     result[t-roi.start[0],...][:] = 0
 
             original[result != 0] = result[result != 0]
-            result = original
+            result[:] = original
         elif slot is self.MergerOutput:
-            result = self.LabelImage.get(roi).wait()
+            result[:] = self.LabelImage.get(roi).wait()
             parameters = self.Parameters.value
             trange = range(roi.start[0], roi.stop[0])
             pixel_offsets=roi.start[1:-1]  # offset only in pixels, not time and channel
@@ -156,7 +155,7 @@ class OpStructuredTracking(OpTrackingBase):
         elif slot is self.RelabeledImage:
             parameters = self.Parameters.value
             trange = range(roi.start[0], roi.stop[0])
-            result = self.LabelImage.get(roi).wait()
+            result[:] = self.LabelImage.get(roi).wait()
             pixel_offsets=roi.start[1:-1]  # offset only in pixels, not time and channel
             for t in trange:
                 if ('time_range' in parameters
@@ -165,7 +164,7 @@ class OpStructuredTracking(OpTrackingBase):
                         and 'withMergerResolution' in parameters.keys() and parameters['withMergerResolution']):
                         result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, pixel_offsets, False, True)
         else:  # default bahaviour
-            result = super(OpStructuredTracking, self).execute(slot, subindex, roi, result)
+            super(OpStructuredTracking, self).execute(slot, subindex, roi, result)
 
         return result     
 
