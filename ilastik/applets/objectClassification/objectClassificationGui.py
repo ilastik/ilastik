@@ -285,7 +285,7 @@ class ObjectClassificationGui(LabelingGui):
         if mainOperator.SelectedFeatures.ready():
             selectedFeatures = mainOperator.SelectedFeatures([]).wait()
         else:
-            selectedFeatures = dict()
+            selectedFeatures = computedFeatures
 
         plugins = pluginManager.getPluginsOfCategory('ObjectFeatures')
         taggedShape = mainOperator.RawImages.meta.getTaggedShape()
@@ -323,7 +323,9 @@ class ObjectClassificationGui(LabelingGui):
                 if pluginInfo.name in self.applet._selectedFeatures.keys() and not pluginInfo.name in computedFeatures.keys():
                     computedFeatures[pluginInfo.name] = availableFeatures
 
-                if not pluginInfo.name in selectedFeatures:
+                if not pluginInfo.name in selectedFeatures and \
+                    pluginInfo.name in self.applet._selectedFeatures and \
+                    len(self.applet._selectedFeatures[pluginInfo.name].keys()) > 0:
                         selectedFeatures[pluginInfo.name]=dict()
                         if pluginInfo.name in self.applet._selectedFeatures.keys():
                             for feature in self.applet._selectedFeatures[pluginInfo.name].keys():

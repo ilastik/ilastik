@@ -32,7 +32,7 @@ class AnimalConservationTrackingWorkflowBase( ConservationTrackingWorkflowBase )
            
         super(AnimalConservationTrackingWorkflowBase, self).connectLane(laneIndex) 
         
-    def _createDivisionDetectionApplet(self,selectedFeatures=None):
+    def _createDivisionDetectionApplet(self,selectedFeatures=dict()):
         return None 
 
 
