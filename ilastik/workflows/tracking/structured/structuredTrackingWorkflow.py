@@ -82,7 +82,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
                                                                      selectedFeatures=configStructured.selectedFeaturesDiv)
 
         self.cellClassificationApplet = ObjectClassificationApplet(workflow=self,
-                                                                     name="Object Count Classification (optional)",
+                                                                     name="Object Count Classification",
                                                                      projectFileGroupName="CountClassification",
                                                                      selectedFeatures=configStructured.selectedFeaturesObjectCount)
 

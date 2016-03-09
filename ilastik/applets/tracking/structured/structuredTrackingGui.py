@@ -379,16 +379,17 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         maxObjOK = True
         while not foundAllArcs and maxObjOK:
             new_max_nearest_neighbors += 1
+            withDivisions = self._drawer.divisionsBox.isChecked()
             consTracker = pgmlink.ConsTracking(
-                maxObj,
-                True,
-                float(median_obj_size[0]),
-                float(200),
-                True,
-                float(0.5),
-                "none",
+                maxObj, # max_number_objects
+                True, # size_dependent_detection_prob
+                float(median_obj_size[0]), # avg_obj_size
+                float(200), # max_neighbor_distance
+                withDivisions, # with_divisions
+                float(0.5), # division_threshold
+                "none", # random_forest_filename
                 fieldOfView,
-                "none",
+                "none", # event_vector_dump_filename
                 pgmlink.ConsTrackingSolverType.CplexSolver,
                 ndim)
 
@@ -403,17 +404,15 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                 1.0,# y_scale
                 1.0,# z_scale,
                 median_object_size=median_obj_size,
-                with_div=True,
+                with_div=withDivisions,
                 with_opt_correction=False,
                 with_classifier_prior=True)
 
             if empty_frame:
-                raise Exception, 'cannot track frames with 0 objects, abort.'
-
+                raise Exception, 'Can not track frames with 0 objects, abort.'
             hypothesesGraph = consTracker.buildGraph(traxelStore, new_max_nearest_neighbors)
 
             maxDist = 200
-            withDivisions = self._drawer.divisionsBox.isChecked()
             sizeDependent = False
             divThreshold = float(0.5)
 
@@ -615,11 +614,12 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             norm += structuredLearningTracker.weight(i)*structuredLearningTracker.weight(i)
         norm = math.sqrt(norm)
 
-        self._detectionWeight = structuredLearningTracker.weight(0)/norm
-        self._divisionWeight = structuredLearningTracker.weight(1)/norm
-        self._transitionWeight = structuredLearningTracker.weight(2)/norm
-        self._appearanceWeight = structuredLearningTracker.weight(3)/norm
-        self._disappearanceWeight = structuredLearningTracker.weight(4)/norm
+        if norm > 0.0000001:
+            self._detectionWeight = structuredLearningTracker.weight(0)/norm
+            self._divisionWeight = structuredLearningTracker.weight(1)/norm
+            self._transitionWeight = structuredLearningTracker.weight(2)/norm
+            self._appearanceWeight = structuredLearningTracker.weight(3)/norm
+            self._disappearanceWeight = structuredLearningTracker.weight(4)/norm
 
         self.mainOperator.detectionWeight = self._detectionWeight
         self.mainOperator.divisionWeight = self._divisionWeight

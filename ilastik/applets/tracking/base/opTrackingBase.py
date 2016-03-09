@@ -421,7 +421,10 @@ class OpTrackingBase(Operator, ExportingOperator):
 
         if with_div:
             if not self.DivisionProbabilities.ready() or len(self.DivisionProbabilities([0]).wait()[0]) == 0:
-                raise Exception, "Classifier not yet ready. Did you forget to train the Division Detection Classifier?"
+                msgStr = "\nDivision classifier has not been trained! " + \
+                         "Uncheck divisible objects if your objects don't divide or " + \
+                         "go back to the Division Detection applet and train it."
+                raise DatasetConstraintError ("Tracking",msgStr)
             divProbs = self.DivisionProbabilities(time_range).wait()
 
         if with_local_centers:
@@ -429,7 +432,9 @@ class OpTrackingBase(Operator, ExportingOperator):
 
         if with_classifier_prior:
             if not self.DetectionProbabilities.ready() or len(self.DetectionProbabilities([0]).wait()[0]) == 0:
-                raise Exception, "Classifier not yet ready. Did you forget to train the Object Count Classifier?"
+                msgStr = "\nObject count classifier has not been trained! " + \
+                         "Go back to the Object Count Classification applet and train it."
+                raise DatasetConstraintError ("Tracking",msgStr)
             detProbs = self.DetectionProbabilities(time_range).wait()
 
         logger.info("filling traxelstore")
@@ -455,7 +460,7 @@ class OpTrackingBase(Operator, ExportingOperator):
                 try:
                     rc_corr = feats[t][config.features_vigra_name]['RegionCenter_corr']
                 except:
-                    raise Exception, 'cannot consider optical correction since it has not been computed before'
+                    raise Exception, 'Can not consider optical correction since it has not been computed before'
                 if rc_corr.size:
                     rc_corr = rc_corr[1:, ...]
 
@@ -474,7 +479,7 @@ class OpTrackingBase(Operator, ExportingOperator):
                 elif len(rc[idx]) == 3:
                     x, y, z = rc[idx]
                 else:
-                    raise Exception, "The RegionCenter feature must have dimensionality 2 or 3."
+                    raise DatasetConstraintError ("Tracking", "The RegionCenter feature must have dimensionality 2 or 3.")
                 size = ct[idx]
                 if (x < x_range[0] or x >= x_range[1] or
                             y < y_range[0] or y >= y_range[1] or
