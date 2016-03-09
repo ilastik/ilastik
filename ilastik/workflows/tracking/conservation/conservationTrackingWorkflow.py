@@ -10,6 +10,7 @@ from ilastik.applets.thresholdTwoLevels.thresholdTwoLevelsApplet import Threshol
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.trackingFeatureExtraction.trackingFeatureExtractionApplet import TrackingFeatureExtractionApplet
 from ilastik.applets.trackingFeatureExtraction import config
+from ilastik.applets.tracking.conservation import config as configConservation
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from ilastik.applets.tracking.base.trackingBaseDataExportApplet import TrackingBaseDataExportApplet
 from ilastik.applets.batchProcessing import BatchProcessingApplet
@@ -72,7 +73,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         opObjectExtraction = self.objectExtractionApplet.topLevelOperator
         opObjectExtraction.FeatureNamesVigra.setValue(feature_names_vigra)
         
-        self.divisionDetectionApplet = self._createDivisionDetectionApplet() # Might be None
+        self.divisionDetectionApplet = self._createDivisionDetectionApplet(configConservation.selectedFeaturesDiv) # Might be None
 
         if self.divisionDetectionApplet:
             feature_dict_division = {}
@@ -87,7 +88,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
                 selected_features_div[config.features_division_name][name] = {}
 
             opDivisionDetection = self.divisionDetectionApplet.topLevelOperator
-            opDivisionDetection.SelectedFeatures.setValue(selected_features_div)
+            opDivisionDetection.SelectedFeatures.setValue(configConservation.selectedFeaturesDiv)
             opDivisionDetection.LabelNames.setValue(['Not Dividing', 'Dividing'])        
             opDivisionDetection.AllowDeleteLabels.setValue(False)
             opDivisionDetection.AllowAddLabel.setValue(False)
@@ -95,14 +96,15 @@ class ConservationTrackingWorkflowBase( Workflow ):
                 
         self.cellClassificationApplet = ObjectClassificationApplet(workflow=self,
                                                                      name="Object Count Classification (optional)",
-                                                                     projectFileGroupName="CountClassification")
+                                                                     projectFileGroupName="CountClassification",
+                                                                     selectedFeatures=configConservation.selectedFeaturesObjectCount)
 
         selected_features_objectcount = {}
         for plugin_name in config.selected_features_objectcount.keys():
             selected_features_objectcount[plugin_name] = { name: {} for name in config.selected_features_objectcount[plugin_name] }
 
         opCellClassification = self.cellClassificationApplet.topLevelOperator 
-        opCellClassification.SelectedFeatures.setValue( selected_features_objectcount )
+        opCellClassification.SelectedFeatures.setValue(configConservation.selectedFeaturesObjectCount)
         opCellClassification.SuggestedLabelNames.setValue( ['false detection',] + [str(i) + ' Objects' for i in range(1,10) ] )
         opCellClassification.AllowDeleteLastLabelOnly.setValue(True)
         opCellClassification.EnableLabelTransfer.setValue(False)
@@ -164,10 +166,11 @@ class ConservationTrackingWorkflowBase( Workflow ):
     def applets(self):
         return self._applets
 
-    def _createDivisionDetectionApplet(self):
+    def _createDivisionDetectionApplet(self,selectedFeatures=dict()):
         return ObjectClassificationApplet(workflow=self,
                                           name="Division Detection (optional)",
-                                          projectFileGroupName="DivisionDetection")
+                                          projectFileGroupName="DivisionDetection",
+                                          selectedFeatures=selectedFeatures)
     
     @property
     def imageNameListSlot(self):
