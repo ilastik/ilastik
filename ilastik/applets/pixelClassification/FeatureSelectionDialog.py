@@ -687,7 +687,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
         :return: optimal number of selected features
         '''
         from sklearn.ensemble import RandomForestClassifier
-        from feature_selection.wrapper_feature_selection import EvaluationFunction
+        from ilastik_feature_selection.wrapper_feature_selection import EvaluationFunction
 
 
         feature_order = np.array(feature_order)

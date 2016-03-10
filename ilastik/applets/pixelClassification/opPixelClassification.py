@@ -33,7 +33,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot, OperatorWrapper
 from lazyflow.operators import OpValueCache, OpTrainClassifierBlocked, OpClassifierPredict,\
                                OpSlicedBlockedArrayCache, OpMultiArraySlicer2, \
                                OpPixelOperator, OpMaxChannelIndicatorOperator, OpCompressedUserLabelArray, OpFeatureMatrixCache
-import feature_selection
+import ilastik_feature_selection
 import numpy as np
 
 from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
@@ -668,7 +668,7 @@ class OpFilterFeatureSelection(Operator):
         feature_label_matrix = self.FeatureLabelMatrix[0].value
         labels = feature_label_matrix[:, 0]  # first row is labels
         data = feature_label_matrix[:, 1:]  # the rest is data
-        self.feature_selector = feature_selection.filter_feature_selection.FilterFeatureSelection(data, labels.astype("int"), self._filter_method)
+        self.feature_selector = ilastik_feature_selection.filter_feature_selection.FilterFeatureSelection(data, labels.astype("int"), self._filter_method)
 
         if self.FilterMethod.connected():
             self._filter_method = self.FilterMethod.value
@@ -715,7 +715,7 @@ class OpWrapperFeatureSelection(Operator):
                 complexity_penalty = self.ComplexityPenalty.value
             else:
                 complexity_penalty = 0.07 # default
-            self._evaluator = feature_selection.wrapper_feature_selection.EvaluationFunction(self._classifier, complexity_penalty = complexity_penalty)
+            self._evaluator = ilastik_feature_selection.wrapper_feature_selection.EvaluationFunction(self._classifier, complexity_penalty = complexity_penalty)
             self._evaluation_fct = self._evaluator.evaluate_feature_set_size_penalty
 
         # the output slot should maybe contain the internal feature IDs or a bool list of len(internal_feature_ids)
@@ -730,7 +730,7 @@ class OpWrapperFeatureSelection(Operator):
         data = feature_label_matrix[:, 1:]  # the rest is data
 
 
-        feature_selector = feature_selection.wrapper_feature_selection.WrapperFeatureSelection(data,
+        feature_selector = ilastik_feature_selection.wrapper_feature_selection.WrapperFeatureSelection(data,
                                                                                                labels.astype("int"),
                                                                                                self._evaluation_fct, self._wrapper_method)
 
