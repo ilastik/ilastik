@@ -359,7 +359,7 @@
          y="441.05829"
          x="800.50555"
          id="tspan4609"
-         sodipodi:role="line">1.1.8</tspan></text>
+         sodipodi:role="line">1.1.9</tspan></text>
     <text
        xml:space="preserve"
        style="font-size:36px;font-style:normal;font-weight:normal;text-align:end;text-anchor:end;fill:#000000;fill-opacity:1;stroke:none;font-family:Berta_Drug;-inkscape-font-specification:Berta_Drug"
@@ -678,7 +678,18 @@
            height="1550.6128"
            x="-157.13666"
            y="-99.60614" /></flowRegion><flowPara
-         id="flowPara4335" /></flowRoot>  </g>
+         id="flowPara4335" /></flowRoot>    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:40px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       x="-232.4935"
+       y="935.6333"
+       id="text3475"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan3477"
+         x="-232.4935"
+         y="935.6333"></tspan></text>
+  </g>
   <g
      inkscape:groupmode="layer"
      id="layer3"
