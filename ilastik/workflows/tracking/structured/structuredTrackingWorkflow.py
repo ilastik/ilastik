@@ -196,7 +196,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
         opCellClassification.ObjectFeatures.connect(opTrackingFeatureExtraction.RegionFeaturesAll)
         opCellClassification.ComputedFeatureNames.connect(opTrackingFeatureExtraction.ComputedFeatureNamesNoDivisions)
         opCellClassification.SelectedFeatures.setValue(configStructured.selectedFeaturesObjectCount )
-        opCellClassification.SuggestedLabelNames.setValue( ['false detection',] + [str(i) + ' Objects' for i in range(1,10) ] )
+        opCellClassification.SuggestedLabelNames.setValue( ['False Detection',] + [str(1) + ' Object'] + [str(i) + ' Objects' for i in range(2,10) ] )
         opCellClassification.AllowDeleteLastLabelOnly.setValue(True)
         opCellClassification.EnableLabelTransfer.setValue(False)
 
