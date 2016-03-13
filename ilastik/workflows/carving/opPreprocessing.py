@@ -34,6 +34,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.operators.opBlockedHdf5Cache import OpBlockedHdf5Cache
 from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpH5WriterBigDataset
+from lazyflow.request import RequestLock
 from lazyflow.utility.timer import Timer
 from lazyflow.utility import Memory
 
@@ -164,12 +165,18 @@ class OpFilter(Operator):
 
 
 # TODO: Split into variadic operators: OpBlockwiseFold, OpStats
+# TODO: fix duplicatation (time 2min on test project)
 class OpBlockwiseTotalStats(Operator):
     MINIMUM = 'minimum'
     MAXIMUM = 'maximum'
 
     Input = InputSlot()
     Output = OutputSlot(stype='object')
+
+    def __init__(self, *args, **kwargs):
+        super( OpBlockwiseTotalStats, self ).__init__(*args, **kwargs)
+        self._lock = RequestLock()
+        self._stats = None
 
     def setupOutputs(self):
         self.Output.meta.shape = (1,)
@@ -178,25 +185,41 @@ class OpBlockwiseTotalStats(Operator):
     def execute(self, slot, subindex, unused_roi, result):
         assert slot == self.Output, "Invalid output slot: {}".format(slot.name)
 
-        bsz = 256 #block size
-        halo_size = (False, True, True, True, False)
-        block_shape = (1,bsz,bsz,bsz,1)
-        block_starts = getIntersectingBlocks( block_shape, roiFromShape(self.Input.meta.shape) )
+        # result was cached
+        if self._stats:
+            result[0] = self._stats
+            return result
 
-        stats = {self.MINIMUM:sys.float_info.max, self.MAXIMUM:sys.float_info.min}
+        with self._lock:
+            if not self._stats:
+                # calculate stats
+                with Timer() as statsTimer:
+                    stats = {self.MINIMUM:sys.float_info.max, self.MAXIMUM:sys.float_info.min}
+                    bsz = 256 #block size
+                    block_shape = (1,bsz,bsz,bsz,1)
+                    block_starts = getIntersectingBlocks( block_shape, roiFromShape(self.Input.meta.shape) )
+                    block_count = len(block_starts)
+                    for b_id, block in enumerate(block_starts):
+                        input_roi = getBlockBounds(self.Input.meta.shape, block_shape, block)
+                        inputVolume = self.Input( *input_roi ).wait()
 
-        block_count = len(block_starts)
-        for b_id, block in enumerate(block_starts):
-            input_roi = getBlockBounds(self.Input.meta.shape, block_shape, block)
-            inputVolume = self.Input( *input_roi ).wait()
+                        stats[self.MINIMUM] = min(stats[self.MINIMUM], numpy.min(inputVolume))
+                        stats[self.MAXIMUM] = max(stats[self.MAXIMUM], numpy.max(inputVolume))
 
-            stats[self.MINIMUM] = min(stats[self.MINIMUM], numpy.min(inputVolume))
-            stats[self.MAXIMUM] = max(stats[self.MAXIMUM], numpy.max(inputVolume))
+                    # stats go live, and are immediately available to all threads
+                    self._stats = stats
 
-        result[0] = stats
+                    logger.info( "Calculated stats on {} blocks took {} seconds".format( block_count, statsTimer.seconds() ) )
+                    logger.info( "  stats: {}: {}, {}: {}".format(
+                                self.MINIMUM, self._stats[self.MINIMUM],
+                                self.MAXIMUM, self._stats[self.MAXIMUM]) )
+
+        # stats were calculated
+        result[0] = self._stats
         return result
 
     def propagateDirty(self, slot, subindex, unused_roi):
+        self._stats = None
         self.Output.setDirty(slice(None))
 
 
