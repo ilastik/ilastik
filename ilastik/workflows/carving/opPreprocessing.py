@@ -165,7 +165,6 @@ class OpFilter(Operator):
 
 
 # TODO: Split into variadic operators: OpBlockwiseFold, OpStats
-# TODO: fix duplicatation (time 2min on test project)
 class OpBlockwiseTotalStats(Operator):
     MINIMUM = 'minimum'
     MAXIMUM = 'maximum'

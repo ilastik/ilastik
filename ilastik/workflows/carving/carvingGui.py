@@ -106,9 +106,6 @@ class CarvingGui(LabelingGui):
         tagged_shape.update( topLevelOperatorView.InputData.meta.getTaggedShape() )
         is_3d = (tagged_shape['x'] > 1 and tagged_shape['y'] > 1 and tagged_shape['z'] > 1)
 
-        # TODO: fix
-        #is_3d = False;
-
         if is_3d:
             try:
                 self._renderMgr = RenderingManager( self.editor.view3d )
