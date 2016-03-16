@@ -56,8 +56,8 @@ def flatten_ilastik_feature_table(table, selection, signal):
     signal(0)
     if frames > 1:
         computed_feature = {}
-        for t in xrange(frames - 1):
-            request = table([t, t + 1])
+        for t in xrange(frames):
+            request = table([t])
             computed_feature.update(request.wait())
             signal(100 * t / frames)
     else:
