@@ -274,7 +274,8 @@ class OpConservationTracking(OpTrackingBase):
                                          "none",  # detection_rf_filename
                                          fov,
                                          "none", # dump traxelstore,
-                                         pgmlink.ConsTrackingSolverType.CplexSolver
+                                         pgmlink.ConsTrackingSolverType.CplexSolver,
+                                         ndim
                                          )
             g = self.tracker.buildGraph(ts, 1)
 
@@ -302,6 +303,7 @@ class OpConservationTracking(OpTrackingBase):
             cplex_timeout, # cplex timeout
             None, # transition classifier
             pgmlink.ConsTrackingSolverType.CplexSolver, # Solver
+            False, # training to hard constraints
             1 # num threads
         )
 
