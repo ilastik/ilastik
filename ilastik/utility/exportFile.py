@@ -71,9 +71,9 @@ def flatten_ilastik_feature_table(table, selection, signal):
 
     for cat_name, category in computed_feature[0].iteritems():
         for feat_name, feat_array in category.iteritems():
-            if cat_name == "Default features" or \
-                    feat_name not in feature_names and \
-                    feat_name in selection:
+            if (cat_name == "Default features" or \
+                     feat_name in selection) and \
+                     feat_name not in feature_names:
                 feature_names.append(feat_name)
                 feature_cats.append(cat_name)
                 feature_channels.append((feat_array.shape[1]))
