@@ -119,6 +119,10 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             self._drawer.divThreshBox.hide()
             self._drawer.label_25.hide() # hide avg. obj size label
             self._drawer.avgSizeBox.hide()
+            self._drawer.label_24.hide() # hide motion model weight label
+            self._drawer.motionModelWeightBox.hide()
+            self._drawer.maxNearestNeighborsSpinBox.hide()
+            self._drawer.MaxNearestNeighbourLabel.hide()
           
         self.mergerLabels = [self._drawer.merg1,
                              self._drawer.merg2,
@@ -234,7 +238,8 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
                     appearance_cost = appearanceCost,
                     disappearance_cost = disappearanceCost,
                     motionModelWeight=motionModelWeight,
-                    force_build_hypotheses_graph = False
+                    force_build_hypotheses_graph = False,
+                    max_nearest_neighbors=self._drawer.maxNearestNeighborsSpinBox.value()
                     )
 
                 # update showing the merger legend,

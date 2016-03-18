@@ -167,6 +167,7 @@ class OpConservationTracking(OpTrackingBase):
             disappearance_cost = 500,
             motionModelWeight=10.0,
             force_build_hypotheses_graph = False,
+            max_nearest_neighbors = 1,
             withBatchProcessing = False
             ):
         
@@ -277,7 +278,7 @@ class OpConservationTracking(OpTrackingBase):
                                          pgmlink.ConsTrackingSolverType.CplexSolver,
                                          ndim
                                          )
-            g = self.tracker.buildGraph(ts, 1)
+            g = self.tracker.buildGraph(ts, max_nearest_neighbors)
 
         # create dummy uncertainty parameter object with just one iteration, so no perturbations at all (iter=0 -> MAP)
         sigmas = pgmlink.VectorOfDouble()
