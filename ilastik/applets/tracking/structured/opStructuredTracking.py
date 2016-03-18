@@ -462,7 +462,7 @@ class OpStructuredTracking(OpTrackingBase):
         # will be needed for python defined TRANSITION function
         # consTrackerParameters.register_transition_func(self.track_transition_func)
 
-        fixLabeledNodes = False;
+        fixLabeledNodes = False
 
         try:
             eventsVector = self.consTracker.track(consTrackerParameters, fixLabeledNodes )
