@@ -254,7 +254,7 @@ class OpStructuredTracking(OpTrackingBase):
         
         median_obj_size = [0]
 
-        fs, ts, empty_frame = self._generate_traxelstore(
+        fs, ts, empty_frame, max_traxel_id_at = self._generate_traxelstore(
             time_range, x_range, y_range, z_range,
             size_range, x_scale, y_scale, z_scale,
             median_object_size=median_obj_size,
@@ -485,6 +485,7 @@ class OpStructuredTracking(OpTrackingBase):
                     withTracklets,
                     ndim,
                     self.transition_parameter,
+                    max_traxel_id_at,
                     True, # with_constraints
                     None) # TransitionClassifier
 

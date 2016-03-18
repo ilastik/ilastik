@@ -557,7 +557,7 @@ class OpTrackingBase(Operator, ExportingOperator):
 
         self.FilteredLabels.setValue(filtered_labels, check_changed=False)
 
-        return fs, ts, empty_frame
+        return fs, ts, empty_frame, max_traxel_id_at
 
     def save_export_progress_dialog(self, dialog):
         """
