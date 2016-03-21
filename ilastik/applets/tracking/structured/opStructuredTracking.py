@@ -111,7 +111,6 @@ class OpStructuredTracking(OpTrackingBase):
             self.labels[t]={}
 
     def execute(self, slot, subindex, roi, result):
-        result = super(OpStructuredTracking, self).execute(slot, subindex, roi, result)
         
         if slot is self.Labels:
             result=self.Labels.wait()
