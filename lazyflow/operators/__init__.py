@@ -51,6 +51,7 @@ except:
     loaded += os.linesep
     logger.debug(loaded)
 
+    from opSimpleStacker import OpSimpleStacker
     from opBlockedArrayCache import OpBlockedArrayCache
     from opVigraWatershed import OpVigraWatershed
     from opVigraLabelVolume import OpVigraLabelVolume
