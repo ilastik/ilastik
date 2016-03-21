@@ -26,12 +26,20 @@ import vigra
 
 from lazyflow.graph import Operator, InputSlot
 
+from .opExportToArray import OpExportToArray
+
 class OpExport2DImage(Operator):
     """
     Export a 2D image using vigra.impex.writeImage()
     """
     Input = InputSlot() # Allowed to have more than 2 dimensions as long as the others are singletons.
     Filepath = InputSlot()
+
+    def __init__(self, *args, **kwargs):
+        super( OpExport2DImage, self ).__init__(*args, **kwargs)
+        self._opExportToArray = OpExportToArray(parent=self)
+        self._opExportToArray.Input.connect( self.Input )
+        self.progressSignal = self._opExportToArray.progressSignal
     
     def setupOutputs(self):
         # Ask vigra which extensions are supported.
@@ -44,7 +52,6 @@ class OpExport2DImage(Operator):
                   "is not a recognized 2D image extension.".format( extension )
             raise Exception(msg)
         
-
     # No Output slots...
     def execute(self, slot, subindex, roi, result): pass
     def propagateDirty(self, slot, subindex, roi): pass
@@ -59,7 +66,7 @@ class OpExport2DImage(Operator):
         nonzero_dims = filter( lambda (k,v): k != 'c' and v > 1, tagged_shape.items() )
         assert len(nonzero_dims) <= 2, "Image must have no more than 2 non-singleton dimensions."
 
-        data = self.Input[:].wait()
+        data = self._opExportToArray.run_export_to_array()
         data = vigra.taggedView( data, self.Input.meta.axistags )
         data = data.squeeze()
         if len(data.shape) == 1 or len(data.shape) == 2 and data.axistags.channelIndex < 2:

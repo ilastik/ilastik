@@ -300,8 +300,9 @@ class OpExportSlot(Operator):
     def _export_2d(self, fmt):
         self.progressSignal(0)
         export_path = self.ExportPath.value
+        opExport = OpExport2DImage( parent=self )
         try:
-            opExport = OpExport2DImage( parent=self )
+            opExport.progressSignal.subscribe(self.progressSignal)
             opExport.Filepath.setValue( export_path )
             opExport.Input.connect( self.Input )
             

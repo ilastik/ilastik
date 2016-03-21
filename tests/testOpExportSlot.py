@@ -114,8 +114,12 @@ class TestOpExportSlot(object):
         data = vigra.taggedView( data, vigra.defaultAxistags('xy') )
         
         graph = Graph()
+
+        opPiper = OpArrayPiper(graph=graph)
+        opPiper.Input.setValue( data )
+        
         opExport = OpExportSlot(graph=graph)
-        opExport.Input.setValue(data)
+        opExport.Input.connect(opPiper.Output)
         opExport.OutputFormat.setValue( 'png' )
         opExport.OutputFilenameFormat.setValue( self._tmpdir + '/test_export_x{x_start}-{x_stop}_y{y_start}-{y_stop}' )
         opExport.CoordinateOffset.setValue( (10, 20) )
