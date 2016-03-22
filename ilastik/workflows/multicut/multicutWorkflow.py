@@ -18,6 +18,8 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ###############################################################################
+import numpy as np
+
 from ilastik.workflow import Workflow
 
 from ilastik.applets.dataSelection import DataSelectionApplet
@@ -27,7 +29,8 @@ from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from ilastik.applets.batchProcessing import BatchProcessingApplet
 
 from lazyflow.graph import Graph
-from lazyflow.operators import OpRelabelConsecutive, OpBlockedArrayCache
+from lazyflow.operators import OpRelabelConsecutive, OpBlockedArrayCache, OpSimpleStacker
+from lazyflow.operators.generic import OpConvertDtype
 
 class MulticutWorkflow(Workflow):
     workflowName = "Multicut"
@@ -125,9 +128,24 @@ class MulticutWorkflow(Workflow):
         opRelabeledSuperpixelsCache.CompressionEnabled.setValue(True)
         opRelabeledSuperpixelsCache.Input.connect( opRelabelConsecutive.Output )
 
+        opConvertRaw = OpConvertDtype( parent=self )
+        opConvertRaw.ConversionDtype.setValue( np.float32 )
+        opConvertRaw.Input.connect( opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
+
+        opConvertProbabilities = OpConvertDtype( parent=self )
+        opConvertProbabilities.ConversionDtype.setValue( np.float32 )
+        opConvertProbabilities.Input.connect( opDataSelection.ImageGroup[self.DATA_ROLE_PROBABILITIES] )
+
+        # Actual computation is done with both RawData and Probabilities
+        opStackRawAndVoxels = OpSimpleStacker( parent=self )
+        opStackRawAndVoxels.Images.resize(2)
+        opStackRawAndVoxels.Images[0].connect( opConvertRaw.Output )
+        opStackRawAndVoxels.Images[1].connect( opConvertProbabilities.Output )
+        opStackRawAndVoxels.AxisFlag.setValue('c')
+
         # edge training inputs
-        opEdgeTraining.RawData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
-        opEdgeTraining.VoxelData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_PROBABILITIES] )
+        opEdgeTraining.RawData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_RAW] ) # Used for visualization only
+        opEdgeTraining.VoxelData.connect( opStackRawAndVoxels.Output )
         opEdgeTraining.Superpixels.connect( opRelabeledSuperpixelsCache.Output )
         opEdgeTraining.GroundtruthSegmentation.connect( opDataSelection.ImageGroup[self.DATA_ROLE_GROUNDTRUTH] )
 
