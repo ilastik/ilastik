@@ -18,9 +18,10 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ###############################################################################
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialDictSlot
 
 class EdgeTrainingSerializer(AppletSerializer):
     def __init__(self, operator, projectFileGroupName):
-        slots = []
+        slots = [ SerialDictSlot(operator.FeatureNames, selfdepends=True) ]
         super(EdgeTrainingSerializer, self).__init__(projectFileGroupName, slots=slots)
+        

@@ -25,6 +25,8 @@ import numpy as np
 from PyQt4.QtCore import Qt
 from PyQt4.QtGui import QWidget, QLabel, QDoubleSpinBox, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy, QColor, QPen, QPushButton
 
+from ilastikrag.gui import FeatureSelectionDialog
+
 from ilastik.utility.gui import threadRouted
 from volumina.pixelpipeline.datasources import LazyflowSource
 from volumina.layer import SegmentationEdgesLayer
@@ -68,10 +70,12 @@ class EdgeTrainingGui(LayerViewerGui):
         op = self.topLevelOperatorView
 
         # Controls
+        feature_selection_button = QPushButton("Select Features", clicked=self._open_feature_selection_dlg)
         train_from_gt_button = QPushButton("Train from Groundtruth", clicked=self._handle_train_from_gt_clicked)
         
         # Layout
         layout = QVBoxLayout()
+        layout.addWidget(feature_selection_button)
         layout.addWidget(train_from_gt_button)
         layout.addSpacerItem( QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding) )
         
@@ -86,6 +90,20 @@ class EdgeTrainingGui(LayerViewerGui):
         self.configure_gui_from_operator()
 
         self._init_probability_colortable()
+
+    def _open_feature_selection_dlg(self):
+        rag = self.topLevelOperatorView.Rag.value
+        feature_names = rag.supported_features()
+        channel_names = self.topLevelOperatorView.VoxelData.meta.channel_names
+        default_selections = self.topLevelOperatorView.FeatureNames.value
+
+        dlg = FeatureSelectionDialog(channel_names, feature_names, default_selections, parent=self)
+        dlg_result = dlg.exec_()
+        if dlg_result != dlg.Accepted:
+            return
+        
+        selections = dlg.selections()
+        self.topLevelOperatorView.FeatureNames.setValue(selections)
 
     def _init_probability_colortable(self):
         self.probability_colortable = []

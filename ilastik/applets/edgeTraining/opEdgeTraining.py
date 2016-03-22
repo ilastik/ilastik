@@ -24,7 +24,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 class OpEdgeTraining(Operator):
+    DEFAULT_FEATURES = { "Grayscale": ['standard_edge_mean'] }
+
     VoxelData = InputSlot(level=1)
+    FeatureNames = InputSlot(value=DEFAULT_FEATURES)
     Superpixels = InputSlot(level=1)
     GroundtruthSegmentation = InputSlot(level=1, optional=True)
     #EdgeLabels = InputSlot(optional=True)
@@ -47,6 +50,7 @@ class OpEdgeTraining(Operator):
         self.opRagCache.Input.connect( self.opCreateRag.Rag )
         
         self.opComputeEdgeFeatures = OpMultiLaneWrapper( OpComputeEdgeFeatures, parent=self )
+        self.opComputeEdgeFeatures.FeatureNames.connect( self.FeatureNames )
         self.opComputeEdgeFeatures.VoxelData.connect( self.VoxelData )
         self.opComputeEdgeFeatures.Rag.connect( self.opRagCache.Output )
         
@@ -197,17 +201,7 @@ class OpCreateRag(Operator):
 
 
 class OpComputeEdgeFeatures(Operator):
-    DEFAULT_FEATURES = ['standard_edge_count',
-                        'standard_edge_sum',
-                        'standard_edge_mean',
-                        'standard_edge_variance',
-                        'standard_edge_quantiles_10',
-                        'standard_edge_quantiles_25',
-                        'standard_edge_quantiles_50',
-                        'standard_edge_quantiles_75',
-                        'standard_edge_quantiles_90',
-                        'standard_sp_count']
-    FeatureNames = InputSlot(value=DEFAULT_FEATURES)
+    FeatureNames = InputSlot()
     VoxelData = InputSlot()
     Rag = InputSlot()
     EdgeFeatures = OutputSlot()
@@ -219,22 +213,25 @@ class OpComputeEdgeFeatures(Operator):
          
     def execute(self, slot, subindex, roi, result):
         rag = self.Rag.value
-        feature_names = self.FeatureNames.value
+        channel_feature_names = self.FeatureNames.value
 
         feature_data = []
         for c in range( self.VoxelData.meta.shape[-1] ):
+            channel_name = self.VoxelData.meta.channel_names[c]
+            feature_names = list(channel_feature_names[channel_name])
+            if not feature_names:
+                # No features selected for this channel
+                continue
+
             voxel_data = self.VoxelData[...,c:c+1].wait()
             voxel_data = vigra.taggedView(voxel_data, self.VoxelData.meta.axistags)
             voxel_data = voxel_data[...,0] # drop channel
             edge_features_df = rag.compute_features(voxel_data, feature_names)
-            del edge_features_df['sp1']
-            del edge_features_df['sp2']
-            
-            feature_array = edge_features_df.values
+            feature_array = edge_features_df.iloc[:, 2:].values # Discard columns [sp1, sp2]
             feature_data.append( feature_array )
 
         # Concatenate features from all channels
-        feature_data_array = np.concatenate(feature_data, axis=-1)
+        feature_data_array = np.concatenate(feature_data, axis=1)
         result[0] = feature_data_array
  
     def propagateDirty(self, slot, subindex, roi):
