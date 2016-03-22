@@ -493,7 +493,9 @@ class Request( object ):
                 # Mark it as 'started' so that no other greenlet can claim it
                 self.started = True
 
-        if self._current_foreign_thread is not None and self._current_foreign_thread == threading.current_thread():
+        if ( Request.global_thread_pool.num_workers != 0
+        and self._current_foreign_thread is not None
+        and self._current_foreign_thread == threading.current_thread() ):
             # It's usually nonsense for a request to wait for itself,
             #  but we allow it if the request is already "finished"
             # (which can happen if the request is calling wait() from within a notify_finished callback)
