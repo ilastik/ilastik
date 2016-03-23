@@ -9,6 +9,7 @@ import random
 
 import pgmlink
 
+from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.tracking.base.trackingBaseGui import TrackingBaseGui
 from ilastik.utility.exportingOperator import ExportingGui
 from ilastik.utility.gui.threadRouter import threadRouted
@@ -409,7 +410,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                 with_classifier_prior=True)
 
             if empty_frame:
-                raise Exception, 'Can not track frames with 0 objects, abort.'
+                raise DatasetConstraintError('Structured Learning', 'Can not track frames with 0 objects, abort.')
             hypothesesGraph = consTracker.buildGraph(traxelStore, new_max_nearest_neighbors)
 
             maxDist = 200
@@ -462,9 +463,9 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                                     logger.info("Your track count for object {} in time frame {} is {} =| {} |, which is greater than maximum object number {} defined by object count classifier!".format(label,time,trackCount,trackSet,maxObj))
                                     logger.info("Either remove track(s) from this object or train the object count classifier with more labels!")
                                     maxObjOK = False
-                                    raise Exception, "Your track count for object "+str(label)+" in time frame " +str(time)+ " equals "+str(trackCount)+"=|"+str(trackSet)+"|," + \
+                                    raise DatasetConstraintError('Structured Learning', "Your track count for object "+str(label)+" in time frame " +str(time)+ " equals "+str(trackCount)+"=|"+str(trackSet)+"|," + \
                                             " which is greater than the maximum object number "+str(maxObj)+" defined by object count classifier! " + \
-                                            "Either remove track(s) from this object or train the object count classifier with more labels!"
+                                            "Either remove track(s) from this object or train the object count classifier with more labels!")
 
                                 for track in trackSet:
 
@@ -485,9 +486,9 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                                             logger.info("Your track count for transition ( {},{} ) ---> ( {},{} ) is {} =| {} |, which is greater than maximum object number {} defined by object count classifier!".format(previous_label,time-1,label,time,trackCountIntersection,intersectionSet,maxObj))
                                             logger.info("Either remove track(s) from these objects or train the object count classifier with more labels!")
                                             maxObjOK = False
-                                            raise Exception, "Your track count for transition ("+str(previous_label)+","+str(time-1)+") ---> ("+str(label)+","+str(time)+") is "+str(trackCountIntersection)+"=|"+str(intersectionSet)+"|, " + \
+                                            raise DatasetConstraintError('Structured Learning', "Your track count for transition ("+str(previous_label)+","+str(time-1)+") ---> ("+str(label)+","+str(time)+") is "+str(trackCountIntersection)+"=|"+str(intersectionSet)+"|, " + \
                                                     "which is greater than maximum object number "+str(maxObj)+" defined by object count classifier!" + \
-                                                    "Either remove track(s) from these objects or train the object count classifier with more labels!"
+                                                    "Either remove track(s) from these objects or train the object count classifier with more labels!")
 
 
                                         foundAllArcs &= structuredLearningTracker.addArcLabel(time-1, int(previous_label), int(label), float(trackCountIntersection))

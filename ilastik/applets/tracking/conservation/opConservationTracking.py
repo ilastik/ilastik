@@ -3,6 +3,7 @@ from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.rtype import List
 from lazyflow.stype import Opaque
 import pgmlink
+from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.tracking.base.opTrackingBase import OpTrackingBase
 from ilastik.applets.tracking.base.trackingUtilities import relabel, highlightMergers
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key, OpRegionFeatures
@@ -209,15 +210,15 @@ class OpConservationTracking(OpTrackingBase):
         
         if withClassifierPrior:
             if not self.DetectionProbabilities.ready() or len(self.DetectionProbabilities([0]).wait()[0]) == 0:
-                raise Exception, 'Classifier not ready yet. Did you forget to train the Object Count Classifier?'
+                raise DatasetConstraintError('Tracking', 'Classifier not ready yet. Did you forget to train the Object Count Classifier?')
             if not self.NumLabels.ready() or self.NumLabels.value < (maxObj + 1):
-                raise Exception, 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n'\
-                    'Check whether you have (i) the correct number of label names specified in Object Count Classification, and (ii) provided at least ' \
-                    'one training example for each class.'
+                raise DatasetConstraintError('Tracking', 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n' +\
+                    'Check whether you have (i) the correct number of label names specified in Object Count Classification, and (ii) provided at least ' +\
+                    'one training example for each class.')
             if len(self.DetectionProbabilities([0]).wait()[0][0]) < (maxObj + 1):
-                raise Exception, 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n'\
-                    'Check whether you have (i) the correct number of label names specified in Object Count Classification, and (ii) provided at least ' \
-                    'one training example for each class.'            
+                raise DatasetConstraintError('Tracking', 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n' +\
+                    'Check whether you have (i) the correct number of label names specified in Object Count Classification, and (ii) provided at least ' +\
+                    'one training example for each class.')
         
         median_obj_size = [0]
 
@@ -229,7 +230,7 @@ class OpConservationTracking(OpTrackingBase):
                                                                       with_classifier_prior=withClassifierPrior)
         
         if empty_frame:
-            raise Exception, 'cannot track frames with 0 objects, abort.'
+            raise DatasetConstraintError('Tracking', 'Can not track frames with 0 objects, abort.'
               
         
         if avgSize[0] > 0:
