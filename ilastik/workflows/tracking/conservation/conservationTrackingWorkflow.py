@@ -95,7 +95,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
             opDivisionDetection.EnableLabelTransfer.setValue(False)
                 
         self.cellClassificationApplet = ObjectClassificationApplet(workflow=self,
-                                                                     name="Object Count Classification (optional)",
+                                                                     name="Object Count Classification",
                                                                      projectFileGroupName="CountClassification",
                                                                      selectedFeatures=configConservation.selectedFeaturesObjectCount)
 
