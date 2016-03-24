@@ -20,8 +20,6 @@ from PyQt4.QtCore import QTimer
 from PyQt4.QtGui import QApplication
 from vtk import vtkPolyDataWriter
 
-from volumina.view3d.GenerateModelsFromLabels_thread import MeshExtractorDialog
-from volumina.view3d.view3d import convertVTPtoOBJ
 
 def main():
     parser = argparse.ArgumentParser()
