@@ -206,6 +206,7 @@ class MulticutWorkflow(Workflow):
         #  should prevent the shell from closing the project.
         busy = False
         busy |= self.dataSelectionApplet.busy
+        busy |= self.edgeTrainingApplet.busy
         busy |= self.multicutApplet.busy
         busy |= self.dataExportApplet.busy
         busy |= self.batchProcessingApplet.busy
