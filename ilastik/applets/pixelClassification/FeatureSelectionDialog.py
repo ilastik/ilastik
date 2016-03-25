@@ -622,10 +622,9 @@ class FeatureSelectionDialog(QtGui.QDialog):
         The feature Selection Operators return id's of selected features. Here, these IDs are converted to fit the
         feature matrix as in opFeatureSelection.SelectionMatrix
 
-        :param selected_feature_IDs: lift of selected feature ids
+        :param selected_feature_IDs: list of selected feature ids
         :return: feature matrix for opFeatureSelection
         '''
-        feature_channel_names = self.opPixelClassification.FeatureImages.meta['channel_names']
         scales = self.opFeatureSelection.Scales.value
         featureIDs = self.opFeatureSelection.FeatureIds.value
         new_matrix = np.zeros((len(featureIDs), len(scales)), 'bool')  # initialize new matrix as all False
@@ -633,7 +632,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
         # now find out where i need to make changes in the matrix
         # matrix is len(features) by len(scales)
         for feature in selected_feature_IDs:
-            channel_name = feature_channel_names[feature]
+            channel_name = self.feature_channel_names[feature]
             eq_sign_pos = channel_name.find("=")
             right_bracket_pos = channel_name.find(")")
             scale = float(channel_name[eq_sign_pos + 1 : right_bracket_pos])
@@ -659,7 +658,6 @@ class FeatureSelectionDialog(QtGui.QDialog):
         return new_matrix
 
     def _convert_featureMatrix_to_featureIDs(self, feature_matrix):
-        feature_channel_names = self.opPixelClassification.FeatureImages.meta['channel_names']
         feature_ids = ["Gaussian Smoothing", "Laplacian of Gaussian", "Gaussian Gradient Magnitude",
                        "Difference of Gaussians", "Structure Tensor Eigenvalues", "Hessian of Gaussian Eigenvalues"]
         scales = self.opFeatureSelection.Scales.value
@@ -672,9 +670,9 @@ class FeatureSelectionDialog(QtGui.QDialog):
                 if feature_matrix[i, j]:
                     id = feature_ids[i]
                     scale = scales[j]
-                    for k in range(len(feature_channel_names)):
-                        m1 = re.findall(id, feature_channel_names[k])
-                        m2 = re.findall(str(scale), feature_channel_names[k])
+                    for k in range(len(self.feature_channel_names)):
+                        m1 = re.findall(id, self.feature_channel_names[k])
+                        m2 = re.findall(str(scale), self.feature_channel_names[k])
                         if (len(m1) > 0) & (len(m2) > 0):
                             ids += [k]
 
@@ -731,17 +729,6 @@ class FeatureSelectionDialog(QtGui.QDialog):
 
         user_defined_matrix = self.opFeatureSelection.SelectionMatrix.value
 
-        if not self._initialized_current_features_segmentation_layer:
-            self.opFeatureSelection.setupOutputs()  # deletes cache for realistic feature computation time
-            segmentation_current_features, oob_user, time_user = self.retrieve_segmentation(user_defined_matrix)
-            selected_ids = self._convert_featureMatrix_to_featureIDs(user_defined_matrix)
-            current_features_result = FeatureSelectionResult(user_defined_matrix,
-                                                             selected_ids,
-                                                             segmentation_current_features,
-                                                             {'num_of_feat': 'user', 'c': 'None'},
-                                                             'user_features', oob_user, time_user)
-            self._add_feature_set_to_results(current_features_result)
-            self._initialized_current_features_segmentation_layer = True
 
         all_features_active_matrix = np.zeros(user_defined_matrix.shape, 'bool')
         all_features_active_matrix[:, 1:] = True
@@ -838,6 +825,21 @@ class FeatureSelectionDialog(QtGui.QDialog):
                                                               oob_err=new_oob,
                                                               feature_calc_time=new_time)
         self._add_feature_set_to_results(new_feature_selection_result)
+
+        if not self._initialized_current_features_segmentation_layer:
+            self.opFeatureSelection.setupOutputs()  # deletes cache for realistic feature computation time
+            segmentation_current_features, oob_user, time_user = self.retrieve_segmentation(user_defined_matrix)
+            selected_ids = self._convert_featureMatrix_to_featureIDs(user_defined_matrix)
+            current_features_result = FeatureSelectionResult(user_defined_matrix,
+                                                             selected_ids,
+                                                             segmentation_current_features,
+                                                             {'num_of_feat': 'user', 'c': 'None'},
+                                                             'user_features', oob_user, time_user)
+            self._add_feature_set_to_results(current_features_result)
+            self._initialized_current_features_segmentation_layer = True
+
+
+
 
         # revert changes to matrix
         self.opFeatureSelection.SelectionMatrix.setValue(user_defined_matrix)
