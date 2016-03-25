@@ -41,6 +41,12 @@ class FeatureSelectionResult(object):
         self.name = self._create_name()
 
     def _create_name(self):
+        """
+        Returns: name for the method to be displayed in the lower left part of the dialog
+        FIXME: make more human readable
+
+        """
+
         if self.selection_method == "filter" or self.selection_method == "gini":
             if self.parameters["num_of_feat"] == 0:
                 name = "%s_%d_feat(auto)" % (self.selection_method, np.sum(self.feature_matrix))
@@ -105,6 +111,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
 
         self._selected_feature_set_id = None
         self.selected_features_matrix = None
+        self.feature_channel_names = None #this gets initialized when the matrix is set to all features in _run_selection
 
         self._stackdim = self.opPixelClassification.InputImages.meta.shape
 
@@ -396,10 +403,9 @@ class FeatureSelectionDialog(QtGui.QDialog):
         else:
             selected_ids = np.sort(self._feature_selection_results[self._selected_feature_set_id].feature_ids)
             text = "<html>"
-            channel_names = self.opPixelClassification.FeatureImages.meta['channel_names']
 
             for id in selected_ids:
-                this_channel_name = channel_names[id]
+                this_channel_name = self.feature_channel_names[id]
                 this_channel_name = this_channel_name.replace("\xcf\x83", "&sigma;")
                 text += this_channel_name + "<br>"
             text += "</html>"
@@ -745,6 +751,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
         self.opFeatureSelection.SelectionMatrix.setDirty() # this does not do anything!?!?
         self.opFeatureSelection.setupOutputs()
         # self.opFeatureSelection.change_feature_cache_size()
+        self.feature_channel_names = self.opPixelClassification.FeatureImages.meta['channel_names']
 
         '''
         Here we retrieve the labels and feature matrix of all features. This is done only once each time the
