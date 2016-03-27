@@ -40,7 +40,7 @@ from ilastik.applets.base.applet import DatasetConstraintError
 logger = logging.getLogger(__name__)
 
 # Constants
-ScalesList = [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
+ScalesList = [0.3, 0.7, 1.0, 1.6, 3.5, 5.0, 10.0]
 
 # Map feature groups to lists of feature IDs
 FeatureGroups = [ ( "Color/Intensity",   [ "GaussianSmoothing" ] ),

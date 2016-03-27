@@ -91,7 +91,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
         self.opWrapperFeatureSelection = opPixelClassification.OpWrapperFeatureSelection(graph=g)
         self.opGiniFeatureSelection = opPixelClassification.OpGiniFeatureSelection(graph=g)
 
-        # retrieve the featurematrixcaches operator from the opPixelclassification. This operator provides the features
+        # retrieve the featureMatrixCaches operator from the opPixelClassification. This operator provides the features
         # and labels matrix required by the feature selection operators
         self.opFeatureMatrixCaches = self.opPixelClassification.opFeatureMatrixCaches
 
@@ -401,6 +401,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
         if self._selected_feature_set_id is None:
             text_edit.setText("No feature set selected!")
         else:
+            #FIXME: WTF??? Why sort? They are already sorted by importance!
             selected_ids = np.sort(self._feature_selection_results[self._selected_feature_set_id].feature_ids)
             text = "<html>"
 
@@ -664,18 +665,14 @@ class FeatureSelectionDialog(QtGui.QDialog):
         featureIDs = self.opFeatureSelection.FeatureIds.value
 
         ids = []
-
         for i in range(feature_matrix.shape[0]):
             for j in range(feature_matrix.shape[1]):
                 if feature_matrix[i, j]:
                     id = feature_ids[i]
                     scale = scales[j]
-                    for k in range(len(self.feature_channel_names)):
-                        m1 = re.findall(id, self.feature_channel_names[k])
-                        m2 = re.findall(str(scale), self.feature_channel_names[k])
-                        if (len(m1) > 0) & (len(m2) > 0):
-                            ids += [k]
-
+                    for feat_num, feat_name in enumerate(self.feature_channel_names):
+                        if id in feat_name and str(scale) in feat_name:
+                            ids += [feat_num]
 
         return ids
 
@@ -756,7 +753,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
         cannot be modified from within this dialog)
         '''
         if not self._initialized_feature_matrix:
-            self.featureLabelMatrix_all_features = self.opFeatureMatrixCaches.LabelAndFeatureMatrix.value
+            self.featureLabelMatrix_all_features = self.opFeatureMatrixCaches.LabelAndFeatureMatrix.value #FIXME: why is this initialized?
             self.opFilterFeatureSelection.FeatureLabelMatrix.setValue(self.featureLabelMatrix_all_features)
             self.opFilterFeatureSelection.FeatureLabelMatrix.resize(1)
             self.opFilterFeatureSelection.setupOutputs()
@@ -827,6 +824,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
         self._add_feature_set_to_results(new_feature_selection_result)
 
         if not self._initialized_current_features_segmentation_layer:
+            #FIXME: this should probably be moved somewhere else
             self.opFeatureSelection.setupOutputs()  # deletes cache for realistic feature computation time
             segmentation_current_features, oob_user, time_user = self.retrieve_segmentation(user_defined_matrix)
             selected_ids = self._convert_featureMatrix_to_featureIDs(user_defined_matrix)
