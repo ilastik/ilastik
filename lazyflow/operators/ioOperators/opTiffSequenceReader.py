@@ -65,7 +65,7 @@ class OpTiffSequenceReader(Operator):
     def setupOutputs(self):
         file_paths = self.expandGlobStrings(self.GlobString.value)
         for filename in file_paths:
-            if os.path.splitext(filename)[1] not in OpTiffReader.TIFF_EXTS:
+            if os.path.splitext(filename)[1].lower() not in OpTiffReader.TIFF_EXTS:
                 raise OpTiffSequenceReader.WrongFileTypeError(filename)
 
         num_files = len(file_paths)
