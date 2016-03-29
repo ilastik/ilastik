@@ -383,7 +383,7 @@ class FormatValidity(object):
               'gif': (np.uint8,),
               'hdr': (np.float32,),
               'bmp': (np.uint8,),
-              'tiff': (np.uint8, np.uint16, np.uint32, np.uint64,),  # https://partners.adobe.com/public/developer/en/tiff/TIFF6.pdf
+              'tiff': (np.uint8, np.uint16, np.uint32, np.uint64, np.float32, np.float64),  # https://partners.adobe.com/public/developer/en/tiff/TIFF6.pdf
               'ras': (np.uint8,),  # citation needed
               'pnm': (np.uint8, np.uint16,),  # see http://netpbm.sourceforge.net/doc/
               'ppm': (np.uint8, np.uint16,),
