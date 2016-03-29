@@ -22,5 +22,11 @@ from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot
 
 class WsdtSerializer(AppletSerializer):
     def __init__(self, operator, projectFileGroupName):
-        slots = []
-        super(WsdtSerializer, self).__init__(projectFileGroupName, slots=slots)
+        slots = [ SerialSlot(operator.ChannelSelection),
+                  SerialSlot(operator.Pmin), 
+                  SerialSlot(operator.MinMembraneSize), 
+                  SerialSlot(operator.MinSegmentSize), 
+                  SerialSlot(operator.SigmaMinima), 
+                  SerialSlot(operator.SigmaWeights), 
+                  SerialSlot(operator.GroupSeeds) ]
+        super(WsdtSerializer, self).__init__(projectFileGroupName, slots=slots, operator=operator)

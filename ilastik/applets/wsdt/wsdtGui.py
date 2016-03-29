@@ -19,6 +19,7 @@
 #           http://ilastik.org/license.html
 ##############################################################################
 from functools import partial
+from contextlib import contextmanager
 import threading
 
 import numpy as np
@@ -62,6 +63,7 @@ class WsdtGui(LayerViewerGui):
     
     def __init__(self, parentApplet, topLevelOperatorView):
         self.__cleanup_fns = []
+        self._currently_updating = False
         self.topLevelOperatorView = topLevelOperatorView
         super(WsdtGui, self).__init__( parentApplet, topLevelOperatorView )
         
@@ -174,31 +176,44 @@ class WsdtGui(LayerViewerGui):
         # Initialize everything with the operator's initial values
         self.configure_gui_from_operator()
 
+    @contextmanager
+    def set_updating(self):
+        assert not self._currently_updating
+        self._currently_updating = True
+        yield
+        self._currently_updating = False
+
     def configure_gui_from_operator(self, *args):
-        op = self.topLevelOperatorView
-        self.channel_box.setValue( op.ChannelSelection.value )
-        input_layer = self.getLayerByName("Input")
-        if input_layer:
-            input_layer.channel = op.ChannelSelection.value
-        
-        self.threshold_box.setValue( op.Pmin.value )
-        self.membrane_size_box.setValue( op.MinMembraneSize.value )
-        self.superpixel_size_box.setValue( op.MinSegmentSize.value )
-        self.seed_presmoothing_box.setValue( op.SigmaMinima.value )
-        self.watershed_presmoothing_box.setValue( op.SigmaWeights.value )
-        self.seed_method_combo.setCurrentIndex( int(op.GroupSeeds.value) )
-        self.enable_debug_box.setChecked( op.EnableDebugOutputs.value )
+        if self._currently_updating:
+            return False
+        with self.set_updating():
+            op = self.topLevelOperatorView
+            self.channel_box.setValue( op.ChannelSelection.value )
+            input_layer = self.getLayerByName("Input")
+            if input_layer:
+                input_layer.channel = op.ChannelSelection.value
+            
+            self.threshold_box.setValue( op.Pmin.value )
+            self.membrane_size_box.setValue( op.MinMembraneSize.value )
+            self.superpixel_size_box.setValue( op.MinSegmentSize.value )
+            self.seed_presmoothing_box.setValue( op.SigmaMinima.value )
+            self.watershed_presmoothing_box.setValue( op.SigmaWeights.value )
+            self.seed_method_combo.setCurrentIndex( int(op.GroupSeeds.value) )
+            self.enable_debug_box.setChecked( op.EnableDebugOutputs.value )
 
     def configure_operator_from_gui(self):
-        op = self.topLevelOperatorView
-        op.ChannelSelection.setValue( self.channel_box.value() )
-        op.Pmin.setValue( self.threshold_box.value() )
-        op.MinMembraneSize.setValue( self.membrane_size_box.value() )
-        op.MinSegmentSize.setValue( self.superpixel_size_box.value() )
-        op.SigmaMinima.setValue( self.seed_presmoothing_box.value() )
-        op.SigmaWeights.setValue( self.watershed_presmoothing_box.value() )
-        op.GroupSeeds.setValue( bool(self.seed_method_combo.currentIndex()) )
-        op.EnableDebugOutputs.setValue( self.enable_debug_box.isChecked() )
+        if self._currently_updating:
+            return False
+        with self.set_updating():
+            op = self.topLevelOperatorView
+            op.ChannelSelection.setValue( self.channel_box.value() )
+            op.Pmin.setValue( self.threshold_box.value() )
+            op.MinMembraneSize.setValue( self.membrane_size_box.value() )
+            op.MinSegmentSize.setValue( self.superpixel_size_box.value() )
+            op.SigmaMinima.setValue( self.seed_presmoothing_box.value() )
+            op.SigmaWeights.setValue( self.watershed_presmoothing_box.value() )
+            op.GroupSeeds.setValue( bool(self.seed_method_combo.currentIndex()) )
+            op.EnableDebugOutputs.setValue( self.enable_debug_box.isChecked() )
 
     def onUpdateWatershedsButton(self):
         def updateThread():
