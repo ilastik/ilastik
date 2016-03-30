@@ -266,6 +266,7 @@ class IlastikShell(QMainWindow):
     """
     The GUI's main window.  Simply a standard 'container' GUI for one or more applets.
     """
+    currentAppletChanged = pyqtSignal(int, int) # prev, current
 
     def __init__(self, parent=None, workflow_cmdline_args=None, flags=Qt.WindowFlags(0)):
         QMainWindow.__init__(self, parent=parent, flags=flags)
@@ -925,7 +926,11 @@ class IlastikShell(QMainWindow):
         if self._refreshDrawerRecursionGuard is False:
             assert threading.current_thread().name == "MainThread"
             self._refreshDrawerRecursionGuard = True
+            
+            prev_applet_index = self.currentAppletIndex
             self.currentAppletIndex = applet_index
+            self.currentAppletChanged.emit(prev_applet_index, self.currentAppletIndex)
+            
             # Collapse all drawers in the applet bar...
             # ...except for the newly selected item.
             drawerModelIndex = self.getModelIndexFromDrawerIndex(applet_index)
