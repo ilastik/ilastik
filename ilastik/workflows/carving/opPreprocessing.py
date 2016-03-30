@@ -179,12 +179,12 @@ class OpSimpleWatershed(Operator):
             if self.Input.meta.getTaggedShape()['z'] > 1:
                 sys.stdout.write("Watershed..."); sys.stdout.flush()
                 #result_view[...] = vigra.analysis.watersheds(volume_feat[:,:])[0].astype(numpy.int32)
-                result_view[...] = vigra.analysis.watersheds(volume_feat[:,:].astype(numpy.uint8))[0]
+                result_view[...] = vigra.analysis.watershedsNew(volume_feat[:,:].astype(numpy.uint8))[0]
                 logger.info( "done {}".format(numpy.max(result[...]) ) )
             else:
                 sys.stdout.write("Watershed..."); sys.stdout.flush()
                 
-                labelVolume = vigra.analysis.watersheds(volume_feat[:,:,0])[0]#.view(dtype=numpy.int32)
+                labelVolume = vigra.analysis.watershedsNew(volume_feat[:,:,0])[0]#.view(dtype=numpy.int32)
                 result_view[...] = labelVolume[:,:,numpy.newaxis]
                 logger.info( "done {}".format(numpy.max(labelVolume)) )
 

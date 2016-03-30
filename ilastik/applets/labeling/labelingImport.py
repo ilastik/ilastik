@@ -39,6 +39,7 @@ from volumina.utility import PreferencesManager
 
 #lazyflow
 import lazyflow
+from lazyflow.utility import vigra_bincount
 from lazyflow.roi import TinyVector, roiToSlice, roiFromShape
 from lazyflow.operators.ioOperators import OpInputDataReader
 from lazyflow.operators.opReorderAxes import OpReorderAxes
@@ -137,7 +138,7 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
 
         # This does the same as the above, albeit slower, and probably with more ram.
         unique_read_labels = numpy.unique(readData)
-        readLabelCounts = numpy.bincount(readData.flat)[unique_read_labels]
+        readLabelCounts = vigra_bincount(readData)[unique_read_labels]
 
         labelInfo = (maxLabels, (unique_read_labels, readLabelCounts))
         del readData

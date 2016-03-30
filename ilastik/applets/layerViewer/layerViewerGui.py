@@ -307,7 +307,7 @@ class LayerViewerGui(QWidget):
 
     @classmethod
     def _create_random_colortable_layer_from_slot(cls, slot, num_colors=256):
-        colortable = generateRandomColors(num_colors, clamp={'v': 1.0, 's' : 0.5})
+        colortable = generateRandomColors(num_colors, clamp={'v': 1.0, 's' : 0.5}, zeroIsTransparent=True)
         layer = ColortableLayer(LazyflowSource(slot), colortable)
         return layer
 

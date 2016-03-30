@@ -59,6 +59,11 @@ class VigraSkeletonObjFeats(ObjectFeaturesPlugin):
         except:
             logger.error('2D Skeleton Features: Supported Skeleton Features: failed (Vigra commit must be f8e48031abb1158ea804ca3cbfe781ccc62d09a2 or newer).')
             names = []
+
+        if 'Center' in names:
+            # To avoid name clashes with convex hull features,
+            # rename "center" to "skeleton center"
+            names[names.index('Center')] = 'Skeleton Center'
         
         tooltips = {}
         result = dict((n, {}) for n in names)  
@@ -70,6 +75,13 @@ class VigraSkeletonObjFeats(ObjectFeaturesPlugin):
     def _do_4d(self, image, labels, features, axes):
         
         result = vigra.analysis.extractSkeletonFeatures(labels.squeeze().astype(np.uint32))
+
+        # Rename 'Center' to 'Hull Center' to avoid name clash with skeleton features
+        if 'Center' in result.keys():
+            # To avoid name clashes with convex hull features,
+            # rename "center" to "skeleton center"
+            result['Skeleton Center'] = result['Center']
+            del result['Center']
         
         # find the number of objects
         nobj = result[features[0]].shape[0]

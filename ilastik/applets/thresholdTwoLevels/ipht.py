@@ -3,6 +3,8 @@ import vigra
 import logging
 logger = logging.getLogger(__name__)
 
+from lazyflow.utility import vigra_bincount
+
 def identity_preserving_hysteresis_thresholding( img,
                                                  high_threshold, low_threshold,
                                                  min_size, max_size=None, out=None ):
@@ -67,7 +69,7 @@ def filter_labels(a, min_size, max_size=None):
     if min_size == 0 and (max_size is None or max_size > numpy.prod(a.shape)): # shortcut for efficiency
         return a
 
-    component_sizes = numpy.bincount( a.ravel(order='K') )
+    component_sizes = vigra_bincount(a)
     bad_sizes = component_sizes < min_size
     if max_size is not None:
         numpy.logical_or( bad_sizes, component_sizes > max_size, out=bad_sizes )

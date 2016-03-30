@@ -33,7 +33,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import enlargeRoiForHalo, TinyVector
 
 # ilastik
-from lazyflow.utility.timer import Timer
+from lazyflow.utility import Timer, vigra_bincount
 
 logger = logging.getLogger(__name__)
 
@@ -364,7 +364,7 @@ class OpSelectLabels(Operator):
 
         # get labels that passed the masking
         #passed = numpy.unique(prod)
-        passed = numpy.bincount(prod.flat).nonzero()[0] # Much faster than unique(), which copies and sorts
+        passed = vigra_bincount(prod).nonzero()[0] # Much faster than unique(), which copies and sorts
         
         # 0 is not a valid label
         if passed[0] == 0:
