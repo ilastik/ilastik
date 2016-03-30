@@ -50,6 +50,9 @@ logger = logging.getLogger(__name__)
 
 #===----------------------------------------------------------------------------------------------------------------===
 
+CURRENT_SEGMENTATION_NAME = "__current_segmentation__"
+
+
 class CarvingGui(LabelingGui):
     def __init__(self, parentApplet, topLevelOperatorView, drawerUiPath=None ):
         self.topLevelOperatorView = topLevelOperatorView
@@ -117,7 +120,7 @@ class CarvingGui(LabelingGui):
         self.labelingDrawerUi.segment.clicked.connect(self.onSegmentButton)
         self.labelingDrawerUi.segment.setEnabled(True)
 
-        self.topLevelOperatorView.Segmentation.notifyDirty( bind( self._update_rendering ) )
+        self.topLevelOperatorView.Segmentation.notifyDirty( bind( self._segmentation_dirty ) )
         self.topLevelOperatorView.HasSegmentation.notifyValueChanged( bind( self._updateGui ) )
 
         ## uncertainty
@@ -250,21 +253,13 @@ class CarvingGui(LabelingGui):
                 self._doneSegmentationColortable.append(QColor(r,g,b).rgba())
             self._doneSegmentationColortable.append(QColor(0,255,0).rgba())
         makeColortable()
-        def onRandomizeColors():
-            if self._doneSegmentationLayer is not None:
-                logger.debug( "randomizing colors ..." )
-                makeColortable()
-                self._doneSegmentationLayer.colorTable = self._doneSegmentationColortable
-                if self.render and self._renderMgr.ready:
-                    self._update_rendering()
-        #self.labelingDrawerUi.randomizeColors.clicked.connect(onRandomizeColors)
         self._updateGui()
     
     def _after_init(self):
         super(CarvingGui, self)._after_init()
         if self.render:self._toggleSegmentation3D()
         
-        
+
     def _updateGui(self):
         self.labelingDrawerUi.save.setEnabled( self.topLevelOperatorView.dataIsStorable() )
         
@@ -315,6 +310,10 @@ class CarvingGui(LabelingGui):
             logger.info( "save object as %s" % name )
             if prevName != name and prevName != "":
                 self.topLevelOperatorView.deleteObject(prevName)
+            elif prevName == name:
+                self._renderMgr.removeObject(prevName)
+                self._renderMgr.invalidateObject(prevName)
+                self._shownObjects3D.pop(prevName, None)
         else:
             msgBox = QMessageBox(self)
             msgBox.setText("The data does not seem fit to be stored.")
@@ -508,7 +507,7 @@ class CarvingGui(LabelingGui):
         # Run the mesh extractor
         window = MeshGeneratorDialog(self)
         
-        def onMeshesComplete(_, mesh):
+        def onMeshesComplete(mesh):
             """
             Called when mesh extraction is complete.
             Writes the extracted mesh to an .obj file
@@ -551,11 +550,15 @@ class CarvingGui(LabelingGui):
             self._renderMgr.removeObject(self._segmentation_3d_label)
             self._segmentation_3d_label = None
         self._update_rendering()
-    
+
+    def _segmentation_dirty(self):
+        self._renderMgr.invalidateObject(CURRENT_SEGMENTATION_NAME)
+        self._renderMgr.removeObject(CURRENT_SEGMENTATION_NAME)
+        self._update_rendering()
+
     def _update_rendering(self):
         if not self.render:
             return
-
         op = self.topLevelOperatorView
         if not self._renderMgr.ready:
             shape = op.InputData.meta.shape[1:4]
@@ -566,16 +569,20 @@ class CarvingGui(LabelingGui):
                                     if k in op.MST.value.object_lut.keys())
 
         lut = numpy.zeros(op.MST.value.nodeNum+1, dtype=numpy.int32)
+        label_name_map = {}
         for name, label in self._shownObjects3D.iteritems():
             objectSupervoxels = op.MST.value.objects[name]
             lut[objectSupervoxels] = label
+            label_name_map[label] = name
+            label_name_map[name] = label
 
         if self._showSegmentationIn3D:
             # Add segmentation as label, which is green
+            label_name_map[self._segmentation_3d_label] = CURRENT_SEGMENTATION_NAME
+            label_name_map[CURRENT_SEGMENTATION_NAME] = self._segmentation_3d_label
             lut[:] = numpy.where( op.MST.value.getSuperVoxelSeg() == 2, self._segmentation_3d_label, lut )
-        import vigra
-        #with vigra.Timer("remapping"):          
-        self._renderMgr.volume = lut[op.MST.value.supervoxelUint32] # (Advanced indexing)
+
+        self._renderMgr.volume = lut[op.MST.value.supervoxelUint32], label_name_map # (Advanced indexing)
         self._update_colors()
         self._renderMgr.update()
 
