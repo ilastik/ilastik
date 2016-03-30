@@ -221,10 +221,14 @@ class WsdtGui(LayerViewerGui):
             Temporarily unfreeze the cache and freeze it again after the views are finished rendering.
             """
             self.topLevelOperatorView.FreezeCache.setValue(False)
-
-            # Force the cache to update.
-            #self.topLevelOperatorView.InputImage.setDirty( slice(None) )
             
+            # This is hacky, but for now it's the only way to do it.
+            # We need to make sure the rendering thread has actually seen that the cache
+            # has been updated before we ask it to wait for all views to be 100% rendered.
+            # If we don't wait, it might complete too soon (with the old data).
+            ndim = len(self.topLevelOperatorView.Superpixels.meta.shape)
+            self.topLevelOperatorView.Superpixels((0,)*ndim, (1,)*ndim).wait()
+
             # Wait for the image to be rendered into all three image views
             for imgView in self.editor.imageViews:
                 if imgView.isVisible():
@@ -234,7 +238,7 @@ class WsdtGui(LayerViewerGui):
         self.getLayerByName("Superpixels").visible = True
         th = threading.Thread(target=updateThread)
         th.start()
-    
+
     def setupLayers(self):
         layers = []
         op = self.topLevelOperatorView
