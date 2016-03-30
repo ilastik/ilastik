@@ -230,7 +230,7 @@ class OpConservationTracking(OpTrackingBase):
                                                                       with_classifier_prior=withClassifierPrior)
         
         if empty_frame:
-            raise DatasetConstraintError('Tracking', 'Can not track frames with 0 objects, abort.'
+            raise DatasetConstraintError('Tracking', 'Can not track frames with 0 objects, abort.')
               
         
         if avgSize[0] > 0:

@@ -395,7 +395,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                 ndim)
 
             time_range = range (0,self.topLevelOperatorView.LabelImage.meta.shape[0])
-            featureStore, traxelStore, empty_frame = self.mainOperator._generate_traxelstore(
+            featureStore, traxelStore, empty_frame, max_traxel_id_at = self.mainOperator._generate_traxelstore(
                 time_range,
                 (0,self.topLevelOperatorView.LabelImage.meta.shape[1]),#x_range
                 (0,self.topLevelOperatorView.LabelImage.meta.shape[2]),#y_range
