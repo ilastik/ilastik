@@ -23,6 +23,7 @@ import numpy as np
 from ilastik.workflow import Workflow
 
 from ilastik.applets.dataSelection import DataSelectionApplet
+from ilastik.applets.wsdt import WsdtApplet
 from ilastik.applets.edgeTraining import EdgeTrainingApplet
 from ilastik.applets.multicut import MulticutApplet
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
@@ -67,6 +68,10 @@ class MulticutWorkflow(Workflow):
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         opDataSelection.DatasetRoles.setValue( self.ROLE_NAMES )
 
+        # -- Watershed applet
+        #
+        self.wsdtApplet = WsdtApplet(self, "DT Watershed", "DT Watershed")
+
         # -- Edge training applet
         # 
         self.edgeTrainingApplet = EdgeTrainingApplet(self, "Edge Training", "Edge Training")
@@ -96,6 +101,7 @@ class MulticutWorkflow(Workflow):
 
         # -- Expose applets to shell
         self._applets.append(self.dataSelectionApplet)
+        self._applets.append(self.wsdtApplet)
         self._applets.append(self.edgeTrainingApplet)
         self._applets.append(self.multicutApplet)
         self._applets.append(self.dataExportApplet)
@@ -113,12 +119,16 @@ class MulticutWorkflow(Workflow):
 
         if unused_args:
             logger.warn("Unused command-line args: {}".format( unused_args ))
+        
+        if not self._headless:
+            shell.currentAppletChanged.connect( self.handle_applet_changed )
 
     def connectLane(self, laneIndex):
         """
         Override from base class.
         """
         opDataSelection = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
+        opWsdt = self.wsdtApplet.topLevelOperator.getLane(laneIndex)
         opEdgeTraining = self.edgeTrainingApplet.topLevelOperator.getLane(laneIndex)
         opMulticut = self.multicutApplet.topLevelOperator.getLane(laneIndex)
         opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
@@ -139,6 +149,10 @@ class MulticutWorkflow(Workflow):
         opConvertProbabilities.ConversionDtype.setValue( np.float32 )
         opConvertProbabilities.Input.connect( opDataSelection.ImageGroup[self.DATA_ROLE_PROBABILITIES] )
 
+        # watershed inputs
+        opWsdt.RawData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
+        opWsdt.Input.connect( opDataSelection.ImageGroup[self.DATA_ROLE_PROBABILITIES] )
+
         # Actual computation is done with both RawData and Probabilities
         opStackRawAndVoxels = OpSimpleStacker( parent=self )
         opStackRawAndVoxels.Images.resize(2)
@@ -149,7 +163,8 @@ class MulticutWorkflow(Workflow):
         # edge training inputs
         opEdgeTraining.RawData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_RAW] ) # Used for visualization only
         opEdgeTraining.VoxelData.connect( opStackRawAndVoxels.Output )
-        opEdgeTraining.Superpixels.connect( opRelabeledSuperpixelsCache.Output )
+        #opEdgeTraining.Superpixels.connect( opRelabeledSuperpixelsCache.Output )
+        opEdgeTraining.Superpixels.connect( opWsdt.Superpixels )
         opEdgeTraining.GroundtruthSegmentation.connect( opDataSelection.ImageGroup[self.DATA_ROLE_GROUNDTRUTH] )
 
         # multicut inputs
@@ -189,18 +204,22 @@ class MulticutWorkflow(Workflow):
         Called when an applet has fired the :py:attr:`Applet.appletStateUpdateRequested`
         """
         opDataSelection = self.dataSelectionApplet.topLevelOperator
-        opDataExport = self.dataExportApplet.topLevelOperator
+        opWsdt = self.wsdtApplet.topLevelOperator
         opEdgeTraining = self.edgeTrainingApplet.topLevelOperator
         opMulticut = self.multicutApplet.topLevelOperator
+        opDataExport = self.dataExportApplet.topLevelOperator
 
         # If no data, nothing else is ready.
         input_ready = len(opDataSelection.ImageGroup) > 0 and not self.dataSelectionApplet.busy
+
+        superpixels_ready = opWsdt.Superpixels.ready()
 
         # The user isn't allowed to touch anything while batch processing is running.
         batch_processing_busy = self.batchProcessingApplet.busy
 
         self._shell.setAppletEnabled( self.dataSelectionApplet,   not batch_processing_busy )
-        self._shell.setAppletEnabled( self.edgeTrainingApplet,    not batch_processing_busy and input_ready )
+        self._shell.setAppletEnabled( self.wsdtApplet,            not batch_processing_busy and input_ready )
+        self._shell.setAppletEnabled( self.edgeTrainingApplet,    not batch_processing_busy and input_ready and superpixels_ready )
         self._shell.setAppletEnabled( self.multicutApplet,        not batch_processing_busy and input_ready and opEdgeTraining.EdgeProbabilities.ready() )
         self._shell.setAppletEnabled( self.dataExportApplet,      not batch_processing_busy and input_ready and opMulticut.Output.ready())
         self._shell.setAppletEnabled( self.batchProcessingApplet, not batch_processing_busy and input_ready )
@@ -209,8 +228,16 @@ class MulticutWorkflow(Workflow):
         #  should prevent the shell from closing the project.
         busy = False
         busy |= self.dataSelectionApplet.busy
+        busy |= self.wsdtApplet.busy
         busy |= self.edgeTrainingApplet.busy
         busy |= self.multicutApplet.busy
         busy |= self.dataExportApplet.busy
         busy |= self.batchProcessingApplet.busy
         self._shell.enableProjectChanges( not busy )
+
+    def handle_applet_changed(self, prev_index, current_index):
+        if prev_index != current_index:
+            # If the user is viewing an applet downstream of the WSDT applet,
+            # make sure the superpixels are always up-to-date.
+            opWsdt = self.wsdtApplet.topLevelOperator
+            opWsdt.FreezeCache.setValue( self._shell.currentAppletIndex <= self.applets.index( self.wsdtApplet ) )
