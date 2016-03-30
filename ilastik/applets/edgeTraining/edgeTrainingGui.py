@@ -71,12 +71,12 @@ class EdgeTrainingGui(LayerViewerGui):
 
         # Controls
         feature_selection_button = QPushButton("Select Features", clicked=self._open_feature_selection_dlg)
-        train_from_gt_button = QPushButton("Train from Groundtruth", clicked=self._handle_train_from_gt_clicked)
+        self.train_from_gt_button = QPushButton("Train from Groundtruth", clicked=self._handle_train_from_gt_clicked)
         
         # Layout
         layout = QVBoxLayout()
         layout.addWidget(feature_selection_button)
-        layout.addWidget(train_from_gt_button)
+        layout.addWidget(self.train_from_gt_button)
         layout.addSpacerItem( QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding) )
         
         # Finally, the whole drawer widget
@@ -90,6 +90,8 @@ class EdgeTrainingGui(LayerViewerGui):
         self.configure_gui_from_operator()
 
         self._init_probability_colortable()
+        
+        op.GroundtruthSegmentation.notifyReady( self.configure_gui_from_operator )
 
     def _open_feature_selection_dlg(self):
         rag = self.topLevelOperatorView.Rag.value
@@ -145,6 +147,7 @@ class EdgeTrainingGui(LayerViewerGui):
 
     def configure_gui_from_operator(self, *args):
         op = self.topLevelOperatorView
+        self.train_from_gt_button.setEnabled( op.GroundtruthSegmentation.ready() )
 
     def configure_operator_from_gui(self):
         op = self.topLevelOperatorView
