@@ -56,9 +56,9 @@ class HeadlessShell(object):
         
         # By convention, command-line users specify the location of the project 
         # keyvalue data using the same format that the DVID API itself uses.
-        url_format = "^protocol://hostname/api/node/uuid/kv_instance_name(\\?/key/keyname)?"
+        url_format = "^protocol://hostname/api/node/uuid/kv_instance_name(/key/keyname)?"
         for field in ['protocol', 'hostname', 'uuid', 'kv_instance_name', 'keyname']:
-            url_format = url_format.replace( field, '(?P<' + field + '>[^?]+)' )
+            url_format = url_format.replace( field, '(?P<' + field + '>[^?/]+)' )
 
         match = re.match( url_format, dvid_key_url )
         if not match:
