@@ -52,6 +52,8 @@ class HeadlessShell(object):
 
     @classmethod
     def downloadProjectFromDvid(cls, dvid_key_url):
+        dvid_key_url = str(dvid_key_url)
+        
         # By convention, command-line users specify the location of the project 
         # keyvalue data using the same format that the DVID API itself uses.
         url_format = "^protocol://hostname/api/node/uuid/kv_instance_name(\\?/key/keyname)?"
