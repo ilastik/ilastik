@@ -96,17 +96,6 @@ class AutocontextClassificationGui(LabelingGui):
         self.labelingDrawerUi.savePredictionsButton.setIcon( QIcon(ilastikIcons.Save) )
 
         self.topLevelOperatorView.MaxLabelValue.notifyDirty( bind(self.handleLabelSelectionChange) )
-        
-#        self._initShortcuts()
-#
-#        try:
-#            self.render = True
-#            self._renderedLayers = {} # (layer name, label number)
-#            self._renderMgr = RenderingManager(
-#                renderer=self.editor.view3d.qvtk.renderer,
-#                qvtk=self.editor.view3d.qvtk)
-#        except:
-#            self.render = False
 
     @traceLogged(traceLogger)
     def initViewerControlUi(self):

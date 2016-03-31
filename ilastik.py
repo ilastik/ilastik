@@ -53,7 +53,7 @@ def _clean_paths( ilastik_dir ):
         # (gurobi and CPLEX are supposed to be located there as well)
         path = [k for k in os.environ['LD_LIBRARY_PATH'] if k.startswith(ilastik_dir)]
         
-        for k in ['/lib/vtk-5.10', '/lib']:
+        for k in ['/lib']:
             path.append(ilastik_dir + k.replace('/', os.path.sep))
         os.environ['LD_LIBRARY_PATH'] = os.pathsep.join(reversed(path))
 
