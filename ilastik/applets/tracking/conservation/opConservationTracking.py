@@ -171,7 +171,8 @@ class OpConservationTracking(OpTrackingBase):
             motionModelWeight=10.0,
             force_build_hypotheses_graph = False,
             max_nearest_neighbors = 1,
-            withBatchProcessing = False
+            withBatchProcessing = False,
+            solverName="ILP"
             ):
         
         if not self.Parameters.ready():
@@ -267,6 +268,8 @@ class OpConservationTracking(OpTrackingBase):
         if self.tracker is None:
             do_build_hypotheses_graph = True
 
+        solverType = self.getPgmlinkSolverType(solverName)
+
         if do_build_hypotheses_graph:
             print '\033[94m' +"make new graph"+  '\033[0m'
             self.tracker = pgmlink.ConsTracking(int(maxObj),
@@ -278,7 +281,7 @@ class OpConservationTracking(OpTrackingBase):
                                          "none",  # detection_rf_filename
                                          fov,
                                          "none", # dump traxelstore,
-                                         pgmlink.ConsTrackingSolverType.CplexSolver,
+                                         solverType,
                                          ndim
                                          )
             g = self.tracker.buildGraph(ts, max_nearest_neighbors)
@@ -306,7 +309,7 @@ class OpConservationTracking(OpTrackingBase):
             uncertaintyParams, # uncertainty parameters
             cplex_timeout, # cplex timeout
             None, # transition classifier
-            pgmlink.ConsTrackingSolverType.CplexSolver, # Solver
+            solverType,
             False, # training to hard constraints
             1 # num threads
         )
@@ -362,6 +365,28 @@ class OpConservationTracking(OpTrackingBase):
             else:
                 self.parent.parent.trackingApplet._gui.currentGui().layerstack[merger_layer_idx].colorTable = \
                     self.parent.parent.trackingApplet._gui.currentGui().tracking_colortable
+
+    @staticmethod
+    def getPgmlinkSolverType(solverName):
+        if solverName == "ILP":
+            # select solver type
+            if hasattr(pgmlink.ConsTrackingSolverType, "CplexSolver"):
+                solver = pgmlink.ConsTrackingSolverType.CplexSolver
+            else:
+                raise AssertionError("Cannot select ILP solver if pgmlink was compiled without ILP support")
+        elif solverName == "Magnusson":
+            if hasattr(pgmlink.ConsTrackingSolverType, "DynProgSolver"):
+                solver = pgmlink.ConsTrackingSolverType.DynProgSolver
+            else:
+                raise AssertionError("Cannot select Magnusson solver if pgmlink was compiled without Magnusson support")
+        elif solverName == "Flow":
+            if hasattr(pgmlink.ConsTrackingSolverType, "FlowSolver"):
+                solver = pgmlink.ConsTrackingSolverType.FlowSolver
+            else:
+                raise AssertionError("Cannot select Flow solver if pgmlink was compiled without Flow support")
+        else:
+            raise ValueError("Unknown solver {} selected".format(solverName))
+        return solver
 
     def propagateDirty(self, inputSlot, subindex, roi):
         super(OpConservationTracking, self).propagateDirty(inputSlot, subindex, roi)
