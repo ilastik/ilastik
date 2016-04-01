@@ -81,7 +81,6 @@ class OpConservationTracking(OpTrackingBase):
         self.tracker = None
         self._ndim = 3
 
-
     def setupOutputs(self):
         super(OpConservationTracking, self).setupOutputs()
         self.MergerOutput.meta.assignFrom(self.LabelImage.meta)
@@ -312,9 +311,9 @@ class OpConservationTracking(OpTrackingBase):
             1 # num threads
         )
 
-        if motionModelWeight > 0:
-            logger.info("Registering motion model with weight {}".format(motionModelWeight))
-            params.register_motion_model4_func(swirl_motion_func_creator(motionModelWeight), motionModelWeight * 25.0)
+        # if motionModelWeight > 0:
+        #     logger.info("Registering motion model with weight {}".format(motionModelWeight))
+        #     params.register_motion_model4_func(swirl_motion_func_creator(motionModelWeight), motionModelWeight * 25.0)
 
         try:
             eventsVector = self.tracker.track(params, False)
