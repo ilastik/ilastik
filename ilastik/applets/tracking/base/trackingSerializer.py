@@ -21,7 +21,11 @@
 from ilastik.applets.base.appletSerializer import AppletSerializer,\
     SerialDictSlot, SerialSlot, SerialHdf5BlockSlot, SerialPickleableSlot, SerialPickledValueSlot
 
-import pgmlink
+
+try:
+    import pgmlink
+except:
+    import pgmlinkNoIlpSolver as pgmlink
 
 class TrackingSerializer(AppletSerializer):
     

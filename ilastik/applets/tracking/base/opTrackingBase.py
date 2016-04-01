@@ -28,7 +28,10 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from ilastik.utility.exportingOperator import ExportingOperator
 from lazyflow.rtype import List
 from lazyflow.stype import Opaque
-import pgmlink
+try:
+    import pgmlink
+except:
+    import pgmlinkNoIlpSolver as pgmlink
 from ilastik.applets.tracking.base.trackingUtilities import relabel, \
     get_dict_value
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key

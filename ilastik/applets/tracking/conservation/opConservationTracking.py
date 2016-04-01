@@ -2,7 +2,10 @@ import numpy as np
 from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.rtype import List
 from lazyflow.stype import Opaque
-import pgmlink
+try:
+    import pgmlink
+except:
+    import pgmlinkNoIlpSolver as pgmlink
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.tracking.base.opTrackingBase import OpTrackingBase
 from ilastik.applets.tracking.base.trackingUtilities import relabel, highlightMergers
