@@ -35,11 +35,13 @@ class TransposedView( object ):
         self.shape = shape
         self.ndim = len(shape)
     
-    def __getitem__(self, *args):
+    def __getitem__(self, args):
+        if not isinstance(args, tuple):
+            args = (args,)
         # Reorder the args in the same order as the base
         baseargs = [slice(None)]*self.base.ndim
         for (p, arg) in zip(self._permutation, args):
-            if p:
+            if p is not None:
                 baseargs[p] = arg
         baseargs = tuple(baseargs)
         base_permutation = filter(lambda p: p is not None, self._permutation)
@@ -66,6 +68,6 @@ class TransposedView( object ):
 if __name__ == "__main__":
     import numpy as np
     a = np.random.random( (34, 12, 23) )
-    t = _TransposedView(a, (2,0,1,None))
+    t = TransposedView(a, (2,0,1,None))
     assert t.shape == a.transpose(2,0,1)[...,None].shape
     assert (t[:] == a.transpose(2,0,1)[...,None]).all()
