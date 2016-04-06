@@ -18,8 +18,6 @@ from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
 
-from ilastik.applets.edgeTraining.util import edge_decisions, relabel_volume_from_edge_decisions
-
 import logging
 logger = logging.getLogger(__name__)
 
