@@ -143,6 +143,8 @@ def get_default_config( prefix="",
             
             # The requests module spits out a lot of INFO messages by default.
             "requests": {"level":"WARN"},
+
+            "wsdt": { "level": "INFO" },
     
             # When copying to a json file, remember to remove comments and change True/False to true/false
             "__main__":                                                 { "level":"INFO" },
