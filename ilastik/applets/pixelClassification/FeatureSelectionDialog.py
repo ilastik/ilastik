@@ -133,7 +133,8 @@ class FeatureSelectionDialog(QtGui.QDialog):
         self.selected_features_matrix = self.opFeatureSelection.SelectionMatrix.value
         self.feature_channel_names = None #this gets initialized when the matrix is set to all features in _run_selection
 
-        self._stackdim = self.opPixelClassification.InputImages.meta.shape
+        self._stack_dim = self.opPixelClassification.InputImages.meta.shape
+        self._stack_axistags = self.opPixelClassification.InputImages.meta.axistags
 
         self.__selection_methods = {
             0: "gini",
@@ -175,13 +176,15 @@ class FeatureSelectionDialog(QtGui.QDialog):
         self.resize(1366, 768)
 
     def exec_(self):
-        '''
+        """
         as explained in the __init__, we only display one slice of the datastack. Here we find out which slice is
-        '''
-        # currently being viewed in ilastik
+
+        currently being viewed in ilastik
+        """
         ilastik_editor = self.opPixelClassification.parent.pcApplet.getMultiLaneGui().currentGui().editor
         ilastik_currentslicing = ilastik_editor.posModel.slicingPos
         self._ilastik_currentslicing_5D = ilastik_editor.posModel.slicingPos5D
+        #FIXME: is this always the xy scene?
         current_view = ilastik_editor.imageViews[2]
         current_viewport_rect = current_view.viewportRect().getRect()
 
@@ -215,7 +218,6 @@ class FeatureSelectionDialog(QtGui.QDialog):
 
 
         # retrieve raw data of current slice and add it to the layerstack
-
         self._axis_0_slice = slice(self._bbox[axisOrder[0]][0], self._bbox[axisOrder[0]][1])
         self._axis_1_slice = slice(self._bbox[axisOrder[1]][0], self._bbox[axisOrder[1]][1])
 
@@ -250,7 +252,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
 
         axistags = self.opFeatureSelection.InputImage.meta['axistags']
         color_index = axistags.index('c')
-        if self._stackdim[color_index] > 1 and self._stackdim[color_index]>1:
+        if self._stackdim[color_index] > 1:
             # dirty workaround for swapping x/y axis (I dont know how to set axistags of new layer)
             if axisOrder.index('x') > axisOrder.index('y'):
                 self.raw_xy_slice = self.raw_xy_slice.transpose((1, 0, 2))
@@ -632,6 +634,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
                     axis_4_slice = slice(bbox[axisOrder[4]][0], bbox[axisOrder[4]][1])
 
         for i, seglayer in enumerate(self.opPixelClassification.SegmentationChannels):
+<<<<<<< 187eb6d1dbf198ba05b2027f4a52d3b130c3e69e
             if self._inputDimension == 4:
                 single_layer_of_segmentation = np.squeeze(seglayer[axis_0_slice, 
                                                                   axis_1_slice,
@@ -647,6 +650,21 @@ class FeatureSelectionDialog(QtGui.QDialog):
                 single_layer_of_segmentation = np.squeeze(seglayer[axis_0_slice, 
                                                                   axis_1_slice,
                                                                   axis_2_slice].wait())
+=======
+            if len(self._stack_dim) == 5:
+                single_layer_of_segmentation = np.squeeze(seglayer[self._ilastik_currentslicing_5D[0],
+                                                          self._bbox_lower[0]:self._bbox_upper[0],
+                                                          self._bbox_lower[1]:self._bbox_upper[1],
+                                                          self._xysliceID, 0].wait())
+            elif len(self._stack_dim) == 4:
+                single_layer_of_segmentation = np.squeeze(seglayer[self._bbox_lower[0]:self._bbox_upper[0],
+                                                          self._bbox_lower[1]:self._bbox_upper[1],
+                                                          self._xysliceID, 0].wait())
+            elif len(self._stack_dim) == 3:
+                single_layer_of_segmentation = np.squeeze(seglayer[self._bbox_lower[0]:self._bbox_upper[0],
+                                                        self._bbox_lower[1]:self._bbox_upper[1],
+                                                        0].wait())
+>>>>>>> wip for correct 3d slicing
             else:
                 raise Exception
             if do_transpose:
