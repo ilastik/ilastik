@@ -6,7 +6,7 @@ from wsdt import wsDtSegmentation
 
 from lazyflow.utility import OrderedSignal
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.roi import roiToSlice
+from lazyflow.roi import roiToSlice, sliceToRoi
 from lazyflow.operators import OpBlockedArrayCache, OpValueCache
 from lazyflow.operators.generic import OpPixelOperator, OpSingleChannelSelector
 
@@ -90,6 +90,9 @@ class OpCachedWsdt(Operator):
     EnableDebugOutputs = InputSlot(value=False)
     
     Superpixels = OutputSlot()
+    
+    SuperpixelCacheInput = InputSlot(optional=True)
+    CleanBlocks = OutputSlot()
 
     # Thresholding is cheap and best done interactively,
     # so expose an uncached slot just for it
@@ -118,6 +121,7 @@ class OpCachedWsdt(Operator):
         self._opCache.fixAtCurrent.connect( self.FreezeCache )
         self._opCache.Input.connect( self._opWsdt.Superpixels )
         self.Superpixels.connect( self._opCache.Output )
+        self.CleanBlocks.connect( self._opCache.CleanBlocks )
 
         self._opSelectedInput = OpSingleChannelSelector( parent=self )
         self._opSelectedInput.Index.connect( self.ChannelSelection )
@@ -139,7 +143,13 @@ class OpCachedWsdt(Operator):
         return self._opWsdt.watershed_completed
     
     def execute(self, slot, subindex, roi, result):
-        assert False
+        assert False, "Shouldn't get here"
+
+    def setInSlot(self, slot, subindex, roi, value):
+        # Write the data into the cache
+        assert slot is self.SuperpixelCacheInput
+        slicing = roiToSlice(roi.start, roi.stop)
+        self._opCache.Input[slicing] = value
 
     def propagateDirty(self, slot, subindex, roi):
         if slot is self.EnableDebugOutputs and self.EnableDebugOutputs.value:
