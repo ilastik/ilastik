@@ -47,6 +47,7 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
     CompressionEnabled = InputSlot(value=False)
     
     Output = OutputSlot(allow_mask=True)
+    CleanBlocks = OutputSlot() # A list of slicings indicating which blocks are stored in the cache and clean.
 
     innerBlockShape = InputSlot(optional=True) # Deprecated and ignored below.
     
@@ -72,6 +73,7 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
         self._opUnblockedArrayCache = OpUnblockedArrayCache( parent=self )
         self._opUnblockedArrayCache.CompressionEnabled.connect( self.CompressionEnabled )
         self._opUnblockedArrayCache.Input.connect( self._opCacheFixer.Output )
+        self.CleanBlocks.connect( self._opUnblockedArrayCache.CleanBlocks )
 
         self._opSplitRequestsBlockwise = OpSplitRequestsBlockwise( always_request_full_blocks=True, parent=self )
         self._opSplitRequestsBlockwise.BlockShape.connect( self.outerBlockShape )
@@ -106,6 +108,9 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
 
     def propagateDirty(self, slot, subindex, roi):
         pass
+
+    def setInSlot(self, slot, subindex, key, value):
+        pass # Nothing to do here: Input is connected to an internal operator
 
     # ======= mimic cache interface for wrapping operators =======
 

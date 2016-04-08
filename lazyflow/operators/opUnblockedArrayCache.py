@@ -22,13 +22,15 @@
 
 import time
 import collections
+from itertools import starmap
 import numpy
 import vigra
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators.opCache import ManagedBlockedCache
 from lazyflow.request import RequestLock
-from lazyflow.roi import getIntersection, roiFromShape, roiToSlice, containing_rois
+from lazyflow.roi import getIntersection, roiFromShape, roiToSlice, containing_rois,\
+    sliceToRoi
 
 import logging
 logger = logging.getLogger(__name__)
@@ -51,6 +53,8 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
     Input = InputSlot(allow_mask=True)
     CompressionEnabled = InputSlot(value=False) # If True, compression will be enabled for certain dtypes
     Output = OutputSlot(allow_mask=True)
+
+    CleanBlocks = OutputSlot() # A list of slicings indicating which blocks are stored in the cache and clean.
     
     def __init__(self, *args, **kwargs):
         super( OpUnblockedArrayCache, self ).__init__(*args, **kwargs)
@@ -69,8 +73,18 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.Input.meta)
+        self.CleanBlocks.meta.shape = (1,)
+        self.CleanBlocks.meta.dtype = object # it's a list
     
     def execute(self, slot, subindex, roi, result):
+        if slot is self.Output:
+            self._execute_Output(slot, subindex, roi, result)
+        elif slot is self.CleanBlocks:
+            self._execute_CleanBlocks(slot, subindex, roi, result)
+        else:
+            assert False, "Unknown output slot: {}".format( slot.name )
+        
+    def _execute_Output(self, slot, subindex, roi, result):
         with self._lock:
             # Does this roi happen to fit ENTIRELY within an existing stored block?
             outer_rois = containing_rois( self._block_data.keys(), (roi.start, roi.stop) )
@@ -107,23 +121,49 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
                     # (For example, see OpCacheFixer.)
                     return
                 
-                if self.CompressionEnabled.value and numpy.dtype(result.dtype) in [numpy.dtype(numpy.uint8),
-                                                                                   numpy.dtype(numpy.uint32),
-                                                                                   numpy.dtype(numpy.float32)]:
-                    compressed_block = vigra.ChunkedArrayCompressed( result.shape, vigra.Compression.LZ4, result.dtype )
-                    compressed_block[:] = result
-                    block_storage_data = compressed_block
-                else:
-                    block_storage_data = result.copy()
+                self._store_block(block_roi, result)
 
-                with self._lock:
-                    # Store the data.
-                    # First double-check that the block wasn't removed from the 
-                    #   cache while we were requesting it. 
-                    # (Could have happened via propagateDirty() or eventually the arrayCacheMemoryMgr)
-                    if block_roi in self._block_locks:
-                        self._block_data[block_roi] = block_storage_data
-            self._last_access_times[block_roi] = time.time()
+    def _store_block(self, block_roi, block_data):
+        """
+        Copy block_data and store it into the cache.
+        The block_lock is not obtained here, so lock it before you call this.
+        """
+        if self.CompressionEnabled.value and numpy.dtype(block_data.dtype) in [numpy.dtype(numpy.uint8),
+                                                                               numpy.dtype(numpy.uint32),
+                                                                               numpy.dtype(numpy.float32)]:
+            compressed_block = vigra.ChunkedArrayCompressed( block_data.shape, vigra.Compression.LZ4, block_data.dtype )
+            compressed_block[:] = block_data
+            block_storage_data = compressed_block
+        else:
+            block_storage_data = block_data.copy()
+
+        with self._lock:
+            # Store the data.
+            # First double-check that the block wasn't removed from the 
+            #   cache while we were requesting it. 
+            # (Could have happened via propagateDirty() or eventually the arrayCacheMemoryMgr)
+            if block_roi in self._block_locks:
+                self._block_data[block_roi] = block_storage_data
+
+        self._last_access_times[block_roi] = time.time()
+
+    def _execute_CleanBlocks(self, slot, subindex, roi, result):
+        with self._lock:
+            block_rois = sorted(self._block_data.keys())            
+            block_slicings = list(starmap( roiToSlice, block_rois ))
+            result[0] = block_slicings
+
+    def setInSlot(self, slot, subindex, roi, block_data):
+        assert slot == self.Input
+        block_roi = (tuple(roi.start), tuple(roi.stop))
+        
+        with self._lock:
+            if block_roi not in self._block_locks:
+                self._block_locks[block_roi] = RequestLock()
+            block_lock = self._block_locks[block_roi]
+
+        with block_lock:
+            self._store_block(block_roi, block_data)
 
     def propagateDirty(self, slot, subindex, roi):
         dirty_roi = self._standardize_roi( roi.start, roi.stop )
