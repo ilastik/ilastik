@@ -347,7 +347,7 @@ class SerialListSlot(SerialSlot):
 class SerialBlockSlot(SerialSlot):
     """A slot which only saves nonzero blocks."""
     def __init__(self, slot, inslot, blockslot, name=None, subname=None,
-                 default=None, depends=None, selfdepends=True, shrink_to_bb=False):
+                 default=None, depends=None, selfdepends=True, shrink_to_bb=False, compression_level=0):
         """
         :param blockslot: provides non-zero blocks.
         :param shrink_to_bb: If true, reduce each block of data from the slot to  
@@ -361,6 +361,7 @@ class SerialBlockSlot(SerialSlot):
         self.blockslot = blockslot
         self._bind(slot)
         self._shrink_to_bb = shrink_to_bb
+        self.compression_level = compression_level
 
     def shouldSerialize(self, group):
         # Should this be a docstring?
@@ -450,7 +451,14 @@ class SerialBlockSlot(SerialSlot):
 
                     block_group = subgroup.create_group(blockName)
 
-                    block_group.create_dataset("data", data=block.data)
+                    if self.compression_level:
+                        block_group.create_dataset("data",
+                                                   data=block.data,
+                                                   compression='gzip',
+                                                   compression_opts=compression_level)
+                    else:
+                        block_group.create_dataset("data", data=block.data)
+                        
                     block_group.create_dataset(
                         "mask",
                         data=block.mask,
