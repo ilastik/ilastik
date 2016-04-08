@@ -550,7 +550,7 @@ class Operator(object):
         raise NotImplementedError("Operator {} does not implement"
                                   " execute()".format(self.name))
 
-    def setInSlot(self, slot, subindex, key, value):
+    def setInSlot(self, slot, subindex, roi, value):
         raise NotImplementedError("Can't use __setitem__ with Operator {}"
                                   " because it doesn't implement"
                                   " setInSlot()".format(self.name))
