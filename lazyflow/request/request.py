@@ -52,9 +52,10 @@ class SimpleSignal(object):
     """
     Simple callback mechanism. Not synchronized.  No unsubscribe function.
     """
-    def __init__(self):
+    def __init__(self, default_callback=None):
         self.callbacks = []
         self._cleaned = False
+        self._default_callback = default_callback
 
     def subscribe(self, fn):
         self.callbacks.append(fn)
@@ -62,6 +63,8 @@ class SimpleSignal(object):
     def __call__(self, *args, **kwargs):
         """Emit the signal."""
         assert not self._cleaned, "Can't emit a signal after it's already been cleaned!"
+        if not self.callbacks and self._default_callback:
+            self._default_callback(*args, **kwargs)
         for f in self.callbacks:
             f(*args, **kwargs)
         
@@ -166,9 +169,11 @@ class Request( object ):
         """
 
         self._lock = threading.Lock() # NOT an RLock, since requests may share threads
-        self._sig_finished = SimpleSignal()
+        def default_fail(exception, exc_info):
+            sys.excepthook( *exc_info )
+        self._sig_failed = SimpleSignal(default_callback=default_fail)
         self._sig_cancelled = SimpleSignal()
-        self._sig_failed = SimpleSignal()
+        self._sig_finished = SimpleSignal()
         self._sig_execution_complete = SimpleSignal()
 
         # Workload
