@@ -1,10 +1,9 @@
 from itertools import izip, imap
 from functools import partial
+
 import numpy as np
-
+import pandas as pd
 import networkx as nx
-import skimage.segmentation
-
 import vigra
 
 import ilastikrag
@@ -54,14 +53,19 @@ class OpEdgeTraining(Operator):
         self.opComputeEdgeFeatures.Rag.connect( self.opRagCache.Output )
         
         self.opEdgeFeaturesCache = OpMultiLaneWrapper( OpValueCache, parent=self )
-        self.opEdgeFeaturesCache.Input.connect( self.opComputeEdgeFeatures.EdgeFeatures )
+        self.opEdgeFeaturesCache.Input.connect( self.opComputeEdgeFeatures.EdgeFeaturesDataFrame )
+
+        self.opTrainEdgeClassifier = OpTrainEdgeClassifier( parent=self )
+        self.opTrainEdgeClassifier.EdgeLabelsDict.connect( self.EdgeLabelsDict )
+        self.opTrainEdgeClassifier.EdgeFeaturesDataFrame.connect( self.opEdgeFeaturesCache.Output )
 
         # classifier cache input is set after training.
         self.opClassifierCache = OpValueCache(parent=self)
+        self.opClassifierCache.Input.connect( self.opTrainEdgeClassifier.EdgeClassifier )
         
         self.opPredictEdgeProbabilities = OpMultiLaneWrapper( OpPredictEdgeProbabilities, parent=self )
         self.opPredictEdgeProbabilities.EdgeClassifier.connect( self.opClassifierCache.Output )
-        self.opPredictEdgeProbabilities.EdgeFeatures.connect( self.opEdgeFeaturesCache.Output )
+        self.opPredictEdgeProbabilities.EdgeFeaturesDataFrame.connect( self.opEdgeFeaturesCache.Output )
         
         self.opEdgeProbabilitiesCache = OpMultiLaneWrapper( OpValueCache, parent=self )
         self.opEdgeProbabilitiesCache.Input.connect( self.opPredictEdgeProbabilities.EdgeProbabilities )
@@ -113,35 +117,27 @@ class OpEdgeTraining(Operator):
     def propagateDirty(self, slot, subindex, roi):
         pass
 
-    def trainFromGroundtruth(self):
-        all_edge_features = []
-        all_edge_decisions = []
+    def setEdgeLabelsFromGroundtruth(self, lane_index):
+        """
+        For the given lane, read the ground truth volume and
+        automatically determine edge label values.
+        """
+        if not self.GroundtruthSegmentation[lane_index].ready():
+            raise RuntimeError("There is no Ground Truth data available for lane: {}".format( lane_index ))
 
-        for lane_index in range( len(self.GroundtruthSegmentation) ):
-            logger.info("Loading groundtruth...")
-            gt_vol = self.GroundtruthSegmentation[lane_index][:].wait()
-            gt_vol = vigra.taggedView(gt_vol, self.GroundtruthSegmentation.meta.axistags)
-            gt_vol = gt_vol.dropChannelAxis()
-    
-            rag = self.opRagCache.Output[lane_index].value
-            edge_features = self.opEdgeFeaturesCache.Output[lane_index].value
-    
-            logger.info("Computing edge decisions from groundtruth...")
-            decisions = rag.edge_decisions_from_groundtruth(gt_vol, asdict=False)
-            assert len(edge_features) == len(decisions)
+        logger.info("Loading groundtruth for lane {}...".format(lane_index))
+        gt_vol = self.GroundtruthSegmentation[lane_index][:].wait()
+        gt_vol = vigra.taggedView(gt_vol, self.GroundtruthSegmentation.meta.axistags)
+        gt_vol = gt_vol.dropChannelAxis()
 
-            all_edge_features.append(edge_features)
-            all_edge_decisions.append(decisions)
-            
-        logger.info( "Training edge classifier with {} features and {} labels..."
-                     .format( edge_features.shape[-1], len(decisions) ) )
+        rag = self.opRagCache.Output[lane_index].value
 
-        combined_features = np.concatenate(all_edge_features)
-        combined_decisions = np.concatenate(all_edge_decisions)
-
-        classifier_factory = ParallelVigraRfLazyflowClassifierFactory()
-        classifier = classifier_factory.create_and_train( combined_features, combined_decisions )
-        self.opClassifierCache.Input.setValue( classifier )
+        logger.info("Computing edge decisions from groundtruth...")
+        decisions = rag.edge_decisions_from_groundtruth(gt_vol, asdict=False)
+        edge_labels = decisions.view(np.uint8) + 1
+        edge_ids = map(tuple, rag.edge_ids)
+        edge_labels_dict = dict( zip(edge_ids, edge_labels) )
+        self.EdgeLabelsDict.setValue( edge_labels_dict )
 
     def addLane(self, laneIndex):
         numLanes = len(self.VoxelData)
@@ -154,10 +150,59 @@ class OpEdgeTraining(Operator):
     def getLane(self, laneIndex):
         return OperatorSubView(self, laneIndex)
 
+class OpTrainEdgeClassifier(Operator):
+    EdgeLabelsDict = InputSlot(level=1)
+    EdgeFeaturesDataFrame = InputSlot(level=1)
+    
+    EdgeClassifier = OutputSlot()
+
+    def setupOutputs(self):
+        self.EdgeClassifier.meta.shape = (1,)
+        self.EdgeClassifier.meta.dtype = object
+        
+    def execute(self, slot, subindex, roi, result):
+        all_features_and_labels_df = None
+
+        for lane_index, (labels_dict_slot, features_slot) in \
+                enumerate( zip(self.EdgeLabelsDict, self.EdgeFeaturesDataFrame) ):
+            logger.info("Retrieving features for lane {}...".format(lane_index))
+            edge_features_df = features_slot.value
+            assert list(edge_features_df.columns[0:2]) == ['sp1', 'sp2']
+
+            labels_dict = labels_dict_slot.value.copy() # Copy now to avoid threading issues.
+            sp_columns = np.array(labels_dict.keys())
+            labels_df = pd.DataFrame(sp_columns, columns=['sp1', 'sp2'])
+            labels_df['label'] = labels_dict.values()
+
+            # Drop zero labels
+            labels_df = labels_df[labels_df['label'] != 0]
+            
+            # Merge in features
+            features_and_labels_df = pd.merge(edge_features_df, labels_df, how='right', on=['sp1', 'sp2'])
+            if all_features_and_labels_df:
+                all_features_and_labels_df = all_features_and_labels_df.append(features_and_labels_df)
+            else:
+                all_features_and_labels_df = features_and_labels_df
+
+        assert list(all_features_and_labels_df.columns[0:2]) == ['sp1', 'sp2']
+        assert all_features_and_labels_df.columns[-1] == 'label'
+
+        feature_matrix = all_features_and_labels_df.iloc[:, 2:-1].values # Omit 'sp1', 'sp2', and 'label'
+        labels = all_features_and_labels_df.iloc[:, -1].values
+
+        logger.info("Training classifier with {} labels...".format( len(labels) ))
+        # TODO: Allow factory to be configured via an input slot
+        classifier_factory = ParallelVigraRfLazyflowClassifierFactory()
+        classifier = classifier_factory.create_and_train( feature_matrix, labels )
+        assert set(classifier.known_classes).issubset(set([1,2]))
+        result[0] = classifier
+
+    def propagateDirty(self, slot, subindex, roi):
+        self.EdgeClassifier.setDirty()
 
 class OpPredictEdgeProbabilities(Operator):
     EdgeClassifier = InputSlot()
-    EdgeFeatures = InputSlot()
+    EdgeFeaturesDataFrame = InputSlot()
     EdgeProbabilities = OutputSlot()
     
     def setupOutputs(self):
@@ -165,8 +210,13 @@ class OpPredictEdgeProbabilities(Operator):
         self.EdgeProbabilities.meta.dtype = object
 
     def execute(self, slot, subindex, roi, result):
-        edge_features = self.EdgeFeatures.value
+        edge_features = self.EdgeFeaturesDataFrame.value
         classifier = self.EdgeClassifier.value
+        
+        # Classifier can be None if no labels have been selected
+        if classifier is None or len(classifier.known_classes) < 2:
+            result[0] = np.zeros( (len(edge_features),), dtype=np.float32 )
+            return
         
         logger.info("Predicting edge probabilities...")
         probabilities = classifier.predict_probabilities(edge_features)[:,1]
@@ -203,18 +253,18 @@ class OpComputeEdgeFeatures(Operator):
     FeatureNames = InputSlot()
     VoxelData = InputSlot()
     Rag = InputSlot()
-    EdgeFeatures = OutputSlot()
+    EdgeFeaturesDataFrame = OutputSlot() # Includes columns 'sp1' and 'sp2'
      
     def setupOutputs(self):
         assert self.VoxelData.meta.getAxisKeys()[-1] == 'c'
-        self.EdgeFeatures.meta.shape = (1,)
-        self.EdgeFeatures.meta.dtype = object
+        self.EdgeFeaturesDataFrame.meta.shape = (1,)
+        self.EdgeFeaturesDataFrame.meta.dtype = object
          
     def execute(self, slot, subindex, roi, result):
         rag = self.Rag.value
         channel_feature_names = self.FeatureNames.value
 
-        feature_data = []
+        edge_feature_dfs =[]
         for c in range( self.VoxelData.meta.shape[-1] ):
             channel_name = self.VoxelData.meta.channel_names[c]
             feature_names = list(channel_feature_names[channel_name])
@@ -226,15 +276,17 @@ class OpComputeEdgeFeatures(Operator):
             voxel_data = vigra.taggedView(voxel_data, self.VoxelData.meta.axistags)
             voxel_data = voxel_data[...,0] # drop channel
             edge_features_df = rag.compute_features(voxel_data, feature_names)
-            feature_array = edge_features_df.iloc[:, 2:].values # Discard columns [sp1, sp2]
-            feature_data.append( feature_array )
-
-        # Concatenate features from all channels
-        feature_data_array = np.concatenate(feature_data, axis=1)
-        result[0] = feature_data_array
+            
+            edge_features_df = edge_features_df.iloc[:, 2:] # Discard columns [sp1, sp2]
+            edge_feature_dfs.append(edge_features_df)
+            
+        # Could use join() or merge() here, but we know the rows are already in the right order, and concat() should be faster.
+        all_edge_features_df = pd.DataFrame( rag.edge_ids, columns=['sp1', 'sp2'] )
+        all_edge_features_df = pd.concat([all_edge_features_df] + edge_feature_dfs, axis=1, copy=False)
+        result[0] = all_edge_features_df
  
     def propagateDirty(self, slot, subindex, roi):
-        self.EdgeFeatures.setDirty()
+        self.EdgeFeaturesDataFrame.setDirty()
      
 class OpEdgeProbabilitiesDict(Operator):
     """

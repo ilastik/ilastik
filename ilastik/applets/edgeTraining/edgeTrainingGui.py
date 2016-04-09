@@ -71,7 +71,7 @@ class EdgeTrainingGui(LayerViewerGui):
 
         # Controls
         feature_selection_button = QPushButton("Select Features", clicked=self._open_feature_selection_dlg)
-        self.train_from_gt_button = QPushButton("Train from Groundtruth", clicked=self._handle_train_from_gt_clicked)
+        self.train_from_gt_button = QPushButton("Label from Groundtruth", clicked=self._handle_label_from_gt_clicked)
         
         # Layout
         layout = QVBoxLayout()
@@ -154,7 +154,6 @@ class EdgeTrainingGui(LayerViewerGui):
         The user clicked an edge label.
         Update the operator with the new values.
         """
-        print "Edge Label clicked"
         op = self.topLevelOperatorView
         edge_labels = op.EdgeLabelsDict.value
         new_labels = dict( edge_labels )
@@ -194,7 +193,10 @@ class EdgeTrainingGui(LayerViewerGui):
             self.apply_new_probability_edges(new_pens)
 
         # submit the worklaod in a request and return immediately
-        Request(_impl).submit()
+        req = Request(_impl).submit()
+
+        # Now that we've trained the classifier, the workflow may wish to enable downstream applets.
+        self.parentApplet.appletStateUpdateRequested.emit()
 
     @threadRouted
     def apply_new_probability_edges(self, new_pens):
@@ -211,13 +213,9 @@ class EdgeTrainingGui(LayerViewerGui):
     def configure_operator_from_gui(self):
         op = self.topLevelOperatorView
 
-    def _handle_train_from_gt_clicked(self):
+    def _handle_label_from_gt_clicked(self):
         op = self.topLevelOperatorView
-        op.trainFromGroundtruth()
-        self.update_probability_edges()
-        
-        # Now that we've trained the classifier, the workflow may wish to enable downstream applets.
-        self.parentApplet.appletStateUpdateRequested.emit()
+        op.setEdgeLabelsFromGroundtruth( op.current_view_index() )
 
     def setupLayers(self):
         layers = []
