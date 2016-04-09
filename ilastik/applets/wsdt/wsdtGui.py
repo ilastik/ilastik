@@ -111,7 +111,7 @@ class WsdtGui(LayerViewerGui):
         threshold_box.setDecimals(2)
         threshold_box.setMinimum(0.00)
         threshold_box.setMaximum(1.0)
-        threshold_box.setSingleStep(0.01)
+        threshold_box.setSingleStep(0.1)
         configure_update_handlers( threshold_box.valueChanged, op.Pmin )
         drawer_layout.addLayout( control_layout( "Threshold", threshold_box ) )
         self.threshold_box = threshold_box
