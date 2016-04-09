@@ -28,8 +28,9 @@ class OpEdgeTraining(Operator):
     FeatureNames = InputSlot(value=DEFAULT_FEATURES)
     Superpixels = InputSlot(level=1)
     GroundtruthSegmentation = InputSlot(level=1, optional=True)
-    #EdgeLabels = InputSlot(optional=True)
     RawData = InputSlot(level=1, optional=True) # Used by the GUI for display only
+
+    EdgeLabelsDict = InputSlot(level=1, value={})
     
     EdgeProbabilities = OutputSlot(level=1)
     EdgeProbabilitiesDict = OutputSlot(level=1) # A dict of id_pair -> probabilities
@@ -111,7 +112,7 @@ class OpEdgeTraining(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         pass
-    
+
     def trainFromGroundtruth(self):
         all_edge_features = []
         all_edge_decisions = []

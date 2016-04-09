@@ -29,7 +29,7 @@ from ilastikrag.gui import FeatureSelectionDialog
 
 from ilastik.utility.gui import threadRouted
 from volumina.pixelpipeline.datasources import LazyflowSource
-from volumina.layer import SegmentationEdgesLayer
+from volumina.layer import SegmentationEdgesLayer, LabelableSegmentationEdgesLayer
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
 from lazyflow.request import Request
@@ -89,9 +89,11 @@ class EdgeTrainingGui(LayerViewerGui):
         # Initialize everything with the operator's initial values
         self.configure_gui_from_operator()
 
+        self._init_edge_label_colortable()
         self._init_probability_colortable()
         
         op.GroundtruthSegmentation.notifyReady( self.configure_gui_from_operator )
+
 
     def _open_feature_selection_dlg(self):
         rag = self.topLevelOperatorView.Rag.value
@@ -106,6 +108,63 @@ class EdgeTrainingGui(LayerViewerGui):
         
         selections = dlg.selections()
         self.topLevelOperatorView.FeatureNames.setValue(selections)
+
+    # Configure the handler for updated edge label maps
+    def _init_edge_label_colortable(self):
+        self.edge_label_colortable = [ QColor(  0,  0,  0,   0),  # transparent
+                                       QColor(  0, 255, 0, 255),  # green 
+                                       QColor(255,   0, 0, 255) ] # red
+        
+        self.edge_label_pen_table = []
+        for color in self.edge_label_colortable:
+            pen = QPen(SegmentationEdgesLayer.DEFAULT_PEN)
+            pen.setColor(color)
+            pen.setWidth(5)
+            self.edge_label_pen_table.append(pen)
+
+        # When the edge labels are dirty, update the edge label layer pens
+        op = self.topLevelOperatorView
+        op.EdgeLabelsDict.notifyDirty( self.update_labeled_edges )
+        self.__cleanup_fns.append( partial( op.EdgeLabelsDict.unregisterDirty, self.update_labeled_edges ) )        
+
+    def update_labeled_edges(self, *args):
+        def _impl():
+            op = self.topLevelOperatorView
+            if not self.getLayerByName("Edge Labels"):
+                return
+            edge_labels = op.EdgeLabelsDict.value
+            new_pens = {}
+            for id_pair, label in edge_labels.items():
+                new_pens[id_pair] = self.edge_label_pen_table[label]
+            self.apply_new_labeled_edges(new_pens)
+
+        # submit the worklaod in a request and return immediately
+        Request(_impl).submit()
+    
+    @threadRouted
+    def apply_new_labeled_edges(self, new_pens):
+        # This function is threadRouted because you can't 
+        # touch the layer colortable outside the main thread.
+        superpixel_edge_layer = self.getLayerByName("Edge Labels")
+        if superpixel_edge_layer:
+            superpixel_edge_layer.pen_table.update(new_pens)
+
+    def _handle_edge_label_clicked(self, sp_id_pair, new_label):
+        """
+        The user clicked an edge label.
+        Update the operator with the new values.
+        """
+        print "Edge Label clicked"
+        op = self.topLevelOperatorView
+        edge_labels = op.EdgeLabelsDict.value
+        new_labels = dict( edge_labels )
+        new_labels[sp_id_pair] = new_label
+        if new_label == 0:
+            del new_labels[sp_id_pair]
+        op.EdgeLabelsDict.setValue( new_labels )
+
+    # Configure the handler for updated probability maps
+    # FIXME: Should we make a new Layer subclass that handles this colortable mapping for us?  Yes.
 
     def _init_probability_colortable(self):
         self.probability_colortable = []
@@ -123,12 +182,10 @@ class EdgeTrainingGui(LayerViewerGui):
         op.EdgeProbabilitiesDict.notifyDirty( self.update_probability_edges )
         self.__cleanup_fns.append( partial( op.EdgeProbabilitiesDict.unregisterDirty, self.update_probability_edges ) )
 
-    # Configure the handler for updated probability maps
-    # FIXME: Should we make a new Layer subclass that handles this colortable mapping for us?  Yes.
     def update_probability_edges(self, *args):
         def _impl():
             op = self.topLevelOperatorView
-            if not self.superpixel_edge_layer:
+            if not self.getLayerByName("Edge Probabilities"):
                 return
             edge_probs = op.EdgeProbabilitiesDict.value
             new_pens = {}
@@ -138,12 +195,14 @@ class EdgeTrainingGui(LayerViewerGui):
 
         # submit the worklaod in a request and return immediately
         Request(_impl).submit()
-    
+
     @threadRouted
     def apply_new_probability_edges(self, new_pens):
         # This function is threadRouted because you can't 
         # touch the layer colortable outside the main thread.
-        self.superpixel_edge_layer.pen_table.update(new_pens)
+        superpixel_edge_layer = self.getLayerByName("Edge Probabilities")
+        if superpixel_edge_layer:
+            superpixel_edge_layer.pen_table.update(new_pens)
 
     def configure_gui_from_operator(self, *args):
         op = self.topLevelOperatorView
@@ -164,14 +223,26 @@ class EdgeTrainingGui(LayerViewerGui):
         layers = []
         op = self.topLevelOperatorView
 
-        # Superpixels -- Edge Probabilities
-        self.superpixel_edge_layer = None
-        if op.Superpixels.ready() and op.EdgeProbabilitiesDict.ready():
-            layer = SegmentationEdgesLayer( LazyflowSource(op.Superpixels) )
-            layer.name = "Superpixel Edge Probabilities"
+        # Superpixels -- Edge Labels 
+        if op.Superpixels.ready() and op.EdgeLabelsDict.ready():
+            edge_labels = op.EdgeLabelsDict.value
+            layer = LabelableSegmentationEdgesLayer( LazyflowSource(op.Superpixels), self.edge_label_pen_table, edge_labels )
+            layer.name = "Edge Labels"
             layer.visible = True
             layer.opacity = 1.0
-            self.superpixel_edge_layer = layer
+
+            self.update_labeled_edges() # Initialize
+            layer.labelChanged.connect( self._handle_edge_label_clicked )
+            
+            layers.append(layer)
+            del layer
+
+        # Superpixels -- Edge Probabilities
+        if op.Superpixels.ready() and op.EdgeProbabilitiesDict.ready():
+            layer = SegmentationEdgesLayer( LazyflowSource(op.Superpixels) )
+            layer.name = "Edge Probabilities" # Name is hard-coded in multiple places: grep before changing.
+            layer.visible = True
+            layer.opacity = 1.0
             self.update_probability_edges() # Initialize
             layers.append(layer)
             del layer
@@ -207,7 +278,8 @@ class EdgeTrainingGui(LayerViewerGui):
  
         # Voxel data
         if op.VoxelData.ready():
-            layer = self.createStandardLayerFromSlot( op.VoxelData )
+            layer = self._create_grayscale_layer_from_slot( op.VoxelData,
+                                                            op.VoxelData.meta.getTaggedShape()['c'] )
             layer.name = "Voxel Data"
             layer.visible = False
             layer.opacity = 1.0
