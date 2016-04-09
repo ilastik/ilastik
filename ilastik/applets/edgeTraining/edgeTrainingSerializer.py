@@ -18,8 +18,9 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ###############################################################################
+import numpy as np
 import vigra
-from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialDictSlot
+from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialDictSlot, SerialClassifierSlot
 from ilastikrag import Rag
 
 class SerialRagSlot(SerialSlot):
@@ -67,8 +68,33 @@ class SerialRagSlot(SerialSlot):
             rag = Rag.deserialize_hdf5( rag_group, label_img )
             self.cache[lane_index].forceValue( rag )
 
+class SerialEdgeLabelsDictSlot(SerialSlot):
+    def _serialize(self, parent_group, name, multislot):
+        multislot_group = parent_group.create_group( name )
+        for lane_index, slot in enumerate(multislot):
+            edge_labels_dict = slot.value
+            sp_ids = np.array(edge_labels_dict.keys())
+            labels = np.array(edge_labels_dict.values())
+
+            dict_group = multislot_group.create_group( "EdgeLabels{:04}".format(lane_index) )
+            dict_group.create_dataset( 'sp_ids', data=sp_ids )
+            dict_group.create_dataset( 'labels', data=labels )
+
+    def _deserialize(self, multislot_group, slot):
+        for lane_index, (_dict_groupname, dict_group) in enumerate(sorted(multislot_group.items())):
+            sp_ids = dict_group['sp_ids'][:,:]
+            labels = dict_group['labels'][:]
+            edge_labels_dict = dict( zip(map(tuple, sp_ids), labels) )
+            slot[lane_index].setValue( edge_labels_dict )
+
 class EdgeTrainingSerializer(AppletSerializer):
     def __init__(self, operator, projectFileGroupName):
         slots = [ SerialDictSlot(operator.FeatureNames),
-                  SerialRagSlot(operator.Rag, operator.opRagCache, operator.Superpixels) ]
+                  SerialEdgeLabelsDictSlot(operator.EdgeLabelsDict),
+                  SerialRagSlot(operator.Rag, operator.opRagCache, operator.Superpixels),
+# FIXME: vigra-1.11 seems to introduce a segfault when serializing/deserializing the classifier.
+#        Uncomment that once this is fixed.
+#                   SerialClassifierSlot(operator.opClassifierCache.Output,
+#                                        operator.opClassifierCache)
+                 ]
         super(EdgeTrainingSerializer, self).__init__(projectFileGroupName, slots=slots)
