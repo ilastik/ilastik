@@ -73,8 +73,12 @@ class SerialEdgeLabelsDictSlot(SerialSlot):
         multislot_group = parent_group.create_group( name )
         for lane_index, slot in enumerate(multislot):
             edge_labels_dict = slot.value
-            sp_ids = np.array(edge_labels_dict.keys())
-            labels = np.array(edge_labels_dict.values())
+            if edge_labels_dict:
+                sp_ids = np.array(edge_labels_dict.keys())
+                labels = np.array(edge_labels_dict.values())
+            else:
+                sp_ids = np.ndarray( (0,2), dtype=np.uint32 )
+                labels = np.ndarray( (0,), dtype=np.uint8 )
 
             dict_group = multislot_group.create_group( "EdgeLabels{:04}".format(lane_index) )
             dict_group.create_dataset( 'sp_ids', data=sp_ids )
