@@ -1084,7 +1084,7 @@ class Slot(object):
             return temp
 
     @is_setup_fn    
-    def setValue(self, value, notify=True, check_changed=True):
+    def setValue(self, value, notify=True, check_changed=True, extra_meta={}):
         """This method can be used to directly assign a value to an
         InputSlot.
 
@@ -1097,6 +1097,10 @@ class Slot(object):
         current one and updates are only triggered if the new value differs 
         from the old one according to the __eq__ operator.
         The check can be turned off with the check_changed flag.
+        
+        If the value is a VigraArray, then shape/axistags/dtype will be automatically
+        assigned in self.meta.  Additional metadata fields can be added via the
+        extra_meta parameter.
         """
         try:
             assert isinstance(notify, bool)
@@ -1163,6 +1167,10 @@ class Slot(object):
                 self._sig_disconnect(self)
                 self._value = value
                 self.stype.setupMetaForValue(value)
+
+                for k,v in extra_meta.items():
+                    setattr(self.meta, k, v)
+                
                 self.meta._dirty = True
     
                 for s in self._subSlots:
