@@ -121,22 +121,24 @@ class OpEdgeTraining(Operator):
         For the given lane, read the ground truth volume and
         automatically determine edge label values.
         """
-        if not self.GroundtruthSegmentation[lane_index].ready():
+        op_view = self.getLane(lane_index)
+        
+        if not op_view.GroundtruthSegmentation.ready():
             raise RuntimeError("There is no Ground Truth data available for lane: {}".format( lane_index ))
 
         logger.info("Loading groundtruth for lane {}...".format(lane_index))
-        gt_vol = self.GroundtruthSegmentation[lane_index][:].wait()
-        gt_vol = vigra.taggedView(gt_vol, self.GroundtruthSegmentation.meta.axistags)
+        gt_vol = op_view.GroundtruthSegmentation[:].wait()
+        gt_vol = vigra.taggedView(gt_vol, op_view.GroundtruthSegmentation.meta.axistags)
         gt_vol = gt_vol.dropChannelAxis()
 
-        rag = self.opRagCache.Output[lane_index].value
+        rag = op_view.opRagCache.Output.value
 
         logger.info("Computing edge decisions from groundtruth...")
         decisions = rag.edge_decisions_from_groundtruth(gt_vol, asdict=False)
         edge_labels = decisions.view(np.uint8) + 1
         edge_ids = map(tuple, rag.edge_ids)
         edge_labels_dict = dict( zip(edge_ids, edge_labels) )
-        self.EdgeLabelsDict.setValue( edge_labels_dict )
+        op_view.EdgeLabelsDict.setValue( edge_labels_dict )
 
     def addLane(self, laneIndex):
         numLanes = len(self.VoxelData)
