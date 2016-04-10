@@ -21,21 +21,20 @@ import logging
 logger = logging.getLogger(__name__)
 
 class OpEdgeTraining(Operator):
+    # Shared across lanes
     DEFAULT_FEATURES = { "Grayscale": ['standard_edge_mean'] }
-
-    VoxelData = InputSlot(level=1)
     FeatureNames = InputSlot(value=DEFAULT_FEATURES)
+
+    # Lane-wise
+    EdgeLabelsDict = InputSlot(level=1, value={})
+    VoxelData = InputSlot(level=1)
     Superpixels = InputSlot(level=1)
     GroundtruthSegmentation = InputSlot(level=1, optional=True)
     RawData = InputSlot(level=1, optional=True) # Used by the GUI for display only
-
-    EdgeLabelsDict = InputSlot(level=1, value={})
     
+    Rag = OutputSlot(level=1)
     EdgeProbabilities = OutputSlot(level=1)
     EdgeProbabilitiesDict = OutputSlot(level=1) # A dict of id_pair -> probabilities
-
-    Rag = OutputSlot(level=1)
-
     NaiveSegmentation = OutputSlot(level=1)
 
     def __init__(self, *args, **kwargs):
@@ -150,6 +149,69 @@ class OpEdgeTraining(Operator):
     def getLane(self, laneIndex):
         return OperatorSubView(self, laneIndex)
 
+
+class OpCreateRag(Operator):
+    Superpixels = InputSlot()
+    Rag = OutputSlot()
+    
+    def setupOutputs(self):
+        assert self.Superpixels.meta.dtype == np.uint32
+        assert self.Superpixels.meta.getAxisKeys()[-1] == 'c'
+        self.Rag.meta.shape = (1,)
+        self.Rag.meta.dtype = object
+    
+    def execute(self, slot, subindex, roi, result):
+        superpixels = self.Superpixels[:].wait()
+        superpixels = vigra.taggedView( superpixels,
+                                        self.Superpixels.meta.axistags )
+        superpixels = superpixels.dropChannelAxis()
+
+        logger.info("Creating RAG...")
+        result[0] = ilastikrag.Rag(superpixels)
+
+    def propagateDirty(self, slot, subindex, roi):
+        self.Rag.setDirty()
+
+
+class OpComputeEdgeFeatures(Operator):
+    FeatureNames = InputSlot()
+    VoxelData = InputSlot()
+    Rag = InputSlot()
+    EdgeFeaturesDataFrame = OutputSlot() # Includes columns 'sp1' and 'sp2'
+     
+    def setupOutputs(self):
+        assert self.VoxelData.meta.getAxisKeys()[-1] == 'c'
+        self.EdgeFeaturesDataFrame.meta.shape = (1,)
+        self.EdgeFeaturesDataFrame.meta.dtype = object
+         
+    def execute(self, slot, subindex, roi, result):
+        rag = self.Rag.value
+        channel_feature_names = self.FeatureNames.value
+
+        edge_feature_dfs =[]
+        for c in range( self.VoxelData.meta.shape[-1] ):
+            channel_name = self.VoxelData.meta.channel_names[c]
+            feature_names = list(channel_feature_names[channel_name])
+            if not feature_names:
+                # No features selected for this channel
+                continue
+
+            voxel_data = self.VoxelData[...,c:c+1].wait()
+            voxel_data = vigra.taggedView(voxel_data, self.VoxelData.meta.axistags)
+            voxel_data = voxel_data[...,0] # drop channel
+            edge_features_df = rag.compute_features(voxel_data, feature_names)
+            edge_features_df = edge_features_df.iloc[:, 2:] # Discard columns [sp1, sp2]
+            edge_feature_dfs.append(edge_features_df)
+
+        # Could use join() or merge() here, but we know the rows are already in the right order, and concat() should be faster.
+        all_edge_features_df = pd.DataFrame( rag.edge_ids, columns=['sp1', 'sp2'] )
+        all_edge_features_df = pd.concat([all_edge_features_df] + edge_feature_dfs, axis=1, copy=False)
+        result[0] = all_edge_features_df
+ 
+    def propagateDirty(self, slot, subindex, roi):
+        self.EdgeFeaturesDataFrame.setDirty()
+     
+
 class OpTrainEdgeClassifier(Operator):
     EdgeLabelsDict = InputSlot(level=1)
     EdgeFeaturesDataFrame = InputSlot(level=1)
@@ -239,68 +301,6 @@ class OpPredictEdgeProbabilities(Operator):
     def propagateDirty(self, slot, subindex, roi):
         self.EdgeProbabilities.setDirty()
 
-class OpCreateRag(Operator):
-    Superpixels = InputSlot()
-    Rag = OutputSlot()
-    
-    def setupOutputs(self):
-        assert self.Superpixels.meta.dtype == np.uint32
-        assert self.Superpixels.meta.getAxisKeys()[-1] == 'c'
-        self.Rag.meta.shape = (1,)
-        self.Rag.meta.dtype = object
-    
-    def execute(self, slot, subindex, roi, result):
-        superpixels = self.Superpixels[:].wait()
-        superpixels = vigra.taggedView( superpixels,
-                                        self.Superpixels.meta.axistags )
-        superpixels = superpixels.dropChannelAxis()
-
-        logger.info("Creating RAG...")
-        result[0] = ilastikrag.Rag(superpixels)
-
-    def propagateDirty(self, slot, subindex, roi):
-        self.Rag.setDirty()
-
-
-class OpComputeEdgeFeatures(Operator):
-    FeatureNames = InputSlot()
-    VoxelData = InputSlot()
-    Rag = InputSlot()
-    EdgeFeaturesDataFrame = OutputSlot() # Includes columns 'sp1' and 'sp2'
-     
-    def setupOutputs(self):
-        assert self.VoxelData.meta.getAxisKeys()[-1] == 'c'
-        self.EdgeFeaturesDataFrame.meta.shape = (1,)
-        self.EdgeFeaturesDataFrame.meta.dtype = object
-         
-    def execute(self, slot, subindex, roi, result):
-        rag = self.Rag.value
-        channel_feature_names = self.FeatureNames.value
-
-        edge_feature_dfs =[]
-        for c in range( self.VoxelData.meta.shape[-1] ):
-            channel_name = self.VoxelData.meta.channel_names[c]
-            feature_names = list(channel_feature_names[channel_name])
-            if not feature_names:
-                # No features selected for this channel
-                continue
-
-            voxel_data = self.VoxelData[...,c:c+1].wait()
-            voxel_data = vigra.taggedView(voxel_data, self.VoxelData.meta.axistags)
-            voxel_data = voxel_data[...,0] # drop channel
-            edge_features_df = rag.compute_features(voxel_data, feature_names)
-            
-            edge_features_df = edge_features_df.iloc[:, 2:] # Discard columns [sp1, sp2]
-            edge_feature_dfs.append(edge_features_df)
-            
-        # Could use join() or merge() here, but we know the rows are already in the right order, and concat() should be faster.
-        all_edge_features_df = pd.DataFrame( rag.edge_ids, columns=['sp1', 'sp2'] )
-        all_edge_features_df = pd.concat([all_edge_features_df] + edge_feature_dfs, axis=1, copy=False)
-        result[0] = all_edge_features_df
- 
-    def propagateDirty(self, slot, subindex, roi):
-        self.EdgeFeaturesDataFrame.setDirty()
-     
 class OpEdgeProbabilitiesDict(Operator):
     """
     A little utility operator to combine a RAG's edge_ids
