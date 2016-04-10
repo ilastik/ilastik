@@ -136,6 +136,7 @@ class EdgeTrainingGui(LayerViewerGui):
         edge_label_layer = self.getLayerByName("Edge Labels")
         if not edge_label_layer:
             return
+
         edge_label_layer.overwrite_edge_labels( op.EdgeLabelsDict.value )
     
     def _handle_edge_label_clicked(self, sp_id_pair, new_label):
@@ -150,6 +151,19 @@ class EdgeTrainingGui(LayerViewerGui):
         if new_label == 0:
             del new_labels[sp_id_pair]
         op.EdgeLabelsDict.setValue( new_labels )
+
+    def _handle_label_from_gt_clicked(self):
+        op = self.topLevelOperatorView
+        op.setEdgeLabelsFromGroundtruth( op.current_view_index() )
+
+    def _handle_clear_labels_clicked(self):
+        response = QMessageBox.warning(self, "Clear Labels?",
+                                       "This will clear all edge labels in the current image.\nAre you sure?",
+                                       buttons=QMessageBox.Ok | QMessageBox.Cancel)
+        if response == QMessageBox.Ok:
+            op = self.topLevelOperatorView
+            op.EdgeLabelsDict.setValue( {} )
+
 
     # Configure the handler for updated probability maps
     # FIXME: Should we make a new Layer subclass that handles this colortable mapping for us?  Yes.
@@ -201,18 +215,6 @@ class EdgeTrainingGui(LayerViewerGui):
 
     def configure_operator_from_gui(self):
         op = self.topLevelOperatorView
-
-    def _handle_label_from_gt_clicked(self):
-        op = self.topLevelOperatorView
-        op.setEdgeLabelsFromGroundtruth( op.current_view_index() )
-
-    def _handle_clear_labels_clicked(self):
-        response = QMessageBox.warning(self, "Clear Labels?",
-                                       "This will clear all edge labels in the current image.\nAre you sure?",
-                                       buttons=QMessageBox.Ok | QMessageBox.Cancel)
-        if response == QMessageBox.Ok:
-            op = self.topLevelOperatorView
-            op.EdgeLabelsDict.setValue( {} )
 
     def setupLayers(self):
         layers = []
