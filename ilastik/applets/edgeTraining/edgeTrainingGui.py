@@ -139,17 +139,20 @@ class EdgeTrainingGui(LayerViewerGui):
 
         edge_label_layer.overwrite_edge_labels( op.EdgeLabelsDict.value )
     
-    def _handle_edge_label_clicked(self, sp_id_pair, new_label):
+    def _handle_edge_label_clicked(self, updated_edge_labels):
         """
         The user clicked an edge label.
         Update the operator with the new values.
         """
         op = self.topLevelOperatorView
         edge_labels = op.EdgeLabelsDict.value
+
         new_labels = dict( edge_labels )
-        new_labels[sp_id_pair] = new_label
-        if new_label == 0:
-            del new_labels[sp_id_pair]
+        new_labels.update( updated_edge_labels )
+        for sp_id_pair, new_label in new_labels:
+            if new_label == 0:
+                del new_labels[sp_id_pair]
+
         op.EdgeLabelsDict.setValue( new_labels )
 
     def _handle_label_from_gt_clicked(self):
@@ -229,7 +232,7 @@ class EdgeTrainingGui(LayerViewerGui):
             layer.opacity = 1.0
 
             self.update_labeled_edges() # Initialize
-            layer.labelChanged.connect( self._handle_edge_label_clicked )
+            layer.labelsChanged.connect( self._handle_edge_label_clicked )
             
             layers.append(layer)
             del layer
