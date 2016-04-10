@@ -23,7 +23,8 @@ from functools import partial
 import numpy as np
 
 from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QWidget, QLabel, QDoubleSpinBox, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy, QColor, QPen, QPushButton
+from PyQt4.QtGui import QWidget, QLabel, QDoubleSpinBox, QVBoxLayout, QHBoxLayout, \
+                        QSpacerItem, QSizePolicy, QColor, QPen, QPushButton, QMessageBox
 
 from ilastikrag.gui import FeatureSelectionDialog
 
@@ -72,11 +73,13 @@ class EdgeTrainingGui(LayerViewerGui):
         # Controls
         feature_selection_button = QPushButton("Select Features", clicked=self._open_feature_selection_dlg)
         self.train_from_gt_button = QPushButton("Label from Groundtruth", clicked=self._handle_label_from_gt_clicked)
+        self.clear_labels_button = QPushButton("Clear all Labels", clicked=self._handle_clear_labels_clicked)
         
         # Layout
         layout = QVBoxLayout()
         layout.addWidget(feature_selection_button)
         layout.addWidget(self.train_from_gt_button)
+        layout.addWidget(self.clear_labels_button)
         layout.addSpacerItem( QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding) )
         
         # Finally, the whole drawer widget
@@ -127,28 +130,14 @@ class EdgeTrainingGui(LayerViewerGui):
         op.EdgeLabelsDict.notifyDirty( self.update_labeled_edges )
         self.__cleanup_fns.append( partial( op.EdgeLabelsDict.unregisterDirty, self.update_labeled_edges ) )        
 
-    def update_labeled_edges(self, *args):
-        def _impl():
-            op = self.topLevelOperatorView
-            if not self.getLayerByName("Edge Labels"):
-                return
-            edge_labels = op.EdgeLabelsDict.value
-            new_pens = {}
-            for id_pair, label in edge_labels.items():
-                new_pens[id_pair] = self.edge_label_pen_table[label]
-            self.apply_new_labeled_edges(new_pens)
-
-        # submit the worklaod in a request and return immediately
-        Request(_impl).submit()
-    
     @threadRouted
-    def apply_new_labeled_edges(self, new_pens):
-        # This function is threadRouted because you can't 
-        # touch the layer colortable outside the main thread.
-        superpixel_edge_layer = self.getLayerByName("Edge Labels")
-        if superpixel_edge_layer:
-            superpixel_edge_layer.pen_table.update(new_pens)
-
+    def update_labeled_edges(self, *args):
+        op = self.topLevelOperatorView
+        edge_label_layer = self.getLayerByName("Edge Labels")
+        if not edge_label_layer:
+            return
+        edge_label_layer.overwrite_edge_labels( op.EdgeLabelsDict.value )
+    
     def _handle_edge_label_clicked(self, sp_id_pair, new_label):
         """
         The user clicked an edge label.
@@ -204,7 +193,7 @@ class EdgeTrainingGui(LayerViewerGui):
         # touch the layer colortable outside the main thread.
         superpixel_edge_layer = self.getLayerByName("Edge Probabilities")
         if superpixel_edge_layer:
-            superpixel_edge_layer.pen_table.update(new_pens)
+            superpixel_edge_layer.pen_table.overwrite(new_pens)
 
     def configure_gui_from_operator(self, *args):
         op = self.topLevelOperatorView
@@ -216,6 +205,14 @@ class EdgeTrainingGui(LayerViewerGui):
     def _handle_label_from_gt_clicked(self):
         op = self.topLevelOperatorView
         op.setEdgeLabelsFromGroundtruth( op.current_view_index() )
+
+    def _handle_clear_labels_clicked(self):
+        response = QMessageBox.warning(self, "Clear Labels?",
+                                       "This will clear all edge labels in the current image.\nAre you sure?",
+                                       buttons=QMessageBox.Ok | QMessageBox.Cancel)
+        if response == QMessageBox.Ok:
+            op = self.topLevelOperatorView
+            op.EdgeLabelsDict.setValue( {} )
 
     def setupLayers(self):
         layers = []
