@@ -18,7 +18,7 @@ class OpWsdt(Operator):
     Pmin = InputSlot(value=0.5)
     MinMembraneSize = InputSlot(value=0)
     MinSegmentSize = InputSlot(value=0)
-    SigmaMinima = InputSlot(value=2.0)
+    SigmaMinima = InputSlot(value=3.0)
     SigmaWeights = InputSlot(value=0.0)
     GroupSeeds = InputSlot(value=False)
 
@@ -83,7 +83,7 @@ class OpCachedWsdt(Operator):
     Pmin = InputSlot(value=0.5)
     MinMembraneSize = InputSlot(value=0)
     MinSegmentSize = InputSlot(value=0)
-    SigmaMinima = InputSlot(value=0.0)
+    SigmaMinima = InputSlot(value=3.0)
     SigmaWeights = InputSlot(value=0.0)
     GroupSeeds = InputSlot(value=False)
 
