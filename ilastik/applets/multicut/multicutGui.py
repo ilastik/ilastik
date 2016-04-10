@@ -200,7 +200,7 @@ class MulticutGui(LayerViewerGui):
         if op.Superpixels.ready():
             layer = self.createStandardLayerFromSlot( op.Superpixels )
             layer.name = "Superpixels"
-            layer.visible = True
+            layer.visible = False
             layer.opacity = 0.5
             layers.append(layer)
             del layer
