@@ -62,7 +62,7 @@ class EdgeTrainingGui(LayerViewerGui):
         self.__cleanup_fns = []
         self.parentApplet = parentApplet
         self.topLevelOperatorView = topLevelOperatorView
-        super(EdgeTrainingGui, self).__init__( parentApplet, topLevelOperatorView )
+        super(EdgeTrainingGui, self).__init__( parentApplet, topLevelOperatorView, crosshair=False )
 
     def initAppletDrawerUi(self):
         """

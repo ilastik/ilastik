@@ -58,7 +58,7 @@ class MulticutGui(LayerViewerGui):
     def __init__(self, parentApplet, topLevelOperatorView):
         self.__cleanup_fns = []
         self.topLevelOperatorView = topLevelOperatorView
-        super(MulticutGui, self).__init__( parentApplet, topLevelOperatorView )
+        super(MulticutGui, self).__init__( parentApplet, topLevelOperatorView, crosshair=False )
 
     def initAppletDrawerUi(self):
         """
