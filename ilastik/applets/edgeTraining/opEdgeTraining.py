@@ -166,11 +166,15 @@ class OpTrainEdgeClassifier(Operator):
         for lane_index, (labels_dict_slot, features_slot) in \
                 enumerate( zip(self.EdgeLabelsDict, self.EdgeFeaturesDataFrame) ):
             logger.info("Retrieving features for lane {}...".format(lane_index))
+
+            labels_dict = labels_dict_slot.value.copy() # Copy now to avoid threading issues.
+            if not labels_dict:
+                continue
+
+            sp_columns = np.array(labels_dict.keys())
             edge_features_df = features_slot.value
             assert list(edge_features_df.columns[0:2]) == ['sp1', 'sp2']
 
-            labels_dict = labels_dict_slot.value.copy() # Copy now to avoid threading issues.
-            sp_columns = np.array(labels_dict.keys())
             labels_df = pd.DataFrame(sp_columns, columns=['sp1', 'sp2'])
             labels_df['label'] = labels_dict.values()
 
@@ -184,6 +188,11 @@ class OpTrainEdgeClassifier(Operator):
             else:
                 all_features_and_labels_df = features_and_labels_df
 
+        if all_features_and_labels_df is None:
+            # No labels yet.
+            result[0] = None
+            return
+
         assert list(all_features_and_labels_df.columns[0:2]) == ['sp1', 'sp2']
         assert all_features_and_labels_df.columns[-1] == 'label'
 
@@ -193,7 +202,9 @@ class OpTrainEdgeClassifier(Operator):
         logger.info("Training classifier with {} labels...".format( len(labels) ))
         # TODO: Allow factory to be configured via an input slot
         classifier_factory = ParallelVigraRfLazyflowClassifierFactory()
-        classifier = classifier_factory.create_and_train( feature_matrix, labels )
+        classifier = classifier_factory.create_and_train( feature_matrix,
+                                                          labels,
+                                                          feature_names=all_features_and_labels_df.columns[2:-1].values )
         assert set(classifier.known_classes).issubset(set([1,2]))
         result[0] = classifier
 
@@ -210,17 +221,19 @@ class OpPredictEdgeProbabilities(Operator):
         self.EdgeProbabilities.meta.dtype = object
 
     def execute(self, slot, subindex, roi, result):
-        edge_features = self.EdgeFeaturesDataFrame.value
+        edge_features_df = self.EdgeFeaturesDataFrame.value
         classifier = self.EdgeClassifier.value
         
         # Classifier can be None if no labels have been selected
         if classifier is None or len(classifier.known_classes) < 2:
-            result[0] = np.zeros( (len(edge_features),), dtype=np.float32 )
+            result[0] = np.zeros( (len(edge_features_df),), dtype=np.float32 )
             return
         
         logger.info("Predicting edge probabilities...")
-        probabilities = classifier.predict_probabilities(edge_features)[:,1]
-        assert len(probabilities) == len(edge_features)
+        feature_matrix = edge_features_df.iloc[:, 2:].values # Discard [sp1, sp2]
+        assert feature_matrix.dtype == np.float32
+        probabilities = classifier.predict_probabilities(feature_matrix)[:,1]
+        assert len(probabilities) == len(edge_features_df)
         result[0] = probabilities
     
     def propagateDirty(self, slot, subindex, roi):
