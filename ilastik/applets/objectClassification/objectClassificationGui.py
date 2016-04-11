@@ -344,6 +344,7 @@ class ObjectClassificationGui(LabelingGui):
             for plugin_features in dlg.selectedFeatures.itervalues():
                 nfeatures += len(plugin_features)
             self.labelingDrawerUi.featuresSubset.setText("{} features selected,\nsome may have multiple channels".format(nfeatures))
+        mainOperator.ComputedFeatureNames.setDirty(())
 
     @pyqtSlot()
     def checkEnableButtons(self):
