@@ -60,11 +60,17 @@ class VigraConvexHullObjFeats(ObjectFeaturesPlugin):
         except:
             logger.error('2D Convex Hull Features: Supported Convex Hull Features: failed (Vigra commit must be f8e48031abb1158ea804ca3cbfe781ccc62d09a2 or newer).')
             names = []
+
         try:
             # 'Polygon' is NOT usable as a feature
             names.remove('Polygon')
-        except:
+        except ValueError:
             pass
+
+        if 'Center' in names:
+            # To avoid name clashes with skeleton features,
+            # rename "center" to "hull center"
+            names[names.index('Center')] = 'Hull Center'
         
         tooltips = {}
         result = dict((n, {}) for n in names)  
@@ -81,6 +87,13 @@ class VigraConvexHullObjFeats(ObjectFeaturesPlugin):
         
         # 'Polygon' is NOT usable as a feature
         del result['Polygon']
+
+        # Rename 'Center' to 'Hull Center' to avoid name clash with skeleton features
+        if 'Center' in result.keys():
+            # To avoid name clashes with skeleton features,
+            # rename "center" to "hull center"
+            result['Hull Center'] = result['Center']
+            del result['Center']
         
         # find the number of objects
         nobj = result[features[0]].shape[0]

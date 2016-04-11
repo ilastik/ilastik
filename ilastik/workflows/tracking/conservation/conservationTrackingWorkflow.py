@@ -52,7 +52,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         if self.fromBinary:
-            opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Binary Image'] )
+            opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Segmentation Image'] )
         else:
             opDataSelection.DatasetRoles.setValue( ['Raw Data', 'Prediction Maps'] )
                 
@@ -305,10 +305,25 @@ class ConservationTrackingWorkflowBase( Workflow ):
         parameters = self.trackingApplet.topLevelOperator.Parameters.value
         
         # Save state of axis ranges
-        self.prev_time_range = parameters['time_range']
-        self.prev_x_range = parameters['x_range']
-        self.prev_y_range = parameters['y_range']
-        self.prev_z_range = parameters['z_range']
+        if 'time_range' in parameters:
+            self.prev_time_range = parameters['time_range']
+        else:
+            self.prev_time_range = time_enum
+            
+        if 'x_range' in parameters:
+            self.prev_x_range = parameters['x_range']
+        else:
+            self.prev_x_range = x_range
+        
+        if 'y_range' in parameters:
+            self.prev_y_range = parameters['y_range']
+        else:
+            self.prev_y_range = y_range
+            
+        if 'z_range' in parameters:
+            self.prev_z_range = parameters['z_range']
+        else:
+            self.prev_z_range = z_range
         
         self.trackingApplet.topLevelOperator[lane_index].track(
             time_range = time_enum,

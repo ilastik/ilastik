@@ -219,7 +219,7 @@ class LabelingGui(LayerViewerGui):
                 return
 
             # This only works if the top-level operator has a 'mergeLabels' function.
-            self.topLevelOperatorView.mergeLabels( from_label+1, into_label+1 )
+            self.topLevelOperatorView.mergeLabels( from_label, into_label )
 
             names = list(self._labelingSlots.labelNames.value)
             names.pop(from_label-1)

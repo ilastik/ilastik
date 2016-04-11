@@ -46,6 +46,7 @@ from ilastik.utility.gui import threadRouted
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui, H5VolumeSelectionDlg
+from ilastik.shell.gui.variableImportanceDialog import VariableImportanceDialog
 
 try:
     from volumina.view3d.volumeRendering import RenderingManager
@@ -121,7 +122,8 @@ class ClassifierSelectionDlg(QDialog):
             import warnings
             warnings.warn("Couldn't import sklearn. Scikit-learn classifiers not available.")
 
-        # Debug classifiers        
+        # Debug classifiers
+        classifiers["Parallel Random Forest with Variable Importance (VIGRA)"] = ParallelVigraRfLazyflowClassifierFactory(100, variable_importance_enabled=True)        
         classifiers["(debug) Single-threaded Random Forest (VIGRA)"] = VigraRfLazyflowClassifierFactory(100)
         classifiers["(debug) Pixelwise Random Forest (VIGRA)"] = VigraRfPixelwiseClassifierFactory(100)
         
@@ -157,103 +159,107 @@ class PixelClassificationGui(LabelingGui):
     def menus( self ):
         menus = super( PixelClassificationGui, self ).menus()
 
-        # For now classifier selection is only available in debug mode
-        if ilastik_config.getboolean('ilastik', 'debug'):
-            advanced_menu = QMenu("Advanced", parent=self)
-            
-            def handleClassifierAction():
-                dlg = ClassifierSelectionDlg(self.topLevelOperatorView, parent=self)
-                dlg.exec_()
-            
-            classifier_action = advanced_menu.addAction("Classifier...")
-            classifier_action.triggered.connect( handleClassifierAction )
-            
-            def handleImportLabelsAction():
-                # Find the directory of the most recently opened image file
-                mostRecentImageFile = PreferencesManager().get( 'DataSelection', 'recent image' )
-                if mostRecentImageFile is not None:
-                    defaultDirectory = os.path.split(mostRecentImageFile)[0]
-                else:
-                    defaultDirectory = os.path.expanduser('~')
-                fileNames = DataSelectionGui.getImageFileNamesToOpen(self, defaultDirectory)
-                fileNames = map(str, fileNames)
-                
-                # For now, we require a single hdf5 file
-                if len(fileNames) > 1:
-                    QMessageBox.critical(self, "Too many files", 
-                                         "Labels must be contained in a single hdf5 volume.")
-                    return
-                if len(fileNames) == 0:
-                    # user cancelled
-                    return
-                
-                file_path = fileNames[0]
-                internal_paths = DataSelectionGui.getPossibleInternalPaths(file_path)
-                if len(internal_paths) == 0:
-                    QMessageBox.critical(self, "No volumes in file", 
-                                         "Couldn't find a suitable dataset in your hdf5 file.")
-                    return
-                if len(internal_paths) == 1:
-                    internal_path = internal_paths[0]
-                else:
-                    dlg = H5VolumeSelectionDlg(internal_paths, self)
-                    if dlg.exec_() == QDialog.Rejected:
-                        return
-                    selected_index = dlg.combo.currentIndex()
-                    internal_path = str(internal_paths[selected_index])
-
-                path_components = PathComponents(file_path)
-                path_components.internalPath = str(internal_path)
-                
-                try:
-                    top_op = self.topLevelOperatorView
-                    opReader = OpInputDataReader(parent=top_op.parent)
-                    opReader.FilePath.setValue( path_components.totalPath() )
+        advanced_menu = QMenu("Advanced", parent=self)
                     
-                    # Reorder the axes
-                    op5 = OpReorderAxes(parent=top_op.parent)
-                    op5.AxisOrder.setValue( top_op.LabelInputs.meta.getAxisKeys() )
-                    op5.Input.connect( opReader.Output )
+        def handleClassifierAction():
+            dlg = ClassifierSelectionDlg(self.topLevelOperatorView, parent=self)
+            dlg.exec_()
+        
+        classifier_action = advanced_menu.addAction("Classifier...")
+        classifier_action.triggered.connect( handleClassifierAction )
+        
+        def showVarImpDlg():
+            varImpDlg = VariableImportanceDialog(self.topLevelOperatorView.Classifier.value.named_importances, parent=self)
+            varImpDlg.exec_()
+            
+        advanced_menu.addAction("Variable Importance Table").triggered.connect(showVarImpDlg)            
+        
+        def handleImportLabelsAction():
+            # Find the directory of the most recently opened image file
+            mostRecentImageFile = PreferencesManager().get( 'DataSelection', 'recent image' )
+            if mostRecentImageFile is not None:
+                defaultDirectory = os.path.split(mostRecentImageFile)[0]
+            else:
+                defaultDirectory = os.path.expanduser('~')
+            fileNames = DataSelectionGui.getImageFileNamesToOpen(self, defaultDirectory)
+            fileNames = map(str, fileNames)
+            
+            # For now, we require a single hdf5 file
+            if len(fileNames) > 1:
+                QMessageBox.critical(self, "Too many files", 
+                                     "Labels must be contained in a single hdf5 volume.")
+                return
+            if len(fileNames) == 0:
+                # user cancelled
+                return
+            
+            file_path = fileNames[0]
+            internal_paths = DataSelectionGui.getPossibleInternalPaths(file_path)
+            if len(internal_paths) == 0:
+                QMessageBox.critical(self, "No volumes in file", 
+                                     "Couldn't find a suitable dataset in your hdf5 file.")
+                return
+            if len(internal_paths) == 1:
+                internal_path = internal_paths[0]
+            else:
+                dlg = H5VolumeSelectionDlg(internal_paths, self)
+                if dlg.exec_() == QDialog.Rejected:
+                    return
+                selected_index = dlg.combo.currentIndex()
+                internal_path = str(internal_paths[selected_index])
+
+            path_components = PathComponents(file_path)
+            path_components.internalPath = str(internal_path)
+            
+            try:
+                top_op = self.topLevelOperatorView
+                opReader = OpInputDataReader(parent=top_op.parent)
+                opReader.FilePath.setValue( path_components.totalPath() )
                 
-                    # Finally, import the labels
-                    top_op.importLabels( top_op.current_view_index(), op5.Output )
-                        
-                finally:
-                    op5.cleanUp()
-                    opReader.cleanUp()
-
-            def print_label_blocks(sorted_axis):
-                sorted_column = self.topLevelOperatorView.InputImages.meta.getAxisKeys().index(sorted_axis)
-                
-                input_shape = self.topLevelOperatorView.InputImages.meta.shape
-                label_block_slicings = self.topLevelOperatorView.NonzeroLabelBlocks.value
-
-                sorted_block_slicings = sorted(label_block_slicings, key=lambda s: s[sorted_column])
-
-                for slicing in sorted_block_slicings:
-                    # Omit channel
-                    order = "".join( self.topLevelOperatorView.InputImages.meta.getAxisKeys() )
-                    line = order[:-1].upper() + ": "
-                    line += slicing_to_string( slicing[:-1], input_shape )
-                    print line
-
-            labels_submenu = QMenu("Labels")
-            self.labels_submenu = labels_submenu # Must retain this reference or else it gets auto-deleted.
+                # Reorder the axes
+                op5 = OpReorderAxes(parent=top_op.parent)
+                op5.AxisOrder.setValue( top_op.LabelInputs.meta.getAxisKeys() )
+                op5.Input.connect( opReader.Output )
             
-            import_labels_action = labels_submenu.addAction("Import Labels...")
-            import_labels_action.triggered.connect( handleImportLabelsAction )
+                # Finally, import the labels
+                top_op.importLabels( top_op.current_view_index(), op5.Output )
+                    
+            finally:
+                op5.cleanUp()
+                opReader.cleanUp()
 
-            self.print_labels_submenu = QMenu("Print Label Blocks")
-            labels_submenu.addMenu(self.print_labels_submenu)
+        def print_label_blocks(sorted_axis):
+            sorted_column = self.topLevelOperatorView.InputImages.meta.getAxisKeys().index(sorted_axis)
             
-            for axis in self.topLevelOperatorView.InputImages.meta.getAxisKeys()[:-1]:
-                self.print_labels_submenu\
-                    .addAction("Sort by {}".format( axis.upper() ))\
-                    .triggered.connect( partial(print_label_blocks, axis) )
+            input_shape = self.topLevelOperatorView.InputImages.meta.shape
+            label_block_slicings = self.topLevelOperatorView.NonzeroLabelBlocks.value
 
-            advanced_menu.addMenu(labels_submenu)
-            
-            menus += [advanced_menu]
+            sorted_block_slicings = sorted(label_block_slicings, key=lambda s: s[sorted_column])
+
+            for slicing in sorted_block_slicings:
+                # Omit channel
+                order = "".join( self.topLevelOperatorView.InputImages.meta.getAxisKeys() )
+                line = order[:-1].upper() + ": "
+                line += slicing_to_string( slicing[:-1], input_shape )
+                print line
+
+        labels_submenu = QMenu("Labels")
+        self.labels_submenu = labels_submenu # Must retain this reference or else it gets auto-deleted.
+        
+        import_labels_action = labels_submenu.addAction("Import Labels...")
+        import_labels_action.triggered.connect( handleImportLabelsAction )
+
+        self.print_labels_submenu = QMenu("Print Label Blocks")
+        labels_submenu.addMenu(self.print_labels_submenu)
+        
+        for axis in self.topLevelOperatorView.InputImages.meta.getAxisKeys()[:-1]:
+            self.print_labels_submenu\
+                .addAction("Sort by {}".format( axis.upper() ))\
+                .triggered.connect( partial(print_label_blocks, axis) )
+
+        advanced_menu.addMenu(labels_submenu)
+        
+        menus += [advanced_menu]
 
         return menus
 

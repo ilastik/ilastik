@@ -67,9 +67,9 @@ class OpConservationTracking(OpTrackingBase):
         if slot is self.Output:
             parameters = self.Parameters.value
             trange = range(roi.start[0], roi.stop[0])
-            original = np.zeros(result.shape)
-            original = super(OpConservationTracking, self).execute(slot, subindex, roi, original).copy() # recursive call to get properly labeled image
-            result = self.LabelImage.get(roi).wait()
+            original = np.zeros(result.shape, dtype=slot.meta.dtype)
+            super(OpConservationTracking, self).execute(slot, subindex, roi, original)
+            result[:] = self.LabelImage.get(roi).wait()
             pixel_offsets=roi.start[1:-1]  # offset only in pixels, not time and channel
             for t in trange:
                 if ('time_range' in parameters
@@ -80,11 +80,11 @@ class OpConservationTracking(OpTrackingBase):
                     result[t-roi.start[0],...][:] = 0
 
             original[result != 0] = result[result != 0]
-            result = original
+            result[:] = original
         elif slot is self.MergerOutput:
             parameters = self.Parameters.value
             trange = range(roi.start[0], roi.stop[0])
-            result = self.LabelImage.get(roi).wait()
+            result[:] = self.LabelImage.get(roi).wait()
             pixel_offsets=roi.start[1:-1]  # offset only in pixels, not time and channel
             for t in trange:
                 if ('time_range' in parameters
@@ -99,7 +99,7 @@ class OpConservationTracking(OpTrackingBase):
         elif slot is self.RelabeledImage:
             parameters = self.Parameters.value
             trange = range(roi.start[0], roi.stop[0])
-            result = self.LabelImage.get(roi).wait()
+            result[:] = self.LabelImage.get(roi).wait()
             pixel_offsets=roi.start[1:-1]  # offset only in pixels, not time and channel
             for t in trange:
                 if ('time_range' in parameters
@@ -108,7 +108,7 @@ class OpConservationTracking(OpTrackingBase):
                         and 'withMergerResolution' in parameters.keys() and parameters['withMergerResolution']):
                         result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, pixel_offsets, False, True)
         else:  # default bahaviour
-            result = super(OpConservationTracking, self).execute(slot, subindex, roi, result)
+            super(OpConservationTracking, self).execute(slot, subindex, roi, result)
         return result
 
     def setInSlot(self, slot, subindex, roi, value):

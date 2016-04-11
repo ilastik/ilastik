@@ -28,6 +28,7 @@ from collections import defaultdict
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from functools import partial
+from itertools import chain
 from ilastik.applets.objectExtraction.opObjectExtraction import max_margin
 
 from ilastik.plugins import pluginManager
@@ -48,7 +49,6 @@ import cPickle as pickle
 import threading
 
 import logging
-from _collections import defaultdict
 logger = logging.getLogger(__name__)
 
 class FeatureSelectionDialog(QDialog):
@@ -422,6 +422,19 @@ class ObjectExtractionGui(LayerViewerGui):
             availableFeatures = pluginInfo.plugin_object.availableFeatures(fakeimg, fakelabels)
             if len(availableFeatures) > 0:
                 featureDict[pluginInfo.name] = availableFeatures
+
+        # Make sure no plugins use the same feature names.
+        # (Currently, our feature export implementation doesn't support repeated column names.)
+        all_feature_names = chain(*[plugin_dict.keys() for plugin_dict in featureDict.values()])
+        feature_set = set()
+        for name in all_feature_names:
+            assert name not in feature_set, \
+                "Feature name '{}' is used by more than one feature plugin.\n"\
+                "All plugins must produce uniquely named features.\n"\
+                "The plugins and feature names we found are:\n{}"\
+                .format(name, featureDict)
+            feature_set.add(name)
+
         dlg = FeatureSelectionDialog(featureDict=featureDict,
                                      selectedFeatures=selectedFeatures, ndim=ndim)
         dlg.exec_()
