@@ -54,7 +54,6 @@ class OpTiffSequenceReader(Operator):
         self._readers = []
         self._opStacker = OpMultiArrayStacker( parent=self )
         self._opStacker.AxisIndex.setValue(0)
-        self.Output.connect( self._opStacker.Output )
     
     def cleanUp(self):
         self._opStacker.Images.resize(0)
@@ -70,9 +69,11 @@ class OpTiffSequenceReader(Operator):
 
         num_files = len(file_paths)
         if num_files == 0:
+            self.Output.disconnect()
             self.Output.meta.NOTREADY = True
             return
 
+        self.Output.connect( self._opStacker.Output )
         try:
             opFirstImg = OpTiffReader(parent=self)
             opFirstImg.Filepath.setValue( file_paths[0] )
