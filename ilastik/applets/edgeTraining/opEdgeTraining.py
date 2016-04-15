@@ -193,6 +193,8 @@ class OpComputeEdgeFeatures(Operator):
         edge_feature_dfs =[]
         for c in range( self.VoxelData.meta.shape[-1] ):
             channel_name = self.VoxelData.meta.channel_names[c]
+            if channel_name not in channel_feature_names:
+                continue
             feature_names = list(channel_feature_names[channel_name])
             if not feature_names:
                 # No features selected for this channel
@@ -323,6 +325,7 @@ class OpEdgeProbabilitiesDict(Operator):
         logger.info("Converting edge probabilities to dict...")
         edge_ids = rag.edge_ids
         result[0] = dict(izip(imap(tuple, edge_ids), edge_probabilities))
+        logger.info("...done")
 
     def propagateDirty(self, slot, subindex, roi):
         self.EdgeProbabilitiesDict.setDirty()
