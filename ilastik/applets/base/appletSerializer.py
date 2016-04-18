@@ -327,9 +327,9 @@ class SerialListSlot(SerialSlot):
     @timeLogged(logger, logging.DEBUG)
     def deserialize(self, group):
         logger.debug("Deserializing ListSlot: {}".format(self.name))
-        try:
+        if self.name in group.keys():
             subgroup = group[self.name]
-        except:
+        else:
             if logger.isEnabledFor(logging.DEBUG):
                 # Only show this warning when debugging serialization
                 warnings.warn("Deserialization: Could not locate value for slot '{}'.  Skipping.".format( self.name ))
