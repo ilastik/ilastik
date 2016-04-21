@@ -436,6 +436,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             # could be merged with code in opStructuredTracking
             structuredLearningTracker.addLabels()
 
+            mergeMsgStr = "Your tracking annotations contradict this model assumptions: mergers can split or merge, but must appear or dissaper as a unit!"
             foundAllArcs = True;
             for cropKey in self.mainOperator.Annotations.value.keys():
                 if foundAllArcs:
@@ -476,7 +477,10 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                                     # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
                                     type = self._type(cropKey, time, track) # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
 
-                                    if type[0] == "LAST" or type[0] == "INTERMEDIATE":
+                                    if type == None:
+                                        raise DatasetConstraintError('Structured Learning', mergeMsgStr)
+
+                                    elif type[0] == "LAST" or type[0] == "INTERMEDIATE":
                                         previous_label = int(type[1])
                                         previousTrackSet = labels[time-1][previous_label]
                                         intersectionSet = trackSet.intersection(previousTrackSet)
@@ -496,7 +500,10 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                                             logger.info("[structuredTrackingGui] Increasing max nearest neighbors!")
                                             break
 
-                                if type[0] == "FIRST":
+                                if type == None:
+                                    raise DatasetConstraintError('Structured Learning', mergeMsgStr)
+
+                                elif type[0] == "FIRST":
                                     structuredLearningTracker.addFirstLabels(time, int(label), float(trackCount))
                                     if time > self.mainOperator.Crops.value[cropKey]["time"][0]:
                                         structuredLearningTracker.addDisappearanceLabel(time, int(label), 0.0)
