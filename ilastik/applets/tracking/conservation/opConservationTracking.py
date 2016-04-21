@@ -13,7 +13,6 @@ from ilastik.applets.objectExtraction.opObjectExtraction import default_features
 from ilastik.applets.tracking.base.trackingUtilities import get_events
 from lazyflow.operators.opCompressedCache import OpCompressedCache
 from lazyflow.roi import sliceToRoi
-from PyQt4 import QtGui
 from opRelabeledMergerFeatureExtraction import OpRelabeledMergerFeatureExtraction
 
 import logging
