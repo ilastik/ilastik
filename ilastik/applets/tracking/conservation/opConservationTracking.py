@@ -294,19 +294,19 @@ class OpConservationTracking(OpTrackingBase):
         params = self.tracker.get_conservation_tracking_parameters(
             0,       # forbidden_cost
             float(ep_gap), # ep_gap
-            withTracklets, # with tracklets
-            10.0, # detection weight
-            divWeight, # division weight
-            transWeight, # transition weight
-            disappearance_cost, # disappearance cost
-            appearance_cost, # appearance cost
-            withMergerResolution, # with merger resolution
-            ndim, # ndim
-            transition_parameter, # transition param
-            borderAwareWidth, # border width
+            bool(withTracklets), # with tracklets
+            float(10.0), # detection weight
+            float(divWeight), # division weight
+            float(transWeight), # transition weight
+            float(disappearance_cost), # disappearance cost
+            float(appearance_cost), # appearance cost
+            bool(withMergerResolution), # with merger resolution
+            int(ndim), # ndim
+            float(transition_parameter), # transition param
+            float(borderAwareWidth), # border width
             True, #with_constraints
             uncertaintyParams, # uncertainty parameters
-            cplex_timeout, # cplex timeout
+            float(cplex_timeout), # cplex timeout
             None, # transition classifier
             solverType,
             False, # training to hard constraints
@@ -336,8 +336,8 @@ class OpConservationTracking(OpTrackingBase):
                     params,
                     coordinate_map.get(),
                     float(ep_gap),
-                    transWeight,
-                    withTracklets,
+                    float(transWeight),
+                    bool(withTracklets),
                     ndim,
                     transition_parameter,
                     max_traxel_id_at,
