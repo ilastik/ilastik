@@ -162,7 +162,7 @@ class Request( object ):
     
     _root_request_counter = itertools.count()
 
-    def __init__(self, fn):
+    def __init__(self, fn, root_priority=[0]):
         """
         Constructor.
         Postconditions: The request has the same cancelled status as its parent (the request that is creating this one).
@@ -207,7 +207,7 @@ class Request( object ):
         self.parent_request = current_request
         self._max_child_priority = 0
         if current_request is None:
-            self._priority = [ Request._root_request_counter.next() ]
+            self._priority = root_priority + [ Request._root_request_counter.next() ]
         else:
             with current_request._lock:
                 current_request.child_requests.add(self)
@@ -215,7 +215,7 @@ class Request( object ):
                 self.cancelled = current_request.cancelled
                 # We acquire the same priority as our parent, plus our own sub-priority
                 current_request._max_child_priority += 1
-                self._priority = current_request._priority + [ current_request._max_child_priority ]
+                self._priority = current_request._priority + root_priority + [ current_request._max_child_priority ]
 
     def __lt__(self, other):
         """
