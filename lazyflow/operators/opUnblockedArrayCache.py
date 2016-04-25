@@ -85,18 +85,40 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
             assert False, "Unknown output slot: {}".format( slot.name )
         
     def _execute_Output(self, slot, subindex, roi, result):
+        self._execute_Output_impl((roi.start, roi.stop), result)
+        
+    def _execute_Output_impl(self, request_roi, result):
+        request_roi = self._standardize_roi(*request_roi)
         with self._lock:
-            # Does this roi happen to fit ENTIRELY within an existing stored block?
-            outer_rois = containing_rois( self._block_data.keys(), (roi.start, roi.stop) )
-            if len(outer_rois) > 0:
-                # Use the first one we found
-                block_roi = self._standardize_roi( *outer_rois[0] )
-                block_relative_roi = numpy.array( (roi.start, roi.stop) ) - block_roi[0]
+            block_roi = self._get_containing_block_roi( request_roi )
+            if block_roi is not None:
+                # Data is already in the cache. Just extract it.
+                block_relative_roi = numpy.array( request_roi ) - block_roi[0]
                 self.Output.stype.copy_data(result, self._block_data[block_roi][ roiToSlice(*block_relative_roi) ])
                 return
-                
-        # Standardize roi for usage as dict key
-        block_roi = self._standardize_roi( roi.start, roi.stop )
+
+        if self.Input.meta.dontcache:
+            # Data isn't in the cache, but we don't want to cache it anyway.
+            self.Input(*request_roi).writeInto(result).block()
+            return
+        
+        # Data isn't in the cache, so request it and cache it
+        self._fetch_and_store_block(request_roi, out=result)
+
+    def _get_containing_block_roi(self, request_roi):
+        # Does this roi happen to fit ENTIRELY within an existing stored block?
+        request_roi = self._standardize_roi(*request_roi)
+        outer_rois = containing_rois( self._block_data.keys(), request_roi )
+        if len(outer_rois) > 0:
+            # Standardize roi for usage as dict key
+            block_roi = self._standardize_roi( *outer_rois[0] )
+            return block_roi
+        return None
+
+    def _fetch_and_store_block(self, block_roi, out):
+        if out is not None:
+            roi_shape = numpy.array(block_roi[1]) - block_roi[0]
+            assert (out.shape == roi_shape).all()
         
         # Get lock for this block (create first if necessary)
         with self._lock:
@@ -104,26 +126,27 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
                 self._block_locks[block_roi] = RequestLock()
             block_lock = self._block_locks[block_roi]
 
-        # Handle identical simultaneous requests
+        # Handle identical simultaneous requests for the same block
+        # without preventing parallel requests for different blocks.
         with block_lock:
-            try:
-                # Extra [:] here is in case we are decompressing from a chunkedarray
-                self.Output.stype.copy_data(result, self._block_data[block_roi][:])
-                return
-            except KeyError: # Not yet stored: Request it now.
+            if block_roi in self._block_data:
+                if out is None:
+                    # Extra [:] here is in case we are decompressing from a chunkedarray
+                    return self._block_data[block_roi][:]
+                else:
+                    # Extra [:] here is in case we are decompressing from a chunkedarray
+                    self.Output.stype.copy_data(out, self._block_data[block_roi][:])
+                    return out
 
-                # We attach a special attribute to the array to allow the upstream operator
-                #  to optionally tell us not to bother caching the data.
-                self.Input(roi.start, roi.stop).writeInto(result).block()
+            req = self.Input(*block_roi)
+            if out is not None:
+                req.writeInto(out)
+            block_data = req.wait()
+            self._store_block_data(block_roi, block_data)
+        return block_data
 
-                if self.Input.meta.dontcache:
-                    # The upstream operator says not to bother caching the data.
-                    # (For example, see OpCacheFixer.)
-                    return
-                
-                self._store_block(block_roi, result)
-
-    def _store_block(self, block_roi, block_data):
+    
+    def _store_block_data(self, block_roi, block_data):
         """
         Copy block_data and store it into the cache.
         The block_lock is not obtained here, so lock it before you call this.
@@ -163,7 +186,7 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
             block_lock = self._block_locks[block_roi]
 
         with block_lock:
-            self._store_block(block_roi, block_data)
+            self._store_block_data(block_roi, block_data)
 
     def propagateDirty(self, slot, subindex, roi):
         dirty_roi = self._standardize_roi( roi.start, roi.stop )
