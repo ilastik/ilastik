@@ -904,7 +904,7 @@ class TestOpCompressedCache( object ):
         op.Input.connect(opData.Output)
 
         assert op.Output.ready()
-        assert_array_equal(op.Output.meta.ideal_blockshape, ideal)
+        assert_array_equal(op.Output.meta.ideal_blockshape, op._blockshape)
 
         # 2) input has invalid ideal_blockshape
         print("2)")
