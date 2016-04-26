@@ -1115,14 +1115,8 @@ class OpObjectPredict(Operator):
             return n
 
         # Keep a list of times that are not in the cache
-        times_not_cached = []
-        
         with self.lock:
-            for t in times:
-                if t in self.prob_cache:
-                    continue
-
-                times_not_cached.append(t)
+            times_not_cached = [t for t in times if t not in self.prob_cache]
 
         # Initialize with a single value for the 'background object ' 
         if times_not_cached:  
