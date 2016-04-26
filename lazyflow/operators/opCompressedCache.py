@@ -131,7 +131,7 @@ class OpUnmanagedCompressedCache(Operator):
             # If the blockshape changes, we have to reset the entire cache.
             self._init_cache(new_blockshape)
 
-        self.Output.meta.ideal_blockshape = self._chunkshape
+        self.Output.meta.ideal_blockshape = new_blockshape
         
 
     def execute(self, slot, subindex, roi, destination):
