@@ -62,6 +62,12 @@ class OpConservationTracking(OpTrackingBase):
 
         self._mergerOpCache.BlockShape.setValue( self._blockshape )
         self._relabeledOpCache.BlockShape.setValue( self._blockshape )
+        
+        frame_shape = (1,) + self.LabelImage.meta.shape[1:] # assumes t,x,y,z,c order
+        assert frame_shape[-1] == 1
+        self.MergerOutput.meta.ideal_blockshape = frame_shape
+        self.RelabeledImage.meta.ideal_blockshape = frame_shape
+        
     
     def execute(self, slot, subindex, roi, result):
         if slot is self.Output:
