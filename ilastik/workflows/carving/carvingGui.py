@@ -62,7 +62,6 @@ class CarvingGui(LabelingGui):
         #members
         self._doneSegmentationLayer = None
         self._showSegmentationIn3D = False
-        #self._showUncertaintyLayer = False
         #end: members
 
         labelingSlots = LabelingGui.LabelingSlots()
@@ -622,10 +621,8 @@ class CarvingGui(LabelingGui):
             self.editor.setLabelSink(labelsrc)
 
         #segmentation 
-        seg = self.topLevelOperatorView.Segmentation
+        seg = self.topLevelOperatorView._opSegmentationCache.Output
         if seg.ready():
-            #source = RelabelingArraySource(seg)
-            #source.setRelabeling(numpy.arange(256, dtype=numpy.uint8))
             colortable = [QColor(0,0,0,0).rgba(), QColor(0,0,0,0).rgba(), QColor(0,255,0).rgba()]
             for i in range(256-len(colortable)):
                 r,g,b = numpy.random.randint(0,255), numpy.random.randint(0,255), numpy.random.randint(0,255)

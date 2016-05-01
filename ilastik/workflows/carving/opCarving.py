@@ -30,6 +30,7 @@ from lazyflow.rtype import List
 from lazyflow.roi import roiToSlice
 from lazyflow.operators.opDenseLabelArray import OpDenseLabelArray
 from lazyflow.operators.valueProviders import OpValueCache
+from lazyflow.operators import OpBlockedArrayCache
 
 #ilastik
 from lazyflow.utility.timer import Timer
@@ -149,6 +150,8 @@ class OpCarving(Operator):
         self._opMstCache = OpValueCache( parent=self )
         self.MstOut.connect( self._opMstCache.Output )
 
+        self._opSegmentationCache = OpBlockedArrayCache( parent=self )
+
         self.InputData.notifyReady( self._checkConstraints )
     
     def _checkConstraints(self, *args):
@@ -243,6 +246,16 @@ class OpCarving(Operator):
             self.AllObjectNames.meta.shape = (0,)
         
         self.AllObjectNames.meta.dtype = object
+
+        # TODO: this needs to match with bsz shape from OpMstSegmentorProvider.execute
+        bsz = 256 #block size
+        cacheBlockShape = (bsz,bsz,bsz,bsz,bsz)
+
+        self._opSegmentationCache.fixAtCurrent.setValue(False)
+        self._opSegmentationCache.innerBlockShape.setValue( cacheBlockShape )
+        self._opSegmentationCache.outerBlockShape.setValue( cacheBlockShape )
+        self._opSegmentationCache.Input.connect( self.Segmentation )
+
     
     def connectToPreprocessingApplet(self,applet):
         self.PreprocessingApplet = applet
@@ -309,10 +322,6 @@ class OpCarving(Operator):
         """
         self._clearLabels()
         self._mst.gridSegmentor.clearSeeds()
-        #lut_segmentation = self._mst.segmentation.lut[:]
-        #lut_segmentation[:] = 0
-        #lut_seeds = self._mst.seeds.lut[:]
-        #lut_seeds[:] = 0
         #self.HasSegmentation.setValue(False)
 
         self.Trigger.setDirty(slice(None))

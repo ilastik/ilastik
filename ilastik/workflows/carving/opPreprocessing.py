@@ -22,18 +22,16 @@
 import sys
 import threading
 from functools import partial
-import math
 
 #SciPy
 import numpy
 import vigra
 
 #lazyflow
-from lazyflow.roi import getIntersectingBlocks, getBlockBounds, roiFromShape, sliceToRoi, roiToSlice, enlargeRoiForHalo, TinyVector
+from lazyflow.roi import getIntersectingBlocks, getBlockBounds, roiFromShape, roiToSlice, enlargeRoiForHalo, TinyVector
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.operators.opBlockedHdf5Cache import OpBlockedHdf5Cache
-from lazyflow.operators.ioOperators import OpStreamingHdf5Reader, OpH5WriterBigDataset
 from lazyflow.request import RequestLock
 from lazyflow.utility.timer import Timer
 from lazyflow.utility import Memory
@@ -429,10 +427,10 @@ class OpPreprocessing(Operator):
     #                        WatershedReader SegmentorReader \         |
     #                                /                \      \         |
     #                               /                  \     \         |
-    #                              /                   \     \         |
+    #                     opWatershedHdf5Cache         \     \         |
     #                             /                    \     \         |
     #                            v                     \     \         |
-    #                        opWatershedCache          \     \         |
+    #                     opWatershedArrayCache        \     \         |
     #                          /          \--------\   \     \         |
     #                         v                    v   v     v         |
     #             WatershedImage                  opMstProvider        |
@@ -471,7 +469,6 @@ class OpPreprocessing(Operator):
         self._opFilterNormalize.Input.connect( self._opFilter.Output )
         self._opFilterNormalize.TotalStats.connect( self._opFilterStats.Output )
 
-
         self._opFilterCache = OpBlockedArrayCache( parent=self )
 
         self._opOverlayFilter = OpFilter( parent=self )
@@ -500,20 +497,22 @@ class OpPreprocessing(Operator):
 
         self._opWatershedProvider = OpSimpleWatershed( parent=self )
 
-        self._opWatershedCache = OpBlockedHdf5Cache( parent=self )
-        self._opWatershedCache._opUnblockedHdf5Cache._dataset_kwargs = \
+        self._opWatershedHdf5Cache = OpBlockedHdf5Cache( parent=self )
+        self._opWatershedHdf5Cache._opUnblockedHdf5Cache._dataset_kwargs = \
             {'compression':'gzip', 'compression_opts':4}
-        self._opWatershedCache.Input.connect( self._opWatershedProvider.Output )
+        self._opWatershedHdf5Cache.Input.connect( self._opWatershedProvider.Output )
+
+        self._opWatershedArrayCache = OpBlockedArrayCache( parent=self )
 
         self._opMstProvider = OpMstSegmentorProvider( self.applet, parent=self )
         self._opMstProvider.Image.connect( self._opFilterCache.Output )
-        self._opMstProvider.LabelImage.connect( self._opWatershedCache.Output )
+        self._opMstProvider.LabelImage.connect( self._opWatershedArrayCache.Output )
 
         #self.PreprocessedData.connect( self._opMstProvider.MST )
         
         # Display slots
         self.FilteredImage.connect( self._opFilterCache.Output )
-        self.WatershedImage.connect( self._opWatershedCache.Output )
+        self.WatershedImage.connect( self._opWatershedArrayCache.Output )
         
         self.InputData.notifyReady( self._checkConstraints )
 
@@ -550,12 +549,11 @@ class OpPreprocessing(Operator):
         # TODO: this needs to match with bsz shape from OpMstSegmentorProvider.execute
         bsz = 256 #block size
         # TODO: check if inner and outer must be the same size (any benefit to making inner smaller?)
-        innerCacheBlockShape = (bsz,bsz,bsz,bsz,bsz)
-        outerCacheBlockShape = (bsz,bsz,bsz,bsz,bsz)
+        cacheBlockShape = (bsz,bsz,bsz,bsz,bsz)
 
         self._opFilterCache.fixAtCurrent.setValue(False)
-        self._opFilterCache.innerBlockShape.setValue( innerCacheBlockShape )
-        self._opFilterCache.outerBlockShape.setValue( outerCacheBlockShape )
+        self._opFilterCache.innerBlockShape.setValue( cacheBlockShape )
+        self._opFilterCache.outerBlockShape.setValue( cacheBlockShape )
         self._opFilterCache.Input.connect( self._opFilterNormalize.Output )
 
         # If the user's boundaries are dark, then invert the special watershed sources
@@ -568,8 +566,8 @@ class OpPreprocessing(Operator):
 
         # opWatershedSourceCache
         self._opWatershedSourceCache.fixAtCurrent.setValue(False)
-        self._opWatershedSourceCache.innerBlockShape.setValue( innerCacheBlockShape )
-        self._opWatershedSourceCache.outerBlockShape.setValue( outerCacheBlockShape )
+        self._opWatershedSourceCache.innerBlockShape.setValue( cacheBlockShape )
+        self._opWatershedSourceCache.outerBlockShape.setValue( cacheBlockShape )
 
         ws_source = self.WatershedSource.value
         if ws_source == 'raw':
@@ -595,14 +593,30 @@ class OpPreprocessing(Operator):
         h5WatershedGrp = h5PreprocessingGrp.require_group('watershed_labels')
         h5WatershedCached = len(h5WatershedGrp.keys()) > 0
 
-        self._opWatershedCache.fixAtCurrent.setValue(h5WatershedCached)
-        self._opWatershedCache.innerBlockShape.setValue( innerCacheBlockShape )
-        self._opWatershedCache.outerBlockShape.setValue( outerCacheBlockShape )
+        self._opWatershedHdf5Cache.fixAtCurrent.setValue(h5WatershedCached)
+        self._opWatershedHdf5Cache.innerBlockShape.setValue( cacheBlockShape )
+        self._opWatershedHdf5Cache.outerBlockShape.setValue( cacheBlockShape )
 
         self._hdf5File.file.flush()
 
-        self._opWatershedCache.H5CacheGroup.setValue( h5WatershedGrp )
+        self._opWatershedHdf5Cache.H5CacheGroup.setValue( h5WatershedGrp )
 
+        # TODO: *CacheBlockShape for testing purposes only
+        slot = self.InputData
+        xDim = slot.meta.getTaggedShape()['x']
+        yDim = slot.meta.getTaggedShape()['y']
+        zDim = slot.meta.getTaggedShape()['z']
+        #blockdimsAC = {'t': 1, 'x': yDim, 'y': xDim, 'z': 1, 'c': 1} # 16s tiff seq save time, project load is *very* slow
+        #blockdimsAC = {'t': 1, 'x': bsz, 'y': bsz, 'z': bsz, 'c': 1} # 76s tiff seq save time; 28s with SegmentationCache
+        #blockdimsAC = {'t': 1, 'x': yDim, 'y': xDim, 'z': zDim, 'c': 1} # 120s tiff seq save time
+        # without AC, ~6000s-8000s tiff seq save time
+        #blockshapeAC = map(blockdimsAC.get, slot.meta.getTaggedShape().keys())
+        #cacheBlockShape = tuple(blockshapeAC)
+
+        self._opWatershedArrayCache.fixAtCurrent.setValue(False)
+        self._opWatershedArrayCache.innerBlockShape.setValue( cacheBlockShape )
+        self._opWatershedArrayCache.outerBlockShape.setValue( cacheBlockShape )
+        self._opWatershedArrayCache.Input.connect( self._opWatershedHdf5Cache.Output )
 
 
     def execute(self,slot,subindex,unused_roi,result):

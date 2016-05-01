@@ -1,6 +1,8 @@
 import ilastiktools
 import gc
 
+from lazyflow.utility.timer import timeLogged
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -64,11 +66,13 @@ class WatershedSegmentor(object):
 
             self.hasSeg = resultSegmentation.max()>0
 
+    @timeLogged(logger, logging.INFO)
     def preprocess(self, labels, volume_features, roi_stop):
         assert not self.hasSeg, "gridSegmentor was finalized; cannot preprocess."
         self.gridSegmentor.preprocessing(labels=labels, weightArray=volume_features, roiEnd=roi_stop)
         self.nodeNum = self.gridSegmentor.nodeNum()
 
+    @timeLogged(logger, logging.INFO)
     def run(self, unaries, prios = None, noBiasBelow = 0, **kwargs):
         self.gridSegmentor.run(float(prios[1]),float(noBiasBelow))
         seg = self.gridSegmentor.getSuperVoxelSeg()
@@ -101,33 +105,13 @@ class WatershedSegmentor(object):
         #roiShape = [s.stop-s.start for s in roi.toSlice()]
         #brushStroke = brushStroke.reshape(roiShape)[0,...,0]
       
-        roiShape = [e-b for b,e in zip(roiBegin,roiEnd)]
-        brushStroke = brushStroke.reshape(roiShape)
+        brushStroke = brushStroke.reshape([e-b for b,e in zip(roiBegin,roiEnd)])
 
         labels = self.supervoxelUint32(roi.toSlice()).wait()[0,...,0]
         self.gridSegmentor.addSeedBlock(labels=labels, brushStroke=brushStroke)
 
+    @timeLogged(logger, logging.INFO)
     def getVoxelSegmentation(self, roi, out = None):
-        # TODO: Handle 2D case correctly (do we need all the roi* calculations; why not use roi directly?
-        if isinstance(self.gridSegmentor, ilastiktools.GridSegmentor_3D_UInt32):
-            roiBegin  = roi.start[1:4]
-            roiEnd  = roi.stop[1:4]
-            # TODO: remove?
-            #return self.gridSegmentor.getSegmentation(roiBegin=roiBegin,roiEnd=roiEnd, out=out)
-        else:
-            roiBegin  = roi.start[1:3]
-            roiEnd  = roi.stop[1:3]
-            # TODO: remove?
-            #return self.gridSegmentor.getSegmentation(roiBegin=roiBegin,roiEnd=roiEnd, out=out)[:,:,None]
-
-        roiShape = [e-b for b,e in zip(roiBegin,roiEnd)]
-
-        # TODO: handle labels roi correctly
-        # see opPreprocessing.execute for example
-        # labels = self.supervoxelUint32(roiShape.toSlice()).wait()[0,...,0]
-        #roiSlice = roiToSlice( roi.start, roi.stop )
-        #labels = self.supervoxelUint32(roiSlice).wait()[0,...,0]
-
         labels = self.supervoxelUint32(roi.toSlice()).wait()[0,...,0]
         return self.gridSegmentor.getSegmentation(labels=labels, out=out)
 
@@ -137,6 +121,7 @@ class WatershedSegmentor(object):
     def getSuperVoxelSeeds(self):
         return self.gridSegmentor.getSuperVoxelSeeds()
 
+    @timeLogged(logger, logging.INFO)
     def saveH5(self, filename, groupname, mode="w"):
         f = h5py.File(filename, mode)
         try:
@@ -146,6 +131,7 @@ class WatershedSegmentor(object):
         h5g = f[groupname]
         self.saveH5G(h5g)
 
+    @timeLogged(logger, logging.INFO)
     def saveH5G(self, h5g):
         g = h5g
         gridSeg = self.gridSegmentor
