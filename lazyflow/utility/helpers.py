@@ -34,6 +34,23 @@ def deprecated( fn ):
         return fn(*args, **kwargs)
     return warner
 
+def nonzero_coord_array(a):
+    """
+    Equivalent to np.transpose(a.nonzero()), but much
+    faster for large arrays, thanks to a little trick:
+    The elements of the tuple returned by a.nonzero() share a common base,
+    so we can avoid the copy that would normally be incurred when
+    calling transpose() on the tuple.
+    """
+    base_array = a.nonzero()[0].base
+    
+    # This is necessary because VigraArrays have their own version
+    # of nonzero(), which adds an extra base in the view chain.
+    while base_array.base is not None:
+        base_array = base_array.base
+    return base_array
+    
+
 def itersubclasses(cls, _seen=None):
     """
     itersubclasses(cls)
@@ -235,6 +252,14 @@ class newIterator:
         return retSlice.__iter__()
  
 if __name__ == "__main__":
+    import vigra
+    
+    a = numpy.random.randint(0,2, size=(100,100))
+    assert ( nonzero_coord_array(a) == numpy.transpose(a.nonzero()) ).all()
+
+    v = vigra.taggedView( a, 'yx' )
+    assert ( nonzero_coord_array(v) == numpy.transpose(v.nonzero()) ).all()
+    
     
     class roi:
         def __init__(self,start,stop):

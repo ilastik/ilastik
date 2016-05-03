@@ -911,6 +911,29 @@ class OpDtypeView(Operator):
     def propagateDirty(self, slot, subindex, roi):
         self.Output.setDirty( roi )
 
+class OpConvertDtype(Operator):
+    Input = InputSlot()
+    ConversionDtype = InputSlot()
+    Output = OutputSlot()
+    
+    def setupOutputs(self):
+        self.Output.meta.assignFrom(self.Input.meta)
+        self.Output.meta.dtype = self.ConversionDtype.value
+    
+    def execute(self, slot, subindex, roi, result):
+        if self.Input.meta.dtype == self.ConversionDtype.value:
+            self.Input(roi.start, roi.stop).writeInto(result).wait()
+        else:
+            input_data = self.Input(roi.start, roi.stop).wait()
+            result[:] = input_data.astype(self.ConversionDtype.value)
+
+    def propagateDirty(self, slot, subindex, roi):
+        if slot is self.ConversionDtype:
+            self.Output.setDirty()
+        elif slot is self.Input:
+            self.Output.setDirty(roi)
+        else:
+            assert False, "Unknown slot: {}".format(slot.name)
 
 class OpSelectSubslot(Operator):
     """

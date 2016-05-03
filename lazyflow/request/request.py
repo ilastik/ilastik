@@ -52,9 +52,10 @@ class SimpleSignal(object):
     """
     Simple callback mechanism. Not synchronized.  No unsubscribe function.
     """
-    def __init__(self):
+    def __init__(self, default_callback=None):
         self.callbacks = []
         self._cleaned = False
+        self._default_callback = default_callback
 
     def subscribe(self, fn):
         self.callbacks.append(fn)
@@ -62,6 +63,8 @@ class SimpleSignal(object):
     def __call__(self, *args, **kwargs):
         """Emit the signal."""
         assert not self._cleaned, "Can't emit a signal after it's already been cleaned!"
+        if not self.callbacks and self._default_callback:
+            self._default_callback(*args, **kwargs)
         for f in self.callbacks:
             f(*args, **kwargs)
         
@@ -159,16 +162,18 @@ class Request( object ):
     
     _root_request_counter = itertools.count()
 
-    def __init__(self, fn):
+    def __init__(self, fn, root_priority=[0]):
         """
         Constructor.
         Postconditions: The request has the same cancelled status as its parent (the request that is creating this one).
         """
 
         self._lock = threading.Lock() # NOT an RLock, since requests may share threads
-        self._sig_finished = SimpleSignal()
+        def default_fail(exception, exc_info):
+            sys.excepthook( *exc_info )
+        self._sig_failed = SimpleSignal(default_callback=default_fail)
         self._sig_cancelled = SimpleSignal()
-        self._sig_failed = SimpleSignal()
+        self._sig_finished = SimpleSignal()
         self._sig_execution_complete = SimpleSignal()
 
         # Workload
@@ -202,7 +207,7 @@ class Request( object ):
         self.parent_request = current_request
         self._max_child_priority = 0
         if current_request is None:
-            self._priority = [ Request._root_request_counter.next() ]
+            self._priority = root_priority + [ Request._root_request_counter.next() ]
         else:
             with current_request._lock:
                 current_request.child_requests.add(self)
@@ -210,7 +215,7 @@ class Request( object ):
                 self.cancelled = current_request.cancelled
                 # We acquire the same priority as our parent, plus our own sub-priority
                 current_request._max_child_priority += 1
-                self._priority = current_request._priority + [ current_request._max_child_priority ]
+                self._priority = current_request._priority + root_priority + [ current_request._max_child_priority ]
 
     def __lt__(self, other):
         """
@@ -493,7 +498,9 @@ class Request( object ):
                 # Mark it as 'started' so that no other greenlet can claim it
                 self.started = True
 
-        if self._current_foreign_thread is not None and self._current_foreign_thread == threading.current_thread():
+        if ( Request.global_thread_pool.num_workers != 0
+        and self._current_foreign_thread is not None
+        and self._current_foreign_thread == threading.current_thread() ):
             # It's usually nonsense for a request to wait for itself,
             #  but we allow it if the request is already "finished"
             # (which can happen if the request is calling wait() from within a notify_finished callback)

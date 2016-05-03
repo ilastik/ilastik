@@ -115,7 +115,6 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
             
         else:
             # train classifier without feature importance visitor
-            feature_names = None
 
             oobs = self._train_forests( forests, X, y )            
                           
@@ -274,6 +273,12 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
     def predict_probabilities(self, X):
         logger.debug( "Predicting with parallel vigra RF" )
         X = numpy.asarray(X, dtype=numpy.float32)
+        assert X.ndim == 2
+
+        if self._feature_names is not None:
+            # For some reason, vigra doesn't seem to check this for us...
+            assert X.shape[1] == len(self._feature_names), \
+                "Feature count doesn't match the training data."
 
         # As each forest completes, aggregate results in a shared array.
         # (Must put in a list so we can update it in this closure.)

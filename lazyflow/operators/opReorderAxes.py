@@ -32,6 +32,9 @@ class OpReorderAxes(Operator):
     Output = OutputSlot()
 
     def setupOutputs(self):
+        if self._cleaningUp:
+            self.Output.meta.NOTREADY = True
+            return
         output_order = "".join(self.AxisOrder.value)
         input_order = self.Input.meta.getAxisKeys()
         input_tags = self.Input.meta.axistags

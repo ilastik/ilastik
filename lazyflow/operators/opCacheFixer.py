@@ -22,7 +22,7 @@
 
 import numpy
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.roi import roiFromShape
+from lazyflow.roi import roiFromShape, roiToSlice
 
 class OpCacheFixer(Operator):
     """
@@ -62,6 +62,15 @@ class OpCacheFixer(Operator):
         else:
             self.Input(roi.start, roi.stop).writeInto(result).wait()
         
+    def setInSlot(self, slot, subindex, roi, value):
+        # Forward to the output
+        self.Output[roiToSlice(roi.start, roi.stop)] = value
+        
+        entire_roi = roiFromShape(self.Input.meta.shape)
+        if (numpy.array((roi.start, roi.stop)) == entire_roi).all():
+            # Nothing is dirty any more.
+            self._init_fixed_dirty_roi()
+    
     def propagateDirty(self, slot, subindex, roi):
         if slot is self.fixAtCurrent:
             # If we're becoming UN-fixed, send out a big dirty notification

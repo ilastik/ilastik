@@ -263,6 +263,8 @@ class SubRegion(Roi):
         return roiToSlice(self.start,self.stop, hardBind)
 
     def __eq__(self, other):
+        if type(self) != type(other):
+            return False
         if self.dim != other.dim:
             return False
         starts_equal = numpy.all(self.start == other.start)

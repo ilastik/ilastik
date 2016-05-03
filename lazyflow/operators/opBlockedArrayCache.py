@@ -27,8 +27,7 @@ from lazyflow.utility import RamMeasurementContext
 
 from opCacheFixer import OpCacheFixer
 from opCache import ManagedBlockedCache
-from opUnblockedArrayCache import OpUnblockedArrayCache
-from opSplitRequestsBlockwise import OpSplitRequestsBlockwise
+from opSimpleBlockedArrayCache import OpSimpleBlockedArrayCache
 
 class OpBlockedArrayCache(Operator, ManagedBlockedCache):
     """
@@ -42,23 +41,25 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
     fixAtCurrent = InputSlot(value=False)
     Input = InputSlot(allow_mask=True)
     #BlockShape = InputSlot()
-    innerBlockShape = InputSlot(optional=True) # Deprecated and ignored below.
-    outerBlockShape = InputSlot()
+    outerBlockShape = InputSlot(optional=True) # If not provided, will be set to Input.meta.shape
     BypassModeEnabled = InputSlot(value=False)
     CompressionEnabled = InputSlot(value=False)
     
     Output = OutputSlot(allow_mask=True)
+    CleanBlocks = OutputSlot() # A list of slicings indicating which blocks are stored in the cache and clean.
+
+    innerBlockShape = InputSlot(optional=True) # Deprecated and ignored below.
     
     def __init__(self, *args, **kwargs):
         super( OpBlockedArrayCache, self ).__init__(*args, **kwargs)
         
         # SCHEMATIC WHEN BypassModeEnabled == False:
         # 
-        # Input ---------> opCacheFixer -> opUnblockedArrayCache -> opSplitRequestsBlockwise -> (indirectly via execute) -> Output
-        #                 /                                        /
-        # fixAtCurrent --                                         /
-        #                                                        /
-        # BlockShape --------------------------------------------
+        # Input ---------> opCacheFixer -> opSimpleBlockedArrayCache -> (indirectly via execute) -> Output
+        #                 /               /
+        # fixAtCurrent --                /
+        #                               /
+        # BlockShape -------------------
         
         # SCHEMATIC WHEN BypassModeEnabled == True:
         #
@@ -68,29 +69,30 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
         self._opCacheFixer.Input.connect( self.Input )
         self._opCacheFixer.fixAtCurrent.connect( self.fixAtCurrent )
 
-        self._opUnblockedArrayCache = OpUnblockedArrayCache( parent=self )
-        self._opUnblockedArrayCache.CompressionEnabled.connect( self.CompressionEnabled )
-        self._opUnblockedArrayCache.Input.connect( self._opCacheFixer.Output )
-
-        self._opSplitRequestsBlockwise = OpSplitRequestsBlockwise( always_request_full_blocks=True, parent=self )
-        self._opSplitRequestsBlockwise.BlockShape.connect( self.outerBlockShape )
-        self._opSplitRequestsBlockwise.Input.connect( self._opUnblockedArrayCache.Output )
+        self._opSimpleBlockedArrayCache = OpSimpleBlockedArrayCache( parent=self )
+        self._opSimpleBlockedArrayCache.Input.connect( self._opCacheFixer.Output )
+        self._opSimpleBlockedArrayCache.CompressionEnabled.connect( self.CompressionEnabled )
+        self._opSimpleBlockedArrayCache.Input.connect( self._opCacheFixer.Output )
+        self._opSimpleBlockedArrayCache.BlockShape.connect( self.outerBlockShape )
+        self.CleanBlocks.connect( self._opSimpleBlockedArrayCache.CleanBlocks )
 
         # Instead of connecting our Output directly to our internal pipeline,
         # We manually forward the data via the execute() function,
         #  which allows us to implement a bypass for the internal pipeline if Enabled
-        #self.Output.connect( self._opSplitRequestsBlockwise.Output )
+        #self.Output.connect( self._opSimpleBlockedArrayCache.Output )
 
         # Since we didn't directly connect the pipeline to our output, explicitly forward dirty notifications 
-        self._opSplitRequestsBlockwise.Output.notifyDirty( lambda slot, roi: self.Output.setDirty(roi.start, roi.stop) )
+        self._opSimpleBlockedArrayCache.Output.notifyDirty( lambda slot, roi: self.Output.setDirty(roi.start, roi.stop) )
 
         # This member is used by tests that check RAM usage.
         self.setup_ram_context = RamMeasurementContext()
         self.registerWithMemoryManager()
         
     def setupOutputs(self):
+        if not self.outerBlockShape.ready():
+            self.outerBlockShape.setValue( self.Input.meta.shape )
         # Copy metadata from the internal pipeline to the output
-        self.Output.meta.assignFrom( self._opSplitRequestsBlockwise.Output.meta )
+        self.Output.meta.assignFrom( self._opSimpleBlockedArrayCache.Output.meta )
 
     def execute(self, slot, subindex, roi, result):
         assert slot is self.Output, "Requesting data from unknown output slot."
@@ -99,37 +101,40 @@ class OpBlockedArrayCache(Operator, ManagedBlockedCache):
             self.Input(roi.start, roi.stop).writeInto(result).wait()
         else:
             # Pass data from internal pipeline to Output
-            self._opSplitRequestsBlockwise.Output(roi.start, roi.stop).writeInto(result).wait()
+            self._opSimpleBlockedArrayCache.Output(roi.start, roi.stop).writeInto(result).wait()
 
     def propagateDirty(self, slot, subindex, roi):
         pass
 
+    def setInSlot(self, slot, subindex, key, value):
+        pass # Nothing to do here: Input is connected to an internal operator
+
     # ======= mimic cache interface for wrapping operators =======
 
     def usedMemory(self):
-        return self._opUnblockedArrayCache.usedMemory()
+        return self._opSimpleBlockedArrayCache.usedMemory()
 
     def fractionOfUsedMemoryDirty(self):
         # dirty memory is discarded immediately
-        return self._opUnblockedArrayCache.fractionOfUsedMemoryDirty()
+        return self._opSimpleBlockedArrayCache.fractionOfUsedMemoryDirty()
 
     def lastAccessTime(self):
-        return self._opUnblockedArrayCache.lastAccessTime()
+        return self._opSimpleBlockedArrayCache.lastAccessTime()
 
     def getBlockAccessTimes(self):
-        return self._opUnblockedArrayCache.getBlockAccessTimes()
+        return self._opSimpleBlockedArrayCache.getBlockAccessTimes()
 
     def freeMemory(self):
-        return self._opUnblockedArrayCache.freeMemory()
+        return self._opSimpleBlockedArrayCache.freeMemory()
 
     def freeBlock(self, key):
-        return self._opUnblockedArrayCache.freeBlock(key)
+        return self._opSimpleBlockedArrayCache.freeBlock(key)
 
     def freeDirtyMemory(self):
-        return self._opUnblockedArrayCache.freeDirtyMemory()
+        return self._opSimpleBlockedArrayCache.freeDirtyMemory()
 
     def generateReport(self, report):
-        self._opUnblockedArrayCache.generateReport(report)
+        self._opSimpleBlockedArrayCache.generateReport(report)
         child = copy.copy(report)
         super(OpBlockedArrayCache, self).generateReport(report)
         report.children.append(child)

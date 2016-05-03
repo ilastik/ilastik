@@ -81,10 +81,12 @@ class TestOpBlockedArrayCache(unittest.TestCase):
         expectedAccessCount += 1        
         assert (data == self.data[slicing]).all()
         assert opProvider.accessCount == expectedAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, expectedAccessCount)
+        assert opCache.CleanBlocks.value == [tuple(make_key[0:1, 0:20, 0:20, 0:10, 0:1])]
 
         # Same request should come from cache, so access count is unchanged
         data = opCache.Output( slicing ).wait()
         assert opProvider.accessCount == expectedAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, expectedAccessCount)
+        assert opCache.CleanBlocks.value == [tuple(make_key[0:1, 0:20, 0:20, 0:10, 0:1])]
                 
         # Not block-aligned request
         slicing = make_key[0:1, 35:45, 10:20, 0:10, 0:1]
@@ -94,6 +96,9 @@ class TestOpBlockedArrayCache(unittest.TestCase):
         expectedAccessCount += 2
         assert (data == self.data[slicing]).all()
         assert opProvider.accessCount == expectedAccessCount, "Access count={}, expected={}".format(opProvider.accessCount, expectedAccessCount)
+        assert opCache.CleanBlocks.value == [tuple(make_key[0:1, 0:20, 0:20, 0:10, 0:1]),
+                                             tuple(make_key[0:1, 20:40, 0:20, 0:10, 0:1]),
+                                             tuple(make_key[0:1, 40:60, 0:20, 0:10, 0:1])]
 
         # Same request should come from cache, so access count is unchanged
         data = opCache.Output( slicing ).wait()
@@ -116,6 +121,15 @@ class TestOpBlockedArrayCache(unittest.TestCase):
         data = data.view(vigra.VigraArray)
         data.axistags = opCache.Output.meta.axistags
         assert (data == self.data[slicing]).all()
+        assert opCache.CleanBlocks.value == [tuple(make_key[0:1,  0:20,  0:20, 0:10, 0:1]),
+                                             tuple(make_key[0:1,  0:20, 20:40, 0:10, 0:1]),
+                                             tuple(make_key[0:1,  0:20, 40:60, 0:10, 0:1]),
+                                             tuple(make_key[0:1, 20:40,  0:20, 0:10, 0:1]),
+                                             tuple(make_key[0:1, 20:40, 20:40, 0:10, 0:1]),
+                                             tuple(make_key[0:1, 20:40, 40:60, 0:10, 0:1]),
+                                             tuple(make_key[0:1, 40:60,  0:20, 0:10, 0:1]),
+                                             tuple(make_key[0:1, 40:60, 20:40, 0:10, 0:1]),
+                                             tuple(make_key[0:1, 40:60, 40:60, 0:10, 0:1])]
         
         # Our slice intersects 3*3=9 outerBlocks, and a total of 20 innerBlocks
         # Inner caches are allowed to split up the accesses, so there could be as many as 20
@@ -136,12 +150,33 @@ class TestOpBlockedArrayCache(unittest.TestCase):
         self.data[dirtykey] = 0.12345
         opProvider.Input.setDirty(dirtykey)        
         assert len(gotDirtyKeys) > 0
+
+        assert opCache.CleanBlocks.value == [tuple(make_key[0:1,  0:20,  0:20, 0:10, 0:1]),
+                                             #tuple(make_key[0:1,  0:20, 20:40, 0:10, 0:1]), # dirty
+                                             tuple(make_key[0:1,  0:20, 40:60, 0:10, 0:1]),
+                                             tuple(make_key[0:1, 20:40,  0:20, 0:10, 0:1]),
+                                             tuple(make_key[0:1, 20:40, 20:40, 0:10, 0:1]),
+                                             tuple(make_key[0:1, 20:40, 40:60, 0:10, 0:1]),
+                                             tuple(make_key[0:1, 40:60,  0:20, 0:10, 0:1]),
+                                             tuple(make_key[0:1, 40:60, 20:40, 0:10, 0:1]),
+                                             tuple(make_key[0:1, 40:60, 40:60, 0:10, 0:1])]
+
         
         # Same request, but should need to access the data again due to dirtiness
         data = opCache.Output( slicing ).wait()
         data = data.view(vigra.VigraArray)
         data.axistags = opCache.Output.meta.axistags
         assert (data == self.data[slicing]).all()
+        assert opCache.CleanBlocks.value == [tuple(make_key[0:1,  0:20,  0:20, 0:10, 0:1]),
+                                             tuple(make_key[0:1,  0:20, 20:40, 0:10, 0:1]),
+                                             tuple(make_key[0:1,  0:20, 40:60, 0:10, 0:1]),
+                                             tuple(make_key[0:1, 20:40,  0:20, 0:10, 0:1]),
+                                             tuple(make_key[0:1, 20:40, 20:40, 0:10, 0:1]),
+                                             tuple(make_key[0:1, 20:40, 40:60, 0:10, 0:1]),
+                                             tuple(make_key[0:1, 40:60,  0:20, 0:10, 0:1]),
+                                             tuple(make_key[0:1, 40:60, 20:40, 0:10, 0:1]),
+                                             tuple(make_key[0:1, 40:60, 40:60, 0:10, 0:1])]
+        
 
         # The dirty data intersected 1 outerBlocks and a total of 1 innerBlock.
         minAccess = oldAccessCount + 1
