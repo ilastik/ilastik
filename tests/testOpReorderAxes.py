@@ -250,8 +250,10 @@ class TestOpReorderAxes(unittest.TestCase):
         # Attempt to drop some axes that can't be dropped.
         op.AxisOrder.setValue( 'txc' )
 
-        # Make sure this results in an error.        
-        self.assertRaises( AssertionError, op.Output[:].wait )
+        # Make sure this results in an error.
+        req = op.Output[:]
+        req.notify_failed( lambda *args: None ) # We expect an exception here, so disable the default fail handler to hide the traceback
+        self.assertRaises( AssertionError, req.wait )
 
 if __name__ == "__main__":
     #logger.setLevel(logging.DEBUG)

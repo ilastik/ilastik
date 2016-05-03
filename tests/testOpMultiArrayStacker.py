@@ -313,11 +313,16 @@ class TestOpMultiArrayStacker(unittest.TestCase):
             providers[i].Input.connect(provider.Output[i])
             op.Images[i].connect(providers[i].Output)
 
-        out = op.Output[...].wait()
+        req = op.Output[...]
+        req.notify_failed( lambda *args: None ) # Replace the default handler: dont' show a traceback
+        out = req.wait()
+
 
         with self.assertRaises(InputSlot.SlotNotReadyError):
             providers[0].screwWithOutput()
-            out = op.Output[...].wait()
+            req = op.Output[...]
+            req.notify_failed( lambda *args: None ) # Replace the default handler: dont' show a traceback
+            out = req.wait()
 
 
 class OpNonReady(Operator):
