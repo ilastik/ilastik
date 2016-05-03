@@ -93,11 +93,13 @@ class BigRequestStreamer(object):
         """
         self._outputSlot = outputSlot
         self._bigRoi = roi
+        self._num_threads = max(1, Request.global_thread_pool.num_workers)
+
 
         totalVolume = numpy.prod( numpy.subtract(roi[1], roi[0]) )
         
         if batchSize is None:
-            batchSize=32
+            batchSize = self._num_threads
         
         if blockshape is None:
             blockshape = self._determine_blockshape(outputSlot)
@@ -166,7 +168,6 @@ class BigRequestStreamer(object):
                 ideal_blockshape = ideal_blockshape[:channel_index] + ideal_blockshape[channel_index+1:]
 
         max_blockshape = input_shape
-        num_threads = max(1, Request.global_thread_pool.num_workers)
         available_ram = Memory.getAvailableRamComputation()
         
         if ram_usage_per_requested_pixel is None:
@@ -181,21 +182,21 @@ class BigRequestStreamer(object):
         ram_usage_per_requested_pixel *= safety_factor
         
         if ideal_blockshape is None:
-            blockshape = determineBlockShape( input_shape, available_ram/(num_threads*ram_usage_per_requested_pixel) )
+            blockshape = determineBlockShape( input_shape, available_ram/(self._num_threads*ram_usage_per_requested_pixel) )
             if 'c' in outputSlot.meta.getAxisKeys():
                 blockshape = blockshape[:channel_index] + (num_channels,) + blockshape[channel_index:]
             warnings.warn( "Chose an arbitrary request blockshape {}".format( blockshape ) )
         else:
             logger.info("determining blockshape assuming available_ram is {}"
                         ", split between {} threads"
-                        .format(Memory.format(available_ram), num_threads))
+                        .format(Memory.format(available_ram), self._num_threads))
             
             # By convention, ram_usage_per_requested_pixel refers to the ram used when requesting ALL channels of a 'pixel'
             # Therefore, we do not include the channel dimension in the blockshapes here.
             blockshape = determine_optimal_request_blockshape( max_blockshape,
                                                                ideal_blockshape,
                                                                ram_usage_per_requested_pixel, 
-                                                               num_threads, 
+                                                               self._num_threads, 
                                                                available_ram )
             if 'c' in outputSlot.meta.getAxisKeys():
                 blockshape = blockshape[:channel_index] + (num_channels,) + blockshape[channel_index:]
