@@ -26,7 +26,8 @@ from opNpyFileReader import OpNpyFileReader
 from opRawBinaryFileReader import OpRawBinaryFileReader
 from opTiffReader import OpTiffReader
 from opTiffSequenceReader import OpTiffSequenceReader
-from lazyflow.operators.ioOperators import OpStackLoader, OpBlockwiseFilesetReader, OpRESTfulBlockwiseFilesetReader, OpCachedTiledVolumeReader
+from lazyflow.operators.ioOperators import OpStackLoader, OpBlockwiseFilesetReader, OpRESTfulBlockwiseFilesetReader, \
+    OpCachedTiledVolumeReader, OpKlbReader
 from lazyflow.utility.jsonConfig import JsonConfigParser
 from lazyflow.utility.pathHelpers import isUrl
 
@@ -59,13 +60,14 @@ class OpInputDataReader(Operator):
 
     videoExts = ['ufmf', 'mmf', 'avi']
     h5Exts = ['h5', 'hdf5', 'ilp']
+    klbExts = ['klb']
     npyExts = ['npy']
     rawExts = ['dat', 'bin', 'raw']
     blockwiseExts = ['json']
     tiledExts = ['json']
     tiffExts = ['tif', 'tiff']
     vigraImpexExts = vigra.impex.listExtensions().split()
-    SupportedExtensions = h5Exts + npyExts + rawExts + vigraImpexExts + blockwiseExts + videoExts
+    SupportedExtensions = h5Exts + npyExts + rawExts + vigraImpexExts + blockwiseExts + videoExts + klbExts
     if _supports_dvid:
         dvidExts = ['dvidvol']
         SupportedExtensions += dvidExts
@@ -131,7 +133,8 @@ class OpInputDataReader(Operator):
         if self._file is not None:
             self._file.close()
 
-        openFuncs = [ self._attemptOpenAsUfmf,
+        openFuncs = [ self._attemptOpenAsKlb,
+                      self._attemptOpenAsUfmf,
                       self._attemptOpenAsMmf,
                       self._attemptOpenAsDvidVolume,
                       self._attemptOpenAsTiffStack,
@@ -179,6 +182,15 @@ class OpInputDataReader(Operator):
 
         # Directly connect our own output to the internal output
         self.Output.connect( self.opInjector.Output )
+
+    def _attemptOpenAsKlb(self, filePath):
+        if not os.path.splitext(filePath)[1].lower() == '.klb':
+            return ([], None)
+        
+        opReader = OpKlbReader( parent=self )
+        opReader.FilePath.setValue( filePath )
+        return [opReader, opReader.Output]
+            
 
     def _attemptOpenAsMmf(self, filePath):          
         if '.mmf' in filePath:
