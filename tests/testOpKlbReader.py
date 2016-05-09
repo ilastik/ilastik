@@ -15,60 +15,54 @@ from lazyflow.operators.ioOperators import OpKlbReader
     
 def test_pyklb():
     """
-    This merely tests pyklb itself, but it seems to segfault!
+    This merely tests pyklb itself, to make sure it was compiled correctly.
     """
-    raise nose.SkipTest
-    
-    import numpy as np
-    import pyklb
+    if not _klb_available:
+        raise nose.SkipTest
+
     # Create some simple data. Should compress well.
     shape = (1,1,30,40,50)
     data_tczyx = np.indices( shape ).sum(0).astype( np.uint8 )
     assert data_tczyx.shape == shape
     
     # Write the data as KLB
-    print "writing..."
+    #print "writing..."
     filepath = '/tmp/test_data.klb'    
-    pyklb.writefull( data_tczyx, filepath, blocksize_xyzct=np.array([1,1,10,10,10], dtype=np.uint32) )
+    pyklb.writefull( data_tczyx, filepath, blocksize_xyzct=np.array([10,10,10,1,1], dtype=np.uint32) )
     
-    # Read it back.  This segfaults.
-    print "reading..."
-    readback = pyklb.readfull(filepath)
-    
-    # This also segfaults.
-    #readback = pyklb.readroi(filepath, (0,0,0,0,0), np.array(shape)-1)
+    # Read it back
+    #print "reading..."
+    #readback = pyklb.readfull(filepath)
+    readback = pyklb.readroi(filepath, (0,0,0,0,0), np.array(shape)-1)
     
     assert (readback == data_tczyx).all()
-    print "Done."
+    #print "Done."
 
 
 class TestOpKlbReader( object ):
-     
+      
     def setup(self):
-        # For now, we always skip this test because of the above-mentioned segfault in pyklb.
-        raise nose.SkipTest
-        
         if not _klb_available:
             raise nose.SkipTest
-     
+      
     def testBasic(self):
         tmpdir = tempfile.mkdtemp()        
         try:
             filepath = tmpdir + '/random_data.klb'
             shape = (1,1,30,40,50)
             data_tczyx = np.indices( shape ).sum(0).astype( np.uint8 )
-            pyklb.writefull( data_tczyx, filepath, blocksize_xyzct=np.array([1,1,10,10,10], dtype=np.uint32) )
+            pyklb.writefull( data_tczyx, filepath, blocksize_xyzct=np.array([10,10,10,1,1], dtype=np.uint32) )
             readback = pyklb.readroi(filepath, (0,0,0,0,0), np.array(shape)-1)
-                          
+                           
             op = OpKlbReader( graph=Graph() )
             op.FilePath.setValue( filepath )
-             
+              
             assert op.Output.meta.shape == shape
             assert op.Output.meta.dtype == np.uint8
-             
+              
             read_data = op.Output[:].wait()
             assert ( read_data == data_tczyx ).all()
-             
+              
         finally:
             shutil.rmtree(tmpdir)
      
