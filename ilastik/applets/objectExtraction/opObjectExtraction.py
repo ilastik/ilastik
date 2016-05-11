@@ -324,9 +324,8 @@ class OpObjectExtraction(Operator):
                                            # has rtype=List, indexed by t.
                                            # For other workflows, output has rtype=ArrayLike, indexed by (t)
 
-    LabelInputHdf5 = InputSlot(optional=True)
-    LabelOutputHdf5 = OutputSlot()
     CleanLabelBlocks = OutputSlot()
+    LabelImageCacheInput = InputSlot()
 
     RegionFeaturesCacheInput = InputSlot(optional=True)
     RegionFeaturesCleanBlocks = OutputSlot()
@@ -354,7 +353,6 @@ class OpObjectExtraction(Operator):
 
         # connect internal operators
         self._opLabelVolume.Input.connect(self.BinaryImage)
-        self._opLabelVolume.InputHdf5.connect(self.LabelInputHdf5)
         self._opLabelVolume.Background.connect(self.BackgroundLabels)
 
         self._opRegFeats.RawImage.connect(self.RawImage)
@@ -378,7 +376,6 @@ class OpObjectExtraction(Operator):
         self.ObjectCenterImage.connect(self._opCenterCache.Output)
         self.RegionFeatures.connect(self._opRegFeatsAdaptOutput.Output)
         self.BlockwiseRegionFeatures.connect(self._opRegFeats.Output)
-        self.LabelOutputHdf5.connect(self._opLabelVolume.OutputHdf5)
         self.CleanLabelBlocks.connect(self._opLabelVolume.CleanBlocks)
 
         # As soon as input data is available, check its constraints
@@ -401,6 +398,9 @@ class OpObjectExtraction(Operator):
             
 
     def setupOutputs(self):
+        # Setup LabelImageCacheInput for the serialization of the compressed cache
+        self._opLabelVolume._opLabel._cache.Input.connect(self.LabelImageCacheInput)
+                
         taggedShape = self.RawImage.meta.getTaggedShape()
         for k in taggedShape.keys():
             if k == 't' or k == 'c':
@@ -416,7 +416,8 @@ class OpObjectExtraction(Operator):
         pass
 
     def setInSlot(self, slot, subindex, roi, value):
-        assert slot == self.LabelInputHdf5 or slot == self.RegionFeaturesCacheInput, "Invalid slot for setInSlot(): {}".format(slot.name)
+        assert slot == self.RegionFeaturesCacheInput or \
+        slot == self.LabelImageCacheInput, "Invalid slot for setInSlot(): {}".format(slot.name)
         # Nothing to do here.
         # Our Input slots are directly fed into the cache,
         #  so all calls to __setitem__ are forwarded automatically

@@ -154,9 +154,8 @@ class OpTrackingFeatureExtraction(Operator):
                                                 # For other workflows, output has rtype=ArrayLike, indexed by (t)
     BlockwiseRegionFeaturesDivision = OutputSlot() 
     
-    LabelInputHdf5 = InputSlot(optional=True)
-    LabelOutputHdf5 = OutputSlot()
     CleanLabelBlocks = OutputSlot()
+    LabelImageCacheInput = InputSlot()
 
     RegionFeaturesCacheInputVigra = InputSlot(optional=True)
     RegionFeaturesCleanBlocksVigra = OutputSlot()
@@ -179,9 +178,8 @@ class OpTrackingFeatureExtraction(Operator):
         self._objectExtraction.BinaryImage.connect(self.BinaryImage)
         
         self._objectExtraction.Features.connect(self.FeatureNamesVigra)
-        self._objectExtraction.LabelInputHdf5.connect(self.LabelInputHdf5)
         self._objectExtraction.RegionFeaturesCacheInput.connect(self.RegionFeaturesCacheInputVigra)
-        self.LabelOutputHdf5.connect(self._objectExtraction.LabelOutputHdf5)
+        self._objectExtraction.LabelImageCacheInput.connect(self.LabelImageCacheInput)
         self.CleanLabelBlocks.connect(self._objectExtraction.CleanLabelBlocks)
         self.RegionFeaturesCleanBlocksVigra.connect(self._objectExtraction.RegionFeaturesCleanBlocks)
         self.ObjectCenterImage.connect(self._objectExtraction.ObjectCenterImage)
@@ -246,8 +244,9 @@ class OpTrackingFeatureExtraction(Operator):
             self.ComputedFeatureNamesNoDivisions.setDirty(roi)
 
     def setInSlot(self, slot, subindex, roi, value):
-        assert slot == self.LabelInputHdf5 or slot == self.RegionFeaturesCacheInputVigra or \
-            slot == self.RegionFeaturesCacheInputDivision, "Invalid slot for setInSlot(): {}".format(slot.name)
+        assert slot == self.RegionFeaturesCacheInputVigra or \
+            slot == self.RegionFeaturesCacheInputDivision or \
+            slot == self.LabelImageCacheInput, "Invalid slot for setInSlot(): {}".format(slot.name)
            
     def _checkConstraints(self, *args):
         if self.RawImage.ready():
