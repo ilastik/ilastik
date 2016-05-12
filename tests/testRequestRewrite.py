@@ -368,9 +368,6 @@ class TestRequest(unittest.TestCase):
          
         req = Request(impossible_workload)
 
-        # Must add a default fail handler or else it will log an exception by default.
-        req.notify_failed(lambda *args: None)
-
         try:
             req.wait()
         except RuntimeError:
@@ -394,9 +391,6 @@ class TestRequest(unittest.TestCase):
          
         impossible_req = Request(impossible_workload)
 
-        # Must add a default fail handler or else it will log an exception by default.
-        impossible_req.notify_failed(lambda *args: None)
- 
         def wait_for_impossible():
             # This request will fail...
             impossible_req.wait()
@@ -727,9 +721,6 @@ class TestRequestExceptions(object):
             raise SpecialException()
          
         req1 = Request(always_fails)
- 
-        # Must add a default fail handler or else it will log an exception by default.
-        req1.notify_failed(lambda *args: None)
  
         def wait_for_req1():
             req1.wait()

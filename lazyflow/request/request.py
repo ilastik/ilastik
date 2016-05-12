@@ -52,10 +52,9 @@ class SimpleSignal(object):
     """
     Simple callback mechanism. Not synchronized.  No unsubscribe function.
     """
-    def __init__(self, default_callback=None):
+    def __init__(self):
         self.callbacks = []
         self._cleaned = False
-        self._default_callback = default_callback
 
     def subscribe(self, fn):
         self.callbacks.append(fn)
@@ -63,8 +62,6 @@ class SimpleSignal(object):
     def __call__(self, *args, **kwargs):
         """Emit the signal."""
         assert not self._cleaned, "Can't emit a signal after it's already been cleaned!"
-        if not self.callbacks and self._default_callback:
-            self._default_callback(*args, **kwargs)
         for f in self.callbacks:
             f(*args, **kwargs)
         
@@ -169,9 +166,7 @@ class Request( object ):
         """
 
         self._lock = threading.Lock() # NOT an RLock, since requests may share threads
-        def default_fail(exception, exc_info):
-            sys.excepthook( *exc_info )
-        self._sig_failed = SimpleSignal(default_callback=default_fail)
+        self._sig_failed = SimpleSignal()
         self._sig_cancelled = SimpleSignal()
         self._sig_finished = SimpleSignal()
         self._sig_execution_complete = SimpleSignal()
@@ -314,9 +309,17 @@ class Request( object ):
             self.finished = True
 
         try:
-            # Notify callbacks (one or the other, not both)
+            # Notify ONE callback (never more than one)
             if self.exception is not None:
                 self._sig_failed( self.exception, self.exception_info )
+
+                if ( len(self._sig_failed.callbacks) == 0 # No callbacks registered
+                     and len(self.pending_requests) == 0  # No pending requests to propagate the exception to
+                     and Request._current_request() is not None ): # Not executing synchronously in a non-worked ('foreign') thread
+                    # This request failed, but no body is listening.
+                    # Call sys.excepthook so the developer sees what went wrong.
+                    # (Otherwise, it would be hidden.)
+                    sys.excepthook( *self.exception_info )
             elif self.cancelled:
                 self._sig_cancelled()
             else:
@@ -338,6 +341,14 @@ class Request( object ):
             if not failed_during_failure_handler:
                 self._sig_failed( self.exception, self.exception_info )
 
+            if failed_during_failure_handler or \
+            ( len(self._sig_failed.callbacks) == 0 # No callbacks registered
+              and len(self.pending_requests) == 0  # No pending requests to propagate the exception to
+              and Request._current_request() is not None ): # Not executing synchronously in a non-worked ('foreign') thread
+                # This request failed, but no body is listening.
+                # Call sys.excepthook so the developer sees what went wrong.
+                # (Otherwise, it would be hidden.)
+                sys.excepthook( *self.exception_info )
         else:
             # Now that we're complete, the signals have fired and any requests we needed to wait for have completed.
             # To free memory (and child requests), we can clean up everything but the result.
