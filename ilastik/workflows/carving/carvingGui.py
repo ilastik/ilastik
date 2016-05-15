@@ -234,18 +234,6 @@ class CarvingGui(LabelingGui):
         addLayerToggleShortcut("Segmentation", "s")
         addLayerToggleShortcut("Input Data", "r")
 
-        '''
-        def updateLayerTimings():
-            s = "Layer timings:\n"
-            for l in self.layerstack:
-                s += "%s: %f sec.\n" % (l.name, l.averageTimePerTile)
-            self.labelingDrawerUi.layerTimings.setText(s)
-        t = QTimer(self)
-        t.setInterval(1*1000) # 10 seconds
-        t.start()
-        t.timeout.connect(updateLayerTimings)
-        '''
-
         def makeColortable():
             self._doneSegmentationColortable = [QColor(0,0,0,0).rgba()]
             for i in range(254):
