@@ -12,7 +12,7 @@ from lazyflow.slot import InputSlot, OutputSlot
 from lazyflow.rtype import SubRegion
 from lazyflow.metaDict import MetaDict
 from lazyflow.request import Request, RequestPool
-from lazyflow.operators import OpCompressedCache, OpReorderAxes
+from lazyflow.operators import OpBlockedArrayCache, OpReorderAxes
 from opLazyConnectedComponents import OpLazyConnectedComponents
 
 logger = logging.getLogger(__name__)
@@ -72,9 +72,7 @@ class OpLabelVolume(Operator):
     CachedOutput = OutputSlot()
 
     # cache access, see OpCompressedCache
-    InputHdf5 = InputSlot(optional=True)
     CleanBlocks = OutputSlot()
-    OutputHdf5 = OutputSlot()
 
     def __init__(self, *args, **kwargs):
         super(OpLabelVolume, self).__init__(*args, **kwargs)
@@ -124,8 +122,6 @@ class OpLabelVolume(Operator):
         self._op5_2_cached.AxisOrder.setValue(origOrder)
 
         # connect cache access slots
-        self._opLabel.InputHdf5.connect(self.InputHdf5)
-        self.OutputHdf5.connect(self._opLabel.OutputHdf5)
         self.CleanBlocks.connect(self._opLabel.CleanBlocks)
 
         # set background values
@@ -145,11 +141,11 @@ class OpLabelVolume(Operator):
             self._setBG()
 
     def setInSlot(self, slot, subindex, roi, value):
-        assert slot == self.InputHdf5,\
-            "Invalid slot for setInSlot(): {}".format( slot.name )
+        #    "Invalid slot for setInSlot(): {}".format( slot.name )
         # Nothing to do here.
         # Our Input slots are directly fed into the cache,
         #  so all calls to __setitem__ are forwarded automatically
+        pass
 
     ## set the background values of inner operator
     def _setBG(self):
@@ -185,9 +181,7 @@ class OpLabelingABC(Operator):
     CachedOutput = OutputSlot()
 
     # cache access, see OpCompressedCache
-    InputHdf5 = InputSlot(optional=True)
     CleanBlocks = OutputSlot()
-    OutputHdf5 = OutputSlot()
 
     # the numeric type that is used for labeling
     labelType = np.uint32
@@ -199,12 +193,11 @@ class OpLabelingABC(Operator):
 
     def __init__(self, *args, **kwargs):
         super(OpLabelingABC, self).__init__(*args, **kwargs)
-        self._cache = OpCompressedCache(parent=self)
+        self._cache = OpBlockedArrayCache(parent=self)
         self._cache.name = "OpLabelVolume.OutputCache"
+        self._cache.CompressionEnabled.setValue(True)
         self._cache.Input.connect(self.Output)
         self.CachedOutput.connect(self._cache.Output)
-        self._cache.InputHdf5.connect(self.InputHdf5)
-        self.OutputHdf5.connect(self._cache.OutputHdf5)
         self.CleanBlocks.connect(self._cache.CleanBlocks)
 
     def setupOutputs(self):
@@ -222,7 +215,7 @@ class OpLabelingABC(Operator):
         shape = np.asarray(self.Input.meta.shape, dtype=np.int)
         shape[0] = 1
         shape[4] = 1
-        self._cache.BlockShape.setValue(tuple(shape))
+        self._cache.outerBlockShape.setValue(tuple(shape))
 
         # setup meta for Output
         self.Output.meta.assignFrom(self.Input.meta)
@@ -238,11 +231,11 @@ class OpLabelingABC(Operator):
         self.CachedOutput.setDirty(outroi)
 
     def setInSlot(self, slot, subindex, roi, value):
-        assert slot == self.InputHdf5,\
-            "Invalid slot for setInSlot(): {}".format( slot.name )
+        #    "Invalid slot for setInSlot(): {}".format( slot.name )
         # Nothing to do here.
         # Our Input slots are directly fed into the cache,
         #  so all calls to __setitem__ are forwarded automatically
+        pass
 
     def execute(self, slot, subindex, roi, result):
         if slot == self.Output:
