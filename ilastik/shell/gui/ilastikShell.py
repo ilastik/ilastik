@@ -34,7 +34,7 @@ import numpy
 
 # PyQt
 from PyQt4 import uic
-from PyQt4.QtCore import pyqtSignal, QObject, Qt, QUrl
+from PyQt4.QtCore import pyqtSignal, QObject, Qt, QUrl, QTimer
 from PyQt4.QtGui import QMainWindow, QWidget, QMenu, QApplication, \
     QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
     QProgressBar, QInputDialog, QIcon, QFont, QToolButton, \
@@ -48,6 +48,7 @@ from lazyflow.graph import Operator
 import lazyflow.tools.schematic
 from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
 from lazyflow.utility import timeLogged, isUrl
+from lazyflow.request import Request
 
 # volumina
 from volumina.utility import PreferencesManager, ShortcutManagerDlg, ShortcutManager, decode_to_qstring, \
@@ -136,7 +137,7 @@ class MemoryWidget(QWidget):
         self.setMemoryBytes(0)
 
     def setMemoryBytes(self, bytes):
-        self.label.setText("cached: %1.1f MB" % (bytes / (1024.0 ** 2.0)))
+        self.label.setText("Cached Data: %1.1f MB" % (bytes / (1024.0 ** 2.0)))
 
 
 #===----------------------------------------------------------------------------------------------------------------===
@@ -165,6 +166,17 @@ class ProgressDisplayManager(QObject):
         self.statusBar.addWidget(self.progressBar)
         self.progressBar.setHidden(True)
 
+        self.requestStatus = QLabel()
+        self.requestTimer = QTimer()
+        self.requestTimer.setInterval(1000)
+        def update_request_count():
+            msg = "Active Requests: {}".format( Request.active_count )
+            self.requestStatus.setText(msg)
+        self.requestTimer.timeout.connect( update_request_count )
+        self.requestTimer.start()
+
+        self.statusBar.addPermanentWidget(self.requestStatus)
+        
         self.memoryWidget = MemoryWidget()
         self.memoryWidget.showDialogButton.clicked.connect(self.parent().showMemUsageDialog)
         self.statusBar.addPermanentWidget(self.memoryWidget)
