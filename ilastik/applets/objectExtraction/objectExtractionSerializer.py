@@ -98,7 +98,7 @@ class ObjectExtractionSerializer(AppletSerializer):
             SerialBlockSlot(operator.LabelImage,
                             operator.LabelImageCacheInput,
                             operator.CleanLabelBlocks,
-                            name='LabelImage',
+                            name='LabelImage_v2',
                             subname='labelimage{:03d}',
                             selfdepends=False,
                             shrink_to_bb=False,
