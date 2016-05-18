@@ -93,6 +93,10 @@ class Request( object ):
     # See initialization after this class definition (below)
     global_thread_pool = None
 
+    # For protecting class variables
+    class_lock = threading.Lock()
+    active_count = 0
+
     @classmethod
     def reset_thread_pool( cls, num_workers = multiprocessing.cpu_count() ):
         """
@@ -107,10 +111,13 @@ class Request( object ):
         .. note:: It is only valid to call this function during startup.
                   Any existing requests will be dropped from the pool!
         """
-        if cls.global_thread_pool is not None:
-            cls.global_thread_pool.stop()
-        cls.global_thread_pool = threadPool.ThreadPool( num_workers )
+        with cls.class_lock:
+            active_count = 0
     
+            if cls.global_thread_pool is not None:
+                cls.global_thread_pool.stop()
+            cls.global_thread_pool = threadPool.ThreadPool( num_workers )
+
     class CancellationException(Exception):
         """
         This is raised when the whole request has been cancelled.
@@ -282,6 +289,11 @@ class Request( object ):
         assert self.exception is None, "Can't access this result.  The request failed."
         return self._result
 
+    def _set_started(self):
+        self.started = True
+        with Request.class_lock:
+            Request.active_count += 1
+
     def _execute(self):
         """
         Do the real work of this request.
@@ -370,6 +382,9 @@ class Request( object ):
                 assert popped == self
             self.greenlet = None
 
+            with Request.class_lock:
+                Request.active_count -= 1
+
     def submit(self):
         """
         If this request isn't started yet, schedule it to be started.
@@ -377,14 +392,14 @@ class Request( object ):
         if Request.global_thread_pool.num_workers > 0:
             with self._lock:
                 if not self.started:
-                    self.started = True
+                    self._set_started()
                     self._wake_up()
         else:
             # For debug purposes, we support a worker count of zero.
             # In that case, ALL REQUESTS ARE synchronous.
             # This can have unintended consequences.  Use with care.
             if not self.started:
-                self.started = True
+                self._set_started()
                 self._execute()
 
             # TODO: Exactly how to handle cancellation in this debug mode is not quite clear...
@@ -507,7 +522,7 @@ class Request( object ):
                 # This request hasn't been started yet
                 # We can execute it directly in the current thread instead of submitting it to the request thread pool (big optimization).
                 # Mark it as 'started' so that no other greenlet can claim it
-                self.started = True
+                self._set_started()
 
         if ( Request.global_thread_pool.num_workers != 0
         and self._current_foreign_thread is not None
@@ -580,7 +595,7 @@ class Request( object ):
                 # This request hasn't been started yet
                 # We can execute it directly in the current greenlet instead of creating a new greenlet (big optimization)
                 # Mark it as 'started' so that no other greenlet can claim it
-                self.started = True
+                self._set_started()
             elif suspend_needed:
                 # This request is already started in some other greenlet.
                 # We must suspend the current greenlet while we wait for this request to complete.
