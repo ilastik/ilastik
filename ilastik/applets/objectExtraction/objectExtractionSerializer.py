@@ -29,7 +29,7 @@ from lazyflow.roi import getIntersectingBlocks, TinyVector, getBlockBounds, roiT
 from lazyflow.request import Request, RequestLock, RequestPool
 
 from ilastik.applets.base.appletSerializer import AppletSerializer,\
-    deleteIfPresent, getOrCreateGroup, SerialSlot, SerialHdf5BlockSlot, SerialDictSlot
+    deleteIfPresent, getOrCreateGroup, SerialSlot, SerialBlockSlot, SerialDictSlot
 
 logger = logging.getLogger(__name__)
 
@@ -95,10 +95,14 @@ class SerialObjectFeaturesSlot(SerialSlot):
 class ObjectExtractionSerializer(AppletSerializer):
     def __init__(self, operator, projectFileGroupName):
         slots = [
-            SerialHdf5BlockSlot(operator.LabelOutputHdf5,
-                                operator.LabelInputHdf5,
-                                operator.CleanLabelBlocks,
-                                name="LabelImage"),
+            SerialBlockSlot(operator.LabelImage,
+                            operator.LabelImageCacheInput,
+                            operator.CleanLabelBlocks,
+                            name='LabelImage_v2',
+                            subname='labelimage{:03d}',
+                            selfdepends=False,
+                            shrink_to_bb=False,
+                            compression_level=1),
             SerialDictSlot(operator.Features, transform=str),
             SerialObjectFeaturesSlot(operator.BlockwiseRegionFeatures,
                                      operator.RegionFeaturesCacheInput,
