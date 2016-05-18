@@ -231,7 +231,7 @@ class OpManualTracking(Operator, ExportingOperator):
         divisions = self.divisions
         t_range = (0, self.LabelImage.meta.shape[self.LabelImage.meta.axistags.index("t")])
         oid2tid, _ = self._getObjects(t_range, None)  # slow
-        max_tracks = max(max(map(len, i.values())) for i in oid2tid.values())
+        max_tracks = max(max(map(len, i.values())) if map(len, i.values()) else 0 for i in oid2tid.values())
         ids = ilastik_ids(obj_count)
 
         file_path = settings["file path"]
