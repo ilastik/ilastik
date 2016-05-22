@@ -105,7 +105,7 @@ class OpFilter(Operator):
                 elif volume_filter == OpFilter.HESSIAN_DARK:
                     logger.info( " greatest eigenvalue of Hessian of Gaussian" )
                     options = vigra.blockwise.BlockwiseConvolutionOptions3D()
-                    options.stdDev = (sigma, )*3 
+                    options.stdDev = (sigma, )*3
                     result_view[...] = vigra.blockwise.hessianOfGaussianFirstEigenvalue(fvol,options)[roi_orig_slice]
 
                 elif volume_filter == OpFilter.STEP_EDGES:
@@ -162,7 +162,6 @@ class OpFilter(Operator):
         self.Output.setDirty(slice(None))
 
 
-# TODO: Split into variadic operators: OpBlockwiseFold, OpStats
 class OpBlockwiseTotalStats(Operator):
     MINIMUM = 'minimum'
     MAXIMUM = 'maximum'
@@ -192,6 +191,7 @@ class OpBlockwiseTotalStats(Operator):
                 # calculate stats
                 with Timer() as statsTimer:
                     stats = {self.MINIMUM:sys.float_info.max, self.MAXIMUM:sys.float_info.min}
+                    # TODO: this needs to match with bsz shape from OpMstSegmentorProvider.execute
                     bsz = 256 #block size
                     block_shape = (1,bsz,bsz,bsz,1)
                     block_starts = getIntersectingBlocks( block_shape, roiFromShape(self.Input.meta.shape) )
@@ -291,7 +291,8 @@ class OpSimpleWatershed(Operator):
 
     def propagateDirty(self, slot, subindex, roi):
         self.Output.setDirty(slice(None))
-    
+
+
 class OpMstSegmentorProvider(Operator):
     Image = InputSlot()
     LabelImage = InputSlot()
@@ -333,7 +334,7 @@ class OpMstSegmentorProvider(Operator):
                         Memory.format(Memory.getAvailableRamCaches()),
                         Memory.format(Memory.getAvailableRamComputation())) )
 
-
+        # TODO: this needs to match with bsz shape from other operators
         bsz = 256 #block size
         halo_size = (False, True, True, True, False)
         block_shape = (1,bsz,bsz,bsz,1)
@@ -404,42 +405,33 @@ class OpPreprocessing(Operator):
     #      \ opOverlayFilterStats \  opInputFilterStats   \ opFilterStats
     #      v    v                  v    v                  v   v
     #  opOverlayNormalize    opInputNormalize       opFilterNormalize
-    #          \                 \                    \
-    #          \                 \                    v
-    #          \                 \              opFilterCache
-    #          \                 \              /    \    \
-    #          \-------------->\<---------------/    \     \
+    #          \                   /                  \
+    #           \                 /                   v
+    #     opOverlayCache    opInputCache       opFilterCache
+    #             \             /               /    \    \
+    #              \---------->|<--------------/     \     \
     #                          v                     \      v
     #            (SELECT by WatershedSource)         \    FilteredImage
-    #                          /                     \
-    #                         v                      \
-    #                   opWatershedSourceCache       \
-    #                        /                       \
-    #                       v                         \
-    #                    opWatershedProvider           \
-    #                     /                             \
-    #                 [via execute()] --> HDF5File <-----\-------------\
-    #                                     /      \        \            |
-    #                                    /        \        \           |
-    #                                   /          \        \          |
-    #                                  v            v        \         |
-    #                          opStreaming     opStreaming   \         |
-    #                        WatershedReader SegmentorReader \         |
-    #                                /                \      \         |
-    #                               /                  \     \         |
-    #                     opWatershedHdf5Cache         \     \         |
-    #                             /                    \     \         |
-    #                            v                     \     \         |
-    #                     opWatershedArrayCache        \     \         |
-    #                          /          \--------\   \     \         |
-    #                         v                    v   v     v         |
-    #             WatershedImage                  opMstProvider        |
-    #                                                    \             |
-    #                                                     v            |
-    #                                               [via execute()] >--/
-    #                                                     \
-    #                                                      v
-    #                                                  PreprocessedData
+    #                          \                     \
+    #  HDF5File                 \                    \
+    #      ^                     v                    \
+    #       \             opWatershedProvider          \
+    #        \--------\          |                       \
+    #                  \         |                        \
+    #                   v        v                         \
+    #               opWatershedHdf5Cache                   \
+    #                           /                          \
+    #                          v                           \
+    #                     opWatershedArrayCache            \
+    #                          /          \--------\       \
+    #                         v                    v       v
+    #                  WatershedImage             opMstProvider
+    #                                                  \
+    #                                                  v
+    #                                              [via execute()]
+    #                                                   \
+    #                                                   v
+    #                                              PreprocessedData
 
     # *note: Overlay/Input filters used for inversion and smoothing only.
     
@@ -451,8 +443,12 @@ class OpPreprocessing(Operator):
         self._unsavedData = False # set to True if data is not yet saved
         self._dirty = False       # set to True if any Input is dirty
 
+        # TODO: find a better way to reference project file
         #self.ProjectFile.setValue(self.parent.parent.children[0].ProjectFile.value)
         self._hdf5File = self.parent.parent.children[0].ProjectFile.value
+        # TODO: options?
+        #self.applet.topLevelOperator.ProjectFile.ready()
+        #self.applet.topLevelOperator.ProjectDataGroup.ready()
 
         self.initialSigma = None  # save settings of last preprocess
         self.initialFilter = None # applied to gui by pressing reset
@@ -482,6 +478,8 @@ class OpPreprocessing(Operator):
         self._opOverlayNormalize.Input.connect( self._opOverlayFilter.Output )
         self._opOverlayNormalize.TotalStats.connect( self._opOverlayNormalizeStats.Output )
 
+        self._opOverlayCache = OpBlockedArrayCache( parent=self )
+
         self._opInputFilter = OpFilter( parent=self )
         self._opInputFilter.Input.connect( self.InputData )
         self._opInputFilter.Sigma.connect( self.Sigma )
@@ -493,7 +491,7 @@ class OpPreprocessing(Operator):
         self._opInputNormalize.Input.connect( self._opInputFilter.Output )
         self._opInputNormalize.TotalStats.connect( self._opInputNormalizeStats.Output )
 
-        self._opWatershedSourceCache = OpBlockedArrayCache( parent=self )
+        self._opInputCache = OpBlockedArrayCache( parent=self )
 
         self._opWatershedProvider = OpSimpleWatershed( parent=self )
 
@@ -548,13 +546,22 @@ class OpPreprocessing(Operator):
 
         # TODO: this needs to match with bsz shape from OpMstSegmentorProvider.execute
         bsz = 256 #block size
-        # TODO: check if inner and outer must be the same size (any benefit to making inner smaller?)
-        cacheBlockShape = (bsz,bsz,bsz,bsz,bsz)
+        cacheBlockShape = (1,bsz,bsz,bsz,1)
 
         self._opFilterCache.fixAtCurrent.setValue(False)
         self._opFilterCache.innerBlockShape.setValue( cacheBlockShape )
         self._opFilterCache.outerBlockShape.setValue( cacheBlockShape )
         self._opFilterCache.Input.connect( self._opFilterNormalize.Output )
+
+        self._opOverlayCache.fixAtCurrent.setValue(False)
+        self._opOverlayCache.innerBlockShape.setValue( cacheBlockShape )
+        self._opOverlayCache.outerBlockShape.setValue( cacheBlockShape )
+        self._opOverlayCache.Input.connect( self._opRawNormalize.Output )
+
+        self._opInputCache.fixAtCurrent.setValue(False)
+        self._opInputCache.innerBlockShape.setValue( cacheBlockShape )
+        self._opInputCache.outerBlockShape.setValue( cacheBlockShape )
+        self._opInputCache.Input.connect( self._opInputNormalize.Output )
 
         # If the user's boundaries are dark, then invert the special watershed sources
         if self.InvertWatershedSource.value:
@@ -564,29 +571,18 @@ class OpPreprocessing(Operator):
             self._opOverlayFilter.Filter.setValue( OpFilter.RAW )
             self._opInputFilter.Filter.setValue( OpFilter.RAW )
 
-        # opWatershedSourceCache
-        self._opWatershedSourceCache.fixAtCurrent.setValue(False)
-        self._opWatershedSourceCache.innerBlockShape.setValue( cacheBlockShape )
-        self._opWatershedSourceCache.outerBlockShape.setValue( cacheBlockShape )
-
         ws_source = self.WatershedSource.value
         if ws_source == 'raw':
             if self.OverlayData.ready():
-                self._opWatershedSourceCache.Input.connect( self._opOverlayNormalize.Output )
+                self._opWatershedProvider.Input.connect( self._opOverlayCache.Output )
             else:
-                self._opWatershedSourceCache.Input.connect( self._opInputNormalize.Output )
+                self._opWatershedProvider.Input.connect( self._opInputCache.Output )
         elif ws_source == 'input':
-            self._opWatershedSourceCache.Input.connect( self._opInputNormalize.Output )
+            self._opWatershedProvider.Input.connect( self._opInputCache.Output )
         elif ws_source == 'filtered':
-            self._opWatershedSourceCache.Input.connect( self._opFilterCache.Output )
+            self._opWatershedProvider.Input.connect( self._opFilterCache.Output )
         else:
             assert False, "Unknown Watershed source option: {}".format( ws_source )
-
-        self._opWatershedProvider.Input.connect( self._opWatershedSourceCache.Output )
-
-        # TODO: In progress
-        #self.applet.topLevelOperator.ProjectFile.ready()
-        #self.applet.topLevelOperator.ProjectDataGroup.ready()
 
         # opWatershedCache
         h5PreprocessingGrp = self._hdf5File.require_group('preprocessing')
@@ -600,18 +596,6 @@ class OpPreprocessing(Operator):
         self._hdf5File.file.flush()
 
         self._opWatershedHdf5Cache.H5CacheGroup.setValue( h5WatershedGrp )
-
-        # TODO: *CacheBlockShape for testing purposes only
-        slot = self.InputData
-        xDim = slot.meta.getTaggedShape()['x']
-        yDim = slot.meta.getTaggedShape()['y']
-        zDim = slot.meta.getTaggedShape()['z']
-        #blockdimsAC = {'t': 1, 'x': yDim, 'y': xDim, 'z': 1, 'c': 1} # 16s tiff seq save time, project load is *very* slow
-        #blockdimsAC = {'t': 1, 'x': bsz, 'y': bsz, 'z': bsz, 'c': 1} # 76s tiff seq save time; 28s with SegmentationCache
-        #blockdimsAC = {'t': 1, 'x': yDim, 'y': xDim, 'z': zDim, 'c': 1} # 120s tiff seq save time
-        # without AC, ~6000s-8000s tiff seq save time
-        #blockshapeAC = map(blockdimsAC.get, slot.meta.getTaggedShape().keys())
-        #cacheBlockShape = tuple(blockshapeAC)
 
         self._opWatershedArrayCache.fixAtCurrent.setValue(False)
         self._opWatershedArrayCache.innerBlockShape.setValue( cacheBlockShape )

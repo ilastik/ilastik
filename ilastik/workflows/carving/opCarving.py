@@ -27,10 +27,10 @@ import copy
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.stype import Opaque
 from lazyflow.rtype import List
-from lazyflow.roi import roiToSlice
+from lazyflow.roi import getIntersectingBlocks, getBlockBounds, roiFromShape, roiToSlice, enlargeRoiForHalo, TinyVector
 from lazyflow.operators.opDenseLabelArray import OpDenseLabelArray
 from lazyflow.operators.valueProviders import OpValueCache
-from lazyflow.operators import OpBlockedArrayCache
+from lazyflow.operators import OpArrayCache
 
 #ilastik
 from lazyflow.utility.timer import Timer
@@ -150,7 +150,8 @@ class OpCarving(Operator):
         self._opMstCache = OpValueCache( parent=self )
         self.MstOut.connect( self._opMstCache.Output )
 
-        self._opSegmentationCache = OpBlockedArrayCache( parent=self )
+        self._opSegmentationCache = OpArrayCache( parent=self )
+        self._opSegmentationCache.Input.connect( self.Segmentation )
 
         self.InputData.notifyReady( self._checkConstraints )
     
@@ -247,14 +248,11 @@ class OpCarving(Operator):
         
         self.AllObjectNames.meta.dtype = object
 
-        # TODO: this needs to match with bsz shape from OpMstSegmentorProvider.execute
+        # TODO: this needs to match with bsz shape from OpMstSegmentorProvider.execute for best performance
         bsz = 256 #block size
-        cacheBlockShape = (bsz,bsz,bsz,bsz,bsz)
-
+        cacheBlockShape = (1,bsz,bsz,bsz,1)
         self._opSegmentationCache.fixAtCurrent.setValue(False)
-        self._opSegmentationCache.innerBlockShape.setValue( cacheBlockShape )
-        self._opSegmentationCache.outerBlockShape.setValue( cacheBlockShape )
-        self._opSegmentationCache.Input.connect( self.Segmentation )
+        self._opSegmentationCache.blockShape.setValue(cacheBlockShape)
 
     
     def connectToPreprocessingApplet(self,applet):
@@ -273,8 +271,7 @@ class OpCarving(Operator):
         """
         Returns current object name. None if it is not set.
         """
-        #FIXME: This is misleading. Having a current object and that object having
-        #a name is not the same thing.
+        #FIXME: This is misleading. Having a current object and that object having a name is not the same thing.
         return self._currObjectName
 
     def currentObjectName(self):
@@ -298,8 +295,11 @@ class OpCarving(Operator):
         assert len(position3d) == 3
 
         #find the supervoxel that was clicked
-        # TODO: process blockwise
-        sv = self._mst.supervoxelUint32[position3d]
+        # TODO: handle 2D carving case?
+        dim = len(self._mst.supervoxelUint32.meta.shape)
+        pos = (0,)+position3d+(0,) if (dim == 5) else position3d
+        posSlice = roiToSlice(pos, map(lambda x:x+1,pos))
+        sv = self._mst.supervoxelUint32(posSlice).wait()[(0,)*dim]
         names = []
         for name, objectSupervoxels in self._mst.object_lut.iteritems():
             if numpy.sum(sv == objectSupervoxels) > 0:

@@ -36,7 +36,6 @@ from volumina.layer import ColortableLayer, GrayscaleLayer
 from volumina.utility import ShortcutManager, PreferencesManager
 from volumina.view3d.GenerateModelsFromLabels_thread import MeshExtractorDialog
 
-from ilastik.widgets.labelListModel import LabelListModel
 try:
     from volumina.view3d.volumeRendering import RenderingManager
     from volumina.view3d.view3d import convertVTPtoOBJ
@@ -45,7 +44,12 @@ try:
 except ImportError:
     _have_vtk = False
 
+
+#lazyflow
+from lazyflow.utility.timer import timeLogged
+
 #ilastik
+from ilastik.widgets.labelListModel import LabelListModel
 from ilastik.utility import bind
 from ilastik.applets.labeling.labelingGui import LabelingGui
 
@@ -53,7 +57,6 @@ from ilastik.applets.labeling.labelingGui import LabelingGui
 import logging
 logger = logging.getLogger(__name__)
 
-#===----------------------------------------------------------------------------------------------------------------===
 
 class CarvingGui(LabelingGui):
     def __init__(self, parentApplet, topLevelOperatorView, drawerUiPath=None ):
@@ -402,6 +405,8 @@ class CarvingGui(LabelingGui):
         
         self._exportMeshes([_name], [obj_filepath])
 
+
+    @timeLogged(logger, logging.INFO)
     def _exportAllObjectMeshes(self):
         """
         Export all objects in the project as separate .obj files, stored to a user-specified directory.
@@ -434,6 +439,7 @@ class CarvingGui(LabelingGui):
         if object_names:
             self._exportMeshes( object_names, obj_filepaths )
 
+    @timeLogged(logger, logging.INFO)
     def _exportMeshes(self, object_names, obj_filepaths):
         """
         Export a mesh .obj file for each object in the object_names list to the corresponding file name from the obj_filepaths list.
@@ -444,40 +450,23 @@ class CarvingGui(LabelingGui):
         4) When the export dlg is finished, create the mesh file (by writing a temporary .vtk file and converting it into a .obj file)
         5) If there are still more items in the object_names list to process, repeat this function.
         """
-        # Pop the first object off the list
-        object_name = object_names.pop(0)
-        obj_filepath = obj_filepaths.pop(0)
-        
-        # Construct a volume with only this object.
-        # We might be tempted to get the object directly from opCarving.DoneObjects, 
-        #  but that won't be correct for overlapping objects.
-        mst = self.topLevelOperatorView.MST.value
-        object_supervoxels = mst.object_lut[object_name]
-        object_lut = numpy.zeros(mst.nodeNum+1, dtype=numpy.int32)
-        object_lut[object_supervoxels] = 1
-        # TODO: process blockwise
-        supervoxel_volume = mst.supervoxelUint32
-        object_volume = object_lut[supervoxel_volume]
-
-        # Run the mesh extractor
-        window = MeshExtractorDialog(parent=self)
-        
+        # helper functions
         def onMeshesComplete():
             """
             Called when mesh extraction is complete.
             Writes the extracted mesh to an .obj file
             """
-            logger.info( "Mesh generation complete." )
-            mesh_count = len( window.extractor.meshes )
+            logger.info("Mesh generation complete.")
+            mesh_count = len(window.extractor.meshes)
 
             # Mesh count can sometimes be 0 for the '<not saved yet>' object...
             if mesh_count > 0:
                 assert mesh_count == 1, \
-                    "Found {} meshes processing object '{}',"\
-                    "(only expected 1)".format( mesh_count, object_name )
+                    "Found {} meshes processing object '{}'," \
+                    "(only expected 1)".format(mesh_count, object_name)
                 mesh = window.extractor.meshes.values()[0]
-                logger.info( "Saving meshes to {}".format( obj_filepath ) )
-    
+                logger.info("Saving meshes to {}".format(obj_filepath))
+
                 # Use VTK to write to a temporary .vtk file
                 tmpdir = tempfile.mkdtemp()
                 vtkpoly_path = os.path.join(tmpdir, 'meshes.vtk')
@@ -486,18 +475,37 @@ class CarvingGui(LabelingGui):
                 w.SetInput(mesh)
                 w.SetFileName(vtkpoly_path)
                 w.Write()
-                
+
                 # Now convert the file to .obj format.
                 convertVTPtoOBJ(vtkpoly_path, obj_filepath)
-    
+
             # Cleanup: We don't need the window anymore.
             window.setParent(None)
 
-            # If there are still objects left to process,
-            #   start again with the remainder of the list.
+            # If there are still objects left to process, start again with the remainder of the list.
             if object_names:
                 self._exportMeshes(object_names, obj_filepaths)
-            
+
+
+        op = self.topLevelOperatorView
+
+        # Pop the first object off the list
+        object_name = object_names.pop(0)
+        obj_filepath = obj_filepaths.pop(0)
+
+        # Construct a volume with only this object.
+        # We might be tempted to get the object directly from opCarving.DoneObjects,
+        #  but that won't be correct for overlapping objects.
+        mst = self.topLevelOperatorView.MST.value
+        object_supervoxels = mst.object_lut[object_name]
+        object_lut = numpy.zeros(mst.nodeNum+1, dtype=numpy.int8)
+        object_lut[object_supervoxels] = 1
+        # TODO: process blockwise
+        supervoxel_volume = mst.supervoxelUint32.value[0,...,0]
+        object_volume = object_lut[supervoxel_volume]
+
+        # Run the mesh extractor
+        window = MeshExtractorDialog(parent=self)
         window.finished.connect( onMeshesComplete )
 
         # Kick off the save process and exit to the event loop
@@ -522,49 +530,32 @@ class CarvingGui(LabelingGui):
             self._renderMgr.removeObject(self._segmentation_3d_label)
             self._segmentation_3d_label = None
         self._update_rendering()
-    
+
+
+    @timeLogged(logger, logging.INFO)
     def _update_rendering(self):
         if not self.render:
             return
 
         op = self.topLevelOperatorView
         if not self._renderMgr.ready:
-            shape = op.InputData.meta.shape[1:4]
             self._renderMgr.setup(op.InputData.meta.shape[1:4])
 
         # remove nonexistent objects
         self._shownObjects3D = dict((k, v) for k, v in self._shownObjects3D.iteritems()
                                     if k in op.MST.value.object_lut.keys())
 
-        # TODO: dynamically adjust lut dtype; calcualte lut_max_index correctly; trim size rather than assert
-        lut_max_index = len(self._shownObjects3D)
-        assert lut_max_index < 32
-        if  lut_max_index > 15:
-            lut_dtype = numpy.uint32
-        elif lut_max_index > 7:
-            lut_dtype = numpy.uint16
+        # TODO: self._renderMgr.volume value is set correctly first time, but doesn't appear (possibly isn't connected to UI yet?)
+        if self._showSegmentationIn3D and op._opSegmentationCache.Output.ready():
+            seg = op._opSegmentationCache.Output
+            self._renderMgr.volume[:] = seg.value[0,...,0]
+            self._renderMgr.volume[self._renderMgr.volume>0] -= 1
         else:
-            lut_dtype = numpy.uint8
+            self._renderMgr.volume[:] = 0
 
-        # TODO: resolve discrepancy between previous and current versions (current version seems to glitch out until labels are cleared; possibly project file has old-style labels?)
-        #lut = numpy.zeros(op.MST.value.nodeNum + 1, dtype=numpy.int8) # NOTE: previous ilastiktools watershed
-        #lut = numpy.zeros(op.MST.value.nodeNum, dtype=numpy.int8) # NOTE: current ilastiktools watershed
-        lut = numpy.zeros(op.MST.value.getSuperVoxelSeg().size, dtype=lut_dtype)
-
-        for name, label in self._shownObjects3D.iteritems():
-            objectSupervoxels = op.MST.value.objects[name]
-            lut[objectSupervoxels] = label
-
-        if self._showSegmentationIn3D:
-            # Add segmentation as label, which is green
-            supervoxelSeg = op.MST.value.getSuperVoxelSeg()
-            lut[:] = numpy.where( supervoxelSeg == 2, self._segmentation_3d_label, lut )
-        #import vigra
-        # TODO: read labels blockwise
-        labels = op.MST.value.supervoxelUint32.value[0,...,0]
-        self._renderMgr.volume = lut[labels] # (Advanced indexing)
         self._update_colors()
         self._renderMgr.update()
+
 
     def _update_colors(self):
         op = self.topLevelOperatorView
@@ -577,6 +568,7 @@ class CarvingGui(LabelingGui):
 
         if self._showSegmentationIn3D and self._segmentation_3d_label is not None:
             self._renderMgr.setColor(self._segmentation_3d_label, (0.0, 1.0, 0.0)) # Green
+
 
     def _getNext(self, slot, parentFun, transform=None):
         numLabels = self.labelListData.rowCount()

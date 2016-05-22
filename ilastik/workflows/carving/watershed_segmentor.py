@@ -1,6 +1,7 @@
 import ilastiktools
 import gc
 
+from lazyflow.roi import getIntersectingBlocks, getBlockBounds, roiFromShape, roiToSlice, enlargeRoiForHalo, TinyVector
 from lazyflow.utility.timer import timeLogged
 
 import logging
@@ -84,28 +85,15 @@ class WatershedSegmentor(object):
     def setSeeds(self, fgSeeds, bgSeeds):
         self.gridSegmentor.clearSeeds()
 
-        # TODO: handle iterating over labels correctly
-        # see opPreprocessing.execute for example
-
+        # TODO: handle iterating over labels correctly - read labels blockwise -  see opPreprocessing.execute for example
+        labels = self.supervoxelUint32.value[0,...,0]
+        labels_roi_begin = TinyVector([0] * len(labels.shape))
         self.gridSegmentor.addSeeds(labels=labels, labelsOffset=labels_roi_begin,
                                     fgSeeds=fgSeeds, bgSeeds=bgSeeds)
 
     def addSeeds(self, roi, brushStroke):
-        if isinstance(self.gridSegmentor, ilastiktools.GridSegmentor_3D_UInt32):
-            roiBegin  = roi.start[1:4]
-            roiEnd  = roi.stop[1:4]
-        else:
-            roiBegin  = roi.start[1:3]
-            roiEnd  = roi.stop[1:3]
-
-        # TODO: why not this version?
-        #roiSlice = roiToSlice( roi.start, roi.stop )
-        #roiShape = [s.stop-s.start for s in roiSlice]
-        #brushStroke = brushStroke.reshape(roiShape)[0,...,0]
-        #roiShape = [s.stop-s.start for s in roi.toSlice()]
-        #brushStroke = brushStroke.reshape(roiShape)[0,...,0]
-      
-        brushStroke = brushStroke.reshape([e-b for b,e in zip(roiBegin,roiEnd)])
+        roiShape = [s.stop-s.start for s in roi.toSlice()]
+        brushStroke = brushStroke.reshape(roiShape)[0,...,0]
 
         labels = self.supervoxelUint32(roi.toSlice()).wait()[0,...,0]
         self.gridSegmentor.addSeedBlock(labels=labels, brushStroke=brushStroke)
