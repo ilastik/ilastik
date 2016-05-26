@@ -28,7 +28,7 @@ from functools import partial
 import numpy
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, pyqtSlot, QVariant, pyqtRemoveInputHook, pyqtRestoreInputHook
-from PyQt4.QtGui import QMessageBox, QColor, QIcon, QMenu, QDialog, QVBoxLayout, QDialogButtonBox, QListWidget, QListWidgetItem, QApplication, QCursor
+from PyQt4.QtGui import QMessageBox, QColor, QIcon, QMenu, QDialog, QVBoxLayout, QDialogButtonBox, QListWidget, QListWidgetItem, QApplication, QCursor, QAction
 
 # HCI
 from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer, ColortableLayer
@@ -427,7 +427,7 @@ class PixelClassificationGui(LabelingGui):
                 self._update_rendering()
 
         if self.render:
-            layer.contexts.append(('Toggle 3D rendering', callback))
+            layer.contexts.append( QAction('Toggle 3D rendering', None, triggered=callback) )
 
     def setupLayers(self):
         """

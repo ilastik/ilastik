@@ -29,7 +29,7 @@ from functools import partial
 import numpy
 from PyQt4 import uic
 from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QIcon, QColor, QApplication, QMessageBox
+from PyQt4.QtGui import QIcon, QColor, QApplication, QMessageBox, QAction
 
 # HCI
 from volumina.api import LazyflowSinkSource, ColortableLayer
@@ -802,8 +802,8 @@ class LabelingGui(LayerViewerGui):
             labellayer.name = "Labels"
             labellayer.ref_object = None
 
-            labellayer.contexts.append(("Import...",
-                                        partial( import_labeling_layer, labellayer, self._labelingSlots, self )))
+            labellayer.contexts.append( QAction("Import...", None,
+                                        triggered=partial(import_labeling_layer, labellayer, self._labelingSlots, self)) )
 
             return labellayer, labelsrc
 
