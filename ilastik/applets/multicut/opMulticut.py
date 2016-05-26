@@ -1,7 +1,7 @@
 import warnings
 import numpy as np
 
-import opengm
+import opengm_with_cplex as opengm
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiToSlice

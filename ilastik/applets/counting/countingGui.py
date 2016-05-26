@@ -29,7 +29,7 @@ import importlib
 import numpy
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, pyqtSlot
-from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QPushButton, QWidget, QIcon,QApplication
+from PyQt4.QtGui import QMessageBox, QColor, QShortcut, QKeySequence, QPushButton, QWidget, QIcon, QApplication, QAction
 
 # HCI
 from lazyflow.utility import traceLogged
@@ -636,7 +636,7 @@ class CountingGui(LabelingGui):
                 self._update_rendering()
 
         if self.render:
-            layer.contexts.append(('Toggle 3D rendering', callback))
+            layer.contexts.append( QAction('Toggle 3D rendering', None, triggered=callback) )
 
     @traceLogged(traceLogger)
     def setupLayers(self):
