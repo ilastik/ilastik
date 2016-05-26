@@ -21,7 +21,7 @@
 import os
 import sys
 import imp
-import numpy
+import numpy as np
 import h5py
 import tempfile
 import csv
@@ -39,19 +39,16 @@ from ilastik.config import cfg as ilastik_config
 import logging
 logger = logging.getLogger(__name__)
 
-class TestConservationTrackingHeadless(object):
-    # NOTE: In order for this tests to work, you need to include the following files in the same directory:
-    # * miceConservationTracking.ilp
-    # * mice.h5
-    # * mice_prediction.h5
-    # These files can be downloaded from the following GitHub repository: https://github.com/ilastik/ilastik_testdata
-    
-    EXPECTED_SHAPE = (5,840,840,1,1) # Expected shape for HDF5 files
-    EXPECTED_NUM_LINES = 21 # Number of lines expected in csv file
-    
-    PROJECT_FILE = 'miceConservationTracking.ilp'
-    RAW_DATA_FILE = 'mice.h5'
-    PREDICTION_MAPS_FILE = 'mice_prediction.h5'
+class TestConservationTrackingHeadless(object):    
+    PROJECT_FILE = 'data/inputdata/smallVideoConservationTracking.ilp'
+    RAW_DATA_FILE = 'data/inputdata/smallVideo.h5'
+    BINARY_SEGMENTATION_FILE = 'data/inputdata/smallVideoSimpleSegmentation.h5'
+
+    EXPECTED_TRACKING_RESULT_FILE = 'data/inputdata/smallVideo_Tracking-Result.h5'
+    EXPECTED_CSV_FILE = 'data/inputdata/smallVideo-exported_data_table.csv'
+    EXPECTED_SHAPE = (3, 408, 408, 1, 1) # Expected shape for tracking results HDF5 files
+    EXPECTED_NUM_LINES = 11 # Number of lines expected in exported csv file
+    EXPECTED_MERGER_NUM = 2 # Number of mergers expected in exported csv file
 
     @classmethod
     def setupClass(cls):
@@ -70,7 +67,7 @@ class TestConservationTrackingHeadless(object):
 
     @classmethod
     def teardownClass(cls):
-        removeFiles = ['mice-exported_data_table.csv', 'mice_Tracking-Result.h5', 'mice_Object-Identities.h5']
+        removeFiles = ['data/inputdata/smallVideo_Tracking-Result.h5', 'data/inputdata/smallVideo-exported_data_table.csv']
         
         # Clean up: Delete any test files we generated
         for f in removeFiles:
@@ -78,20 +75,28 @@ class TestConservationTrackingHeadless(object):
                 os.remove(f)
             except:
                 pass
+        pass
 
 
     @timeLogged(logger)
-    def testTrackingResultHeadless(self):
-        # Skip test because there are missing files
-        if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) or not os.path.isfile(self.PREDICTION_MAPS_FILE):
-            raise nose.SkipTest   
+    def testTrackingHeadless(self):
+        # Skip test if conservation tracking can't be imported. If it fails the problem is most likely that CPLEX is not installed.
+        try:
+            import ilastik.workflows.tracking.conservation
+        except ImportError as e:
+            logger.warn( "Conservation tracking could not be imported. CPLEX is most likely missing: " + str(e) )
+            raise nose.SkipTest 
         
-        args = ' --project=miceConservationTracking.ilp'
+        # Skip test because there are missing files
+        if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) or not os.path.isfile(self.BINARY_SEGMENTATION_FILE):
+            logger.info("Test files not found.")   
+        
+        args = ' --project='+self.PROJECT_FILE
         args += ' --headless'
         
         args += ' --export_source=Tracking-Result'
-        args += ' --raw_data ./mice.h5/exported_data'
-        args += ' --prediction_maps ./mice_prediction.h5/exported_data'
+        args += ' --raw_data '+self.RAW_DATA_FILE+'/data'
+        args += ' --segmentation_image '+self.BINARY_SEGMENTATION_FILE+'/exported_data'
 
         sys.argv = ['ilastik.py'] # Clear the existing commandline args so it looks like we're starting fresh.
         sys.argv += args.split()
@@ -100,52 +105,32 @@ class TestConservationTrackingHeadless(object):
         self.ilastik_startup.main()
         
         # Examine the HDF5 output for basic attributes
-        with h5py.File('mice_Tracking-Result.h5', 'r') as f:
-            assert 'exported_data' in f, 'Dataset does not exist in mice_Tracking-Result.h5 file'
-            shape = f["exported_data"].shape
-            assert shape == self.EXPECTED_SHAPE, "Exported data has wrong shape: {}".format(shape)
+        with h5py.File(self.EXPECTED_TRACKING_RESULT_FILE, 'r') as f:
+            assert 'exported_data' in f, 'Dataset does not exist in tracking result file'
+            shape = f['exported_data'].shape
+            assert shape == self.EXPECTED_SHAPE, 'Exported data has wrong shape: {}'.format(shape)
+            
+        # Load csv file
+        data = np.genfromtxt(self.EXPECTED_CSV_FILE, dtype=float, delimiter=',', names=True)
         
-        # Examine the csv output for basic attributes    
-        with  open('mice-exported_data_table.csv', 'r') as csvfile:
-            reader = csv.reader(csvfile)
-            numlines =  sum(1 for lines in reader)
-            assert numlines == self.EXPECTED_NUM_LINES
-
-
-    @timeLogged(logger)
-    def testObjectIdentitiesHeadless(self):
-        # Skip test because there are missing files
-        if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) or not os.path.isfile(self.PREDICTION_MAPS_FILE):
-            raise nose.SkipTest   
+        # Check for expected number of mergers
+        merger_count = 0
+        for id in data['lineage_id']:
+            if id == 0:
+                merger_count += 1
+                
+        assert merger_count == self.EXPECTED_MERGER_NUM, 'Number of mergers in csv file differs from expected'
         
-        args = ' --project=miceConservationTracking.ilp'
-        args += ' --headless'
-        
-        args += ' --export_source=Object-Identities'
-        args += ' --raw_data ./mice.h5/exported_data'
-        args += ' --prediction_maps ./mice_prediction.h5/exported_data'
-
-        sys.argv = ['ilastik.py'] # Clear the existing commandline args so it looks like we're starting fresh.
-        sys.argv += args.split()
-
-        # Start up the ilastik.py entry script as if we had launched it from the command line
-        self.ilastik_startup.main()
-        
-        # Examine the HDF5 output for basic attributes
-        with h5py.File('mice_Object-Identities.h5', 'r') as f:
-            assert 'exported_data' in f, 'Dataset does not exist in mice_Tracking-Result.h5 file'
-            shape = f["exported_data"].shape
-            assert shape == self.EXPECTED_SHAPE, "Exported data has wrong shape: {}".format(shape)
-        
-        # Examine the csv output for basic attributes     
-        with  open('mice-exported_data_table.csv', 'r') as csvfile:
-            reader = csv.reader(csvfile)
-            numlines =  sum(1 for lines in reader)
-            assert numlines == self.EXPECTED_NUM_LINES
+        # Check for expected number of lines
+        assert data.shape[0] == self.EXPECTED_NUM_LINES, 'Number of rows in csv file differs from expected'
+                
+        # Check that csv contains RegionRadii and RegionAxes (necessary for animal tracking)
+        assert 'RegionRadii_0' in data.dtype.names, 'RegionRadii not found in csv file (required for animal tracking)'
+        assert  'RegionAxes_0' in data.dtype.names, 'RegionAxes not found in csv file (required for animal tracking)'         
 
 
 if __name__ == "__main__":
-    #make the program quit on Ctrl+C
+    # Make the program quit on Ctrl+C
     import signal
     signal.signal(signal.SIGINT, signal.SIG_DFL)
 
