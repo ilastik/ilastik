@@ -24,7 +24,8 @@ import numpy as np
 
 from PyQt4.QtCore import Qt
 from PyQt4.QtGui import QWidget, QLabel, QDoubleSpinBox, QVBoxLayout, QHBoxLayout, \
-                        QSpacerItem, QSizePolicy, QColor, QPen, QPushButton, QMessageBox
+                        QSpacerItem, QSizePolicy, QColor, QPen, QPushButton, QMessageBox, \
+                        QAction, QMenu
 
 from ilastikrag.gui import FeatureSelectionDialog
 
@@ -96,7 +97,6 @@ class EdgeTrainingGui(LayerViewerGui):
         self._init_probability_colortable()
         
         op.GroundtruthSegmentation.notifyReady( self.configure_gui_from_operator )
-
 
     def _open_feature_selection_dlg(self):
         rag = self.topLevelOperatorView.Rag.value
@@ -219,6 +219,19 @@ class EdgeTrainingGui(LayerViewerGui):
     def configure_operator_from_gui(self):
         op = self.topLevelOperatorView
 
+    def create_prefetch_menu(self, layer_name):
+        def prefetch_layer(axis='z'):
+            layer_index = self.layerstack.findMatchingIndex(lambda l: l.name == layer_name)
+            num_slices = self.editor.dataShape['txyzc'.index(axis)]
+            view2d = self.editor.imageViews['xyz'.index(axis)]
+            view2d.scene().triggerPrefetch([layer_index], spatial_axis_range=(0, num_slices))
+
+        prefetch_menu = QMenu("Prefetch")
+        prefetch_menu.addAction( QAction("All Z-slices", prefetch_menu, triggered=partial(prefetch_layer, 'z')) )
+        prefetch_menu.addAction( QAction("All Y-slices", prefetch_menu, triggered=partial(prefetch_layer, 'y')) )
+        prefetch_menu.addAction( QAction("All X-slices", prefetch_menu, triggered=partial(prefetch_layer, 'x')) )
+        return prefetch_menu
+    
     def setupLayers(self):
         layers = []
         op = self.topLevelOperatorView
@@ -233,6 +246,7 @@ class EdgeTrainingGui(LayerViewerGui):
 
             self.update_labeled_edges() # Initialize
             layer.labelsChanged.connect( self._handle_edge_label_clicked )
+            layer.contexts.append( self.create_prefetch_menu("Edge Labels") )
             
             layers.append(layer)
             del layer
@@ -244,6 +258,8 @@ class EdgeTrainingGui(LayerViewerGui):
             layer.visible = True
             layer.opacity = 1.0
             self.update_probability_edges() # Initialize
+
+            layer.contexts.append( self.create_prefetch_menu("Edge Probabilities") )
             layers.append(layer)
             del layer
                 
