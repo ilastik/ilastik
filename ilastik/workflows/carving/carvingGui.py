@@ -503,7 +503,10 @@ class CarvingGui(LabelingGui):
         object_lut[object_supervoxels] = 1
         supervoxel_volume = mst.supervoxelUint32
         object_volume = object_lut[supervoxel_volume]
-
+        if len(numpy.unique(object_volume)) <= 1:
+            if object_names:
+                self._exportMeshes(object_names, obj_filepaths)
+            return
         # Run the mesh extractor
         window = MeshGeneratorDialog(self)
         
