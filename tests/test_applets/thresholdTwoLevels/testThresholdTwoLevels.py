@@ -614,11 +614,12 @@ class TestThresholdTwoLevels(Generator2):
 
         ref = output*output2
         idx = np.where(ref != output)
-        print(oper.Output.meta.getTaggedShape())
-        print(output.shape)
-        print(idx)
-        print(output[idx])
-        print(output2[idx])
+        
+#         print(str(oper.Output.meta.getTaggedShape()))
+#         print(str(output.shape))
+#         print(str(idx))
+#         print(str(output[idx]))
+#         print(str(output2[idx]))
         numpy.testing.assert_array_almost_equal(ref, output)
 
     def testPropagateDirty(self):

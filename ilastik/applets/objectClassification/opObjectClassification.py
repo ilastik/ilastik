@@ -1118,60 +1118,57 @@ class OpObjectPredict(Operator):
                     n = max(n, len(feature_matrix))
             return n
 
-        # FIXME: self.prob_cache is shared, so we need to block.
-        # However, this makes prediction single-threaded.
+        # Keep a list of times that are not in the cache
         with self.lock:
-            for t in times:
-                if t in self.prob_cache:
-                    continue
+            times_not_cached = [t for t in times if t not in self.prob_cache]
 
-                # Initialize with a single value for the 'background object '
-                prob_predictions[t] = numpy.zeros( (1, len(self.ProbabilityChannels)), dtype=numpy.float32 )
-                tmpfeats = self.Features([t]).wait()
-                num_objects = get_num_objects(tmpfeats[t])
+        # Initialize with a single value for the 'background object ' 
+        if times_not_cached:  
+            tmpfeats = self.Features(times_not_cached).wait()
+                     
+        for t in times_not_cached:
+            prob_predictions[t] = numpy.zeros( (1, len(self.ProbabilityChannels)), dtype=numpy.float32 )
+            num_objects = get_num_objects(tmpfeats[t])#tmpfeats[t])
+            # Apparently self.Features always returns a background object, 
+            #  so we expect at least 1 object in the list, even if there's nothing to predict.
+            assert num_objects > 0
+            if num_objects == 1:
+                continue
+                  
+            ftmatrix, _, col_names = make_feature_array({t:tmpfeats[t]}, selected)
+            rows, cols = replace_missing(ftmatrix)
+            self.bad_objects[t] = numpy.zeros((ftmatrix.shape[0],))
+            self.bad_objects[t][rows] = 1
+            feats[t] = ftmatrix
+  
+        # Are there any objects to predict?
+        if len(feats) > 0:
+            def predict_forest(_t):
+                # Note: We can't use RandomForest.predictLabels() here because we're training in parallel,
+                #        and we have to average the PROBABILITIES from all forests.
+                #       Averaging the label predictions from each forest is NOT equivalent.
+                #       For details please see wikipedia:
+                #       http://en.wikipedia.org/wiki/Electoral_College_%28United_States%29#Irrelevancy_of_national_popular_vote
+                #       (^-^)
+                prob_predictions[_t] = classifier.predict_probabilities(feats[_t].astype(numpy.float32))
+  
+            # predict the data with all the forests in parallel
+            pool = RequestPool()
+            for t in times_not_cached:
+                logger.debug("Predicting object probabilities for time step: {}".format( t ))
+                req = Request( partial(predict_forest, t) )
+                pool.add(req)
+  
+            pool.wait()
+            pool.clean()
 
-                # Apparently self.Features always returns a background object, 
-                #  so we expect at least 1 object in the list, even if there's nothing to predict.
-                assert num_objects > 0
-                if num_objects == 1:
-                    continue
-                    
-                ftmatrix, _, col_names = make_feature_array(tmpfeats, selected)
-                rows, cols = replace_missing(ftmatrix)
-                self.bad_objects[t] = numpy.zeros((ftmatrix.shape[0],))
-                self.bad_objects[t][rows] = 1
-                feats[t] = ftmatrix
-
-            # Are there any objects to predict?
-            if len(feats) > 0:
-                def predict_forest(_t):
-                    # Note: We can't use RandomForest.predictLabels() here because we're training in parallel,
-                    #        and we have to average the PROBABILITIES from all forests.
-                    #       Averaging the label predictions from each forest is NOT equivalent.
-                    #       For details please see wikipedia:
-                    #       http://en.wikipedia.org/wiki/Electoral_College_%28United_States%29#Irrelevancy_of_national_popular_vote
-                    #       (^-^)
-                    prob_predictions[_t] = classifier.predict_probabilities(feats[_t].astype(numpy.float32))
-    
-                # predict the data with all the forests in parallel
-                pool = RequestPool()
-                for t in times:
-                    if t in self.prob_cache:
-                        continue
-                    logger.debug("Predicting object probabilities for time step: {}".format( t ))
-                    req = Request( partial(predict_forest, t) )
-                    pool.add(req)
-    
-                pool.wait()
-                pool.clean()
-
+        with self.lock:
             for t in times:
                 if t not in self.prob_cache:
                     # prob_predictions is a dict-of-arrays, indexed as follows:
                     # prob_predictions[t][object_index, class_index]
                     self.prob_cache[t] = prob_predictions[t]
                     self.prob_cache[t][0] = 0 # Background probability is always zero
-
 
             if slot == self.Probabilities:
                 return { t : self.prob_cache[t] for t in times }

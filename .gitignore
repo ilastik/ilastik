@@ -1,6 +1,8 @@
 *~
 build
 tests/*.h5
+!tests/data/inputdata/smallVideo.h5
+!tests/data/inputdata/smallVideoSimpleSegmentation.h5
 *.pyc
 *.goutputstream
 *.pyo
