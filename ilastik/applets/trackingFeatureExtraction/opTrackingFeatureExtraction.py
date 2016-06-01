@@ -155,7 +155,7 @@ class OpTrackingFeatureExtraction(Operator):
     BlockwiseRegionFeaturesDivision = OutputSlot() 
     
     CleanLabelBlocks = OutputSlot()
-    LabelImageCacheInput = InputSlot()
+    LabelImageCacheInput = InputSlot(optional=True)
 
     RegionFeaturesCacheInputVigra = InputSlot(optional=True)
     RegionFeaturesCleanBlocksVigra = OutputSlot()
