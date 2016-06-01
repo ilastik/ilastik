@@ -10,7 +10,6 @@ from ilastik.applets.tracking.base.trackingUtilities import relabel, highlightMe
 from ilastik.applets.tracking.base.trackingUtilities import get_events
 from lazyflow.operators.opCompressedCache import OpCompressedCache
 from lazyflow.roi import sliceToRoi
-from PyQt4 import QtGui
 from ilastik.applets.tracking.conservation.opRelabeledMergerFeatureExtraction import OpRelabeledMergerFeatureExtraction
 
 import sys

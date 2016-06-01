@@ -2,7 +2,10 @@ import numpy as np
 from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.rtype import List
 from lazyflow.stype import Opaque
-import pgmlink
+try:
+    import pgmlink
+except:
+    import pgmlinkNoIlpSolver as pgmlink
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.tracking.base.opTrackingBase import OpTrackingBase
 from ilastik.applets.tracking.base.trackingUtilities import relabel, highlightMergers
@@ -10,7 +13,6 @@ from ilastik.applets.objectExtraction.opObjectExtraction import default_features
 from ilastik.applets.tracking.base.trackingUtilities import get_events
 from lazyflow.operators.opCompressedCache import OpCompressedCache
 from lazyflow.roi import sliceToRoi
-from PyQt4 import QtGui
 from opRelabeledMergerFeatureExtraction import OpRelabeledMergerFeatureExtraction
 
 import logging
@@ -77,7 +79,6 @@ class OpConservationTracking(OpTrackingBase):
         self.RelabeledCachedOutput.connect(self._relabeledOpCache.Output)
         self.tracker = None
         self._ndim = 3
-
 
     def setupOutputs(self):
         super(OpConservationTracking, self).setupOutputs()
@@ -169,7 +170,8 @@ class OpConservationTracking(OpTrackingBase):
             motionModelWeight=10.0,
             force_build_hypotheses_graph = False,
             max_nearest_neighbors = 1,
-            withBatchProcessing = False
+            withBatchProcessing = False,
+            solverName="ILP"
             ):
         
         if not self.Parameters.ready():
@@ -265,6 +267,8 @@ class OpConservationTracking(OpTrackingBase):
         if self.tracker is None:
             do_build_hypotheses_graph = True
 
+        solverType = self.getPgmlinkSolverType(solverName)
+
         if do_build_hypotheses_graph:
             print '\033[94m' +"make new graph"+  '\033[0m'
             self.tracker = pgmlink.ConsTracking(int(maxObj),
@@ -276,7 +280,7 @@ class OpConservationTracking(OpTrackingBase):
                                          "none",  # detection_rf_filename
                                          fov,
                                          "none", # dump traxelstore,
-                                         pgmlink.ConsTrackingSolverType.CplexSolver,
+                                         solverType,
                                          ndim
                                          )
             g = self.tracker.buildGraph(ts, max_nearest_neighbors)
@@ -290,28 +294,28 @@ class OpConservationTracking(OpTrackingBase):
         params = self.tracker.get_conservation_tracking_parameters(
             0,       # forbidden_cost
             float(ep_gap), # ep_gap
-            withTracklets, # with tracklets
-            10.0, # detection weight
-            divWeight, # division weight
-            transWeight, # transition weight
-            disappearance_cost, # disappearance cost
-            appearance_cost, # appearance cost
-            withMergerResolution, # with merger resolution
-            ndim, # ndim
-            transition_parameter, # transition param
-            borderAwareWidth, # border width
+            bool(withTracklets), # with tracklets
+            float(10.0), # detection weight
+            float(divWeight), # division weight
+            float(transWeight), # transition weight
+            float(disappearance_cost), # disappearance cost
+            float(appearance_cost), # appearance cost
+            bool(withMergerResolution), # with merger resolution
+            int(ndim), # ndim
+            float(transition_parameter), # transition param
+            float(borderAwareWidth), # border width
             True, #with_constraints
             uncertaintyParams, # uncertainty parameters
-            cplex_timeout, # cplex timeout
+            float(cplex_timeout), # cplex timeout
             None, # transition classifier
-            pgmlink.ConsTrackingSolverType.CplexSolver, # Solver
+            solverType,
             False, # training to hard constraints
             1 # num threads
         )
 
-        if motionModelWeight > 0:
-            logger.info("Registering motion model with weight {}".format(motionModelWeight))
-            params.register_motion_model4_func(swirl_motion_func_creator(motionModelWeight), motionModelWeight * 25.0)
+        # if motionModelWeight > 0:
+        #     logger.info("Registering motion model with weight {}".format(motionModelWeight))
+        #     params.register_motion_model4_func(swirl_motion_func_creator(motionModelWeight), motionModelWeight * 25.0)
 
         try:
             eventsVector = self.tracker.track(params, False)
@@ -332,8 +336,8 @@ class OpConservationTracking(OpTrackingBase):
                     params,
                     coordinate_map.get(),
                     float(ep_gap),
-                    transWeight,
-                    withTracklets,
+                    float(transWeight),
+                    bool(withTracklets),
                     ndim,
                     transition_parameter,
                     max_traxel_id_at,
@@ -360,6 +364,28 @@ class OpConservationTracking(OpTrackingBase):
             else:
                 self.parent.parent.trackingApplet._gui.currentGui().layerstack[merger_layer_idx].colorTable = \
                     self.parent.parent.trackingApplet._gui.currentGui().tracking_colortable
+
+    @staticmethod
+    def getPgmlinkSolverType(solverName):
+        if solverName == "ILP":
+            # select solver type
+            if hasattr(pgmlink.ConsTrackingSolverType, "CplexSolver"):
+                solver = pgmlink.ConsTrackingSolverType.CplexSolver
+            else:
+                raise AssertionError("Cannot select ILP solver if pgmlink was compiled without ILP support")
+        elif solverName == "Magnusson":
+            if hasattr(pgmlink.ConsTrackingSolverType, "DynProgSolver"):
+                solver = pgmlink.ConsTrackingSolverType.DynProgSolver
+            else:
+                raise AssertionError("Cannot select Magnusson solver if pgmlink was compiled without Magnusson support")
+        elif solverName == "Flow":
+            if hasattr(pgmlink.ConsTrackingSolverType, "FlowSolver"):
+                solver = pgmlink.ConsTrackingSolverType.FlowSolver
+            else:
+                raise AssertionError("Cannot select Flow solver if pgmlink was compiled without Flow support")
+        else:
+            raise ValueError("Unknown solver {} selected".format(solverName))
+        return solver
 
     def propagateDirty(self, inputSlot, subindex, roi):
         super(OpConservationTracking, self).propagateDirty(inputSlot, subindex, roi)
