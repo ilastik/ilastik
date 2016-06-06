@@ -7,7 +7,7 @@ from PyQt4 import QtCore, QtGui
 from PyQt4.QtCore import pyqtRemoveInputHook, pyqtRestoreInputHook
 # import pyqtgraph as pg
 
-import IPython
+# import IPython
 
 # from volumina.api import Viewer
 from volumina.widgets import layerwidget
@@ -164,11 +164,6 @@ class FeatureSelectionDialog(QtGui.QDialog):
         self._ilastik_currentslicing_5D = ilastik_editor.posModel.slicingPos5D
         current_view = ilastik_editor.imageViews[2]
         current_viewport_rect = current_view.viewportRect().getRect()
-
-        # pyqtRemoveInputHook()
-        # IPython.embed()
-        # pyqtRestoreInputHook()
-
 
         axisOrder = [ tag.key for tag in self.opFeatureSelection.InputImage.meta.axistags ]
         x_idx = axisOrder.index('x')
@@ -580,10 +575,6 @@ class FeatureSelectionDialog(QtGui.QDialog):
         # remember the currently selected features so that they are not changed in case the user cancels the dialog
         user_defined_matrix = self.opFeatureSelection.SelectionMatrix.value
 
-        pyqtRemoveInputHook()
-        IPython.embed()
-        pyqtRestoreInputHook()
-
 
         # apply new feature matrix and make sure lazyflow applies the changes
         if np.sum(user_defined_matrix != feat_matrix) != 0:
@@ -627,12 +618,12 @@ class FeatureSelectionDialog(QtGui.QDialog):
                                                                   axis_1_slice,
                                                                   axis_2_slice,
                                                                   axis_3_slice,
-                                                                  axis_4_slice].wait()) # correct?
+                                                                  axis_4_slice].wait())
             elif self._inputDimension == 3:
                 single_layer_of_segmentation = np.squeeze(seglayer[axis_0_slice, 
                                                                   axis_1_slice,
                                                                   axis_2_slice,
-                                                                  axis_3_slice].wait()) # correct?
+                                                                  axis_3_slice].wait())
             elif self._inputDimension == 2:
                 single_layer_of_segmentation = np.squeeze(seglayer[axis_0_slice, 
                                                                   axis_1_slice,
