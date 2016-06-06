@@ -436,7 +436,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             # could be merged with code in opStructuredTracking
             structuredLearningTracker.addLabels()
 
-            mergeMsgStr = "Your tracking annotations contradict this model assumptions: mergers can split or merge, but must appear or dissaper as a unit!"
+            mergeMsgStr = "Your tracking annotations contradict this model assumptions! All tracks must be continuous, tracks of length one are not allowed, and mergers may merge or split but all tracks in a merger appear/disappear together."
             foundAllArcs = True;
             for cropKey in self.mainOperator.Annotations.value.keys():
                 if foundAllArcs:
@@ -476,7 +476,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
                                     # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
                                     type = self._type(cropKey, time, track) # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
-
+                                    print "--->", cropKey, time, label, track, type
                                     if type == None:
                                         raise DatasetConstraintError('Structured Learning', mergeMsgStr)
 
@@ -672,7 +672,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                 if track in labels[t][label]:
                     lastTime = t
                     lastLabel = label
-
         if lastTime == -1:
             type = "FIRST"
         elif lastTime < time-1:
@@ -684,9 +683,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         for t in range(crop["time"][1],time,-1):
             if t in labels.keys():
                 for label in labels[t]:
-                    if track in labels[t][label]:
+                     track in labels[t][label]:
                         firstTime = t
-
         if firstTime == -1:
             if type == "FIRST":
                 return ["SINGLETON(FIRST_LAST)"]
