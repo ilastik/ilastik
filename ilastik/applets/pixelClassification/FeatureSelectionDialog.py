@@ -7,7 +7,7 @@ from PyQt4 import QtCore, QtGui
 from PyQt4.QtCore import pyqtRemoveInputHook, pyqtRestoreInputHook
 # import pyqtgraph as pg
 
-# import IPython
+import IPython
 
 # from volumina.api import Viewer
 from volumina.widgets import layerwidget
@@ -169,17 +169,22 @@ class FeatureSelectionDialog(QtGui.QDialog):
         # IPython.embed()
         # pyqtRestoreInputHook()
 
+
         axisOrder = [ tag.key for tag in self.opFeatureSelection.InputImage.meta.axistags ]
         x_idx = axisOrder.index('x')
         y_idx = axisOrder.index('y')
         self._xysliceID = ilastik_currentslicing[-1]
 
+        self._inputDimension = 2 # at least x and y
+
         self._bbox = {}
         if 'z' in axisOrder:
             self._bbox['z'] = [self._xysliceID, self._xysliceID + 1]
+            self._inputDimension += 1
         if 'c' in axisOrder:
             self._bbox['c'] = [0, self._stackdim[axisOrder.index('c')]]
         if 't' in axisOrder:
+            self._inputDimension += 1
             self._bbox['t'] = [self._ilastik_currentslicing_5D[0], self._ilastik_currentslicing_5D[0] + 1]
 
         self._bbox['x'] = [np.max([int(current_viewport_rect[0]), 0]), 
@@ -187,12 +192,12 @@ class FeatureSelectionDialog(QtGui.QDialog):
         self._bbox['y'] = [np.max([int(current_viewport_rect[1]), 0]),
                            np.min([int(current_viewport_rect[1] + current_viewport_rect[3]), self._stackdim[y_idx]])]
 
+        self.reset_me()
 
         # self._bbox_lower = [np.max([int(current_viewport_rect[0]), 0]), np.max([int(current_viewport_rect[1]), 0])]
         # self._bbox_upper = [np.min([int(current_viewport_rect[0] + current_viewport_rect[2]), self._stackdim[x_idx]]),
         #               np.min([int(current_viewport_rect[1] + current_viewport_rect[3]), self._stackdim[y_idx]])]
 
-        self.reset_me()
 
         # retrieve raw data of current slice and add it to the layerstack
 
@@ -575,6 +580,11 @@ class FeatureSelectionDialog(QtGui.QDialog):
         # remember the currently selected features so that they are not changed in case the user cancels the dialog
         user_defined_matrix = self.opFeatureSelection.SelectionMatrix.value
 
+        pyqtRemoveInputHook()
+        IPython.embed()
+        pyqtRestoreInputHook()
+
+
         # apply new feature matrix and make sure lazyflow applies the changes
         if np.sum(user_defined_matrix != feat_matrix) != 0:
             self.opFeatureSelection.SelectionMatrix.setValue(feat_matrix)
@@ -591,24 +601,46 @@ class FeatureSelectionDialog(QtGui.QDialog):
         slice_shape = self.raw_xy_slice.shape[:2]
         segmentation = np.zeros(slice_shape)
 
+        axisOrder = [ tag.key for tag in self.opFeatureSelection.InputImage.meta.axistags ]
+        bbox = self._bbox
+
+        do_transpose = axisOrder.index('x') > axisOrder.index('y')
+
+        # we need to reset the 'c' axis because it only has length 1 for segmentation
+        if 'c' not in bbox.keys():
+            axisOrder += ['c']
+
+        bbox['c'] = [0, 1]
+        axis_0_slice = slice(bbox[axisOrder[0]][0], bbox[axisOrder[0]][1])
+        axis_1_slice = slice(bbox[axisOrder[1]][0], bbox[axisOrder[1]][1])
+
+        if len(axisOrder) > 2:
+            axis_2_slice = slice(bbox[axisOrder[2]][0], bbox[axisOrder[2]][1])
+            if len(axisOrder) > 3:
+                axis_3_slice = slice(bbox[axisOrder[3]][0], bbox[axisOrder[3]][1])
+                if len(axisOrder) > 4:
+                    axis_4_slice = slice(bbox[axisOrder[4]][0], bbox[axisOrder[4]][1])
+
         for i, seglayer in enumerate(self.opPixelClassification.SegmentationChannels):
-            if len(self._stackdim) == 5:
-                single_layer_of_segmentation = np.squeeze(seglayer[self._axis_0_slice, 
-                                                                  self._axis_1_slice,
-                                                                  self._axis_2_slice,
-                                                                  self._axis_3_slice,
-                                                                  self._axis_4_slice].wait())
-            elif len(self._stackdim) == 4:
-                single_layer_of_segmentation = np.squeeze(seglayer[self._axis_0_slice, 
-                                                                  self._axis_1_slice,
-                                                                  self._axis_2_slice,
-                                                                  self._axis_3_slice].wait())
-            elif len(self._stackdim) == 3:
-                single_layer_of_segmentation = np.squeeze(seglayer[self._axis_0_slice, 
-                                                                  self._axis_1_slice,
-                                                                  self._axis_2_slice].wait())
+            if self._inputDimension == 4:
+                single_layer_of_segmentation = np.squeeze(seglayer[axis_0_slice, 
+                                                                  axis_1_slice,
+                                                                  axis_2_slice,
+                                                                  axis_3_slice,
+                                                                  axis_4_slice].wait()) # correct?
+            elif self._inputDimension == 3:
+                single_layer_of_segmentation = np.squeeze(seglayer[axis_0_slice, 
+                                                                  axis_1_slice,
+                                                                  axis_2_slice,
+                                                                  axis_3_slice].wait()) # correct?
+            elif self._inputDimension == 2:
+                single_layer_of_segmentation = np.squeeze(seglayer[axis_0_slice, 
+                                                                  axis_1_slice,
+                                                                  axis_2_slice].wait())
             else:
                 raise Exception
+            if do_transpose:
+                single_layer_of_segmentation = single_layer_of_segmentation.transpose()
             segmentation[single_layer_of_segmentation != 0] = i
 
         end_time = times()[4]
