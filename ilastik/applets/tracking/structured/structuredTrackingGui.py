@@ -556,7 +556,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             self._drawer.maxNearestNeighborsSpinBox.setValue(self._maxNearestNeighbors)
 
         forbidden_cost = 0.0
-        ep_gap = 0.05
+        ep_gap = 0.005
         withTracklets=False
         withMergerResolution=True
         transition_parameter = 5.0
