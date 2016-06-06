@@ -683,7 +683,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         for t in range(crop["time"][1],time,-1):
             if t in labels.keys():
                 for label in labels[t]:
-                     track in labels[t][label]:
+                    if track in labels[t][label]:
                         firstTime = t
         if firstTime == -1:
             if type == "FIRST":
