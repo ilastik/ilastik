@@ -165,41 +165,80 @@ class FeatureSelectionDialog(QtGui.QDialog):
         current_view = ilastik_editor.imageViews[2]
         current_viewport_rect = current_view.viewportRect().getRect()
 
-        if len(self._stackdim) > 3:
-            self._bbox_lower = [np.max([int(current_viewport_rect[0]), 0]), np.max([int(current_viewport_rect[1]), 0])]
-            self._bbox_upper = [np.min([int(current_viewport_rect[0] + current_viewport_rect[2]), self._stackdim[1]]),
-                          np.min([int(current_viewport_rect[1] + current_viewport_rect[3]), self._stackdim[2]])]
-        else:
-            self._bbox_lower = [np.max([int(current_viewport_rect[0]), 0]), np.max([int(current_viewport_rect[1]), 0])]
-            self._bbox_upper = [np.min([int(current_viewport_rect[0] + current_viewport_rect[2]), self._stackdim[0]]),
-                          np.min([int(current_viewport_rect[1] + current_viewport_rect[3]), self._stackdim[1]])]
+        # pyqtRemoveInputHook()
+        # IPython.embed()
+        # pyqtRestoreInputHook()
 
+        axisOrder = [ tag.key for tag in self.opFeatureSelection.InputImage.meta.axistags ]
+        x_idx = axisOrder.index('x')
+        y_idx = axisOrder.index('y')
+        self._xysliceID = ilastik_currentslicing[-1]
+
+        self._bbox = {}
+        if 'z' in axisOrder:
+            self._bbox['z'] = [self._xysliceID, self._xysliceID + 1]
+        if 'c' in axisOrder:
+            self._bbox['c'] = [0, self._stackdim[axisOrder.index('c')]]
+        if 't' in axisOrder:
+            self._bbox['t'] = [self._ilastik_currentslicing_5D[0], self._ilastik_currentslicing_5D[0] + 1]
+
+        self._bbox['x'] = [np.max([int(current_viewport_rect[0]), 0]), 
+                           np.min([int(current_viewport_rect[0] + current_viewport_rect[2]), self._stackdim[x_idx]])]
+        self._bbox['y'] = [np.max([int(current_viewport_rect[1]), 0]),
+                           np.min([int(current_viewport_rect[1] + current_viewport_rect[3]), self._stackdim[y_idx]])]
+
+
+        # self._bbox_lower = [np.max([int(current_viewport_rect[0]), 0]), np.max([int(current_viewport_rect[1]), 0])]
+        # self._bbox_upper = [np.min([int(current_viewport_rect[0] + current_viewport_rect[2]), self._stackdim[x_idx]]),
+        #               np.min([int(current_viewport_rect[1] + current_viewport_rect[3]), self._stackdim[y_idx]])]
 
         self.reset_me()
 
         # retrieve raw data of current slice and add it to the layerstack
-        self._xysliceID = ilastik_currentslicing[-1]
 
-        # remove segmentation layers and feature sets (maybe not optimal, room for improvement here)
-        if len(self._stackdim) == 5:
-            self.raw_xy_slice = np.squeeze(self.opPixelClassification.InputImages[self._ilastik_currentslicing_5D[0],
-                                           self._bbox_lower[0]:self._bbox_upper[0],
-                                           self._bbox_lower[1]:self._bbox_upper[1],
-                                           self._xysliceID, :].wait())
-        elif len(self._stackdim) == 4:
-            self.raw_xy_slice = np.squeeze(self.opPixelClassification.InputImages[self._bbox_lower[0]:self._bbox_upper[0],
-                                           self._bbox_lower[1]:self._bbox_upper[1], self._xysliceID, :].wait())
+        self._axis_0_slice = slice(self._bbox[axisOrder[0]][0], self._bbox[axisOrder[0]][1])
+        self._axis_1_slice = slice(self._bbox[axisOrder[1]][0], self._bbox[axisOrder[1]][1])
+
+        if len(self._stackdim) > 2:
+            self._axis_2_slice = slice(self._bbox[axisOrder[2]][0], self._bbox[axisOrder[2]][1])
+            if len(self._stackdim) > 3:
+                self._axis_3_slice = slice(self._bbox[axisOrder[3]][0], self._bbox[axisOrder[3]][1])
+                if len(self._stackdim) > 4:
+                    self._axis_4_slice = slice(self._bbox[axisOrder[4]][0], self._bbox[axisOrder[4]][1])
+
+        if len(self._stackdim) == 2:
+            self.raw_xy_slice = np.squeeze(self.opPixelClassification.InputImages[self._axis_0_slice, 
+                                                                                  self._axis_1_slice].wait())
         elif len(self._stackdim) == 3:
-             self.raw_xy_slice = np.squeeze(self.opPixelClassification.InputImages[self._bbox_lower[0]:self._bbox_upper[0],
-                                           self._bbox_lower[1]:self._bbox_upper[1], :].wait())
+            self.raw_xy_slice = np.squeeze(self.opPixelClassification.InputImages[self._axis_0_slice, 
+                                                                                  self._axis_1_slice,
+                                                                                  self._axis_2_slice].wait())
+        elif len(self._stackdim) == 4:
+            self.raw_xy_slice = np.squeeze(self.opPixelClassification.InputImages[self._axis_0_slice, 
+                                                                                  self._axis_1_slice,
+                                                                                  self._axis_2_slice,
+                                                                                  self._axis_3_slice].wait())
+        elif len(self._stackdim) == 5:
+            self.raw_xy_slice = np.squeeze(self.opPixelClassification.InputImages[self._axis_0_slice, 
+                                                                                  self._axis_1_slice,
+                                                                                  self._axis_2_slice,
+                                                                                  self._axis_3_slice,
+                                                                                  self._axis_4_slice].wait())
         else:
             raise Exception
+        
 
         axistags = self.opFeatureSelection.InputImage.meta['axistags']
         color_index = axistags.index('c')
-        if self._stackdim[color_index] > 1:
+        if self._stackdim[color_index] > 1 and self._stackdim[color_index]>1:
+            # dirty workaround for swapping x/y axis (I dont know how to set axistags of new layer)
+            if axisOrder.index('x') > axisOrder.index('y'):
+                self.raw_xy_slice = self.raw_xy_slice.transpose((1, 0, 2))
             self._add_color_layer(self.raw_xy_slice, "raw_data", True)
         else:
+            # dirty workaround for swapping x/y axis (I dont know how to set axistags of new layer)
+            if axisOrder.index('x') > axisOrder.index('y'):
+                self.raw_xy_slice = self.raw_xy_slice.transpose((1, 0))
             self._add_grayscale_layer(self.raw_xy_slice, "raw_data", True)
 
 
@@ -554,18 +593,20 @@ class FeatureSelectionDialog(QtGui.QDialog):
 
         for i, seglayer in enumerate(self.opPixelClassification.SegmentationChannels):
             if len(self._stackdim) == 5:
-                single_layer_of_segmentation = np.squeeze(seglayer[self._ilastik_currentslicing_5D[0],
-                                                          self._bbox_lower[0]:self._bbox_upper[0],
-                                                          self._bbox_lower[1]:self._bbox_upper[1],
-                                                          self._xysliceID, 0].wait())
+                single_layer_of_segmentation = np.squeeze(seglayer[self._axis_0_slice, 
+                                                                  self._axis_1_slice,
+                                                                  self._axis_2_slice,
+                                                                  self._axis_3_slice,
+                                                                  self._axis_4_slice].wait())
             elif len(self._stackdim) == 4:
-                single_layer_of_segmentation = np.squeeze(seglayer[self._bbox_lower[0]:self._bbox_upper[0],
-                                                          self._bbox_lower[1]:self._bbox_upper[1],
-                                                          self._xysliceID, 0].wait())
+                single_layer_of_segmentation = np.squeeze(seglayer[self._axis_0_slice, 
+                                                                  self._axis_1_slice,
+                                                                  self._axis_2_slice,
+                                                                  self._axis_3_slice].wait())
             elif len(self._stackdim) == 3:
-                single_layer_of_segmentation = np.squeeze(seglayer[self._bbox_lower[0]:self._bbox_upper[0],
-                                                        self._bbox_lower[1]:self._bbox_upper[1],
-                                                        0].wait())
+                single_layer_of_segmentation = np.squeeze(seglayer[self._axis_0_slice, 
+                                                                  self._axis_1_slice,
+                                                                  self._axis_2_slice].wait())
             else:
                 raise Exception
             segmentation[single_layer_of_segmentation != 0] = i
