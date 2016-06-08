@@ -34,8 +34,6 @@ from lazyflow.operators.opReorderAxes import OpReorderAxes
 import ilastik
 from lazyflow.utility.timer import timeLogged
 
-from ilastik.config import cfg as ilastik_config
-
 import logging
 logger = logging.getLogger(__name__)
 
