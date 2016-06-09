@@ -212,6 +212,8 @@ class CropSelectionGui(CroppingGui):
     def onDeleteCrop(self, position):
         if len(self.topLevelOperatorView.Crops.value) > 1:
             del self.topLevelOperatorView.Crops.value[self._cropControlUi.cropListModel[position].name]
+            self._setDirty(self.topLevelOperatorView.Crops,[])
+            self._cropControlUi.cropListView.selectRow(0)
 
     def getNextCropName(self):
         return self._getNext(self.topLevelOperatorView.CropNames,
