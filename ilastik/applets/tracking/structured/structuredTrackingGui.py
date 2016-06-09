@@ -439,7 +439,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
             mergeMsgStr = "Your tracking annotations contradict this model assumptions! All tracks must be continuous, tracks of length one are not allowed, and mergers may merge or split but all tracks in a merger appear/disappear together."
             foundAllArcs = True;
-            for cropKey in self.mainOperator.Annotations.value.keys():
+            for cropKey in self.mainOperator.Crops.value.keys():
                 if foundAllArcs:
                     crop = self.mainOperator.Annotations.value[cropKey]
 
