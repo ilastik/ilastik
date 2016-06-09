@@ -22,6 +22,7 @@ import numpy as np
 import vigra
 from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialDictSlot, SerialClassifierSlot
 from ilastikrag import Rag
+from ilastikrag.util import dataframe_from_hdf5, dataframe_to_hdf5
 
 class SerialRagSlot(SerialSlot):
     def __init__(self, slot, cache, labels_slot):
@@ -91,11 +92,77 @@ class SerialEdgeLabelsDictSlot(SerialSlot):
             edge_labels_dict = dict( zip(map(tuple, sp_ids), labels) )
             slot[lane_index].setValue( edge_labels_dict )
 
+class SerialCachedDataFrameSlot(SerialSlot):
+    def __init__(self, slot, cache, inslot=None, name=None,
+                 default=None, depends=None, selfdepends=True):
+        super(SerialCachedDataFrameSlot, self).__init__(
+            slot, inslot, name, None, default, depends, selfdepends
+        )
+        self.cache = cache
+        if self.name is None:
+            self.name = slot.name
+        
+        # We want to bind to the INPUT, not Output:
+        # - if the input becomes dirty, we want to make sure the cache is deleted
+        # - if the input becomes dirty and then the cache is reloaded, we'll save the classifier.
+        self._bind(cache.Input)
+
+    def _serialize(self, group, name, slot):
+        if slot.level == 0:
+            # Is the cache up-to-date?
+            # if not, we'll just return (don't recompute the classifier just to save it)
+            slot_index = slot.operator.index(slot)
+            inner_op = self.cache.getLane( slot_index )
+            if inner_op._dirty:
+                return
+    
+            dataframe = inner_op.Output.value
+    
+            # Can be None if the user didn't actually compute features yet.
+            if dataframe is None:
+                return
+    
+            df_group = group.create_group( name )
+            dataframe_to_hdf5( df_group, dataframe )
+        else:
+            subgroup = group.create_group(name)
+            for i, subslot in enumerate(slot):
+                subname = self.subname.format(i)
+                self._serialize(subgroup, subname, slot[i])
+
+    def _deserialize(self, subgroup, slot):
+        if slot.level == 0:
+            dataframe = dataframe_from_hdf5( subgroup )
+            slot_index = slot.operator.index(slot)
+            inner_op = self.cache.getLane( slot_index )
+            inner_op.forceValue( dataframe )
+        else:
+            # Pair stored indexes with their keys,
+            # e.g. [(0,'0'), (2, '2'), (3, '3')]
+            # Note that in some cases an index might be intentionally skipped.
+            indexes_to_keys = { int(k) : k for k in subgroup.keys() }
+            
+            # Ensure the slot is at least big enough to deserialize into.
+            max_index = max( [0] + indexes_to_keys.keys() )
+            if len(slot) < max_index+1:
+                slot.resize(max_index+1)
+
+            # Now retrieve the data
+            for i, subslot in enumerate(slot):
+                if i in indexes_to_keys:
+                    key = indexes_to_keys[i]
+                    assert key == self.subname.format(i)
+                    self._deserialize(subgroup[key], subslot)
+
 class EdgeTrainingSerializer(AppletSerializer):
     def __init__(self, operator, projectFileGroupName):
         slots = [ SerialDictSlot(operator.FeatureNames),
                   SerialEdgeLabelsDictSlot(operator.EdgeLabelsDict),
                   SerialRagSlot(operator.Rag, operator.opRagCache, operator.Superpixels),
+                  SerialCachedDataFrameSlot( operator.opEdgeFeaturesCache.Output,
+                                             operator.opEdgeFeaturesCache,
+                                             name="EdgeFeatures" )
+
 # FIXME: vigra-1.11 seems to introduce a segfault when serializing/deserializing the classifier.
 #        Uncomment that once this is fixed.
 #                   SerialClassifierSlot(operator.opClassifierCache.Output,
