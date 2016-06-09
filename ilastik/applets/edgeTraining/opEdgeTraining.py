@@ -205,6 +205,11 @@ class OpComputeEdgeFeatures(Operator):
             voxel_data = voxel_data[...,0] # drop channel
             edge_features_df = rag.compute_features(voxel_data, feature_names)
             edge_features_df = edge_features_df.iloc[:, 2:] # Discard columns [sp1, sp2]
+            
+            # Prefix all column names with the channel name, to guarantee uniqueness
+            # (Generally a nice feature, but also required for serialization.)
+            edge_features_df.columns = map( lambda feature_name: channel_name + feature_name,
+                                            edge_features_df.columns.values )
             edge_feature_dfs.append(edge_features_df)
 
         # Could use join() or merge() here, but we know the rows are already in the right order, and concat() should be faster.
