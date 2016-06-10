@@ -23,12 +23,13 @@ from functools import partial
 import numpy as np
 
 from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QWidget, QLabel, QDoubleSpinBox, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy, QColor, QPen
+from PyQt4.QtGui import QWidget, QLabel, QDoubleSpinBox, QComboBox, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy, QColor, QPen
 
 from ilastik.utility.gui import threadRouted
 from volumina.pixelpipeline.datasources import LazyflowSource
 from volumina.layer import SegmentationEdgesLayer
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+from ilastik.applets.multicut.opMulticut import OpMulticutAgglomerator
 
 from lazyflow.request import Request
 
@@ -66,36 +67,44 @@ class MulticutGui(LayerViewerGui):
         """
         op = self.topLevelOperatorView
 
-        # Beta controls
-        beta_label = QLabel(text="Beta:")
-        beta_box = QDoubleSpinBox()
-        beta_box.setDecimals(2)
-        beta_box.setMinimum(0.01)
-        beta_box.setMaximum(0.99)
-        beta_box.setSingleStep(0.1)
-        
-        # Keep in sync: operator <--> gui
-        beta_box.valueChanged.connect( self.configure_operator_from_gui )
-        op.Beta.notifyDirty( self.configure_gui_from_operator )
-        self.__cleanup_fns.append( partial( op.Beta.unregisterDirty, self.configure_gui_from_operator ) )
-        
-        beta_layout = QHBoxLayout()
-        beta_layout.addWidget(beta_label)
-        beta_layout.addSpacerItem( QSpacerItem(10, 0, QSizePolicy.Expanding) )
-        beta_layout.addWidget(beta_box)
+        def configure_update_handlers( qt_signal, op_slot ):
+            qt_signal.connect( self.configure_operator_from_gui )
+            op_slot.notifyDirty( self.configure_gui_from_operator )
+            self.__cleanup_fns.append( partial( op_slot.unregisterDirty, self.configure_gui_from_operator ) )
+
+        def control_layout( label_text, widget ):
+            row_layout = QHBoxLayout()
+            row_layout.addWidget( QLabel(label_text) )
+            row_layout.addSpacerItem( QSpacerItem(10, 0, QSizePolicy.Expanding) )
+            row_layout.addWidget(widget)
+            return row_layout
+
+        drawer_layout = QVBoxLayout()
+
+        # Beta
+        beta_box = QDoubleSpinBox(decimals=2, minimum=0.01, maximum=0.99, singleStep=0.1)
+        configure_update_handlers( beta_box.valueChanged, op.Beta )
+        beta_layout = control_layout("Beta", beta_box)
+        drawer_layout.addLayout(beta_layout)
+        self.beta_box = beta_box
+
+        # Solver
+        solver_name_combo = QComboBox()
+        for solver_name in OpMulticutAgglomerator.SOLVER_NAMES:
+            solver_name_combo.addItem(solver_name)
+        configure_update_handlers( solver_name_combo.currentIndexChanged, op.SolverName )
+        drawer_layout.addLayout( control_layout( "Solver", solver_name_combo ) )
+        self.solver_name_combo = solver_name_combo
 
         # Layout
-        layout = QVBoxLayout()
-        layout.addLayout(beta_layout)
-        layout.addSpacerItem( QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding) )
+        drawer_layout.addSpacerItem( QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding) )
         
         # Finally, the whole drawer widget
         drawer = QWidget(parent=self)
-        drawer.setLayout(layout)
+        drawer.setLayout(drawer_layout)
 
         # Save these members for later use
         self._drawer = drawer
-        self._beta_box = beta_box
 
         # Initialize everything with the operator's initial values
         self.configure_gui_from_operator()
@@ -142,11 +151,14 @@ class MulticutGui(LayerViewerGui):
 
     def configure_gui_from_operator(self, *args):
         op = self.topLevelOperatorView
-        self._beta_box.setValue( op.Beta.value )
+        self.beta_box.setValue( op.Beta.value )
+        solver_index = OpMulticutAgglomerator.SOLVER_NAMES.index( op.SolverName.value )
+        self.solver_name_combo.setCurrentIndex( solver_index )
 
     def configure_operator_from_gui(self):
         op = self.topLevelOperatorView
-        op.Beta.setValue( self._beta_box.value() )
+        op.Beta.setValue( self.beta_box.value() )
+        op.SolverName.setValue( str(self.solver_name_combo.currentText()) )
 
     def setupLayers(self):
         layers = []

@@ -6,13 +6,19 @@ import opengm_with_cplex as opengm
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiToSlice
 from lazyflow.operators import OpCompressedCache, OpValueCache
+from lazyflow.utility import Timer
+
+import logging
+logger = logging.getLogger(__name__)
 
 class OpMulticut(Operator):
     Beta = InputSlot(value=0.1)
+    SolverName = InputSlot(value='Exact')
+
     Rag = InputSlot() # value slot.  Rag object.
     Superpixels = InputSlot()
     EdgeProbabilities = InputSlot()
-    EdgeProbabilitiesDict = InputSlot() # A dict of id_pair -> probabilities
+    EdgeProbabilitiesDict = InputSlot() # A dict of id_pair -> probabilities (used by the GUI)
     RawData = InputSlot(optional=True) # Used by the GUI for display only
     
     Output = OutputSlot() # Pixelwise output (not RAG, etc.)
@@ -23,6 +29,7 @@ class OpMulticut(Operator):
         self.opMulticutAgglomerator = OpMulticutAgglomerator(parent=self)
         self.opMulticutAgglomerator.Superpixels.connect( self.Superpixels )
         self.opMulticutAgglomerator.Beta.connect( self.Beta )
+        self.opMulticutAgglomerator.SolverName.connect( self.SolverName )
         self.opMulticutAgglomerator.Rag.connect( self.Rag )
         self.opMulticutAgglomerator.EdgeProbabilities.connect( self.EdgeProbabilities )
 
@@ -40,9 +47,13 @@ class OpMulticut(Operator):
         pass
 
 class OpMulticutAgglomerator(Operator):
-    Superpixels = InputSlot() # Just needed for slot metadata
+    SOLVER_NAMES = ['Exact', 'IntersectionBased', 'Cgc']
+
+    SolverName = InputSlot()
     Beta = InputSlot()
+
     Rag = InputSlot()
+    Superpixels = InputSlot() # Just needed for slot metadata
     EdgeProbabilities = InputSlot()
     Output = OutputSlot()
     
@@ -54,7 +65,12 @@ class OpMulticutAgglomerator(Operator):
         edge_probabilities = self.EdgeProbabilities.value
         rag = self.Rag.value
         beta = self.Beta.value
-        agglomerated_labels = self.agglomerate_with_multicut(rag, edge_probabilities, beta)
+        solver = self.SolverName.value
+        
+        with Timer() as timer:
+            agglomerated_labels = self.agglomerate_with_multicut(rag, edge_probabilities, beta, solver)
+        logger.info("'{}' Multicut took {} seconds".format( solver, timer.seconds() ))
+        
         result[:] = agglomerated_labels[...,None]
         
         # FIXME: Is it okay to produce 0-based supervoxels?
@@ -64,9 +80,9 @@ class OpMulticutAgglomerator(Operator):
         self.Output.setDirty()
         
     @classmethod
-    def agglomerate_with_multicut(cls, rag, edge_probabilities, beta):
+    def agglomerate_with_multicut(cls, rag, edge_probabilities, beta, solver):
         """
-        rag: lazyflow.edge_features.Rag
+        rag: ilastikrag.Rag
         
         edge_probabilities: 1D array, same order as rag.edge_ids.
                             Should indicate probability of each edge being ON.
@@ -76,6 +92,8 @@ class OpMulticutAgglomerator(Operator):
         Returns: A label image of the same shape as rag.label_img, type uint32
         """
         assert rag.edge_ids.shape == (rag.num_edges, 2)
+        assert solver in OpMulticutAgglomerator.SOLVER_NAMES, \
+            "'{}' is not a valid solver name.".format(solver)
 
         p1 = edge_probabilities # Edge ON
         p1 = np.clip(p1, 0.001, 0.999)
@@ -97,7 +115,13 @@ class OpMulticutAgglomerator(Operator):
         fids = gm.addFunctions( pf )
         gm.addFactors( fids, rag.edge_ids )
 
-        inf = opengm.inference.Multicut( gm )
+        if solver == 'Exact':
+            inf = opengm.inference.Multicut( gm ) # Exact solver
+        elif solver == 'IntersectionBased':
+            inf = opengm.inference.IntersectionBased( gm )
+        elif solver == 'Cgc':
+            inf = opengm.inference.Cgc( gm, parameter=opengm.InfParam(planar=False) )
+
         ret = inf.infer( inf.verboseVisitor() )
         if ret.name != "NORMAL":
             raise RuntimeError("OpenGM inference failed with status: {}".format( ret.name ))
