@@ -36,36 +36,37 @@ from lazyflow.request import Request
 import logging
 logger = logging.getLogger(__name__)
 
-class MulticutGui(LayerViewerGui):
+# This is a mixin that can be added to any LayerViewerGui subclass
+# See MulticutGui (bottom of this file) for the standalone version.
+class MulticutGuiMixin(object):
 
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
     
     def appletDrawer(self):
-        return self._drawer
+        return self.__drawer
 
     def stopAndCleanUp(self):
         # Unsubscribe to all signals
         for fn in self.__cleanup_fns:
             fn()
-
-        # Base class
-        super( MulticutGui, self ).stopAndCleanUp()
+        
+        super(MulticutGuiMixin, self).stopAndCleanUp()
     
     ###########################################
     ###########################################
     
     def __init__(self, parentApplet, topLevelOperatorView):
         self.__cleanup_fns = []
-        self.topLevelOperatorView = topLevelOperatorView
-        super(MulticutGui, self).__init__( parentApplet, topLevelOperatorView, crosshair=False )
+        self.__topLevelOperatorView = topLevelOperatorView
+        super( MulticutGuiMixin, self ).__init__( parentApplet, topLevelOperatorView )
 
-    def initAppletDrawerUi(self):
+    def createDrawerControls(self):
         """
-        Overridden from base class (LayerViewerGui)
+        This is a separate function from initAppletDrawer() so that it can be called and used within another applet (this class is a mixin).
         """
-        op = self.topLevelOperatorView
+        op = self.__topLevelOperatorView
 
         def configure_update_handlers( qt_signal, op_slot ):
             qt_signal.connect( self.configure_operator_from_gui )
@@ -103,13 +104,11 @@ class MulticutGui(LayerViewerGui):
         drawer = QWidget(parent=self)
         drawer.setLayout(drawer_layout)
 
-        # Save these members for later use
-        self._drawer = drawer
-
         # Initialize everything with the operator's initial values
         self.configure_gui_from_operator()
-
         self._init_probability_colortable()
+        
+        return drawer
 
     def _init_probability_colortable(self):
         self.probability_colortable = []
@@ -123,7 +122,7 @@ class MulticutGui(LayerViewerGui):
             self.probability_pen_table.append(pen)
 
         # When the edge probabilities are dirty, update the probability edge layer pens
-        op = self.topLevelOperatorView
+        op = self.__topLevelOperatorView
         op.EdgeProbabilitiesDict.notifyDirty( self.update_probability_edges )
         self.__cleanup_fns.append( partial( op.EdgeProbabilitiesDict.unregisterDirty, self.update_probability_edges ) )
 
@@ -131,7 +130,7 @@ class MulticutGui(LayerViewerGui):
     # FIXME: Should we make a new Layer subclass that handles this colortable mapping for us?  Yes.
     def update_probability_edges(self, *args):
         def _impl():
-            op = self.topLevelOperatorView
+            op = self.__topLevelOperatorView
             if not self.superpixel_edge_layer:
                 return
             edge_probs = op.EdgeProbabilitiesDict.value
@@ -150,19 +149,19 @@ class MulticutGui(LayerViewerGui):
         self.superpixel_edge_layer.pen_table.update(new_pens)
 
     def configure_gui_from_operator(self, *args):
-        op = self.topLevelOperatorView
+        op = self.__topLevelOperatorView
         self.beta_box.setValue( op.Beta.value )
         solver_index = AVAILABLE_SOLVER_NAMES.index( op.SolverName.value )
         self.solver_name_combo.setCurrentIndex( solver_index )
 
     def configure_operator_from_gui(self):
-        op = self.topLevelOperatorView
+        op = self.__topLevelOperatorView
         op.Beta.setValue( self.beta_box.value() )
         op.SolverName.setValue( str(self.solver_name_combo.currentText()) )
 
     def setupLayers(self):
         layers = []
-        op = self.topLevelOperatorView
+        op = self.__topLevelOperatorView
 
         # Final segmentation -- Edges
         if op.Output.ready():
@@ -227,3 +226,12 @@ class MulticutGui(LayerViewerGui):
             del layer
 
         return layers
+
+class MulticutGui(MulticutGuiMixin, LayerViewerGui):
+
+    def initAppletDrawerUi(self):
+        """
+        Overridden from base class (LayerViewerGui)
+        """
+        # Save these members for later use
+        self.__drawer = self.createDrawerControls()
