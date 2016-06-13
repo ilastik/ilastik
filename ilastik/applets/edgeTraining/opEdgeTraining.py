@@ -337,7 +337,7 @@ class OpPredictEdgeProbabilities(Operator):
         
         logger.info("Predicting edge probabilities...")
         feature_matrix = edge_features_df.iloc[:, 2:].values # Discard [sp1, sp2]
-        assert feature_matrix.dtype == np.float32
+        assert feature_matrix.dtype == np.float32, "Unexpected feature dtype: {}".format( feature_matrix.dtype )
         probabilities = classifier.predict_probabilities(feature_matrix)[:,1]
         assert len(probabilities) == len(edge_features_df)
         result[0] = probabilities
