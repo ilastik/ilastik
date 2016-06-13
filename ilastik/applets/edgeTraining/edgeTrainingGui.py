@@ -287,7 +287,7 @@ class EdgeTrainingGui(LayerViewerGui):
         if op.GroundtruthSegmentation.ready():
             layer = self.createStandardLayerFromSlot( op.GroundtruthSegmentation )
             layer.name = "Groundtruth"
-            layer.visible = True
+            layer.visible = False
             layer.opacity = 0.5
             layers.append(layer)
             del layer
