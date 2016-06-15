@@ -382,7 +382,7 @@ class OpInputDataReader(Operator):
             with open(filePath) as f:
                 filetext = f.read()
                 hostname, uuid, dataname = filetext.splitlines()
-            opDvidVolume = OpDvidVolume( hostname, uuid, dataname, transpose_axes=True, parent=self )
+            opDvidVolume = OpDvidVolume( hostname, uuid, dataname, parent=self )
             return [opDvidVolume], opDvidVolume.Output
         
         if '://' not in filePath:
@@ -405,12 +405,12 @@ class OpInputDataReader(Operator):
                 query_args = dict( map(lambda s: s.split('='), query_string.split('&')) )
             try:
                 opDvidVolume = OpDvidVolume( fields['hostname'], fields['uuid'], fields['dataname'], query_args,
-                                             transpose_axes=True, parent=self )
+                                             parent=self )
                 return [opDvidVolume], opDvidVolume.Output
             except:
                 # Maybe this is actually a roi
                 opDvidRoi = OpDvidRoi( fields['hostname'], fields['uuid'], fields['dataname'],
-                                             transpose_axes=True, parent=self )
+                                             parent=self )
                 return [opDvidRoi], opDvidRoi.Output
         except OpDvidVolume.DatasetReadError as e:
             raise OpInputDataReader.DatasetReadError( *e.args )

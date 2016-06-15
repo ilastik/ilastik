@@ -34,7 +34,7 @@ import h5py
 from lazyflow.graph import Graph
 
 try:
-    from lazyflow.operators.ioOperators import OpDvidVolume
+    from lazyflow.operators.ioOperators.opDvidVolume import OpDvidVolume
     from libdvid import DVIDConnection, ConnectionMethod, DVIDNodeService
     from libdvid.voxels import VoxelsMetadata
     TEST_DVID_SERVER = os.getenv("TEST_DVID_SERVER", "127.0.0.1:8000")
@@ -93,15 +93,21 @@ class TestOpDvidVolume(unittest.TestCase):
         cls.node_location = "/repos/{dvid_repo}/nodes/{data_uuid}".format( **cls.__dict__ )
 
         # Generate some test data
-        data = numpy.random.randint(0, 255, (1, 128, 256, 512))
-        data = numpy.asfortranarray(data, numpy.uint8)
+        #data = numpy.random.randint(0, 255, (128, 256, 512, 1)).astype( numpy.uint8 )
+        
+        data = numpy.zeros((128, 256, 512, 1), dtype=numpy.uint8)
+        data.flat[:] = numpy.arange( numpy.prod((128, 256, 512, 1)) )
         cls.original_data = data
-        cls.voxels_metadata = VoxelsMetadata.create_default_metadata(data.shape, data.dtype, "cxyz", 1.0, "")
+        cls.voxels_metadata = VoxelsMetadata.create_default_metadata(data.shape, data.dtype, "zyxc", 1.0, "")
 
         # Write it to a new data instance
         node_service = DVIDNodeService(TEST_DVID_SERVER, cls.data_uuid)
+
         node_service.create_grayscale8(cls.data_name)
-        node_service.put_gray3D( cls.data_name, data[0,...], (0,0,0) )
+        node_service.put_gray3D( cls.data_name, data[...,0], (0,0,0) )
+
+#         node_service.create_labelblk(cls.data_name)
+#         node_service.put_labels3D( cls.data_name, data[...,0], (0,0,0) )
 
     @classmethod
     def tearDownClass(cls):
@@ -114,29 +120,32 @@ class TestOpDvidVolume(unittest.TestCase):
         """
         Get some data from the server and check it.
         """
-        self._test_volume( TEST_DVID_SERVER, self.data_uuid, self.data_name, (50,5,9,0), (150,20,10,1) )
+        self._test_volume( TEST_DVID_SERVER, self.data_uuid, self.data_name, (50,5,9,0), (120,20,10,1) )
     
-    def _test_volume(self, hostname, uuid, dataname, start, stop):
+    def _test_volume(self, hostname, uuid, dataname, start, stop, transposed_operator=False):
         """
         hostname: The dvid server host
         uuid: The node we can test with
         dataname: The data instance to test with
-        start, stop: The bounds of the cutout volume to retrieve from the server. C ORDER FOR THIS TEST BECAUSE we use transpose_axes=True
         """
         # Retrieve from server
         graph = Graph()
-        opDvidVolume = OpDvidVolume( hostname, uuid, dataname, {}, transpose_axes=True, graph=graph )
+        opDvidVolume = OpDvidVolume( hostname, uuid, dataname, {}, graph=graph )
         subvol = opDvidVolume.Output( start, stop ).wait()
 
         # Retrieve from file (which uses fortran order)
-        slicing = tuple( slice(x,y) for x,y in zip(start, stop) )
-        slicing = tuple( reversed(slicing) )
+        slicing = tuple( slice(a,b) for a,b in zip(start, stop) )
+        if transposed_operator:
+            slicing = tuple( reversed(slicing) )
 
         expected_data = self.original_data[slicing]
 
+        if transposed_operator:
+            expected_data = expected_data.transpose()
+
         # Compare.
-        assert ( subvol.view(numpy.ndarray) == expected_data.transpose() ).all(),\
-            "Data from server didn't match data from file!"
+        assert ( subvol.view(numpy.ndarray) == expected_data ).all(), \
+            "Data from server didn't match expected data!"
 
 if __name__ == "__main__":
     import sys

@@ -75,7 +75,9 @@ class OpExportDvidVolume(Operator):
         # Get the dataset details
         try:
             metadata = VoxelsAccessor.get_metadata(hostname, uuid, dataname)
-        except VoxelsAccessor.BadRequestError as ex:
+        except DVIDException as ex:
+            if ex.status != 404:
+                raise
             # Dataset doesn't exist yet.  Let's create it.
             metadata = VoxelsMetadata.create_default_metadata( shape, 
                                                                self.Input.meta.dtype, 

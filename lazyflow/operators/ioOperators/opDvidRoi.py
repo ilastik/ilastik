@@ -63,9 +63,8 @@ class OpDvidRoi(Operator):
     class DatasetReadError(Exception):
         pass
     
-    def __init__(self, hostname, uuid, roi_name, transpose_axes, *args, **kwargs):
+    def __init__(self, hostname, uuid, roi_name, *args, **kwargs):
         super( OpDvidRoi, self ).__init__(*args, **kwargs)
-        self._transpose_axes = transpose_axes
         self._hostname = hostname
         self._uuid = uuid
         self._roi_name = roi_name
@@ -91,7 +90,7 @@ class OpDvidRoi(Operator):
         """
         try:
             node_service = DVIDNodeService(self._hostname, self._uuid)
-            roi_blocks_xyz = numpy.array( node_service.get_roi(self._roi_name) )
+            roi_blocks_zyx = numpy.array( node_service.get_roi(self._roi_name) )
         except DVIDException as ex:
             if ex.status == httplib.NOT_FOUND:
                 raise OpDvidRoi.DatasetReadError("DVIDException: " + ex.message)
@@ -103,8 +102,8 @@ class OpDvidRoi(Operator):
         # Each voxel of this dataset represents a dvid block, so this volume
         # is 32x smaller than the full-res data in every dimension.
         # TODO: For now, we only respect the high-side of the bounding box, and force the low-side to 0,0,0.
-        shape = tuple(1 + numpy.max( roi_blocks_xyz, axis=0 ))
-        slice_shape = shape[:2] + (1,)
+        shape = tuple(1 + numpy.max( roi_blocks_zyx, axis=0 ))
+        slice_shape = (1,) + shape[1:]
         self._mem_file = h5py.File(str(id(self)), driver='core', backing_store=False, mode='w')
         dset = self._mem_file.create_dataset('data',
                                              shape=shape,
@@ -118,21 +117,21 @@ class OpDvidRoi(Operator):
         # Group the block indexes by z-coordinate
         # FIXME: This might get slow for lots of blocks because of all the calls to this lambda.
         #        Consider upgrading to cytools.groupby instead
-        group_iter = groupby(roi_blocks_xyz, lambda block_index: block_index[2])
+        group_iter = groupby(roi_blocks_zyx, lambda block_index: block_index[0])
         
         # Set a pixel for each block index, one z-slice at a time
         for z, block_indexes_iter in group_iter:
             block_indexes = numpy.array(list(block_indexes_iter))
-            block_indexes = block_indexes[:,:2] # drop z index
+            block_indexes = block_indexes[:,1:] # drop z index
             z_slice[:] = 0
-            z_slice[ tuple(block_indexes.transpose()) ] = 1
-            dset[:,:,z] = z_slice[...,0]
+            z_slice[0][ tuple(block_indexes.transpose()) ] = 1
+            dset[z,:,:] = z_slice[0,...]
         self._dset = dset
 
     def setupOutputs(self):
         shape = tuple(numpy.array(self._dset.shape) * DVID_BLOCK_WIDTH)
         dtype = self._dset.dtype
-        axiskeys = "xyz"        
+        axiskeys = "zyx"
 
         try:
             no_extents_checking = bool(int(os.getenv("LAZYFLOW_NO_DVID_EXTENTS", 0)))
@@ -147,13 +146,9 @@ class OpDvidRoi(Operator):
             logger.info("Using absurdly large DVID volume extents, to allow out-of-bounds requests.")
             tagged_shape = collections.OrderedDict( zip(axiskeys, shape) )
             for k,v in tagged_shape.items():
-                if k in 'xyz':
+                if k in 'zyx':
                     tagged_shape[k] = int(1e6)
             shape = tuple(tagged_shape.values())
-
-        if self._transpose_axes:
-            shape = tuple(reversed(shape))
-            axiskeys = "".join(reversed(axiskeys))
 
         self.Output.meta.shape = shape
         self.Output.meta.dtype = dtype.type
@@ -173,13 +168,8 @@ class OpDvidRoi(Operator):
 
         aligned_result_view = blockwise_view(aligned_result, 3*(DVID_BLOCK_WIDTH,), require_aligned_blocks=False)
 
-        if self._transpose_axes:
-            dset_slicing = tuple(reversed(block_slicing))
-            # broadcast 3d data into 6d view
-            aligned_result_view[:] = self._dset[dset_slicing].transpose()[..., None, None, None]
-        else:
-            # broadcast 3d data into 6d view
-            aligned_result_view[:] = self._dset[block_slicing][..., None, None, None]
+        # broadcast 3d data into 6d view
+        aligned_result_view[:] = self._dset[block_slicing][..., None, None, None]
         
         # If the result wasn't aligned, we couldn't broadcast directly to it.
         # Copy the data now.

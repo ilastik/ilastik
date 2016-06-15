@@ -40,9 +40,8 @@ class OpDvidVolume(Operator):
     class DatasetReadError(Exception):
         pass
     
-    def __init__(self, hostname, uuid, dataname, query_args, transpose_axes, *args, **kwargs):
+    def __init__(self, hostname, uuid, dataname, query_args, *args, **kwargs):
         super( OpDvidVolume, self ).__init__(*args, **kwargs)
-        self._transpose_axes = transpose_axes
         self._default_accessor = None
         self._throttled_accessor = None
         self._hostname = hostname
@@ -96,11 +95,7 @@ class OpDvidVolume(Operator):
                     tagged_shape[k] = int(1e6)
             shape = tuple(tagged_shape.values())
         
-        num_channels = shape[0]
-        if self._transpose_axes:
-            shape = tuple(reversed(shape))
-            axiskeys = "".join(reversed(axiskeys))
-
+        num_channels = shape[-1]
         self.Output.meta.shape = shape
         self.Output.meta.dtype = dtype.type
         self.Output.meta.axistags = vigra.defaultAxistags( axiskeys ) # FIXME: Also copy resolution, etc.
@@ -130,13 +125,7 @@ class OpDvidVolume(Operator):
 #             accessor = self._default_accessor
 
         accessor = self._default_accessor # FIXME (see above)
-        
-        if self._transpose_axes:
-            roi_start = tuple(reversed(roi.start))
-            roi_stop = tuple(reversed(roi.stop))
-            result[:] = accessor.get_ndarray(roi_start, roi_stop).transpose()
-        else:
-            result[:] = accessor.get_ndarray(roi.start, roi.stop)
+        result[:] = accessor.get_ndarray(roi.start, roi.stop)
         return result
 
     def propagateDirty(self, *args):

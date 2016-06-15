@@ -82,8 +82,8 @@ class TestOpDvidRoi(unittest.TestCase):
         # 1 1 1 1
         # 1 1 0 0
         # 1 1 0 0
-        cls.expected_data = numpy.ones((128,128,64), dtype=numpy.uint8, order='F')
-        cls.expected_data[64:, 64:] = 0
+        cls.expected_data = numpy.ones((64,128,128), dtype=numpy.uint8, order='C')
+        cls.expected_data[:, 64:, 64:] = 0
         block_values = cls.expected_data[::32,::32,::32]
         coords = numpy.transpose(numpy.nonzero(block_values))
         node_service.post_roi(cls.roi_name, coords)
@@ -91,14 +91,14 @@ class TestOpDvidRoi(unittest.TestCase):
     def test(self):
         # Retrieve from server
         graph = Graph()
-        opRoi = OpDvidRoi( TEST_DVID_SERVER, self.uuid, self.roi_name, transpose_axes=True, graph=graph )
-        roi_vol = opRoi.Output( (0,0,0), self.expected_data.transpose().shape ).wait()
-        assert (roi_vol == self.expected_data.transpose()).all()
+        opRoi = OpDvidRoi( TEST_DVID_SERVER, self.uuid, self.roi_name, graph=graph )
+        roi_vol = opRoi.Output( (0,0,0), self.expected_data.shape ).wait()
+        assert (roi_vol == self.expected_data).all()
 
         # Test a non-aligned roi
         subvol = ((30,60,50), (40, 70, 70))
         roi_vol = opRoi.Output( *subvol ).wait()
-        assert (roi_vol == self.expected_data.transpose()[roiToSlice(*subvol)]).all()
+        assert (roi_vol == self.expected_data[roiToSlice(*subvol)]).all()
 
 
 if __name__ == "__main__":
