@@ -198,7 +198,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         self._drawer.trainingToHardConstraints.setChecked(False)
         self._drawer.trainingToHardConstraints.setVisible(False) # will be used when we can handle sparse annotations
-        self._drawer.exportButton.setVisible(False)
+        self._drawer.exportButton.setVisible(True)
         self._drawer.exportTifButton.setVisible(False)
 
         self.topLevelOperatorView._detectionWeight = self._detectionWeight
