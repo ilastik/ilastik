@@ -316,19 +316,24 @@ class TrackingBaseGui( LayerViewerGui ):
 
             t_from = int(t_from)
 
+            if hasattr(self.mainOperator,"RelabeledImage"):
+                labelImageSlot = self.mainOperator.RelabeledImage
+            else:
+                labelImageSlot = self.mainOperator.LabelImage
+
             logger.info( "Saving first label image..." )
             key = []
-            for idx, flag in enumerate(axisTagsToString(self.mainOperator.LabelImage.meta.axistags)):
+            for idx, flag in enumerate(axisTagsToString(labelImageSlot.meta.axistags)):
                 if flag is 't':
                     key.append(slice(t_from,t_from+1))
                 elif flag is 'c':
                     key.append(slice(0,1))
                 else:
-                    key.append(slice(0,self.mainOperator.LabelImage.meta.shape[idx]))
+                    key.append(slice(0,labelImageSlot.meta.shape[idx]))
 
 
-            roi = SubRegion(self.mainOperator.LabelImage, key)
-            labelImage = self.mainOperator.LabelImage.get(roi).wait()
+            roi = SubRegion(labelImageSlot, key)
+            labelImage = labelImageSlot.get(roi).wait()
             labelImage = labelImage[0,...,0]
 
             try:
@@ -345,8 +350,8 @@ class TrackingBaseGui( LayerViewerGui ):
                     i = int(i)
                     t = t_from + i
                     key[0] = slice(t,t+1)
-                    roi = SubRegion(self.mainOperator.LabelImage, key)
-                    labelImage = self.mainOperator.LabelImage.get(roi).wait()
+                    roi = SubRegion(labelImageSlot, key)
+                    labelImage = labelImageSlot.get(roi).wait()
                     labelImage = labelImage[0,...,0]
                     if self.withMergers:
                         write_events(events_at, str(directory), t, labelImage, self.mainOperator.resolvedto)
