@@ -94,15 +94,15 @@ class DvidDataSelectionBrowser(ContentsBrowser):
         try:
             if typename == "roi":
                 node_service = DVIDNodeService(self._hostname, str(node_uuid))
-                roi_blocks_xyz = numpy.array( node_service.get_roi(str(dataname)) )
-                maxindex = tuple( DVID_BLOCK_WIDTH*(1 + numpy.max( roi_blocks_xyz, axis=0 )) )
+                roi_blocks_zyx = numpy.array( node_service.get_roi(str(dataname)) )
+                maxindex = tuple( DVID_BLOCK_WIDTH*(1 + numpy.max( roi_blocks_zyx, axis=0 )) )
                 minindex = (0,0,0) # Rois are always 3D
-                axiskeys = "xyz"
+                axiskeys = "zyx"
                 # If the current selection is a dataset, then include a channel dimension
                 if self.get_selection().typename != "roi":
-                    axiskeys = "cxyz"
-                    minindex = (0,) + minindex
-                    maxindex = (1,) + maxindex # FIXME: This assumes that the selected data has only 1 channel...
+                    axiskeys = "zyxc"
+                    minindex = minindex + (0,)
+                    maxindex = maxindex + (1,) # FIXME: This assumes that the selected data has only 1 channel...
             else:
                 # Query the server
                 raw_metadata = VoxelsAccessor.get_metadata( self._hostname, node_uuid, dataname )
@@ -112,9 +112,9 @@ class DvidDataSelectionBrowser(ContentsBrowser):
                 axiskeys = voxels_metadata.axiskeys
                 # If the current selection is a roi, then remove the channel dimension
                 if self.get_selection().typename == "roi":
-                    axiskeys = "xyz"
-                    minindex = minindex[1:]
-                    maxindex = maxindex[1:]
+                    axiskeys = "zyx"
+                    minindex = minindex[:-1]
+                    maxindex = maxindex[:-1]
         except (DVIDException, ErrMsg) as ex:
             error_msg = str(ex)
             log_exception(logger)

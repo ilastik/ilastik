@@ -848,10 +848,5 @@ class DataSelectionGui(QWidget):
         if subvolume_roi is None:
             self.addFileNames([dvid_url], roleIndex, laneIndex)
         else:
-            # In ilastik, we display the dvid volume axes in C-order, despite the dvid convention of F-order
-            # Transpose the subvolume roi to match
-            # (see implementation of OpDvidVolume)
             start, stop = subvolume_roi
-            start = tuple(reversed(start))
-            stop = tuple(reversed(stop))
             self.addFileNames([dvid_url], roleIndex, laneIndex, [(start, stop)])
