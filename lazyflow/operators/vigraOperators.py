@@ -1387,8 +1387,9 @@ class OpBaseVigraFilter(OpArrayPiper):
                         try:
                             temp = self.vigraFilter(image, **kwparams)
                         except Exception, e:
-                            logger.error( "EXCEPT 2.2 {} {} {} {}".format( self.name, image.shape, kwparams ) )
+                            logger.error( "EXCEPT 2.2 {} {} {}".format( self.name, image.shape, kwparams ) )
                             traceback.print_exc(e)
+                            import sys
                             sys.exit(1)
                         temp=temp[writeKey]
 
