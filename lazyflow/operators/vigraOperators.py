@@ -545,7 +545,6 @@ class OpPixelFeaturesPresmoothed(Operator):
                             tmp_key = getAllExceptAxis(len(sourceArraysForSigmas[j].shape),timeAxis, i)
                             
                             if WITH_FAST_FILTERS:
-                                vsa  = vigra.taggedView( numpy.ascontiguousarray(vsa), vsa.axistags )
                                 buffer = fastfilters.gaussianSmoothing(vsa, tempSigma, window_size = self.WINDOW_SIZE )
                                 droi = roiToSlice(*droi)
                                 sourceArraysForSigmas[j][tmp_key] = buffer[droi]
@@ -556,7 +555,6 @@ class OpPixelFeaturesPresmoothed(Operator):
                         droi = (tuple(vigOpSourceStart._asint()), tuple(vigOpSourceStop._asint()))
                         
                         if WITH_FAST_FILTERS:
-                            sourceArrayV = vigra.taggedView( numpy.ascontiguousarray(sourceArrayV), sourceArrayV.axistags )
                             buffer = fastfilters.gaussianSmoothing(sourceArrayV, tempSigma, window_size = self.WINDOW_SIZE )                                       
                             droi = roiToSlice(*droi)
                             sourceArraysForSigmas[j] = buffer[droi]
@@ -1489,7 +1487,6 @@ class OpDifferenceOfGaussiansFF(OpBaseVigraFilter):
     name = "DifferenceOfGaussiansFF"
     
     def differenceOfGausssiansFF(image, sigma0, sigma1, window_size):
-        image = vigra.taggedView( numpy.ascontiguousarray(image), image.axistags )
         return (fastfilters.gaussianSmoothing(image, sigma0, window_size) - fastfilters.gaussianSmoothing(image, sigma1, window_size) )
     
     vigraFilter = staticmethod(differenceOfGausssiansFF)
@@ -1521,11 +1518,7 @@ class OpDifferenceOfGaussians(OpBaseVigraFilter):
 class OpGaussianSmoothingFF(OpBaseVigraFilter):
     name = "GaussianSmoothingFF"
 
-    def gaussianSmoothingFF(image, sigma, window_size):
-        image = vigra.taggedView( numpy.ascontiguousarray(image), image.axistags )
-        return fastfilters.gaussianSmoothing(image, sigma, window_size)
-
-    vigraFilter =  staticmethod(gaussianSmoothingFF)
+    vigraFilter =  staticmethod(fastfilters.gaussianSmoothing)
        
     outputDtype = numpy.float32
     supportsRoi = False
@@ -1550,12 +1543,8 @@ class OpGaussianSmoothing(OpBaseVigraFilter):
 
 class OpHessianOfGaussianEigenvaluesFF(OpBaseVigraFilter):
     name = "HessianOfGaussianEigenvaluesFF"
-
-    def hessianOfGaussianEigenvaluesFF(image, scale, window_size):
-        image = vigra.taggedView( numpy.ascontiguousarray(image), image.axistags )
-        return fastfilters.hessianOfGaussianEigenvalues(image, scale, window_size)
     
-    vigraFilter = staticmethod(hessianOfGaussianEigenvaluesFF)
+    vigraFilter = staticmethod(fastfilters.hessianOfGaussianEigenvalues)
     
     outputDtype = numpy.float32
     supportsRoi = False
@@ -1586,11 +1575,7 @@ class OpHessianOfGaussianEigenvalues(OpBaseVigraFilter):
 class OpStructureTensorEigenvaluesFF(OpBaseVigraFilter):
     name = "StructureTensorEigenvaluesFF"
 
-    def structureTensorEigenvaluesFF(image, innerScale, outerScale, window_size):
-        image = vigra.taggedView( numpy.ascontiguousarray(image), image.axistags )
-        return fastfilters.structureTensorEigenvalues(image, innerScale, outerScale, window_size)
-    
-    vigraFilter = staticmethod(structureTensorEigenvaluesFF)
+    vigraFilter = staticmethod(fastfilters.structureTensorEigenvalues)
     
     outputDtype = numpy.float32
     supportsRoi = False
@@ -1649,11 +1634,7 @@ class OpHessianOfGaussian(OpBaseVigraFilter):
 class OpGaussianGradientMagnitudeFF(OpBaseVigraFilter):
     name = "GaussianGradientMagnitudeFF"
 
-    def gaussianGradientMagnitudeFF(image, sigma, window_size):
-        image = vigra.taggedView( numpy.ascontiguousarray(image), image.axistags )
-        return fastfilters.gaussianGradientMagnitude(image, sigma, window_size)
-    
-    vigraFilter = staticmethod(gaussianGradientMagnitudeFF)
+    vigraFilter = staticmethod(fastfilters.gaussianGradientMagnitude)
     
     outputDtype = numpy.float32
     supportsRoi = False
@@ -1681,11 +1662,7 @@ class OpGaussianGradientMagnitude(OpBaseVigraFilter):
 class OpLaplacianOfGaussianFF(OpBaseVigraFilter):
     name = "LaplacianOfGaussianFF"
     
-    def laplacianOfGaussianFF(image, scale, window_size):
-        image = vigra.taggedView( numpy.ascontiguousarray(image), image.axistags )
-        return fastfilters.laplacianOfGaussian(image, scale, window_size)
-    
-    vigraFilter = staticmethod(laplacianOfGaussianFF)
+    vigraFilter = staticmethod(fastfilters.laplacianOfGaussian)
     
     outputDtype = numpy.float32
     supportsOut = False
