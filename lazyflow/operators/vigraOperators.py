@@ -131,8 +131,6 @@ class OpPixelFeaturesPresmoothed(Operator):
     name="OpPixelFeaturesPresmoothed"
     category = "Vigra filter"
 
-    withFastFilters = InputSlot(value=WITH_FAST_FILTERS)
-
     inputSlots = [InputSlot("Input"),
                   InputSlot("Matrix"),
                   InputSlot("Scales"),
@@ -219,7 +217,7 @@ class OpPixelFeaturesPresmoothed(Operator):
         for i, featureId in enumerate(self.inputs["FeatureIds"].value):
             if featureId == 'GaussianSmoothing':
                 for j in range(dimCol):
-                    if self.withFastFilters.value:
+                    if WITH_FAST_FILTERS:
                         oparray[i].append(OpGaussianSmoothingFF(self))
                     else:
                         oparray[i].append(OpGaussianSmoothing(self))
@@ -230,7 +228,7 @@ class OpPixelFeaturesPresmoothed(Operator):
 
             elif featureId == 'LaplacianOfGaussian':
                 for j in range(dimCol):
-                    if self.withFastFilters.value:
+                    if WITH_FAST_FILTERS:
                         oparray[i].append(OpLaplacianOfGaussianFF(self))
                     else:
                         oparray[i].append(OpLaplacianOfGaussian(self))
@@ -240,7 +238,7 @@ class OpPixelFeaturesPresmoothed(Operator):
 
             elif featureId == 'StructureTensorEigenvalues':
                 for j in range(dimCol):
-                    if self.withFastFilters.value:
+                    if WITH_FAST_FILTERS:
                         oparray[i].append(OpStructureTensorEigenvaluesFF(self))
                     else:
                         oparray[i].append(OpStructureTensorEigenvalues(self))
@@ -257,7 +255,7 @@ class OpPixelFeaturesPresmoothed(Operator):
 
             elif featureId == 'HessianOfGaussianEigenvalues':
                 for j in range(dimCol):
-                    if self.withFastFilters.value:
+                    if WITH_FAST_FILTERS:
                         oparray[i].append(OpHessianOfGaussianEigenvaluesFF(self))
                     else:
                         oparray[i].append(OpHessianOfGaussianEigenvalues(self))
@@ -267,7 +265,7 @@ class OpPixelFeaturesPresmoothed(Operator):
 
             elif featureId == 'GaussianGradientMagnitude':
                 for j in range(dimCol):
-                    if self.withFastFilters.value:
+                    if WITH_FAST_FILTERS:
                         oparray[i].append(OpGaussianGradientMagnitudeFF(self))
                     else:
                         oparray[i].append(OpGaussianGradientMagnitude(self))
@@ -277,7 +275,7 @@ class OpPixelFeaturesPresmoothed(Operator):
 
             elif featureId == 'DifferenceOfGaussians':
                 for j in range(dimCol):
-                    if self.withFastFilters.value:
+                    if WITH_FAST_FILTERS:
                         oparray[i].append(OpDifferenceOfGaussiansFF(self))
                     else:
                         oparray[i].append(OpDifferenceOfGaussians(self))
@@ -546,7 +544,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                             droi = (tuple(vigOpSourceStart._asint()), tuple(vigOpSourceStop._asint()))
                             tmp_key = getAllExceptAxis(len(sourceArraysForSigmas[j].shape),timeAxis, i)
                             
-                            if self.withFastFilters.value:
+                            if WITH_FAST_FILTERS:
                                 vsa  = vigra.taggedView( numpy.ascontiguousarray(vsa), vsa.axistags )
                                 buffer = fastfilters.gaussianSmoothing(vsa, tempSigma, window_size = self.WINDOW_SIZE )
                                 droi = roiToSlice(*droi)
@@ -557,7 +555,7 @@ class OpPixelFeaturesPresmoothed(Operator):
                     else:
                         droi = (tuple(vigOpSourceStart._asint()), tuple(vigOpSourceStop._asint()))
                         
-                        if self.withFastFilters.value:
+                        if WITH_FAST_FILTERS:
                             sourceArrayV = vigra.taggedView( numpy.ascontiguousarray(sourceArrayV), sourceArrayV.axistags )
                             buffer = fastfilters.gaussianSmoothing(sourceArrayV, tempSigma, window_size = self.WINDOW_SIZE )                                       
                             droi = roiToSlice(*droi)
