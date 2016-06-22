@@ -153,7 +153,7 @@ class OpMulticutAgglomerator(Operator):
                 solver = factory.create(obj)
                 ret = solver.optimize(ret)
 
-        elif solver_library == 'Opengm'
+        elif solver_library == 'Opengm':
 
             gm = opengm.gm( np.ones(nVar)*nVar )
             pf = opengm.pottsFunctions( [nVar,nVar], np.array([0]), w )
