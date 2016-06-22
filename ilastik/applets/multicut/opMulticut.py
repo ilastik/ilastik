@@ -1,7 +1,10 @@
 import warnings
 import numpy as np
 
-import opengm_with_cplex as opengm
+try:
+    import opengm_with_cplex as opengm
+except ImportError:
+    import opengm
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiToSlice
@@ -47,7 +50,16 @@ class OpMulticut(Operator):
         pass
 
 class OpMulticutAgglomerator(Operator):
-    SOLVER_NAMES = ['Nifty_Exact', 'Nifty_IntersectionBased', 'Opengm_Exact', 'Opengm_IntersectionBased', 'Opengm_Cgc']
+    SOLVER_NAMES = [
+                        'Nifty_ExactCplex',
+                        'Nifty_ExactGurobi', 
+                        'Nifty_FmCplex', 
+                        'Nifty_FmGurobi', 
+                        'Nifty_FmGreedy', 
+                        'Opengm_Exact', 
+                        'Opengm_IntersectionBased', 
+                        'Opengm_Cgc'
+                    ]
 
     SolverName = InputSlot()
     Beta = InputSlot()
@@ -125,33 +137,54 @@ class OpMulticutAgglomerator(Operator):
             g.insertEdges(rag.edge_ids)
             obj = nifty.graph.multicut.multicutObjective(g, w)
 
-            ilpFac = nifty.multicutIlpFactory(ilpSolver='gurobi',verbose=0,
-                addThreeCyclesConstraints=True,
-                addOnlyViolatedThreeCyclesConstraints=True
-            )
 
-            if solver_method == 'Exact':
-                solver = ilpFac.create(obj)
-                ret = solver.optimize()
+            def getIlpFac(ilpSolver):
+                return nifty.multicutIlpFactory(ilpSolver=ilpSolver,verbose=0,
+                    addThreeCyclesConstraints=True,
+                    addOnlyViolatedThreeCyclesConstraints=True
+                )
 
-            # TODO finetune parameters
-            elif solver_method == 'IntersectionBased':
+            def getFmFac(subFac):
 
-                # warmstart with greedy solution
-                greedy=nifty.greedyAdditiveFactory().create(obj)
-                ret = greedy.optimize()
-
-                factory = nifty.fusionMoveBasedFactory(
+                return  nifty.fusionMoveBasedFactory(
                     verbose=1,
-                    fusionMove=nifty.fusionMoveSettings(mcFactory=ilpFac),
+                    fusionMove=nifty.fusionMoveSettings(mcFactory=subFac),
                     proposalGen=nifty.watershedProposals(sigma=1,seedFraction=0.001),
                     numberOfIterations=500,
                     numberOfParallelProposals=1,
                     stopIfNoImprovement=10,
                     fuseN=2
                 )
-                solver = factory.create(obj)
-                ret = solver.optimize(ret)
+            
+             # TODO finetune parameters
+            ret = None
+            if solver_method == 'ExactCplex':
+                inf = getIlpFac('cplex').create(obj)
+
+            elif solver_method == 'ExactGurobi':
+                inf = getIlpFac('gurobi').create(obj)
+
+            elif solver_method == 'FmCplex':
+                greedy=nifty.greedyAdditiveFactory().create(obj)
+                ret = greedy.optimize()
+                inf = getFmFac(getIlpFac('cplex')).create(obj)
+
+            elif solver_method == 'FmGurobi':
+                greedy=nifty.greedyAdditiveFactory().create(obj)
+                ret = greedy.optimize()
+                inf = getFmFac(getIlpFac('gurobi')).create(obj)
+
+            elif solver_method == 'FmGreedy':
+                greedy=nifty.greedyAdditiveFactory().create(obj)
+                ret = greedy.optimize()
+                inf = getFmFac(nifty.greedyAdditiveFactory()).create(obj)
+
+            if ret is None:
+                ret = inf.optimizeWithVisitor(visitor=nifty.multicutVerboseVisitor())
+            else:
+                ret = inf.optimizeWithVisitor(visitor=nifty.multicutVerboseVisitor(), nodeLabels=ret)
+
+            mapping_index_array = ret.astype(np.uint32)
 
         elif solver_library == 'Opengm':
 
@@ -171,7 +204,8 @@ class OpMulticutAgglomerator(Operator):
             if ret.name != "NORMAL":
                 raise RuntimeError("OpenGM inference failed with status: {}".format( ret.name ))
 
-        mapping_index_array = inf.arg().astype(np.uint32)
+            mapping_index_array = inf.arg().astype(np.uint32)
+            
         agglomerated_labels = mapping_index_array[rag.label_img]
         assert agglomerated_labels.shape == rag.label_img.shape
         return agglomerated_labels
