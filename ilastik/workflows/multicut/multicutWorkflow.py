@@ -35,6 +35,9 @@ from lazyflow.operators import OpSimpleStacker
 from lazyflow.operators.generic import OpConvertDtype
 from lazyflow.operators.valueProviders import OpPrecomputedInput
 
+import logging
+logger = logging.getLogger(__name__)
+
 class MulticutWorkflow(Workflow):
     workflowName = "Multicut"
     workflowDescription = "A bare-bones workflow for testing the multicut applet"
@@ -113,7 +116,7 @@ class MulticutWorkflow(Workflow):
         #    (Command-line args are applied in onProjectLoaded(), below.)
         if workflow_cmdline_args:
             self._data_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args( workflow_cmdline_args )
-            self._batch_input_args, unused_args = self.dataSelectionApplet.parse_known_cmdline_args( unused_args, role_names )
+            self._batch_input_args, unused_args = self.batchProcessingApplet.parse_known_cmdline_args( unused_args )
         else:
             unused_args = None
             self._batch_input_args = None
@@ -198,6 +201,10 @@ class MulticutWorkflow(Workflow):
             self.dataExportApplet.configure_operator_with_parsed_args( self._data_export_args )
 
         if self._headless and self._batch_input_args and self._data_export_args:
+            # Make sure the watershed can be computed if necessary.
+            opWsdt = self.wsdtApplet.topLevelOperator
+            opWsdt.FreezeCache.setValue( False )
+
             logger.info("Beginning Batch Processing")
             self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
             logger.info("Completed Batch Processing")
