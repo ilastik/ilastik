@@ -45,6 +45,7 @@ class OpEdgeTraining(Operator):
         
         self.opRagCache = OpMultiLaneWrapper( OpValueCache, parent=self )
         self.opRagCache.Input.connect( self.opCreateRag.Rag )
+        self.opRagCache.name = 'opRagCache'
         
         self.opComputeEdgeFeatures = OpMultiLaneWrapper( OpComputeEdgeFeatures, parent=self )
         self.opComputeEdgeFeatures.FeatureNames.connect( self.FeatureNames )
@@ -53,14 +54,16 @@ class OpEdgeTraining(Operator):
         
         self.opEdgeFeaturesCache = OpMultiLaneWrapper( OpValueCache, parent=self )
         self.opEdgeFeaturesCache.Input.connect( self.opComputeEdgeFeatures.EdgeFeaturesDataFrame )
+        self.opEdgeFeaturesCache.name = 'opEdgeFeaturesCache'
 
         self.opTrainEdgeClassifier = OpTrainEdgeClassifier( parent=self )
         self.opTrainEdgeClassifier.EdgeLabelsDict.connect( self.EdgeLabelsDict )
         self.opTrainEdgeClassifier.EdgeFeaturesDataFrame.connect( self.opEdgeFeaturesCache.Output )
-
+        
         # classifier cache input is set after training.
         self.opClassifierCache = OpValueCache(parent=self)
         self.opClassifierCache.Input.connect( self.opTrainEdgeClassifier.EdgeClassifier )
+        self.opClassifierCache.name = 'opClassifierCache'
         
         self.opPredictEdgeProbabilities = OpMultiLaneWrapper( OpPredictEdgeProbabilities, parent=self )
         self.opPredictEdgeProbabilities.EdgeClassifier.connect( self.opClassifierCache.Output )
@@ -68,6 +71,7 @@ class OpEdgeTraining(Operator):
         
         self.opEdgeProbabilitiesCache = OpMultiLaneWrapper( OpValueCache, parent=self )
         self.opEdgeProbabilitiesCache.Input.connect( self.opPredictEdgeProbabilities.EdgeProbabilities )
+        self.opEdgeProbabilitiesCache.name = 'opEdgeProbabilitiesCache'
 
         self.opEdgeProbabilitiesDict = OpMultiLaneWrapper( OpEdgeProbabilitiesDict, parent=self )
         self.opEdgeProbabilitiesDict.Rag.connect( self.opRagCache.Output )
@@ -75,6 +79,7 @@ class OpEdgeTraining(Operator):
         
         self.opEdgeProbabilitiesDictCache = OpMultiLaneWrapper( OpValueCache, parent=self )
         self.opEdgeProbabilitiesDictCache.Input.connect( self.opEdgeProbabilitiesDict.EdgeProbabilitiesDict )
+        self.opEdgeProbabilitiesDictCache.name = 'opEdgeProbabilitiesDictCache'
 
         self.opNaiveSegmentation = OpMultiLaneWrapper( OpNaiveSegmentation, parent=self )
         self.opNaiveSegmentation.Superpixels.connect( self.Superpixels )
@@ -84,6 +89,7 @@ class OpEdgeTraining(Operator):
         self.opNaiveSegmentationCache = OpMultiLaneWrapper( OpBlockedArrayCache, parent=self, broadcastingSlotNames=['CompressionEnabled'] )
         self.opNaiveSegmentationCache.CompressionEnabled.setValue(True)
         self.opNaiveSegmentationCache.Input.connect( self.opNaiveSegmentation.Output )
+        self.opNaiveSegmentationCache.name = 'opNaiveSegmentationCache'
 
         self.Rag.connect( self.opRagCache.Output )
         self.EdgeProbabilities.connect( self.opEdgeProbabilitiesCache.Output )
@@ -103,6 +109,35 @@ class OpEdgeTraining(Operator):
                     def removeSlot( a, b, position, finalsize ):
                         a.removeSlot(position, finalsize)
                     s1.notifyRemoved( partial(removeSlot, s2 ) )
+
+        # If superpixels change, we have to delete our edge labels.
+        # Since we're dealing with multi-lane slot, setting up dirty handlers is a two-stage process.
+        # (1) React to lane insertion by subscribing to dirty signals for the new lane.
+        # (2) React to each lane's dirty signal by deleting the labels for that lane.
+
+        def subscribe_to_dirty_sp(slot, position, finalsize):
+            # A new lane was added.  Subscribe to it's dirty signal.
+            assert slot is self.Superpixels
+            print "Setting up listeners for {}".format(position)
+            self.Superpixels[position].notifyDirty(self.handle_dirty_superpixels)
+            self.Superpixels[position].notifyReady(self.handle_dirty_superpixels)
+            self.Superpixels[position].notifyUnready(self.handle_dirty_superpixels)
+
+        # When a new lane is added, set up the listener for dirtyness.
+        self.Superpixels.notifyInserted(subscribe_to_dirty_sp)
+
+    def handle_dirty_superpixels(self, subslot, *args):
+        """
+        Discards the labels for a given lane.
+        NOTE: In addition to callers in this file, this function is also called from multicutWorkflow.py
+        """
+        # Determine which lane triggered this and delete it's labels
+        lane_index = self.Superpixels.index(subslot)
+        old_labels = self.EdgeLabelsDict[lane_index].value
+        if old_labels:
+            logger.warn( "Superpixels changed.  Deleting all labels in lane {}.".format( lane_index ) )
+            logger.info( "Old labels were: {}".format( old_labels ) )
+        self.EdgeLabelsDict[lane_index].setValue({})
 
     def setupOutputs(self):
         for sp_slot, seg_cache_blockshape_slot in zip(self.Superpixels, self.opNaiveSegmentationCache.outerBlockShape):

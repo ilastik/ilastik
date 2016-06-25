@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ###############################################################################
+from functools import partial
 import numpy as np
 
 from ilastik.workflow import Workflow
@@ -30,8 +31,9 @@ from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from ilastik.applets.batchProcessing import BatchProcessingApplet
 
 from lazyflow.graph import Graph
-from lazyflow.operators import OpRelabelConsecutive, OpBlockedArrayCache, OpSimpleStacker
+from lazyflow.operators import OpSimpleStacker
 from lazyflow.operators.generic import OpConvertDtype
+from lazyflow.operators.valueProviders import OpPrecomputedInput
 
 class MulticutWorkflow(Workflow):
     workflowName = "Multicut"
@@ -133,14 +135,6 @@ class MulticutWorkflow(Workflow):
         opMulticut = self.multicutApplet.topLevelOperator.getLane(laneIndex)
         opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
 
-        # Just for the sake of efficiency during the multicut, relabel the superpixels to be consecutive.
-        opRelabelConsecutive = OpRelabelConsecutive( parent=self )
-        opRelabelConsecutive.Input.connect( opDataSelection.ImageGroup[self.DATA_ROLE_SUPERPIXELS] )
-
-        opRelabeledSuperpixelsCache = OpBlockedArrayCache( parent=self )
-        opRelabeledSuperpixelsCache.CompressionEnabled.setValue(True)
-        opRelabeledSuperpixelsCache.Input.connect( opRelabelConsecutive.Output )
-
         opConvertRaw = OpConvertDtype( parent=self )
         opConvertRaw.ConversionDtype.setValue( np.float32 )
         opConvertRaw.Input.connect( opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
@@ -160,11 +154,21 @@ class MulticutWorkflow(Workflow):
         opStackRawAndVoxels.Images[1].connect( opConvertProbabilities.Output )
         opStackRawAndVoxels.AxisFlag.setValue('c')
 
+        # If superpixels are available from a file, use it.
+        opSuperpixelsSelect = OpPrecomputedInput( parent=self )
+        opSuperpixelsSelect.PrecomputedInput.connect( opDataSelection.ImageGroup[self.DATA_ROLE_SUPERPIXELS] )
+        opSuperpixelsSelect.SlowInput.connect( opWsdt.Superpixels )
+
+        # If the superpixel file changes, then we have to remove the training labels from the image
+        def handle_new_superpixels( *args ):
+            opEdgeTraining.handle_dirty_superpixels( opEdgeTraining.Superpixels )
+        opDataSelection.ImageGroup[self.DATA_ROLE_SUPERPIXELS].notifyReady( handle_new_superpixels )
+        opDataSelection.ImageGroup[self.DATA_ROLE_SUPERPIXELS].notifyUnready( handle_new_superpixels )
+
         # edge training inputs
         opEdgeTraining.RawData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_RAW] ) # Used for visualization only
         opEdgeTraining.VoxelData.connect( opStackRawAndVoxels.Output )
-        #opEdgeTraining.Superpixels.connect( opRelabeledSuperpixelsCache.Output )
-        opEdgeTraining.Superpixels.connect( opWsdt.Superpixels )
+        opEdgeTraining.Superpixels.connect( opSuperpixelsSelect.Output )
         opEdgeTraining.GroundtruthSegmentation.connect( opDataSelection.ImageGroup[self.DATA_ROLE_GROUNDTRUTH] )
 
         # multicut inputs
@@ -212,13 +216,18 @@ class MulticutWorkflow(Workflow):
         # If no data, nothing else is ready.
         input_ready = len(opDataSelection.ImageGroup) > 0 and not self.dataSelectionApplet.busy
 
-        superpixels_ready = opWsdt.Superpixels.ready()
+        superpixels_available_from_file = False
+        lane_index = self._shell.currentImageIndex
+        if lane_index != -1:
+            superpixels_available_from_file = opDataSelection.ImageGroup[lane_index][self.DATA_ROLE_SUPERPIXELS].ready()
+
+        superpixels_ready = opEdgeTraining.Superpixels.ready()
 
         # The user isn't allowed to touch anything while batch processing is running.
         batch_processing_busy = self.batchProcessingApplet.busy
 
         self._shell.setAppletEnabled( self.dataSelectionApplet,   not batch_processing_busy )
-        self._shell.setAppletEnabled( self.wsdtApplet,            not batch_processing_busy and input_ready )
+        self._shell.setAppletEnabled( self.wsdtApplet,            not batch_processing_busy and input_ready and not superpixels_available_from_file )
         self._shell.setAppletEnabled( self.edgeTrainingApplet,    not batch_processing_busy and input_ready and superpixels_ready )
         self._shell.setAppletEnabled( self.multicutApplet,        not batch_processing_busy and input_ready and opEdgeTraining.EdgeProbabilities.ready() )
         self._shell.setAppletEnabled( self.dataExportApplet,      not batch_processing_busy and input_ready and opMulticut.Output.ready())
