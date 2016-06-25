@@ -37,7 +37,7 @@ class MulticutApplet( StandardApplet ):
 
     @property
     def broadcastingSlots(self):
-        return ['Beta']
+        return ['Beta', 'SolverName']
 
     @property
     def singleLaneGuiClass(self):

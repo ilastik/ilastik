@@ -58,7 +58,7 @@ AVAILABLE_SOLVER_NAMES = NIFTY_SOLVER_NAMES + OPENGM_SOLVER_NAMES
 
 class OpMulticut(Operator):
     Beta = InputSlot(value=0.5)
-    SolverName = InputSlot(value='Exact')
+    SolverName = InputSlot(value='Nifty_FmGreedy')
 
     Rag = InputSlot() # value slot.  Rag object.
     Superpixels = InputSlot()
