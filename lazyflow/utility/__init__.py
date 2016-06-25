@@ -41,5 +41,4 @@ from export_to_tiles import export_to_tiles
 from blockwise_view import blockwise_view
 from priorityQueue import PriorityQueue
 from log_exception import log_exception
-from relabel_consecutive import relabel_consecutive
 from transposed_view import TransposedView

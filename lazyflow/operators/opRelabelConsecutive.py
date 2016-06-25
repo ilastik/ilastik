@@ -1,7 +1,7 @@
 import logging
 import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.utility import relabel_consecutive, timeLogged
+from lazyflow.utility import timeLogged
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,7 @@ class OpRelabelConsecutive(Operator):
     def execute(self, slot, subindex, roi, result):
         self.Input.get(roi).writeInto(result).wait()
         result = vigra.taggedView(result, self.Output.meta.axistags).withAxes('zyx')
-        relabel_consecutive(result, self.StartLabel.value, out=result)
+        _res, _max_label, _labelmap_dict = vigra.analysis.relabelConsecutive(result, self.StartLabel.value, out=result)
     
     def propagateDirty(self, slot, subindex, roi):
         self.Output.setDirty(roi.start, roi.stop)
