@@ -383,7 +383,7 @@ class IlastikShell(QMainWindow):
 
         self.currentAppletIndex = 0
 
-        self.currentImageIndex = -1
+        self._currentImageIndex = -1
         self.populatingImageSelectionCombo = False
         self.imageSelectionCombo.currentIndexChanged.connect(self.changeCurrentInputImageIndex)
 
@@ -912,7 +912,7 @@ class IlastikShell(QMainWindow):
                 else:
                     self._applets[i].getMultiLaneGui().setImageIndex(newImageIndex)
 
-            self.currentImageIndex = newImageIndex
+            self._currentImageIndex = newImageIndex
 
             if self.currentImageIndex != -1:
                 # Force the applet drawer to be redrawn
@@ -923,6 +923,10 @@ class IlastikShell(QMainWindow):
                     updatedDrawerTitle = app.name
                     self.appletBar.setItemText(applet_index, updatedDrawerTitle)
 
+    @property
+    def currentImageIndex(self):
+        return self._currentImageIndex
+    
     def handleAppletBarItemExpanded(self, modelIndex):
         """
         The user wants to view a different applet bar item.
