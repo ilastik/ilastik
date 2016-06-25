@@ -110,4 +110,11 @@ if __name__ == "__main__":
     # python ilastik.py --headless --project=MyProject.ilp --output_format=hdf5 raw_input.h5/volumes/data
     # python ilastik.py --playback_speed=2.0 --exit_on_failure --exit_on_success --debug --playback_script=my_recording.py
 
+    ## Multicut headless test
+    #sys.argv += "--headless".split()
+    #sys.argv += "--project=/magnetic/data/multicut-testdata/chris-256/MyMulticutProject-chris256.ilp".split()
+    #sys.argv += "--raw_data /magnetic/data/multicut-testdata/chris-256/grayscale-256.h5/grayscale".split()
+    #sys.argv += "--probabilities /magnetic/data/multicut-testdata/chris-256/final-membranes-256.h5/membranes".split()
+    #sys.argv += "--superpixels /magnetic/data/multicut-testdata/chris-256/watershed-256.h5/watershed".split()
+
     main()
