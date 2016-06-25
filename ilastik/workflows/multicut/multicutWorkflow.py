@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ###############################################################################
+import sys
 from functools import partial
 import numpy as np
 
@@ -204,6 +205,19 @@ class MulticutWorkflow(Workflow):
             # Make sure the watershed can be computed if necessary.
             opWsdt = self.wsdtApplet.topLevelOperator
             opWsdt.FreezeCache.setValue( False )
+
+            # Error checks
+            if (not self._batch_input_args.raw_data
+            or not self._batch_input_args.probabilities
+            or len(self._batch_input_args.probabilities) != len(self._batch_input_args.raw_data) ):
+                msg = "Error: Your input file lists are malformed.\n"
+                msg += "Usage: run_ilastik.sh --headless --raw_data <file1> <file2>... --probabilities <file1> <file2>..."
+                sys.exit(msg)
+
+            if (self._batch_input_args.superpixels
+            and len(self._batch_input_args.superpixels) != len(self._batch_input_args.raw_data) ):
+                msg = "Error: Wrong number of superpixel file inputs."
+                sys.exit(msg)
 
             logger.info("Beginning Batch Processing")
             self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
