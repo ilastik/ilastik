@@ -15,7 +15,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class OpMulticut(Operator):
-    Beta = InputSlot(value=0.1)
+    Beta = InputSlot(value=0.5)
     SolverName = InputSlot(value='Exact')
 
     Rag = InputSlot() # value slot.  Rag object.
