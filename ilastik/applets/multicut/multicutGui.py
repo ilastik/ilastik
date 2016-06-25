@@ -29,7 +29,7 @@ from ilastik.utility.gui import threadRouted
 from volumina.pixelpipeline.datasources import LazyflowSource
 from volumina.layer import SegmentationEdgesLayer
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
-from ilastik.applets.multicut.opMulticut import OpMulticutAgglomerator
+from ilastik.applets.multicut.opMulticut import OpMulticutAgglomerator, AVAILABLE_SOLVER_NAMES
 
 from lazyflow.request import Request
 
@@ -90,7 +90,7 @@ class MulticutGui(LayerViewerGui):
 
         # Solver
         solver_name_combo = QComboBox()
-        for solver_name in OpMulticutAgglomerator.SOLVER_NAMES:
+        for solver_name in AVAILABLE_SOLVER_NAMES:
             solver_name_combo.addItem(solver_name)
         configure_update_handlers( solver_name_combo.currentIndexChanged, op.SolverName )
         drawer_layout.addLayout( control_layout( "Solver", solver_name_combo ) )
@@ -152,7 +152,7 @@ class MulticutGui(LayerViewerGui):
     def configure_gui_from_operator(self, *args):
         op = self.topLevelOperatorView
         self.beta_box.setValue( op.Beta.value )
-        solver_index = OpMulticutAgglomerator.SOLVER_NAMES.index( op.SolverName.value )
+        solver_index = AVAILABLE_SOLVER_NAMES.index( op.SolverName.value )
         self.solver_name_combo.setCurrentIndex( solver_index )
 
     def configure_operator_from_gui(self):
