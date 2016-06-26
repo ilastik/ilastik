@@ -159,7 +159,7 @@ class MulticutWorkflow(Workflow):
         opStackRawAndVoxels.AxisFlag.setValue('c')
 
         # If superpixels are available from a file, use it.
-        opSuperpixelsSelect = OpPrecomputedInput( parent=self )
+        opSuperpixelsSelect = OpPrecomputedInput( ignore_dirty_input=True, parent=self )
         opSuperpixelsSelect.PrecomputedInput.connect( opDataSelection.ImageGroup[self.DATA_ROLE_SUPERPIXELS] )
         opSuperpixelsSelect.SlowInput.connect( opWsdt.Superpixels )
 
