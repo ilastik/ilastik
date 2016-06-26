@@ -49,7 +49,7 @@ class TestOpPrecomputedInput(object):
         opFast = OpArrayPiper(graph=graph)
         opFast.Input.setValue(precomputedData)
         
-        op = OpPrecomputedInput(graph=graph)
+        op = OpPrecomputedInput(ignore_dirty_input=False, graph=graph)
         op.SlowInput.connect(opSlow.Output)
 
         # Should use slow input if no fast input is provided.
@@ -125,7 +125,7 @@ class TestOpPrecomputedInput(object):
         opFast.Input[1].setValue(precomputedData[1])
         opFast.Input[2].setValue(precomputedData[2])
         
-        op = OperatorWrapper( OpPrecomputedInput, graph=graph )
+        op = OperatorWrapper( OpPrecomputedInput, operator_kwargs=dict(ignore_dirty_input=False), graph=graph )
         op.PrecomputedInput.connect(opFast.Output)
         op.SlowInput.connect(opSlow.Output)
 

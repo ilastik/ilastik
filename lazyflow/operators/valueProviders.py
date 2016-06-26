@@ -367,9 +367,15 @@ class OpPrecomputedInput(Operator):
     
     Output = OutputSlot()
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, ignore_dirty_input, *args, **kwargs):
+        """
+        ignore_dirty_input:
+            If true, the PrecomputedInput will *always* be preferred if it is 
+            available at all (regardless of any dirty state on the other input).
+        """
         super(OpPrecomputedInput, self).__init__(*args, **kwargs)
         self._lock = threading.Lock()
+        self._ignore_dirty_input = ignore_dirty_input
     
     def setupOutputs(self):
         if self.PrecomputedInput.ready():
@@ -378,16 +384,17 @@ class OpPrecomputedInput(Operator):
             self.Output.connect(self.SlowInput)
 
     def propagateDirty(self, slot, subindex, roi):
-        # If either input became dirty, the party is over.
-        # We can't use the pre-computed input anymore.
-        if slot == self.SlowInput:
-            with self._lock:
-                if self.Output.partner != self.SlowInput:
-                    self.Output.connect(self.SlowInput)
-                    self.Output.setDirty(roi)
-        elif slot == self.Reset:
+        if slot is self.SlowInput:
+            if not self._ignore_dirty_input:
+                # If the slow input became dirty, the party is over.
+                # We can't use the pre-computed input anymore.
+                with self._lock:
+                    if self.Output.partner != self.SlowInput:
+                        self.Output.connect(self.SlowInput)
+                        self.Output.setDirty(roi)
+        elif slot is self.Reset:
             pass
-        elif slot == self.PrecomputedInput:
+        elif slot is self.PrecomputedInput:
             pass
         else:
             assert False, "Unknown dirty input slot."
