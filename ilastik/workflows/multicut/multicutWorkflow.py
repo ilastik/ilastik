@@ -207,15 +207,14 @@ class MulticutWorkflow(Workflow):
             opWsdt.FreezeCache.setValue( False )
 
             # Error checks
-            if (not self._batch_input_args.raw_data
-            or not self._batch_input_args.probabilities
-            or len(self._batch_input_args.probabilities) != len(self._batch_input_args.raw_data) ):
+            if (self._batch_input_args.raw_data
+            and len(self._batch_input_args.probabilities) != len(self._batch_input_args.raw_data) ):
                 msg = "Error: Your input file lists are malformed.\n"
                 msg += "Usage: run_ilastik.sh --headless --raw_data <file1> <file2>... --probabilities <file1> <file2>..."
                 sys.exit(msg)
 
-            if (self._batch_input_args.superpixels
-            and len(self._batch_input_args.superpixels) != len(self._batch_input_args.raw_data) ):
+            if  (self._batch_input_args.superpixels
+            and (not self._batch_input_args.raw_data or len(self._batch_input_args.superpixels) != len(self._batch_input_args.raw_data) ) ):
                 msg = "Error: Wrong number of superpixel file inputs."
                 sys.exit(msg)
 
