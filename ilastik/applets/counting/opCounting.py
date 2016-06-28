@@ -584,7 +584,7 @@ class OpPredictionPipeline(OpPredictionPipelineNoCache):
         self.meaner = OpMean(parent = self)
         self.meaner.Input.connect(self.prediction_cache_gui.Output)
 
-        self.precomputed_predictions_gui = OpPrecomputedInput( parent=self )
+        self.precomputed_predictions_gui = OpPrecomputedInput( ignore_dirty_input=False, parent=self )
         self.precomputed_predictions_gui.name = "precomputed_predictions_gui"
         self.precomputed_predictions_gui.SlowInput.connect( self.meaner.Output )
         self.precomputed_predictions_gui.PrecomputedInput.connect( self.PredictionsFromDisk )
