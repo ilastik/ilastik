@@ -477,7 +477,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
                                     # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
                                     type = self._type(cropKey, time, track) # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
-                                    print "--->", cropKey, time, label, track, type
                                     if type == None:
                                         raise DatasetConstraintError('Structured Learning', mergeMsgStr)
 
