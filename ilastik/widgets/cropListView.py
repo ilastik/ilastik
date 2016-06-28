@@ -70,6 +70,14 @@ class CropListView(ListView):
 
         self.resetEmptyMessage("No crops defined.")
 
+    @property
+    def allowDelete(self):
+        return not self._table.isColumnHidden(self.model.ColumnID.Delete)
+
+    @allowDelete.setter
+    def allowDelete(self, allow):
+        self._table.setColumnHidden(self.model.ColumnID.Delete, not allow)
+
     def tableViewCellDoubleClicked(self, modelIndex):
         if modelIndex.column() == self.model.ColumnID.Color:
             self._colorDialog.setBrushColor(self._table.model()[modelIndex.row()].brushColor())

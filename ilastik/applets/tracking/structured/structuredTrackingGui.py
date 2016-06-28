@@ -198,7 +198,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         self._drawer.trainingToHardConstraints.setChecked(False)
         self._drawer.trainingToHardConstraints.setVisible(False) # will be used when we can handle sparse annotations
-        self._drawer.exportButton.setVisible(False)
+        self._drawer.exportButton.setVisible(True)
         self._drawer.exportTifButton.setVisible(False)
 
         self.topLevelOperatorView._detectionWeight = self._detectionWeight
@@ -439,7 +439,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
             mergeMsgStr = "Your tracking annotations contradict this model assumptions! All tracks must be continuous, tracks of length one are not allowed, and mergers may merge or split but all tracks in a merger appear/disappear together."
             foundAllArcs = True;
-            for cropKey in self.mainOperator.Annotations.value.keys():
+            for cropKey in self.mainOperator.Crops.value.keys():
                 if foundAllArcs:
                     crop = self.mainOperator.Annotations.value[cropKey]
 

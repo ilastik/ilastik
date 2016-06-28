@@ -210,8 +210,16 @@ class CropSelectionGui(CroppingGui):
                     slot.setValue(value, check_changed=False)
 
     def onDeleteCrop(self, position):
-        if len(self.topLevelOperatorView.Crops.value) > 1:
-            del self.topLevelOperatorView.Crops.value[self._cropControlUi.cropListModel[position].name]
+        numCrops = len(self.topLevelOperatorView.Crops.value)
+        if numCrops > 1:
+            if position == 0:
+                self._cropControlUi.cropListView.selectRow(1)
+            else:
+                self._cropControlUi.cropListView.selectRow(0)
+            crops = self.topLevelOperatorView.Crops.value
+            del crops[self._cropControlUi.cropListModel[position].name]
+            self.topLevelOperatorView.Crops.setValue(crops)
+            self._cropControlUi.cropListView.update()
 
     def getNextCropName(self):
         return self._getNext(self.topLevelOperatorView.CropNames,

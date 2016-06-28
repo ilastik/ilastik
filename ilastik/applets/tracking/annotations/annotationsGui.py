@@ -261,6 +261,7 @@ class AnnotationsGui(LayerViewerGui):
             self._drawer.cropListView.setModel(self._drawer.cropListModel)
             self._drawer.cropListView.updateGeometry()
             self._drawer.cropListView.update()
+            self._drawer.cropListView.allowDelete = False
             self._drawer.cropListView.selectRow(0)
             self._selectedRow = 0
             self._previousCrop = -1
