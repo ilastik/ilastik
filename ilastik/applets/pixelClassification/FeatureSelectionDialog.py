@@ -39,31 +39,51 @@ class FeatureSelectionResult(object):
 
 
         self.name = self._create_name()
+        self.long_name = self._create_long_name()
 
     def _create_name(self):
         """
         Returns: name for the method to be displayed in the lower left part of the dialog
-        FIXME: make more human readable
 
         """
 
         if self.selection_method == "filter" or self.selection_method == "gini":
             if self.parameters["num_of_feat"] == 0:
-                name = "%s_%d_feat(auto)" % (self.selection_method, np.sum(self.feature_matrix))
+                name = "%s_%d_features(auto)" % (self.selection_method, np.sum(self.feature_matrix))
             else:
-                name = "%s_%d_feat" % (self.selection_method, self.parameters["num_of_feat"])
+                name = "%s_%d_features" % (self.selection_method, self.parameters["num_of_feat"])
         elif self.selection_method == "wrapper":
-            name = "%s_c_%1.02f_%i_feat" % (self.selection_method, self.parameters["c"], np.sum(self.feature_matrix))
+            name = "%s_%i_features" % (self.selection_method, np.sum(self.feature_matrix))
+        else:
+            name = self.selection_method
+        return name
+
+    def _create_long_name(self):
+        """
+        Returns: name for the method to be displayed in the lower left part of the dialog
+
+        """
+
+        if self.selection_method == "filter" or self.selection_method == "gini":
+            if self.parameters["num_of_feat"] == 0:
+                name = "%s_%d_features(auto)" % (self.selection_method, np.sum(self.feature_matrix))
+            else:
+                name = "%s_%d_features" % (self.selection_method, self.parameters["num_of_feat"])
+        elif self.selection_method == "wrapper":
+            name = "%s_%i_features_c=%1.02f" % (self.selection_method, np.sum(self.feature_matrix), self.parameters["c"])
         else:
             name = self.selection_method
         if self.oob_err is not None:
-            name += "_oob:%1.3f" % self.oob_err
+            name += "_oob_error=%1.3f" % self.oob_err
         if self.feature_calc_time is not None:
-            name += "_ctime:%1.3f" % self.feature_calc_time
+            name += "_computationTime=%1.3f" % self.feature_calc_time
         return name
 
     def change_name(self, name):
         self.name = name
+
+    def change_long_name(self, name):
+        self.long_name = name
 
 
 
@@ -110,7 +130,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
         self._initialized_current_features_segmentation_layer = False
 
         self._selected_feature_set_id = None
-        self.selected_features_matrix = None
+        self.selected_features_matrix = self.opFeatureSelection.SelectionMatrix.value
         self.feature_channel_names = None #this gets initialized when the matrix is set to all features in _run_selection
 
         self._stackdim = self.opPixelClassification.InputImages.meta.shape
@@ -480,7 +500,6 @@ class FeatureSelectionDialog(QtGui.QDialog):
             new_layer.name = name
         self.layerstack.append(new_layer)
 
-
     def _handle_selected_feature_set_changed(self):
         '''
         If the user selects a specific feature set in the comboBox in the bottom row then the segmentation of this
@@ -501,7 +520,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
         '''
         self._feature_selection_results.insert(0, feature_set_result)
         self._add_segmentation_layer(feature_set_result.segmentation, name=feature_set_result.name)
-        self.all_feature_sets_combo_box.insertItem(0, feature_set_result.name)
+        self.all_feature_sets_combo_box.insertItem(0, feature_set_result.long_name)
 
     def _update_parameters(self):
         self._selection_params["num_of_feat"] = self.number_of_feat_box.value()
@@ -680,7 +699,6 @@ class FeatureSelectionDialog(QtGui.QDialog):
         In [72]: self.opSimpleClassification.Predictions[0].meta.shape
         Out[72]: (1, 300, 275, 50, 1)
         '''
-
 
     def _convert_featureIDs_to_featureMatrix(self, selected_feature_IDs):
         '''
