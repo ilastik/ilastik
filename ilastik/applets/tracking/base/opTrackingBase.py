@@ -203,7 +203,11 @@ class OpTrackingBase(Operator, ExportingOperator):
 
         events = self.EventsVector.value
         parameters = self.Parameters.value
-        time_min, time_max = parameters['time_range']
+        
+        time_min = 0
+        time_max = self.RawImage.meta.shape[0] - 1 # Assumes t,x,y,z,c
+        if 'time_range' in parameters:
+            time_min, time_max = parameters['time_range']
         time_range = range(time_min, time_max)
 
         filtered_labels = self.FilteredLabels.value
