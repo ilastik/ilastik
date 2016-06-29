@@ -171,7 +171,8 @@ class AnnotationsGui(LayerViewerGui):
                 self._drawer.windowZBox.setEnabled(False)
         
         self.connect( self, QtCore.SIGNAL('postCriticalMessage(QString)'), self.postCriticalMessage)
-        
+        self.connect( self, QtCore.SIGNAL('postInformationMessage(QString)'), self.postInformationMessage)
+
         self._initShortcuts()
         self.editor.posModel.timeChanged.connect(self.updateTime)
         try:
@@ -326,15 +327,10 @@ class AnnotationsGui(LayerViewerGui):
                             crop["starts"][2] <= upper[2] and lower[2] <= crop["stops"][2]:
                             addAnnotation = True
 
-                    # timeUnicodeStr = unicode(str(time))
-                    # labelUnicodeStr = unicode(str(label))
                     if addAnnotation:
                         if time not in self.topLevelOperatorView.Annotations.value[name]["labels"].keys():
                             self.topLevelOperatorView.Annotations.value[name]["labels"][time] = {}
                         self.topLevelOperatorView.Annotations.value[name]["labels"][time][label] = self.topLevelOperatorView.labels[time][label]
-                        # if timeUnicodeStr not in self.topLevelOperatorView.Annotations.value[name]["labels"].keys():
-                        #     self.topLevelOperatorView.Annotations.value[name]["labels"][timeUnicodeStr] = {}
-                        # self.topLevelOperatorView.Annotations.value[name]["labels"][timeUnicodeStr][labelUnicodeStr] = self.topLevelOperatorView.labels[time][label]
 
         if name not in self.topLevelOperatorView.Annotations.value.keys():
             self.topLevelOperatorView.Annotations.value[name] = {}
@@ -883,6 +879,30 @@ class AnnotationsGui(LayerViewerGui):
             self._setDirty(self.mainOperator.Labels, affectedT)
     
     def _addObjectToTrack(self, activeTrack, oid, t):
+
+        crop = self.getCurrentCrop()
+
+        if t not in range(crop["time"][0],crop["time"][1]+1):
+            self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t) + " is outside the current crop time boundary.")
+            return -1
+
+        lower = self.features[t][default_features_key]['Coord<Minimum>'][oid]
+        upper = self.features[t][default_features_key]['Coord<Maximum>'][oid]
+        addAnnotation = False
+        if len(lower) == 2:
+            if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
+                crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1]:
+                addAnnotation = True
+        else:
+            if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
+                crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1] and \
+                crop["starts"][2] <= upper[2] and lower[2] <= crop["stops"][2]:
+                addAnnotation = True
+
+        if not addAnnotation:
+            self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t) + " is outside the current crop spatial boundary.")
+            return -1
+
         if t not in self.mainOperator.labels.keys():
             self.mainOperator.labels[t] = {}
         if oid not in self.mainOperator.labels[t].keys():
@@ -951,7 +971,7 @@ class AnnotationsGui(LayerViewerGui):
                 uniqueLabels = list(numpy.unique(li_product))
                 if 0 in uniqueLabels:
                     uniqueLabels.remove(0)
-                if len(uniqueLabels) != 1:                
+                if len(uniqueLabels) != 1:
                     self._log('tracking candidates at t = ' + str(t) + ': ' + str(uniqueLabels))
                     self._gotoObject(oid_prev, t-1, True)
                     t_end = t-1
@@ -961,7 +981,7 @@ class AnnotationsGui(LayerViewerGui):
                     self._gotoObject(oid_prev, t-1, True)
                     t_end = t-1
                     break
-                 
+
                 res = self._addObjectToTrack(activeTrack, uniqueLabels[0], t)
                 if res == -1:
                     self._gotoObject(uniqueLabels[0], t, False)
@@ -1499,10 +1519,17 @@ class AnnotationsGui(LayerViewerGui):
     def _criticalMessage(self, prompt):
         self.emit( QtCore.SIGNAL('postCriticalMessage(QString)'), prompt)
 
+    def _informationMessage(self, prompt):
+        self.emit( QtCore.SIGNAL('postInformationMessage(QString)'), prompt)
+
     @threadRouted
     def postCriticalMessage(self, prompt):
         QtGui.QMessageBox.critical(self, "Error", prompt, QtGui.QMessageBox.Ok)
         
+    @threadRouted
+    def postInformationMessage(self, prompt):
+        QtGui.QMessageBox.information(self, "Info:", prompt, QtGui.QMessageBox.Ok)
+
     @threadRouted
     def _enableButtons(self, exceptButtons=None, enable=True):
         buttons = [self._drawer.activeTrackBox, 
