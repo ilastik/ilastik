@@ -128,6 +128,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
 
         self._initialized_all_features_segmentation_layer = False
         self._initialized_current_features_segmentation_layer = False
+        self._initialized_feature_matrix = False
 
         self._selected_feature_set_id = None
         self.selected_features_matrix = self.opFeatureSelection.SelectionMatrix.value
@@ -180,29 +181,30 @@ class FeatureSelectionDialog(QtGui.QDialog):
         as explained in the __init__, we only display one slice of the datastack. Here we find out which slice is
 
         currently being viewed in ilastik
+
         """
+
+        #FIXME: the editor should return the current view coordinates without such workarounds
+
         ilastik_editor = self.opPixelClassification.parent.pcApplet.getMultiLaneGui().currentGui().editor
-        ilastik_currentslicing = ilastik_editor.posModel.slicingPos
         self._ilastik_currentslicing_5D = ilastik_editor.posModel.slicingPos5D
         #FIXME: is this always the xy scene?
         current_view = ilastik_editor.imageViews[2]
         current_viewport_rect = current_view.viewportRect().getRect()
 
-        axisOrder = [ tag.key for tag in self.opFeatureSelection.InputImage.meta.axistags ]
-        x_idx = axisOrder.index('x')
-        y_idx = axisOrder.index('y')
-        self._xysliceID = ilastik_currentslicing[-1]
+        axistags = self.opFeatureSelection.InputImage.meta['axistags']
 
-        self._inputDimension = 2 # at least x and y
+        x_idx = axistags.index('x')
+        y_idx = axistags.index('y')
+        self._xysliceID = self._ilastik_currentslicing_5D[3]  # volume editor slicings are all (t, x, y, z, c)
+        self._stackdim = self.opFeatureSelection.InputImage.meta.shape
 
         self._bbox = {}
-        if 'z' in axisOrder:
+        if 'z' in axistags:
             self._bbox['z'] = [self._xysliceID, self._xysliceID + 1]
-            self._inputDimension += 1
-        if 'c' in axisOrder:
-            self._bbox['c'] = [0, self._stackdim[axisOrder.index('c')]]
-        if 't' in axisOrder:
-            self._inputDimension += 1
+        if 'c' in axistags:
+            self._bbox['c'] = [0, self._stackdim[axistags.index('c')]]
+        if 't' in axistags:
             self._bbox['t'] = [self._ilastik_currentslicing_5D[0], self._ilastik_currentslicing_5D[0] + 1]
 
         self._bbox['x'] = [np.max([int(current_viewport_rect[0]), 0]), 
@@ -212,54 +214,19 @@ class FeatureSelectionDialog(QtGui.QDialog):
 
         self.reset_me()
 
-        # self._bbox_lower = [np.max([int(current_viewport_rect[0]), 0]), np.max([int(current_viewport_rect[1]), 0])]
-        # self._bbox_upper = [np.min([int(current_viewport_rect[0] + current_viewport_rect[2]), self._stackdim[x_idx]]),
-        #               np.min([int(current_viewport_rect[1] + current_viewport_rect[3]), self._stackdim[y_idx]])]
-
-
         # retrieve raw data of current slice and add it to the layerstack
-        self._axis_0_slice = slice(self._bbox[axisOrder[0]][0], self._bbox[axisOrder[0]][1])
-        self._axis_1_slice = slice(self._bbox[axisOrder[1]][0], self._bbox[axisOrder[1]][1])
+        total_slicing = [slice(self._bbox[ai.key][0], self._bbox[ai.key][1]) for ai in axistags]
+        self.raw_xy_slice = np.squeeze(self.opPixelClassification.InputImages[total_slicing].wait())
 
-        if len(self._stackdim) > 2:
-            self._axis_2_slice = slice(self._bbox[axisOrder[2]][0], self._bbox[axisOrder[2]][1])
-            if len(self._stackdim) > 3:
-                self._axis_3_slice = slice(self._bbox[axisOrder[3]][0], self._bbox[axisOrder[3]][1])
-                if len(self._stackdim) > 4:
-                    self._axis_4_slice = slice(self._bbox[axisOrder[4]][0], self._bbox[axisOrder[4]][1])
-
-        if len(self._stackdim) == 2:
-            self.raw_xy_slice = np.squeeze(self.opPixelClassification.InputImages[self._axis_0_slice, 
-                                                                                  self._axis_1_slice].wait())
-        elif len(self._stackdim) == 3:
-            self.raw_xy_slice = np.squeeze(self.opPixelClassification.InputImages[self._axis_0_slice, 
-                                                                                  self._axis_1_slice,
-                                                                                  self._axis_2_slice].wait())
-        elif len(self._stackdim) == 4:
-            self.raw_xy_slice = np.squeeze(self.opPixelClassification.InputImages[self._axis_0_slice, 
-                                                                                  self._axis_1_slice,
-                                                                                  self._axis_2_slice,
-                                                                                  self._axis_3_slice].wait())
-        elif len(self._stackdim) == 5:
-            self.raw_xy_slice = np.squeeze(self.opPixelClassification.InputImages[self._axis_0_slice, 
-                                                                                  self._axis_1_slice,
-                                                                                  self._axis_2_slice,
-                                                                                  self._axis_3_slice,
-                                                                                  self._axis_4_slice].wait())
-        else:
-            raise Exception
-        
-
-        axistags = self.opFeatureSelection.InputImage.meta['axistags']
         color_index = axistags.index('c')
         if self._stackdim[color_index] > 1:
             # dirty workaround for swapping x/y axis (I dont know how to set axistags of new layer)
-            if axisOrder.index('x') > axisOrder.index('y'):
+            if axistags.index('x') > axistags.index('y'):
                 self.raw_xy_slice = self.raw_xy_slice.transpose((1, 0, 2))
             self._add_color_layer(self.raw_xy_slice, "raw_data", True)
         else:
             # dirty workaround for swapping x/y axis (I dont know how to set axistags of new layer)
-            if axisOrder.index('x') > axisOrder.index('y'):
+            if axistags.index('x') > axistags.index('y'):
                 self.raw_xy_slice = self.raw_xy_slice.transpose((1, 0))
             self._add_grayscale_layer(self.raw_xy_slice, "raw_data", True)
 
@@ -623,50 +590,12 @@ class FeatureSelectionDialog(QtGui.QDialog):
             axisOrder += ['c']
 
         bbox['c'] = [0, 1]
-        axis_0_slice = slice(bbox[axisOrder[0]][0], bbox[axisOrder[0]][1])
-        axis_1_slice = slice(bbox[axisOrder[1]][0], bbox[axisOrder[1]][1])
 
-        if len(axisOrder) > 2:
-            axis_2_slice = slice(bbox[axisOrder[2]][0], bbox[axisOrder[2]][1])
-            if len(axisOrder) > 3:
-                axis_3_slice = slice(bbox[axisOrder[3]][0], bbox[axisOrder[3]][1])
-                if len(axisOrder) > 4:
-                    axis_4_slice = slice(bbox[axisOrder[4]][0], bbox[axisOrder[4]][1])
+        total_slicing = [slice(bbox[ai][0], bbox[ai][1]) for ai in axisOrder]
 
+        # combine segmentation layers
         for i, seglayer in enumerate(self.opPixelClassification.SegmentationChannels):
-<<<<<<< 187eb6d1dbf198ba05b2027f4a52d3b130c3e69e
-            if self._inputDimension == 4:
-                single_layer_of_segmentation = np.squeeze(seglayer[axis_0_slice, 
-                                                                  axis_1_slice,
-                                                                  axis_2_slice,
-                                                                  axis_3_slice,
-                                                                  axis_4_slice].wait())
-            elif self._inputDimension == 3:
-                single_layer_of_segmentation = np.squeeze(seglayer[axis_0_slice, 
-                                                                  axis_1_slice,
-                                                                  axis_2_slice,
-                                                                  axis_3_slice].wait())
-            elif self._inputDimension == 2:
-                single_layer_of_segmentation = np.squeeze(seglayer[axis_0_slice, 
-                                                                  axis_1_slice,
-                                                                  axis_2_slice].wait())
-=======
-            if len(self._stack_dim) == 5:
-                single_layer_of_segmentation = np.squeeze(seglayer[self._ilastik_currentslicing_5D[0],
-                                                          self._bbox_lower[0]:self._bbox_upper[0],
-                                                          self._bbox_lower[1]:self._bbox_upper[1],
-                                                          self._xysliceID, 0].wait())
-            elif len(self._stack_dim) == 4:
-                single_layer_of_segmentation = np.squeeze(seglayer[self._bbox_lower[0]:self._bbox_upper[0],
-                                                          self._bbox_lower[1]:self._bbox_upper[1],
-                                                          self._xysliceID, 0].wait())
-            elif len(self._stack_dim) == 3:
-                single_layer_of_segmentation = np.squeeze(seglayer[self._bbox_lower[0]:self._bbox_upper[0],
-                                                        self._bbox_lower[1]:self._bbox_upper[1],
-                                                        0].wait())
->>>>>>> wip for correct 3d slicing
-            else:
-                raise Exception
+            single_layer_of_segmentation = np.squeeze(seglayer[total_slicing].wait())
             if do_transpose:
                 single_layer_of_segmentation = single_layer_of_segmentation.transpose()
             segmentation[single_layer_of_segmentation != 0] = i
