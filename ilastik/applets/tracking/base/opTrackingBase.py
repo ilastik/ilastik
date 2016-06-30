@@ -505,6 +505,13 @@ class OpTrackingBase(Operator, ExportingOperator):
                 for i, v in enumerate([x, y, z]):
                     tr.set_feature_value('com', i, float(v))
 
+                tr.add_feature_array("CoordMinimum", 3)
+                for i, v in enumerate(lower[idx]):
+                    tr.set_feature_value("CoordMinimum", i, float(v))
+                tr.add_feature_array("CoordMaximum", 3)
+                for i, v in enumerate(upper[idx]):
+                    tr.set_feature_value("CoordMaximum", i, float(v))
+
                 if with_opt_correction:
                     tr.add_feature_array("com_corrected", 3)
                     for i, v in enumerate(rc_corr[idx]):
