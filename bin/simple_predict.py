@@ -18,15 +18,16 @@ def main():
     parser.add_argument('classifier', help='example: my-file.h5/forest')
     parser.add_argument('filter_specs', help='json file containing filter list')
     parser.add_argument('output_path', help='example: my-predictions.h5/volume')
+    parser.add_argument('--compute-blockwise', help='Compute blockwise instead of as a whole', action='store_true')
     args = parser.parse_args()
     
     logger.setLevel(logging.INFO)
     logger.addHandler( logging.StreamHandler(sys.stdout) )
     
-    load_and_predict( args.grayscale, args.classifier, args.filter_specs, args.output_path )
+    load_and_predict( args.grayscale, args.classifier, args.filter_specs, args.output_path, args.compute_blockwise )
     logger.info("DONE.")
 
-def load_and_predict( input_data_or_path, classifier_filepath, feature_list_json_path, output_path=None ):
+def load_and_predict( input_data_or_path, classifier_filepath, feature_list_json_path, output_path=None, compute_blockwise=False ):
     assert output_path is None or isinstance( output_path, str )
 
     # Load
@@ -35,7 +36,10 @@ def load_and_predict( input_data_or_path, classifier_filepath, feature_list_json
     rf = load_classifier( classifier_filepath )
 
     # Predict
-    predictions = simple_predict( input_data, rf, filter_specs )
+    if compute_blockwise:
+        predictions = blockwise_predict( input_data, rf, filter_specs )
+    else:
+        predictions = simple_predict( input_data, rf, filter_specs )
     
     # Save
     if output_path:
@@ -54,6 +58,9 @@ def simple_predict( input_grayscale, random_forest, filter_spec_list ):
         "RF expects {} features, but filter specs will provide {}" \
         .format( random_forest.featureCount(), num_channels )
 
+    # Determine filter output locations
+    logger.info( "Computing {} filters ({} channels)" .format( len(filter_spec_list), num_channels ) )
+
     # Compute features
     feature_volume = compute_features( input_grayscale, filter_spec_list )
 
@@ -61,9 +68,63 @@ def simple_predict( input_grayscale, random_forest, filter_spec_list ):
     predictions_shape = input_grayscale.shape + (num_classes,)
     
     # Predict
+    logger.info("Predicting...")
     prediction_volume = predict_from_features( feature_volume, random_forest )
     return prediction_volume
 
+def blockwise_predict( input_grayscale, random_forest, filter_spec_list, block_shape=None ):
+    assert isinstance(random_forest, vigra.learning.RandomForest)
+    assert isinstance( input_grayscale, vigra.VigraArray )
+    input_grayscale = input_grayscale.dropChannelAxis()
+    
+    num_channels = get_filter_channel_ranges(filter_spec_list, input_grayscale.ndim)[-1][1]
+    assert num_channels == random_forest.featureCount(), \
+        "Mismatch between feature list and RF expected features count.\n" \
+        "RF expects {} features, but filter specs will provide {}" \
+        .format( random_forest.featureCount(), num_channels )
+
+    # Determine filter output locations
+    logger.info( "Computing {} filters ({} channels)" .format( len(filter_spec_list), num_channels ) )
+    
+    if block_shape is None:
+        # Arbitrary: Choose input_shape / 4
+        block_shape = np.array(input_grayscale.shape) // 4
+    else:
+        block_shape = np.array( block_shape )
+
+    num_classes = random_forest.labelCount()
+    prediction_volume = np.ndarray( shape=input_grayscale.shape + (num_classes,), dtype=np.float32)
+
+    # How many blocks in each dimension?
+    # This is the input shape, measured in units of blocks (rounded up)
+    nd_block_counts = (input_grayscale.shape + np.array(block_shape)-1) // block_shape
+
+    # Iterate over blocks
+    for i, block_ndindex in enumerate( np.ndindex( *nd_block_counts ) ):
+        block_ndindex = np.array(block_ndindex)
+        block_roi = np.array([ block_shape*block_ndindex,
+                               block_shape*(block_ndindex+1) ])
+
+        # Clip to image boundaries
+        block_roi[0] = np.maximum( block_roi[0], (0,)*input_grayscale.ndim )
+        block_roi[1] = np.minimum( block_roi[1], input_grayscale.shape )
+
+        logger.info("Processing block {}: {}".format( i, block_roi.tolist() ))
+        block_feature_volume = compute_features(input_grayscale, filter_spec_list, roi=block_roi)
+        prediction_volume[bb_to_slicing(*block_roi)] = predict_from_features( block_feature_volume, random_forest )
+    
+    return prediction_volume
+
+def bb_to_slicing(start, stop):
+    """
+    For the given bounding box (start, stop),
+    return the corresponding slicing tuple.
+
+    Example:
+    
+        >>> assert bb_to_slicing([1,2,3], [4,5,6]) == np.s_[1:4, 2:5, 3:6]
+    """
+    return tuple( starmap( slice, zip(start, stop) ) )
 
 # In vigra, 0.0 means 'automatically determined' (Toufiq uses 0.0)
 # In ilastik, we use 2.0 for all filters (except the pre-smoothing step)
@@ -97,7 +158,8 @@ def define_filter(is_vector_valued=False):
 
             if is_vector_valued:
                 assert 'c' in out.axistags, "Output array for this vector-valued filter has no channel dimensions"
-                assert out.shape[:-1] == input_data.shape[:out.ndim-1]
+                assert out.ndim == roi.shape[1]+1
+                assert out.shape[:-1] == tuple(roi[1] - roi[0])
                 num_output_channels = out.shape[out.axistags.index('c')]
                 spatial_dims = input_data.axistags.axisTypeCount(vigra.AxisType.Space)
                 assert num_output_channels == spatial_dims, \
@@ -105,7 +167,6 @@ def define_filter(is_vector_valued=False):
                     .format(num_output_channels, spatial_dims)
             elif 'c' in out.axistags:
                 assert out.channelIndex == out.ndim-1, "Channel must be last axis."
-                assert out.shape[:-1] == input_data.shape[:out.ndim-1]
                 assert out.shape[out.channelIndex] == 1, \
                     "Output array has the wrong number of channels.  Should have exactly 1 channel."
                 assert out.ndim == roi.shape[1]+1
@@ -190,24 +251,22 @@ def compute_features( input_grayscale, filter_spec_list, out=None, roi=None ):
     if roi is None:
         roi = ( (0,)*input_grayscale.ndim,
                 input_grayscale.shape )
-    roi = np.array(roi)
-    roi_shape = roi[1] - roi[0]
-    assert roi.shape[1] == input_grayscale.ndim, \
+    assert len(roi[0]) == len(roi[1]) == input_grayscale.ndim, \
         "roi doesn't match input dimensionality."
 
     # Determine filter output locations
     filter_channel_ranges = get_filter_channel_ranges( filter_spec_list, input_grayscale.ndim )
     total_output_channels = filter_channel_ranges[-1][1]
-    logger.info( "Computing {} filters ({} channels)" .format( len(filter_spec_list), total_output_channels ) )
     
     if out is None:
         # Allocate space for the results
-        output_shape = input_grayscale.shape + (total_output_channels,)
+        roi_shape = tuple(np.array(roi[1]) - roi[0])
+        output_shape = roi_shape + (total_output_channels,)
         out = np.ndarray( shape=output_shape, dtype=np.float32 )
         out = vigra.taggedView( out, 'zyxc'[-out.ndim:] )
     else:
         assert isinstance( out, vigra.VigraArray )
-        assert out.shape[:-1] == roi.shape
+        assert out.shape[:-1] == roi_shape
         assert out.shape[-1] == output_shape, \
             "output array has the wrong shape. Expected {}, got {}" \
             .format( output_shape, out.shape )
@@ -217,13 +276,18 @@ def compute_features( input_grayscale, filter_spec_list, out=None, roi=None ):
     for (filter_name, scale), (start_channel, stop_channel) in zip(filter_spec_list, filter_channel_ranges):
         filter = FilterFunctions[filter_name]
         filter_out = out[..., start_channel:stop_channel]
-        tasks.append( partial( filter, input_grayscale, scale, filter_out, roi ) )
+        task = partial( filter, input_grayscale, scale, filter_out, roi )
+        tasks.append( task )
 
     # Actually do the work
     execute_tasks(tasks)
     return out
 
 def execute_tasks( tasks ):
+    """
+    Executes the given list of tasks (functions).
+    Eventually, I'll replace this dumb for-loop with a thread pool.
+    """
     for task in tasks:
         task()
 
@@ -249,7 +313,6 @@ def get_filter_channel_ranges( filter_spec_list, ndim ):
     
 
 def predict_from_features( feature_volume, random_forest ):
-    logger.info("Predicting...")
     assert isinstance(random_forest, vigra.learning.RandomForest)
 
     feature_matrix = feature_volume.view( np.ndarray ).reshape( (-1, feature_volume.shape[-1]) )
@@ -366,6 +429,7 @@ def __debug_setup():
     with open(filter_specs_path, 'w') as f:
         json.dump( filter_specs, f, indent=4, separators=(',', ': ') )
 
+    sys.argv.append( '--compute-blockwise' )
     sys.argv.append( '/magnetic/data/flyem/pb-june2016/teeny-grayscale.h5/grayscale' )
     sys.argv.append( '/magnetic/data/flyem/pb-june2016/pixel_classifier_4class_2.5_1000000_10_800_1000_1.0_1.h5/PixelClassification/ClassifierForests/Forest0000' )
     sys.argv.append( filter_specs_path )
@@ -374,6 +438,8 @@ def __debug_setup():
 if __name__ == "__main__":
     #__debug_setup()
 
+    # vigra convolutions produce an annoying FutureWarning about comparing arrays to None
     import warnings
     warnings.simplefilter("ignore", FutureWarning)
+
     main()
