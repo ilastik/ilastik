@@ -620,7 +620,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         # will be needed for python defined TRANSITION function
         #structuredLearningTrackerParameters.register_transition_func(self.mainOperator.track_transition_func_no_weight)
         structuredLearningTracker.structuredLearning(structuredLearningTrackerParameters)
-        if withDivisions and numAllAnnotatedDivisions == 0 and structuredLearningTracker.weight(1) == 0.0:
+        if withDivisions and numAllAnnotatedDivisions == 0 and not structuredLearningTracker.weight(1) == 0.0:
             self._informationMessage ("Divisible objects are checked, but you did not annotate any divisions in your tracking training. " + \
                                  "The resulting division weight might be arbitrarily high and if there are divisions present in the dataset, " +\
                                  "they might not be present in the tracking solution.")
