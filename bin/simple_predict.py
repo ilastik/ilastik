@@ -10,6 +10,8 @@ import numpy as np
 import h5py
 import vigra
 
+from lazyflow.request import Request, RequestPool
+
 logger = logging.getLogger(__name__)
 
 def main():
@@ -19,10 +21,14 @@ def main():
     parser.add_argument('filter_specs', help='json file containing filter list')
     parser.add_argument('output_path', help='example: my-predictions.h5/volume')
     parser.add_argument('--compute-blockwise', help='Compute blockwise instead of as a whole', action='store_true')
+    parser.add_argument('--thread-count', help='The threadpool size', default=0)
     args = parser.parse_args()
-    
+
+    # Show log messages on the console.
     logger.setLevel(logging.INFO)
     logger.addHandler( logging.StreamHandler(sys.stdout) )
+
+    Request.reset_thread_pool(args.thread_count)
     
     load_and_predict( args.grayscale, args.classifier, args.filter_specs, args.output_path, args.compute_blockwise )
     logger.info("DONE.")
@@ -64,9 +70,6 @@ def simple_predict( input_grayscale, random_forest, filter_spec_list ):
     # Compute features
     feature_volume = compute_features( input_grayscale, filter_spec_list )
 
-    num_classes = random_forest.labelCount()
-    predictions_shape = input_grayscale.shape + (num_classes,)
-    
     # Predict
     logger.info("Predicting...")
     prediction_volume = predict_from_features( feature_volume, random_forest )
@@ -285,11 +288,12 @@ def compute_features( input_grayscale, filter_spec_list, out=None, roi=None ):
 
 def execute_tasks( tasks ):
     """
-    Executes the given list of tasks (functions).
-    Eventually, I'll replace this dumb for-loop with a thread pool.
+    Executes the given list of tasks (functions) in the lazyflow threadpool.
     """
+    pool = RequestPool()
     for task in tasks:
-        task()
+        pool.add( Request(task) )
+    pool.wait()
 
 
 def get_filter_channel_ranges( filter_spec_list, ndim ):
