@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>256</width>
-    <height>1250</height>
+    <height>1310</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -373,7 +373,7 @@
    <item row="2" column="0">
     <widget class="QPushButton" name="initializeAnnotations">
      <property name="text">
-      <string>Delete Training</string>
+      <string>Delete All Training</string>
      </property>
     </widget>
    </item>

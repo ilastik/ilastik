@@ -172,6 +172,7 @@ class AnnotationsGui(LayerViewerGui):
         
         self.connect( self, QtCore.SIGNAL('postCriticalMessage(QString)'), self.postCriticalMessage)
         self.connect( self, QtCore.SIGNAL('postInformationMessage(QString)'), self.postInformationMessage)
+        self.connect( self, QtCore.SIGNAL('postQuestionMessage(QString)'), self.postQuestionMessage)
 
         self._initShortcuts()
         self.editor.posModel.timeChanged.connect(self.updateTime)
@@ -191,12 +192,20 @@ class AnnotationsGui(LayerViewerGui):
 
         self.volumeEditorWidget.quadViewStatusBar.setToolTipTimeButtonsCrop(True)
         self.volumeEditorWidget.quadViewStatusBar.setToolTipTimeSliderCrop(True)
+        self.deleteAllTraining = False
 
     def _onInitializeAnnotations(self):
 
         if self.topLevelOperatorView.Annotations.value != {}:
-            logger.info("WARNING: All your annotations will be lost! You can save the project, then save it under a new name and continue without loss of current annotations.")
-            self.mainOperator.Annotations.setValue({})
+            self._questionMessage("All your annotations will be lost! You should save the project, " + \
+                                  "then save it under a new name and continue without loss of current annotations. " + \
+                                  "Do you really want to delete all your annotations?")
+
+            if self.deleteAllTraining:
+                self.mainOperator.Annotations.setValue({})
+            else:
+                self.deleteAllTraining = False
+                return
         self.mainOperator.Divisions.setValue({})
         self.mainOperator.Labels.setValue({})
 
@@ -1528,6 +1537,9 @@ class AnnotationsGui(LayerViewerGui):
     def _criticalMessage(self, prompt):
         self.emit( QtCore.SIGNAL('postCriticalMessage(QString)'), prompt)
 
+    def _questionMessage(self, prompt):
+        self.emit( QtCore.SIGNAL('postQuestionMessage(QString)'), prompt)
+
     def _informationMessage(self, prompt):
         self.emit( QtCore.SIGNAL('postInformationMessage(QString)'), prompt)
 
@@ -1536,8 +1548,19 @@ class AnnotationsGui(LayerViewerGui):
         QtGui.QMessageBox.critical(self, "Error", prompt, QtGui.QMessageBox.Ok)
         
     @threadRouted
+    def postQuestionMessage(self, prompt):
+        qBox = QtGui.QMessageBox()
+        qBox.setWindowTitle("Confirm")
+        qBox.setText(prompt)
+        qBox.setStandardButtons( QtGui.QMessageBox.Ok | QtGui.QMessageBox.Cancel)
+        qBox.setDefaultButton( QtGui.QMessageBox.Cancel )
+        retVal = qBox.exec_()
+        if retVal == QtGui.QMessageBox.Ok:
+            self.deleteAllTraining = True
+
+    @threadRouted
     def postInformationMessage(self, prompt):
-        QtGui.QMessageBox.information(self, "Info:", prompt, QtGui.QMessageBox.Ok)
+        QtGui.QMessageBox.information(self, "Info", prompt, QtGui.QMessageBox.Ok)
 
     @threadRouted
     def _enableButtons(self, exceptButtons=None, enable=True):
