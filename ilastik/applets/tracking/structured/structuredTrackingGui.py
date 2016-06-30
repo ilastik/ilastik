@@ -1,4 +1,5 @@
-from PyQt4 import uic, QtGui
+from PyQt4 import uic, QtGui, QtCore
+
 import os
 import logging
 import sys
@@ -59,6 +60,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         self.applet = self.mainOperator.parent.parent.trackingApplet
         self._drawer.mergerResolutionBox.setChecked(True)
+        self.connect( self, QtCore.SIGNAL('postInformationMessage(QString)'), self.postInformationMessage)
 
     def _loadUiFile(self):
         localDir = os.path.split(__file__)[0]
@@ -439,6 +441,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
             mergeMsgStr = "Your tracking annotations contradict this model assumptions! All tracks must be continuous, tracks of length one are not allowed, and mergers may merge or split but all tracks in a merger appear/disappear together."
             foundAllArcs = True;
+            numAllAnnotatedDivisions = 0
             for cropKey in self.mainOperator.Crops.value.keys():
                 if foundAllArcs:
                     crop = self.mainOperator.Annotations.value[cropKey]
@@ -519,6 +522,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                     if foundAllArcs and "divisions" in crop.keys():
                         divisions = crop["divisions"]
 
+                        numAllAnnotatedDivisions = numAllAnnotatedDivisions + len(divisions)
                         for track in divisions.keys():
                             if not foundAllArcs:
                                 break
@@ -616,6 +620,10 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         # will be needed for python defined TRANSITION function
         #structuredLearningTrackerParameters.register_transition_func(self.mainOperator.track_transition_func_no_weight)
         structuredLearningTracker.structuredLearning(structuredLearningTrackerParameters)
+        if withDivisions and numAllAnnotatedDivisions == 0 and structuredLearningTracker.weight(1) == 0.0:
+            self._informationMessage ("Divisible objects are checked, but you did not annotate any divisions in your tracking training. " + \
+                                 "The resulting division weight might be arbitrarily high and if there are divisions present in the dataset, " +\
+                                 "they might not be present in the tracking solution.")
 
         norm = 0
         for i in range(5):
@@ -917,4 +925,11 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             menu.addAction("Start IPC Server", IPCFacade().start)
 
         menu.exec_(win_coord)
+
+    def _informationMessage(self, prompt):
+        self.emit( QtCore.SIGNAL('postInformationMessage(QString)'), prompt)
+
+    @threadRouted
+    def postInformationMessage(self, prompt):
+        QtGui.QMessageBox.information(self, "Info:", prompt, QtGui.QMessageBox.Ok)
 
