@@ -112,8 +112,10 @@ def blockwise_predict( input_grayscale, random_forest, filter_spec_list, block_s
         block_roi[0] = np.maximum( block_roi[0], (0,)*input_grayscale.ndim )
         block_roi[1] = np.minimum( block_roi[1], input_grayscale.shape )
 
-        logger.info("Processing block {}: {}".format( i, block_roi.tolist() ))
+        logger.info("Computing Features for block {}: {}".format( i, block_roi.tolist() ))
         block_feature_volume = compute_features(input_grayscale, filter_spec_list, roi=block_roi)
+
+        logger.info("Computing Predictions for block {}: {}".format( i, block_roi.tolist() ))
         prediction_volume[bb_to_slicing(*block_roi)] = predict_from_features( block_feature_volume, random_forest )
     
     return prediction_volume
@@ -382,6 +384,9 @@ def load_classifier( classifier_filepath ):
 
     classifier_filepath, classifier_groupname = classifier_filepath.split(ext)
     classifier_filepath += ext
+
+    classifier_filepath = str(classifier_filepath)
+    classifier_groupname = str(classifier_groupname)
 
     # Load classifier from hdf5
     rf = vigra.learning.RandomForest(classifier_filepath, classifier_groupname)
