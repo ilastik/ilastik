@@ -667,7 +667,10 @@ class AnnotationsGui(LayerViewerGui):
     
             res = self._addObjectToTrack(activeTrack,oid,t)
 
-            if res == -1:
+            if res == -99:
+                self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t) + " is outside the current crop.")
+                return
+            elif res == -1:
                 return
             elif res == -2:
                 self._setPosModel(time=self.editor.posModel.time + 1)
@@ -900,8 +903,7 @@ class AnnotationsGui(LayerViewerGui):
                 addAnnotation = True
 
         if not addAnnotation:
-            self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t) + " is outside the current crop spatial boundary.")
-            return -1
+            return -99 # info message depends on the caller: rightClick/runAutomaticTracking or leftClick(addObjectToTrack)
 
         if t not in self.mainOperator.labels.keys():
             self.mainOperator.labels[t] = {}
@@ -944,7 +946,10 @@ class AnnotationsGui(LayerViewerGui):
                 return 
             
             res = self._addObjectToTrack(self._getActiveTrack(), oid, t_start)
-            if res == -1:
+            if res == -99:
+                self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t_start) + " is outside the current crop.")
+                return
+            elif res == -1:
                 return
                     
             sroi = [slice(0,1),]
@@ -983,7 +988,11 @@ class AnnotationsGui(LayerViewerGui):
                     break
 
                 res = self._addObjectToTrack(activeTrack, uniqueLabels[0], t)
-                if res == -1:
+                if res == -99:
+                    self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t) + " left the current crop spatial boundary.")
+                    self._gotoObject(uniqueLabels[0], t, False)
+                    return
+                elif res == -1:
                     self._gotoObject(uniqueLabels[0], t, False)
                     return
                 
