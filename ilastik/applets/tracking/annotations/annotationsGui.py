@@ -676,7 +676,7 @@ class AnnotationsGui(LayerViewerGui):
     
             res = self._addObjectToTrack(activeTrack,oid,t)
 
-            if res == -99:
+            if res == -99 or res == -98:
                 self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t) + " is outside the current crop.")
                 return
             elif res == -1:
@@ -895,8 +895,7 @@ class AnnotationsGui(LayerViewerGui):
         crop = self.getCurrentCrop()
 
         if t not in range(crop["time"][0],crop["time"][1]+1):
-            self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t) + " is outside the current crop time boundary.")
-            return -1
+            return -98
 
         lower = self.features[t][default_features_key]['Coord<Minimum>'][oid]
         upper = self.features[t][default_features_key]['Coord<Maximum>'][oid]
@@ -955,7 +954,7 @@ class AnnotationsGui(LayerViewerGui):
                 return 
             
             res = self._addObjectToTrack(self._getActiveTrack(), oid, t_start)
-            if res == -99:
+            if res == -99 or res == -98:
                 self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t_start) + " is outside the current crop.")
                 return
             elif res == -1:
@@ -997,7 +996,11 @@ class AnnotationsGui(LayerViewerGui):
                     break
 
                 res = self._addObjectToTrack(activeTrack, uniqueLabels[0], t)
-                if res == -99:
+                if res == -98:
+                    self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t) + " left the current crop time boundary.")
+                    self._gotoObject(uniqueLabels[0], t, False)
+                    return
+                elif res == -99:
                     self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t) + " left the current crop spatial boundary.")
                     self._gotoObject(uniqueLabels[0], t, False)
                     return
