@@ -196,16 +196,15 @@ class AnnotationsGui(LayerViewerGui):
 
     def _onInitializeAnnotations(self):
 
-        if self.topLevelOperatorView.Annotations.value != {}:
-            self._questionMessage("All your annotations will be lost! You should save the project, " + \
+        self._questionMessage("All your annotations will be lost! You should save the project, " + \
                                   "then save it under a new name and continue without loss of current annotations. " + \
                                   "Do you really want to delete all your annotations?")
 
-            if self.deleteAllTraining:
-                self.mainOperator.Annotations.setValue({})
-            else:
-                self.deleteAllTraining = False
-                return
+        if self.deleteAllTraining:
+            self.mainOperator.Annotations.setValue({})
+        else:
+            self.deleteAllTraining = False
+            return
         self.mainOperator.Divisions.setValue({})
         self.mainOperator.Labels.setValue({})
 
