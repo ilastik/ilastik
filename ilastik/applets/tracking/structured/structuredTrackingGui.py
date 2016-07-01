@@ -356,6 +356,10 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         return False
 
     def _onRunStructuredLearningButtonPressed(self):
+        if self.topLevelOperatorView.Annotations.value == {}:
+            self._criticalMessage("Error: Weights can not be calculated because there are no training annotations. " +\
+                                  "Go back to Training applet and Save your training for each crop.")
+            return
 
         self.initializeAnnotations()
         median_obj_size = [0]
@@ -444,6 +448,12 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             numAllAnnotatedDivisions = 0
             for cropKey in self.mainOperator.Crops.value.keys():
                 if foundAllArcs:
+
+                    if not cropKey in self.mainOperator.Annotations.value.keys():
+                        self._criticalMessage("You have not trained or saved your training for " + str(cropKey) + \
+                                              ". \nGo back to the Training applet and save all your training!")
+                        return
+
                     crop = self.mainOperator.Annotations.value[cropKey]
 
                     if "labels" in crop.keys():
