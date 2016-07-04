@@ -346,8 +346,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
     def initializeAnnotations(self):
 
         self._crops = self.topLevelOperatorView.Crops.value
-        self.divisions= self.operator.Divisions.value
-        self.labels= self.operator.Labels.value
 
     def getLabel(self, time, track):
         for label in self.operator.labels[time].keys():
