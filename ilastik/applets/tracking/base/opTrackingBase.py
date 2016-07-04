@@ -565,7 +565,7 @@ class OpTrackingBase(Operator, ExportingOperator):
             median_object_size[0] = np.median(np.array(obj_sizes), overwrite_input=True)
             logger.info('median object size = ' + str(median_object_size[0]))
 
-        self.FilteredLabels.setValue(filtered_labels, check_changed=False)
+        self.FilteredLabels.setValue(filtered_labels, check_changed=True)
 
         return fs, ts, empty_frame, max_traxel_id_at
 
