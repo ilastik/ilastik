@@ -972,7 +972,8 @@ class AnnotationsGui(LayerViewerGui):
             
             res = self._addObjectToTrack(self._getActiveTrack(), oid, t_start)
             if res == -99 or res == -98:
-                self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t_start) + " is outside the current crop.")
+                self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t_start) + " is outside the current crop. " + \
+                                         "Stopping automatic tracking at crop boundary.")
                 return
             elif res == -1:
                 return
