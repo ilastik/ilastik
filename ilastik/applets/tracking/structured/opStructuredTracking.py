@@ -95,7 +95,6 @@ class OpStructuredTracking(OpTrackingBase):
     def setupOutputs(self):
         super(OpStructuredTracking, self).setupOutputs()
         self.MergerOutput.meta.assignFrom(self.LabelImage.meta)
-        self.CoordinateMap.meta.assignFrom(self.LabelImage.meta)
         self.RelabeledImage.meta.assignFrom(self.LabelImage.meta)
         self._ndim = 2 if self.LabelImage.meta.shape[3] == 1 else 3
 
