@@ -155,6 +155,9 @@
          <verstretch>0</verstretch>
         </sizepolicy>
        </property>
+       <property name="toolTip">
+        <string>Suggest which features to use for prediction</string>
+       </property>
        <property name="text">
         <string>Suggest Features</string>
        </property>
@@ -175,7 +178,7 @@
         </sizepolicy>
        </property>
        <property name="text">
-        <string>Live update</string>
+        <string>Live Update</string>
        </property>
        <property name="checkable">
         <bool>true</bool>

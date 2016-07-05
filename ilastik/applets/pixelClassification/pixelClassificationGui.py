@@ -307,6 +307,7 @@ class PixelClassificationGui(LabelingGui):
         self.initFeatSelDlg()
         self.labelingDrawerUi.suggestFeaturesButton.clicked.connect(self.show_feature_selection_dialog)
         self.featSelDlg.accepted.connect(self.update_features_from_dialog)
+        self.labelingDrawerUi.suggestFeaturesButton.setEnabled(False)
 
         self.topLevelOperatorView.LabelNames.notifyDirty( bind(self.handleLabelSelectionChange) )
         self.__cleanup_fns.append( partial( self.topLevelOperatorView.LabelNames.unregisterDirty, bind(self.handleLabelSelectionChange) ) )
@@ -602,6 +603,7 @@ class PixelClassificationGui(LabelingGui):
             if not self.topLevelOperatorView.FeatureImages.ready() \
             or self.topLevelOperatorView.FeatureImages.meta.shape==None:
                 self.labelingDrawerUi.liveUpdateButton.setChecked(False)
+                self.labelingDrawerUi.suggestFeaturesButton.setEnabled(False)
                 mexBox=QMessageBox()
                 mexBox.setText("There are no features selected ")
                 mexBox.exec_()
@@ -623,6 +625,7 @@ class PixelClassificationGui(LabelingGui):
 
         self.topLevelOperatorView.FreezePredictions.setValue( not checked )
         self.labelingDrawerUi.liveUpdateButton.setChecked(checked)
+        #self.labelingDrawerUi.suggestFeaturesButton.setEnabled(checked)
         # Auto-set the "show predictions" state according to what the user just clicked.
         if checked:
             self._viewerControlUi.checkShowPredictions.setChecked( True )
@@ -699,6 +702,7 @@ class PixelClassificationGui(LabelingGui):
             self.handleShowSegmentationClicked()
 
         self.labelingDrawerUi.liveUpdateButton.setEnabled(enabled)
+        self.labelingDrawerUi.suggestFeaturesButton.setEnabled(enabled)
         self._viewerControlUi.checkShowPredictions.setEnabled(enabled)
         self._viewerControlUi.checkShowSegmentation.setEnabled(enabled)
 

@@ -1,15 +1,11 @@
 # -*- coding: utf-8 -*-
 __author__ = 'fabian'
 
-import numpy as np
+import numpy
 # import scipy
 from PyQt4 import QtCore, QtGui
 from PyQt4.QtCore import pyqtRemoveInputHook, pyqtRestoreInputHook
-# import pyqtgraph as pg
 
-# import IPython
-
-# from volumina.api import Viewer
 from volumina.widgets import layerwidget
 from volumina import volumeEditorWidget
 from volumina.layer import ColortableLayer, GrayscaleLayer, RGBALayer
@@ -49,11 +45,11 @@ class FeatureSelectionResult(object):
 
         if self.selection_method == "filter" or self.selection_method == "gini":
             if self.parameters["num_of_feat"] == 0:
-                name = "%s_%d_features(auto)" % (self.selection_method, np.sum(self.feature_matrix))
+                name = "%s_%d_features(auto)" % (self.selection_method, numpy.sum(self.feature_matrix))
             else:
                 name = "%s_%d_features" % (self.selection_method, self.parameters["num_of_feat"])
         elif self.selection_method == "wrapper":
-            name = "%s_%i_features" % (self.selection_method, np.sum(self.feature_matrix))
+            name = "%s_%i_features" % (self.selection_method, numpy.sum(self.feature_matrix))
         else:
             name = self.selection_method
         return name
@@ -66,11 +62,11 @@ class FeatureSelectionResult(object):
 
         if self.selection_method == "filter" or self.selection_method == "gini":
             if self.parameters["num_of_feat"] == 0:
-                name = "%s_%d_features(auto)" % (self.selection_method, np.sum(self.feature_matrix))
+                name = "%s_%d_features(auto)" % (self.selection_method, numpy.sum(self.feature_matrix))
             else:
                 name = "%s_%d_features" % (self.selection_method, self.parameters["num_of_feat"])
         elif self.selection_method == "wrapper":
-            name = "%s_%i_features_c=%1.02f" % (self.selection_method, np.sum(self.feature_matrix), self.parameters["c"])
+            name = "%s_%i_features_c=%1.02f" % (self.selection_method, numpy.sum(self.feature_matrix), self.parameters["c"])
         else:
             name = self.selection_method
         if self.oob_err is not None:
@@ -207,16 +203,16 @@ class FeatureSelectionDialog(QtGui.QDialog):
         if 't' in axistags:
             self._bbox['t'] = [self._ilastik_currentslicing_5D[0], self._ilastik_currentslicing_5D[0] + 1]
 
-        self._bbox['x'] = [np.max([int(current_viewport_rect[0]), 0]), 
-                           np.min([int(current_viewport_rect[0] + current_viewport_rect[2]), self._stackdim[x_idx]])]
-        self._bbox['y'] = [np.max([int(current_viewport_rect[1]), 0]),
-                           np.min([int(current_viewport_rect[1] + current_viewport_rect[3]), self._stackdim[y_idx]])]
+        self._bbox['x'] = [numpy.max([int(current_viewport_rect[0]), 0]),
+                           numpy.min([int(current_viewport_rect[0] + current_viewport_rect[2]), self._stackdim[x_idx]])]
+        self._bbox['y'] = [numpy.max([int(current_viewport_rect[1]), 0]),
+                           numpy.min([int(current_viewport_rect[1] + current_viewport_rect[3]), self._stackdim[y_idx]])]
 
         self.reset_me()
 
         # retrieve raw data of current slice and add it to the layerstack
         total_slicing = [slice(self._bbox[ai.key][0], self._bbox[ai.key][1]) for ai in axistags]
-        self.raw_xy_slice = np.squeeze(self.opPixelClassification.InputImages[total_slicing].wait())
+        self.raw_xy_slice = numpy.squeeze(self.opPixelClassification.InputImages[total_slicing].wait())
 
         color_index = axistags.index('c')
         if self._stackdim[color_index] > 1:
@@ -288,11 +284,11 @@ class FeatureSelectionDialog(QtGui.QDialog):
             text_number_of_feat = QtGui.QLabel("Number of Features (0=auto)")
             self.number_of_feat_box = QtGui.QSpinBox()
 
-            number_of_features_selction_layout = QtGui.QHBoxLayout()
-            number_of_features_selction_layout.addWidget(text_number_of_feat)
-            number_of_features_selction_layout.addWidget(self.number_of_feat_box)
+            number_of_features_selection_layout = QtGui.QHBoxLayout()
+            number_of_features_selection_layout.addWidget(text_number_of_feat)
+            number_of_features_selection_layout.addWidget(self.number_of_feat_box)
 
-            self.number_of_features_selection_widget.setLayout(number_of_features_selction_layout)
+            self.number_of_features_selection_widget.setLayout(number_of_features_selection_layout)
 
 
             # regularization parameter for wrapper
@@ -430,7 +426,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
             text_edit.setText("No feature set selected!")
         else:
             #FIXME: WTF??? Why sort? They are already sorted by importance!
-            selected_ids = np.sort(self._feature_selection_results[self._selected_feature_set_id].feature_ids)
+            selected_ids = numpy.sort(self._feature_selection_results[self._selected_feature_set_id].feature_ids)
             text = "<html>"
 
             for id in selected_ids:
@@ -565,7 +561,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
 
 
         # apply new feature matrix and make sure lazyflow applies the changes
-        if np.sum(user_defined_matrix != feat_matrix) != 0:
+        if numpy.sum(user_defined_matrix != feat_matrix) != 0:
             self.opFeatureSelection.SelectionMatrix.setValue(feat_matrix)
             self.opFeatureSelection.SelectionMatrix.setDirty() # this does not do anything!?!?
             self.opFeatureSelection.setupOutputs()
@@ -578,7 +574,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
 
         # retrieve segmentation layer(s)
         slice_shape = self.raw_xy_slice.shape[:2]
-        segmentation = np.zeros(slice_shape)
+        segmentation = numpy.zeros(slice_shape)
 
         axisOrder = [ tag.key for tag in self.opFeatureSelection.InputImage.meta.axistags ]
         bbox = self._bbox
@@ -595,17 +591,17 @@ class FeatureSelectionDialog(QtGui.QDialog):
 
         # combine segmentation layers
         for i, seglayer in enumerate(self.opPixelClassification.SegmentationChannels):
-            single_layer_of_segmentation = np.squeeze(seglayer[total_slicing].wait())
+            single_layer_of_segmentation = numpy.squeeze(seglayer[total_slicing].wait())
             if do_transpose:
                 single_layer_of_segmentation = single_layer_of_segmentation.transpose()
             segmentation[single_layer_of_segmentation != 0] = i
 
         end_time = times()[4]
 
-        oob_err = 100. * np.mean(self.opPixelClassification.opTrain.outputs['Classifier'].value.oobs)
+        oob_err = 100. * numpy.mean(self.opPixelClassification.opTrain.outputs['Classifier'].value.oobs)
 
         # revert changes to matrix and other operators
-        if np.sum(user_defined_matrix != feat_matrix) != 0:
+        if numpy.sum(user_defined_matrix != feat_matrix) != 0:
             self.opFeatureSelection.SelectionMatrix.setValue(user_defined_matrix)
             self.opFeatureSelection.SelectionMatrix.setDirty() # this does not do anything!?!?
             self.opFeatureSelection.setupOutputs()
@@ -657,7 +653,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
         '''
         scales = self.opFeatureSelection.Scales.value
         featureIDs = self.opFeatureSelection.FeatureIds.value
-        new_matrix = np.zeros((len(featureIDs), len(scales)), 'bool')  # initialize new matrix as all False
+        new_matrix = numpy.zeros((len(featureIDs), len(scales)), 'bool')  # initialize new matrix as all False
 
         # now find out where i need to make changes in the matrix
         # matrix is len(features) by len(scales)
@@ -720,7 +716,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
         from ilastik_feature_selection.wrapper_feature_selection import EvaluationFunction
 
 
-        feature_order = np.array(feature_order)
+        feature_order = numpy.array(feature_order)
 
         rf = RandomForestClassifier(n_jobs=-1, n_estimators=255)
         ev_func = EvaluationFunction(rf, complexity_penalty=self._selection_params["c"])
@@ -756,7 +752,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
         user_defined_matrix = self.opFeatureSelection.SelectionMatrix.value
 
 
-        all_features_active_matrix = np.zeros(user_defined_matrix.shape, 'bool')
+        all_features_active_matrix = numpy.zeros(user_defined_matrix.shape, 'bool')
         all_features_active_matrix[:, 1:] = True
         all_features_active_matrix[0, 0] = True
         all_features_active_matrix[1:, 0] = False # do not use any other feature than gauss smooth on sigma=0.3
@@ -796,7 +792,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
             self.n_features = self.featureLabelMatrix_all_features.shape[1] - 1
 
         if not self._initialized_all_features_segmentation_layer:
-            if np.sum(all_features_active_matrix != user_defined_matrix) != 0:
+            if numpy.sum(all_features_active_matrix != user_defined_matrix) != 0:
                 segmentation_all_features, oob_all, time_all = self.retrieve_segmentation(all_features_active_matrix)
                 selected_ids = self._convert_featureMatrix_to_featureIDs(all_features_active_matrix)
                 all_features_result = FeatureSelectionResult(all_features_active_matrix,
@@ -819,7 +815,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
                 selected_feature_ids = selected_feature_ids[:n_selected]
             else:
                 # make sure no more than n_features are requested
-                self.opGiniFeatureSelection.NumberOfSelectedFeatures.setValue(np.min([self._selection_params["num_of_feat"], self.n_features]))
+                self.opGiniFeatureSelection.NumberOfSelectedFeatures.setValue(numpy.min([self._selection_params["num_of_feat"], self.n_features]))
                 selected_feature_ids = self.opGiniFeatureSelection.SelectedFeatureIDs.value
         elif self._selection_method == "filter":
             if self._selection_params["num_of_feat"] == 0:
@@ -832,7 +828,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
                 selected_feature_ids = selected_feature_ids[:n_selected]
             else:
                 # make sure no more than n_features are requested
-                self.opFilterFeatureSelection.NumberOfSelectedFeatures.setValue(np.min([self._selection_params["num_of_feat"], self.n_features]))
+                self.opFilterFeatureSelection.NumberOfSelectedFeatures.setValue(numpy.min([self._selection_params["num_of_feat"], self.n_features]))
                 selected_feature_ids = self.opFilterFeatureSelection.SelectedFeatureIDs.value
         else:
             self.opWrapperFeatureSelection.ComplexityPenalty.setValue(self._selection_params["c"])

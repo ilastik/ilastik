@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>692</width>
+    <width>887</width>
     <height>479</height>
    </rect>
   </property>
@@ -262,6 +262,9 @@
          <verstretch>0</verstretch>
         </sizepolicy>
        </property>
+       <property name="focusPolicy">
+        <enum>Qt::StrongFocus</enum>
+       </property>
        <property name="text">
         <string>Clear</string>
        </property>
@@ -422,6 +425,9 @@
         <string>OK</string>
        </property>
        <property name="autoDefault">
+        <bool>true</bool>
+       </property>
+       <property name="default">
         <bool>true</bool>
        </property>
       </widget>
