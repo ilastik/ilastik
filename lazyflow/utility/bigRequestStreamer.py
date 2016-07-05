@@ -167,7 +167,12 @@ class BigRequestStreamer(object):
                 num_channels = ideal_blockshape[channel_index]
                 ideal_blockshape = ideal_blockshape[:channel_index] + ideal_blockshape[channel_index+1:]
 
-        max_blockshape = input_shape
+        # Get max_blockshape, but clip to input_shape
+        max_blockshape = outputSlot.meta.max_blockshape or input_shape
+        if 'c' in tagged_shape.keys():
+            channel_index = tagged_shape.keys().index('c')
+            max_blockshape[channel_index] = input_shape[channel_index]
+        
         available_ram = Memory.getAvailableRamComputation()
         
         if ram_usage_per_requested_pixel is None:

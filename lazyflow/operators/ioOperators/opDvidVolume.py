@@ -101,8 +101,11 @@ class OpDvidVolume(Operator):
         self.Output.meta.axistags = vigra.defaultAxistags( axiskeys ) # FIXME: Also copy resolution, etc.
         
         # To avoid requesting extremely large blocks, limit each request to 500MB each.
+        # Note that this isn't a hard max: halos, etc. may increase this somewhat.
         max_pixels = 2**29 / self.Output.meta.dtype().nbytes
-        self.Output.meta.ideal_blockshape = determineBlockShape( self.Output.meta.shape, max_pixels )
+        max_blockshape = determineBlockShape( self.Output.meta.shape, max_pixels )
+        self.Output.meta.max_blockshape = max_blockshape
+        self.Output.meta.ideal_blockshape = max_blockshape
         
         # For every request, we probably need room RAM for the array and for the http buffer
         # (and hopefully nothing more)
