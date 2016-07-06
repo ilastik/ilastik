@@ -84,7 +84,7 @@ class OpAnnotations(Operator):
         self.Annotations.meta.shape = (1,)
 
         self.Labels.meta.dtype = object
-        self.Labels.meta.shape = self.LabelImage.meta.shape
+        self.Labels.meta.shape = (1,)
 
         self.Divisions.meta.dtype = object
         self.Divisions.meta.shape = (1,)
@@ -94,7 +94,6 @@ class OpAnnotations(Operator):
         self.TrackImage.meta.assignFrom(self.LabelImage.meta)
         self.UntrackedImage.meta.assignFrom(self.LabelImage.meta)
 
-        self.Labels.meta.assignFrom(self.LabelImage.meta)
         for t in range(self.LabelImage.meta.shape[0]):
             self.labels[t]={}
 
@@ -147,7 +146,7 @@ class OpAnnotations(Operator):
                     result[t-roi.start[0],...][:] = 0
                     return result
 
-                result[t-roi.start[0],...] = self.LabelImage.get(roi).wait()[t-roi.start[0],...]      
+                result[t-roi.start[0],...] = self.LabelImage.get(roi).wait()[t-roi.start[0],...]
                 result[t-roi.start[0], ..., 0] = self._relabel(result[t-roi.start[0], ..., 0], self.labels[t])        
         
         elif slot is self.UntrackedImage:
