@@ -313,24 +313,26 @@ class FeatureSelectionDialog(QtGui.QDialog):
             # text box with explanations
             text_box = QtGui.QTextEdit()
             text_box.setReadOnly(True)
-            text_box.setText("<html><b>1) Select the desired feature selection method</b><br>" +
+            text_box.setText("<html><b>1) Choose the feature selection method</b><br>" +
                              "- Gini Importance: inaccurate but fast<br>" +
                              "- Filter Method: recommended<br>" +
                              "- Wrapper Method: slow but provides the best results<br><br>" +
                              "<b>2) Choose the parameters</b><br>" +
-                             "- choose <u>number of features</u>: we recommend number of features = 0 (if applicable)<br><br>" +
-                             "- choose <u>c</u>: <br>small c (&lt; 0.1): excellent accuracy but larger feature set (=slower predictions) <br>larger c (&gt; 0.1): slightly reduced accuracy but smaller feature set (=faster predictions)<br><br>" +
-                             "<b>3) More feature sets</b><br>" +
-                             "add as many feature sets (with different parameters) as you like<br><br>" +
-                             "<b>4) Compare feature Sets</b><br>" +
+                             "- choose <u>number of features</u>: more features need more time and RAM, but provide better results." +
+                             " To select the number of features <u>automatically</u>, set this number to 0 (selection will take a while).<br><br>" +
+                             "- choose <u>Set Size Penalty (c)</u>: <br>small c (&lt; 0.1): excellent accuracy but larger feature set (=slower predictions) <br>larger c (&gt; 0.1): slightly reduced accuracy but smaller feature set (=faster predictions)<br><br>" +
+                             "<b>3) Run Feature Selection</b> <br><br>"
+                             "<b>4) More feature sets with other configurations</b><br>" +
+                             "Change parameters above and press the Run Feature Selection button again, the new feature set will be added to the list for you to compare. <br><br>" +
+                             "<b>5) Compare feature Sets</b><br>" +
                              "Use the viewer (middle) and the segmentation layers (right) to choose the best feature set<br><br>" +
-                             "<b>5) Finish</b><br>" +
+                             "<b>6) Finish</b><br>" +
                              "Select the best set in the box at the bottom and hit 'Select Feature Set'<br><br>"
                              "<br>" +
                              "<b>Explanations:</b><br>" +
                              "<u>oob</u>: out of bag error (in &#37;), lower is better<br>" +
-                             "<u>ctime</u>: feature computation time (in seconds), lower is better<br><br>" +
-                             "If the segmentation (shown in the viewer) differs a lot between the feature sets and the reference (usualls all features) but the oob values are similar then this is an indication that you should place more labels, especially in the regions where there were differences. Return to the feature selection once you added more labels</html>")
+                             "feature <u>computation time</u> is shown in seconds<br><br>" +
+                             "If the segmentation (shown in the viewer) differs a lot between the feature sets and the reference (usualls all features), but the oob values are similar then this is an indication that you should place more labels, especially in the regions where there were differences. Return to the feature selection once you added more labels</html>")
 
             # now add these widgets together to form the left_side_layout
             left_side_layout.addWidget(method_label)
