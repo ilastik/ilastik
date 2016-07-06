@@ -39,17 +39,16 @@ class FeatureSelectionResult(object):
 
     def _create_name(self):
         """
-        Returns: name for the method to be displayed in the lower left part of the dialog
-
+        Returns: name for the method to be displayed in the upper right part of the dialog (layer selection)
         """
 
         if self.selection_method == "filter" or self.selection_method == "gini":
             if self.parameters["num_of_feat"] == 0:
-                name = "%s_%d_features(auto)" % (self.selection_method, numpy.sum(self.feature_matrix))
+                name = "%%d features(auto), %s selection" % ( numpy.sum(self.feature_matrix), self.selection_method)
             else:
-                name = "%s_%d_features" % (self.selection_method, self.parameters["num_of_feat"])
+                name = "%d features, %s selection" % (self.parameters["num_of_feat"], self.selection_method)
         elif self.selection_method == "wrapper":
-            name = "%s_%i_features" % (self.selection_method, numpy.sum(self.feature_matrix))
+            name = "%i features, wrapper method" % (numpy.sum(self.feature_matrix), self.selection_method)
         else:
             name = self.selection_method
         return name
@@ -62,17 +61,17 @@ class FeatureSelectionResult(object):
 
         if self.selection_method == "filter" or self.selection_method == "gini":
             if self.parameters["num_of_feat"] == 0:
-                name = "%s_%d_features(auto)" % (self.selection_method, numpy.sum(self.feature_matrix))
+                name = "%d features(auto), %s selection" % (numpy.sum(self.feature_matrix), self.selection_method)
             else:
-                name = "%s_%d_features" % (self.selection_method, self.parameters["num_of_feat"])
+                name = "%d features, %s selection" % (self.parameters["num_of_feat"], self.selection_method)
         elif self.selection_method == "wrapper":
-            name = "%s_%i_features_c=%1.02f" % (self.selection_method, numpy.sum(self.feature_matrix), self.parameters["c"])
+            name = "%i features, wrapper selection, c=%1.02f" % (numpy.sum(self.feature_matrix), self.parameters["c"])
         else:
             name = self.selection_method
         if self.oob_err is not None:
-            name += "_oob_error=%1.3f" % self.oob_err
+            name += ", oob_error=%1.3f" % self.oob_err
         if self.feature_calc_time is not None:
-            name += "_computationTime=%1.3f" % self.feature_calc_time
+            name += ", computation time=%1.3f" % self.feature_calc_time
         return name
 
     def change_name(self, name):
@@ -140,7 +139,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
         }
 
         self._selection_params = {
-            "num_of_feat": 0,
+            "num_of_feat": 7,  #arbitrary number for the default, Ulli thinks it's good
             "c": 0.1
         }
         self._selection_method = "None"
@@ -799,7 +798,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
                                                              selected_ids,
                                                  segmentation_all_features,
                                                  {'num_of_feat': 'all', 'c': 'None'},
-                                                 'all_features', oob_all, time_all)
+                                                 'all features', oob_all, time_all)
                 self._add_feature_set_to_results(all_features_result)
             self._initialized_all_features_segmentation_layer = True
 
@@ -857,7 +856,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
                                                              selected_ids,
                                                              segmentation_current_features,
                                                              {'num_of_feat': 'user', 'c': 'None'},
-                                                             'user_features', oob_user, time_user)
+                                                             'user features', oob_user, time_user)
             self._add_feature_set_to_results(current_features_result)
             self._initialized_current_features_segmentation_layer = True
 
