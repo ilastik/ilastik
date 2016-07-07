@@ -40,7 +40,7 @@ from ilastik.applets.base.applet import DatasetConstraintError
 logger = logging.getLogger(__name__)
 
 # Constants
-ScalesList = [0.3, 0.7, 1, 1.6, 3.5, 5.0, 10.0]
+ScalesList = [0.3, 0.7, 1.0, 1.6, 3.5, 5.0, 10.0]
 
 # Map feature groups to lists of feature IDs
 FeatureGroups = [ ( "Color/Intensity",   [ "GaussianSmoothing" ] ),
@@ -243,6 +243,15 @@ class OpFeatureSelection( OpFeatureSelectionNoCache ):
         # Connect the cache to the feature output
         self.opPixelFeatureCache.Input.connect(self.OutputImage)
         self.opPixelFeatureCache.fixAtCurrent.setValue(False)
+
+    def change_feature_cache_size(self):
+        curr_size = self.opPixelFeatureCache.innerBlockShape.value
+        a = [list(i) for i in curr_size]
+        a[2][3] = 1
+        c = [tuple(i) for i in a]
+        c = tuple(c)
+        self.opPixelFeatureCache.innerBlockShape.setValue(c)
+        self.opPixelFeatureCache.outerBlockShape.setValue(c)
 
     def setupOutputs(self):
         super( OpFeatureSelection, self ).setupOutputs()

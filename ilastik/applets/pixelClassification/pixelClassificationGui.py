@@ -27,8 +27,8 @@ from functools import partial
 # Third-party
 import numpy
 from PyQt4 import uic
-from PyQt4.QtCore import Qt, pyqtSlot, QVariant
-from PyQt4.QtGui import QMessageBox, QColor, QIcon, QMenu, QDialog, QVBoxLayout, QDialogButtonBox, QListWidget, QListWidgetItem
+from PyQt4.QtCore import Qt, pyqtSlot, QVariant, pyqtRemoveInputHook, pyqtRestoreInputHook
+from PyQt4.QtGui import QMessageBox, QColor, QIcon, QMenu, QDialog, QVBoxLayout, QDialogButtonBox, QListWidget, QListWidgetItem, QApplication, QCursor
 
 # HCI
 from volumina.api import LazyflowSource, AlphaModulatedLayer, GrayscaleLayer, ColortableLayer
@@ -38,6 +38,7 @@ from lazyflow.utility import PathComponents
 from lazyflow.roi import slicing_to_string
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 from lazyflow.operators.ioOperators import OpInputDataReader
+from lazyflow.operators import OpFeatureMatrixCache
 
 # ilastik
 from ilastik.config import cfg as ilastik_config
@@ -47,6 +48,9 @@ from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.labeling.labelingGui import LabelingGui
 from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui, H5VolumeSelectionDlg
 from ilastik.shell.gui.variableImportanceDialog import VariableImportanceDialog
+
+# import IPython
+from FeatureSelectionDialog import FeatureSelectionDialog
 
 try:
     from volumina.view3d.volumeRendering import RenderingManager
@@ -300,10 +304,16 @@ class PixelClassificationGui(LabelingGui):
         self.labelingDrawerUi.liveUpdateButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.labelingDrawerUi.liveUpdateButton.toggled.connect( self.toggleInteractive )
 
+        self.initFeatSelDlg()
+        self.labelingDrawerUi.suggestFeaturesButton.clicked.connect(self.show_feature_selection_dialog)
+        self.featSelDlg.accepted.connect(self.update_features_from_dialog)
+        self.labelingDrawerUi.suggestFeaturesButton.setEnabled(False)
+
         self.topLevelOperatorView.LabelNames.notifyDirty( bind(self.handleLabelSelectionChange) )
         self.__cleanup_fns.append( partial( self.topLevelOperatorView.LabelNames.unregisterDirty, bind(self.handleLabelSelectionChange) ) )
         
         self._initShortcuts()
+
 
         # FIXME: We MUST NOT enable the render manager by default,
         #        since it will drastically slow down the app for large volumes.
@@ -329,6 +339,22 @@ class PixelClassificationGui(LabelingGui):
         # listen to freezePrediction changes
         self.topLevelOperatorView.FreezePredictions.notifyDirty( bind(FreezePredDirty) )
         self.__cleanup_fns.append( partial( self.topLevelOperatorView.FreezePredictions.unregisterDirty, bind(FreezePredDirty) ) )
+
+    def initFeatSelDlg(self):
+        thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
+
+        self.featSelDlg = FeatureSelectionDialog(thisOpFeatureSelection, self.topLevelOperatorView)
+
+    def show_feature_selection_dialog(self):
+        self.featSelDlg.exec_()
+
+
+    def update_features_from_dialog(self):
+        thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
+
+        thisOpFeatureSelection.SelectionMatrix.setValue(self.featSelDlg.selected_features_matrix)
+        thisOpFeatureSelection.SelectionMatrix.setDirty()
+        thisOpFeatureSelection.setupOutputs()
 
     def initViewerControlUi(self):
         localDir = os.path.split(__file__)[0]
@@ -577,6 +603,7 @@ class PixelClassificationGui(LabelingGui):
             if not self.topLevelOperatorView.FeatureImages.ready() \
             or self.topLevelOperatorView.FeatureImages.meta.shape==None:
                 self.labelingDrawerUi.liveUpdateButton.setChecked(False)
+                self.labelingDrawerUi.suggestFeaturesButton.setEnabled(False)
                 mexBox=QMessageBox()
                 mexBox.setText("There are no features selected ")
                 mexBox.exec_()
@@ -585,16 +612,20 @@ class PixelClassificationGui(LabelingGui):
         # If we're changing modes, enable/disable our controls and other applets accordingly
         if self.interactiveModeActive != checked:
             if checked:
+                self.labelingDrawerUi.suggestFeaturesButton.setEnabled(False)
                 self.labelingDrawerUi.labelListView.allowDelete = False
                 self.labelingDrawerUi.AddLabelButton.setEnabled( False )
             else:
                 num_label_classes = self._labelControlUi.labelListModel.rowCount()
                 self.labelingDrawerUi.labelListView.allowDelete = ( num_label_classes > self.minLabelNumber )
                 self.labelingDrawerUi.AddLabelButton.setEnabled( ( num_label_classes < self.maxLabelNumber ) )
+                self.labelingDrawerUi.suggestFeaturesButton.setEnabled(True)
+
         self.interactiveModeActive = checked
 
         self.topLevelOperatorView.FreezePredictions.setValue( not checked )
         self.labelingDrawerUi.liveUpdateButton.setChecked(checked)
+        #self.labelingDrawerUi.suggestFeaturesButton.setEnabled(checked)
         # Auto-set the "show predictions" state according to what the user just clicked.
         if checked:
             self._viewerControlUi.checkShowPredictions.setChecked( True )
@@ -671,6 +702,7 @@ class PixelClassificationGui(LabelingGui):
             self.handleShowSegmentationClicked()
 
         self.labelingDrawerUi.liveUpdateButton.setEnabled(enabled)
+        self.labelingDrawerUi.suggestFeaturesButton.setEnabled(enabled)
         self._viewerControlUi.checkShowPredictions.setEnabled(enabled)
         self._viewerControlUi.checkShowSegmentation.setEnabled(enabled)
 
