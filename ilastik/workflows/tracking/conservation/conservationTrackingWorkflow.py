@@ -64,14 +64,10 @@ class ConservationTrackingWorkflowBase( Workflow ):
             self.opticalTranslationApplet = OpticalTranslationApplet(workflow=self)
                                                                    
         self.objectExtractionApplet = TrackingFeatureExtractionApplet(workflow=self, interactive=False,
-                                                                      name="Object Feature Computation")                                                                      
-
-        vigra_features = list((set(config.vigra_features)).union(config.selected_features_objectcount[config.features_vigra_name])) 
-        feature_names_vigra = {}
-        feature_names_vigra[config.features_vigra_name] = { name: {} for name in vigra_features }
+                                                                      name="Object Feature Computation")                                                                     
         
         opObjectExtraction = self.objectExtractionApplet.topLevelOperator
-        opObjectExtraction.FeatureNamesVigra.setValue(feature_names_vigra)
+        opObjectExtraction.FeatureNamesVigra.setValue(configConservation.allFeaturesObjectCount)        
         
         self.divisionDetectionApplet = self._createDivisionDetectionApplet(configConservation.selectedFeaturesDiv) # Might be None
 
