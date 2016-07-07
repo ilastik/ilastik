@@ -53,7 +53,7 @@ class NewAutocontextWorkflowBase(Workflow):
     
     # First export names must match these for the export GUI, because we re-use the ordinary PC gui
     # (See PixelClassificationDataExportGui.)
-    EXPORT_NAMES_PER_STAGE = ['Probabilities', 'Simple Segmentation', 'Uncertainty', 'Features', 'Labels']
+    EXPORT_NAMES_PER_STAGE = ['Probabilities', 'Simple Segmentation', 'Uncertainty', 'Features', 'Labels', 'Input']
     
     @property
     def applets(self):
@@ -285,6 +285,7 @@ class NewAutocontextWorkflowBase(Workflow):
             opDataExport.Inputs[num_items_per_stage*reverse_stage_index+2].connect( opPc.HeadlessUncertaintyEstimate )
             opDataExport.Inputs[num_items_per_stage*reverse_stage_index+3].connect( opPc.FeatureImages )
             opDataExport.Inputs[num_items_per_stage*reverse_stage_index+4].connect( opPc.LabelImages )
+            opDataExport.Inputs[num_items_per_stage*reverse_stage_index+5].connect( opPc.InputImages ) # Input must come last due to an assumption in PixelClassificationDataExportGui
 
         # One last export slot for all probabilities, all stages
         opAllStageStacker = OpMultiArrayStacker(parent=self)
