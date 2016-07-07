@@ -62,11 +62,12 @@ try:
 except ImportError as e:
     logger.warn( "Failed to import the IIBoost Synapse detection workflow.  Check IIBoost dependency." )
 
+import newAutocontext.newAutocontextWorkflow
+
 import examples.dataConversion
 
 # Examples
 if ilastik.config.cfg.getboolean('ilastik', 'debug'):
-    import newAutocontext.newAutocontextWorkflow
     import vigraWatershed
     import examples.layerViewer
     import examples.thresholdMasking

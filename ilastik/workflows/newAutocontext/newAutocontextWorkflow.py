@@ -651,9 +651,11 @@ class AutocontextThreeStage(NewAutocontextWorkflowBase):
     def __init__(self, *args, **kwargs):
         super(AutocontextThreeStage, self).__init__(*args, n_stages=3, **kwargs)
 
-class AutocontextFourStage(NewAutocontextWorkflowBase):
-    workflowName = "AutocontextFourStage"
-    workflowDisplayName = "Autocontext (4-stage)"
-
-    def __init__(self, *args, **kwargs):
-        super(AutocontextFourStage, self).__init__(*args, n_stages=4, **kwargs)
+import ilastik.config
+if ilastik.config.cfg.getboolean('ilastik', 'debug'):
+    class AutocontextFourStage(NewAutocontextWorkflowBase):
+        workflowName = "AutocontextFourStage"
+        workflowDisplayName = "Autocontext (4-stage)"
+     
+        def __init__(self, *args, **kwargs):
+            super(AutocontextFourStage, self).__init__(*args, n_stages=4, **kwargs)
