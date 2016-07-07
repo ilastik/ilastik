@@ -28,7 +28,10 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from ilastik.utility.exportingOperator import ExportingOperator
 from lazyflow.rtype import List
 from lazyflow.stype import Opaque
-import pgmlink
+try:
+    import pgmlink
+except:
+    import pgmlinkNoIlpSolver as pgmlink
 from ilastik.applets.tracking.base.trackingUtilities import relabel, \
     get_dict_value
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
@@ -187,7 +190,10 @@ class OpTrackingBase(Operator, ExportingOperator):
             self.Output.setDirty(roi)
         elif inputSlot is self.EventsVector:
             self._setLabel2Color()
-            self._setLabel2Color(export_mode=True)
+            try:
+                self._setLabel2Color(export_mode=True)
+            except:
+                logger.debug("Warning: some label information might be wrong...")
 
 
     def setInSlot(self, slot, subindex, roi, value):
@@ -225,26 +231,23 @@ class OpTrackingBase(Operator, ExportingOperator):
             mergers.append({})
             resolvedto.append({})
 
+        extra_track_ids = {}
         if export_mode:
-            extra_track_ids = {}
             multi_move = {}
             multi_move_next = {}
             divisions = []
 
         for i in time_range:
-            dis = get_dict_value(events[str(i - time_range[0] + 1)], "dis", [])
             app = get_dict_value(events[str(i - time_range[0] + 1)], "app", [])
             div = get_dict_value(events[str(i - time_range[0] + 1)], "div", [])
             mov = get_dict_value(events[str(i - time_range[0] + 1)], "mov", [])
             merger = get_dict_value(events[str(i - time_range[0])], "merger", [])
             res = get_dict_value(events[str(i - time_range[0])], "res", {})
 
-            logger.debug(" {} dis at {}".format(len(dis), i))
             logger.debug(" {} app at {}".format(len(app), i))
             logger.debug(" {} div at {}".format(len(div), i))
             logger.debug(" {} mov at {}".format(len(mov), i))
             logger.debug(" {} merger at {}".format(len(merger), i))
-            logger.debug(" {} res at {}".format(len(res), i))
 
             label2color.append({})
             mergers.append({})
@@ -355,6 +358,8 @@ class OpTrackingBase(Operator, ExportingOperator):
             self.extra_track_ids = extra_track_ids
             return label2color, extra_track_ids, divisions
 
+        self.track_id = label2color
+        self.extra_track_ids = extra_track_ids
         self.label2color = label2color
         self.resolvedto = resolvedto
         self.mergers = mergers
@@ -370,17 +375,19 @@ class OpTrackingBase(Operator, ExportingOperator):
         return self._setLabel2Color(export_mode=True)
 
     def track_children(self, track_id, start=0):
-        for t, _, track, _, child_track1, _, child_track2 in self.divisions[start:]:
-            if track == track_id:
-                children_of = partial(self.track_children, start=t)
-                return [child_track1, child_track2] + \
-                       children_of(child_track1) + children_of(child_track2)
+        if start in self.divisions:
+            for t, _, track, _, child_track1, _, child_track2 in self.divisions[start:]:
+                if track == track_id:
+                    children_of = partial(self.track_children, start=t)
+                    return [child_track1, child_track2] + \
+                           children_of(child_track1) + children_of(child_track2)
         return []
 
     def track_parent(self, track_id):
-        for t, oid, track, _, child_track1, _, child_track2 in self.divisions[:-1]:
-            if track_id in (child_track1, child_track2):
-                return [track] + self.track_parent(track)
+        if not self.divisions == {}:
+            for t, oid, track, _, child_track1, _, child_track2 in self.divisions[:-1]:
+                if track_id in (child_track1, child_track2):
+                    return [track] + self.track_parent(track)
         return []
 
     def track_family(self, track_id):
@@ -421,7 +428,10 @@ class OpTrackingBase(Operator, ExportingOperator):
 
         if with_div:
             if not self.DivisionProbabilities.ready() or len(self.DivisionProbabilities([0]).wait()[0]) == 0:
-                raise Exception, "Classifier not yet ready. Did you forget to train the Division Detection Classifier?"
+                msgStr = "\nDivision classifier has not been trained! " + \
+                         "Uncheck divisible objects if your objects don't divide or " + \
+                         "go back to the Division Detection applet and train it."
+                raise DatasetConstraintError ("Tracking",msgStr)
             divProbs = self.DivisionProbabilities(time_range).wait()
 
         if with_local_centers:
@@ -429,17 +439,21 @@ class OpTrackingBase(Operator, ExportingOperator):
 
         if with_classifier_prior:
             if not self.DetectionProbabilities.ready() or len(self.DetectionProbabilities([0]).wait()[0]) == 0:
-                raise Exception, "Classifier not yet ready. Did you forget to train the Object Count Classifier?"
+                msgStr = "\nObject count classifier has not been trained! " + \
+                         "Go back to the Object Count Classification applet and train it."
+                raise DatasetConstraintError ("Tracking",msgStr)
             detProbs = self.DetectionProbabilities(time_range).wait()
 
         logger.info("filling traxelstore")
         ts = pgmlink.TraxelStore()
+        fs = pgmlink.FeatureStore()
 
         max_traxel_id_at = pgmlink.VectorOfInt()
         filtered_labels = {}
         obj_sizes = []
         total_count = 0
         empty_frame = False
+
         for t in feats.keys():
             rc = feats[t][default_features_key]['RegionCenter']
             lower = feats[t][default_features_key]['Coord<Minimum>']
@@ -453,7 +467,7 @@ class OpTrackingBase(Operator, ExportingOperator):
                 try:
                     rc_corr = feats[t][config.features_vigra_name]['RegionCenter_corr']
                 except:
-                    raise Exception, 'cannot consider optical correction since it has not been computed before'
+                    raise Exception, 'Can not consider optical correction since it has not been computed before'
                 if rc_corr.size:
                     rc_corr = rc_corr[1:, ...]
 
@@ -472,7 +486,7 @@ class OpTrackingBase(Operator, ExportingOperator):
                 elif len(rc[idx]) == 3:
                     x, y, z = rc[idx]
                 else:
-                    raise Exception, "The RegionCenter feature must have dimensionality 2 or 3."
+                    raise DatasetConstraintError ("Tracking", "The RegionCenter feature must have dimensionality 2 or 3.")
                 size = ct[idx]
                 if (x < x_range[0] or x >= x_range[1] or
                             y < y_range[0] or y >= y_range[1] or
@@ -483,16 +497,24 @@ class OpTrackingBase(Operator, ExportingOperator):
                 else:
                     count += 1
                 tr = pgmlink.Traxel()
+                tr.set_feature_store(fs)
                 tr.set_x_scale(x_scale)
                 tr.set_y_scale(y_scale)
                 tr.set_z_scale(z_scale)
                 tr.Id = int(idx + 1)
-                tr.Timestep = t
+                tr.Timestep = int(t)
 
                 # pgmlink expects always 3 coordinates, z=0 for 2d data
                 tr.add_feature_array("com", 3)
                 for i, v in enumerate([x, y, z]):
                     tr.set_feature_value('com', i, float(v))
+
+                tr.add_feature_array("CoordMinimum", 3)
+                for i, v in enumerate(lower[idx]):
+                    tr.set_feature_value("CoordMinimum", i, float(v))
+                tr.add_feature_array("CoordMaximum", 3)
+                for i, v in enumerate(upper[idx]):
+                    tr.set_feature_value("CoordMaximum", i, float(v))
 
                 if with_opt_correction:
                     tr.add_feature_array("com_corrected", 3)
@@ -514,7 +536,7 @@ class OpTrackingBase(Operator, ExportingOperator):
                             val = 0.0000001
                         if val > 0.99999999:
                             val = 0.99999999
-                        tr.set_feature_value("detProb", i, float(v))
+                        tr.set_feature_value("detProb", i, float(val))
 
 
                 # FIXME: check whether it is 2d or 3d data!
@@ -532,7 +554,7 @@ class OpTrackingBase(Operator, ExportingOperator):
                 if median_object_size is not None:
                     obj_sizes.append(float(size))
 
-                ts.add(tr)
+                ts.add(fs, tr)
 
             if len(filtered_labels_at) > 0:
                 filtered_labels[str(int(t) - time_range[0])] = filtered_labels_at
@@ -547,9 +569,9 @@ class OpTrackingBase(Operator, ExportingOperator):
             median_object_size[0] = np.median(np.array(obj_sizes), overwrite_input=True)
             logger.info('median object size = ' + str(median_object_size[0]))
 
-        self.FilteredLabels.setValue(filtered_labels, check_changed=False)
+        self.FilteredLabels.setValue(filtered_labels, check_changed=True)
 
-        return ts, empty_frame
+        return fs, ts, empty_frame, max_traxel_id_at
 
     def save_export_progress_dialog(self, dialog):
         """
@@ -570,8 +592,6 @@ class OpTrackingBase(Operator, ExportingOperator):
         :param filename_suffix: If provided, appended to the filename (before the extension).
         :return:
         """
-
-        #assert lane_index == 0, "This has only been tested in tracking workflows with a single image."
 
         with_divisions = self.Parameters.value["withDivisions"] if self.Parameters.ready() else False
         if with_divisions:

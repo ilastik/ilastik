@@ -19,6 +19,8 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 import os
+import logging
+
 from PyQt4.QtGui import QTableView, QColorDialog, \
     QAbstractItemView, QVBoxLayout, QPushButton, \
     QColor, QWidget, QHeaderView, QDialog, QStackedWidget, \
@@ -30,6 +32,7 @@ from PyQt4 import uic
 from labelListModel import LabelListModel, Label
 from listView import ListView
 
+logger = logging.getLogger(__name__)
 
 class BoxDialog(QDialog):
 
@@ -153,8 +156,6 @@ class BoxListView(ListView):
 
     def tableViewCellDoubleClicked(self, modelIndex):
         if modelIndex.column() == self.model.ColumnID.Color:
-
-           #print "RESETTING", modelIndex.row(), self._table.model()[modelIndex.row()].linewidth
 
             self._colorDialog.setColor(self._table.model()[modelIndex.row()].color)
             self._colorDialog.setFontColor(self._table.model()[modelIndex.row()].fontcolor)
@@ -320,7 +321,7 @@ if __name__=="__main__":
                      )
         model.insertRow(model.rowCount(),ll)
 
-        print "added ",ll
+        logger.debug("added ".format(ll))
         return ll
 
     addButton.clicked.connect(addRandomLabel)

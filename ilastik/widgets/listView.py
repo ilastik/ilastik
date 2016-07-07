@@ -37,7 +37,7 @@ class ListView(QStackedWidget):
     PAGE_LISTVIEW = 1
 
     def __init__(self, parent = None):
-        
+
         super(ListView, self).__init__(parent=parent)
         
         self.emptyMessage = QLabel("no elements defined yet")
@@ -116,7 +116,7 @@ class ListView(QStackedWidget):
             self.setCurrentIndex(self.PAGE_LISTVIEW)
         else:
             self.setCurrentIndex(self.PAGE_EMPTY)
-            
+
         model.rowsInserted.connect(self._onRowsChanged)
         model.rowsRemoved.connect(self._onRowsChanged)
         self.model=model

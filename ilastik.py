@@ -32,7 +32,7 @@ def _clean_paths( ilastik_dir ):
         if os.path.isdir(new_path):
             pythonpath.append(new_path)
     sys.path = pythonpath
-    
+
     if sys.platform.startswith('win'):
         # empty PATH except for gurobi and CPLEX and add ilastik's installation paths
         path_var = os.environ.get('PATH')

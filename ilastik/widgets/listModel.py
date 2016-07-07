@@ -67,7 +67,7 @@ class ListModel(QAbstractTableModel):
 
     def __init__(self, elements=None, parent=None):
         '''
-        Common interface for the labelListModel and the boxListModel
+        Common interface for the labelListModel, the boxListModel, and the cropListModel
         see concrete implementations for details
 
         :param elements:

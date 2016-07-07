@@ -263,7 +263,10 @@ class SerialSlot(object):
             indexes_to_keys = { int(k) : k for k in subgroup.keys() }
             
             # Ensure the slot is at least big enough to deserialize into.
-            max_index = max( indexes_to_keys.keys() )
+            if indexes_to_keys.keys() == []:
+                max_index = 0
+            else:
+                max_index = max( indexes_to_keys.keys() )
             if len(slot) < max_index+1:
                 slot.resize(max_index+1)
 

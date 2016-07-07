@@ -2,17 +2,44 @@ import numpy as np
 from lazyflow.graph import InputSlot, OutputSlot
 from lazyflow.rtype import List
 from lazyflow.stype import Opaque
-import pgmlink
+try:
+    import pgmlink
+except:
+    import pgmlinkNoIlpSolver as pgmlink
+from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.tracking.base.opTrackingBase import OpTrackingBase
 from ilastik.applets.tracking.base.trackingUtilities import relabel, highlightMergers
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key, OpRegionFeatures
 from ilastik.applets.tracking.base.trackingUtilities import get_events
 from lazyflow.operators.opCompressedCache import OpCompressedCache
+from lazyflow.roi import sliceToRoi
 from opRelabeledMergerFeatureExtraction import OpRelabeledMergerFeatureExtraction
 
 import logging
 logger = logging.getLogger(__name__)
 
+def swirl_motion_func_creator(velocityWeight):
+    def swirl_motion_func(traxelA, traxelB, traxelC, traxelD):
+        traxels = [traxelA, traxelB, traxelC, traxelD]
+        positions = [np.array([t.X(), t.Y(), t.Z()]) for t in traxels]
+        vecs = [positions[1] - positions[0], positions[2] - positions[1]]
+
+        # acceleration is change in velocity
+        acc = vecs[1] - vecs[0]
+
+        # assume constant acceleration to find expected velocity vector
+        expected_vel = vecs[1] + acc
+
+        # construct expected position
+        expected_pos = positions[2] + expected_vel
+
+        # penalize deviation from that position
+        deviation = np.linalg.norm(expected_pos - positions[3])
+        cost = float(velocityWeight) * deviation
+        tIds = [(t.Timestep, t.Id) for t in traxels]
+
+        return cost
+    return swirl_motion_func
 
 class OpConservationTracking(OpTrackingBase):
     DivisionProbabilities = InputSlot(optional=True, stype=Opaque, rtype=List)
@@ -52,7 +79,6 @@ class OpConservationTracking(OpTrackingBase):
         self.RelabeledCachedOutput.connect(self._relabeledOpCache.Output)
         self.tracker = None
         self._ndim = 3
-
 
     def setupOutputs(self):
         super(OpConservationTracking, self).setupOutputs()
@@ -147,8 +173,11 @@ class OpConservationTracking(OpTrackingBase):
             withArmaCoordinates = True,
             appearance_cost = 500,
             disappearance_cost = 500,
+            motionModelWeight=10.0,
             force_build_hypotheses_graph = False,
-            withBatchProcessing = False
+            max_nearest_neighbors = 1,
+            withBatchProcessing = False,
+            solverName="ILP"
             ):
         
         if not self.Parameters.ready():
@@ -161,27 +190,24 @@ class OpConservationTracking(OpTrackingBase):
         # paramters_changed dictionary will get a "False" entry for this key,
         # otherwise it is set to "True"
         parameters = self.Parameters.value
-        parameters_changed = {}
-        self._setParameter('maxDist', maxDist, parameters, parameters_changed)
-        self._setParameter('maxObj', maxObj, parameters, parameters_changed)
-        self._setParameter('divThreshold', divThreshold, parameters, parameters_changed)
-        self._setParameter('avgSize', avgSize, parameters, parameters_changed)
-        self._setParameter('withTracklets', withTracklets, parameters, parameters_changed)
-        self._setParameter('sizeDependent', sizeDependent, parameters, parameters_changed)
-        self._setParameter('divWeight', divWeight, parameters, parameters_changed)
-        self._setParameter('transWeight', transWeight, parameters, parameters_changed)
-        self._setParameter('withDivisions', withDivisions, parameters, parameters_changed)
-        self._setParameter('withOpticalCorrection', withOpticalCorrection, parameters, parameters_changed)
-        self._setParameter('withClassifierPrior', withClassifierPrior, parameters, parameters_changed)
-        self._setParameter('withMergerResolution', withMergerResolution, parameters, parameters_changed)
-        self._setParameter('borderAwareWidth', borderAwareWidth, parameters, parameters_changed)
-        self._setParameter('withArmaCoordinates', withArmaCoordinates, parameters, parameters_changed)
-        self._setParameter('appearanceCost', appearance_cost, parameters, parameters_changed)
-        self._setParameter('disappearanceCost', disappearance_cost, parameters, parameters_changed)
-        # if self._graphBuildingParameterChanged(parameters_changed):
-        #     do_build_hypotheses_graph = True
-        # else:
-        #     do_build_hypotheses_graph = force_build_hypotheses_graph
+
+        parameters['maxDist'] = maxDist
+        parameters['maxObj'] = maxObj
+        parameters['divThreshold'] = divThreshold
+        parameters['avgSize'] = avgSize
+        parameters['withTracklets'] = withTracklets
+        parameters['sizeDependent'] = sizeDependent
+        parameters['divWeight'] = divWeight   
+        parameters['transWeight'] = transWeight
+        parameters['withDivisions'] = withDivisions
+        parameters['withOpticalCorrection'] = withOpticalCorrection
+        parameters['withClassifierPrior'] = withClassifierPrior
+        parameters['withMergerResolution'] = withMergerResolution
+        parameters['borderAwareWidth'] = borderAwareWidth
+        parameters['withArmaCoordinates'] = withArmaCoordinates
+        parameters['appearanceCost'] = appearance_cost
+        parameters['disappearanceCost'] = disappearance_cost
+
         do_build_hypotheses_graph = True
 
         if cplex_timeout:
@@ -192,19 +218,19 @@ class OpConservationTracking(OpTrackingBase):
         
         if withClassifierPrior:
             if not self.DetectionProbabilities.ready() or len(self.DetectionProbabilities([0]).wait()[0]) == 0:
-                raise Exception, 'Classifier not ready yet. Did you forget to train the Object Count Classifier?'
+                raise DatasetConstraintError('Tracking', 'Classifier not ready yet. Did you forget to train the Object Count Classifier?')
             if not self.NumLabels.ready() or self.NumLabels.value < (maxObj + 1):
-                raise Exception, 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n'\
-                    'Check whether you have (i) the correct number of label names specified in Object Count Classification, and (ii) provided at least ' \
-                    'one training example for each class.'
+                raise DatasetConstraintError('Tracking', 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n' +\
+                    'Check whether you have (i) the correct number of label names specified in Object Count Classification, and (ii) provided at least ' +\
+                    'one training example for each class.')
             if len(self.DetectionProbabilities([0]).wait()[0][0]) < (maxObj + 1):
-                raise Exception, 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n'\
-                    'Check whether you have (i) the correct number of label names specified in Object Count Classification, and (ii) provided at least ' \
-                    'one training example for each class.'            
+                raise DatasetConstraintError('Tracking', 'The max. number of objects must be consistent with the number of labels given in Object Count Classification.\n' +\
+                    'Check whether you have (i) the correct number of label names specified in Object Count Classification, and (ii) provided at least ' +\
+                    'one training example for each class.')
         
         median_obj_size = [0]
 
-        ts, empty_frame = self._generate_traxelstore(time_range, x_range, y_range, z_range, 
+        fs, ts, empty_frame, max_traxel_id_at = self._generate_traxelstore(time_range, x_range, y_range, z_range,
                                                                       size_range, x_scale, y_scale, z_scale, 
                                                                       median_object_size=median_obj_size, 
                                                                       with_div=withDivisions,
@@ -212,7 +238,7 @@ class OpConservationTracking(OpTrackingBase):
                                                                       with_classifier_prior=withClassifierPrior)
         
         if empty_frame:
-            raise Exception, 'cannot track frames with 0 objects, abort.'
+            raise DatasetConstraintError('Tracking', 'Can not track frames with 0 objects, abort.')
               
         
         if avgSize[0] > 0:
@@ -247,6 +273,8 @@ class OpConservationTracking(OpTrackingBase):
         if self.tracker is None:
             do_build_hypotheses_graph = True
 
+        solverType = self.getPgmlinkSolverType(solverName)
+
         if do_build_hypotheses_graph:
             print '\033[94m' +"make new graph"+  '\033[0m'
             self.tracker = pgmlink.ConsTracking(int(maxObj),
@@ -257,23 +285,49 @@ class OpConservationTracking(OpTrackingBase):
                                          float(divThreshold),
                                          "none",  # detection_rf_filename
                                          fov,
-                                         "none" # dump traxelstore
+                                         "none", # dump traxelstore,
+                                         solverType,
+                                         ndim
                                          )
-            self.tracker.buildGraph(ts)
-        
+            g = self.tracker.buildGraph(ts, max_nearest_neighbors)
+
+        # create dummy uncertainty parameter object with just one iteration, so no perturbations at all (iter=0 -> MAP)
+        sigmas = pgmlink.VectorOfDouble()
+        for i in range(5):
+            sigmas.append(0.0)
+        uncertaintyParams = pgmlink.UncertaintyParameter(1, pgmlink.DistrId.PerturbAndMAP, sigmas)
+
+        params = self.tracker.get_conservation_tracking_parameters(
+            0,       # forbidden_cost
+            float(ep_gap), # ep_gap
+            bool(withTracklets), # with tracklets
+            float(10.0), # detection weight
+            float(divWeight), # division weight
+            float(transWeight), # transition weight
+            float(disappearance_cost), # disappearance cost
+            float(appearance_cost), # appearance cost
+            bool(withMergerResolution), # with merger resolution
+            int(ndim), # ndim
+            float(transition_parameter), # transition param
+            float(borderAwareWidth), # border width
+            True, #with_constraints
+            uncertaintyParams, # uncertainty parameters
+            float(cplex_timeout), # cplex timeout
+            None, # transition classifier
+            solverType,
+            False, # training to hard constraints
+            1 # num threads
+        )
+
+        # if motionModelWeight > 0:
+        #     logger.info("Registering motion model with weight {}".format(motionModelWeight))
+        #     params.register_motion_model4_func(swirl_motion_func_creator(motionModelWeight), motionModelWeight * 25.0)
+
         try:
-            eventsVector = self.tracker.track(0,       # forbidden_cost
-                                            float(ep_gap), # ep_gap
-                                            bool(withTracklets),
-                                            float(divWeight),
-                                            float(transWeight),
-                                            float(disappearance_cost), # disappearance cost
-                                            float(appearance_cost), # appearance cost
-                                            int(ndim),
-                                            float(transition_parameter),
-                                            float(borderAwareWidth),
-                                            True, #with_constraints
-                                            float(cplex_timeout))
+            eventsVector = self.tracker.track(params, False)
+
+            eventsVector = eventsVector[0] # we have a vector such that we could get a vector per perturbation
+
             # extract the coordinates with the given event vector
             if withMergerResolution:
                 coordinate_map = pgmlink.TimestepIdCoordinateMap()
@@ -283,15 +337,19 @@ class OpConservationTracking(OpTrackingBase):
                                              eventsVector)
                 self.CoordinateMap.setValue(coordinate_map)
 
-                eventsVector = self.tracker.resolve_mergers(eventsVector,
-                                                coordinate_map.get(),
-                                                float(ep_gap),
-                                                float(transWeight),
-                                                bool(withTracklets),
-                                                int(ndim),
-                                                float(transition_parameter),
-                                                True, # with_constraints
-                                                False) # with_multi_frame_moves
+                eventsVector = self.tracker.resolve_mergers(
+                    eventsVector,
+                    params,
+                    coordinate_map.get(),
+                    float(ep_gap),
+                    float(transWeight),
+                    bool(withTracklets),
+                    ndim,
+                    transition_parameter,
+                    max_traxel_id_at,
+                    True, # with_constraints
+                    None) # TransitionClassifier
+
         except Exception as e:
             raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
         
@@ -312,6 +370,28 @@ class OpConservationTracking(OpTrackingBase):
             else:
                 self.parent.parent.trackingApplet._gui.currentGui().layerstack[merger_layer_idx].colorTable = \
                     self.parent.parent.trackingApplet._gui.currentGui().tracking_colortable
+
+    @staticmethod
+    def getPgmlinkSolverType(solverName):
+        if solverName == "ILP":
+            # select solver type
+            if hasattr(pgmlink.ConsTrackingSolverType, "CplexSolver"):
+                solver = pgmlink.ConsTrackingSolverType.CplexSolver
+            else:
+                raise AssertionError("Cannot select ILP solver if pgmlink was compiled without ILP support")
+        elif solverName == "Magnusson":
+            if hasattr(pgmlink.ConsTrackingSolverType, "DynProgSolver"):
+                solver = pgmlink.ConsTrackingSolverType.DynProgSolver
+            else:
+                raise AssertionError("Cannot select Magnusson solver if pgmlink was compiled without Magnusson support")
+        elif solverName == "Flow":
+            if hasattr(pgmlink.ConsTrackingSolverType, "FlowSolver"):
+                solver = pgmlink.ConsTrackingSolverType.FlowSolver
+            else:
+                raise AssertionError("Cannot select Flow solver if pgmlink was compiled without Flow support")
+        else:
+            raise ValueError("Unknown solver {} selected".format(solverName))
+        return solver
 
     def propagateDirty(self, inputSlot, subindex, roi):
         super(OpConservationTracking, self).propagateDirty(inputSlot, subindex, roi)
@@ -363,7 +443,7 @@ class OpConservationTracking(OpTrackingBase):
 
     def _relabelMergers(self, volume, time, pixel_offsets=[0, 0, 0], onlyMergers=False, noRelabeling=False):
         if self.CoordinateMap.value.size() == 0:
-            print("Skipping merger relabling because coordinate map is empty")
+            logger.info("Skipping merger relabeling because coordinate map is empty")
             if onlyMergers:
                 return np.zeros_like(volume)
             else:
@@ -381,7 +461,7 @@ class OpConservationTracking(OpTrackingBase):
                 # TODO Reliable distinction between 2d and 3d?
                 if self._ndim == 2:
                     # Assume we have 2d data: bind z to zero
-                    relabel_volume = volume[...,0]
+                    relabel_volume = volume[..., 0]
                 else:
                     # For 3d data use the whole volume
                     relabel_volume = volume
@@ -403,23 +483,6 @@ class OpConservationTracking(OpTrackingBase):
             return volume
         else:
             return relabel(volume, self.label2color[time])
-
-    def _setParameter(self, key, value, parameters, parameters_changed):
-        if key in parameters.keys():
-            parameters_changed[key] = (value != parameters[key])
-            parameters[key] = value
-        else:
-            parameters_changed[key] = True
-            parameters[key] = value
-
-    def _graphBuildingParameterChanged(self, parameters_changed):
-        rebuild_for_keys_changed = [
-            'maxObj',
-            'sizeDependent',
-            'maxDist',
-            'withDivisions',
-            'divThreshold']
-        return any(parameters_changed[key] for key in rebuild_for_keys_changed)
 
     def do_export(self, settings, selected_features, progress_slot, lane_index, filename_suffix=""):
         """

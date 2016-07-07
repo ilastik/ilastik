@@ -71,16 +71,13 @@ class LabelListView(ListView):
         self.support_merges = False        
         self._colorDialog = ColorDialog(self)        
         self.resetEmptyMessage("no labels defined yet")
-    
+
     def tableViewCellDoubleClicked(self, modelIndex):
         if modelIndex.column() == self.model.ColumnID.Color:
             self._colorDialog.setBrushColor(self._table.model()[modelIndex.row()].brushColor())
             self._colorDialog.setPmapColor (self._table.model()[modelIndex.row()].pmapColor())
             self._colorDialog.exec_()
-            #print "brush color = {}".format(self._colorDialog.brushColor().name())
-            self.model.setData(modelIndex, (self._colorDialog.brushColor(),
-            #print "pmap color  = {}".format(self._colorDialog.pmapColor().name())
-                                              self._colorDialog.pmapColor ()))
+            self.model.setData(modelIndex, (self._colorDialog.brushColor(),self._colorDialog.pmapColor ()))
     
     def tableViewCellClicked(self, modelIndex):
         if (modelIndex.column() == self.model.ColumnID.Delete and

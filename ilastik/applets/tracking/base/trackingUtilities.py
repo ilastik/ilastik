@@ -21,7 +21,10 @@
 import h5py
 import numpy as np
 import os.path as path
-import pgmlink
+try:
+    import pgmlink
+except:
+    import pgmlinkNoIlpSolver as pgmlink
 
 import logging
 logger = logging.getLogger(__name__)

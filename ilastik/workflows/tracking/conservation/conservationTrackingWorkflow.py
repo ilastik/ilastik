@@ -95,7 +95,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
             opDivisionDetection.EnableLabelTransfer.setValue(False)
                 
         self.cellClassificationApplet = ObjectClassificationApplet(workflow=self,
-                                                                     name="Object Count Classification (optional)",
+                                                                     name="Object Count Classification",
                                                                      projectFileGroupName="CountClassification",
                                                                      selectedFeatures=configConservation.selectedFeaturesObjectCount)
 
@@ -105,7 +105,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
 
         opCellClassification = self.cellClassificationApplet.topLevelOperator 
         opCellClassification.SelectedFeatures.setValue(configConservation.selectedFeaturesObjectCount)
-        opCellClassification.SuggestedLabelNames.setValue( ['false detection',] + [str(i) + ' Objects' for i in range(1,10) ] )
+        opCellClassification.SuggestedLabelNames.setValue( ['False Detection',] + [str(1) + ' Object'] + [str(i) + ' Objects' for i in range(2,10) ] )
         opCellClassification.AllowDeleteLastLabelOnly.setValue(True)
         opCellClassification.EnableLabelTransfer.setValue(False)
                 

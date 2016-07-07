@@ -16,13 +16,14 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+#                 http://ilastik.org/license.html
 ###############################################################################
 from PyQt4 import uic, QtGui, QtCore
 from PyQt4.QtGui import QColor
 
 import os
 import numpy
+from functools import partial
 
 import logging
 from lazyflow.rtype import SubRegion
@@ -34,24 +35,26 @@ traceLogger = logging.getLogger('TRACE.' + __name__)
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.utility import log_exception
+from ilastik.widgets.cropListView import Crop
+from ilastik.widgets.cropListModel import CropListModel
+from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key
+from ilastik.utility import bind
 
 import volumina.colortables as colortables
 from volumina.api import LazyflowSource, GrayscaleLayer, ColortableLayer
 from volumina.utility import ShortcutManager
-from ilastik.utility.exportingOperator import ExportingGui
 
 from ilastik.config import cfg as ilastik_config
 
 from volumina.utility import encode_from_qstring
     
 
-class ManualTrackingGui(LayerViewerGui, ExportingGui):
+class AnnotationsGui(LayerViewerGui):
 
     def appletDrawer( self ):
         return self._drawer
 
     def _loadUiFile(self):
-        # Load the ui file (find it in our own directory)
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")        
         return self._drawer
@@ -61,7 +64,8 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
         
         if not ilastik_config.getboolean("ilastik", "debug"):
             self._drawer.exportTifButton.hide()            
-            
+        self._drawer.exportDivisions.hide()
+        self._drawer.exportMergers.hide()
         self._drawer.newTrack.pressed.connect(self._onNewTrackPressed)
         self._drawer.delTrack.pressed.connect(self._onDelTrackPressed)        
         self._drawer.divEvent.pressed.connect(self._onDivEventPressed)
@@ -73,12 +77,32 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
         self._drawer.exportButton.pressed.connect(self._onExportButtonPressed)
         self._drawer.exportTifButton.pressed.connect(self._onExportTifButtonPressed)
         self._drawer.gotoLabel.pressed.connect(self._onGotoLabel)
-        self._drawer.nextUnlabeledButton.pressed.connect(self._onNextUnlabeledPressed)
+        self._drawer.saveAnnotations.pressed.connect(self._onSaveAnnotations)
+        self._drawer.initializeAnnotations.pressed.connect(self._onInitializeAnnotations)
+
+        self.editor.showCropLines(True)
+        self.editor.cropModel.editableChanged.emit (False)
+
+        self.editor.posModel.timeChanged.connect(self.updateTime)
+
+        self._cropListViewInit()
+
+        self.topLevelOperatorView.Labels.setValue(self.topLevelOperatorView.labels)
+        self.topLevelOperatorView.Divisions.setValue(self.topLevelOperatorView.divisions)
+
+    def updateTime(self):
+        delta = self.topLevelOperatorView.Crops[self._drawer.cropListModel[self._drawer.cropListModel.selectedRow()].name][0][0] - self.editor.posModel.time
+        if delta > 0:
+            self.editor.navCtrl.changeTimeRelative(delta)
+        else:
+            delta = self.topLevelOperatorView.Crops[self._drawer.cropListModel[self._drawer.cropListModel.selectedRow()].name][0][1] - self.editor.posModel.time
+            if delta < 0:
+                self.editor.navCtrl.changeTimeRelative(delta)
 
     def _initShortcuts(self):
         mgr = ShortcutManager()
         ActionInfo = ShortcutManager.ActionInfo
-        shortcutGroupName = "Manual Tracking"
+        shortcutGroupName = "Training"
 
         mgr.register( "d", ActionInfo( shortcutGroupName,
                                        "Mark Division Event",
@@ -115,35 +139,32 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
                                        self,
                                        None ) ) 
         
-        mgr.register( "g", ActionInfo( shortcutGroupName,
-                                       "Go To Next Unlabeled Object",
-                                       "Go To Next Unlabeled Object",
-                                       self._onNextUnlabeledPressed,
-                                       self,
-                                       None ) )
-        
-    ###########################################
-    ###########################################
-    
     def __init__(self, parentApplet, topLevelOperatorView):
         self.topLevelOperatorView = topLevelOperatorView
-        super(ManualTrackingGui, self).__init__(parentApplet, topLevelOperatorView)
+        self._previousCrop = -1
+        self._currentCrop = -1
+        self._currentCropName = ""
+
+        super(AnnotationsGui, self).__init__(parentApplet, topLevelOperatorView)
         
         self.mainOperator = topLevelOperatorView
-        # get the applet reference from the workflow (needed for the progressSignal)
-        self.applet = self.mainOperator.parent.parent.trackingApplet
+        
+        self.applet = self.mainOperator.parent.parent.annotationsApplet
         
         self.mainOperator.LabelImage.notifyMetaChanged( self._onMetaChanged)
         self.mainOperator.LabelImage.notifyDirty( self._reset )
-        
-        self.ct = colortables.create_random_16bit()        
+
+        self.ct = colortables.create_random_16bit()
         
         self.divLock = False
         self.divs = []
         self.labelsWithDivisions = {}
         self.misdetLock = False
         self.misdetIdx = -1
-        
+
+        self.currentLabels = {}
+        self.currentDivisions = {}
+
         if self.mainOperator.LabelImage.meta.shape:
             # FIXME: assumes t,x,y,z,c
             if self.mainOperator.LabelImage.meta.shape[3] == 1: # 2D images
@@ -151,9 +172,114 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
                 self._drawer.windowZBox.setEnabled(False)
         
         self.connect( self, QtCore.SIGNAL('postCriticalMessage(QString)'), self.postCriticalMessage)
-        
+        self.connect( self, QtCore.SIGNAL('postInformationMessage(QString)'), self.postInformationMessage)
+        self.connect( self, QtCore.SIGNAL('postQuestionMessage(QString)'), self.postQuestionMessage)
+
         self._initShortcuts()
-        
+        self.editor.posModel.timeChanged.connect(self.updateTime)
+        try:
+            self.editor.navCtrl.changeTimeRelative(self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[0].name]["time"][0] - self.editor.posModel.time)
+        except:
+            pass
+
+        self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
+        self._initAnnotations()
+
+        self.__cleanup_fns = []
+        self.topLevelOperatorView.Labels.notifyDirty( bind(self._updateLabels) )
+        self.topLevelOperatorView.Crops.notifyDirty( bind(self._cropListViewInit) )
+        self.__cleanup_fns.append( partial( self.topLevelOperatorView.Labels.unregisterDirty, bind(self._updateLabels) ) )
+        self.__cleanup_fns.append( partial( self.topLevelOperatorView.Crops.unregisterDirty, bind(self._cropListViewInit) ) )
+
+        self.volumeEditorWidget.quadViewStatusBar.setToolTipTimeButtonsCrop(True)
+        self.volumeEditorWidget.quadViewStatusBar.setToolTipTimeSliderCrop(True)
+        self.deleteAllTraining = False
+
+    def _onInitializeAnnotations(self):
+
+        self._questionMessage("All your annotations will be lost! You should save the project, " + \
+                                  "then save it under a new name and continue without loss of current annotations. " + \
+                                  "Do you really want to delete all your annotations?")
+
+        if self.deleteAllTraining:
+            self.mainOperator.Annotations.setValue({})
+            self.deleteAllTraining = False
+        else:
+            return
+        self.mainOperator.Divisions.setValue({})
+        self.mainOperator.Labels.setValue({})
+
+        self.mainOperator.divisions = {}
+        self.labelsWithDivisions = {}
+        self.divs = []
+
+        self._cropListViewInit()
+        roi = {}
+        roi["start"]=(0,0,0,0,0)
+        roi["stop"]=self.mainOperator.TrackImage.meta.shape
+
+        self.divLock = False
+        self.misdetLock = False
+        self.misdetIdx = -1
+
+        self.mainOperator.initOutputs()
+
+        self._reset()
+
+        self.currentLabels = {}
+        self.currentDivisions = {}
+
+        self._setDirty(self.mainOperator.LabelImage, range(self.mainOperator.TrackImage.meta.shape[0]))
+        self._setDirty(self.mainOperator.Labels, range(self.mainOperator.TrackImage.meta.shape[0]))
+        self._setDirty(self.mainOperator.Divisions, range(self.mainOperator.TrackImage.meta.shape[0]))
+        self._setDirty(self.mainOperator.TrackImage, range(self.mainOperator.TrackImage.meta.shape[0]))
+        self._setDirty(self.mainOperator.UntrackedImage, range(self.mainOperator.TrackImage.meta.shape[0]))
+
+        self.setupLayers()
+        self._onCropSelected(0)
+
+    def stopAndCleanUp(self):
+        super(AnnotationsGui, self).stopAndCleanUp()
+
+        for fn in self.__cleanup_fns:
+            fn()
+
+    def _updateLabels(self):
+        pass
+
+
+    def _cropListViewInit(self):
+
+        if self.topLevelOperatorView.Crops.value != {}:
+            self._drawer.cropListModel=CropListModel()
+            crops = self.topLevelOperatorView.Crops.value
+            for key in sorted(crops):
+                newRow = self._drawer.cropListModel.rowCount()
+
+
+                crop = Crop(
+                        key,
+                        [(crops[key]["time"][0],crops[key]["starts"][0],crops[key]["starts"][1],crops[key]["starts"][2]),(crops[key]["time"][1],crops[key]["stops"][0],crops[key]["stops"][1],crops[key]["stops"][2])],
+                        QColor(crops[key]["cropColor"][0],crops[key]["cropColor"][1],crops[key]["cropColor"][2]),
+                        pmapColor=QColor(crops[key]["pmapColor"][0],crops[key]["pmapColor"][1],crops[key]["pmapColor"][2])
+                )
+
+                self._drawer.cropListModel.insertRow( newRow, crop )
+
+            self._drawer.cropListModel.elementSelected.connect(self._onCropSelected)
+
+            self._drawer.cropListView.setModel(self._drawer.cropListModel)
+            self._drawer.cropListView.updateGeometry()
+            self._drawer.cropListView.update()
+            self._drawer.cropListView.allowDelete = False
+            self._drawer.cropListView.selectRow(0)
+            self._selectedRow = 0
+            self._previousCrop = -1
+
+            rawImageSlot = self.topLevelOperatorView.RawImage
+            tagged_shape = rawImageSlot.meta.getTaggedShape()
+            self.editor.posModel.shape5D = [tagged_shape['t'],tagged_shape['x'],tagged_shape['y'],tagged_shape['z'],tagged_shape['c']]
+            self.editor.navCtrl.changeTimeRelative(self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[0].name]["time"][0] - self.editor.posModel.time)
 
     def _onMetaChanged( self, slot ):
         if slot is self.mainOperator.LabelImage:
@@ -175,8 +301,157 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
                 layerraw.name = "Raw"
                 self.layerstack.append( layerraw )
 
-    
-    def setupLayers( self ):        
+    def _initAnnotations(self):
+        for name in self.topLevelOperatorView.Crops.value.keys():
+            self._onSaveAnnotations(name=name)
+
+        self.topLevelOperatorView.Labels.setValue(self.topLevelOperatorView.labels)
+        self.topLevelOperatorView.Divisions.setValue(self.topLevelOperatorView.divisions)
+
+    def _onSaveAnnotations(self, name=""):
+        if name == "":
+            name = self._currentCropName
+            crop = self.getCurrentCrop()
+        else:
+            crop = self.topLevelOperatorView.Crops.value[name]
+
+
+        if name not in self.topLevelOperatorView.Annotations.value.keys():
+            self.topLevelOperatorView.Annotations.value[name] = {}
+        if "labels" not in self.topLevelOperatorView.Annotations.value[name].keys():
+            self.topLevelOperatorView.Annotations.value[name]["labels"] = {}
+        for time in range(crop["time"][0],crop["time"][1]+1):
+            if time in self.topLevelOperatorView.labels.keys():
+                for label in self.topLevelOperatorView.labels[time].keys():
+                    lower = self.features[time][default_features_key]['Coord<Minimum>'][label]
+                    upper = self.features[time][default_features_key]['Coord<Maximum>'][label]
+
+                    addAnnotation = False
+                    if len(lower) == 2:
+                        if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
+                            crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1]:
+                            addAnnotation = True
+                    else:
+                        if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
+                            crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1] and \
+                            crop["starts"][2] <= upper[2] and lower[2] <= crop["stops"][2]:
+                            addAnnotation = True
+
+                    if addAnnotation:
+                        if time not in self.topLevelOperatorView.Annotations.value[name]["labels"].keys():
+                            self.topLevelOperatorView.Annotations.value[name]["labels"][time] = {}
+                        self.topLevelOperatorView.Annotations.value[name]["labels"][time][label] = self.topLevelOperatorView.labels[time][label]
+
+        if name not in self.topLevelOperatorView.Annotations.value.keys():
+            self.topLevelOperatorView.Annotations.value[name] = {}
+        if "divisions" not in self.topLevelOperatorView.Annotations.value[name].keys():
+            self.topLevelOperatorView.Annotations.value[name]["divisions"] = {}
+        for parentTrack in self.topLevelOperatorView.divisions.keys():
+            time = self.topLevelOperatorView.divisions[parentTrack][1]
+            child1Track = self.topLevelOperatorView.divisions[parentTrack][0][0]
+            child2Track = self.topLevelOperatorView.divisions[parentTrack][0][1]
+
+            parent = self.getLabel(time, parentTrack)
+            child1 = self.getLabel(time+1, child1Track)
+            child2 = self.getLabel(time+1, child2Track)
+
+            if not (parent and child1 and child2):
+                logger.info("WARNING:Your divisions and labels do not match for time {} and parent track {} with label {}!".format(time,parentTrack,parent))
+                pass
+            else:
+                lowerParent = self.features[time][default_features_key]['Coord<Minimum>'][parent]
+                upperParent = self.features[time][default_features_key]['Coord<Maximum>'][parent]
+
+                lowerChild1 = self.features[time+1][default_features_key]['Coord<Minimum>'][child1]
+                upperChild1 = self.features[time+1][default_features_key]['Coord<Maximum>'][child1]
+
+                lowerChild2 = self.features[time+1][default_features_key]['Coord<Minimum>'][child2]
+                upperChild2 = self.features[time+1][default_features_key]['Coord<Maximum>'][child2]
+
+                addAnnotation = False
+                if len(lowerParent) == 2:
+                    if (crop["time"][0] <= time and time <= crop["time"][1]+1) and \
+                        ((crop["starts"][0] <= upperParent[0] and lowerParent[0] <= crop["stops"][0] and \
+                        crop["starts"][1] <= upperParent[1] and lowerParent[1] <= crop["stops"][1]) or \
+                        ( crop["starts"][0] <= upperChild1[0] and lowerChild1[0] <= crop["stops"][0] and \
+                        crop["starts"][1] <= upperChild1[1] and lowerChild1[1] <= crop["stops"][1]) or \
+                        ( crop["starts"][0] <= upperChild2[0] and lowerChild2[0] <= crop["stops"][0] and \
+                        crop["starts"][1] <= upperChild2[1] and lowerChild2[1] <= crop["stops"][1])):
+                        addAnnotation = True
+                else:
+                    if (crop["time"][0] <= time and time <= crop["time"][1]+1) and \
+                        ((crop["starts"][0] <= upperParent[0] and lowerParent[0] <= crop["stops"][0] and \
+                        crop["starts"][1] <= upperParent[1] and lowerParent[1] <= crop["stops"][1] and \
+                        crop["starts"][2] <= upperParent[2] and lowerParent[2] <= crop["stops"][2]) or \
+                        ( crop["starts"][0] <= upperChild1[0] and lowerChild1[0] <= crop["stops"][0] and \
+                        crop["starts"][1] <= upperChild1[1] and lowerChild1[1] <= crop["stops"][1] and \
+                        crop["starts"][2] <= upperChild1[2] and lowerChild1[2] <= crop["stops"][2]) or \
+                        ( crop["starts"][0] <= upperChild2[0] and lowerChild2[0] <= crop["stops"][0] and \
+                        crop["starts"][1] <= upperChild2[1] and lowerChild2[1] <= crop["stops"][1] and \
+                        crop["starts"][2] <= upperChild2[2] and lowerChild2[2] <= crop["stops"][2])):
+                        addAnnotation = True
+                if addAnnotation:
+                    if parentTrack not in self.topLevelOperatorView.Annotations.value[name]["divisions"].keys():
+                        self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = {}
+                    self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = self.topLevelOperatorView.divisions[parentTrack]
+
+        self._setDirty(self.mainOperator.Annotations, range(self.mainOperator.TrackImage.meta.shape[0]))
+        self._setDirty(self.mainOperator.Labels, [])
+        self._setDirty(self.mainOperator.Divisions, [])
+
+    def getLabel(self, time, track):
+        for label in self.mainOperator.labels[time].keys():
+            if self.mainOperator.labels[time][label] == set([track]):
+                return label
+        return False
+
+    def getCurrentCrop(self):
+        row = self._drawer.cropListModel.selectedRow()
+        name = self._drawer.cropListModel[row].name
+        crop = self.topLevelOperatorView.Crops.value[name]
+        return crop
+
+    def _onCropSelected(self, row):
+        #logger.debug("switching to crop=%r" % (self._drawer.cropListModel[row]))
+
+        self._selectedRow = row
+        currentName = self._drawer.cropListModel[row].name
+
+        self.editor.brushingModel.setDrawnNumber(row+1)
+        brushColor = self._drawer.cropListModel[row].brushColor()
+        self.editor.brushingModel.setBrushColor( brushColor )
+        ce = self.editor.cropModel._crop_extents
+        starts = self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[row].name]["starts"]
+        stops = self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[row].name]["stops"]
+
+        # croppingMarkers.onExtentsChanged works correctly only if called on start OR stop coordinates
+        self.editor.cropModel.set_crop_extents([[starts[0], ce[0][1]],[starts[1], ce[1][1]],[starts[2], ce[2][1]]])
+        self.editor.cropModel.set_crop_extents([[starts[0],stops[0]],[starts[1],stops[1]],[starts[2],stops[2]]])
+        if not (self.editor.cropModel._crop_extents[0][0]  == None or self.editor.cropModel.cropZero()):
+            cropMidPos = [(b+a)/2 for [a,b] in self.editor.cropModel._crop_extents]
+            for i in range(3):
+                self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
+        self.editor.navCtrl.panSlicingViews(cropMidPos,[0,1,2])
+
+        times = self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[row].name]["time"]
+        self.editor.cropModel.set_crop_times(times)
+        self.editor.cropModel.set_scroll_time_outside_crop(False)
+        self.editor.navCtrl.changeTimeRelative(times[0] - self.editor.posModel.time)
+
+        self.editor.cropModel.colorChanged.emit(brushColor)
+        self._currentCrop = row
+        self._currentCropName = currentName
+
+    def updateTime(self):
+        delta = self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[self._drawer.cropListModel.selectedRow()].name]["time"][0] - self.editor.posModel.time
+        if delta > 0:
+            self.editor.navCtrl.changeTimeRelative(delta)
+        else:
+            delta = self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[self._drawer.cropListModel.selectedRow()].name]["time"][1] - self.editor.posModel.time
+            if delta < 0:
+                self.editor.navCtrl.changeTimeRelative(delta)
+
+    def setupLayers( self ):
         layers = []
  
         self.ct[0] = QColor(0,0,0,0).rgba() # make 0 transparent        
@@ -186,7 +461,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
         if self.topLevelOperatorView.TrackImage.ready():
             self.trackingsrc = LazyflowSource( self.topLevelOperatorView.TrackImage )
             trackingLayer = ColortableLayer( self.trackingsrc, self.ct )
-            trackingLayer.name = "Manual Tracking"
+            trackingLayer.name = "Tracking Annotations"
             trackingLayer.visible = True
             trackingLayer.opacity = 0.8
 
@@ -195,8 +470,8 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
                 
             trackingLayer.shortcutRegistration = ( "e", ShortcutManager.ActionInfo( 
                                                             "Layer Visibilities",
-                                                            "Toggle Manual Tracking Layer Visibility",
-                                                            "Toggle Manual Tracking Layer Visibility",
+                                                            "Toggle Structured Tracking Layer Visibility",
+                                                            "Toggle Structured Tracking Layer Visibility",
                                                             toggleTrackingVisibility,
                                                             self,
                                                             trackingLayer ) )
@@ -240,7 +515,6 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
 
 
         if self.mainOperator.RawImage.ready():
-            ## raw data layer
             self.rawsrc = LazyflowSource( self.mainOperator.RawImage )
             rawLayer = GrayscaleLayer( self.rawsrc )
             rawLayer.name = "Raw"        
@@ -249,9 +523,8 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
         
         self.topLevelOperatorView.RawImage.notifyReady( self._onReady )
         self.topLevelOperatorView.RawImage.notifyMetaChanged( self._onMetaChanged )
-        
+
         self._reset()
-        
         return layers
 
     @threadRouted
@@ -336,12 +609,14 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
             self.mainOperator.TrackImage.setDirty(roi)
         elif slot is self.mainOperator.Labels:
             self.mainOperator.Labels.setDirty(timesteps)
+        elif slot is self.mainOperator.Annotations:
+            self.mainOperator.Annotations.setDirty([])
         elif slot is self.mainOperator.Divisions:
             self.mainOperator.Divisions.setDirty([])
         elif slot is self.mainOperator.UntrackedImage:
             roi = SubRegion(self.mainOperator.UntrackedImage, start=[min(timesteps),] + 4*[0,], stop=[max(timesteps)+1,] + list(self.mainOperator.TrackImage.meta.shape[1:]))
             self.mainOperator.UntrackedImage.setDirty(roi)
-            
+
     def handleEditorLeftClick(self, position5d, globalWindowCoordiante):
         if self.divLock:
             oid = self._getObject(self.mainOperator.LabelImage, position5d)
@@ -401,7 +676,14 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
             t = position5d[0]
     
             res = self._addObjectToTrack(activeTrack,oid,t)
-            if res == -1:
+
+            if res == -99 or res == -98:
+                self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t) + " is outside the current crop.")
+                return
+            elif res == -1:
+                return
+            elif res == -2:
+                self._setPosModel(time=self.editor.posModel.time + 1)
                 return
             
             self._setDirty(self.mainOperator.TrackImage, [t])
@@ -410,8 +692,6 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
     
             self._setPosModel(time=self.editor.posModel.time + 1)
 
-            
-        
     def handleEditorRightClick(self, position5d, globalWindowCoordiante):
         if self.divLock:
             return
@@ -502,7 +782,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
             self._setDirty(self.mainOperator.TrackImage, range(t,maxt))
             self._setDirty(self.mainOperator.UntrackedImage, range(t, maxt))
             self._setDirty(self.mainOperator.Labels, range(t,maxt))
-        
+
         elif selection in delSubtrackToStart.keys():
             track2remove = delSubtrackToStart[selection]
             for time in range(0,t+1):
@@ -612,6 +892,28 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
             self._setDirty(self.mainOperator.Labels, affectedT)
     
     def _addObjectToTrack(self, activeTrack, oid, t):
+
+        crop = self.getCurrentCrop()
+
+        if t not in range(crop["time"][0],crop["time"][1]+1):
+            return -98
+
+        lower = self.features[t][default_features_key]['Coord<Minimum>'][oid]
+        upper = self.features[t][default_features_key]['Coord<Maximum>'][oid]
+        addAnnotation = False
+        if len(lower) == 2:
+            if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
+                crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1]:
+                addAnnotation = True
+        else:
+            if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
+                crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1] and \
+                crop["starts"][2] <= upper[2] and lower[2] <= crop["stops"][2]:
+                addAnnotation = True
+
+        if not addAnnotation:
+            return -99 # info message depends on the caller: rightClick/runAutomaticTracking or leftClick(addObjectToTrack)
+
         if t not in self.mainOperator.labels.keys():
             self.mainOperator.labels[t] = {}
         if oid not in self.mainOperator.labels[t].keys():
@@ -622,9 +924,15 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
                 return -1
         else:
             for tracklist in self.mainOperator.labels[t].values():
-                if activeTrack in tracklist:                    
-                    self._criticalMessage("Error: There is already an object with this track id in this time step")            
-                    return -1
+                if activeTrack in tracklist:
+                    if activeTrack not in self.mainOperator.labels[t][oid]:
+                        self._criticalMessage("Error: There is already an object with this track id in this time step.")
+                        return -1
+                    elif t == self.topLevelOperatorView.Crops.value[self._currentCropName]["time"][1]:
+                        self._criticalMessage("Error: You have reached the last time frame in this crop.")
+                        return -1
+                    else:
+                        return -2
         
         if self.misdetIdx in self.mainOperator.labels[t][oid]:
             self._criticalMessage("Error: This object is already marked as a misdetection. Cannot mark it as part of a track.")            
@@ -647,7 +955,11 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
                 return 
             
             res = self._addObjectToTrack(self._getActiveTrack(), oid, t_start)
-            if res == -1:
+            if res == -99 or res == -98:
+                self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t_start) + " is outside the current crop. " + \
+                                         "Stopping automatic tracking at crop boundary.")
+                return
+            elif res == -1:
                 return
                     
             sroi = [slice(0,1),]
@@ -674,7 +986,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
                 uniqueLabels = list(numpy.unique(li_product))
                 if 0 in uniqueLabels:
                     uniqueLabels.remove(0)
-                if len(uniqueLabels) != 1:                
+                if len(uniqueLabels) != 1:
                     self._log('tracking candidates at t = ' + str(t) + ': ' + str(uniqueLabels))
                     self._gotoObject(oid_prev, t-1, True)
                     t_end = t-1
@@ -684,9 +996,19 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
                     self._gotoObject(oid_prev, t-1, True)
                     t_end = t-1
                     break
-                 
+
                 res = self._addObjectToTrack(activeTrack, uniqueLabels[0], t)
-                if res == -1:
+                if res == -98:
+                    self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t) + " left the current crop time boundary." + \
+                                         "Stopping automatic tracking at crop boundary.")
+                    self._gotoObject(uniqueLabels[0], t, False)
+                    return
+                elif res == -99:
+                    self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t) + " left the current crop spatial boundary." + \
+                                         "Stopping automatic tracking at crop boundary.")
+                    self._gotoObject(uniqueLabels[0], t, False)
+                    return
+                elif res == -1:
                     self._gotoObject(uniqueLabels[0], t, False)
                     return
                 
@@ -1219,67 +1541,43 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
         self._drawer.logOutput.moveCursor(QtGui.QTextCursor.End)
         logger.info( prompt )
 
-
-    def _onNextUnlabeledPressed(self):
-        nextCoords = None
-        for t in range(self.mainOperator.UntrackedImage.meta.shape[0]):            
-            roi = SubRegion(self.mainOperator.UntrackedImage, start=[t,0,0,0,0], stop=[t+1,] + list(self.mainOperator.UntrackedImage.meta.shape[1:]))
-            untrackedImage = self.mainOperator.UntrackedImage.get(roi).wait()
-            untrackedCoords = numpy.nonzero(untrackedImage)
-            # FIXME: assumes t,x,y,z,c                        
-            if len(untrackedCoords[1]) > 0:
-                nextCoords = [untrackedCoords[1][0], untrackedCoords[2][0], untrackedCoords[3][0]]
-                nextLabelT = t 
-                break
-        
-        if nextCoords is not None:
-            self._setPosModel(time=nextLabelT, slicingPos=nextCoords, cursorPos=nextCoords)
-            self.editor.navCtrl.panSlicingViews(nextCoords, [0,1,2])
-        else:
-            self._log('There are no more untracked objects! :-)')   
-        
-        
     def _criticalMessage(self, prompt):
         self.emit( QtCore.SIGNAL('postCriticalMessage(QString)'), prompt)
+
+    def _questionMessage(self, prompt):
+        self.emit( QtCore.SIGNAL('postQuestionMessage(QString)'), prompt)
+
+    def _informationMessage(self, prompt):
+        self.emit( QtCore.SIGNAL('postInformationMessage(QString)'), prompt)
 
     @threadRouted
     def postCriticalMessage(self, prompt):
         QtGui.QMessageBox.critical(self, "Error", prompt, QtGui.QMessageBox.Ok)
         
     @threadRouted
+    def postQuestionMessage(self, prompt):
+        qBox = QtGui.QMessageBox()
+        qBox.setWindowTitle("Confirm")
+        qBox.setText(prompt)
+        qBox.setStandardButtons( QtGui.QMessageBox.Ok | QtGui.QMessageBox.Cancel)
+        qBox.setDefaultButton( QtGui.QMessageBox.Cancel )
+        retVal = qBox.exec_()
+        if retVal == QtGui.QMessageBox.Ok:
+            self.deleteAllTraining = True
+
+    @threadRouted
+    def postInformationMessage(self, prompt):
+        QtGui.QMessageBox.information(self, "Info", prompt, QtGui.QMessageBox.Ok)
+
+    @threadRouted
     def _enableButtons(self, exceptButtons=None, enable=True):
         buttons = [self._drawer.activeTrackBox, 
                    self._drawer.delTrack,
                    self._drawer.newTrack,
                    self._drawer.markMisdetection,
-                   self._drawer.nextUnlabeledButton,
                    self._drawer.divEvent,
                    ]
                 
         for b in buttons:
             if exceptButtons is None or b not in exceptButtons:
                 b.setEnabled(enable)
-
-    def menus(self):
-        menu_list = []
-        if ilastik_config.getboolean("ilastik", "debug"):
-            menu_list.append(QtGui.QMenu("&Export", self.volumeEditorWidget))
-            menu_list[-1].addAction("Export Tracking Information").triggered.connect(self.show_export_dialog)
-
-        return menu_list
-
-    def get_raw_shape(self):
-        return self.topLevelOperatorView.RawImage.meta.shape
-
-    def get_feature_names(self):
-        return self.topLevelOperatorView.ComputedFeatureNames([]).wait()
-
-    def get_export_dialog_title(self):
-        return "Export Tracking Information"
-
-    def get_exporting_operator(self, lane=0):
-        return self.topLevelOperatorView
-
-    @property
-    def gui_applet(self):
-        return self.applet

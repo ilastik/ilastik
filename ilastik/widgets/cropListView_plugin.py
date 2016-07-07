@@ -21,10 +21,10 @@
 from PyQt4.QtDesigner import QPyDesignerCustomWidgetPlugin
 from PyQt4.QtGui import QPixmap, QIcon, QColor
 
-from ilastik.widgets.labelListView import LabelListView
-from ilastik.widgets.labelListModel import Label, LabelListModel
+from ilastik.widgets.cropListView import CropListView
+from ilastik.widgets.cropListModel import Crop, CropListModel
 
-class PyLabelListViewPlugin(QPyDesignerCustomWidgetPlugin):
+class PyCropListViewPlugin(QPyDesignerCustomWidgetPlugin):
 
     def __init__(self, parent = None):
         QPyDesignerCustomWidgetPlugin.__init__(self)
@@ -42,15 +42,15 @@ class PyLabelListViewPlugin(QPyDesignerCustomWidgetPlugin):
         red   = QColor(255,0,0)
         green = QColor(0,255,0)
         blue  = QColor(0,0,255)
-        model = LabelListModel([Label("Label 1", red),
-                                Label("Label 2", green),
-                                Label("Label 3", blue)])
-        a=LabelListView(parent)
+        model = CropListModel([Crop("Crop 1", red),
+                                Crop("Crop 2", green),
+                                Crop("Crop 3", blue)])
+        a=CropListView(parent)
         a.setModel(model)
         return a
     
     def name(self):
-        return "LabelListView"
+        return "CropListView"
 
     def group(self):
         return "ilastik widgets"
@@ -69,10 +69,10 @@ class PyLabelListViewPlugin(QPyDesignerCustomWidgetPlugin):
     
     def domXml(self):
         return (
-               '<widget class="LabelListView" name=\"labelListView\">\n'
+               '<widget class="CropListView" name=\"cropListView\">\n'
                "</widget>\n"
                )
     
     def includeFile(self):
-        return "ilastik.widgets.labelListView"
+        return "ilastik.widgets.cropListView"
  

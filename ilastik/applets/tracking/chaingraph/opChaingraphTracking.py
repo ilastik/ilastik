@@ -71,7 +71,7 @@ class OpChaingraphTracking(OpTrackingBase):
         det = noiseweight*(-1)*math.log(1-noiserate)
         mdet = noiseweight*(-1)*math.log(noiserate)
         
-        ts, empty_frame = self._generate_traxelstore(time_range, x_range, y_range, z_range, size_range, x_scale, y_scale, z_scale)
+        _, ts, empty_frame, _ = self._generate_traxelstore(time_range, x_range, y_range, z_range, size_range, x_scale, y_scale, z_scale)
         
         if empty_frame:
             raise Exception, 'Cannot track frames with 0 objects, abort.'

@@ -16,6 +16,10 @@ from ilastik.shell.gui.ipcManager import IPCFacade
 from ilastik.config import cfg as ilastik_config
 
 from lazyflow.request.request import Request
+try:
+    import pgmlink
+except:
+    import pgmlinkNoIlpSolver as pgmlink
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
@@ -86,11 +90,26 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         
         return self._drawer
 
+    @staticmethod
+    def getAvailablePgmlinkSolverTypes():
+        solvers = []
+        if hasattr(pgmlink.ConsTrackingSolverType, "CplexSolver"):
+            solvers.append("ILP")
+
+        if hasattr(pgmlink.ConsTrackingSolverType, "DynProgSolver"):
+            solvers.append("Magnusson")
+
+        if hasattr(pgmlink.ConsTrackingSolverType, "FlowSolver"):
+            solvers.append("Flow")
+        return solvers
+
     def initAppletDrawerUi(self):
         super(ConservationTrackingGui, self).initAppletDrawerUi()        
 
         self._allowedTimeoutInputRegEx = re.compile('^[0-9]*$')
         self._drawer.timeoutBox.textChanged.connect(self._onTimeoutBoxChanged)
+        self._drawer.solverComboBox.clear()
+        self._drawer.solverComboBox.addItems(self.getAvailablePgmlinkSolverTypes())
 
         if not ilastik_config.getboolean("ilastik", "debug"):
             def checkboxAssertHandler(checkbox, assertEnabled=True):
@@ -119,6 +138,10 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             self._drawer.divThreshBox.hide()
             self._drawer.label_25.hide() # hide avg. obj size label
             self._drawer.avgSizeBox.hide()
+            self._drawer.label_24.hide() # hide motion model weight label
+            self._drawer.motionModelWeightBox.hide()
+            self._drawer.maxNearestNeighborsSpinBox.hide()
+            self._drawer.MaxNearestNeighbourLabel.hide()
           
         self.mergerLabels = [self._drawer.merg1,
                              self._drawer.merg2,
@@ -198,7 +221,10 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             withArmaCoordinates = True
             appearanceCost = self._drawer.appearanceBox.value()
             disappearanceCost = self._drawer.disappearanceBox.value()
-    
+
+            motionModelWeight = self._drawer.motionModelWeightBox.value()
+            solver = self._drawer.solverComboBox.currentText()
+
             ndim=3
             if (to_z - from_z == 0):
                 ndim=2
@@ -231,7 +257,10 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
                     cplex_timeout = cplex_timeout,
                     appearance_cost = appearanceCost,
                     disappearance_cost = disappearanceCost,
-                    force_build_hypotheses_graph = False
+                    motionModelWeight=motionModelWeight,
+                    force_build_hypotheses_graph = False,
+                    max_nearest_neighbors=self._drawer.maxNearestNeighborsSpinBox.value(),
+                    solverName=solver
                     )
 
                 # update showing the merger legend,

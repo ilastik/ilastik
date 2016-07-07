@@ -123,6 +123,7 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
     LabelNames = OutputSlot()
     LabelColors = OutputSlot()
     PmapColors = OutputSlot()
+    MaxNumObj = OutputSlot()
 
     # Use a slot for storing the export settings in the project file.
     ExportSettings = OutputSlot()
@@ -250,6 +251,8 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
             self.opPredict.LabelsCount.setValue( numClasses )
             self.opTrain.LabelsCount.setValue( numClasses )
             self.NumLabels.setValue( numClasses )
+            self.MaxNumObj.setValue ( numClasses - 1)
+
         self.LabelNames.notifyDirty( _updateNumClasses )
 
         self.LabelNames.setValue( [] )
@@ -383,6 +386,7 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
         self.opPredictionImageCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
         self.opProbChannelsImageCache.innerBlockShape.setValue( (innerBlockShapeX, innerBlockShapeY, innerBlockShapeZ) )
         self.opProbChannelsImageCache.outerBlockShape.setValue( (outerBlockShapeX, outerBlockShapeY, outerBlockShapeZ) )
+        self.MaxNumObj.setValue( len(self.LabelNames.value) - 1)
 
     def setInSlot(self, slot, subindex, roi, value):
         pass

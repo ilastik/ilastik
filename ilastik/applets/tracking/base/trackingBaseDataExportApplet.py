@@ -29,6 +29,8 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
         if 'default_export_filename' in kwargs:
             default_export_filename = kwargs['default_export_filename']
             del kwargs['default_export_filename']
+        else:
+            default_export_filename = ""
 
         super(TrackingBaseDataExportApplet, self).__init__(*args, **kwargs)
         self.export_op = None

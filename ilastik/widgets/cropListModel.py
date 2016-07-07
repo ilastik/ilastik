@@ -19,19 +19,19 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from PyQt4.QtGui import QColor, QPixmap, QIcon, QItemSelectionModel, QImage
-from PyQt4.QtCore import Qt, pyqtSignal
+from PyQt4.QtCore import Qt, pyqtSignal, QModelIndex
 from listModel import ListModel,ListElement,_NPIXELS
-
 
 import logging
 logger = logging.getLogger(__name__)
 
-class Label(ListElement):
+class Crop(ListElement):
     changed      = pyqtSignal()
     colorChanged = pyqtSignal(QColor)
     pmapColorChanged = pyqtSignal(QColor)
+    roi_4dChanged = pyqtSignal()
 
-    def __init__(self, name, color, parent = None, pmapColor=None):
+    def __init__(self, name, roi_4d, color, parent = None, pmapColor=None):
         ListElement.__init__(self, name,parent)
         self._brushColor = color
         if pmapColor is None:
@@ -39,12 +39,24 @@ class Label(ListElement):
         else:
             self._pmapColor = pmapColor
 
+        self._roi_4d = roi_4d
+
+    def roi_4d(self):
+        return self._roi_4d
+
+    def setRoi_4d(self, roi_4d):
+        if self._roi_4d != roi_4d:
+            logger.debug("Crop '{}' has new RoI {}".format(
+                self._roi_4d, roi_4d))
+            self._roi_4d = roi_4d
+            self.roi_4dChanged.emit()
+
     def brushColor(self):
         return self._brushColor
 
     def setBrushColor(self, c):
         if self._brushColor != c:
-            logger.debug("Label '{}' has new brush color {}".format(
+            logger.debug("Crop '{}' has new brush color {}".format(
                 self._brushColor, c))
             self._brushColor = c
             self.colorChanged.emit(c)
@@ -54,17 +66,17 @@ class Label(ListElement):
 
     def setPmapColor(self, c):
         if self._pmapColor != c:
-            logger.debug("Label '{}' has new pmapColor {}".format(
+            logger.debug("Crop '{}' has new pmapColor {}".format(
                 self._pmapColor, c))
             self._pmapColor = c
             self.pmapColorChanged.emit(c)
             
     def __repr__(self):
-        return "<Label name={}, color={}>".format(
+        return "<Crop name={}, color={}>".format(
             self.name, self._brushColor)
 
-class LabelListModel(ListModel):
-    labelSelected = pyqtSignal(int)
+class CropListModel(ListModel):
+    cropSelected = pyqtSignal(int)
     
     icon_cache = {}
         
@@ -72,22 +84,39 @@ class LabelListModel(ListModel):
         Color  = 0
         Name   = 1
         Delete = 2
-        
+
         ncols=3
     
-    def __init__(self, labels=None, parent=None):
-        ListModel.__init__(self,labels, parent)
+    def __init__(self, crops=None, parent=None):
+        ListModel.__init__(self,crops, parent)
 
 
-        self._labels=self._elements
-        self.elementSelected.connect(self.labelSelected.emit)
-
+        self._crops=self._elements
+        self.elementSelected.connect(self.cropSelected.emit)
+        
 
     def __len__(self):
-        return len(self._labels)
+        return len(self._crops)
 
     def __getitem__(self, i):
-        return self._labels[i]
+        return self._crops[i]
+
+    def rowCount(self, parent=None):
+        return len(self._elements)
+
+    def removeRow(self, position, parent=QModelIndex()):
+        if position in self.unremovable_rows:
+            return False
+
+        if self.rowCount() <= 1:
+            return False
+
+        self.beginRemoveRows(parent, position, position)
+        value = self._elements[position]
+        logger.debug("removing row: " + str(value))
+        self._elements.remove(value)
+        self.endRemoveRows()
+        return True
 
     def data(self, index, role):
         if role == Qt.EditRole and index.column() == self.ColumnID.Color:
@@ -101,19 +130,19 @@ class LabelListModel(ListModel):
 
         elif role == Qt.DecorationRole and index.column() == self.ColumnID.Color:
             row = index.row()
-            return self.createIconForLabel(row)
+            return self.createIconForCrop(row)
         
         else:
             return ListModel.data(self,index,role)
     
     
-    def createIconForLabel(self, row):
+    def createIconForCrop(self, row):
         value = self._elements[row]
         a = value.brushColor().rgba()
         b = value.pmapColor().rgba()
         try:
             # Return a cached icon if we already generated one.
-            return LabelListModel.icon_cache[(a,b)]
+             return CropListModel.icon_cache[(a,b)]
         except KeyError:
             if a == b:
                 pixmap = QPixmap(_NPIXELS, _NPIXELS)
@@ -129,8 +158,8 @@ class LabelListModel(ListModel):
                 pixmap = QPixmap.fromImage(img)
             icon = QIcon(pixmap)
             # Cache this icon so we don't have to make it again
-            LabelListModel.icon_cache[(a,b)] = icon            
-            return icon    
+            CropListModel.icon_cache[(a,b)] = icon
+            return icon
     
     def flags(self, index):
         if  index.column() == self.ColumnID.Color:
