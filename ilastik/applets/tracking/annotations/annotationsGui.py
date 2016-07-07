@@ -16,7 +16,7 @@
 #
 # See the LICENSE file for details. License information is also available
 # on the ilastik web site at:
-#		   http://ilastik.org/license.html
+#                 http://ilastik.org/license.html
 ###############################################################################
 from PyQt4 import uic, QtGui, QtCore
 from PyQt4.QtGui import QColor
@@ -361,11 +361,11 @@ class AnnotationsGui(LayerViewerGui):
                 lowerParent = self.features[time][default_features_key]['Coord<Minimum>'][parent]
                 upperParent = self.features[time][default_features_key]['Coord<Maximum>'][parent]
 
-                lowerChild1 = self.features[time][default_features_key]['Coord<Minimum>'][child1]
-                upperChild1 = self.features[time][default_features_key]['Coord<Maximum>'][child1]
+                lowerChild1 = self.features[time+1][default_features_key]['Coord<Minimum>'][child1]
+                upperChild1 = self.features[time+1][default_features_key]['Coord<Maximum>'][child1]
 
-                lowerChild2 = self.features[time][default_features_key]['Coord<Minimum>'][child2]
-                upperChild2 = self.features[time][default_features_key]['Coord<Maximum>'][child2]
+                lowerChild2 = self.features[time+1][default_features_key]['Coord<Minimum>'][child2]
+                upperChild2 = self.features[time+1][default_features_key]['Coord<Maximum>'][child2]
 
                 addAnnotation = False
                 if len(lowerParent) == 2:
