@@ -27,7 +27,7 @@ if ilastik.config.cfg.getboolean('ilastik', 'debug'):
     except:
         pass
     
-    try:
-        from splitBodyCarvingWorkflow import SplitBodyCarvingWorkflow
-    except:
-        pass
+#     try:
+#         from splitBodyCarvingWorkflow import SplitBodyCarvingWorkflow
+#     except:
+#         pass
