@@ -64,7 +64,8 @@ class AnnotationsGui(LayerViewerGui):
         
         if not ilastik_config.getboolean("ilastik", "debug"):
             self._drawer.exportTifButton.hide()            
-            
+        self._drawer.exportDivisions.hide()
+        self._drawer.exportMergers.hide()
         self._drawer.newTrack.pressed.connect(self._onNewTrackPressed)
         self._drawer.delTrack.pressed.connect(self._onDelTrackPressed)        
         self._drawer.divEvent.pressed.connect(self._onDivEventPressed)
