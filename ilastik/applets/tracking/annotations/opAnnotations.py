@@ -72,6 +72,9 @@ class OpAnnotations(Operator):
         self.RawImage.notifyReady( self._checkConstraints )
         self.BinaryImage.notifyReady( self._checkConstraints )
 
+        self.export_progress_dialog = None
+        self.ExportSettings.setValue( (None, None) )
+
     def setupOutputs(self):
         self.TrackImage.meta.assignFrom(self.LabelImage.meta)
         self.UntrackedImage.meta.assignFrom(self.LabelImage.meta)
