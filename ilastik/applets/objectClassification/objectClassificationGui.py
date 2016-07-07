@@ -31,6 +31,7 @@ from ilastik.applets.objectExtraction.opObjectExtraction import default_features
 from ilastik.applets.objectClassification.opObjectClassification import OpObjectClassification
 
 import os
+import copy
 import vigra
 
 import numpy
@@ -281,9 +282,9 @@ class ObjectClassificationGui(LabelingGui):
     @pyqtSlot()
     def handleSubsetFeaturesClicked(self):
         mainOperator = self.topLevelOperatorView
-        computedFeatures = mainOperator.ComputedFeatureNames([]).wait()
+        computedFeatures = copy.deepcopy(mainOperator.ComputedFeatureNames([]).wait())
         if mainOperator.SelectedFeatures.ready():
-            selectedFeatures = mainOperator.SelectedFeatures([]).wait()
+            selectedFeatures = copy.deepcopy(mainOperator.SelectedFeatures([]).wait())
         else:
             selectedFeatures = computedFeatures
 
