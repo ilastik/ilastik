@@ -153,6 +153,8 @@ class BigRequestStreamer(object):
         input_shape = outputSlot.meta.shape
         ideal_blockshape = outputSlot.meta.ideal_blockshape
         ram_usage_per_requested_pixel = outputSlot.meta.ram_usage_per_requested_pixel
+        max_blockshape = outputSlot.meta.max_blockshape or input_shape
+
 
         num_channels = 1
         tagged_shape = outputSlot.meta.getTaggedShape()
@@ -162,16 +164,11 @@ class BigRequestStreamer(object):
             num_channels = tagged_shape['c']
             channel_index = tagged_shape.keys().index('c')
             input_shape = input_shape[:channel_index] + input_shape[channel_index+1:]
+            max_blockshape = max_blockshape[:channel_index] + max_blockshape[channel_index+1:]
             if ideal_blockshape:
                 # Never enlarge 'ideal' in the channel dimension.
                 num_channels = ideal_blockshape[channel_index]
                 ideal_blockshape = ideal_blockshape[:channel_index] + ideal_blockshape[channel_index+1:]
-
-        # Get max_blockshape, but clip to input_shape
-        max_blockshape = outputSlot.meta.max_blockshape or input_shape
-        if 'c' in tagged_shape.keys():
-            channel_index = tagged_shape.keys().index('c')
-            max_blockshape[channel_index] = input_shape[channel_index]
         
         available_ram = Memory.getAvailableRamComputation()
         
@@ -188,8 +185,10 @@ class BigRequestStreamer(object):
         
         if ideal_blockshape is None:
             blockshape = determineBlockShape( input_shape, available_ram/(self._num_threads*ram_usage_per_requested_pixel) )
+            blockshape = numpy.minimum(max_blockshape, blockshape)
             if 'c' in outputSlot.meta.getAxisKeys():
                 blockshape = blockshape[:channel_index] + (num_channels,) + blockshape[channel_index:]
+                
             warnings.warn( "Chose an arbitrary request blockshape {}".format( blockshape ) )
         else:
             logger.info("determining blockshape assuming available_ram is {}"

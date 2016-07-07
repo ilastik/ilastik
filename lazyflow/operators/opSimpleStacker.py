@@ -71,7 +71,12 @@ class OpSimpleStacker(Operator):
         if ideal_blockshape is not None:
             ideal_blockshape = ideal_blockshape[:stacked_axisindex] + (1,) + ideal_blockshape[stacked_axisindex+1:]
             self.Output.meta.ideal_blockshape = ideal_blockshape
-    
+
+        max_blockshape = self.Output.meta.max_blockshape
+        if max_blockshape is not None:
+            max_blockshape = max_blockshape[:stacked_axisindex] + (1,) + max_blockshape[stacked_axisindex+1:]
+            self.Output.meta.max_blockshape = max_blockshape
+
     def execute(self, slot, subindex, roi, result):
         stacked_axisindex = self.Images[0].meta.getAxisKeys().index(self.AxisFlag.value)
 

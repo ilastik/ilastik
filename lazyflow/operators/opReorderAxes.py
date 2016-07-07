@@ -45,6 +45,11 @@ class OpReorderAxes(Operator):
             assert len( input_order) == len(self.Input.meta.ideal_blockshape)
             tagged_ideal_blockshape = collections.OrderedDict( zip( input_order, self.Input.meta.ideal_blockshape ) )
 
+        tagged_max_blockshape = None
+        if self.Input.meta.max_blockshape is not None:
+            assert len( input_order) == len(self.Input.meta.max_blockshape)
+            tagged_max_blockshape = collections.OrderedDict( zip( input_order, self.Input.meta.max_blockshape ) )
+
         # Check for errors
         self._invalid_axes = []
         for a in set(input_order) - set(output_order):
@@ -62,6 +67,7 @@ class OpReorderAxes(Operator):
         output_shape = []
         output_tags = vigra.defaultAxistags(output_order)
         ideal_blockshape = []
+        max_blockshape = []
         for a in output_order:
             if a in input_order:
                 output_shape.append(tagged_input_shape[a])
@@ -70,10 +76,14 @@ class OpReorderAxes(Operator):
                 
                 if tagged_ideal_blockshape:
                     ideal_blockshape.append( tagged_ideal_blockshape[a] )
+                if tagged_max_blockshape:
+                    max_blockshape.append( tagged_max_blockshape[a] )
             else:
                 output_shape.append(1)
                 if tagged_ideal_blockshape:
                     ideal_blockshape.append(1)
+                if tagged_max_blockshape:
+                    max_blockshape.append(1)
 
         self.Output.meta.assignFrom( self.Input.meta )
         self.Output.meta.axistags = output_tags
@@ -84,6 +94,8 @@ class OpReorderAxes(Operator):
             assert len(input_tags) == len(self.Input.meta.shape)
         if tagged_ideal_blockshape:
             self.Output.meta.ideal_blockshape = ideal_blockshape
+        if tagged_max_blockshape:
+            self.Output.meta.max_blockshape = max_blockshape
 
         # These map between input axis indexes and output axis indexes
         # (Used to translate between input/output rois in execute() and propagateDirty())

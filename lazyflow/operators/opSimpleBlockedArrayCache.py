@@ -1,3 +1,4 @@
+import sys
 import numpy
 from functools import partial
 from lazyflow.graph import Operator, InputSlot

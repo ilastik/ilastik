@@ -119,6 +119,11 @@ class OpMultiArraySlicer(Operator):
             ideal_blockshape = list( self.Input.meta.ideal_blockshape )
             ideal_blockshape.pop(indexAxis)
             ideal_blockshape = tuple(ideal_blockshape)
+
+        if self.Input.meta.max_blockshape:
+            max_blockshape = list( self.Input.meta.max_blockshape )
+            max_blockshape.pop(indexAxis)
+            max_blockshape = tuple(max_blockshape)
         
         outaxistags=copy.copy(self.inputs["Input"].meta.axistags)
         del outaxistags[flag]
@@ -135,6 +140,9 @@ class OpMultiArraySlicer(Operator):
 
             if self.Input.meta.ideal_blockshape:
                 o.meta.ideal_blockshape = ideal_blockshape
+
+            if self.Input.meta.max_blockshape:
+                o.meta.max_blockshape = max_blockshape
 
     def execute(self, slot, subindex, rroi, result):
         key = roiToSlice(rroi.start, rroi.stop)
@@ -354,6 +362,12 @@ class OpMultiArrayStacker(Operator):
                 if ideal_blockshape is not None:
                     ideal_blockshape = ideal_blockshape[:axisindex] + (1,) + ideal_blockshape[axisindex:]
                     self.Output.meta.ideal_blockshape = ideal_blockshape
+
+                max_blockshape = self.Output.meta.max_blockshape
+                if max_blockshape is not None:
+                    max_blockshape = max_blockshape[:axisindex] + (1,) + max_blockshape[axisindex:]
+                    self.Output.meta.max_blockshape = max_blockshape
+
             self.outputs["Output"].meta.shape=tuple(newshape)
         else:
             self.outputs["Output"].meta.shape = None
@@ -470,6 +484,12 @@ class OpSingleChannelSelector(Operator):
             ideal = numpy.asarray(ideal, dtype=numpy.int)
             ideal[channelAxis] = 1
             self.Output.meta.ideal_blockshape = tuple(ideal)
+
+        max_blockshape = self.Output.meta.max_blockshape
+        if max_blockshape is not None and len(max_blockshape) == len(inshape):
+            max_blockshape = numpy.asarray(max_blockshape, dtype=numpy.int)
+            max_blockshape[channelAxis] = 1
+            self.Output.meta.max_blockshape = tuple(max_blockshape)
 
         # Output can't be accessed unless the input has enough channels
         # We can't assert here because it's okay to configure this slot incorrectly as long as it is never accessed.
