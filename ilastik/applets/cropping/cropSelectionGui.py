@@ -218,6 +218,7 @@ class CropSelectionGui(CroppingGui):
                 self._cropControlUi.cropListView.selectRow(0)
             crops = self.topLevelOperatorView.Crops.value
             del crops[self._cropControlUi.cropListModel[position].name]
+            self.setCrop()
             self.topLevelOperatorView.Crops.setValue(crops)
             self._cropControlUi.cropListView.update()
 
