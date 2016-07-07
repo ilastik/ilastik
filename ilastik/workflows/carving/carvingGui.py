@@ -80,8 +80,7 @@ class CarvingGui(LabelingGui):
         self.dialogdirCOM = os.path.join(directory, 'carvingObjectManagement.ui')
         self.dialogdirSAD = os.path.join(directory, 'saveAsDialog.ui')
 
-        rawInputSlot = topLevelOperatorView.RawData        
-        super(CarvingGui, self).__init__(parentApplet, labelingSlots, topLevelOperatorView, drawerUiPath, rawInputSlot)
+        super(CarvingGui, self).__init__(parentApplet, labelingSlots, topLevelOperatorView, drawerUiPath)
         
         self.labelingDrawerUi.currentObjectLabel.setText("<not saved yet>")
 
@@ -738,14 +737,13 @@ class CarvingGui(LabelingGui):
             layer.opacity = 1.0
             layers.append(layer)
 
-        #raw data
-        rawSlot = self.topLevelOperatorView.RawData
-        if rawSlot.ready():
-            raw5D = self.topLevelOperatorView.RawData.value
-            layer = GrayscaleLayer(ArraySource(raw5D), direct=True)
-            #layer = GrayscaleLayer( LazyflowSource(rawSlot) )
+        # Visual overlay (just for easier labeling)
+        overlaySlot = self.topLevelOperatorView.OverlayData
+        if overlaySlot.ready():
+            overlay5D = self.topLevelOperatorView.OverlayData.value
+            layer = GrayscaleLayer(ArraySource(overlay5D), direct=True)
             layer.visible = True
-            layer.name = 'Raw Data'
+            layer.name = 'Overlay'
             layer.opacity = 1.0
             layers.append(layer)
 

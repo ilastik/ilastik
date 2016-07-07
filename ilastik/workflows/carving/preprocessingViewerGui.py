@@ -68,6 +68,14 @@ class PreprocessingViewerGui( LayerViewerGui ):
             filteredLayer.opacity = 1.0
             layers.append( filteredLayer )
 
+        overlaySlot = opLane.OverlayData
+        if overlaySlot.ready():
+            inputLayer = self.createStandardLayerFromSlot( overlaySlot )
+            inputLayer.name = "Overlay Image"
+            inputLayer.visible = False
+            inputLayer.opacity = 1.0
+            layers.append( inputLayer )
+
         inputSlot = opLane.InputData
         if inputSlot.ready():
             inputLayer = self.createStandardLayerFromSlot( inputSlot )
@@ -75,15 +83,5 @@ class PreprocessingViewerGui( LayerViewerGui ):
             inputLayer.visible = True
             inputLayer.opacity = 1.0
             layers.append( inputLayer )
-
-        ''' FIXME: disabled for 0.6 release
-        rawSlot = opLane.RawData
-        if rawSlot.ready():
-            rawLayer = self.createStandardLayerFromSlot( rawSlot )
-            rawLayer.name = "Raw Data"
-            rawLayer.visible = True
-            rawLayer.opacity = 1.0
-            layers.append( rawLayer )
-        '''
 
         return layers 

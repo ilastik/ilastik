@@ -52,7 +52,7 @@ class OpCarving(Operator):
 
     # These three slots are for display only.
     # All computation is done with the MST.    
-    RawData = InputSlot(optional=True) # Display-only: Available to the GUI in case the input data was preprocessed in some way but you still want to see the 'raw' data.
+    OverlayData = InputSlot(optional=True) # Display-only: Available to the GUI in case the input data was preprocessed in some way but you still want to see the 'raw' data.
     InputData = InputSlot() # The data used by preprocessing (display only)
     FilteredInputData = InputSlot() # The output of the preprocessing filter
     
@@ -724,7 +724,7 @@ class OpCarving(Operator):
             self._opMstCache.Input.disconnect()
             self._mst = self.MST.value
             self._opMstCache.Input.setValue( self._mst )
-        elif slot == self.RawData or \
+        elif slot == self.OverlayData or \
              slot == self.InputData or \
              slot == self.FilteredInputData or \
              slot == self.WriteSeeds:

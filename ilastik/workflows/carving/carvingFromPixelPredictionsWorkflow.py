@@ -113,9 +113,10 @@ if ilastik.config.cfg.getboolean('ilastik', 'debug'):
             opSingleChannelSelector.Input.connect( opPixelClassification.PredictionProbabilities )
             opSingleChannelSelector.Index.setValue(0)
             
+            opPreprocessing.OverlayData.connect( op5.Output )
             opPreprocessing.InputData.connect( opSingleChannelSelector.Output )
-            opPreprocessing.RawData.connect( op5.Output )
-            opCarvingLane.RawData.connect( op5.Output )
+
+            opCarvingLane.OverlayData.connect( op5.Output )
             opCarvingLane.InputData.connect( opSingleChannelSelector.Output )
             opCarvingLane.FilteredInputData.connect( opPreprocessing.FilteredImage )
     
