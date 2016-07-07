@@ -354,7 +354,7 @@
         <bool>true</bool>
        </property>
        <property name="text">
-        <string>Export Results as h5 ...</string>
+        <string>Export Training as h5 ...</string>
        </property>
       </widget>
      </item>
