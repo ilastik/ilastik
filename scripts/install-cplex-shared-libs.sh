@@ -58,8 +58,8 @@ fi
 # Create a shared library from each static cplex library.
 #
 if [ `uname` == "Darwin" ]; then
-    g++ -fpic -shared -Wl,-all_load ${CPLEX_LIB_DIR}/libcplex.a     $STDLIB_ARG -o ${ILASTIK_RELEASE_DIR}/lib/libcplex.dylib    -Wl,-no_compact_unwind -Wl,-install_name,@loader_path/libcplex.dylib
-    g++ -fpic -shared -Wl,-all_load ${CONCERT_LIB_DIR}/libconcert.a $STDLIB_ARG -o ${ILASTIK_RELEASE_DIR}/lib/libconcert.dylib  -Wl,-no_compact_unwind -Wl,-install_name,@loader_path/libconcert.dylib
+    g++ -fpic -shared -Wl,-all_load ${CPLEX_LIB_DIR}/libcplex.a     $STDLIB_ARG -o ${ILASTIK_RELEASE_DIR}/lib/libcplex.dylib    -Wl,-no_compact_unwind -Wl,-install_name,@loader_path/libcplex.dylib -L${ILASTIK_RELEASE_DIR}/lib
+    g++ -fpic -shared -Wl,-all_load ${CONCERT_LIB_DIR}/libconcert.a $STDLIB_ARG -o ${ILASTIK_RELEASE_DIR}/lib/libconcert.dylib  -Wl,-no_compact_unwind -Wl,-install_name,@loader_path/libconcert.dylib -L${ILASTIK_RELEASE_DIR}/lib
     g++ -fpic -shared -Wl,-all_load ${CPLEX_LIB_DIR}/libilocplex.a  $STDLIB_ARG -o ${ILASTIK_RELEASE_DIR}/lib/libilocplex.dylib -Wl,-no_compact_unwind -Wl,-install_name,@loader_path/libilocplex.dylib \
         -L${ILASTIK_RELEASE_DIR}/lib -lcplex -lconcert
 else
