@@ -425,6 +425,9 @@ class TestThresholdTwoLevels(Generator2):
         numpy.testing.assert_array_equal(out5d.shape, self.data5d.shape)
 
     def testReconnect(self):
+        """
+        Can we connect an image, then replace it with a differently-ordered image?
+        """
         predRaw = np.zeros((20, 22, 21, 3), dtype=np.uint32)
         pred1 = vigra.taggedView(predRaw, axistags='xyzc')
         pred2 = vigra.taggedView(predRaw, axistags='tyxc')
@@ -441,6 +444,7 @@ class TestThresholdTwoLevels(Generator2):
 
         out5d = oper5d.CachedOutput[:].wait()
 
+        oper5d.InputImage.disconnect() # FIXME: Why is this line necessary? Ideally, it shouldn't be...
         oper5d.InputImage.setValue(pred2)
         out5d = oper5d.CachedOutput[:].wait()
 
