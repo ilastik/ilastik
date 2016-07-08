@@ -250,7 +250,10 @@ class OpValueCache(Operator, ObservableCache):
     
     def execute(self, slot, subindex, roi, result):
         if self.fixAtCurrent.value is True or self._dirty is False:
-            result[0] = self._value
+            if result.shape == (1,):
+                result[0] = self._value
+            else:
+                result[:] = self._value
             return result
         
         # Optimization: We don't let more than one caller trigger the value to be computed at the same time
@@ -289,7 +292,10 @@ class OpValueCache(Operator, ObservableCache):
             success = False
             while not success:
                 try:
-                    value = request.wait()[0]
+                    if result.shape == (1,):
+                        value = request.wait()[0]
+                    else:
+                        value = request.wait()
                     success = True
                 except Request.InvalidRequestException:
                     # Oops, we're sharing the request with another thread 
@@ -311,7 +317,10 @@ class OpValueCache(Operator, ObservableCache):
                                 self._request = None # This is mostly to aid testing.
                     raise
         
-        result[0] = value
+        if result.shape == (1,):
+            result[0] = value
+        else:
+            result[:] = value
         
         # If we made the request, set the members
         if state == State.Dirty:
