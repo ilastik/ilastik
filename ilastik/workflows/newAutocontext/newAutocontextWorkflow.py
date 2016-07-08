@@ -644,12 +644,14 @@ class AutocontextTwoStage(NewAutocontextWorkflowBase):
     def __init__(self, *args, **kwargs):
         super(AutocontextTwoStage, self).__init__(*args, n_stages=2, **kwargs)
 
-class AutocontextThreeStage(NewAutocontextWorkflowBase):
-    workflowName = "AutocontextThreeStage"
-    workflowDisplayName = "Autocontext (3-stage)"
+import ilastik.config
+if ilastik.config.cfg.getboolean('ilastik', 'debug'):
+    class AutocontextThreeStage(NewAutocontextWorkflowBase):
+        workflowName = "AutocontextThreeStage"
+        workflowDisplayName = "Autocontext (3-stage)"
 
-    def __init__(self, *args, **kwargs):
-        super(AutocontextThreeStage, self).__init__(*args, n_stages=3, **kwargs)
+        def __init__(self, *args, **kwargs):
+            super(AutocontextThreeStage, self).__init__(*args, n_stages=3, **kwargs)
 
 import ilastik.config
 if ilastik.config.cfg.getboolean('ilastik', 'debug'):
