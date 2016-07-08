@@ -97,11 +97,11 @@ def make_bboxes(binary_bbox, margin):
     max_margin = np.max(margin).astype(np.float32)
     scaled_margin = (max_margin / margin)
     if len(margin) > 2:
-        dt = vigra.filters.distanceTransform3D(np.asarray(binary_bbox, dtype=np.float32),
+        dt = vigra.filters.distanceTransform(np.asarray(binary_bbox, dtype=np.float32),
                                                background=True,
                                                pixel_pitch=np.asarray(scaled_margin).astype(np.float64))
     else:
-        dt = vigra.filters.distanceTransform2D(np.asarray(binary_bbox.squeeze(), dtype=np.float32),
+        dt = vigra.filters.distanceTransform(np.asarray(binary_bbox.squeeze(), dtype=np.float32),
                                                pixel_pitch=np.asarray(scaled_margin).astype(np.float64))
         dt = dt.reshape(dt.shape + (1,))
 

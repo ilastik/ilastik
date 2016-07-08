@@ -16,7 +16,7 @@ def measure_surface_contact_A( label_volume, object_label_1, object_label_2, con
     vol_1 = numpy.where( label_volume == object_label_1, object_label_1, 0 )
 
     # Compute distance to object 1 for all pixels in the volume. 
-    distances = vigra.filters.distanceTransform3D( vol_1.astype(numpy.float32) )
+    distances = vigra.filters.distanceTransform( vol_1.astype(numpy.float32) )
     distances_int = numpy.round_(distances).astype(int)
     #distances_int = distances.astype(int)
 

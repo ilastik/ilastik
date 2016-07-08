@@ -116,7 +116,7 @@ class OpSplitBodyCarving( OpCarving ):
                 background_block_view_4d = background_block_view.bindAxis('t', 0)
                 background_block_view_3d = background_block_view_4d.bindAxis('c', 0)
                 
-                distance_transformed_block = vigra.filters.distanceTransform3D(background_block_view_3d, background=False)
+                distance_transformed_block = vigra.filters.distanceTransform(background_block_view_3d, background=False)
                 distance_transformed_block = distance_transformed_block.astype( numpy.uint8 )
                 
                 # Create a 'hull' surrounding the foreground, but leave some space.
