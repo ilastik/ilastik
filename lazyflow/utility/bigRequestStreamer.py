@@ -185,7 +185,7 @@ class BigRequestStreamer(object):
         
         if ideal_blockshape is None:
             blockshape = determineBlockShape( input_shape, available_ram/(self._num_threads*ram_usage_per_requested_pixel) )
-            blockshape = numpy.minimum(max_blockshape, blockshape)
+            blockshape = tuple(numpy.minimum(max_blockshape, blockshape))
             if 'c' in outputSlot.meta.getAxisKeys():
                 blockshape = blockshape[:channel_index] + (num_channels,) + blockshape[channel_index:]
                 
