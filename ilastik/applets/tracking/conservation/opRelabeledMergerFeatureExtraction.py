@@ -183,7 +183,6 @@ class OpRelabeledMergerFeatureExtraction(Operator):
 
     def execute(self, slot, subindex, roi, result):
         if slot == self.RegionFeatures:
-            feat_vigra = self.RegionFeaturesVigra(roi).wait()
             orig_feat_all = self.OriginalRegionFeatures(roi).wait()
             mapping = self._opZeroBasedMergerImage.Mapping(roi).wait()
 
@@ -191,7 +190,7 @@ class OpRelabeledMergerFeatureExtraction(Operator):
             result = copy.deepcopy(orig_feat_all)
 
             # merge the features in each frame
-            for t, feature_groups in feat_vigra.iteritems():
+            for t, feature_groups in orig_feat_all.iteritems():
                 for name, features in feature_groups.iteritems():
                     for k, v in features.iteritems():
                         if k in result[t][name]:
