@@ -110,15 +110,15 @@ class TestOpDataSelection_Basic():
 
         # Check raw images
         assert npyData.shape == (10,11,1)
-        for x in range(npyData.shape[0]):
-            for y in range(npyData.shape[1]):
-                assert npyData[x,y,0] == x+y
+        for y in range(npyData.shape[0]):
+            for x in range(npyData.shape[1]):
+                assert npyData[y,x,0] == x+y
         
-        assert pngData.shape == (100, 200, 3)
-        for x in range(pngData.shape[0]):
-            for y in range(pngData.shape[1]):
+        assert pngData.shape == (200, 100, 3)
+        for y in range(pngData.shape[0]):
+            for x in range(pngData.shape[1]):
                 for c in range(pngData.shape[2]):
-                    assert pngData[x,y,c] == (x+y) % 256
+                    assert pngData[y,x,c] == (x+y) % 256
         
 #
 #    def testColorInversion(self):
