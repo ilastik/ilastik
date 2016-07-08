@@ -44,8 +44,8 @@ except ImportError as e:
 try:
     import objectClassification
     WORKFLOW_CLASSES += [objectClassification.objectClassificationWorkflow.ObjectClassificationWorkflowPixel,
-                         objectClassification.objectClassificationWorkflow.ObjectClassificationWorkflowBinary,
-                         objectClassification.objectClassificationWorkflow.ObjectClassificationWorkflowPrediction]
+                         objectClassification.objectClassificationWorkflow.ObjectClassificationWorkflowPrediction,
+                         objectClassification.objectClassificationWorkflow.ObjectClassificationWorkflowBinary]
 except ImportError as e:
     logger.warn("Failed to import object workflow; check dependencies: " + str(e))
 
