@@ -43,7 +43,8 @@ def _format_version(t):
     """converts a tuple to a string"""
     return '.'.join(str(i) for i in t)
 
-__version_info__ = (1, 1, '10a1') # Don't forget to update the splash screen!
+# TODO: remove 'post2' again when we update the version the next time!
+__version_info__ = (1, 1, '10a1', 'post4') # Don't forget to update the splash screen!
 __version__ = _format_version(__version_info__)
 
 core_developers = [ "Stuart Berg", 

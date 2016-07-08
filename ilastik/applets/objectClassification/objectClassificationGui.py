@@ -31,6 +31,7 @@ from ilastik.applets.objectExtraction.opObjectExtraction import default_features
 from ilastik.applets.objectClassification.opObjectClassification import OpObjectClassification
 
 import os
+import copy
 import vigra
 
 import numpy
@@ -281,9 +282,9 @@ class ObjectClassificationGui(LabelingGui):
     @pyqtSlot()
     def handleSubsetFeaturesClicked(self):
         mainOperator = self.topLevelOperatorView
-        computedFeatures = mainOperator.ComputedFeatureNames([]).wait()
+        computedFeatures = copy.deepcopy(mainOperator.ComputedFeatureNames([]).wait())
         if mainOperator.SelectedFeatures.ready():
-            selectedFeatures = mainOperator.SelectedFeatures([]).wait()
+            selectedFeatures = copy.deepcopy(mainOperator.SelectedFeatures([]).wait())
         else:
             selectedFeatures = computedFeatures
 
@@ -320,17 +321,15 @@ class ObjectClassificationGui(LabelingGui):
         for pluginInfo in plugins:
             availableFeatures = pluginInfo.plugin_object.availableFeatures(fakeimg, fakelabels)
             if len(availableFeatures) > 0:
-                if pluginInfo.name in self.applet._selectedFeatures.keys() and not pluginInfo.name in computedFeatures.keys():
-                    computedFeatures[pluginInfo.name] = availableFeatures
+                if pluginInfo.name in self.applet._selectedFeatures.keys(): 
+                    assert pluginInfo.name in computedFeatures.keys(), 'Object Classification: {} not found in available (computed) object features'.format(pluginInfo.name)
 
-                if not pluginInfo.name in selectedFeatures and \
-                    pluginInfo.name in self.applet._selectedFeatures and \
-                    len(self.applet._selectedFeatures[pluginInfo.name].keys()) > 0:
+                if not pluginInfo.name in selectedFeatures and pluginInfo.name in self.applet._selectedFeatures:
                         selectedFeatures[pluginInfo.name]=dict()
-                        if pluginInfo.name in self.applet._selectedFeatures.keys():
-                            for feature in self.applet._selectedFeatures[pluginInfo.name].keys():
-                                if feature in availableFeatures.keys():
-                                    selectedFeatures[pluginInfo.name][feature] = availableFeatures[feature]
+
+                        for feature in self.applet._selectedFeatures[pluginInfo.name].keys():
+                            if feature in availableFeatures.keys():
+                                selectedFeatures[pluginInfo.name][feature] = availableFeatures[feature]
 
         dlg = FeatureSubSelectionDialog(computedFeatures,
                                         selectedFeatures=selectedFeatures, ndim=ndim)
