@@ -43,12 +43,16 @@ def _format_version(t):
     """converts a tuple to a string"""
     return '.'.join(str(i) for i in t)
 
-# TODO: remove 'post2' again when we update the version the next time!
-__version_info__ = (1, 1, '10a1', 'post4') # Don't forget to update the splash screen!
+__version_info__ = (1, 2, '0a1') # Don't forget to update the splash screen!
 __version__ = _format_version(__version_info__)
 
-core_developers = [ "Stuart Berg", 
+core_developers = [ "Janez Ales",
+                    "Thorsten Beier",
+                    "Stuart Berg", 
+                    "Jaime Cervantes",
+                    "Markus Doering",
                     "Fred Hamprecht", 
+                    "Carsten Haubold",
                     "Bernhard Kausler", 
                     "Anna Kreshuk", 
                     "Ullrich Koethe", 
@@ -57,17 +61,20 @@ core_developers = [ "Stuart Berg",
                     "Christoph Sommer", 
                     "Christoph Straehle" ]
 
-developers = [ "Markus Doering", 
+developers = [ "Niels Buwen",
+               "Christoph Decker",
                "Kemal Eren", 
                "Burcin Erocal", 
                "Luca Fiaschi", 
-               "Carsten Haubold", 
-               "Ben Heuer", 
                "Philipp Hanslovsky", 
+               "Ben Heuer",
+               "Glendon Holst",
+               "Fabian Isensee", 
                "Kai Karius", 
                "Jens Kleesiek", 
                "Markus Nullmeier", 
                "Oliver Petra", 
+               "Steffen Wolf",
                "Buote Xu", 
                "Chong Zhang" ]
 
