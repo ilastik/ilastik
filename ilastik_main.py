@@ -36,6 +36,7 @@ parser.add_argument('--exit_on_success', help='Quit the app when the playback is
 def main( parsed_args, workflow_cmdline_args=[] ):
     this_path = os.path.dirname(__file__)
     ilastik_dir = os.path.abspath(os.path.join(this_path, "..%s.." % os.path.sep))
+    _update_debug_mode( parsed_args )
     
     # If necessary, redirect stdout BEFORE logging is initialized
     _redirect_output( parsed_args )
@@ -43,7 +44,6 @@ def main( parsed_args, workflow_cmdline_args=[] ):
 
     _init_configfile( parsed_args )
     
-    _update_debug_mode( parsed_args )
     _init_threading_logging_monkeypatch()
     _init_threading_h5py_monkeypatch()
     _validate_arg_compatibility( parsed_args )
