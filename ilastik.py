@@ -81,6 +81,7 @@ def main():
 
     ## Headless-mode options
     #parsed_args.headless = True
+    #parsed_args.debug = True
 
     ## Override lazyflow environment settings
     #os.environ["LAZYFLOW_THREADS"] = "0"

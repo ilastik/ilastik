@@ -243,10 +243,15 @@ def all_subclasses(cls):
                                    for g in all_subclasses(s)]
 
 def getAvailableWorkflows():
-    '''iterate over all workflows that were imported'''
+    """
+    This function used to iterate over all workflows that have been imported so far,
+    but now we rely on the explicit list in workflows/__init__.py,
+    and add any extra auto-discovered workflows at the end.
+    """
     alreadyListed = set()
 
-    for W in all_subclasses(Workflow):
+    import workflows
+    for W in workflows.WORKFLOW_CLASSES + all_subclasses(Workflow):
         if W.__name__ in alreadyListed:
             continue
         alreadyListed.add(W.__name__)
