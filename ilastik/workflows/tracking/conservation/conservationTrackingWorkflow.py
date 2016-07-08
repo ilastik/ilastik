@@ -476,7 +476,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
 
 class ConservationTrackingWorkflowFromBinary( ConservationTrackingWorkflowBase ):
     workflowName = "Automatic Tracking Workflow (Conservation Tracking) from binary image"
-    workflowDisplayName = "Automatic Tracking Workflow (Conservation Tracking) [Inputs: Raw Data, Binary Image]"
+    workflowDisplayName = "Tracking [Inputs: Raw Data, Binary Image]"
 
     withOptTrans = False
     fromBinary = True
@@ -484,7 +484,7 @@ class ConservationTrackingWorkflowFromBinary( ConservationTrackingWorkflowBase )
 
 class ConservationTrackingWorkflowFromPrediction( ConservationTrackingWorkflowBase ):
     workflowName = "Automatic Tracking Workflow (Conservation Tracking) from prediction image"
-    workflowDisplayName = "Automatic Tracking Workflow (Conservation Tracking) [Inputs: Raw Data, Pixel Prediction Map]"
+    workflowDisplayName = "Tracking [Inputs: Raw Data, Pixel Prediction Map]"
 
     withOptTrans = False
     fromBinary = False

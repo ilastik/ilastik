@@ -355,14 +355,14 @@ class StructuredTrackingWorkflowBase( Workflow ):
 
 class StructuredTrackingWorkflowFromBinary( StructuredTrackingWorkflowBase ):
     workflowName = "Structured Learning Tracking Workflow from binary image"
-    workflowDisplayName = "Structured Learning Tracking Workflow (BETA) [Inputs: Raw Data, Binary Image]"
+    workflowDisplayName = "Tracking with Learning (BETA) [Inputs: Raw Data, Binary Image]"
     workflowDescription = "Structured learning tracking of objects, based on binary images."
 
     fromBinary = True
 
 class StructuredTrackingWorkflowFromPrediction( StructuredTrackingWorkflowBase ):
     workflowName = "Structured Learning Tracking Workflow from prediction image"
-    workflowDisplayName = "Structured Learning Tracking Workflow (BETA) [Inputs: Raw Data, Pixel Prediction Map]"
+    workflowDisplayName = "Tracking with Learning (BETA)[Inputs: Raw Data, Pixel Prediction Map]"
     workflowDescription = "Structured learning tracking of objects, based on prediction maps."
 
     fromBinary = False

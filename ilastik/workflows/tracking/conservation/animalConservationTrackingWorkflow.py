@@ -38,7 +38,7 @@ class AnimalConservationTrackingWorkflowBase( ConservationTrackingWorkflowBase )
 
 class AnimalConservationTrackingWorkflowFromBinary( AnimalConservationTrackingWorkflowBase ):
     workflowName = "Animal Conservation Tracking Workflow from Binary Image"
-    workflowDisplayName = "Animal Conservation Tracking Workflow [Inputs: Raw Data, Binary Image]"
+    workflowDisplayName = "Animal Tracking [Inputs: Raw Data, Binary Image]"
 
     withOptTrans = False
     fromBinary = True
@@ -46,7 +46,7 @@ class AnimalConservationTrackingWorkflowFromBinary( AnimalConservationTrackingWo
 
 class AnimalConservationTrackingWorkflowFromPrediction( AnimalConservationTrackingWorkflowBase ):
     workflowName = "Animal Conservation Tracking Workflow from Prediction Image"
-    workflowDisplayName = "Animal Conservation Tracking Workflow [Inputs: Raw Data, Pixel Prediction Map]"
+    workflowDisplayName = "Animal Tracking [Inputs: Raw Data, Pixel Prediction Map]"
 
     withOptTrans = False
     fromBinary = False
