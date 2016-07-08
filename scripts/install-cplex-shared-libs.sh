@@ -67,3 +67,5 @@ else
     g++ -fpic -shared -Wl,-whole-archive ${CONCERT_LIB_DIR}/libconcert.a -Wl,-no-whole-archive -o ${ILASTIK_RELEASE_DIR}/lib/libconcert.so
     g++ -fpic -shared -Wl,-whole-archive ${CPLEX_LIB_DIR}/libilocplex.a  -Wl,-no-whole-archive -o ${ILASTIK_RELEASE_DIR}/lib/libilocplex.so
 fi
+
+echo "Done installing the CPLEX libraries into ilastik." 1>&2
