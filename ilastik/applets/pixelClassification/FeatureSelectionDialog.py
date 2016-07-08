@@ -575,7 +575,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
 
         # retrieve segmentation layer(s)
         slice_shape = self.raw_xy_slice.shape[:2]
-        segmentation = numpy.zeros(slice_shape)
+        segmentation = numpy.zeros(slice_shape, dtype=numpy.uint8)
 
         axisOrder = [ tag.key for tag in self.opFeatureSelection.InputImage.meta.axistags ]
         bbox = self._bbox
