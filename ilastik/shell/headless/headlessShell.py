@@ -129,15 +129,13 @@ class HeadlessShell(object):
             default_workflow = ilastik.workflows.pixelClassification.PixelClassificationWorkflow
 
             # Create the project manager.
-            # Here, we provide an additional parameter: the path of the project we're importing from. 
             self.projectManager = ProjectManager( self,
                                                   default_workflow,
-                                                  importFromPath=oldProjectFilePath,
                                                   headless=True,
                                                   workflow_cmdline_args=self._workflow_cmdline_args,
                                                   project_creation_args=self._workflow_cmdline_args )
 
-            self.projectManager._importProject(oldProjectFilePath, hdf5File, projectFilePath,readOnly = False)
+            self.projectManager._importProject(importFromPath, hdf5File, projectFilePath)
 
     def setAppletEnabled(self, applet, enabled):
         """
