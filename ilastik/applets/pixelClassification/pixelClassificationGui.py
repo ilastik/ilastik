@@ -341,7 +341,14 @@ class PixelClassificationGui(LabelingGui):
         self.__cleanup_fns.append( partial( self.topLevelOperatorView.FreezePredictions.unregisterDirty, bind(FreezePredDirty) ) )
 
     def initFeatSelDlg(self):
-        thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
+        if self.topLevelOperatorView.name=="OpPixelClassification":
+            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
+        elif self.topLevelOperatorView.name=="OpPixelClassification0":
+            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[0].topLevelOperator.innerOperators[0]
+        elif self.topLevelOperatorView.name=="OpPixelClassification1":
+            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[1].topLevelOperator.innerOperators[0]
+        else:
+            raise NotImplementedError
 
         self.featSelDlg = FeatureSelectionDialog(thisOpFeatureSelection, self.topLevelOperatorView)
 
@@ -350,7 +357,15 @@ class PixelClassificationGui(LabelingGui):
 
 
     def update_features_from_dialog(self):
-        thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
+        if self.topLevelOperatorView.name=="OpPixelClassification":
+            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
+        elif self.topLevelOperatorView.name=="OpPixelClassification0":
+            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[0].topLevelOperator.innerOperators[0]
+        elif self.topLevelOperatorView.name=="OpPixelClassification1":
+            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[1].topLevelOperator.innerOperators[0]
+        else:
+            raise NotImplementedError
+
 
         thisOpFeatureSelection.SelectionMatrix.setValue(self.featSelDlg.selected_features_matrix)
         thisOpFeatureSelection.SelectionMatrix.setDirty()

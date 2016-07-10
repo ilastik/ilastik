@@ -180,8 +180,15 @@ class FeatureSelectionDialog(QtGui.QDialog):
         """
 
         #FIXME: the editor should return the current view coordinates without such workarounds
+        if self.opPixelClassification.name == "OpPixelClassification":
+            ilastik_editor = self.opPixelClassification.parent.pcApplet.getMultiLaneGui().currentGui().editor
+        elif self.opPixelClassification.name == "OpPixelClassification0":
+            ilastik_editor = self.opPixelClassification.parent.pcApplets[0].getMultiLaneGui().currentGui().editor
+        elif self.opPixelClassification.name == "OpPixelClassification1":
+            ilastik_editor = self.opPixelClassification.parent.pcApplets[1].getMultiLaneGui().currentGui().editor
+        else:
+            raise NotImplementedError
 
-        ilastik_editor = self.opPixelClassification.parent.pcApplet.getMultiLaneGui().currentGui().editor
         self._ilastik_currentslicing_5D = ilastik_editor.posModel.slicingPos5D
         #FIXME: is this always the xy scene?
         current_view = ilastik_editor.imageViews[2]
@@ -214,7 +221,9 @@ class FeatureSelectionDialog(QtGui.QDialog):
         self.raw_xy_slice = numpy.squeeze(self.opPixelClassification.InputImages[total_slicing].wait())
 
         color_index = axistags.index('c')
-        if self._stackdim[color_index] > 1:
+        if self._stackdim[color_index] ==2 or self._stackdim[color_index]==3:
+            #FIXME: check if the main window is displaying raw as rgba or grayscale
+
             # dirty workaround for swapping x/y axis (I dont know how to set axistags of new layer)
             if axistags.index('x') > axistags.index('y'):
                 self.raw_xy_slice = self.raw_xy_slice.transpose((1, 0, 2))
@@ -222,7 +231,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
         else:
             # dirty workaround for swapping x/y axis (I dont know how to set axistags of new layer)
             if axistags.index('x') > axistags.index('y'):
-                self.raw_xy_slice = self.raw_xy_slice.transpose((1, 0))
+                self.raw_xy_slice = self.raw_xy_slice.transpose((1, 0, 2))
             self._add_grayscale_layer(self.raw_xy_slice, "raw_data", True)
 
 
@@ -535,7 +544,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
         :param visible: bool determining whether this layer should be set to visible
         :return:
         '''
-        assert len(data.shape) == 2
+        #assert len(data.shape) == 2
         a, data_shape = createDataSource(data, True)
         self.editor.dataShape = list(data_shape)
         new_layer = GrayscaleLayer(a)
