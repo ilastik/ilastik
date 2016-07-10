@@ -226,12 +226,12 @@ class FeatureSelectionDialog(QtGui.QDialog):
 
             # dirty workaround for swapping x/y axis (I dont know how to set axistags of new layer)
             if axistags.index('x') > axistags.index('y'):
-                self.raw_xy_slice = self.raw_xy_slice.transpose((1, 0, 2))
+                self.raw_xy_slice = self.raw_xy_slice.swapaxes(1, 0)
             self._add_color_layer(self.raw_xy_slice, "raw_data", True)
         else:
             # dirty workaround for swapping x/y axis (I dont know how to set axistags of new layer)
             if axistags.index('x') > axistags.index('y'):
-                self.raw_xy_slice = self.raw_xy_slice.transpose((1, 0, 2))
+                self.raw_xy_slice = self.raw_xy_slice.swapaxes(1, 0)
             self._add_grayscale_layer(self.raw_xy_slice, "raw_data", True)
 
 
