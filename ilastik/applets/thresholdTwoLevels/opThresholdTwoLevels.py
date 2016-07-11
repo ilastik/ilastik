@@ -593,11 +593,13 @@ class OpIphtNoCache(Operator):
     
     def execute(self, slot, subindex, roi, result):
         # Input is required to be in txyzc order
+        result = vigra.taggedView( result, 'txyzc' )
         t_start, t_stop = roi.start[0], roi.stop[0]
         for t in range(t_start, t_stop):
             roi_t = numpy.array( (roi.start, roi.stop) )
             roi_t[:,0] = (t, t+1)
-            image = self.InputImage(*roi_t).wait()    
+            image = self.InputImage(*roi_t).wait()
+            image = vigra.taggedView(image, 'txyzc')
             identity_preserving_hysteresis_thresholding( image[0,...,0],
                                                          self.HighThreshold.value,
                                                          self.LowThreshold.value,
