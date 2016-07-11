@@ -172,12 +172,10 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
         # Get user's chosen label mapping from dlg
         labelMapping = settingsDlg.labelMapping    
 
-        # Get user's chosen offsets.
-        # Offsets in dlg only include the file axes, not the 5D axes expected by the label input,
-        # so expand them to full 5D 
+        # Get user's chosen offsets, ordered by the 'write seeds' slot
         axes_5d = opReorderAxes.Output.meta.getAxisKeys()
         tagged_offsets = collections.OrderedDict( zip( axes_5d, [0]*len(axes_5d) ) )
-        tagged_offsets.update( dict( zip( opMetadataInjector.Output.meta.getAxisKeys(), settingsDlg.imageOffsets ) ) )
+        tagged_offsets.update( dict( zip( opReorderAxes.Output.meta.getAxisKeys(), settingsDlg.imageOffsets ) ) )
         imageOffsets = tagged_offsets.values()
 
         # Optimization if mapping is identity
@@ -241,11 +239,11 @@ class LabelImportOptionsDlg(QDialog):
         label_data_tagged_shape = dataInputSlot.meta.getTaggedShape()
 
         axisRanges = ()
-        for k in label_data_tagged_shape.keys():
+        for k in write_seeds_tagged_shape.keys():
             try:
                 axisRanges += (write_seeds_tagged_shape[k] - label_data_tagged_shape[k],)
             except KeyError:
-                axisRanges += (0,)
+                axisRanges += (write_seeds_tagged_shape[k],)
 
         self.imageOffsets = LabelImportOptionsDlg._defaultImageOffsets(axisRanges, srcInputFiles, dataInputSlot)
         self.labelMapping = LabelImportOptionsDlg._defaultLabelMapping(labelInfo)
@@ -397,14 +395,14 @@ class LabelImportOptionsDlg(QDialog):
         write_seeds_tagged_shape = self._writeSeedsSlot.meta.getTaggedShape()
         label_data_tagged_shape = self._dataInputSlot.meta.getTaggedShape()
         axisRanges = ()
-        for k in label_data_tagged_shape.keys():
+        for k in write_seeds_tagged_shape.keys():
             try:
                 axisRanges += (write_seeds_tagged_shape[k] - label_data_tagged_shape[k],)
             except KeyError:
-                axisRanges += (0,)
+                axisRanges += (write_seeds_tagged_shape[k],)
 
         # Handle the 'c' axis separately
-        inputAxes = self._dataInputSlot.meta.getAxisKeys()
+        inputAxes = self._writeSeedsSlot.meta.getAxisKeys()
         try:
             c_idx = inputAxes.index('c')
         except ValueError:
@@ -534,11 +532,11 @@ class LabelImportOptionsDlg(QDialog):
     # Update Position / Mapping
     #**************************************************************************
     def _updatePosition(self):
-        inputAxes = self._dataInputSlot.meta.getAxisKeys()
+        writeAxes = self._writeSeedsSlot.meta.getAxisKeys()
 
         for (k,v) in self._insert_position_boxes.items():
             insertBox, _ = v
-            self.imageOffsets[inputAxes.index(k)] = insertBox.value()
+            self.imageOffsets[writeAxes.index(k)] = insertBox.value()
 
     def _updateMappingEnabled(self):
         max_labels, _ = self._labelInfo
