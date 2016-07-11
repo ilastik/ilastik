@@ -47,6 +47,10 @@ def identity_preserving_hysteresis_thresholding( img,
     # Toss out the tiny objects
     logger.debug("Filtering labels")
     filter_labels(watershed_labels, min_size, max_size)
+    
+    if watershed_labels.max() == 0:
+        # Everything got filtered out.
+        return watershed_labels
       
     # Run watershed a second time to make sure the larger labels
     #  eat up the tiny stuff we removed, if it was adjacent.
