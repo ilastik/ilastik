@@ -1,6 +1,6 @@
 import os
 
-from PyQt4.QtGui import QMessageBox
+from PyQt4.QtGui import QMessageBox, QPushButton
 
 from ilastik.applets.pixelClassification.pixelClassificationGui import PixelClassificationGui
 
@@ -38,7 +38,10 @@ class IIBoostPixelClassificationGui( PixelClassificationGui ):
         def update_num_stumps(num_stumps):
             self.topLevelOperatorView.set_num_stumps( num_stumps )
         self.labelingDrawerUi.numStumpsBox.valueChanged.connect( update_num_stumps )
-        
+
+        # Feature selection doesn't work in IIBoost
+        self.labelingDrawerUi.suggestFeaturesButton.setVisible(False)
+            
     def toggleInteractive(self, checked):
         """
         Overridden from the base class.  Called when entering/leaving "live update" mode.
