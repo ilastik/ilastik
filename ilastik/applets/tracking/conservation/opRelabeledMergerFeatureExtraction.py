@@ -196,7 +196,7 @@ class OpRelabeledMergerFeatureExtraction(Operator):
                         if k in result[t][name] and t in mapping:
                             result[t][name][k] = self._merge_features(result[t][name][k], v, mapping[t])
                         else:
-                            logger.warning("Ignoring feature {}-{} when merging".format(name, k))
+                            logger.debug("Ignoring feature {}-{} when merging".format(name, k))
 
             return result
         else:
