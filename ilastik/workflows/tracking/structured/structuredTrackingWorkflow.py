@@ -29,6 +29,7 @@ from ilastik.applets.thresholdTwoLevels.thresholdTwoLevelsApplet import Threshol
 from ilastik.applets.objectClassification.objectClassificationApplet import ObjectClassificationApplet
 from ilastik.applets.cropping.cropSelectionApplet import CropSelectionApplet
 from ilastik.applets.trackingFeatureExtraction import config
+from ilastik.applets.tracking.conservation import config as configConservation
 from ilastik.applets.tracking.structured import config as configStructured
 
 from lazyflow.operators.opReorderAxes import OpReorderAxes
@@ -170,11 +171,11 @@ class StructuredTrackingWorkflowBase( Workflow ):
         opTrackingFeatureExtraction.RawImage.connect( op5Raw.Output )
         opTrackingFeatureExtraction.BinaryImage.connect( op5Binary.Output )
 
-        vigra_features = list((set(config.vigra_features)).union(config.selected_features_objectcount[config.features_vigra_name]))
-        feature_names_vigra = {}
-        feature_names_vigra[config.features_vigra_name] = { name: {} for name in vigra_features }
+        # vigra_features = list((set(config.vigra_features)).union(config.selected_features_objectcount[config.features_vigra_name]))
+        # feature_names_vigra = {}
+        # feature_names_vigra[config.features_vigra_name] = { name: {} for name in vigra_features }
 
-        opTrackingFeatureExtraction.FeatureNamesVigra.setValue(feature_names_vigra)
+        opTrackingFeatureExtraction.FeatureNamesVigra.setValue(configConservation.allFeaturesObjectCount)
         feature_dict_division = {}
         feature_dict_division[config.features_division_name] = { name: {} for name in config.division_features }
         opTrackingFeatureExtraction.FeatureNamesDivision.setValue(feature_dict_division)
@@ -184,7 +185,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
         opDivDetection.SegmentationImages.connect(opTrackingFeatureExtraction.LabelImage)
         opDivDetection.ObjectFeatures.connect(opTrackingFeatureExtraction.RegionFeaturesAll)
         opDivDetection.ComputedFeatureNames.connect(opTrackingFeatureExtraction.ComputedFeatureNamesAll)
-        opDivDetection.SelectedFeatures.setValue(configStructured.selectedFeaturesDiv)
+        opDivDetection.SelectedFeatures.setValue(configConservation.selectedFeaturesDiv)
         opDivDetection.LabelNames.setValue(['Not Dividing', 'Dividing'])
         opDivDetection.AllowDeleteLabels.setValue(False)
         opDivDetection.AllowAddLabel.setValue(False)
@@ -195,7 +196,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
         opCellClassification.SegmentationImages.connect(opTrackingFeatureExtraction.LabelImage)
         opCellClassification.ObjectFeatures.connect(opTrackingFeatureExtraction.RegionFeaturesAll)
         opCellClassification.ComputedFeatureNames.connect(opTrackingFeatureExtraction.ComputedFeatureNamesNoDivisions)
-        opCellClassification.SelectedFeatures.setValue(configStructured.selectedFeaturesObjectCount )
+        opCellClassification.SelectedFeatures.setValue(configConservation.selectedFeaturesObjectCount )
         opCellClassification.SuggestedLabelNames.setValue( ['False Detection',] + [str(1) + ' Object'] + [str(i) + ' Objects' for i in range(2,10) ] )
         opCellClassification.AllowDeleteLastLabelOnly.setValue(True)
         opCellClassification.EnableLabelTransfer.setValue(False)
