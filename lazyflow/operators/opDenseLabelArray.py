@@ -92,6 +92,7 @@ class OpDenseLabelArray(Operator):
         if slot == self.LabelSinkInput:
             self.Output.setDirty(*roi)
         if slot == self.DeleteLabel and self.DeleteLabel.value != -1:
+            self.Output.setDirty()
             self.NonzeroBlocks.setDirty()
     
     def setInSlot(self, slot, subindex, roi, value):
