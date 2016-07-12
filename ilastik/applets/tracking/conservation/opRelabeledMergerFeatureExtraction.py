@@ -193,7 +193,7 @@ class OpRelabeledMergerFeatureExtraction(Operator):
             for t, feature_groups in orig_feat_all.iteritems():
                 for name, features in feature_groups.iteritems():
                     for k, v in features.iteritems():
-                        if k in result[t][name]:
+                        if k in result[t][name] and t in mapping:
                             result[t][name][k] = self._merge_features(result[t][name][k], v, mapping[t])
                         else:
                             logger.warning("Ignoring feature {}-{} when merging".format(name, k))
