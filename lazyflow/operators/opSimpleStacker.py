@@ -12,15 +12,15 @@ class OpSimpleStacker(Operator):
     Images = InputSlot(level=1)
     AxisFlag = InputSlot() # For example: 'z', or 'c'
     Output = OutputSlot()
-    
+
     def __input__(self, *args, **kwargs):
         super(OpSimpleStacker, self).__init__(*args, **kwargs)
-    
+
     def setupOutputs(self):
         if len(self.Images) == 0:
             self.Output.meta.NOTREADY = True
             return
-        
+
         # Sanity check
         stacked_axiskey = self.AxisFlag.value
         nonstacked_tagged_shape = self.Images[0].meta.getTaggedShape()
@@ -54,9 +54,9 @@ class OpSimpleStacker(Operator):
                 stacked_channel_names += ['stacked-image-{}-{}'.format(slot_index, i) for i in range(slot_stacked_size)]
 
 
-        # Compute output ranges for each input.        
+        # Compute output ranges for each input.
         # For example, if inputs have length 10, 15, 20,
-        # stacked_output_ranges = [(0, 10), (10, 25), (25, 45)] 
+        # stacked_output_ranges = [(0, 10), (10, 25), (25, 45)]
         stacked_range_stops = [0] + list(np.add.accumulate(stacked_sizes))
         self.stacked_output_ranges = zip(stacked_range_stops[:-1], stacked_range_stops[1:])
 
@@ -69,7 +69,7 @@ class OpSimpleStacker(Operator):
         self.Output.meta.channel_names = stacked_channel_names
         ideal_blockshape = self.Output.meta.ideal_blockshape
         if ideal_blockshape is not None:
-            ideal_blockshape = ideal_blockshape[:stacked_axisindex] + (1,) + ideal_blockshape[stacked_axisindex+1:]
+            ideal_blockshape = tuple(ideal_blockshape[:stacked_axisindex]) + (1,) + tuple(ideal_blockshape[stacked_axisindex+1:])
             self.Output.meta.ideal_blockshape = ideal_blockshape
 
         max_blockshape = self.Output.meta.max_blockshape
@@ -94,12 +94,12 @@ class OpSimpleStacker(Operator):
                 result_roi = roi.copy()
                 result_roi.start = output_roi.start - roi.start
                 result_roi.stop = output_roi.stop - roi.start
-                
+
                 req = slot(request_roi.start, request_roi.stop)
                 req.writeInto( result[roiToSlice(result_roi.start, result_roi.stop)] )
                 pool.add( req )
         pool.wait()
-    
+
     def propagateDirty(self, slot, subindex, roi):
         if not self.Output.ready():
             return
