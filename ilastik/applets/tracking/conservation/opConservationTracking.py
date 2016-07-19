@@ -333,7 +333,8 @@ class OpConservationTracking(Operator, ExportingOperator):
                               zscale * (zshape - 1))
             return fov
 
-        fieldOfView = constructFov((1024, 1024, 1),
+        # FIXME: Assumes (x,y,z) axis order
+        fieldOfView = constructFov((x_range[1], y_range[1], z_range[1]),
                                    0,
                                    time_range[-1]+1,
                                    [x_scale,
