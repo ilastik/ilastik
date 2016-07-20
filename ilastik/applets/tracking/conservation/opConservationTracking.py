@@ -16,6 +16,16 @@ from lazyflow.operators.valueProviders import OpZeroDefault
 from lazyflow.roi import sliceToRoi
 from opRelabeledMergerFeatureExtraction import OpRelabeledMergerFeatureExtraction
 
+from hytra.core.ilastik_project_options import IlastikProjectOptions
+from hytra.core.jsongraph import JsonTrackingGraph
+from hytra.core.ilastikhypothesesgraph import IlastikHypothesesGraph
+from hytra.core.fieldofview import FieldOfView
+from hytra.core.mergerresolver import MergerResolver
+from hytra.core.probabilitygenerator import ProbabilityGenerator
+from hytra.core.probabilitygenerator import Traxel
+
+import dpct
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -127,7 +137,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         self.RelabeledOutputHdf5.connect(self._relabeledOpCache.OutputHdf5)
         self.RelabeledCachedOutput.connect(self._relabeledOpCache.Output)
         self.tracker = None
-        self._ndim = 3
+        self._ndim = 3        
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.LabelImage.meta)
@@ -305,6 +315,75 @@ class OpConservationTracking(Operator, ExportingOperator):
                     'one training example for each class.')
         
         median_obj_size = [0]
+
+        ################[HyTra Integration ends here]#####################
+        
+        traxelstore = self._generate_traxelstore_HyTra(time_range, x_range, y_range, z_range,
+                                                                      size_range, x_scale, y_scale, z_scale, 
+                                                                      median_object_size=median_obj_size, 
+                                                                      with_div=withDivisions,
+                                                                      with_opt_correction=withOpticalCorrection,
+                                                                      with_classifier_prior=withClassifierPrior)
+        
+        def constructFov(shape, t0, t1, scale=[1, 1, 1]):
+            [xshape, yshape, zshape] = shape
+            [xscale, yscale, zscale] = scale
+        
+            fov = FieldOfView(t0, 0, 0, 0, t1, xscale * (xshape - 1), yscale * (yshape - 1),
+                              zscale * (zshape - 1))
+            return fov
+
+        fieldOfView = constructFov((1024, 1024, 1),
+                                   0,
+                                   time_range[-1]+1,
+                                   [x_scale,
+                                   y_scale,
+                                   z_scale])
+
+        hypotheses_graph = IlastikHypothesesGraph(
+            traxelstore=traxelstore,
+            timeRange=(0,time_range[-1]+1),
+            maxNumObjects=maxObj,
+            numNearestNeighbors=max_nearest_neighbors,
+            fieldOfView=fieldOfView,
+            withDivisions=False,#'without-divisions' not in params,
+            divisionThreshold=0.1
+        )
+
+        #if withTracklets:
+        #    hypotheses_graph = hypotheses_graph.generateTrackletGraph()
+            
+        hypotheses_graph = hypotheses_graph.generateTrackletGraph()
+
+        hypotheses_graph.insertEnergies()
+
+        trackingGraph = hypotheses_graph.toTrackingGraph()
+        
+        trackingGraph.convexifyCosts()
+        
+        model = trackingGraph.model
+
+        weights = {u'weights': [divWeight, transWeight, appearance_cost, disappearance_cost]}
+        result = dpct.trackFlowBased(model, weights)
+        
+        #hytra.core.jsongraph.writeToFormattedJSON(options.result_filename, result)
+
+#         if withMergerResolution:
+#             # Merger resolving code here
+
+        import hytra    
+        traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(model)
+        timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
+    
+        mergers, detections, links, divisions = hytra.core.jsongraph.getMergersDetectionsLinksDivisions(result, uuidToTraxelMap, withDivisions=False)
+    
+        # group by timestep for event creation
+        #mergersPerTimestep = hytra.core.jsongraph.getMergersPerTimestep(mergers, timesteps)
+        #linksPerTimestep = hytra.core.jsongraph.getLinksPerTimestep(links, timesteps)
+        #detectionsPerTimestep = hytra.core.jsongraph.getDetectionsPerTimestep(detections, timesteps)
+        #divisionsPerTimestep = hytra.core.jsongraph.getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps, withDivisions=False)
+        
+        ################[HyTra Integration ends here]#####################
 
         fs, ts, empty_frame, max_traxel_id_at = self._generate_traxelstore(time_range, x_range, y_range, z_range,
                                                                       size_range, x_scale, y_scale, z_scale, 
@@ -903,6 +982,193 @@ class OpConservationTracking(Operator, ExportingOperator):
 
     def track_family(self, track_id):
         return self.track_children(track_id), self.track_parent(track_id)
+
+
+    def _generate_traxelstore_HyTra(self,
+                              time_range,
+                              x_range,
+                              y_range,
+                              z_range,
+                              size_range,
+                              x_scale=1.0,
+                              y_scale=1.0,
+                              z_scale=1.0,
+                              with_div=False,
+                              with_local_centers=False,
+                              median_object_size=None,
+                              max_traxel_id_at=None,
+                              with_opt_correction=False,
+                              with_coordinate_list=False,
+                              with_classifier_prior=False):
+
+        if not self.Parameters.ready():
+            raise Exception("Parameter slot is not ready")
+
+        # FIXME: Should we set the parameters here?
+        parameters = self.Parameters.value
+        parameters['scales'] = [x_scale, y_scale, z_scale]
+        parameters['time_range'] = [min(time_range), max(time_range)]
+        parameters['x_range'] = x_range
+        parameters['y_range'] = y_range
+        parameters['z_range'] = z_range
+        parameters['size_range'] = size_range
+
+        logger.info("generating traxels")
+        logger.info("fetching region features and division probabilities")
+        
+        traxelstore = ProbabilityGenerator()
+        
+        feats = self.ObjectFeatures(time_range).wait()
+
+        if with_div:
+            if not self.DivisionProbabilities.ready() or len(self.DivisionProbabilities([0]).wait()[0]) == 0:
+                msgStr = "\nDivision classifier has not been trained! " + \
+                         "Uncheck divisible objects if your objects don't divide or " + \
+                         "go back to the Division Detection applet and train it."
+                raise DatasetConstraintError ("Tracking",msgStr)
+            divProbs = self.DivisionProbabilities(time_range).wait()
+
+        if with_local_centers:
+            localCenters = self.RegionLocalCenters(time_range).wait()
+
+        if with_classifier_prior:
+            if not self.DetectionProbabilities.ready() or len(self.DetectionProbabilities([0]).wait()[0]) == 0:
+                msgStr = "\nObject count classifier has not been trained! " + \
+                         "Go back to the Object Count Classification applet and train it."
+                raise DatasetConstraintError ("Tracking",msgStr)
+            detProbs = self.DetectionProbabilities(time_range).wait()
+
+        logger.info("filling traxelstore")
+
+        max_traxel_id_at = pgmlink.VectorOfInt()
+        filtered_labels = {}
+        obj_sizes = []
+        total_count = 0
+        empty_frame = False
+
+        for t in feats.keys():
+            rc = feats[t][default_features_key]['RegionCenter']
+            lower = feats[t][default_features_key]['Coord<Minimum>']
+            upper = feats[t][default_features_key]['Coord<Maximum>']
+            if rc.size:
+                rc = rc[1:, ...]
+                lower = lower[1:, ...]
+                upper = upper[1:, ...]
+
+            if with_opt_correction:
+                try:
+                    rc_corr = feats[t][config.features_vigra_name]['RegionCenter_corr']
+                except:
+                    raise Exception, 'Can not consider optical correction since it has not been computed before'
+                if rc_corr.size:
+                    rc_corr = rc_corr[1:, ...]
+
+            ct = feats[t][default_features_key]['Count']
+            if ct.size:
+                ct = ct[1:, ...]
+
+            logger.debug("at timestep {}, {} traxels found".format(t, rc.shape[0]))
+            count = 0
+            filtered_labels_at = []
+            for idx in range(rc.shape[0]):
+                traxel = Traxel()
+                
+                # for 2d data, set z-coordinate to 0:
+                if len(rc[idx]) == 2:
+                    x, y = rc[idx]
+                    z = 0
+                elif len(rc[idx]) == 3:
+                    x, y, z = rc[idx]
+                else:
+                    raise DatasetConstraintError ("Tracking", "The RegionCenter feature must have dimensionality 2 or 3.")
+                size = ct[idx]
+                if (x < x_range[0] or x >= x_range[1] or
+                            y < y_range[0] or y >= y_range[1] or
+                            z < z_range[0] or z >= z_range[1] or
+                            size < size_range[0] or size >= size_range[1]):
+                    filtered_labels_at.append(int(idx + 1))
+                    continue
+                else:
+                    count += 1
+                
+                traxel.Id = int(idx + 1)
+                traxel.Timestep = int(t) 
+                traxel.set_x_scale(x_scale)
+                traxel.set_y_scale(y_scale)
+                traxel.set_z_scale(z_scale)
+
+                # Expects always 3 coordinates, z=0 for 2d data
+                traxel.add_feature_array("com", 3)
+                for i, v in enumerate([x, y, z]):
+                    traxel.set_feature_value('com', i, float(v))
+
+                traxel.add_feature_array("CoordMinimum", 3)
+                for i, v in enumerate(lower[idx]):
+                    traxel.set_feature_value("CoordMinimum", i, float(v))
+                traxel.add_feature_array("CoordMaximum", 3)
+                for i, v in enumerate(upper[idx]):
+                    traxel.set_feature_value("CoordMaximum", i, float(v))
+
+                if with_opt_correction:
+                    traxel.add_feature_array("com_corrected", 3)
+                    for i, v in enumerate(rc_corr[idx]):
+                        traxel.set_feature_value("com_corrected", i, float(v))
+                    if len(rc_corr[idx]) == 2:
+                        traxel.set_feature_value("com_corrected", 2, 0.)
+
+                if with_div:
+                    traxel.add_feature_array("divProb", 1)
+                    # idx+1 because rc and ct start from 1, divProbs starts from 0
+                    traxel.set_feature_value("divProb", 0, float(divProbs[t][idx + 1][1]))
+
+                if with_classifier_prior:
+                    traxel.add_feature_array("detProb", len(detProbs[t][idx + 1]))
+                    for i, v in enumerate(detProbs[t][idx + 1]):
+                        val = float(v)
+                        if val < 0.0000001:
+                            val = 0.0000001
+                        if val > 0.99999999:
+                            val = 0.99999999
+                        traxel.set_feature_value("detProb", i, float(val))
+
+                # FIXME: check whether it is 2d or 3d data!
+                if with_local_centers:                   
+                    traxel.add_feature_array("localCentersX", len(localCenters[t][idx + 1]))
+                    traxel.add_feature_array("localCentersY", len(localCenters[t][idx + 1]))
+                    traxel.add_feature_array("localCentersZ", len(localCenters[t][idx + 1]))
+                    
+                    for i, v in enumerate(localCenters[t][idx + 1]):                        
+                        traxel.set_feature_value("localCentersX", i, float(v[0]))
+                        traxel.set_feature_value("localCentersY", i, float(v[1]))
+                        traxel.set_feature_value("localCentersZ", i, float(v[2]))
+                
+                traxel.add_feature_array("count", 1)
+                traxel.set_feature_value("count", 0, float(size))
+                
+                if median_object_size is not None:
+                    obj_sizes.append(float(size))
+
+                # Add traxel to traxelstore
+                traxelstore.TraxelsPerFrame.setdefault(int(t), {})[int(idx + 1)] = traxel
+
+            if len(filtered_labels_at) > 0:
+                filtered_labels[str(int(t) - time_range[0])] = filtered_labels_at
+                
+            logger.debug("at timestep {}, {} traxels passed filter".format(t, count))
+            max_traxel_id_at.append(int(rc.shape[0]))
+            if count == 0:
+                empty_frame = True
+                logger.info('Found empty frames')
+
+            total_count += count
+
+        if median_object_size is not None:
+            median_object_size[0] = np.median(np.array(obj_sizes), overwrite_input=True)
+            logger.info('median object size = ' + str(median_object_size[0]))
+
+        self.FilteredLabels.setValue(filtered_labels, check_changed=True)
+
+        return traxelstore
 
 
     def _generate_traxelstore(self,
