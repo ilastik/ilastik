@@ -176,7 +176,7 @@ class OpTrackingFeatureExtraction(Operator):
         # connect internal operators
         self._objectExtraction.RawImage.connect(self.RawImage)
         self._objectExtraction.BinaryImage.connect(self.BinaryImage)
-        
+
         self._objectExtraction.Features.connect(self.FeatureNamesVigra)
         self._objectExtraction.RegionFeaturesCacheInput.connect(self.RegionFeaturesCacheInputVigra)
         self._objectExtraction.LabelImageCacheInput.connect(self.LabelImageCacheInput)
@@ -200,13 +200,16 @@ class OpTrackingFeatureExtraction(Operator):
         # As soon as input data is available, check its constraints
         self.RawImage.notifyReady( self._checkConstraints )
         self.BinaryImage.notifyReady( self._checkConstraints )
+
+        # FIXME this shouldn't be done in post-filtering, but in reading the config or around that time
+        self.RawImage.notifyReady( self._filterFeaturesByDim )
     
                
     def setupOutputs(self, *args, **kwargs):
         self.ComputedFeatureNamesAll.meta.assignFrom(self.FeatureNamesVigra.meta)
         self.ComputedFeatureNamesNoDivisions.meta.assignFrom(self.FeatureNamesVigra.meta)
         self.RegionFeaturesAll.meta.assignFrom(self.RegionFeaturesVigra.meta)
-        
+
     def execute(self, slot, subindex, roi, result):
         if slot == self.ComputedFeatureNamesAll:
             feat_names_vigra = self.FeatureNamesVigra([]).wait()
@@ -272,8 +275,26 @@ class OpTrackingFeatureExtraction(Operator):
                 
                 msg = "Raw data and other data must have equal dimensions (different channels are okay).\n"\
                       "Your datasets have shapes: {} and {}".format( self.RawImage.meta.shape, self.BinaryImage.meta.shape )
-                raise DatasetConstraintError( "Object Extraction", msg ) 
+                raise DatasetConstraintError( "Object Extraction", msg )
 
+    def _filterFeaturesByDim(self, *args):
+        # Remove 2D-only features from 3D datasets
+        # Features look as follows:
+        # dict[plugin_name][feature_name][parameter_name] = parameter_value
+        # for example {"Standard Object Features": {"Mean in neighborhood":{"margin": (5, 5, 2)}}}
+
+        if self.RawImage.ready() and self.FeatureNamesVigra.ready():
+
+            rawTaggedShape = self.RawImage.meta.getTaggedShape()
+            filtered_features_dict = {}
+            if rawTaggedShape['z']>1:
+                # Filter out the 2D-only features, which helpfully have "2D" in their plugin name
+                current_dict = self.FeatureNamesVigra.value
+                for plugin in current_dict.keys():
+                    if not "2D" in plugin:
+                        filtered_features_dict[plugin] = current_dict[plugin]
+
+                self.FeatureNamesVigra.setValue(filtered_features_dict)
 
 class OpCachedDivisionFeatures(Operator):
     """Caches the division features computed by OpDivisionFeatures."""    
