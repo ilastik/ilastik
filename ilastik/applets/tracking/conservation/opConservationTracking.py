@@ -342,7 +342,7 @@ class OpConservationTracking(Operator, ExportingOperator):
                                    z_scale])
 
         hypotheses_graph = IlastikHypothesesGraph(
-            traxelstore=traxelstore,
+            probabilityGenerator=traxelstore,
             timeRange=(0,time_range[-1]+1),
             maxNumObjects=maxObj,
             numNearestNeighbors=max_nearest_neighbors,
@@ -354,7 +354,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         #if withTracklets:
         #    hypotheses_graph = hypotheses_graph.generateTrackletGraph()
             
-        hypotheses_graph = hypotheses_graph.generateTrackletGraph()
+        #hypotheses_graph = hypotheses_graph.generateTrackletGraph()
 
         hypotheses_graph.insertEnergies()
 
