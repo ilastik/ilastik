@@ -94,6 +94,7 @@ class OpConservationTracking(Operator, ExportingOperator):
     RelabeledCachedOutput = OutputSlot() # For the GUI (blockwise access)
     RelabeledImage = OutputSlot()
 
+    hypotheses_graph = None
 
     def __init__(self, parent=None, graph=None):
         super(OpConservationTracking, self).__init__(parent=parent, graph=graph)
@@ -180,7 +181,8 @@ class OpConservationTracking(Operator, ExportingOperator):
                 if ('time_range' in parameters
                         and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]
                         and len(self.resolvedto) > t and len(self.resolvedto[t])):
-                    result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, pixel_offsets)
+                    #result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, pixel_offsets)
+                    result[t-roi.start[0],...,0] = self._labelLineagesHyTra(result[t-roi.start[0],...,0], t)
                 else:
                     result[t-roi.start[0],...][:] = 0
 
@@ -333,7 +335,6 @@ class OpConservationTracking(Operator, ExportingOperator):
                               zscale * (zshape - 1))
             return fov
 
-        # FIXME: Assumes (x,y,z) axis order
         fieldOfView = constructFov((x_range[1], y_range[1], z_range[1]),
                                    0,
                                    time_range[-1]+1,
@@ -351,10 +352,8 @@ class OpConservationTracking(Operator, ExportingOperator):
             divisionThreshold=0.1
         )
 
-        #if withTracklets:
-        #    hypotheses_graph = hypotheses_graph.generateTrackletGraph()
-            
-        #hypotheses_graph = hypotheses_graph.generateTrackletGraph()
+        if withTracklets:
+            hypotheses_graph = hypotheses_graph.generateTrackletGraph()
 
         hypotheses_graph.insertEnergies()
 
@@ -368,21 +367,13 @@ class OpConservationTracking(Operator, ExportingOperator):
         result = dpct.trackFlowBased(model, weights)
         
         #hytra.core.jsongraph.writeToFormattedJSON(options.result_filename, result)
-
-#         if withMergerResolution:
-#             # Merger resolving code here
-
-        import hytra    
-        traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = hytra.core.jsongraph.getMappingsBetweenUUIDsAndTraxels(model)
-        timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
-    
-        mergers, detections, links, divisions = hytra.core.jsongraph.getMergersDetectionsLinksDivisions(result, uuidToTraxelMap, withDivisions=False)
-    
-        # group by timestep for event creation
-        #mergersPerTimestep = hytra.core.jsongraph.getMergersPerTimestep(mergers, timesteps)
-        #linksPerTimestep = hytra.core.jsongraph.getLinksPerTimestep(links, timesteps)
-        #detectionsPerTimestep = hytra.core.jsongraph.getDetectionsPerTimestep(detections, timesteps)
-        #divisionsPerTimestep = hytra.core.jsongraph.getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps, withDivisions=False)
+        
+        # Insert the solution into the hypotheses graph and from that deduce the lineages
+        if hypotheses_graph:
+            hypotheses_graph.insertSolution(result)
+            hypotheses_graph.computeLineage()
+            
+        self.hypotheses_graph = hypotheses_graph
         
         ################[HyTra Integration ends here]#####################
 
@@ -603,6 +594,22 @@ class OpConservationTracking(Operator, ExportingOperator):
                                                          idx,
                                                          int(size[idx,0]))
 
+
+    def _labelLineagesHyTra(self, volume, time):
+        if self.hypotheses_graph:
+            mp = np.arange(0, np.amax(volume) + 1, dtype=volume.dtype)
+            
+            labels = np.unique(volume)
+            
+            for label in labels:
+                if label > 0:
+                    lineage_id = self.hypotheses_graph.getLineageId(time, label)
+                    mp[label] = lineage_id               
+                
+            return mp[volume]
+        else:
+            return volume        
+    
     def _relabelMergers(self, volume, time, pixel_offsets=[0, 0, 0], onlyMergers=False, noRelabeling=False):
         if self.CoordinateMap.value.size() == 0:
             logger.info("Skipping merger relabeling because coordinate map is empty")
