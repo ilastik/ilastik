@@ -24,7 +24,7 @@ from functools import partial
 
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QEvent
-from PyQt4.QtGui import QColor, QImage, QPainter, QPixmap, QIcon
+from PyQt4.QtGui import QColor, QPixmap, QIcon
 from PyQt4.QtGui import QMessageBox
 
 from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer
