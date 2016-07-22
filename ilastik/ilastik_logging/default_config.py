@@ -23,7 +23,7 @@ import logging.config
 import warnings
 import loggingHelpers
 
-DEFAULT_LOGFILE_PATH = os.path.expanduser("~/.ilastik_log.txt")
+DEFAULT_LOGFILE_PATH = os.path.expanduser("~/ilastik_log.txt")
 
 class OutputMode:
     CONSOLE = 0
