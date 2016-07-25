@@ -176,7 +176,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             original = np.zeros(result.shape, dtype=slot.meta.dtype)         
             
             result[:] = self.LabelImage.get(roi).wait()
-            pixel_offsets=roi.start[1:-1]  # offset only in pixels, not time and channel
+            #pixel_offsets=roi.start[1:-1]  # offset only in pixels, not time and channel
             for t in trange:
                 if ('time_range' in parameters
                         and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]
@@ -352,6 +352,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             divisionThreshold=0.1
         )
 
+        withTracklets = False
         if withTracklets:
             hypotheses_graph = hypotheses_graph.generateTrackletGraph()
 
@@ -711,15 +712,25 @@ class OpConservationTracking(Operator, ExportingOperator):
         from ilastik.utility.exportFile import objects_per_frame, ExportFile, ilastik_ids, Mode, Default, \
             flatten_dict, division_flatten_dict
 
+        if not self.hypotheses_graph:
+            raise DatasetConstraintError('Tracking', 'Tracking solution not ready: Did you forgot to press the Track button?')
+
+        obj_count = list(objects_per_frame(label_image_slot))
+        assert sum(obj_count) == self.hypotheses_graph.countNodes(), "Conservation Tracking: Number of objects is different from number of nodes in hypotheses graph"
+        
+        object_ids_generator = ilastik_ids(obj_count)
+         
+        object_ids = [] 
+        lineage_ids = []
+        track_ids = []
+          
+        for (time, object_id) in object_ids_generator: 
+            object_ids.append((time, object_id))
+            lineage_ids.append(self.hypotheses_graph.getLineageId(time, object_id))
+            track_ids.append(self.hypotheses_graph.getTrackId(time, object_id))
+
         selected_features = list(selected_features)
         with_divisions = self.Parameters.value["withDivisions"] if self.Parameters.ready() else False
-        obj_count = list(objects_per_frame(label_image_slot))
-        track_ids, extra_track_ids, divisions = self.export_track_ids()
-        self._setLabel2Color()
-        lineage = flatten_dict(self.label2color, obj_count)
-        multi_move_max = self.Parameters.value["maxObj"] if self.Parameters.ready() else 2
-        t_range = self.Parameters.value["time_range"] if self.Parameters.ready() else (0, 0)
-        ids = ilastik_ids(obj_count)
 
         file_path = settings["file path"]
         if filename_suffix:
@@ -731,11 +742,9 @@ class OpConservationTracking(Operator, ExportingOperator):
         export_file.InsertionProgress.subscribe(progress_slot)
 
         export_file.add_columns("table", range(sum(obj_count)), Mode.List, Default.KnimeId)
-        export_file.add_columns("table", list(ids), Mode.List, Default.IlastikId)
-        export_file.add_columns("table", lineage, Mode.List, Default.Lineage)
-        export_file.add_columns("table", track_ids, Mode.IlastikTrackingTable,
-                                {"max": multi_move_max, "counts": obj_count, "extra ids": extra_track_ids,
-                                 "range": t_range})
+        export_file.add_columns("table", object_ids, Mode.List, Default.IlastikId)
+        export_file.add_columns("table", lineage_ids, Mode.List, Default.Lineage)
+        export_file.add_columns("table", track_ids, Mode.List, Default.TrackId)
 
         export_file.add_columns("table", object_feature_slot, Mode.IlastikFeatureTable,
                                 {"selection": selected_features})

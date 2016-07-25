@@ -18,6 +18,7 @@ class Default(object):
     KnimeId = {"names": ("object_id",)}
     IlastikId = {"names": ("timestep", "labelimage_oid")}
     Lineage = {"names": ("lineage_id",)}
+    TrackId = {"names": ("track_id",)}
     LabelRoiPath = "/images/{}/labeling"
     RawRoiPath = "/images/{}/raw"
     RawPath = "/images/raw"
