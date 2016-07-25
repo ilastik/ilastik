@@ -349,7 +349,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             maxNumObjects=maxObj,
             numNearestNeighbors=max_nearest_neighbors,
             fieldOfView=fieldOfView,
-            withDivisions=False,#'without-divisions' not in params,
+            withDivisions=False,
             divisionThreshold=0.1
         )
 
@@ -365,7 +365,11 @@ class OpConservationTracking(Operator, ExportingOperator):
         
         model = trackingGraph.model
 
-        weights = {u'weights': [divWeight, transWeight, appearance_cost, disappearance_cost]}
+        detectionWeight = 10.0 # FIXME: Should we store this weight in the parameters slot?
+        weights = {u'weights': [transWeight, detectionWeight, appearance_cost, disappearance_cost]}
+        if withDivisions:
+            weights = {u'weights': [transWeight, detectionWeight, divWeight, appearance_cost, disappearance_cost]}
+            
         result = dpct.trackFlowBased(model, weights)
         
         #hytra.core.jsongraph.writeToFormattedJSON(options.result_filename, result)
