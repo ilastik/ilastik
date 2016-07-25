@@ -18,6 +18,7 @@ from opRelabeledMergerFeatureExtraction import OpRelabeledMergerFeatureExtractio
 
 from hytra.core.ilastik_project_options import IlastikProjectOptions
 from hytra.core.jsongraph import JsonTrackingGraph
+from hytra.core.jsongraph import getMappingsBetweenUUIDsAndTraxels, getMergersDetectionsLinksDivisions, getMergersPerTimestep, getLinksPerTimestep, getDetectionsPerTimestep, getDivisionsPerTimestep
 from hytra.core.ilastikhypothesesgraph import IlastikHypothesesGraph
 from hytra.core.fieldofview import FieldOfView
 from hytra.core.mergerresolver import MergerResolver
@@ -376,6 +377,10 @@ class OpConservationTracking(Operator, ExportingOperator):
             
         self.hypotheses_graph = hypotheses_graph
         
+        # Get events vector
+        events = self._getEventsVector(result, model)
+        self.EventsVector.setValue(events, check_changed=False)
+        
         ################[HyTra Integration ends here]#####################
 
         fs, ts, empty_frame, max_traxel_id_at = self._generate_traxelstore(time_range, x_range, y_range, z_range,
@@ -545,11 +550,12 @@ class OpConservationTracking(Operator, ExportingOperator):
         if inputSlot is self.LabelImage:
             self.Output.setDirty(roi)
         elif inputSlot is self.EventsVector:
-            self._setLabel2Color()
-            try:
-                self._setLabel2Color(export_mode=True)
-            except:
-                logger.debug("Warning: some label information might be wrong...")
+            #self._setLabel2Color()
+            #try:
+            #    self._setLabel2Color(export_mode=True)
+            #except:
+            #    logger.debug("Warning: some label information might be wrong...")
+            pass
         elif inputSlot == self.NumLabels:
             if self.parent.parent.trackingApplet._gui \
                     and self.parent.parent.trackingApplet._gui.currentGui() \
@@ -595,6 +601,53 @@ class OpConservationTracking(Operator, ExportingOperator):
                                                          idx,
                                                          int(size[idx,0]))
 
+
+    def _getEventsVector(self, result, model):        
+        traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = getMappingsBetweenUUIDsAndTraxels(model)
+        timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
+        
+        mergers, detections, links, divisions = getMergersDetectionsLinksDivisions(result, uuidToTraxelMap)
+        
+        # Group by timestep for event creation
+        mergersPerTimestep = getMergersPerTimestep(mergers, timesteps)
+        linksPerTimestep = getLinksPerTimestep(links, timesteps)
+        detectionsPerTimestep = getDetectionsPerTimestep(detections, timesteps)
+        divisionsPerTimestep = getDivisionsPerTimestep(divisions, linksPerTimestep, timesteps)
+
+        # Populate events dictionary
+        events = {}
+        
+        for timestep in traxelIdPerTimestepToUniqueIdMap.keys():
+            dis = []
+            app = []
+            div = []
+            mov = []
+            mer = []
+            mul = []
+    
+            dis = np.asarray(dis)
+            app = np.asarray(app)
+            div = np.asarray([[k, v[0], v[1]] for k,v in divisionsPerTimestep[timestep].iteritems()])
+            mov = np.asarray(linksPerTimestep[timestep])
+            mer = np.asarray([[k,v] for k,v in mergersPerTimestep[timestep].iteritems()])
+            mul = np.asarray(mul)
+            
+            events[str(timestep)] = {}
+         
+            if len(dis) > 0:
+                events[str(timestep)]['dis'] = dis
+            if len(app) > 0:
+                events[str(timestep)]['app'] = app
+            if len(div) > 0:
+                events[str(timestep)]['div'] = div
+            if len(mov) > 0:
+                events[str(timestep)]['mov'] = mov
+            if len(mer) > 0:
+                events[str(timestep)]['mer'] = mer
+            if len(mul) > 0:
+                events[str(timestep)]['mul'] = mul
+                
+        return events
 
     def _labelLineagesHyTra(self, volume, time):
         if self.hypotheses_graph:
