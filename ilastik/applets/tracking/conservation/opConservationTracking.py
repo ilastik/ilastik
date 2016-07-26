@@ -318,7 +318,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         
         median_obj_size = [0]
 
-        ################[HyTra Integration ends here]#####################
+        ################[HyTra Integration starts here]#####################
         
         traxelstore = self._generate_traxelstore_HyTra(time_range, x_range, y_range, z_range,
                                                                       size_range, x_scale, y_scale, z_scale, 
@@ -604,6 +604,8 @@ class OpConservationTracking(Operator, ExportingOperator):
             for label in labels:
                 if label > 0:
                     lineage_id = self.hypotheses_graph.getLineageId(time, label)
+                    if lineage_id is None:
+                        lineage_id = 1
                     mp[label] = lineage_id               
                 
             return mp[volume]
