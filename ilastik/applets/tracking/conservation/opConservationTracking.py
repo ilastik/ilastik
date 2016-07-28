@@ -3,10 +3,7 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from ilastik.utility.exportingOperator import ExportingOperator
 from lazyflow.rtype import List
 from lazyflow.stype import Opaque
-try:
-    import pgmlink
-except:
-    import pgmlinkNoIlpSolver as pgmlink
+
 from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.tracking.base.trackingUtilities import relabel, highlightMergers
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key, OpRegionFeatures
@@ -405,28 +402,6 @@ class OpConservationTracking(Operator, ExportingOperator):
                 self.parent.parent.trackingApplet._gui.currentGui().layerstack[merger_layer_idx].colorTable = \
                     self.parent.parent.trackingApplet._gui.currentGui().tracking_colortable
 
-    @staticmethod
-    def getPgmlinkSolverType(solverName):
-        if solverName == "ILP":
-            # select solver type
-            if hasattr(pgmlink.ConsTrackingSolverType, "CplexSolver"):
-                solver = pgmlink.ConsTrackingSolverType.CplexSolver
-            else:
-                raise AssertionError("Cannot select ILP solver if pgmlink was compiled without ILP support")
-        elif solverName == "Magnusson":
-            if hasattr(pgmlink.ConsTrackingSolverType, "DynProgSolver"):
-                solver = pgmlink.ConsTrackingSolverType.DynProgSolver
-            else:
-                raise AssertionError("Cannot select Magnusson solver if pgmlink was compiled without Magnusson support")
-        elif solverName == "Flow":
-            if hasattr(pgmlink.ConsTrackingSolverType, "FlowSolver"):
-                solver = pgmlink.ConsTrackingSolverType.FlowSolver
-            else:
-                raise AssertionError("Cannot select Flow solver if pgmlink was compiled without Flow support")
-        else:
-            raise ValueError("Unknown solver {} selected".format(solverName))
-        return solver
-
     def propagateDirty(self, inputSlot, subindex, roi):
         if inputSlot is self.LabelImage:
             self.Output.setDirty(roi)
@@ -440,42 +415,44 @@ class OpConservationTracking(Operator, ExportingOperator):
                 self.parent.parent.trackingApplet._gui.currentGui()._drawer.maxObjectsBox.setValue(self.NumLabels.value-1)
 
     def _get_merger_coordinates(self, coordinate_map, time_range, eventsVector):
-        # fetch features
-        feats = self.ObjectFeatures(time_range).wait()
-        # iterate over all timesteps
-        for t in feats.keys():
-            rc = feats[t][default_features_key]['RegionCenter']
-            lower = feats[t][default_features_key]['Coord<Minimum>']
-            upper = feats[t][default_features_key]['Coord<Maximum>']
-            size = feats[t][default_features_key]['Count']
-            for event in eventsVector[t]:
-                # check for merger events
-                if event.type == pgmlink.EventType.Merger:
-                    idx = event.traxel_ids[0]
-                    # generate roi: assume the following order: txyzc
-                    n_dim = len(rc[idx])
-                    roi = [0]*5
-                    roi[0] = slice(int(t), int(t+1))
-                    roi[1] = slice(int(lower[idx][0]), int(upper[idx][0] + 1))
-                    roi[2] = slice(int(lower[idx][1]), int(upper[idx][1] + 1))
-                    if n_dim == 3:
-                        roi[3] = slice(int(lower[idx][2]), int(upper[idx][2] + 1))
-                    else:
-                        assert n_dim == 2
-                    image_excerpt = self.LabelImage[roi].wait()
-                    if n_dim == 2:
-                        image_excerpt = image_excerpt[0, ..., 0, 0]
-                    elif n_dim ==3:
-                        image_excerpt = image_excerpt[0, ..., 0]
-                    else:
-                        raise Exception, "n_dim = %s instead of 2 or 3"
-
-                    pgmlink.extract_coord_by_timestep_id(coordinate_map,
-                                                         image_excerpt,
-                                                         lower[idx].astype(np.int64),
-                                                         t,
-                                                         idx,
-                                                         int(size[idx,0]))
+        # Get merger coordinates code goes here
+        pass
+#         # fetch features
+#         feats = self.ObjectFeatures(time_range).wait()
+#         # iterate over all timesteps
+#         for t in feats.keys():
+#             rc = feats[t][default_features_key]['RegionCenter']
+#             lower = feats[t][default_features_key]['Coord<Minimum>']
+#             upper = feats[t][default_features_key]['Coord<Maximum>']
+#             size = feats[t][default_features_key]['Count']
+#             for event in eventsVector[t]:
+#                 # check for merger events
+#                 if event.type == pgmlink.EventType.Merger:
+#                     idx = event.traxel_ids[0]
+#                     # generate roi: assume the following order: txyzc
+#                     n_dim = len(rc[idx])
+#                     roi = [0]*5
+#                     roi[0] = slice(int(t), int(t+1))
+#                     roi[1] = slice(int(lower[idx][0]), int(upper[idx][0] + 1))
+#                     roi[2] = slice(int(lower[idx][1]), int(upper[idx][1] + 1))
+#                     if n_dim == 3:
+#                         roi[3] = slice(int(lower[idx][2]), int(upper[idx][2] + 1))
+#                     else:
+#                         assert n_dim == 2
+#                     image_excerpt = self.LabelImage[roi].wait()
+#                     if n_dim == 2:
+#                         image_excerpt = image_excerpt[0, ..., 0, 0]
+#                     elif n_dim ==3:
+#                         image_excerpt = image_excerpt[0, ..., 0]
+#                     else:
+#                         raise Exception, "n_dim = %s instead of 2 or 3"
+# 
+#                     pgmlink.extract_coord_by_timestep_id(coordinate_map,
+#                                                          image_excerpt,
+#                                                          lower[idx].astype(np.int64),
+#                                                          t,
+#                                                          idx,
+#                                                          int(size[idx,0]))
 
 
     def _getEventsVector(self, result, model):        
@@ -543,47 +520,49 @@ class OpConservationTracking(Operator, ExportingOperator):
             return volume        
     
     def _relabelMergers(self, volume, time, pixel_offsets=[0, 0, 0], onlyMergers=False, noRelabeling=False):
-        if self.CoordinateMap.value.size() == 0:
-            logger.info("Skipping merger relabeling because coordinate map is empty")
-            if onlyMergers:
-                return np.zeros_like(volume)
-            else:
-                return volume
-        if time >= len(self.resolvedto):
-            if onlyMergers:
-                return np.zeros_like(volume)
-            else:
-                return volume
-
-        coordinate_map = self.CoordinateMap.value
-        valid_ids = []
-        for old_id, new_ids in self.resolvedto[time].iteritems():
-            for new_id in new_ids:
-                # TODO Reliable distinction between 2d and 3d?
-                if self._ndim == 2:
-                    # Assume we have 2d data: bind z to zero
-                    relabel_volume = volume[..., 0]
-                else:
-                    # For 3d data use the whole volume
-                    relabel_volume = volume
-                # relabel
-                pgmlink.update_labelimage(
-                    coordinate_map,
-                    relabel_volume,
-                    np.array(pixel_offsets, dtype=np.int64),
-                    int(time),
-                    int(new_id))
-                valid_ids.append(new_id)
-
-        if onlyMergers:
-            # find indices of merger ids, set everything else to zero
-            idx = np.in1d(volume.ravel(), valid_ids).reshape(volume.shape)
-            volume[-idx] = 0
-
-        if noRelabeling:
-            return volume
-        else:
-            return relabel(volume, self.label2color[time])
+        # Merger relabeling code goes here
+        return volume
+#         if self.CoordinateMap.value.size() == 0:
+#             logger.info("Skipping merger relabeling because coordinate map is empty")
+#             if onlyMergers:
+#                 return np.zeros_like(volume)
+#             else:
+#                 return volume
+#         if time >= len(self.resolvedto):
+#             if onlyMergers:
+#                 return np.zeros_like(volume)
+#             else:
+#                 return volume
+# 
+#         coordinate_map = self.CoordinateMap.value
+#         valid_ids = []
+#         for old_id, new_ids in self.resolvedto[time].iteritems():
+#             for new_id in new_ids:
+#                 # TODO Reliable distinction between 2d and 3d?
+#                 if self._ndim == 2:
+#                     # Assume we have 2d data: bind z to zero
+#                     relabel_volume = volume[..., 0]
+#                 else:
+#                     # For 3d data use the whole volume
+#                     relabel_volume = volume
+#                 # relabel
+#                 pgmlink.update_labelimage(
+#                     coordinate_map,
+#                     relabel_volume,
+#                     np.array(pixel_offsets, dtype=np.int64),
+#                     int(time),
+#                     int(new_id))
+#                 valid_ids.append(new_id)
+# 
+#         if onlyMergers:
+#             # find indices of merger ids, set everything else to zero
+#             idx = np.in1d(volume.ravel(), valid_ids).reshape(volume.shape)
+#             volume[-idx] = 0
+# 
+#         if noRelabeling:
+#             return volume
+#         else:
+#             return relabel(volume, self.label2color[time])
 
     def _setupRelabeledFeatureSlot(self, original_feature_slot):
         from ilastik.applets.trackingFeatureExtraction import config
