@@ -100,7 +100,6 @@ class OpConservationTracking(Operator, ExportingOperator):
     def __init__(self, parent=None, graph=None):
         super(OpConservationTracking, self).__init__(parent=parent, graph=graph)
 
-        self.label2color = []
         self.mergers = []
         self.resolvedto = []
 
@@ -180,10 +179,10 @@ class OpConservationTracking(Operator, ExportingOperator):
             #pixel_offsets=roi.start[1:-1]  # offset only in pixels, not time and channel
             for t in trange:
                 if ('time_range' in parameters
-                        and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]
-                        and len(self.resolvedto) > t and len(self.resolvedto[t])):
+                        and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]):
+                        #and len(self.resolvedto) > t and len(self.resolvedto[t])):
                     #result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, pixel_offsets)
-                    result[t-roi.start[0],...,0] = self._labelLineagesHyTra(result[t-roi.start[0],...,0], t)
+                    result[t-roi.start[0],...,0] = self._labelLineageIds(result[t-roi.start[0],...,0], t)
                 else:
                     result[t-roi.start[0],...][:] = 0
 
@@ -217,9 +216,13 @@ class OpConservationTracking(Operator, ExportingOperator):
                         result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, pixel_offsets, False, True)
         elif slot == self.AllBlocks:
             # if nothing was computed, return empty list
-            if len(self.label2color) == 0:
+            if not self.hypotheses_graph:
                 result[0] = []
                 return result
+                
+#             if len(self.label2color) == 0:
+#                 result[0] = []
+#                 return result
 
             all_block_rois = []
             shape = self.Output.meta.shape
@@ -295,9 +298,13 @@ class OpConservationTracking(Operator, ExportingOperator):
         parameters['borderAwareWidth'] = borderAwareWidth
         parameters['withArmaCoordinates'] = withArmaCoordinates
         parameters['appearanceCost'] = appearance_cost
-        parameters['disappearanceCost'] = disappearance_cost
-
-        do_build_hypotheses_graph = True
+        parameters['disappearanceCost'] = disappearance_cost       
+        parameters['scales'] = [x_scale, y_scale, z_scale]
+        parameters['time_range'] = [min(time_range), max(time_range)]
+        parameters['x_range'] = x_range
+        parameters['y_range'] = y_range
+        parameters['z_range'] = z_range
+        parameters['size_range'] = size_range
 
         if cplex_timeout:
             parameters['cplex_timeout'] = cplex_timeout
@@ -317,16 +324,12 @@ class OpConservationTracking(Operator, ExportingOperator):
                     'Check whether you have (i) the correct number of label names specified in Object Count Classification, and (ii) provided at least ' +\
                     'one training example for each class.')
         
-        median_obj_size = [0]
-
-        ################[HyTra Integration starts here]#####################
-        
-        traxelstore = self._generate_traxelstore_HyTra(time_range, x_range, y_range, z_range,
-                                                                      size_range, x_scale, y_scale, z_scale, 
-                                                                      median_object_size=median_obj_size, 
-                                                                      with_div=withDivisions,
-                                                                      with_opt_correction=withOpticalCorrection,
-                                                                      with_classifier_prior=withClassifierPrior)
+        traxelstore = self._generate_traxelstore(time_range, x_range, y_range, z_range,
+                                                       size_range, x_scale, y_scale, z_scale, 
+#                                                      median_object_size=median_obj_size, 
+                                                       with_div=withDivisions,
+#                                                      with_opt_correction=withOpticalCorrection,
+                                                       with_classifier_prior=withClassifierPrior)
         
         def constructFov(shape, t0, t1, scale=[1, 1, 1]):
             [xshape, yshape, zshape] = shape
@@ -381,142 +384,16 @@ class OpConservationTracking(Operator, ExportingOperator):
             
         self.hypotheses_graph = hypotheses_graph
         
-        # Get events vector
+        # Get events vector (only used whe saving old h5 events file)
         events = self._getEventsVector(result, model)
         self.EventsVector.setValue(events, check_changed=False)
         
-        ################[HyTra Integration ends here]#####################
-
-        fs, ts, empty_frame, max_traxel_id_at = self._generate_traxelstore(time_range, x_range, y_range, z_range,
-                                                                      size_range, x_scale, y_scale, z_scale, 
-                                                                      median_object_size=median_obj_size, 
-                                                                      with_div=withDivisions,
-                                                                      with_opt_correction=withOpticalCorrection,
-                                                                      with_classifier_prior=withClassifierPrior)
-        
-        if empty_frame:
-            raise DatasetConstraintError('Tracking', 'Can not track frames with 0 objects, abort.')
-              
-        
-        if avgSize[0] > 0:
-            median_obj_size = avgSize
-        
-        logger.info( 'median_obj_size = {}'.format( median_obj_size ) )
-
-        ep_gap = 0.05
-        transition_parameter = 5
-        
-        fov = pgmlink.FieldOfView(time_range[0] * 1.0,
-                                      x_range[0] * x_scale,
-                                      y_range[0] * y_scale,
-                                      z_range[0] * z_scale,
-                                      time_range[-1] * 1.0,
-                                      (x_range[1]-1) * x_scale,
-                                      (y_range[1]-1) * y_scale,
-                                      (z_range[1]-1) * z_scale,)
-        
-        logger.info( 'fov = {},{},{},{},{},{},{},{}'.format( time_range[0] * 1.0,
-                                      x_range[0] * x_scale,
-                                      y_range[0] * y_scale,
-                                      z_range[0] * z_scale,
-                                      time_range[-1] * 1.0,
-                                      (x_range[1]-1) * x_scale,
-                                      (y_range[1]-1) * y_scale,
-                                      (z_range[1]-1) * z_scale, ) )
-        
-        if ndim == 2:
-            assert z_range[0] * z_scale == 0 and (z_range[1]-1) * z_scale == 0, "fov of z must be (0,0) if ndim==2"
-
-        if self.tracker is None:
-            do_build_hypotheses_graph = True
-
-        solverType = self.getPgmlinkSolverType(solverName)
-
-        if do_build_hypotheses_graph:
-            print '\033[94m' +"make new graph"+  '\033[0m'
-            self.tracker = pgmlink.ConsTracking(int(maxObj),
-                                         bool(sizeDependent),   # size_dependent_detection_prob
-                                         float(median_obj_size[0]), # median_object_size
-                                         float(maxDist),
-                                         bool(withDivisions),
-                                         float(divThreshold),
-                                         "none",  # detection_rf_filename
-                                         fov,
-                                         "none", # dump traxelstore,
-                                         solverType,
-                                         ndim
-                                         )
-            g = self.tracker.buildGraph(ts, max_nearest_neighbors)
-
-        # create dummy uncertainty parameter object with just one iteration, so no perturbations at all (iter=0 -> MAP)
-        sigmas = pgmlink.VectorOfDouble()
-        for i in range(5):
-            sigmas.append(0.0)
-        uncertaintyParams = pgmlink.UncertaintyParameter(1, pgmlink.DistrId.PerturbAndMAP, sigmas)
-
-        params = self.tracker.get_conservation_tracking_parameters(
-            0,       # forbidden_cost
-            float(ep_gap), # ep_gap
-            bool(withTracklets), # with tracklets
-            float(10.0), # detection weight
-            float(divWeight), # division weight
-            float(transWeight), # transition weight
-            float(disappearance_cost), # disappearance cost
-            float(appearance_cost), # appearance cost
-            bool(withMergerResolution), # with merger resolution
-            int(ndim), # ndim
-            float(transition_parameter), # transition param
-            float(borderAwareWidth), # border width
-            True, #with_constraints
-            uncertaintyParams, # uncertainty parameters
-            float(cplex_timeout), # cplex timeout
-            None, # transition classifier
-            solverType,
-            False, # training to hard constraints
-            1 # num threads
-        )
-
-        # if motionModelWeight > 0:
-        #     logger.info("Registering motion model with weight {}".format(motionModelWeight))
-        #     params.register_motion_model4_func(swirl_motion_func_creator(motionModelWeight), motionModelWeight * 25.0)
-
-        try:
-            eventsVector = self.tracker.track(params, False)
-
-            eventsVector = eventsVector[0] # we have a vector such that we could get a vector per perturbation
-
-            # extract the coordinates with the given event vector
-            if withMergerResolution:
-                coordinate_map = pgmlink.TimestepIdCoordinateMap()
-
-                self._get_merger_coordinates(coordinate_map,
-                                             time_range,
-                                             eventsVector)
-                self.CoordinateMap.setValue(coordinate_map)
-
-                eventsVector = self.tracker.resolve_mergers(
-                    eventsVector,
-                    params,
-                    coordinate_map.get(),
-                    float(ep_gap),
-                    float(transWeight),
-                    bool(withTracklets),
-                    ndim,
-                    transition_parameter,
-                    max_traxel_id_at,
-                    True, # with_constraints
-                    None) # TransitionClassifier
-
-        except Exception as e:
-            raise Exception, 'Tracking terminated unsuccessfully: ' + str(e)
-        
-        if len(eventsVector) == 0:
-            raise Exception, 'Tracking terminated unsuccessfully: Events vector has zero length.'
-        
-        events = get_events(eventsVector)
-        self.Parameters.setValue(parameters, check_changed=False)
-        self.EventsVector.setValue(events, check_changed=False)
+        # Refresh (execute) output slots
+        self.Output.setDirty()
         self.RelabeledImage.setDirty()
+        
+        if withMergerResolution:
+            self.MergerOutput.setDirty()
         
         if not withBatchProcessing:
             merger_layer_idx = self.parent.parent.trackingApplet._gui.currentGui().layerstack.findMatchingIndex(lambda x: x.name == "Merger")
@@ -554,11 +431,6 @@ class OpConservationTracking(Operator, ExportingOperator):
         if inputSlot is self.LabelImage:
             self.Output.setDirty(roi)
         elif inputSlot is self.EventsVector:
-            #self._setLabel2Color()
-            #try:
-            #    self._setLabel2Color(export_mode=True)
-            #except:
-            #    logger.debug("Warning: some label information might be wrong...")
             pass
         elif inputSlot == self.NumLabels:
             if self.parent.parent.trackingApplet._gui \
@@ -653,7 +525,7 @@ class OpConservationTracking(Operator, ExportingOperator):
                 
         return events
 
-    def _labelLineagesHyTra(self, volume, time):
+    def _labelLineageIds(self, volume, time):
         if self.hypotheses_graph:
             mp = np.arange(0, np.amax(volume) + 1, dtype=volume.dtype)
             
@@ -807,13 +679,9 @@ class OpConservationTracking(Operator, ExportingOperator):
                                 {"selection": selected_features})
 
         if with_divisions:
-            if divisions:
-                div_lineage = division_flatten_dict(divisions, self.label2color)
-                zips = zip(*divisions)
-                divisions = zip(zips[0], div_lineage, *zips[1:])
-                export_file.add_columns("divisions", divisions, Mode.List, Default.DivisionNames)
-            else:
-                logger.debug("No divisions occurred. Division Table will not be exported!")
+            # Export divisions here
+            # export_file.add_columns("divisions", divisions, Mode.List, Default.DivisionNames)
+            pass
 
         if settings["file type"] == "h5":
             export_file.add_rois(Default.LabelRoiPath, label_image_slot, "table", settings["margin"], "labeling")
@@ -865,202 +733,7 @@ class OpConservationTracking(Operator, ExportingOperator):
                                              "shape of (t, x, y, z, c) = {}" \
                                              .format(self.RawImage.meta.shape, self.BinaryImage.meta.shape))
 
-    def _setLabel2Color(self, successive_ids=True, export_mode=False):
-        if not self.EventsVector.ready() or not self.Parameters.ready() \
-                or not self.FilteredLabels.ready():
-            return
-
-        if export_mode:
-            assert successive_ids, "Export mode only works for successive ids"
-
-        events = self.EventsVector.value
-        parameters = self.Parameters.value
-        
-        time_min = 0
-        time_max = self.RawImage.meta.shape[0] - 1 # Assumes t,x,y,z,c
-        if 'time_range' in parameters:
-            time_min, time_max = parameters['time_range']
-        time_range = range(time_min, time_max)
-
-        filtered_labels = self.FilteredLabels.value
-
-        label2color = []
-        label2color.append({})
-        mergers = []
-        resolvedto = []
-
-        maxId = 2  # misdetections have id 1
-
-        # handle start time offsets
-        for i in range(time_range[0]):
-            label2color.append({})
-            mergers.append({})
-            resolvedto.append({})
-
-        extra_track_ids = {}
-        if export_mode:
-            multi_move = {}
-            multi_move_next = {}
-            divisions = []
-
-        for i in time_range:
-            app = get_dict_value(events[str(i - time_range[0] + 1)], "app", [])
-            div = get_dict_value(events[str(i - time_range[0] + 1)], "div", [])
-            mov = get_dict_value(events[str(i - time_range[0] + 1)], "mov", [])
-            merger = get_dict_value(events[str(i - time_range[0])], "merger", [])
-            res = get_dict_value(events[str(i - time_range[0])], "res", {})
-
-            logger.debug(" {} app at {}".format(len(app), i))
-            logger.debug(" {} div at {}".format(len(div), i))
-            logger.debug(" {} mov at {}".format(len(mov), i))
-            logger.debug(" {} merger at {}".format(len(merger), i))
-
-            label2color.append({})
-            mergers.append({})
-            moves_at = []
-            resolvedto.append({})
-
-            if export_mode:
-                moves_to = {}
-
-            for e in app:
-                if successive_ids:
-                    label2color[-1][int(e[0])] = maxId  # in export mode, the label color is used as track ID
-                    maxId += 1
-                else:
-                    label2color[-1][int(e[0])] = np.random.randint(1, 255)
-
-            for e in mov:
-                if export_mode:
-                    if e[1] in moves_to:
-                        multi_move.setdefault(i, {})
-                        multi_move[i][e[0]] = e[1]
-                        if len(moves_to[e[1]]) == 1:  # if we are just setting up this multi move
-                            multi_move[i][moves_to[e[1]][0]] = e[1]
-                        multi_move_next[(i, e[1])] = 0
-                    moves_to.setdefault(e[1], [])
-                    moves_to[e[1]].append(e[0])  # moves_to[target] contains list of incoming object ids
-
-                # alternative way of appearance
-                if not label2color[-2].has_key(int(e[0])):
-                    if successive_ids:
-                        label2color[-2][int(e[0])] = maxId
-                        maxId += 1
-                    else:
-                        label2color[-2][int(e[0])] = np.random.randint(1, 255)
-
-                # assign color of parent
-                label2color[-1][int(e[1])] = label2color[-2][int(e[0])]
-                moves_at.append(int(e[0]))
-
-                if export_mode:
-                    key = i - 1, e[0]
-                    if key in multi_move_next:  # captures mergers staying connected over longer time spans
-                        multi_move_next[key] = e[1]  # redirects output of last merger to target in this frame
-                        multi_move_next[(i, e[1])] = 0  # sets current end to zero (might be changed by above line in the future)
-
-            for e in div:  # event(parent, child, child)
-                # if not label2color[-2].has_key(int(e[0])):
-                if not int(e[0]) in label2color[-2]:
-                    if successive_ids:
-                        label2color[-2][int(e[0])] = maxId
-                        maxId += 1
-                    else:
-                        label2color[-2][int(e[0])] = np.random.randint(1, 255)
-                ancestor_color = label2color[-2][int(e[0])]
-                if export_mode:
-                    label2color[-1][int(e[1])] = maxId
-                    label2color[-1][int(e[2])] = maxId + 1
-                    divisions.append((i, int(e[0]), ancestor_color,
-                                      int(e[1]), maxId,
-                                      int(e[2]), maxId + 1
-                    ))
-                    maxId += 2
-                else:
-                    label2color[-1][int(e[1])] = ancestor_color
-                    label2color[-1][int(e[2])] = ancestor_color
-
-            for e in merger:
-                mergers[-1][int(e[0])] = int(e[1])
-
-            for o, r in res.iteritems():
-                resolvedto[-1][int(o)] = [int(c) for c in r[:-1]]
-                # label the original object with the false detection label
-                mergers[-1][int(o)] = len(r[:-1])
-
-                if export_mode:
-                    extra_track_ids.setdefault(i, {})
-                    extra_track_ids[i][int(o)] = [int(c) for c in r[:-1]]
-
-        # last timestep
-        merger = get_dict_value(events[str(time_range[-1] - time_range[0] + 1)], "merger", [])
-        mergers.append({})
-        for e in merger:
-            mergers[-1][int(e[0])] = int(e[1])
-
-        res = get_dict_value(events[str(time_range[-1] - time_range[0] + 1)], "res", {})
-        resolvedto.append({})
-        if export_mode:
-            extra_track_ids[time_range[-1] + 1] = {}
-        for o, r in res.iteritems():
-            resolvedto[-1][int(o)] = [int(c) for c in r[:-1]]
-            mergers[-1][int(o)] = len(r[:-1])
-
-            if export_mode:
-                    extra_track_ids[time_range[-1] + 1][int(o)] = [int(c) for c in r[:-1]]
-
-        # mark the filtered objects
-        for i in filtered_labels.keys():
-            if int(i) + time_range[0] >= len(label2color):
-                continue
-            fl_at = filtered_labels[i]
-            for l in fl_at:
-                assert l not in label2color[int(i) + time_range[0]]
-                label2color[int(i) + time_range[0]][l] = 0
-
-        if export_mode:  # don't set fields when in export_mode
-            self.track_id = label2color
-            self.divisions = divisions
-            self.extra_track_ids = extra_track_ids
-            return label2color, extra_track_ids, divisions
-
-        self.track_id = label2color
-        self.extra_track_ids = extra_track_ids
-        self.label2color = label2color
-        self.resolvedto = resolvedto
-        self.mergers = mergers
-
-        self.Output._value = None
-        self.Output.setDirty(slice(None))
-
-        if 'MergerOutput' in self.outputs:
-            self.MergerOutput._value = None
-            self.MergerOutput.setDirty(slice(None))
-
-    def export_track_ids(self):
-        return self._setLabel2Color(export_mode=True)
-
-    def track_children(self, track_id, start=0):
-        if start in self.divisions:
-            for t, _, track, _, child_track1, _, child_track2 in self.divisions[start:]:
-                if track == track_id:
-                    children_of = partial(self.track_children, start=t)
-                    return [child_track1, child_track2] + \
-                           children_of(child_track1) + children_of(child_track2)
-        return []
-
-    def track_parent(self, track_id):
-        if not self.divisions == {}:
-            for t, oid, track, _, child_track1, _, child_track2 in self.divisions[:-1]:
-                if track_id in (child_track1, child_track2):
-                    return [track] + self.track_parent(track)
-        return []
-
-    def track_family(self, track_id):
-        return self.track_children(track_id), self.track_parent(track_id)
-
-
-    def _generate_traxelstore_HyTra(self,
+    def _generate_traxelstore(self,
                               time_range,
                               x_range,
                               y_range,
@@ -1071,23 +744,7 @@ class OpConservationTracking(Operator, ExportingOperator):
                               z_scale=1.0,
                               with_div=False,
                               with_local_centers=False,
-                              median_object_size=None,
-                              max_traxel_id_at=None,
-                              with_opt_correction=False,
-                              with_coordinate_list=False,
                               with_classifier_prior=False):
-
-        if not self.Parameters.ready():
-            raise Exception("Parameter slot is not ready")
-
-        # FIXME: Should we set the parameters here?
-        parameters = self.Parameters.value
-        parameters['scales'] = [x_scale, y_scale, z_scale]
-        parameters['time_range'] = [min(time_range), max(time_range)]
-        parameters['x_range'] = x_range
-        parameters['y_range'] = y_range
-        parameters['z_range'] = z_range
-        parameters['size_range'] = size_range
 
         logger.info("generating traxels")
         logger.info("fetching region features and division probabilities")
@@ -1116,9 +773,7 @@ class OpConservationTracking(Operator, ExportingOperator):
 
         logger.info("filling traxelstore")
 
-        max_traxel_id_at = pgmlink.VectorOfInt()
         filtered_labels = {}
-        obj_sizes = []
         total_count = 0
         empty_frame = False
 
@@ -1130,14 +785,6 @@ class OpConservationTracking(Operator, ExportingOperator):
                 rc = rc[1:, ...]
                 lower = lower[1:, ...]
                 upper = upper[1:, ...]
-
-            if with_opt_correction:
-                try:
-                    rc_corr = feats[t][config.features_vigra_name]['RegionCenter_corr']
-                except:
-                    raise Exception, 'Can not consider optical correction since it has not been computed before'
-                if rc_corr.size:
-                    rc_corr = rc_corr[1:, ...]
 
             ct = feats[t][default_features_key]['Count']
             if ct.size:
@@ -1185,13 +832,6 @@ class OpConservationTracking(Operator, ExportingOperator):
                 for i, v in enumerate(upper[idx]):
                     traxel.set_feature_value("CoordMaximum", i, float(v))
 
-                if with_opt_correction:
-                    traxel.add_feature_array("com_corrected", 3)
-                    for i, v in enumerate(rc_corr[idx]):
-                        traxel.set_feature_value("com_corrected", i, float(v))
-                    if len(rc_corr[idx]) == 2:
-                        traxel.set_feature_value("com_corrected", 2, 0.)
-
                 if with_div:
                     traxel.add_feature_array("divProb", 1)
                     # idx+1 because rc and ct start from 1, divProbs starts from 0
@@ -1220,9 +860,6 @@ class OpConservationTracking(Operator, ExportingOperator):
                 
                 traxel.add_feature_array("count", 1)
                 traxel.set_feature_value("count", 0, float(size))
-                
-                if median_object_size is not None:
-                    obj_sizes.append(float(size))
 
                 # Add traxel to traxelstore
                 traxelstore.TraxelsPerFrame.setdefault(int(t), {})[int(idx + 1)] = traxel
@@ -1231,200 +868,16 @@ class OpConservationTracking(Operator, ExportingOperator):
                 filtered_labels[str(int(t) - time_range[0])] = filtered_labels_at
                 
             logger.debug("at timestep {}, {} traxels passed filter".format(t, count))
-            max_traxel_id_at.append(int(rc.shape[0]))
+
             if count == 0:
                 empty_frame = True
                 logger.info('Found empty frames')
 
             total_count += count
 
-        if median_object_size is not None:
-            median_object_size[0] = np.median(np.array(obj_sizes), overwrite_input=True)
-            logger.info('median object size = ' + str(median_object_size[0]))
-
         self.FilteredLabels.setValue(filtered_labels, check_changed=True)
 
         return traxelstore
-
-
-    def _generate_traxelstore(self,
-                              time_range,
-                              x_range,
-                              y_range,
-                              z_range,
-                              size_range,
-                              x_scale=1.0,
-                              y_scale=1.0,
-                              z_scale=1.0,
-                              with_div=False,
-                              with_local_centers=False,
-                              median_object_size=None,
-                              max_traxel_id_at=None,
-                              with_opt_correction=False,
-                              with_coordinate_list=False,
-                              with_classifier_prior=False):
-
-        if not self.Parameters.ready():
-            raise Exception("Parameter slot is not ready")
-
-        parameters = self.Parameters.value
-        parameters['scales'] = [x_scale, y_scale, z_scale]
-        parameters['time_range'] = [min(time_range), max(time_range)]
-        parameters['x_range'] = x_range
-        parameters['y_range'] = y_range
-        parameters['z_range'] = z_range
-        parameters['size_range'] = size_range
-
-        logger.info("generating traxels")
-        logger.info("fetching region features and division probabilities")
-        feats = self.ObjectFeatures(time_range).wait()
-
-        if with_div:
-            if not self.DivisionProbabilities.ready() or len(self.DivisionProbabilities([0]).wait()[0]) == 0:
-                msgStr = "\nDivision classifier has not been trained! " + \
-                         "Uncheck divisible objects if your objects don't divide or " + \
-                         "go back to the Division Detection applet and train it."
-                raise DatasetConstraintError ("Tracking",msgStr)
-            divProbs = self.DivisionProbabilities(time_range).wait()
-
-        if with_local_centers:
-            localCenters = self.RegionLocalCenters(time_range).wait()
-
-        if with_classifier_prior:
-            if not self.DetectionProbabilities.ready() or len(self.DetectionProbabilities([0]).wait()[0]) == 0:
-                msgStr = "\nObject count classifier has not been trained! " + \
-                         "Go back to the Object Count Classification applet and train it."
-                raise DatasetConstraintError ("Tracking",msgStr)
-            detProbs = self.DetectionProbabilities(time_range).wait()
-
-        logger.info("filling traxelstore")
-        ts = pgmlink.TraxelStore()
-        fs = pgmlink.FeatureStore()
-
-        max_traxel_id_at = pgmlink.VectorOfInt()
-        filtered_labels = {}
-        obj_sizes = []
-        total_count = 0
-        empty_frame = False
-
-        for t in feats.keys():
-            rc = feats[t][default_features_key]['RegionCenter']
-            lower = feats[t][default_features_key]['Coord<Minimum>']
-            upper = feats[t][default_features_key]['Coord<Maximum>']
-            if rc.size:
-                rc = rc[1:, ...]
-                lower = lower[1:, ...]
-                upper = upper[1:, ...]
-
-            if with_opt_correction:
-                try:
-                    rc_corr = feats[t][config.features_vigra_name]['RegionCenter_corr']
-                except:
-                    raise Exception, 'Can not consider optical correction since it has not been computed before'
-                if rc_corr.size:
-                    rc_corr = rc_corr[1:, ...]
-
-            ct = feats[t][default_features_key]['Count']
-            if ct.size:
-                ct = ct[1:, ...]
-
-            logger.debug("at timestep {}, {} traxels found".format(t, rc.shape[0]))
-            count = 0
-            filtered_labels_at = []
-            for idx in range(rc.shape[0]):
-                # for 2d data, set z-coordinate to 0:
-                if len(rc[idx]) == 2:
-                    x, y = rc[idx]
-                    z = 0
-                elif len(rc[idx]) == 3:
-                    x, y, z = rc[idx]
-                else:
-                    raise DatasetConstraintError ("Tracking", "The RegionCenter feature must have dimensionality 2 or 3.")
-                size = ct[idx]
-                if (x < x_range[0] or x >= x_range[1] or
-                            y < y_range[0] or y >= y_range[1] or
-                            z < z_range[0] or z >= z_range[1] or
-                            size < size_range[0] or size >= size_range[1]):
-                    filtered_labels_at.append(int(idx + 1))
-                    continue
-                else:
-                    count += 1
-                tr = pgmlink.Traxel()
-                tr.set_feature_store(fs)
-                tr.set_x_scale(x_scale)
-                tr.set_y_scale(y_scale)
-                tr.set_z_scale(z_scale)
-                tr.Id = int(idx + 1)
-                tr.Timestep = int(t)
-
-                # pgmlink expects always 3 coordinates, z=0 for 2d data
-                tr.add_feature_array("com", 3)
-                for i, v in enumerate([x, y, z]):
-                    tr.set_feature_value('com', i, float(v))
-
-                tr.add_feature_array("CoordMinimum", 3)
-                for i, v in enumerate(lower[idx]):
-                    tr.set_feature_value("CoordMinimum", i, float(v))
-                tr.add_feature_array("CoordMaximum", 3)
-                for i, v in enumerate(upper[idx]):
-                    tr.set_feature_value("CoordMaximum", i, float(v))
-
-                if with_opt_correction:
-                    tr.add_feature_array("com_corrected", 3)
-                    for i, v in enumerate(rc_corr[idx]):
-                        tr.set_feature_value("com_corrected", i, float(v))
-                    if len(rc_corr[idx]) == 2:
-                        tr.set_feature_value("com_corrected", 2, 0.)
-
-                if with_div:
-                    tr.add_feature_array("divProb", 1)
-                    # idx+1 because rc and ct start from 1, divProbs starts from 0
-                    tr.set_feature_value("divProb", 0, float(divProbs[t][idx + 1][1]))
-
-                if with_classifier_prior:
-                    tr.add_feature_array("detProb", len(detProbs[t][idx + 1]))
-                    for i, v in enumerate(detProbs[t][idx + 1]):
-                        val = float(v)
-                        if val < 0.0000001:
-                            val = 0.0000001
-                        if val > 0.99999999:
-                            val = 0.99999999
-                        tr.set_feature_value("detProb", i, float(val))
-
-
-                # FIXME: check whether it is 2d or 3d data!
-                if with_local_centers:
-                    tr.add_feature_array("localCentersX", len(localCenters[t][idx + 1]))
-                    tr.add_feature_array("localCentersY", len(localCenters[t][idx + 1]))
-                    tr.add_feature_array("localCentersZ", len(localCenters[t][idx + 1]))
-                    for i, v in enumerate(localCenters[t][idx + 1]):
-                        tr.set_feature_value("localCentersX", i, float(v[0]))
-                        tr.set_feature_value("localCentersY", i, float(v[1]))
-                        tr.set_feature_value("localCentersZ", i, float(v[2]))
-
-                tr.add_feature_array("count", 1)
-                tr.set_feature_value("count", 0, float(size))
-                if median_object_size is not None:
-                    obj_sizes.append(float(size))
-
-                ts.add(fs, tr)
-
-            if len(filtered_labels_at) > 0:
-                filtered_labels[str(int(t) - time_range[0])] = filtered_labels_at
-            logger.debug("at timestep {}, {} traxels passed filter".format(t, count))
-            max_traxel_id_at.append(int(rc.shape[0]))
-            if count == 0:
-                empty_frame = True
-
-            total_count += count
-
-        if median_object_size is not None:
-            median_object_size[0] = np.median(np.array(obj_sizes), overwrite_input=True)
-            logger.info('median object size = ' + str(median_object_size[0]))
-
-        self.FilteredLabels.setValue(filtered_labels, check_changed=True)
-
-        return fs, ts, empty_frame, max_traxel_id_at
 
     def save_export_progress_dialog(self, dialog):
         """
@@ -1433,4 +886,23 @@ class OpConservationTracking(Operator, ExportingOperator):
         :param dialog: the ProgressDialog to save
         """
         self.export_progress_dialog = dialog
+      
+    def track_children(self, track_id, start=0):
+        if start in self.divisions:
+            for t, _, track, _, child_track1, _, child_track2 in self.divisions[start:]:
+                if track == track_id:
+                    children_of = partial(self.track_children, start=t)
+                    return [child_track1, child_track2] + \
+                           children_of(child_track1) + children_of(child_track2)
+        return []
+
+    def track_parent(self, track_id):
+        if not self.divisions == {}:
+            for t, oid, track, _, child_track1, _, child_track2 in self.divisions[:-1]:
+                if track_id in (child_track1, child_track2):
+                    return [track] + self.track_parent(track)
+        return []
+
+    def track_family(self, track_id):
+        return self.track_children(track_id), self.track_parent(track_id)
         
