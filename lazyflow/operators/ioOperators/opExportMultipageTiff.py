@@ -49,15 +49,10 @@ class OpExportMultipageTiff(Operator):
         self._opReorderAxes.Input.connect( self.Input )
 
     def setupOutputs(self):
-        # Always export in tzcyx order (but omit missing axes)
-        input_axes = self.Input.meta.getAxisKeys()
-        export_axes = "".join( filter( lambda k: k in input_axes, 'tzcyx' ) )
-        if not set("yx").issubset(set(export_axes)):
-            # This could potentially be fixed...
-            raise Exception("I don't know how to export data without both an X and Y axis")
-        
-        self._opReorderAxes.AxisOrder.setValue(export_axes)
-        self._export_axes = export_axes
+        # Always export in tzcyx order
+        # (OME-TIFF doesn't require a particular order, but does require exactly 5D.)
+        self._opReorderAxes.AxisOrder.setValue('tzcyx')
+        self._export_axes = 'tzcyx'
 
     def run_export(self):
         """
