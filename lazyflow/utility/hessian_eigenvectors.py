@@ -18,7 +18,7 @@ def hessian_eigenvectors( a, sigma, sort=True ):
         sort: If True, sort the results in descending order by eigenvalue 
               (i.e. from largest to smallest eigenvalue)     
     """
-    assert numpy.__version__ >= '1.8.0', \
+    assert map(int, numpy.__version__.split('.')) >= [1,8,0], \
         "This function requires broadcasting support in `numpy.linalg.eigh()`, so you need at least numpy v1.8.0"
     assert a.shape[-1] != 1, \
         "This function is designed to work on single-channel images without a channel dimension.  "\

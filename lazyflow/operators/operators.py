@@ -21,7 +21,7 @@
 ###############################################################################
 #third-party dependencies
 import psutil
-if psutil.__version__ < '0.6':
+if map(int, psutil.__version__.split('.')) < [0,6]:
     raise RuntimeError("lazyflow requires psutil 0.6.  Please upgrade your version of psutil (e.g. easy_install -U psutil)")
 
 #lazyflow
