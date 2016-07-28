@@ -160,6 +160,7 @@ class OpExportMultipageTiff(Operator):
         ome = ET.Element('OME')
         uuid_str = "urn:uuid:" + str(uuid.uuid1())
         ome.set('UUID', uuid_str)
+        ome.set('xmlns', 'http://www.openmicroscopy.org/Schemas/OME/2015-01')
         ome.set('xmlns:xsi', "http://www.w3.org/2001/XMLSchema-instance")
         ome.set('xsi:schemaLocation', 
                 "http://www.openmicroscopy.org/Schemas/OME/2015-01 "
@@ -192,10 +193,11 @@ class OpExportMultipageTiff(Operator):
 
         pixels.set('Type', types[dtype])
         
-        # Omit channel information (is that okay?)
-        # channel0 = ET.SubElement(pixels, "Channel")
-        # channel0.set("ID", "Channel0:0")
-        # channel0.set("SamplesPerPixel", "1")
+        ## Omit channel info for now
+        #channel0 = ET.SubElement(pixels, "Channel")
+        #channel0.set("ID", "Channel0:0")
+        #channel0.set("SamplesPerPixel", "1")
+        #channel0.append(ET.Element("LightPath"))
 
         assert axes[-2:] == "yx"
         for page_index, page_ndindex in enumerate(numpy.ndindex(*shape[:-2])):
@@ -211,24 +213,41 @@ class OpExportMultipageTiff(Operator):
         from textwrap import dedent
         from StringIO import StringIO
         xml_stream = StringIO()
-        comment = ET.Comment(dedent('\
-            <!-- Warning: this comment is an OME-XML metadata block, which contains crucial '
+        comment = ET.Comment(
+            ' Warning: this comment is an OME-XML metadata block, which contains crucial '
             'dimensional parameters and other important metadata. Please edit cautiously '
             '(if at all), and back up the original data before doing so. For more information, '
-            'see the OME-TIFF web site: http://ome-xml.org/wiki/OmeTiff. -->'))
-
+            'see the OME-TIFF web site: http://www.openmicroscopy.org/site/support/ome-model/ome-tiff/. ')
+        ET.ElementTree(comment).write(xml_stream, encoding='utf-8', xml_declaration=True)
+        
         tree = ET.ElementTree(ome)
-        tree.write(xml_stream, encoding='utf-8', xml_declaration=True)
+        tree.write(xml_stream, encoding='utf-8', xml_declaration=False)
         
         if logger.isEnabledFor(logging.DEBUG):
             import xml.dom.minidom
             reparsed = xml.dom.minidom.parseString(xml_stream.getvalue())
             logger.debug("Generated OME-TIFF metadata:\n" + reparsed.toprettyxml())
-        
+
         return xml_stream.getvalue()
 
+if __name__ == "__main__":
+    import sys
+    logger.addHandler( logging.StreamHandler(sys.stdout) )
+    logger.setLevel(logging.DEBUG)
+    
+    from lazyflow.graph import Graph
+    from lazyflow.operators.ioOperators import OpTiffReader
+    
+    graph = Graph()
+    opReader = OpTiffReader( graph=graph )
+    opReader.Filepath.setValue( '/tmp/xyz.ome.tiff' )
+    
+    opWriter = OpExportMultipageTiff(graph=graph)
+    opWriter.Filepath.setValue( '/tmp/xyz-converted.ome.tiff' )
+    opWriter.Input.connect( opReader.Output )
+    
+    opWriter.run_export()
+    print "DONE."
 
 
-
-
-        
+ 
