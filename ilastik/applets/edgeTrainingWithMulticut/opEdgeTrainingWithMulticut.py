@@ -34,9 +34,13 @@ class OpEdgeTrainingWithMulticut(Operator):
         
         opEdgeTraining = OpEdgeTraining( parent=self )
         
+        opEdgeTraining.EdgeLabelsDict.connect( self.EdgeLabelsDict )
+        
+        # This is necessary because OpEdgeTraining occasionally calls self.EdgeLabelsDict.setValue()
+        opEdgeTraining.EdgeLabelsDict.backpropagate_values = True
+
         opEdgeTraining.FeatureNames.connect( self.FeatureNames )
         opEdgeTraining.RawData.connect( self.RawData )
-        opEdgeTraining.EdgeLabelsDict.connect( self.EdgeLabelsDict )
         opEdgeTraining.VoxelData.connect( self.VoxelData )
         opEdgeTraining.Superpixels.connect( self.Superpixels )
         opEdgeTraining.GroundtruthSegmentation.connect( self.GroundtruthSegmentation )

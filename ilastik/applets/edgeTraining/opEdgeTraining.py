@@ -137,7 +137,7 @@ class OpEdgeTraining(Operator):
         if old_labels:
             logger.warn( "Superpixels changed.  Deleting all labels in lane {}.".format( lane_index ) )
             logger.info( "Old labels were: {}".format( old_labels ) )
-        self.EdgeLabelsDict[lane_index].setValue({})
+            self.EdgeLabelsDict[lane_index].setValue({})
 
     def setupOutputs(self):
         for sp_slot, seg_cache_blockshape_slot in zip(self.Superpixels, self.opNaiveSegmentationCache.outerBlockShape):
