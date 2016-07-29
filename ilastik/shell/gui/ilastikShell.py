@@ -34,7 +34,7 @@ import numpy
 
 # PyQt
 from PyQt4 import uic
-from PyQt4.QtCore import pyqtSignal, QObject, Qt, QUrl
+from PyQt4.QtCore import pyqtSignal, QObject, Qt, QUrl, QTimer
 from PyQt4.QtGui import QMainWindow, QWidget, QMenu, QApplication, \
     QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
     QProgressBar, QInputDialog, QIcon, QFont, QToolButton, \
@@ -48,6 +48,7 @@ from lazyflow.graph import Operator
 import lazyflow.tools.schematic
 from lazyflow.operators.cacheMemoryManager import CacheMemoryManager
 from lazyflow.utility import timeLogged, isUrl
+from lazyflow.request import Request
 
 # volumina
 from volumina.utility import PreferencesManager, ShortcutManagerDlg, ShortcutManager, decode_to_qstring, \
@@ -136,7 +137,7 @@ class MemoryWidget(QWidget):
         self.setMemoryBytes(0)
 
     def setMemoryBytes(self, bytes):
-        self.label.setText("cached: %1.1f MB" % (bytes / (1024.0 ** 2.0)))
+        self.label.setText("Cached Data: %1.1f MB" % (bytes / (1024.0 ** 2.0)))
 
 
 #===----------------------------------------------------------------------------------------------------------------===
@@ -165,6 +166,17 @@ class ProgressDisplayManager(QObject):
         self.statusBar.addWidget(self.progressBar)
         self.progressBar.setHidden(True)
 
+        self.requestStatus = QLabel()
+        self.requestTimer = QTimer()
+        self.requestTimer.setInterval(1000)
+        def update_request_count():
+            msg = "Active Requests: {}".format( Request.active_count )
+            self.requestStatus.setText(msg)
+        self.requestTimer.timeout.connect( update_request_count )
+        self.requestTimer.start()
+
+        self.statusBar.addPermanentWidget(self.requestStatus)
+        
         self.memoryWidget = MemoryWidget()
         self.memoryWidget.showDialogButton.clicked.connect(self.parent().showMemUsageDialog)
         self.statusBar.addPermanentWidget(self.memoryWidget)
@@ -266,6 +278,7 @@ class IlastikShell(QMainWindow):
     """
     The GUI's main window.  Simply a standard 'container' GUI for one or more applets.
     """
+    currentAppletChanged = pyqtSignal(int, int) # prev, current
 
     def __init__(self, parent=None, workflow_cmdline_args=None, flags=Qt.WindowFlags(0)):
         QMainWindow.__init__(self, parent=parent, flags=flags)
@@ -370,7 +383,7 @@ class IlastikShell(QMainWindow):
 
         self.currentAppletIndex = 0
 
-        self.currentImageIndex = -1
+        self._currentImageIndex = -1
         self.populatingImageSelectionCombo = False
         self.imageSelectionCombo.currentIndexChanged.connect(self.changeCurrentInputImageIndex)
 
@@ -899,7 +912,7 @@ class IlastikShell(QMainWindow):
                 else:
                     self._applets[i].getMultiLaneGui().setImageIndex(newImageIndex)
 
-            self.currentImageIndex = newImageIndex
+            self._currentImageIndex = newImageIndex
 
             if self.currentImageIndex != -1:
                 # Force the applet drawer to be redrawn
@@ -910,6 +923,10 @@ class IlastikShell(QMainWindow):
                     updatedDrawerTitle = app.name
                     self.appletBar.setItemText(applet_index, updatedDrawerTitle)
 
+    @property
+    def currentImageIndex(self):
+        return self._currentImageIndex
+    
     def handleAppletBarItemExpanded(self, modelIndex):
         """
         The user wants to view a different applet bar item.
@@ -925,7 +942,11 @@ class IlastikShell(QMainWindow):
         if self._refreshDrawerRecursionGuard is False:
             assert threading.current_thread().name == "MainThread"
             self._refreshDrawerRecursionGuard = True
+            
+            prev_applet_index = self.currentAppletIndex
             self.currentAppletIndex = applet_index
+            self.currentAppletChanged.emit(prev_applet_index, self.currentAppletIndex)
+            
             # Collapse all drawers in the applet bar...
             # ...except for the newly selected item.
             drawerModelIndex = self.getModelIndexFromDrawerIndex(applet_index)

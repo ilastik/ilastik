@@ -65,6 +65,12 @@ except ImportError as e:
     logger.warn( "Failed to import automatic tracking workflow (conservation tracking). For this workflow, see the installation"\
                  "instructions on our website ilastik.org; check dependencies: " + str(e) )
 
+import multicut
+try:
+    import multicut
+except ImportError as e:
+    logger.warn("Failed to import multicut workflow; check dependencies: " + str(e))
+
 try:
     import tracking.structured
     WORKFLOW_CLASSES += [tracking.structured.structuredTrackingWorkflow.StructuredTrackingWorkflowFromBinary,
@@ -91,6 +97,7 @@ WORKFLOW_CLASSES += [examples.dataConversion.dataConversionWorkflow.DataConversi
 # Examples
 if ilastik.config.cfg.getboolean('ilastik', 'debug'):
     import vigraWatershed
+    import wsdt
     import examples.layerViewer
     import examples.thresholdMasking
     import examples.deviationFromMean

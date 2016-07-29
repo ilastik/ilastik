@@ -187,7 +187,8 @@ class OpDataSelection(Operator):
     
     SupportedExtensions = OpInputDataReader.SupportedExtensions
 
-    # Inputs    
+    # Inputs
+    RoleName = InputSlot(stype='string', value='')
     ProjectFile = InputSlot(stype='object', optional=True) #: The project hdf5 File object (already opened)
     ProjectDataGroup = InputSlot(stype='string', optional=True) #: The internal path to the hdf5 group where project-local datasets are stored within the project file
     WorkingDirectory = InputSlot(stype='filestring') #: The filesystem directory where the project file is located
@@ -286,6 +287,16 @@ class OpDataSelection(Operator):
             # Also, inject if if dtype is uint8, which we can reasonably assume has drange (0,255)
             metadata = {}
             metadata['display_mode'] = datasetInfo.display_mode
+            role_name = self.RoleName.value
+            if 'c' not in providerSlot.meta.getTaggedShape():
+                num_channels = 0
+            else:
+                num_channels = providerSlot.meta.getTaggedShape()['c']
+            if num_channels > 1:
+                metadata['channel_names'] = ["{}-{}".format(role_name, i) for i in range(num_channels)]
+            else:
+                metadata['channel_names'] = [role_name]
+                 
             if datasetInfo.drange is not None:
                 metadata['drange'] = datasetInfo.drange
             elif providerSlot.meta.dtype == numpy.uint8:
@@ -442,6 +453,9 @@ class OpDataSelectionGroup( Operator ):
             self._opDatasets.ProjectFile.connect( self.ProjectFile )
             self._opDatasets.ProjectDataGroup.connect( self.ProjectDataGroup )
             self._opDatasets.WorkingDirectory.connect( self.WorkingDirectory )
+
+        for role_index, opDataSelection in enumerate(self._opDatasets):
+            opDataSelection.RoleName.setValue(self._roles[role_index])
 
         if len( self._opDatasets.Image ) > 0:
             self.Image.connect( self._opDatasets.Image[0] )

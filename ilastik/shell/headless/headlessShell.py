@@ -40,6 +40,10 @@ class HeadlessShell(object):
     def workflow(self):
         return self.projectManager.workflow
 
+    @property
+    def currentImageIndex(self):
+        return -1
+
     def createAndLoadNewProject(self, newProjectFilePath, workflow_class):
         hdf5File = ProjectManager.createBlankProjectFile(newProjectFilePath)
         readOnly = False
