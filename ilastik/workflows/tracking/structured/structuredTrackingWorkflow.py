@@ -180,16 +180,17 @@ class StructuredTrackingWorkflowBase( Workflow ):
         feature_dict_division[config.features_division_name] = { name: {} for name in config.division_features }
         opTrackingFeatureExtraction.FeatureNamesDivision.setValue(feature_dict_division)
 
-        opDivDetection.BinaryImages.connect( op5Binary.Output )
-        opDivDetection.RawImages.connect( op5Raw.Output )
-        opDivDetection.SegmentationImages.connect(opTrackingFeatureExtraction.LabelImage)
-        opDivDetection.ObjectFeatures.connect(opTrackingFeatureExtraction.RegionFeaturesAll)
-        opDivDetection.ComputedFeatureNames.connect(opTrackingFeatureExtraction.ComputedFeatureNamesAll)
-        opDivDetection.SelectedFeatures.setValue(configConservation.selectedFeaturesDiv)
-        opDivDetection.LabelNames.setValue(['Not Dividing', 'Dividing'])
-        opDivDetection.AllowDeleteLabels.setValue(False)
-        opDivDetection.AllowAddLabel.setValue(False)
-        opDivDetection.EnableLabelTransfer.setValue(False)
+        if self.divisionDetectionApplet:
+            opDivDetection.BinaryImages.connect( op5Binary.Output )
+            opDivDetection.RawImages.connect( op5Raw.Output )
+            opDivDetection.SegmentationImages.connect(opTrackingFeatureExtraction.LabelImage)
+            opDivDetection.ObjectFeatures.connect(opTrackingFeatureExtraction.RegionFeaturesAll)
+            opDivDetection.ComputedFeatureNames.connect(opTrackingFeatureExtraction.ComputedFeatureNamesAll)
+            opDivDetection.SelectedFeatures.setValue(configConservation.selectedFeaturesDiv)
+            opDivDetection.LabelNames.setValue(['Not Dividing', 'Dividing'])
+            opDivDetection.AllowDeleteLabels.setValue(False)
+            opDivDetection.AllowAddLabel.setValue(False)
+            opDivDetection.EnableLabelTransfer.setValue(False)
 
         opCellClassification.BinaryImages.connect( op5Binary.Output )
         opCellClassification.RawImages.connect( op5Raw.Output )
@@ -217,16 +218,18 @@ class StructuredTrackingWorkflowBase( Workflow ):
         opStructuredTracking.RawImage.connect( op5Raw.Output )
         opStructuredTracking.LabelImage.connect( opTrackingFeatureExtraction.LabelImage )
         opStructuredTracking.ObjectFeatures.connect( opTrackingFeatureExtraction.RegionFeaturesVigra )
-        opStructuredTracking.ObjectFeaturesWithDivFeatures.connect( opTrackingFeatureExtraction.RegionFeaturesAll)
         opStructuredTracking.ComputedFeatureNames.connect( opTrackingFeatureExtraction.FeatureNamesVigra )
-        opStructuredTracking.ComputedFeatureNamesWithDivFeatures.connect( opTrackingFeatureExtraction.ComputedFeatureNamesAll )
+
+        if self.divisionDetectionApplet:
+            opStructuredTracking.ObjectFeaturesWithDivFeatures.connect( opTrackingFeatureExtraction.RegionFeaturesAll)
+            opStructuredTracking.ComputedFeatureNamesWithDivFeatures.connect( opTrackingFeatureExtraction.ComputedFeatureNamesAll )
+            opStructuredTracking.DivisionProbabilities.connect( opDivDetection.Probabilities )
 
         # configure tracking export settings
         settings = {'file path': self.default_tracking_export_filename, 'compression': {}, 'file type': 'csv'}
         selected_features = ['Count', 'RegionCenter']
         opStructuredTracking.configure_table_export_settings(settings, selected_features)
 
-        opStructuredTracking.DivisionProbabilities.connect( opDivDetection.Probabilities )
         opStructuredTracking.DetectionProbabilities.connect( opCellClassification.Probabilities )
         opStructuredTracking.NumLabels.connect( opCellClassification.NumLabels )
         opStructuredTracking.Crops.connect (opCropSelection.Crops)
@@ -287,7 +290,6 @@ class StructuredTrackingWorkflowBase( Workflow ):
                     all([sub[i].ready() for i in range(nRoles)])
         else:
             input_ready = False
-
         return input_ready
 
     def handleAppletStateUpdateRequested(self):
@@ -303,7 +305,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
             thresholdingOutput = opThresholding.CachedOutput
             thresholding_ready = input_ready and len(thresholdingOutput) > 0
         else:
-            thresholding_ready = True and input_ready
+            thresholding_ready = input_ready
 
         opTrackingFeatureExtraction = self.trackingFeatureExtractionApplet.topLevelOperator
         trackingFeatureExtractionOutput = opTrackingFeatureExtraction.ComputedFeatureNamesAll
@@ -324,8 +326,6 @@ class StructuredTrackingWorkflowBase( Workflow ):
         annotations_ready = features_ready and \
                            len(opAnnotations.Labels) > 0 and \
                            opAnnotations.Labels.ready() and \
-                           len(opAnnotations.Divisions) > 0 and \
-                           opAnnotations.Divisions.ready() and \
                            opAnnotations.TrackImage.ready()
 
         opStructuredTracking = self.trackingApplet.topLevelOperator
@@ -336,6 +336,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
         busy |= self.annotationsApplet.busy
         # busy |= self.dataExportAnnotationsApplet.busy
         busy |= self.trackingApplet.busy
+        busy |= self.dataExportTrackingApplet.busy
 
         self._shell.enableProjectChanges( not busy )
 
