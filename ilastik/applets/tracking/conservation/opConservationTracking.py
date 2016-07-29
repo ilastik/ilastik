@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import itertools
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from ilastik.utility.exportingOperator import ExportingOperator
 from lazyflow.rtype import List
@@ -83,6 +84,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         self.extra_track_ids = None
         self.divisions = None
         self.relabeledVolume = None
+        self.resolvedMergersDict = None
 
         self._opCache = OpCompressedCache(parent=self)
         self._opCache.InputHdf5.connect(self.InputHdf5)
@@ -180,9 +182,7 @@ class OpConservationTracking(Operator, ExportingOperator):
 
             pixel_offsets=roi.start[1:-1]  # offset only in pixels, not time and channel
             for t in trange:
-                if ('time_range' in parameters
-                        and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]
-                        and len(self.mergers) > t and len(self.mergers[t])):
+                if 'time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0] and t in self.resolvedMergersDict:
                     if 'withMergerResolution' in parameters.keys() and parameters['withMergerResolution']:
                         # result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, pixel_offsets, True)
                         result[t-roi.start[0],...,0] = self._labelLineageIds(result[t-roi.start[0],...,0], t, onlyMergers=True)
@@ -190,7 +190,6 @@ class OpConservationTracking(Operator, ExportingOperator):
                         result[t-roi.start[0],...,0] = highlightMergers(result[t-roi.start[0],...,0], self.mergers[t])
                 else:
                     result[t-roi.start[0],...][:] = 0
-            
             
         elif slot is self.RelabeledImage:
             parameters = self.Parameters.value
@@ -384,7 +383,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             labelVolume = self.LabelImage[:].wait()
             pluginPath = os.path.join(os.path.dirname(os.path.abspath(hytra.__file__)), 'plugins')
             mergerResolver = IlastikMergerResolver(originalGraph, labelVolume, pluginPaths=[pluginPath])
-            mergerResolver.run()
+            self.resolvedMergersDict = mergerResolver.run()
             self.relabeledVolume = mergerResolver.relabeledVolume
             self.MergerOutput.setDirty()
 
@@ -471,18 +470,24 @@ class OpConservationTracking(Operator, ExportingOperator):
         :return: the relabeled volume, where 0 means background, 1 means false detection, and all higher numbers indicate lineages
         """
         if self.hypotheses_graph:
-            mp = np.arange(0, np.amax(volume) + 1, dtype=volume.dtype)
+            indexMapping = np.zeros(np.amax(volume) + 1, dtype=volume.dtype)
             
             labels = np.unique(volume)
-            # TODO: set everything else but mergers to zero once we can retrieve this information from the hypotheses graph
+            if onlyMergers:
+                # restrict the labels to only those that came out of a merger
+                assert(self.resolvedMergersDict is not None)
+                values = []
+                if time in self.resolvedMergersDict:
+                    values = self.resolvedMergersDict[time].values()
+                labels = [l for l in labels if l in itertools.chain(*values)]
             for label in labels:
                 if label > 0:
                     lineage_id = self.hypotheses_graph.getLineageId(time, label)
                     if lineage_id is None:
                         lineage_id = 1
-                    mp[label] = lineage_id
+                    indexMapping[label] = lineage_id
                 
-            return mp[volume]
+            return indexMapping[volume]
         else:
             return volume        
     
