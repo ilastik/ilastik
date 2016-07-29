@@ -147,8 +147,15 @@ class ExportingGui(object):
         
         dimensions = self.get_raw_shape()
         feature_names = self.get_feature_names()
+        
+        op = self.get_exporting_operator()
+        settings, selected_features = op.get_table_export_settings()
+        
+        filename = None
+        if settings is not None and 'file path' in settings:
+            filename = settings['file path']
 
-        dialog = ExportObjectInfoDialog(dimensions, feature_names, title=self.get_export_dialog_title())
+        dialog = ExportObjectInfoDialog(dimensions, feature_names, selected_features=selected_features, title=self.get_export_dialog_title(), filename=filename)
         if not dialog.exec_():
             return (None, None)
 
