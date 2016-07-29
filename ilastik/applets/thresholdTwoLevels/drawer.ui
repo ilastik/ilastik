@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>343</width>
-    <height>477</height>
+    <height>850</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -27,14 +27,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QSpinBox" name="inputChannelSpinBox">
-       <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Select the channel of the input data which you want to threshold. Look at &lt;span style=&quot; font-weight:600;&quot;&gt;&amp;quot;Input Channel x&amp;quot;&lt;/span&gt; layer for the results of this operation.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="maximum">
-        <number>0</number>
-       </property>
-      </widget>
+      <widget class="QComboBox" name="inputChannelComboBox"/>
      </item>
     </layout>
    </item>
@@ -133,7 +126,7 @@
       <string extracomment="Simple (one threshold) or Advanced(two threshold)">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;One threshold&lt;/span&gt;: discard all pixel lower than threshold value.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Two thresholds&lt;/span&gt;: hysteresis thresholding. High threshold serves for detection, low threshold for segmentation. First the high threshold is applied and all pixels lower than the high threshold are discarded. Size filtering is performed on the objects (connected components). For the remaining objects, pixel value threshold is relaxed to the low threshold value. &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Graph-Cut&lt;/span&gt;: Ising model segmentation with Graph Cut optimization. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="currentIndex">
-      <number>1</number>
+      <number>0</number>
      </property>
      <widget class="QWidget" name="tab_1">
       <attribute name="title">
@@ -467,7 +460,6 @@ recomputation and might take a while.</string>
   <zorder>label_4</zorder>
  </widget>
  <tabstops>
-  <tabstop>inputChannelSpinBox</tabstop>
   <tabstop>sigmaSpinBox_X</tabstop>
   <tabstop>sigmaSpinBox_Y</tabstop>
   <tabstop>sigmaSpinBox_Z</tabstop>

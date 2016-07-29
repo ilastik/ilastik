@@ -33,7 +33,7 @@ def _init_threading_h5py_monkeypatch():
     See also: https://github.com/ilastik/ilastik/issues/1120
     """
     import h5py
-    if h5py.__version__ <= '2.5.0':
+    if map(int, h5py.__version__.split('.')) <= [2,5,0]:
         import threading
         run_old = threading.Thread.run
         def run(*args, **kwargs):

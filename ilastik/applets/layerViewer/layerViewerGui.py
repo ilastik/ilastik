@@ -496,6 +496,15 @@ class LayerViewerGui(QWidget):
                     newDataShape = self.getVoluminaShapeForSlot(slot)
         return newDataShape
 
+    def getLayerByName(self, name):
+        matches = filter(lambda l: l.name == name, list(self.layerstack))
+        if not matches:
+            return None
+        if len(matches) == 1:
+            return matches[0]
+        assert False, "Found more than one matching layer with name {}".format( name )
+
+
     @threadRouted
     def setViewerPos(self, pos, setTime=False, setChannel=False):
         try:

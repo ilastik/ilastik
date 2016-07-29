@@ -24,7 +24,7 @@ from functools import partial
 
 from PyQt4 import uic
 from PyQt4.QtCore import Qt, QEvent
-from PyQt4.QtGui import QColor
+from PyQt4.QtGui import QColor, QPixmap, QIcon
 from PyQt4.QtGui import QMessageBox
 
 from volumina.api import LazyflowSource, AlphaModulatedLayer, ColortableLayer
@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
 
 class ThresholdTwoLevelsGui( LayerViewerGui ):
-    
+    _defaultInputChannelColors = None
     def stopAndCleanUp(self):
         # Unsubscribe to all signals
         for fn in self.__cleanup_fns:
@@ -54,7 +54,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
     def __init__(self, *args, **kwargs):
         self.__cleanup_fns = []
         super( ThresholdTwoLevelsGui, self ).__init__(*args, **kwargs)
-        self._defaultInputchannelColors = self._createDefault16ColorColorTable()
+        self._defaultInputChannelColors = self._createDefault16ColorColorTable()
 
         self._onInputMetaChanged()
 
@@ -79,7 +79,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
 
         self._allWatchedWidgets = self._sigmaSpinBoxes.values() + \
         [
-            self._drawer.inputChannelSpinBox,
+            self._drawer.inputChannelComboBox,
             self._drawer.lowThresholdSpinBox,
             self._drawer.highThresholdSpinBox,
             self._drawer.thresholdSpinBox,
@@ -128,8 +128,20 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             # Channel
             channelIndex = op.InputImage.meta.axistags.index('c')
             numChannels = op.InputImage.meta.shape[channelIndex]
-        self._drawer.inputChannelSpinBox.setRange( 0, numChannels-1 )
-        self._drawer.inputChannelSpinBox.setValue( op.Channel.value )
+
+        if op.InputChannelColors.ready():
+            input_channel_colors = map(lambda (r,g,b): QColor(r,g,b), op.InputChannelColors.value)
+        else:
+            if self._defaultInputChannelColors is None:
+                self._defaultInputChannelColors = self._createDefault16ColorColorTable()
+            input_channel_colors = map(QColor, self._defaultInputChannelColors)
+        for ichannel in range(numChannels):
+            # make an icon
+            pm = QPixmap(16, 16)
+            pm.fill(input_channel_colors[ichannel])
+            self._drawer.inputChannelComboBox.insertItem(ichannel, QIcon(pm), "Input Channel "+ str(ichannel))
+
+        self._drawer.inputChannelComboBox.setCurrentIndex( op.Channel.value )
 
         # Sigmas
         sigmaDict = self.topLevelOperatorView.SmootherSigma.value
@@ -168,7 +180,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         #  and we don't want it to update until we've read all gui values.)
 
         # Read Channel
-        channel = self._drawer.inputChannelSpinBox.value()
+        channel = self._drawer.inputChannelComboBox.currentIndex()
 
         # Read Sigmas
         sigmaSlot = self.topLevelOperatorView.SmootherSigma
@@ -225,7 +237,6 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
 
         # Read the current thresholding method
         curIndex = self._drawer.tabWidget.currentIndex()
-        #print "Setting operator to", curIndex+1, " thresholds"
 
         op_index = curIndex
         if curIndex == 1 and self._drawer.preserveIdentitiesCheckbox.isChecked():
@@ -312,7 +323,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
         if op.InputChannelColors.ready():
             input_channel_colors = map(lambda (r,g,b): QColor(r,g,b), op.InputChannelColors.value)
         else:
-            input_channel_colors = map(QColor, self._defaultInputchannelColors)
+            input_channel_colors = map(QColor, self._defaultInputChannelColors)
         for channel, channelProvider in enumerate(self._channelProviders):
             slot_drange = channelProvider.Output.meta.drange
             if slot_drange is not None:

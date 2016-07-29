@@ -23,7 +23,7 @@ import logging.config
 import warnings
 import loggingHelpers
 
-DEFAULT_LOGFILE_PATH = os.path.expanduser("~/.ilastik_log.txt")
+DEFAULT_LOGFILE_PATH = os.path.expanduser("~/ilastik_log.txt")
 
 class OutputMode:
     CONSOLE = 0
@@ -143,6 +143,8 @@ def get_default_config( prefix="",
             
             # The requests module spits out a lot of INFO messages by default.
             "requests": {"level":"WARN"},
+
+            "wsdt": { "level": "INFO" },
     
             # When copying to a json file, remember to remove comments and change True/False to true/false
             "__main__":                                                 { "level":"INFO" },
@@ -165,6 +167,7 @@ def get_default_config( prefix="",
             "lazyflow.operators.ioOperators.ioOperators.OpH5WriterBigDataset":   { "level":"INFO" },
             "lazyflow.operators.classifierOperators":                   { "level":"INFO" },
             "lazyflow.operators.opCompressedCache":                     { "level":"INFO" },
+            "lazyflow.operators.opRelabelConsecutive":                  { "level":"INFO" },
             "lazyflow.utility.io_util.RESTfulVolume":                        { "level":"INFO" },
             "lazyflow.utility.io_util.tiledVolume":                          { "level":"INFO" },
             "lazyflow.operators.opFeatureMatrixCache":                  { "level":"INFO" },

@@ -31,10 +31,6 @@ from ilastik.applets.base.applet import DatasetConstraintError
 import itertools
 
 import numpy
-import matplotlib
-import matplotlib.colors
-import matplotlib.cm
-
 import vigra
 
 import nanshe
@@ -58,6 +54,9 @@ class OpColorizeLabelImage(Operator):
 
     @staticmethod
     def colorTableList(num_colors):
+        import matplotlib
+        import matplotlib.colors
+        import matplotlib.cm
         colors = []
 
         # Transparent for the zero label

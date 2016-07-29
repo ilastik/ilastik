@@ -37,6 +37,10 @@ class ShellABC(object):
     def workflow(self):
         raise NotImplementedError
 
+    @abstractproperty
+    def currentImageIndex(self):
+        raise NotImplementedError
+
     @abstractmethod
     def createAndLoadNewProject(self, newProjectFilePath, workflow_class):
         """
@@ -58,8 +62,9 @@ class ShellABC(object):
     def enableProjectChanges(self, enabled):
         pass
 
+
     @classmethod
     def __subclasshook__(cls, C):
         if cls is ShellABC:
-            return _has_attributes(C, ['workflow', 'createAndLoadNewProject', 'openProjectFile', 'setAppletEnabled'])
+            return _has_attributes(C, ['workflow', 'createAndLoadNewProject', 'openProjectFile', 'setAppletEnabled', 'currentImageIndex'])
         return NotImplemented
