@@ -162,9 +162,6 @@ class AnnotationsGui(LayerViewerGui):
         self.misdetLock = False
         self.misdetIdx = -1
 
-        self.currentLabels = {}
-        self.currentDivisions = {}
-
         if self.mainOperator.LabelImage.meta.shape:
             # FIXME: assumes t,x,y,z,c
             if self.mainOperator.LabelImage.meta.shape[3] == 1: # 2D images
@@ -196,7 +193,6 @@ class AnnotationsGui(LayerViewerGui):
         self.deleteAllTraining = False
 
     def _onInitializeAnnotations(self):
-
         self._questionMessage("All your annotations will be lost! You should save the project, " + \
                                   "then save it under a new name and continue without loss of current annotations. " + \
                                   "Do you really want to delete all your annotations?")
@@ -225,9 +221,6 @@ class AnnotationsGui(LayerViewerGui):
         self.mainOperator.initOutputs()
 
         self._reset()
-
-        self.currentLabels = {}
-        self.currentDivisions = {}
 
         self._setDirty(self.mainOperator.LabelImage, range(self.mainOperator.TrackImage.meta.shape[0]))
         self._setDirty(self.mainOperator.Labels, range(self.mainOperator.TrackImage.meta.shape[0]))
@@ -304,7 +297,6 @@ class AnnotationsGui(LayerViewerGui):
     def _initAnnotations(self):
         for name in self.topLevelOperatorView.Crops.value.keys():
             self._onSaveAnnotations(name=name)
-
         self.topLevelOperatorView.Labels.setValue(self.topLevelOperatorView.labels)
         self.topLevelOperatorView.Divisions.setValue(self.topLevelOperatorView.divisions)
 
@@ -394,10 +386,9 @@ class AnnotationsGui(LayerViewerGui):
                     if parentTrack not in self.topLevelOperatorView.Annotations.value[name]["divisions"].keys():
                         self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = {}
                     self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = self.topLevelOperatorView.divisions[parentTrack]
-
         self._setDirty(self.mainOperator.Annotations, range(self.mainOperator.TrackImage.meta.shape[0]))
-        self._setDirty(self.mainOperator.Labels, [])
-        self._setDirty(self.mainOperator.Divisions, [])
+        self._setDirty(self.mainOperator.Labels, range(self.mainOperator.TrackImage.meta.shape[0]))
+        self._setDirty(self.mainOperator.Divisions, range(self.mainOperator.TrackImage.meta.shape[0]))
 
     def getLabel(self, time, track):
         for label in self.mainOperator.labels[time].keys():
