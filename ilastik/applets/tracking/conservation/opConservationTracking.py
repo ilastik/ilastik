@@ -27,29 +27,6 @@ import dpct
 import logging
 logger = logging.getLogger(__name__)
 
-def swirl_motion_func_creator(velocityWeight):
-    def swirl_motion_func(traxelA, traxelB, traxelC, traxelD):
-        traxels = [traxelA, traxelB, traxelC, traxelD]
-        positions = [np.array([t.X(), t.Y(), t.Z()]) for t in traxels]
-        vecs = [positions[1] - positions[0], positions[2] - positions[1]]
-
-        # acceleration is change in velocity
-        acc = vecs[1] - vecs[0]
-
-        # assume constant acceleration to find expected velocity vector
-        expected_vel = vecs[1] + acc
-
-        # construct expected position
-        expected_pos = positions[2] + expected_vel
-
-        # penalize deviation from that position
-        deviation = np.linalg.norm(expected_pos - positions[3])
-        cost = float(velocityWeight) * deviation
-        tIds = [(t.Timestep, t.Id) for t in traxels]
-
-        return cost
-    return swirl_motion_func
-
 class OpConservationTracking(Operator, ExportingOperator):
     LabelImage = InputSlot()
     ObjectFeatures = InputSlot(stype=Opaque, rtype=List)
