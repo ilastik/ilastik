@@ -60,6 +60,8 @@ class MulticutWorkflow(Workflow):
         return self.dataSelectionApplet.topLevelOperator.ImageName
 
     def __init__(self, shell, headless, workflow_cmdline_args, project_creation_workflow, *args, **kwargs):
+        self.stored_classifier = None
+        
         # Create a graph to be shared by all operators
         graph = Graph()
 
@@ -92,6 +94,8 @@ class MulticutWorkflow(Workflow):
         # -- DataExport applet
         #
         self.dataExportApplet = DataExportApplet(self, "Data Export")
+        self.dataExportApplet.prepare_for_entire_export = self.prepare_for_entire_export
+        self.dataExportApplet.post_process_entire_export = self.post_process_entire_export
 
         # Configure global DataExport settings
         opDataExport = self.dataExportApplet.topLevelOperator
@@ -129,6 +133,40 @@ class MulticutWorkflow(Workflow):
         if not self._headless:
             shell.currentAppletChanged.connect( self.handle_applet_changed )
 
+    def prepare_for_entire_export(self):
+        """
+        Assigned to DataExportApplet.prepare_for_entire_export
+        (See above.)
+        """
+        # While exporting results, the segmentation cache should not be "frozen"
+        self.freeze_status = self.edgeTrainingApplet.topLevelOperator.FreezeCache.value
+        self.edgeTrainingApplet.topLevelOperator.FreezeCache.setValue(False)
+
+    def post_process_entire_export(self):
+        """
+        Assigned to DataExportApplet.post_process_entire_export
+        (See above.)
+        """
+        # After export is finished, re-freeze the segmentation cache.
+        self.edgeTrainingApplet.topLevelOperator.FreezeCache.setValue(self.freeze_status)
+
+    def prepareForNewLane(self, laneIndex):
+        """
+        Overridden from Workflow base class.
+        Called immediately before a new lane is added to the workflow.
+        """
+        opEdgeTraining = self.edgeTrainingApplet.topLevelOperator
+        opClassifierCache = opEdgeTraining.opClassifierCache
+
+        # When the new lane is added, dirty notifications will propagate throughout the entire graph.
+        # This means the classifier will be marked 'dirty' even though it is still usable.
+        # Before that happens, let's store the classifier, so we can restore it in handleNewLanesAdded(), below.
+        if opClassifierCache.Output.ready() and \
+           not opClassifierCache._dirty:
+            self.stored_classifier = opClassifierCache.Output.value
+        else:
+            self.stored_classifier = None
+        
     def connectLane(self, laneIndex):
         """
         Override from base class.
@@ -270,3 +308,7 @@ class MulticutWorkflow(Workflow):
             # make sure the superpixels are always up-to-date.
             opWsdt = self.wsdtApplet.topLevelOperator
             opWsdt.FreezeCache.setValue( self._shell.currentAppletIndex <= self.applets.index( self.wsdtApplet ) )
+
+            # Same for the multicut segmentation
+            opMulticut = self.multicutApplet.topLevelOperator
+            opMulticut.FreezeCache.setValue( self._shell.currentAppletIndex <= self.applets.index( self.multicutApplet ) )
