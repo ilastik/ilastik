@@ -19,11 +19,12 @@
 #           http://ilastik.org/license.html
 ##############################################################################
 from functools import partial
+import threading
 
 import numpy as np
 
 from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QWidget, QLabel, QDoubleSpinBox, QComboBox, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy, QColor, QPen
+from PyQt4.QtGui import QWidget, QLabel, QDoubleSpinBox, QComboBox, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy, QColor, QPen, QPushButton
 
 from ilastik.utility.gui import threadRouted
 from volumina.pixelpipeline.datasources import LazyflowSource
@@ -97,6 +98,10 @@ class MulticutGuiMixin(object):
         drawer_layout.addLayout( control_layout( "Solver", solver_name_combo ) )
         self.solver_name_combo = solver_name_combo
 
+        # Update Button
+        update_button = QPushButton("Update Multicut", clicked=self.onUpdateMulticutButton)
+        drawer_layout.addWidget(update_button)
+
         # Layout
         drawer_layout.addSpacerItem( QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding) )
         
@@ -158,6 +163,31 @@ class MulticutGuiMixin(object):
         op = self.__topLevelOperatorView
         op.Beta.setValue( self.beta_box.value() )
         op.SolverName.setValue( str(self.solver_name_combo.currentText()) )
+
+    def onUpdateMulticutButton(self):
+        def updateThread():
+            """
+            Temporarily unfreeze the cache and freeze it again after the views are finished rendering.
+            """
+            self.topLevelOperatorView.FreezeCache.setValue(False)
+            
+            # This is hacky, but for now it's the only way to do it.
+            # We need to make sure the rendering thread has actually seen that the cache
+            # has been updated before we ask it to wait for all views to be 100% rendered.
+            # If we don't wait, it might complete too soon (with the old data).
+            ndim = len(self.topLevelOperatorView.Output.meta.shape)
+            self.topLevelOperatorView.Output((0,)*ndim, (1,)*ndim).wait()
+
+            # Wait for the image to be rendered into all three image views
+            for imgView in self.editor.imageViews:
+                if imgView.isVisible():
+                    imgView.scene().joinRenderingAllTiles()
+            self.topLevelOperatorView.FreezeCache.setValue(True)
+
+        self.getLayerByName("Multicut Edges").visible = True
+        #self.getLayerByName("Multicut Segmentation").visible = True
+        th = threading.Thread(target=updateThread)
+        th.start()
 
     def setupLayers(self):
         layers = []
