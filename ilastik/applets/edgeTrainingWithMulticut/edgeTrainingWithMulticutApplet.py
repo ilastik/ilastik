@@ -44,12 +44,8 @@ class EdgeTrainingWithMulticutApplet( StandardApplet ):
 
     @property
     def singleLaneGuiClass(self):
-        # Temporary for now...
-        # Replace EdgeTrainingGui with EdgeTrainingWithMulticutGui
-        from ilastik.applets.edgeTraining.edgeTrainingGui import EdgeTrainingGui
-        return EdgeTrainingGui
-        #from edgeTrainingWithMulticutGui import EdgeTrainingWithMulticutGui
-        #return EdgeTrainingWithMulticutGui
+        from edgeTrainingWithMulticutGui import EdgeTrainingWithMulticutGui
+        return EdgeTrainingWithMulticutGui
 
     @property
     def dataSerializers(self):

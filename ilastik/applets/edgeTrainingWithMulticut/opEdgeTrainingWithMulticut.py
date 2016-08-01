@@ -10,8 +10,9 @@ class OpEdgeTrainingWithMulticut(Operator):
     FeatureNames = InputSlot(value=OpEdgeTraining.DEFAULT_FEATURES)
 
     # Multicut parameters
-    Beta = InputSlot(value=0.1)
-    SolverName = InputSlot(value='Exact')
+    Beta = InputSlot(value=0.5)
+    SolverName = InputSlot(value='Nifty_FmGreedy') # See opMulticut.py for list of solvers
+    FreezeCache = InputSlot(value=True)
   
     # Lane-wise input slots
     RawData = InputSlot(level=1, optional=True) # Used by the GUI for display only
@@ -53,6 +54,7 @@ class OpEdgeTrainingWithMulticut(Operator):
         opMulticut = OpMultiLaneWrapper( OpMulticut, parent=self )
         opMulticut.Beta.connect( self.Beta )
         opMulticut.SolverName.connect( self.SolverName )
+        opMulticut.FreezeCache.connect( self.FreezeCache )        
         opMulticut.RawData.connect( self.RawData )
         opMulticut.Superpixels.connect( opEdgeTraining.Superpixels )
         opMulticut.Rag.connect( opEdgeTraining.Rag )
