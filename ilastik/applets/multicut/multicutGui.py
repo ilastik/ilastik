@@ -61,11 +61,14 @@ class MulticutGuiMixin(object):
     def __init__(self, parentApplet, topLevelOperatorView):
         self.__cleanup_fns = []
         self.__topLevelOperatorView = topLevelOperatorView
+        self.superpixel_edge_layer = None
         super( MulticutGuiMixin, self ).__init__( parentApplet, topLevelOperatorView )
+        self.__init_probability_colortable()
 
     def createDrawerControls(self):
         """
-        This is a separate function from initAppletDrawer() so that it can be called and used within another applet (this class is a mixin).
+        This is a separate function from initAppletDrawer() so that it can be
+        called and used within another applet (this class is a mixin).
         """
         op = self.__topLevelOperatorView
 
@@ -82,6 +85,7 @@ class MulticutGuiMixin(object):
             return row_layout
 
         drawer_layout = QVBoxLayout()
+        drawer_layout.setSpacing(1)
 
         # Beta
         beta_box = QDoubleSpinBox(decimals=2, minimum=0.01, maximum=0.99, singleStep=0.1)
@@ -109,13 +113,9 @@ class MulticutGuiMixin(object):
         drawer = QWidget(parent=self)
         drawer.setLayout(drawer_layout)
 
-        # Initialize everything with the operator's initial values
-        self.configure_gui_from_operator()
-        self._init_probability_colortable()
-        
         return drawer
 
-    def _init_probability_colortable(self):
+    def __init_probability_colortable(self):
         self.probability_colortable = []
         for v in np.linspace(0.0, 1.0, num=101):
             self.probability_colortable.append( QColor(255*(v), 255*(1.0-v), 0) )
@@ -128,12 +128,12 @@ class MulticutGuiMixin(object):
 
         # When the edge probabilities are dirty, update the probability edge layer pens
         op = self.__topLevelOperatorView
-        op.EdgeProbabilitiesDict.notifyDirty( self.update_probability_edges )
-        self.__cleanup_fns.append( partial( op.EdgeProbabilitiesDict.unregisterDirty, self.update_probability_edges ) )
+        op.EdgeProbabilitiesDict.notifyDirty( self.__update_probability_edges )
+        self.__cleanup_fns.append( partial( op.EdgeProbabilitiesDict.unregisterDirty, self.__update_probability_edges ) )
 
     # Configure the handler for updated probability maps
     # FIXME: Should we make a new Layer subclass that handles this colortable mapping for us?  Yes.
-    def update_probability_edges(self, *args):
+    def __update_probability_edges(self, *args):
         def _impl():
             op = self.__topLevelOperatorView
             if not self.superpixel_edge_layer:
@@ -142,13 +142,13 @@ class MulticutGuiMixin(object):
             new_pens = {}
             for id_pair, probability in edge_probs.items():
                 new_pens[id_pair] = self.probability_pen_table[int(probability * 100)]
-            self.apply_new_probability_edges(new_pens)
+            self.__apply_new_probability_edges(new_pens)
 
         # submit the worklaod in a request and return immediately
         Request(_impl).submit()
     
     @threadRouted
-    def apply_new_probability_edges(self, new_pens):
+    def __apply_new_probability_edges(self, new_pens):
         # This function is threadRouted because you can't 
         # touch the layer colortable outside the main thread.
         self.superpixel_edge_layer.pen_table.update(new_pens)
@@ -189,20 +189,40 @@ class MulticutGuiMixin(object):
         th = threading.Thread(target=updateThread)
         th.start()
 
+    def create_multicut_edge_layer(self):
+        op = self.__topLevelOperatorView
+        if not op.Output.ready():
+            return None
+
+        # Final segmentation -- Edges
+        default_pen = QPen(SegmentationEdgesLayer.DEFAULT_PEN)
+        default_pen.setColor(Qt.blue)
+        layer = SegmentationEdgesLayer( LazyflowSource(op.Output), default_pen )
+        layer.name = "Multicut Edges"
+        layer.visible = False # Off by default...
+        layer.opacity = 1.0
+        return layer
+
+    def create_multicut_segmentation_layer(self):
+        op = self.__topLevelOperatorView
+        # Final segmentation -- Label Image
+        if not op.Output.ready():
+            return None
+    
+        layer = self.createStandardLayerFromSlot( op.Output )
+        layer.name = "Multicut Segmentation"
+        layer.visible = False # Off by default...
+        layer.opacity = 0.5
+        return layer
+ 
+
     def setupLayers(self):
         layers = []
         op = self.__topLevelOperatorView
 
-        # Final segmentation -- Edges
-        if op.Output.ready():
-            default_pen = QPen(SegmentationEdgesLayer.DEFAULT_PEN)
-            default_pen.setColor(Qt.blue)
-            layer = SegmentationEdgesLayer( LazyflowSource(op.Output), default_pen )
-            layer.name = "Multicut Edges"
-            layer.visible = False # Off by default...
-            layer.opacity = 1.0
-            layers.append(layer)
-            del layer
+        mc_edge_layer = self.create_multicut_edge_layer()
+        if mc_edge_layer:
+            layers.append(mc_edge_layer)
 
         # Superpixels -- Edge Probabilities
         # We use the RAG's superpixels, which may have different IDs
@@ -213,7 +233,7 @@ class MulticutGuiMixin(object):
             layer.visible = True
             layer.opacity = 1.0
             self.superpixel_edge_layer = layer
-            self.update_probability_edges() # Initialize
+            self.__update_probability_edges() # Initialize
             layers.append(layer)
             del layer
                 
@@ -228,15 +248,10 @@ class MulticutGuiMixin(object):
             layers.append(layer)
             del layer
 
-        # Final segmentation -- Label Image
-        if op.Output.ready():
-            layer = self.createStandardLayerFromSlot( op.Output )
-            layer.name = "Multicut Segmentation"
-            layer.visible = False # Off by default...
-            layer.opacity = 0.5
-            layers.append(layer)
-            del layer
- 
+        mc_seg_layer = self.create_multicut_segmentation_layer()
+        if mc_seg_layer:
+            layers.append(mc_seg_layer)
+
         # Superpixels
         if op.Superpixels.ready():
             layer = self.createStandardLayerFromSlot( op.Superpixels )
@@ -265,3 +280,7 @@ class MulticutGui(MulticutGuiMixin, LayerViewerGui):
         """
         # Save these members for later use
         self.__drawer = self.createDrawerControls()
+
+        # Initialize everything with the operator's initial values
+        self.configure_gui_from_operator()
+        
