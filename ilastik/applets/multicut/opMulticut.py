@@ -3,7 +3,7 @@ import numpy as np
 
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiToSlice
-from lazyflow.operators import OpCompressedCache, OpValueCache
+from lazyflow.operators import OpBlockedArrayCache, OpValueCache
 from lazyflow.utility import Timer
 
 import logging
@@ -59,6 +59,7 @@ AVAILABLE_SOLVER_NAMES = NIFTY_SOLVER_NAMES + OPENGM_SOLVER_NAMES
 class OpMulticut(Operator):
     Beta = InputSlot(value=0.5)
     SolverName = InputSlot(value='Nifty_FmGreedy')
+    FreezeCache = InputSlot(value=True)
 
     Rag = InputSlot() # value slot.  Rag object.
     Superpixels = InputSlot()
@@ -78,7 +79,8 @@ class OpMulticut(Operator):
         self.opMulticutAgglomerator.Rag.connect( self.Rag )
         self.opMulticutAgglomerator.EdgeProbabilities.connect( self.EdgeProbabilities )
 
-        self.opSegmentationCache = OpCompressedCache(parent=self)
+        self.opSegmentationCache = OpBlockedArrayCache(parent=self)
+        self.opSegmentationCache.fixAtCurrent.connect( self.FreezeCache )
         self.opSegmentationCache.Input.connect( self.opMulticutAgglomerator.Output )
         self.Output.connect( self.opSegmentationCache.Output )
 

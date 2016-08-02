@@ -137,7 +137,7 @@ class OpEdgeTraining(Operator):
         if old_labels:
             logger.warn( "Superpixels changed.  Deleting all labels in lane {}.".format( lane_index ) )
             logger.info( "Old labels were: {}".format( old_labels ) )
-        self.EdgeLabelsDict[lane_index].setValue({})
+            self.EdgeLabelsDict[lane_index].setValue({})
 
     def setupOutputs(self):
         for sp_slot, seg_cache_blockshape_slot in zip(self.Superpixels, self.opNaiveSegmentationCache.outerBlockShape):
@@ -337,7 +337,7 @@ class OpPredictEdgeProbabilities(Operator):
         
         logger.info("Predicting edge probabilities...")
         feature_matrix = edge_features_df.iloc[:, 2:].values # Discard [sp1, sp2]
-        assert feature_matrix.dtype == np.float32
+        assert feature_matrix.dtype == np.float32, "Unexpected feature dtype: {}".format( feature_matrix.dtype )
         probabilities = classifier.predict_probabilities(feature_matrix)[:,1]
         assert len(probabilities) == len(edge_features_df)
         result[0] = probabilities

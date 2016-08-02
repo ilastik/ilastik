@@ -71,6 +71,12 @@ try:
 except ImportError as e:
     logger.warn("Failed to import multicut workflow; check dependencies: " + str(e))
 
+import edgeTrainingWithMulticut
+try:
+    import edgeTrainingWithMulticut
+except ImportError as e:
+    logger.warn("Failed to import 'Edge Training With Multicut' workflow; check dependencies: " + str(e))
+
 try:
     import tracking.structured
     WORKFLOW_CLASSES += [tracking.structured.structuredTrackingWorkflow.StructuredTrackingWorkflowFromBinary,
