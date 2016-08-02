@@ -697,6 +697,10 @@ class Slot(object):
         self._sig_insert(self, position, finalsize)
 
         slot =  self._insertNew(position)
+        
+        # New slot inherits our settings
+        slot.backpropagate_values = self.backpropagate_values
+        
         operator_name = '<NO OPERATOR>'
         if self.operator:
             operator_name = self.operator.name
