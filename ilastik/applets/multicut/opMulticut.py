@@ -28,6 +28,7 @@ except ImportError:
 # Nifty first choice: With-CPLEX
 try:
     import nifty_with_cplex as nifty
+    MulticutObjectiveUndirectedGraph = nifty.graph.multicut.MulticutObjectiveUndirectedGraph
     NIFTY_SOLVER_NAMES = ['Nifty_FmGreedy',
                           'Nifty_FmCplex',
                           'Nifty_ExactCplex']
@@ -38,6 +39,7 @@ except ImportError:
 if not NIFTY_SOLVER_NAMES:
     try:
         import nifty_with_gurobi as nifty
+        MulticutObjectiveUndirectedGraph = nifty.graph.multicut.MulticutObjectiveUndirectedGraph
         NIFTY_SOLVER_NAMES = ['Nifty_FmGreedy',
                               'Nifty_FmGurobi',
                               'Nifty_ExactGurobi']
@@ -48,10 +50,12 @@ if not NIFTY_SOLVER_NAMES:
 if not NIFTY_SOLVER_NAMES:
     try:
         import nifty
+        MulticutObjectiveUndirectedGraph = nifty.graph.multicut.MulticutObjectiveUndirectedGraph
         NIFTY_SOLVER_NAMES = ['Nifty_FmGreedy']
     except ImportError:
         # Nifty isn't available at all
         NIFTY_SOLVER_NAMES = []
+
 
 
 AVAILABLE_SOLVER_NAMES = NIFTY_SOLVER_NAMES + OPENGM_SOLVER_NAMES
@@ -208,19 +212,20 @@ def solve_with_nifty(edge_ids, edge_weights, node_count, solver_method):
     g.insertEdges(edge_ids)
     obj = nifty.graph.multicut.multicutObjective(g, edge_weights)
 
+    moug = MulticutObjectiveUndirectedGraph
 
     def getIlpFac(ilpSolver):
-        return nifty.multicutIlpFactory(ilpSolver=ilpSolver,verbose=0,
-            addThreeCyclesConstraints=True,
-            addOnlyViolatedThreeCyclesConstraints=True
-        )
+        return moug.multicutIlpFactory(
+                   ilpSolver=ilpSolver,
+                   verbose=0,
+                   addThreeCyclesConstraints=True,
+                   addOnlyViolatedThreeCyclesConstraints=True)
 
     def getFmFac(subFac):
-
-        return  nifty.fusionMoveBasedFactory(
+        return moug.fusionMoveBasedFactory(
             verbose=1,
-            fusionMove=nifty.fusionMoveSettings(mcFactory=subFac),
-            proposalGen=nifty.watershedProposals(sigma=1,seedFraction=0.01),
+            fusionMove=moug.fusionMoveSettings(mcFactory=subFac),
+            proposalGen=moug.watershedProposals(sigma=1,seedFraction=0.01),
             numberOfIterations=500,
             numberOfParallelProposals=8,
             stopIfNoImprovement=20,
@@ -236,27 +241,27 @@ def solve_with_nifty(edge_ids, edge_weights, node_count, solver_method):
         inf = getIlpFac('gurobi').create(obj)
 
     elif solver_method == 'FmCplex':
-        greedy=nifty.greedyAdditiveFactory().create(obj)
+        greedy=moug.greedyAdditiveFactory().create(obj)
         ret = greedy.optimize()
         inf = getFmFac(getIlpFac('cplex')).create(obj)
 
     elif solver_method == 'FmGurobi':
-        greedy=nifty.greedyAdditiveFactory().create(obj)
+        greedy=moug.greedyAdditiveFactory().create(obj)
         ret = greedy.optimize()
         inf = getFmFac(getIlpFac('gurobi')).create(obj)
 
     elif solver_method == 'FmGreedy':
-        greedy=nifty.greedyAdditiveFactory().create(obj)
+        greedy=moug.greedyAdditiveFactory().create(obj)
         ret = greedy.optimize()
-        inf = getFmFac(nifty.greedyAdditiveFactory()).create(obj)
+        inf = getFmFac(moug.greedyAdditiveFactory()).create(obj)
 
     else:
         assert False, "Unknown solver method: {}".format( solver_method )
 
     if ret is None:
-        ret = inf.optimizeWithVisitor(visitor=nifty.multicutVerboseVisitor())
+        ret = inf.optimize(visitor=moug.multicutVerboseVisitor())
     else:
-        ret = inf.optimizeWithVisitor(visitor=nifty.multicutVerboseVisitor(), nodeLabels=ret)
+        ret = inf.optimize(visitor=moug.multicutVerboseVisitor(), nodeLabels=ret)
 
     mapping_index_array = ret.astype(np.uint32)
     return mapping_index_array
