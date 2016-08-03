@@ -19,6 +19,7 @@
 #           http://ilastik.org/license.html
 ##############################################################################
 from functools import partial
+from contextlib import contextmanager
 
 import numpy as np
 
@@ -60,6 +61,7 @@ class EdgeTrainingGui(LayerViewerGui):
     ###########################################
     
     def __init__(self, parentApplet, topLevelOperatorView):
+        self._currently_updating = False
         self.__cleanup_fns = []
         self.parentApplet = parentApplet
         self.topLevelOperatorView = topLevelOperatorView
@@ -71,6 +73,9 @@ class EdgeTrainingGui(LayerViewerGui):
     def _after_init(self):
         super( EdgeTrainingGui, self )._after_init()
         self.update_probability_edges()
+
+        # Initialize everything with the operator's initial values
+        self.configure_gui_from_operator()
 
     def createDrawerControls(self):
         # Controls
@@ -102,9 +107,6 @@ class EdgeTrainingGui(LayerViewerGui):
         """
         # Save these members for later use
         self._drawer = self.createDrawerControls()
-
-        # Initialize everything with the operator's initial values
-        self.configure_gui_from_operator()
 
         op = self.topLevelOperatorView
         op.GroundtruthSegmentation.notifyReady( self.configure_gui_from_operator )
@@ -223,12 +225,27 @@ class EdgeTrainingGui(LayerViewerGui):
         if superpixel_edge_layer:
             superpixel_edge_layer.pen_table.overwrite(new_pens)
 
+
+    @contextmanager
+    def set_updating(self):
+        assert not self._currently_updating
+        self._currently_updating = True
+        yield
+        self._currently_updating = False
+
     def configure_gui_from_operator(self, *args):
-        op = self.topLevelOperatorView
-        self.train_from_gt_button.setEnabled( op.GroundtruthSegmentation.ready() )
+        if self._currently_updating:
+            return False
+        with self.set_updating():
+            op = self.topLevelOperatorView
+            self.train_from_gt_button.setEnabled( op.GroundtruthSegmentation.ready() )
 
     def configure_operator_from_gui(self):
-        op = self.topLevelOperatorView
+        if self._currently_updating:
+            return False
+        with self.set_updating():
+            # Currently, there's nothing to do here, but that will change.
+            op = self.topLevelOperatorView
 
     def create_prefetch_menu(self, layer_name):
         def prefetch_layer(axis='z'):

@@ -10,6 +10,10 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
         MulticutGuiMixin.__init__(self, parentApplet, topLevelOperatorView)
         EdgeTrainingGui.__init__(self, parentApplet, topLevelOperatorView)
 
+    def _after_init(self):
+        EdgeTrainingGui._after_init(self)
+        MulticutGuiMixin._after_init(self)
+
     def initAppletDrawerUi(self):
         training_controls = EdgeTrainingGui.createDrawerControls(self)
         training_controls.layout().setContentsMargins(5,0,5,0)
@@ -39,8 +43,8 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
         self._drawer = QWidget(parent=self)
         self._drawer.setLayout(drawer_layout)        
 
-        # Initialize everything with the operator's initial values
-        self.configure_gui_from_operator()
+        # GUI will be initialized in _after_init()
+        #self.configure_gui_from_operator()
 
     def appletDrawer(self):
         return self._drawer
@@ -69,3 +73,10 @@ class EdgeTrainingWithMulticutGui(MulticutGuiMixin, EdgeTrainingGui):
         layers += edgeTrainingLayers
         return layers
     
+    def configure_gui_from_operator(self, *args):
+        EdgeTrainingGui.configure_gui_from_operator(self)
+        MulticutGuiMixin.configure_gui_from_operator(self)
+    
+    def configure_operator_from_gui(self):
+        EdgeTrainingGui.configure_operator_from_gui(self)
+        MulticutGuiMixin.configure_operator_from_gui(self)

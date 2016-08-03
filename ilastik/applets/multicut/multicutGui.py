@@ -19,6 +19,7 @@
 #           http://ilastik.org/license.html
 ##############################################################################
 from functools import partial
+from contextlib import contextmanager
 import threading
 
 import numpy as np
@@ -61,6 +62,9 @@ class MulticutGuiMixin(object):
         self.superpixel_edge_layer = None
         super( MulticutGuiMixin, self ).__init__( parentApplet, topLevelOperatorView )
         self.__init_probability_colortable()
+    
+    def _after_init(self):
+        pass
 
     def createDrawerControls(self):
         """
@@ -150,16 +154,29 @@ class MulticutGuiMixin(object):
         # touch the layer colortable outside the main thread.
         self.superpixel_edge_layer.pen_table.update(new_pens)
 
+    @contextmanager
+    def set_updating(self):
+        assert not self._currently_updating
+        self._currently_updating = True
+        yield
+        self._currently_updating = False
+
     def configure_gui_from_operator(self, *args):
-        op = self.__topLevelOperatorView
-        self.beta_box.setValue( op.Beta.value )
-        solver_index = AVAILABLE_SOLVER_NAMES.index( op.SolverName.value )
-        self.solver_name_combo.setCurrentIndex( solver_index )
+        if self._currently_updating:
+            return False
+        with self.set_updating():
+            op = self.__topLevelOperatorView
+            self.beta_box.setValue( op.Beta.value )
+            solver_index = AVAILABLE_SOLVER_NAMES.index( op.SolverName.value )
+            self.solver_name_combo.setCurrentIndex( solver_index )
 
     def configure_operator_from_gui(self):
-        op = self.__topLevelOperatorView
-        op.Beta.setValue( self.beta_box.value() )
-        op.SolverName.setValue( str(self.solver_name_combo.currentText()) )
+        if self._currently_updating:
+            return False
+        with self.set_updating():
+            op = self.__topLevelOperatorView
+            op.Beta.setValue( self.beta_box.value() )
+            op.SolverName.setValue( str(self.solver_name_combo.currentText()) )
 
     def onUpdateMulticutButton(self):
         def updateThread():
