@@ -70,6 +70,7 @@ class OpEdgeTrainingWithMulticut(Operator):
         # (Therefore, they are really part of those classes public API, or should be.)
         self.opRagCache = self.opEdgeTraining.opRagCache
         self.opEdgeFeaturesCache = self.opEdgeTraining.opEdgeFeaturesCache
+        self.opClassifierCache = self.opEdgeTraining.opClassifierCache
         self.setEdgeLabelsFromGroundtruth = self.opEdgeTraining.setEdgeLabelsFromGroundtruth
         
     def setupOutputs(self):

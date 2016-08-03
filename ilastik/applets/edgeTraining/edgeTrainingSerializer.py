@@ -161,11 +161,8 @@ class EdgeTrainingSerializer(AppletSerializer):
                   SerialRagSlot(operator.Rag, operator.opRagCache, operator.Superpixels),
                   SerialCachedDataFrameSlot( operator.opEdgeFeaturesCache.Output,
                                              operator.opEdgeFeaturesCache,
-                                             name="EdgeFeatures" )
-
-# FIXME: vigra-1.11 seems to introduce a segfault when serializing/deserializing the classifier.
-#        Uncomment that once this is fixed.
-#                   SerialClassifierSlot(operator.opClassifierCache.Output,
-#                                        operator.opClassifierCache)
+                                             name="EdgeFeatures" ),
+                  SerialClassifierSlot(operator.opClassifierCache.Output,
+                                       operator.opClassifierCache)
                  ]
         super(EdgeTrainingSerializer, self).__init__(projectFileGroupName, slots=slots)
