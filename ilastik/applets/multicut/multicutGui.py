@@ -45,9 +45,6 @@ class MulticutGuiMixin(object):
     ### AppletGuiInterface Concrete Methods ###
     ###########################################
     
-    def appletDrawer(self):
-        return self.__drawer
-
     def stopAndCleanUp(self):
         # Unsubscribe to all signals
         for fn in self.__cleanup_fns:
@@ -273,6 +270,9 @@ class MulticutGuiMixin(object):
         return layers
 
 class MulticutGui(MulticutGuiMixin, LayerViewerGui):
+
+    def appletDrawer(self):
+        return self.__drawer
 
     def initAppletDrawerUi(self):
         """
