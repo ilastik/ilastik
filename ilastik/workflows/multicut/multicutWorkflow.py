@@ -133,23 +133,6 @@ class MulticutWorkflow(Workflow):
         if not self._headless:
             shell.currentAppletChanged.connect( self.handle_applet_changed )
 
-    def prepare_for_entire_export(self):
-        """
-        Assigned to DataExportApplet.prepare_for_entire_export
-        (See above.)
-        """
-        # While exporting results, the segmentation cache should not be "frozen"
-        self.freeze_status = self.edgeTrainingApplet.topLevelOperator.FreezeCache.value
-        self.edgeTrainingApplet.topLevelOperator.FreezeCache.setValue(False)
-
-    def post_process_entire_export(self):
-        """
-        Assigned to DataExportApplet.post_process_entire_export
-        (See above.)
-        """
-        # After export is finished, re-freeze the segmentation cache.
-        self.edgeTrainingApplet.topLevelOperator.FreezeCache.setValue(self.freeze_status)
-
     def prepareForNewLane(self, laneIndex):
         """
         Overridden from Workflow base class.
@@ -259,6 +242,24 @@ class MulticutWorkflow(Workflow):
             logger.info("Beginning Batch Processing")
             self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
             logger.info("Completed Batch Processing")
+
+    def prepare_for_entire_export(self):
+        """
+        Assigned to DataExportApplet.prepare_for_entire_export
+        (See above.)
+        """
+        # While exporting results, the segmentation cache should not be "frozen"
+        self.freeze_status = self.edgeTrainingApplet.topLevelOperator.FreezeCache.value
+        self.edgeTrainingApplet.topLevelOperator.FreezeCache.setValue(False)
+
+    def post_process_entire_export(self):
+        """
+        Assigned to DataExportApplet.post_process_entire_export
+        (See above.)
+        """
+        # After export is finished, re-freeze the segmentation cache.
+        self.edgeTrainingApplet.topLevelOperator.FreezeCache.setValue(self.freeze_status)
+
 
     def handleAppletStateUpdateRequested(self):
         """
