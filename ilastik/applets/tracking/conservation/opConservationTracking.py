@@ -73,6 +73,7 @@ class OpConservationTracking(Operator, ExportingOperator):
     RelabeledImage = OutputSlot()
 
     hypotheses_graph = None
+    mergerResolver = None
 
     def __init__(self, parent=None, graph=None):
         super(OpConservationTracking, self).__init__(parent=parent, graph=graph)
@@ -149,42 +150,50 @@ class OpConservationTracking(Operator, ExportingOperator):
         if slot is self.Output:
             if not self.Parameters.ready():
                 raise Exception("Parameter slot is not ready")
-            parameters = self.Parameters.value
-            
+            parameters = self.Parameters.value           
             trange = range(roi.start[0], roi.stop[0])
-            original = np.zeros(result.shape, dtype=slot.meta.dtype)         
             
-            if self.relabeledVolume is None:
-                result[:] = self.LabelImage.get(roi).wait()
-            else:
-                result[:] = self.relabeledVolume[roi.start[0]:roi.stop[0], roi.start[1]:roi.stop[1], roi.start[2]:roi.stop[2], roi.start[3]:roi.stop[3], roi.start[4]:roi.stop[4]]
+            original = np.zeros(result.shape, dtype=slot.meta.dtype)         
+            result[:] =  self.LabelImage.get(roi).wait()
+            
+#             if self.relabeledVolume is None:
+#                 result[:] = self.LabelImage.get(roi).wait()
+#             else:
+#                 result[:] = self.relabeledVolume[roi.start[0]:roi.stop[0], roi.start[1]:roi.stop[1], roi.start[2]:roi.stop[2], roi.start[3]:roi.stop[3], roi.start[4]:roi.stop[4]]
 
-            #pixel_offsets=roi.start[1:-1]  # offset only in pixels, not time and channel
             for t in trange:
-                if ('time_range' in parameters
-                        and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]):
-                        #and len(self.resolvedto) > t and len(self.resolvedto[t])):
-                    #result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, pixel_offsets)
+                if (self.mergerResolver 
+                        and 'time_range' in parameters 
+                        and t <= parameters['time_range'][-1] 
+                        and t >= parameters['time_range'][0]):
+                    self.mergerResolver.relabelMergers(result[t-roi.start[0],...,0], t)
                     result[t-roi.start[0],...,0] = self._labelLineageIds(result[t-roi.start[0],...,0], t)
                 else:
                     result[t-roi.start[0],...][:] = 0
 
             original[result != 0] = result[result != 0]
             result[:] = original
+            
         elif slot is self.MergerOutput:
             parameters = self.Parameters.value
             trange = range(roi.start[0], roi.stop[0])
 
-            if self.relabeledVolume is None:
-                result[:] = self.LabelImage.get(roi).wait()
-            else:
-                result[:] = self.relabeledVolume[roi.start[0]:roi.stop[0], roi.start[1]:roi.stop[1], roi.start[2]:roi.stop[2], roi.start[3]:roi.stop[3], roi.start[4]:roi.stop[4]]
-
-            pixel_offsets=roi.start[1:-1]  # offset only in pixels, not time and channel
+            result[:] =  self.LabelImage.get(roi).wait()
+   
+#             if self.relabeledVolume is None:
+#                 result[:] = self.LabelImage.get(roi).wait()
+#             else:
+#                 result[:] = self.relabeledVolume[roi.start[0]:roi.stop[0], roi.start[1]:roi.stop[1], roi.start[2]:roi.stop[2], roi.start[3]:roi.stop[3], roi.start[4]:roi.stop[4]]
+   
             for t in trange:
-                if 'time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0] and t in self.resolvedMergersDict:
+                if (self.mergerResolver 
+                        and self.resolvedMergersDict 
+                        and t in self.resolvedMergersDict 
+                        and 'time_range' in parameters 
+                        and t <= parameters['time_range'][-1] 
+                        and t >= parameters['time_range'][0]):
                     if 'withMergerResolution' in parameters.keys() and parameters['withMergerResolution']:
-                        # result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, pixel_offsets, True)
+                        self.mergerResolver.relabelMergers(result[t-roi.start[0],...,0], t)
                         result[t-roi.start[0],...,0] = self._labelLineageIds(result[t-roi.start[0],...,0], t, onlyMergers=True)
                     else:
                         result[t-roi.start[0],...,0] = highlightMergers(result[t-roi.start[0],...,0], self.mergers[t])
@@ -195,18 +204,23 @@ class OpConservationTracking(Operator, ExportingOperator):
             parameters = self.Parameters.value
             trange = range(roi.start[0], roi.stop[0])
 
-            if self.relabeledVolume is None:
-                result[:] = self.LabelImage.get(roi).wait()
-            else:
-                result[:] = self.relabeledVolume[roi.start[0]:roi.stop[0], roi.start[1]:roi.stop[1], roi.start[2]:roi.stop[2], roi.start[3]:roi.stop[3], roi.start[4]:roi.stop[4]]
+            result[:] =  self.LabelImage.get(roi).wait()
+
+#             if self.relabeledVolume is None:
+#                 result[:] = self.LabelImage.get(roi).wait()
+#             else:
+#                 result[:] = self.relabeledVolume[roi.start[0]:roi.stop[0], roi.start[1]:roi.stop[1], roi.start[2]:roi.stop[2], roi.start[3]:roi.stop[3], roi.start[4]:roi.stop[4]]
             
-            pixel_offsets=roi.start[1:-1]  # offset only in pixels, not time and channel
             for t in trange:
-                if ('time_range' in parameters
+                if (self.mergerResolver
+                        and 'time_range' in parameters
                         and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]
                         and len(self.resolvedto) > t and len(self.resolvedto[t])
                         and 'withMergerResolution' in parameters.keys() and parameters['withMergerResolution']):
-                        result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, pixel_offsets, False, True)
+                    self.mergerResolver.relabelMergers(result[t-roi.start[0],...,0], t)
+                    result[t-roi.start[0],...,0] = self._labelLineageIds(result[t-roi.start[0],...,0], t, onlyMergers=True) # TODO: Check if this section is correct
+                    #result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, pixel_offsets, False, True)
+                    
         elif slot == self.AllBlocks:
             # if nothing was computed, return empty list
             if not self.hypotheses_graph:
@@ -382,9 +396,9 @@ class OpConservationTracking(Operator, ExportingOperator):
             originalGraph = hypotheses_graph
             labelVolume = self.LabelImage[:].wait()
             pluginPath = os.path.join(os.path.dirname(os.path.abspath(hytra.__file__)), 'plugins')
-            mergerResolver = IlastikMergerResolver(originalGraph, labelVolume, pluginPaths=[pluginPath])
-            self.resolvedMergersDict = mergerResolver.run()
-            self.relabeledVolume = mergerResolver.relabeledVolume
+            self.mergerResolver = IlastikMergerResolver(originalGraph, labelVolume, pluginPaths=[pluginPath])
+            self.resolvedMergersDict = self.mergerResolver.run()
+            #self.relabeledVolume = mergerResolver.relabeledVolume
             self.MergerOutput.setDirty()
 
         hypotheses_graph.computeLineage()
