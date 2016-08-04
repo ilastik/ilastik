@@ -34,6 +34,9 @@ from lazyflow.operators import OpRelabelConsecutive, OpBlockedArrayCache, OpSimp
 from lazyflow.operators.generic import OpConvertDtype
 from lazyflow.operators.valueProviders import OpPrecomputedInput
 
+import logging
+logger = logging.getLogger(__name__)
+
 class EdgeTrainingWithMulticutWorkflow(Workflow):
     workflowName = "Edge Training With Multicut"
     workflowDescription = "A workflow based around training a classifier for merging superpixels and joining them via multicut."
@@ -111,7 +114,7 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         #    (Command-line args are applied in onProjectLoaded(), below.)
         if workflow_cmdline_args:
             self._data_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args( workflow_cmdline_args )
-            self._batch_input_args, unused_args = self.dataSelectionApplet.parse_known_cmdline_args( unused_args, role_names )
+            self._batch_input_args, unused_args = self.batchProcessingApplet.parse_known_cmdline_args( unused_args )
         else:
             unused_args = None
             self._batch_input_args = None
