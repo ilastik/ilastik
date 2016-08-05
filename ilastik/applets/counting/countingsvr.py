@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from __future__ import division
 import numpy as np
 import vigra
 import itertools
@@ -30,6 +31,7 @@ import h5py, cPickle
 import sys
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 class RegressorC(object):
@@ -547,7 +549,7 @@ class SVR(object):
         splitBoxConstraints = self.splitBoxConstraints(numRegressors, boxConstraints)
         
         for i in range(numRegressors):
-            indices = np.random.randint(0,numVariables, size = numVariables / numRegressors)    
+            indices = np.random.randint(0,numVariables, size = numVariables // numRegressors)    
             indices.sort()
             cut = np.where(indices < tags[0])
             newTags = [len(cut[0]), len(indices) - len(cut[0])]
