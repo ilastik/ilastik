@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from __future__ import division
 import os
 import sys
 import argparse
@@ -106,7 +107,7 @@ def generate_cube_data(output_dir):
 
     # Raw cubes (intensity image)    
     intensities = binary_intensities
-    intensities[0:50] /= 2 # Left half is not as bright
+    intensities[0:50] //= 2 # Left half is not as bright
     gen_cubes_npy( intensities, cube_params, numpy.uint8, output_dir, 'cube_objects_raw.npy' )
 
 if __name__ == "__main__":

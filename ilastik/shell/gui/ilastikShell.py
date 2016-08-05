@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from __future__ import division
 # Standard
 from Queue import Queue
 import re
@@ -234,7 +235,7 @@ class ProgressDisplayManager(QObject):
 
         numActive = len(self.appletPercentages)
         if numActive > 0:
-            totalPercentage = numpy.sum(self.appletPercentages.values()) / numActive
+            totalPercentage = numpy.sum(self.appletPercentages.values()) // numActive
 
         # If any applet gave -1, put progress bar in "busy indicator" mode
         if (TinyVector(self.appletPercentages.values()) == -1).any():

@@ -36,6 +36,8 @@ traceLogger = logging.getLogger("TRACE." + __name__)
 
 from lazyflow.utility import Tracer
 
+from __future__ import division
+
 class Section():
     Labels = 0
     Classifiers = 1
@@ -100,7 +102,7 @@ class AutocontextClassificationSerializer(AppletSerializer):
             numSteps = sum( self._dirtyFlags.values() )
             progress = 0
             if numSteps > 0:
-                increment = 100/numSteps
+                increment = 100//numSteps
 
             if self._dirtyFlags[Section.Labels]:
                 self._serializeLabels( topGroup )            
@@ -206,7 +208,7 @@ class AutocontextClassificationSerializer(AppletSerializer):
                         numImages = len(self.mainOperator.PredictionProbabilities)
         
                         if numImages > 0:
-                            increment = (endProgress - startProgress) / float(numImages)
+                            increment = (endProgress - startProgress) // numImages
         
                         for imageIndex in range(numImages):
                             # Have we been cancelled?
@@ -229,7 +231,7 @@ class AutocontextClassificationSerializer(AppletSerializer):
                             def handleProgress(percent):
                                 # Stop sending progress if we were cancelled
                                 if self.predictionStorageEnabled:
-                                    progress[0] = startProgress + percent * (increment / 100.0)
+                                    progress[0] = startProgress + percent * (increment // 100)
                                     self.progressSignal.emit( progress[0] )
                             opWriter.progressSignal.subscribe( handleProgress )
         

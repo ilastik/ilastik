@@ -21,6 +21,7 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 import numpy
 from ilastik.utility import MultiLaneOperatorABC, OperatorSubView
+from __future__ import division
 
 class OpDeviationFromMean(Operator):
     """
@@ -136,7 +137,7 @@ if __name__ == "__main__":
     op.Input[1].setValue( ones )
     op.Input[2].setValue( twos )
     
-    expected = offset + scalingFactor * (ones - (zeros + ones + twos) / len(op.Input)) 
+    expected = offset + scalingFactor * (ones - (zeros + ones + twos) // len(op.Input)) 
     print "expected:", expected
 
     output = op.Output[1][:].wait()

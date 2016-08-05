@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from __future__ import division
 import sys
 import os
 import warnings
@@ -452,7 +453,7 @@ class ObjectClassificationWorkflow(Workflow):
         block_shape = opBatchClassify.get_blockshape()
         assert all(block_shape == blockwise_fileset.description.sub_block_shape), "block shapes don't match"
         assert all((roi[0] % block_shape) == 0), "Sub-blocks must exactly correspond to the blockwise object classification blockshape"
-        sub_block_index = roi[0] / blockwise_fileset.description.sub_block_shape
+        sub_block_index = roi[0] // blockwise_fileset.description.sub_block_shape
 
         sub_block_start = sub_block_index
         sub_block_stop = sub_block_start + 1

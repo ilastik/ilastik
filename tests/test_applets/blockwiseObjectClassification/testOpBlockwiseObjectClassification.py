@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from __future__ import division
 import sys
 import warnings
 import tempfile
@@ -125,7 +126,7 @@ class TestOpBlockwiseObjectClassification(object):
         Create big cubes with starting corners at multiples of 20, and small cubes offset 10 from that.
         Half of the image will be white, the other half gray.
         """
-        
+
         self.testingFeatures = {"Standard Object Features": {"Count":{}, "Mean":{}, "Mean in neighborhood":{"margin":(10, 10, 1)}}}
         
         # Big: Starting at 0,20,40, etc.
@@ -144,7 +145,7 @@ class TestOpBlockwiseObjectClassification(object):
         # Gray: 0<=x<50
         # White: 50<=x<100
         self.test_volume_intensity = self.test_volume_binary * 255
-        self.test_volume_intensity[ 0:50 ] /= 2
+        self.test_volume_intensity[ 0:50 ] //= 2
         self.test_volume_intensity = self.test_volume_intensity.view( vigra.VigraArray )
         self.test_volume_intensity.axistags = vigra.defaultAxistags('xyz')
         
@@ -226,7 +227,7 @@ class TestOpBlockwiseObjectClassification(object):
         # small & gray: label 1
         small_gray_coords = [(0, 10, 10, 10, 0), (0, 10, 30, 10, 0), (0, 10, 10, 30, 0)]
         for coord in small_gray_coords:
-            assert raw_5d[coord] == 255/2, "Input data error: expected this pixel to be gray, but it was {}".format( raw_5d[coord] )
+            assert raw_5d[coord] == 255//2, "Input data error: expected this pixel to be gray, but it was {}".format( raw_5d[coord] )
             opObjectClassification.assignObjectLabel( 0, coord, 1)
 
         # small & white: label 2
@@ -238,7 +239,7 @@ class TestOpBlockwiseObjectClassification(object):
         # big & gray: label 2
         big_gray_coords = [(0, 0, 0, 0, 0), (0, 0, 20, 0, 0), (0, 0, 0, 20, 0)]
         for coord in big_gray_coords:
-            assert raw_5d[coord] == 255/2, "Input data error: expected this pixel to be gray, but it was {}".format( raw_5d[coord] )
+            assert raw_5d[coord] == 255//2, "Input data error: expected this pixel to be gray, but it was {}".format( raw_5d[coord] )
             opObjectClassification.assignObjectLabel( 0, coord, 2)
 
         assert opObjectClassification.SegmentationImages[0].ready()
