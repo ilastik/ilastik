@@ -979,12 +979,12 @@ class AnnotationsGui(LayerViewerGui):
                     uniqueLabels.remove(0)
                 if len(uniqueLabels) != 1:
                     self._log('tracking candidates at t = ' + str(t) + ': ' + str(uniqueLabels))
-                    self._gotoObject(oid_prev, t-1, True)
+                    self._gotoObject(oid_prev, t-1, keepXYZ=True)
                     t_end = t-1
                     break            
                 if numpy.count_nonzero(li_product) < 0.2 * numpy.count_nonzero(li_prev_oid):
                     self._log('too little overlap at t = ' + str(t))
-                    self._gotoObject(oid_prev, t-1, True)
+                    self._gotoObject(oid_prev, t-1, keepXYZ=True)
                     t_end = t-1
                     break
 
@@ -992,15 +992,15 @@ class AnnotationsGui(LayerViewerGui):
                 if res == -98:
                     self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t) + " left the current crop time boundary." + \
                                          "Stopping automatic tracking at crop boundary.")
-                    self._gotoObject(uniqueLabels[0], t, False)
+                    self._gotoObject(uniqueLabels[0], t, keepXYZ=True)
                     return
                 elif res == -99:
                     self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t) + " left the current crop spatial boundary." + \
                                          "Stopping automatic tracking at crop boundary.")
-                    self._gotoObject(uniqueLabels[0], t, False)
+                    self._gotoObject(uniqueLabels[0], t, keepXYZ=True)
                     return
                 elif res == -1:
-                    self._gotoObject(uniqueLabels[0], t, False)
+                    self._gotoObject(uniqueLabels[0], t, keepXYZ=True)
                     return
                 
                 oid_prev = uniqueLabels[0]
@@ -1491,7 +1491,7 @@ class AnnotationsGui(LayerViewerGui):
         
         
     
-    def _gotoObject(self, oid, t, keepZ=False):
+    def _gotoObject(self, oid, t, keepZ=False, keepXYZ=False):
         roi = SubRegion(self.mainOperator.LabelImage, start=[t,0,0,0,0], stop=[t+1,] + list(self.mainOperator.LabelImage.meta.shape[1:]))
         li = self.mainOperator.LabelImage.get(roi).wait()
         coords = numpy.where(li == oid)
@@ -1501,6 +1501,9 @@ class AnnotationsGui(LayerViewerGui):
          
         if keepZ:
             new_slicing_pos[2] = cur_slicing_pos[2]
+        if keepXYZ:
+            for i in range(3):
+                new_slicing_pos[i] = cur_slicing_pos[i]
         self.editor.navCtrl.panSlicingViews(new_slicing_pos, [0,1,2])
         self._setPosModel(time=t, slicingPos=new_slicing_pos, cursorPos=new_slicing_pos)      
 
