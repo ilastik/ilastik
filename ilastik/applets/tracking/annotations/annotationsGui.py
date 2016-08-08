@@ -999,12 +999,12 @@ class AnnotationsGui(LayerViewerGui):
 
                 res = self._addObjectToTrack(activeTrack, uniqueLabels[0], t)
                 if res == -98:
-                    self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t) + " left the current crop time boundary." + \
+                    self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t) + " left the current crop time boundary. " + \
                                          "Stopping automatic tracking at crop boundary.")
                     self._gotoObject(uniqueLabels[0], t, keepXYZ=True)
                     return
                 elif res == -99:
-                    self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t) + " left the current crop spatial boundary." + \
+                    self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t) + " left the current crop spatial boundary. " + \
                                          "Stopping automatic tracking at crop boundary.")
                     self._gotoObject(uniqueLabels[0], t, keepXYZ=True)
                     return
