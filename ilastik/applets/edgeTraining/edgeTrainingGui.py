@@ -19,6 +19,7 @@
 #           http://ilastik.org/license.html
 ##############################################################################
 from functools import partial
+from contextlib import contextmanager
 
 import numpy as np
 
@@ -60,42 +61,54 @@ class EdgeTrainingGui(LayerViewerGui):
     ###########################################
     
     def __init__(self, parentApplet, topLevelOperatorView):
+        self._currently_updating = False
         self.__cleanup_fns = []
         self.parentApplet = parentApplet
         self.topLevelOperatorView = topLevelOperatorView
         super(EdgeTrainingGui, self).__init__( parentApplet, topLevelOperatorView, crosshair=False )
 
-    def initAppletDrawerUi(self):
-        """
-        Overridden from base class (LayerViewerGui)
-        """
-        op = self.topLevelOperatorView
+        self._init_edge_label_colortable()
+        self._init_probability_colortable()
 
+    def _after_init(self):
+        super( EdgeTrainingGui, self )._after_init()
+        self.update_probability_edges()
+
+        # Initialize everything with the operator's initial values
+        self.configure_gui_from_operator()
+
+    def createDrawerControls(self):
         # Controls
         feature_selection_button = QPushButton("Select Features", clicked=self._open_feature_selection_dlg)
-        self.train_from_gt_button = QPushButton("Label from Groundtruth", clicked=self._handle_label_from_gt_clicked)
-        self.clear_labels_button = QPushButton("Clear all Labels", clicked=self._handle_clear_labels_clicked)
+        self.train_from_gt_button = QPushButton("Auto-label from GT", clicked=self._handle_label_from_gt_clicked)
+        self.clear_labels_button = QPushButton("Clear Labels", clicked=self._handle_clear_labels_clicked)
         
         # Layout
+        label_layout = QHBoxLayout()
+        label_layout.addWidget(self.clear_labels_button)
+        label_layout.addWidget(self.train_from_gt_button)
+        label_layout.setSpacing(1)
+        
         layout = QVBoxLayout()
         layout.addWidget(feature_selection_button)
-        layout.addWidget(self.train_from_gt_button)
-        layout.addWidget(self.clear_labels_button)
+        layout.setSpacing(1)
+        layout.addLayout(label_layout)
         layout.addSpacerItem( QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding) )
         
         # Finally, the whole drawer widget
         drawer = QWidget(parent=self)
         drawer.setLayout(layout)
+        return drawer
 
+
+    def initAppletDrawerUi(self):
+        """
+        Overridden from base class (LayerViewerGui)
+        """
         # Save these members for later use
-        self._drawer = drawer
+        self._drawer = self.createDrawerControls()
 
-        # Initialize everything with the operator's initial values
-        self.configure_gui_from_operator()
-
-        self._init_edge_label_colortable()
-        self._init_probability_colortable()
-        
+        op = self.topLevelOperatorView
         op.GroundtruthSegmentation.notifyReady( self.configure_gui_from_operator )
 
     def _open_feature_selection_dlg(self):
@@ -212,12 +225,27 @@ class EdgeTrainingGui(LayerViewerGui):
         if superpixel_edge_layer:
             superpixel_edge_layer.pen_table.overwrite(new_pens)
 
+
+    @contextmanager
+    def set_updating(self):
+        assert not self._currently_updating
+        self._currently_updating = True
+        yield
+        self._currently_updating = False
+
     def configure_gui_from_operator(self, *args):
-        op = self.topLevelOperatorView
-        self.train_from_gt_button.setEnabled( op.GroundtruthSegmentation.ready() )
+        if self._currently_updating:
+            return False
+        with self.set_updating():
+            op = self.topLevelOperatorView
+            self.train_from_gt_button.setEnabled( op.GroundtruthSegmentation.ready() )
 
     def configure_operator_from_gui(self):
-        op = self.topLevelOperatorView
+        if self._currently_updating:
+            return False
+        with self.set_updating():
+            # Currently, there's nothing to do here, but that will change.
+            op = self.topLevelOperatorView
 
     def create_prefetch_menu(self, layer_name):
         def prefetch_layer(axis='z'):
@@ -287,7 +315,7 @@ class EdgeTrainingGui(LayerViewerGui):
         if op.GroundtruthSegmentation.ready():
             layer = self.createStandardLayerFromSlot( op.GroundtruthSegmentation )
             layer.name = "Groundtruth"
-            layer.visible = True
+            layer.visible = False
             layer.opacity = 0.5
             layers.append(layer)
             del layer

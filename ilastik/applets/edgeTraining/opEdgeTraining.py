@@ -137,7 +137,7 @@ class OpEdgeTraining(Operator):
         if old_labels:
             logger.warn( "Superpixels changed.  Deleting all labels in lane {}.".format( lane_index ) )
             logger.info( "Old labels were: {}".format( old_labels ) )
-        self.EdgeLabelsDict[lane_index].setValue({})
+            self.EdgeLabelsDict[lane_index].setValue({})
 
     def setupOutputs(self):
         for sp_slot, seg_cache_blockshape_slot in zip(self.Superpixels, self.opNaiveSegmentationCache.outerBlockShape):
@@ -164,6 +164,7 @@ class OpEdgeTraining(Operator):
         logger.info("Loading groundtruth for lane {}...".format(lane_index))
         gt_vol = op_view.GroundtruthSegmentation[:].wait()
         gt_vol = vigra.taggedView(gt_vol, op_view.GroundtruthSegmentation.meta.axistags)
+        gt_vol.withAxes(''.join(tag.key for tag in op_view.Superpixels.meta.axistags))
         gt_vol = gt_vol.dropChannelAxis()
 
         rag = op_view.opRagCache.Output.value
@@ -239,11 +240,15 @@ class OpComputeEdgeFeatures(Operator):
             voxel_data = vigra.taggedView(voxel_data, self.VoxelData.meta.axistags)
             voxel_data = voxel_data[...,0] # drop channel
             edge_features_df = rag.compute_features(voxel_data, feature_names)
+
+            #if np.isnan(edge_features_df.values).any():
+            #    raise RuntimeError("Whoa, why are there NaN values in the feature matrix?")
+            
             edge_features_df = edge_features_df.iloc[:, 2:] # Discard columns [sp1, sp2]
             
             # Prefix all column names with the channel name, to guarantee uniqueness
             # (Generally a nice feature, but also required for serialization.)
-            edge_features_df.columns = map( lambda feature_name: channel_name + feature_name,
+            edge_features_df.columns = map( lambda feature_name: channel_name + ' ' + feature_name,
                                             edge_features_df.columns.values )
             edge_feature_dfs.append(edge_features_df)
 
@@ -337,7 +342,7 @@ class OpPredictEdgeProbabilities(Operator):
         
         logger.info("Predicting edge probabilities...")
         feature_matrix = edge_features_df.iloc[:, 2:].values # Discard [sp1, sp2]
-        assert feature_matrix.dtype == np.float32
+        assert feature_matrix.dtype == np.float32, "Unexpected feature dtype: {}".format( feature_matrix.dtype )
         probabilities = classifier.predict_probabilities(feature_matrix)[:,1]
         assert len(probabilities) == len(edge_features_df)
         result[0] = probabilities

@@ -1,0 +1,1 @@
+from edgeTrainingWithMulticutWorkflow import EdgeTrainingWithMulticutWorkflow
