@@ -720,8 +720,12 @@ class AnnotationsGui(LayerViewerGui):
         delLabel = {}
         delSubtrackToEnd = {}
         delSubtrackToStart = {}
-        
+        setActiveTrack = {}
         for l in trackids:
+            text = "set active track to label " + str(l)
+            setActiveTrack[text] = l
+            menu.addAction(text)
+
             text = "remove label " + str(l)
             delLabel[text] = l
             menu.addAction(text)
@@ -790,7 +794,12 @@ class AnnotationsGui(LayerViewerGui):
         
         elif selection in delDivision.keys():
             self._delDivisionEvent(delDivision[selection])
-            
+
+        elif selection in setActiveTrack.keys():
+            for i in range(self._drawer.activeTrackBox.count()):
+                if int(self._drawer.activeTrackBox.itemText(i)) == setActiveTrack[selection]:
+                    self._drawer.activeTrackBox.setCurrentIndex(i)
+
         else:
             assert False, "cannot reach this"
                
