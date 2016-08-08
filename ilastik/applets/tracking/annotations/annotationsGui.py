@@ -811,8 +811,8 @@ class AnnotationsGui(LayerViewerGui):
     
     def _currentActiveTrackChanged(self):
         self.mainOperator.ActiveTrack.setValue(self._getActiveTrack())
-        self._setStyleSheet(self._drawer.activeTrackBox, QColor(self.ct[self._getActiveTrack()]))
-        
+        self._setStyleSheet(self._drawer.trackColorButton, QColor(self.ct[self._getActiveTrack()]), type="QPushButton")
+
     def _getActiveTrack(self):
         if self._drawer.activeTrackBox.count() > 0:
             return int(self._drawer.activeTrackBox.currentText())
@@ -1055,15 +1055,15 @@ class AnnotationsGui(LayerViewerGui):
         self._enableButtons(exceptButtons=[self._drawer.divEvent], enable=(not self.divLock))                      
 
 
-    def _setStyleSheet(self, widget, qcolor):                         
+    def _setStyleSheet(self, widget, qcolor, type="QComboBox"):
         values = "{r}, {g}, {b}, {a}".format(r = qcolor.red(),
                                      g = qcolor.green(),
                                      b = qcolor.blue(),
                                      a = qcolor.alpha()
                                      )
-        widget.setStyleSheet("QComboBox { background-color: rgba("+values+"); }")
+        widget.setStyleSheet(type+" { background-color: rgba("+values+"); }")
     
-    
+
     def _onDivisionsListActivated(self):        
         parent = int(str(self._drawer.divisionsList.currentItem().text()).split(':')[0])
         t = self.mainOperator.divisions[parent][1]        
