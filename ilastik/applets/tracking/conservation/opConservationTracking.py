@@ -84,7 +84,6 @@ class OpConservationTracking(Operator, ExportingOperator):
         self.track_id = None
         self.extra_track_ids = None
         self.divisions = None
-        self.relabeledVolume = None
         self.resolvedMergersDict = None
 
         self._opCache = OpCompressedCache(parent=self)
@@ -363,8 +362,6 @@ class OpConservationTracking(Operator, ExportingOperator):
         if hypotheses_graph:
             hypotheses_graph.insertSolution(result)
             hypotheses_graph.computeLineage()
-            
-        self.hypotheses_graph = hypotheses_graph
         
         # Get events vector (only used whe saving old h5 events file)
         events = self._getEventsVector(result, model)
@@ -376,7 +373,6 @@ class OpConservationTracking(Operator, ExportingOperator):
             pluginPath = os.path.join(os.path.dirname(os.path.abspath(hytra.__file__)), 'plugins')
             self.mergerResolver = IlastikMergerResolver(originalGraph, labelVolume, pluginPaths=[pluginPath])
             self.resolvedMergersDict = self.mergerResolver.run()
-            #self.relabeledVolume = mergerResolver.relabeledVolume
             self.MergerOutput.setDirty()
 
         hypotheses_graph.computeLineage()
