@@ -155,11 +155,6 @@ class OpConservationTracking(Operator, ExportingOperator):
             
             original = np.zeros(result.shape, dtype=slot.meta.dtype)         
             result[:] =  self.LabelImage.get(roi).wait()
-            
-#             if self.relabeledVolume is None:
-#                 result[:] = self.LabelImage.get(roi).wait()
-#             else:
-#                 result[:] = self.relabeledVolume[roi.start[0]:roi.stop[0], roi.start[1]:roi.stop[1], roi.start[2]:roi.stop[2], roi.start[3]:roi.stop[3], roi.start[4]:roi.stop[4]]
 
             for t in trange:
                 if (self.mergerResolver 
@@ -179,11 +174,6 @@ class OpConservationTracking(Operator, ExportingOperator):
             trange = range(roi.start[0], roi.stop[0])
 
             result[:] =  self.LabelImage.get(roi).wait()
-   
-#             if self.relabeledVolume is None:
-#                 result[:] = self.LabelImage.get(roi).wait()
-#             else:
-#                 result[:] = self.relabeledVolume[roi.start[0]:roi.stop[0], roi.start[1]:roi.stop[1], roi.start[2]:roi.stop[2], roi.start[3]:roi.stop[3], roi.start[4]:roi.stop[4]]
    
             for t in trange:
                 if (self.mergerResolver 
@@ -205,31 +195,19 @@ class OpConservationTracking(Operator, ExportingOperator):
             trange = range(roi.start[0], roi.stop[0])
 
             result[:] =  self.LabelImage.get(roi).wait()
-
-#             if self.relabeledVolume is None:
-#                 result[:] = self.LabelImage.get(roi).wait()
-#             else:
-#                 result[:] = self.relabeledVolume[roi.start[0]:roi.stop[0], roi.start[1]:roi.stop[1], roi.start[2]:roi.stop[2], roi.start[3]:roi.stop[3], roi.start[4]:roi.stop[4]]
             
             for t in trange:
                 if (self.mergerResolver
                         and 'time_range' in parameters
                         and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]
-                        #and len(self.resolvedto) > t and len(self.resolvedto[t])
                         and 'withMergerResolution' in parameters.keys() and parameters['withMergerResolution']):
                     self.mergerResolver.relabelMergers(result[t-roi.start[0],...,0], t)
-                    #result[t-roi.start[0],...,0] = self._labelLineageIds(result[t-roi.start[0],...,0], t, onlyMergers=True) # TODO: Check if this section is correct
-                    #result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, pixel_offsets, False, True)
                     
         elif slot == self.AllBlocks:
             # if nothing was computed, return empty list
             if not self.hypotheses_graph:
                 result[0] = []
                 return result
-                
-#             if len(self.label2color) == 0:
-#                 result[0] = []
-#                 return result
 
             all_block_rois = []
             shape = self.Output.meta.shape
@@ -536,8 +514,6 @@ class OpConservationTracking(Operator, ExportingOperator):
         :return:
         """
 
-        #assert lane_index == 0, "This has only been tested in tracking workflows with a single image."
-
         with_divisions = self.Parameters.value["withDivisions"] if self.Parameters.ready() else False
         with_merger_resolution = self.Parameters.value["withMergerResolution"] if self.Parameters.ready() else False
 
@@ -812,23 +788,4 @@ class OpConservationTracking(Operator, ExportingOperator):
         :param dialog: the ProgressDialog to save
         """
         self.export_progress_dialog = dialog
-      
-    def track_children(self, track_id, start=0):
-        if start in self.divisions:
-            for t, _, track, _, child_track1, _, child_track2 in self.divisions[start:]:
-                if track == track_id:
-                    children_of = partial(self.track_children, start=t)
-                    return [child_track1, child_track2] + \
-                           children_of(child_track1) + children_of(child_track2)
-        return []
-
-    def track_parent(self, track_id):
-        if not self.divisions == {}:
-            for t, oid, track, _, child_track1, _, child_track2 in self.divisions[:-1]:
-                if track_id in (child_track1, child_track2):
-                    return [track] + self.track_parent(track)
-        return []
-
-    def track_family(self, track_id):
-        return self.track_children(track_id), self.track_parent(track_id)
         
