@@ -215,10 +215,10 @@ class OpConservationTracking(Operator, ExportingOperator):
                 if (self.mergerResolver
                         and 'time_range' in parameters
                         and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]
-                        and len(self.resolvedto) > t and len(self.resolvedto[t])
+                        #and len(self.resolvedto) > t and len(self.resolvedto[t])
                         and 'withMergerResolution' in parameters.keys() and parameters['withMergerResolution']):
                     self.mergerResolver.relabelMergers(result[t-roi.start[0],...,0], t)
-                    result[t-roi.start[0],...,0] = self._labelLineageIds(result[t-roi.start[0],...,0], t, onlyMergers=True) # TODO: Check if this section is correct
+                    #result[t-roi.start[0],...,0] = self._labelLineageIds(result[t-roi.start[0],...,0], t, onlyMergers=True) # TODO: Check if this section is correct
                     #result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, pixel_offsets, False, True)
                     
         elif slot == self.AllBlocks:
@@ -402,6 +402,8 @@ class OpConservationTracking(Operator, ExportingOperator):
             self.MergerOutput.setDirty()
 
         hypotheses_graph.computeLineage()
+        
+        self.hypotheses_graph = hypotheses_graph
 
         # Refresh (execute) output slots
         self.Output.setDirty()
@@ -564,9 +566,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         if not self.hypotheses_graph:
             raise DatasetConstraintError('Tracking', 'Tracking solution not ready: Did you forgot to press the Track button?')
 
-        obj_count = list(objects_per_frame(label_image_slot))
-        assert sum(obj_count) == self.hypotheses_graph.countNodes(), "Conservation Tracking: Number of objects is different from number of nodes in hypotheses graph"
-        
+        obj_count = list(objects_per_frame(label_image_slot))        
         object_ids_generator = ilastik_ids(obj_count)
          
         object_ids = [] 
@@ -575,8 +575,14 @@ class OpConservationTracking(Operator, ExportingOperator):
           
         for (time, object_id) in object_ids_generator: 
             object_ids.append((time, object_id))
-            lineage_ids.append(self.hypotheses_graph.getLineageId(time, object_id))
-            track_ids.append(self.hypotheses_graph.getTrackId(time, object_id))
+            frame_data = label_image_slot[time:time+1].wait()
+            if self.hypotheses_graph._graph.has_node((time,object_id)):
+                lineage_ids.append(self.hypotheses_graph.getLineageId(time, object_id))
+                track_ids.append(self.hypotheses_graph.getTrackId(time, object_id))
+            else:
+                lineage_ids.append(0)
+                track_ids.append(0)
+                
 
         selected_features = list(selected_features)
         with_divisions = self.Parameters.value["withDivisions"] if self.Parameters.ready() else False
