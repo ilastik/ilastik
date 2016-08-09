@@ -79,6 +79,8 @@ class AnnotationsGui(LayerViewerGui):
         self._drawer.gotoLabel.pressed.connect(self._onGotoLabel)
         self._drawer.saveAnnotations.pressed.connect(self._onSaveAnnotations)
         self._drawer.initializeAnnotations.pressed.connect(self._onInitializeAnnotations)
+        self._drawer.trackColorButton.setToolTip("Active track colour.")
+        self._drawer.activeTrackBox.setToolTip("Active track label.")
 
         self.editor.showCropLines(True)
         self.editor.cropModel.editableChanged.emit (False)
