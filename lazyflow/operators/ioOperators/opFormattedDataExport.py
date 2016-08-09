@@ -145,16 +145,8 @@ class OpFormattedDataExport(Operator):
         if len(self.Input.meta.shape) != len(new_start) or \
            len(self.Input.meta.shape) != len(new_stop):
             self._opSubRegion.Roi.disconnect()
-        elif not self._opSubRegion.Roi.ready() or \
-           self._opSubRegion.Roi.value != (new_start, new_stop):
-
-            # Provide the coordinate offset, but only for the axes that are present in the output image
-            tagged_input_offset = collections.defaultdict( lambda: -1, zip(self.Input.meta.getAxisKeys(), new_start ) )
-            output_axes = self._opReorderAxes.AxisOrder.value
-            output_offset = [ tagged_input_offset[axis] for axis in output_axes ]
-            output_offset = tuple( filter( lambda x: x != -1, output_offset ) )
-            self._opExportSlot.CoordinateOffset.setValue( output_offset )
-
+        elif (not self._opSubRegion.Roi.ready() or
+             self._opSubRegion.Roi.value != (new_start, new_stop)):
             self._opSubRegion.Roi.setValue( (new_start, new_stop) )
 
         # Set up normalization and dtype conversion
@@ -206,6 +198,13 @@ class OpFormattedDataExport(Operator):
         else:
             axistags = self.Input.meta.axistags
             self._opReorderAxes.AxisOrder.setValue( "".join( tag.key for tag in axistags ) )
+
+        # Provide the coordinate offset, but only for the axes that are present in the output image
+        tagged_input_offset = collections.defaultdict( lambda: -1, zip(self.Input.meta.getAxisKeys(), new_start ) )
+        output_axes = self._opReorderAxes.AxisOrder.value
+        output_offset = [ tagged_input_offset[axis] for axis in output_axes ]
+        output_offset = tuple( filter( lambda x: x != -1, output_offset ) )
+        self._opExportSlot.CoordinateOffset.setValue( output_offset )
 
         # Obtain values for possible name fields
         known_keys = { 'roi' : list(self._opSubRegion.Roi.value) }
