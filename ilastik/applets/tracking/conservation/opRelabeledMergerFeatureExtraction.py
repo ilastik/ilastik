@@ -41,7 +41,7 @@ class OpDifference(Operator):
             shapeA = self.ImageA.meta.getTaggedShape()
             shapeB = self.ImageB.meta.getTaggedShape()
 
-            if not shapeA == shapeB:
+            if shapeA != shapeB:
                 raise DatasetConstraintError("Label Image Difference",
                                              "Cannot compute difference of images with different shapes")
 
@@ -102,7 +102,8 @@ class OpZeroBasedConsecutiveIndexRelabeling(Operator):
             return result
         elif slot == self.Mapping:
             if not self.Output.ready():
-                self._updateMapping(roi)
+                t = roi.start[timeIndex]
+                self._updateMapping(roi, t)
             return self._mapping
 
     def propagateDirty(self, inputSlot, subindex, roi):
@@ -168,7 +169,7 @@ class OpRelabeledMergerFeatureExtraction(Operator):
 
     @staticmethod
     def _merge_features(featuresA, featuresB, mapping):
-        assert(featuresA.shape[1] == featuresB.shape[1], "Feature dimensions must match!")
+        assert featuresA.shape[1] == featuresB.shape[1], "Feature dimensions must match!"
         max_label = max(max(mapping.keys())+1, len(featuresA))
 
         features = np.zeros((max_label, featuresA.shape[1]), dtype=featuresA.dtype)
@@ -229,7 +230,7 @@ class OpRelabeledMergerFeatureExtraction(Operator):
             rawTaggedShape = self.RelabeledImage.meta.getTaggedShape()
             if 't' not in rawTaggedShape or rawTaggedShape['t'] < 2:
                 msg = "Relabeled image must have a time dimension with at least 2 images.\n"\
-                    "Your dataset has shape: {}".format(self.RelabeldImage.meta.shape)
+                    "Your dataset has shape: {}".format(self.RelabeledImage.meta.shape)
 
         if self.RawImage.ready() and self.LabelImage.ready():
             rawTaggedShape = self.RawImage.meta.getTaggedShape()
