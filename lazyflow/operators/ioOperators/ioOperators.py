@@ -19,6 +19,7 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
+from __future__ import division
 import os
 import math
 import logging
@@ -217,7 +218,7 @@ class OpStackWriter(Operator):
         if ram_usage_per_requested_pixel is not None:
             pixels_per_slice = numpy.prod(slice_shape)
             if 'c' in tagged_sliceshape:
-                pixels_per_slice /= tagged_sliceshape['c']
+                pixels_per_slice //= tagged_sliceshape['c']
             
             ram_usage_per_slice = pixels_per_slice * ram_usage_per_requested_pixel
 
@@ -225,7 +226,7 @@ class OpStackWriter(Operator):
             available_ram = psutil.virtual_memory().available
             available_ram *= 0.5
 
-            parallel_requests = int(available_ram / ram_usage_per_slice)
+            parallel_requests = available_ram // ram_usage_per_slice
 
         streamer = BigRequestStreamer( self.Input,
                                        roiFromShape( self.Input.meta.shape ),

@@ -20,7 +20,7 @@ class TestOpRelabelConsecutive(object):
         labels = vigra.taggedView(labels, 'yx')
         op.Input.setValue(labels)
         relabeled = op.Output[:].wait()
-        assert (relabeled == labels/2).all()
+        assert (relabeled == labels//2).all()
 
     def test_startlabel(self):
         op = OpRelabelConsecutive(graph=Graph())
@@ -30,7 +30,7 @@ class TestOpRelabelConsecutive(object):
         labels = vigra.taggedView(labels, 'yx')
         op.Input.setValue(labels)
         relabeled = op.Output[:].wait()
-        assert (relabeled == 10+labels/2).all()
+        assert (relabeled == 10+labels//2).all()
 
 if __name__ == "__main__":
     import sys

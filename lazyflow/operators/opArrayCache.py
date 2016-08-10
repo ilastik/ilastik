@@ -409,7 +409,7 @@ class OpArrayCache(Operator, ManagedCache):
                 tileArray = numpy.concatenate((tileStartArray, tileStopArray), axis=0)
             
             dirtyRois = []
-            half = tileArray.shape[0]/2
+            half = tileArray.shape[0]//2
             dirtyPool = RequestPool()
     
             for i in range(tileArray.shape[1]):

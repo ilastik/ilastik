@@ -1,3 +1,25 @@
+###############################################################################
+#   lazyflow: data flow based lazy parallel computation framework
+#
+#       Copyright (C) 2011-2014, the ilastik developers
+#                                <team@ilastik.org>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the Lesser GNU General Public License
+# as published by the Free Software Foundation; either version 2.1
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU Lesser General Public License for more details.
+#
+# See the files LICENSE.lgpl2 and LICENSE.lgpl3 for full text of the
+# GNU Lesser General Public License version 2.1 and 3 respectively.
+# This information is also available on the ilastik web site at:
+#		   http://ilastik.org/license/
+###############################################################################
+from __future__ import division
 from functools import partial
 import logging
 logger = logging.getLogger(__name__)
@@ -118,7 +140,7 @@ class OpFeatureMatrixCache(Operator):
         remaining_dirty = [num_dirty_blocks]
         def update_progress( result ):
             remaining_dirty[0] -= 1
-            percent_complete = 95.0*(num_dirty_blocks - remaining_dirty[0])/num_dirty_blocks
+            percent_complete = 95.0*(num_dirty_blocks - remaining_dirty[0])//num_dirty_blocks
             self.progressSignal( percent_complete )
 
         # Update all dirty blocks in the cache

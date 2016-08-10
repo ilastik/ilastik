@@ -1,6 +1,6 @@
 # FlyMovieFormat.py
 # KMB 11/06/2008
-
+from __future__ import division
 import sys
 import struct
 import warnings
@@ -89,7 +89,7 @@ class FlyMovie:
         self.chunk_start = self.file.tell()
         self.next_frame = None
 
-        if self.bytes_per_chunk != self.bits_per_pixel/8*self.framesize[0]*self.framesize[1] + self.timestamp_len:
+        if self.bytes_per_chunk != self.bits_per_pixel//8*self.framesize[0]*self.framesize[1] + self.timestamp_len:
             logger.warn("FMF reading will probably end badly: {}, {}, {}, {}, {}".format(self.bytes_per_chunk, self.bits_per_pixel, self.framesize, self.timestamp_len, self.bits_per_pixel*self.framesize[0]*self.framesize[1] + self.timestamp_len) )
 
 	if self.n_frames == 0: # unknown movie length, read to find out
@@ -98,7 +98,7 @@ class FlyMovie:
             # get the byte position
             eb = self.file.tell()
             # compute number of frames using bytes_per_chunk
-            self.n_frames = int((eb-self.chunk_start)/self.bytes_per_chunk)
+            self.n_frames = (eb-self.chunk_start)//self.bytes_per_chunk
             # seek back to the start
             self.file.seek(self.chunk_start,0)
             
@@ -479,7 +479,7 @@ class FlyMovieSaver:
         bits_per_image = frame.shape[0] * frame.shape[1] * 8
         if bits_per_image % 8 != 0:
             raise ValueError('combination of frame size and bits_per_pixel make non-byte aligned image')
-        self._bytes_per_image = bits_per_image / 8
+        self._bytes_per_image = bits_per_image // 8
         bytes_per_chunk = self._bytes_per_image + struct.calcsize(TIMESTAMP_FMT)
 
         buf = struct.pack(CHUNKSIZE_FMT,bytes_per_chunk)

@@ -19,6 +19,7 @@
 # This information is also available on the ilastik web site at:
 #           http://ilastik.org/license/
 ###############################################################################
+from __future__ import division
 import os
 import httplib
 import collections
@@ -155,8 +156,8 @@ class OpDvidRoi(Operator):
         self.Output.meta.axistags = vigra.defaultAxistags( axiskeys ) # FIXME: Also copy resolution, etc.
 
     def execute(self, slot, subindex, roi, result):
-        block_roi_start = roi.start / DVID_BLOCK_WIDTH
-        block_roi_stop = ( roi.stop + DVID_BLOCK_WIDTH-1 ) / DVID_BLOCK_WIDTH
+        block_roi_start = roi.start // DVID_BLOCK_WIDTH
+        block_roi_stop = ( roi.stop + DVID_BLOCK_WIDTH-1 ) // DVID_BLOCK_WIDTH
         block_slicing = roiToSlice(block_roi_start, block_roi_stop)
 
         if (numpy.array( (roi.start, roi.stop) ) % DVID_BLOCK_WIDTH).any():

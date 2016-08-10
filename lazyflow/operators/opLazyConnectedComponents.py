@@ -19,7 +19,7 @@
 # This information is also available on the ilastik web site at:
 #          http://ilastik.org/license/
 ###############################################################################
-
+from __future__ import division
 import numpy as np
 import vigra
 import h5py
@@ -579,8 +579,8 @@ class OpLazyConnectedComponents(Operator, ObservableCache):
         cs = self._chunkShape
         start = np.asarray(roi.start)
         stop = np.asarray(roi.stop)
-        start_cs = start / cs
-        stop_cs = stop / cs
+        start_cs = start // cs
+        stop_cs = stop // cs
         # add one if division was not even
         stop_cs += np.where(stop % cs, 1, 0)
         iters = [xrange(start_cs[i], stop_cs[i]) for i in range(5)]

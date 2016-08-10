@@ -19,6 +19,7 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
+from __future__ import division
 from lazyflow.graph import Operator,InputSlot,OutputSlot
 from lazyflow.utility.helpers import newIterator
 from lazyflow.operators.generic import OpMultiArrayStacker
@@ -632,7 +633,7 @@ class OpPixelFeaturesPresmoothed(Operator):
             else:
                 # Only some input channels were dirty,
                 # so we must mark each dirty output region separately.
-                numFeatures = self.Output.meta.shape[channelAxis] / numChannels
+                numFeatures = self.Output.meta.shape[channelAxis] // numChannels
                 for featureIndex in range(numFeatures):
                     startChannel = numChannels*featureIndex + roi.start[channelAxis]
                     stopChannel = startChannel + roi.stop[channelAxis]

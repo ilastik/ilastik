@@ -19,6 +19,7 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
+from __future__ import division
 import logging
 from functools import partial
 import cPickle as pickle
@@ -455,7 +456,7 @@ class OpDetectMissing(Operator):
         pool = RequestPool()
 
         chunkSize = 1000  # FIXME magic number??
-        nChunks = len(X)/chunkSize + (1 if len(X) % chunkSize > 0 else 0)
+        nChunks = len(X)//chunkSize + (1 if len(X) % chunkSize > 0 else 0)
 
         s = [slice(k*chunkSize, min((k+1)*chunkSize, len(X)))
              for k in range(nChunks)]
@@ -617,9 +618,9 @@ def _patchify(data, patchSize, haloSize):
 
     patches = []
     slices = []
-    nPatchesX = data.shape[1]/patchSize + \
+    nPatchesX = data.shape[1]//patchSize + \
         (1 if data.shape[1] % patchSize > 0 else 0)
-    nPatchesY = data.shape[0]/patchSize + \
+    nPatchesY = data.shape[0]//patchSize + \
         (1 if data.shape[0] % patchSize > 0 else 0)
 
     for y in range(nPatchesY):

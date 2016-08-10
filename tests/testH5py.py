@@ -19,6 +19,7 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
+from __future__ import division
 import threading
 from functools import partial
 
@@ -60,7 +61,7 @@ class TestH5Py(object):
         lb = (numpy.random.rand(len(shape))*shape/2).astype(int)
     
         # Choose a random upper bound in the upper half-space    
-        ub = (numpy.random.rand(len(shape))*shape/2).astype(int) + shape/2
+        ub = (numpy.random.rand(len(shape))*shape/2).astype(int) + shape//2
     
         # Combine into a slicing we can index with    
         sl = map(slice, lb, ub)
