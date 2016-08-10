@@ -922,7 +922,9 @@ class AnnotationsGui(LayerViewerGui):
             self.mainOperator.labels[t][oid] = set()
         if activeTrack == self.misdetIdx:
             if len(self.mainOperator.labels[t][oid]) > 0:
-                self._criticalMessage("Error: This object is already marked as part of a track, cannot mark it as a misdetection.")            
+                if self.misdetIdx not in self.mainOperator.labels[t][oid]:
+                    self._criticalMessage("Error: This object is already marked as part of a track, cannot mark it as a misdetection.")
+                self._onMarkMisdetectionPressed()
                 return -1
         else:
             for tracklist in self.mainOperator.labels[t].values():
@@ -938,12 +940,16 @@ class AnnotationsGui(LayerViewerGui):
         
         if self.misdetIdx in self.mainOperator.labels[t][oid]:
             self._criticalMessage("Error: This object is already marked as a misdetection. Cannot mark it as part of a track.")            
+            if self.misdetLock:
+                self._onMarkMisdetectionPressed()
             return -1
         
         self.mainOperator.labels[t][oid].add(activeTrack)  
         self._setDirty(self.mainOperator.Labels, [t])
         self._log('(t,object_id,track_id) = ' + str((t,oid, activeTrack)) + ' added.')
-        
+
+        if self.misdetLock:
+            self._onMarkMisdetectionPressed()
         
     def _runSubtracking(self, position5d, oid):        
                
@@ -1100,6 +1106,7 @@ class AnnotationsGui(LayerViewerGui):
         
         if self.misdetLock:            
             self.lastActiveTrackIdx = activeTrackBox.currentIndex()
+            self._drawer.markMisdetection.setText("Mark as False Detection (Turn Off)")
             self._enableButtons(exceptButtons=[self._drawer.markMisdetection], enable=False)
                     
             # add -1 to the tracks if not already present
@@ -1119,7 +1126,8 @@ class AnnotationsGui(LayerViewerGui):
                 activeTrackBox.setCurrentIndex(self.lastActiveTrackIdx)
                 self._currentActiveTrackChanged()
             
-            self._enableButtons(exceptButtons=[self._drawer.markMisdetection], enable=True)            
+            self._drawer.markMisdetection.setText("Mark as False Detection")
+            self._enableButtons(exceptButtons=[self._drawer.markMisdetection], enable=True)
         
         
     @staticmethod
