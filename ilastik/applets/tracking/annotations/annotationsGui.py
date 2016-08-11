@@ -1072,13 +1072,13 @@ class AnnotationsGui(LayerViewerGui):
         self._enableButtons(exceptButtons=[self._drawer.divEvent], enable=(not self.divLock))                      
 
 
-    def _setStyleSheet(self, widget, qcolor, type="QComboBox"):
+    def _setStyleSheet(self, widget, qcolor, qType="QComboBox"):
         values = "{r}, {g}, {b}, {a}".format(r = qcolor.red(),
                                      g = qcolor.green(),
                                      b = qcolor.blue(),
                                      a = qcolor.alpha()
                                      )
-        widget.setStyleSheet(type+" { background-color: rgba("+values+"); }")
+        widget.setStyleSheet(qType+" { background-color: rgba("+values+"); }")
     
 
     def _onDivisionsListActivated(self):        
