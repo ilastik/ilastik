@@ -105,9 +105,6 @@ class OpStructuredTracking(OpTrackingBase):
             if t not in self.labels.keys():
                 self.labels[t]={}
 
-        for t in range(self.LabelImage.meta.shape[0]):
-            self.labels[t]={}
-
     def execute(self, slot, subindex, roi, result):
         
         if slot is self.Labels:

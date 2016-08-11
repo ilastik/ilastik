@@ -645,6 +645,34 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             self._appearanceWeight = structuredLearningTracker.weight(3)/norm
             self._disappearanceWeight = structuredLearningTracker.weight(4)/norm
 
+        self._drawer.detWeightBox.setValue(self._detectionWeight);
+        self._drawer.divWeightBox.setValue(self._divisionWeight);
+        self._drawer.transWeightBox.setValue(self._transitionWeight);
+        self._drawer.appearanceBox.setValue(self._appearanceWeight);
+        self._drawer.disappearanceBox.setValue(self._disappearanceWeight);
+
+        epsZero = 0.01
+        if self._detectionWeight < 0.0:
+            self._informationMessage ("Detection weight calculated was negative. It will be set to 0.01. " + \
+                "Add more training and recalculate the learning weights in order to improve your tracking solution.")
+            self._detectionWeight = epsZero
+        elif self._divisionWeight < 0.0:
+            self._informationMessage ("Division weight calculated was negative. It will be set to 0.01. " + \
+                "Add more division cells to your training and recalculate the learning weights in order to improve your tracking solution.")
+            self._divisionWeight = epsZero
+        elif self._transitionWeight < 0.0:
+            self._informationMessage ("Transition weight calculated was negative. It will be set to 0.01. " + \
+                "Add more transitions to your training and recalculate the learning weights in order to improve your tracking solution.")
+            self._transitionWeight = epsZero
+        elif self._appearanceWeight < 0.0:
+            self._informationMessage ("Appearance weight calculated was negative. It will be set to 0.01. " + \
+                "Add more appearances to your training and recalculate the learning weights in order to improve your tracking solution.")
+            self._appearanceWeight = epsZero
+        elif self._disappearanceWeight < 0.0:
+            self._informationMessage ("Disappearance weight calculated was negative. It will be set to 0.01. " + \
+                "Add more disappearances to your training and recalculate the learning weights in order to improve your tracking solution.")
+            self._disappearanceWeight = epsZero
+
         self.mainOperator.detectionWeight = self._detectionWeight
         self.mainOperator.divisionWeight = self._divisionWeight
         self.mainOperator.transitionWeight = self._transitionWeight

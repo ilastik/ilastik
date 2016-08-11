@@ -30,7 +30,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class OpAnnotations(Operator):
-    name = "Structured Tracking"
+    name = "Training"
     category = "other"
     
     BinaryImage = InputSlot()
@@ -98,7 +98,8 @@ class OpAnnotations(Operator):
         self.UntrackedImage.meta.assignFrom(self.LabelImage.meta)
 
         for t in range(self.LabelImage.meta.shape[0]):
-            self.labels[t]={}
+            if t not in self.labels.keys():
+                self.labels[t]={}
 
     def _checkConstraints(self, *args):
         if self.RawImage.ready():
