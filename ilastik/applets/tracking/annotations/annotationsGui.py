@@ -19,7 +19,7 @@
 #                 http://ilastik.org/license.html
 ###############################################################################
 from PyQt4 import uic, QtGui, QtCore
-from PyQt4.QtGui import QColor
+from PyQt4.QtGui import QColor, QPixmap, QIcon
 
 import os
 import numpy
@@ -79,8 +79,7 @@ class AnnotationsGui(LayerViewerGui):
         self._drawer.gotoLabel.pressed.connect(self._onGotoLabel)
         self._drawer.saveAnnotations.pressed.connect(self._onSaveAnnotations)
         self._drawer.initializeAnnotations.pressed.connect(self._onInitializeAnnotations)
-        self._drawer.trackColorButton.setToolTip("Active track colour.")
-        self._drawer.activeTrackBox.setToolTip("Active track label.")
+        self._drawer.activeTrackBox.setToolTip("Active track label and colour.")
 
         self.editor.showCropLines(True)
         self.editor.cropModel.editableChanged.emit (False)
@@ -569,7 +568,9 @@ class AnnotationsGui(LayerViewerGui):
             
         for tid in sorted(allTracks):
             if tid not in items:
-                activeTrackBox.addItem(str(tid), self.ct[tid])
+                pm = QPixmap(16,16)
+                pm.fill(QColor(self.ct[tid]))
+                activeTrackBox.insertItem(tid, QIcon(pm), str(tid))
 
         if activeTrackBox.count() >= 1:
             activeTrackBox.setCurrentIndex(activeTrackBox.count()-1)
@@ -822,7 +823,6 @@ class AnnotationsGui(LayerViewerGui):
     
     def _currentActiveTrackChanged(self):
         self.mainOperator.ActiveTrack.setValue(self._getActiveTrack())
-        self._setStyleSheet(self._drawer.trackColorButton, QColor(self.ct[self._getActiveTrack()]), type="QPushButton")
 
     def _getActiveTrack(self):
         if self._drawer.activeTrackBox.count() > 0:

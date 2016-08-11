@@ -39,30 +39,13 @@
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
       <layout class="QGridLayout" name="gridLayout_2">
+       <item row="1" column="1">
+        <widget class="QComboBox" name="activeTrackBox"/>
+       </item>
        <item row="1" column="0">
         <widget class="QLabel" name="label">
          <property name="text">
           <string>Active Track:</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="2">
-        <widget class="QComboBox" name="activeTrackBox">
-         <property name="enabled">
-          <bool>true</bool>
-         </property>
-         <property name="editable">
-          <bool>false</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QPushButton" name="trackColorButton">
-         <property name="enabled">
-          <bool>false</bool>
-         </property>
-         <property name="text">
-          <string/>
          </property>
         </widget>
        </item>
@@ -397,7 +380,6 @@
   </customwidget>
  </customwidgets>
  <tabstops>
-  <tabstop>activeTrackBox</tabstop>
   <tabstop>newTrack</tabstop>
   <tabstop>delTrack</tabstop>
   <tabstop>divEvent</tabstop>
