@@ -128,6 +128,20 @@ class StructuredTrackingWorkflowBase( Workflow ):
         self._applets.append(self.trackingApplet)
         self._applets.append(self.dataExportTrackingApplet)
 
+        if self.divisionDetectionApplet:
+            opDivDetection = self.divisionDetectionApplet.topLevelOperator
+            opDivDetection.SelectedFeatures.setValue(configConservation.selectedFeaturesDiv)
+            opDivDetection.LabelNames.setValue(['Not Dividing', 'Dividing'])
+            opDivDetection.AllowDeleteLabels.setValue(False)
+            opDivDetection.AllowAddLabel.setValue(False)
+            opDivDetection.EnableLabelTransfer.setValue(False)
+
+        opCellClassification = self.cellClassificationApplet.topLevelOperator
+        opCellClassification.SelectedFeatures.setValue(configConservation.selectedFeaturesObjectCount )
+        opCellClassification.SuggestedLabelNames.setValue( ['False Detection',] + [str(1) + ' Object'] + [str(i) + ' Objects' for i in range(2,10) ] )
+        opCellClassification.AllowDeleteLastLabelOnly.setValue(True)
+        opCellClassification.EnableLabelTransfer.setValue(False)
+
     def connectLane(self, laneIndex):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)
@@ -186,21 +200,12 @@ class StructuredTrackingWorkflowBase( Workflow ):
             opDivDetection.SegmentationImages.connect(opTrackingFeatureExtraction.LabelImage)
             opDivDetection.ObjectFeatures.connect(opTrackingFeatureExtraction.RegionFeaturesAll)
             opDivDetection.ComputedFeatureNames.connect(opTrackingFeatureExtraction.ComputedFeatureNamesAll)
-            opDivDetection.SelectedFeatures.setValue(configConservation.selectedFeaturesDiv)
-            opDivDetection.LabelNames.setValue(['Not Dividing', 'Dividing'])
-            opDivDetection.AllowDeleteLabels.setValue(False)
-            opDivDetection.AllowAddLabel.setValue(False)
-            opDivDetection.EnableLabelTransfer.setValue(False)
 
         opCellClassification.BinaryImages.connect( op5Binary.Output )
         opCellClassification.RawImages.connect( op5Raw.Output )
         opCellClassification.SegmentationImages.connect(opTrackingFeatureExtraction.LabelImage)
         opCellClassification.ObjectFeatures.connect(opTrackingFeatureExtraction.RegionFeaturesAll)
         opCellClassification.ComputedFeatureNames.connect(opTrackingFeatureExtraction.ComputedFeatureNamesNoDivisions)
-        opCellClassification.SelectedFeatures.setValue(configConservation.selectedFeaturesObjectCount )
-        opCellClassification.SuggestedLabelNames.setValue( ['False Detection',] + [str(1) + ' Object'] + [str(i) + ' Objects' for i in range(2,10) ] )
-        opCellClassification.AllowDeleteLastLabelOnly.setValue(True)
-        opCellClassification.EnableLabelTransfer.setValue(False)
 
         opAnnotations.RawImage.connect( op5Raw.Output )
         opAnnotations.BinaryImage.connect( op5Binary.Output )
