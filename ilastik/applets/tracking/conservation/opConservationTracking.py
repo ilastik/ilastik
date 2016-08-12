@@ -296,6 +296,8 @@ class OpConservationTracking(Operator, ExportingOperator):
             parameters['cplex_timeout'] = ''
             cplex_timeout = float(1e75)
         
+        self.Parameters.setValue(parameters, check_changed=False)
+        
         if withClassifierPrior:
             if not self.DetectionProbabilities.ready() or len(self.DetectionProbabilities([0]).wait()[0]) == 0:
                 raise DatasetConstraintError('Tracking', 'Classifier not ready yet. Did you forget to train the Object Count Classifier?')
