@@ -312,9 +312,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         
         traxelstore = self._generate_traxelstore(time_range, x_range, y_range, z_range,
                                                        size_range, x_scale, y_scale, z_scale, 
-#                                                      median_object_size=median_obj_size, 
                                                        with_div=withDivisions,
-#                                                      with_opt_correction=withOpticalCorrection,
                                                        with_classifier_prior=withClassifierPrior)
         
         def constructFov(shape, t0, t1, scale=[1, 1, 1]):
@@ -474,7 +472,7 @@ class OpConservationTracking(Operator, ExportingOperator):
                     values = self.resolvedMergersDict[time].values()
                 labels = [l for l in labels if l in itertools.chain(*values)]
             for label in labels:
-                if label > 0:
+                if label > 0 and self.hypotheses_graph.hasNode((time,label)):
                     lineage_id = self.hypotheses_graph.getLineageId(time, label)
                     if lineage_id is None:
                         lineage_id = 1
@@ -551,7 +549,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         for (time, object_id) in object_ids_generator: 
             object_ids.append((time, object_id))
             frame_data = label_image_slot[time:time+1].wait()
-            if self.hypotheses_graph._graph.has_node((time,object_id)):
+            if self.hypotheses_graph.hasNode((time,object_id)):
                 lineage_ids.append(self.hypotheses_graph.getLineageId(time, object_id))
                 track_ids.append(self.hypotheses_graph.getTrackId(time, object_id))
             else:
@@ -648,12 +646,11 @@ class OpConservationTracking(Operator, ExportingOperator):
                               with_classifier_prior=False):
 
         logger.info("generating traxels")
-        logger.info("fetching region features and division probabilities")
-        
         traxelstore = ProbabilityGenerator()
         
+        logger.info("fetching region features and division probabilities")
         feats = self.ObjectFeatures(time_range).wait()
-
+        
         if with_div:
             if not self.DivisionProbabilities.ready() or len(self.DivisionProbabilities([0]).wait()[0]) == 0:
                 msgStr = "\nDivision classifier has not been trained! " + \
@@ -762,8 +759,14 @@ class OpConservationTracking(Operator, ExportingOperator):
                 traxel.add_feature_array("count", 1)
                 traxel.set_feature_value("count", 0, float(size))
 
-                # Add traxel to traxelstore
-                traxelstore.TraxelsPerFrame.setdefault(int(t), {})[int(idx + 1)] = traxel
+                # Add traxel to traxelstore after checking position, time, and size ranges
+                if (x >= x_range[0] or x <= x_range[1] or
+                            y >= y_range[0] or y <= y_range[1] or
+                            z >= z_range[0] or z <= z_range[1] or
+                            size >= size_range[0] or size <= size_range[1]):
+                    traxelstore.TraxelsPerFrame.setdefault(int(t), {})[int(idx + 1)] = traxel
+                else:
+                    logger.info("Ommiting traxel with ID: {}".format(traxel.Id))
 
             if len(filtered_labels_at) > 0:
                 filtered_labels[str(int(t) - time_range[0])] = filtered_labels_at
