@@ -340,7 +340,6 @@ class OpConservationTracking(Operator, ExportingOperator):
             divisionThreshold=0.1
         )
 
-        withTracklets = False
         if withTracklets:
             hypotheses_graph = hypotheses_graph.generateTrackletGraph()
 
@@ -362,11 +361,9 @@ class OpConservationTracking(Operator, ExportingOperator):
         if hypotheses_graph:
             hypotheses_graph.insertSolution(result)
             hypotheses_graph.computeLineage()
-        
-        # Get events vector (only used whe saving old h5 events file)
-        events = self._getEventsVector(result, model)
-        self.EventsVector.setValue(events, check_changed=False)
-        
+            
+            
+        # Merger resolution
         if withMergerResolution:
             originalGraph = hypotheses_graph
             labelVolume = self.LabelImage[:].wait()
@@ -382,6 +379,10 @@ class OpConservationTracking(Operator, ExportingOperator):
         # Refresh (execute) output slots
         self.Output.setDirty()
         self.RelabeledImage.setDirty()
+
+        # Get events vector (only used whe saving old h5 events file)
+        events = self._getEventsVector(result, model)
+        self.EventsVector.setValue(events, check_changed=False)
         
         if not withBatchProcessing:
             merger_layer_idx = self.parent.parent.trackingApplet._gui.currentGui().layerstack.findMatchingIndex(lambda x: x.name == "Merger")
