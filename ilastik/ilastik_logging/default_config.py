@@ -229,8 +229,16 @@ def init(format_prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ERRORS, l
         assert output_mode != OutputMode.LOGFILE, "Must enable a logging mode."
         output_mode = OutputMode.CONSOLE
 
+    # Preserve pre-existing handlers
+    original_root_handlers = list(logging.getLogger().handlers)
+
     # Start with the default
-    logging.config.dictConfig( get_default_config( format_prefix, output_mode, logfile_path ) )
+    default_config = get_default_config( format_prefix, output_mode, logfile_path )
+    logging.config.dictConfig( default_config )
+
+    # Preserve pre-existing handlers
+    for handler in original_root_handlers:
+        logging.getLogger().addHandler(handler)
     
     # Update from the user's customizations
     loggingHelpers.updateFromConfigFile()
