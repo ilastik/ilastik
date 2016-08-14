@@ -225,7 +225,7 @@ class OpNormalize255(Operator):
     MAXIMUM = 'maximum'
 
     Input = InputSlot()
-    TotalStats = InputSlot(value={MINIMUM:-128.0, MAXIMUM:127.0}) # numpy.min(result)
+    TotalStats = InputSlot(value={MINIMUM:-128.0, MAXIMUM:127.0})
     Output = OutputSlot()
 
     def setupOutputs(self):
