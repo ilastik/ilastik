@@ -25,6 +25,7 @@ import h5py
 import numpy
 from functools import partial
 import logging
+from __builtin__ import False
 logger = logging.getLogger(__name__)
 
 #PyQt
@@ -687,17 +688,27 @@ class DataSelectionGui(QWidget):
 
     @threadRouted
     def handleDatasetConstraintError(self, info, filename, ex, roleIndex, laneIndex, return_val=[False]):
-        msg = "Can't use default properties for dataset:\n\n" + \
-              filename + "\n\n" + \
-              "because it violates a constraint of the {} applet.\n\n".format( ex.appletName ) + \
-              ex.message + "\n\n" + \
-              "Please enter valid dataset properties to continue."
-        QMessageBox.warning( self, "Dataset Needs Correction", msg )
+        if ex.unfixable:
+            msg = ( "Can't use dataset:\n\n"
+                    + filename + "\n\n"
+                    + "because it violates a constraint of the {} component.\n\n".format( ex.appletName )
+                    + ex.message + "\n\n" )
+
+            QMessageBox.warning( self, "Can't use dataset", msg )
+            return_val[0] = False
+        else:
+            msg = ( "Can't use default properties for dataset:\n\n"
+                    + filename + "\n\n"
+                    + "because it violates a constraint of the {} component.\n\n".format( ex.appletName )
+                    + ex.message + "\n\n"
+                    + "If possible, fix this problem by adjusting the dataset properties in the next window, or hit 'cancel' to abort." )
+            
+            QMessageBox.warning( self, "Dataset Needs Correction", msg )
         
-        # The success of this is 'returned' via our special out-param
-        # (We can't return a value from this func because it is @threadRouted.
-        successfully_repaired = self.repairDatasetInfo( info, roleIndex, laneIndex )
-        return_val[0] = successfully_repaired
+            # The success of this is 'returned' via our special out-param
+            # (We can't return a value from this func because it is @threadRouted.
+            successfully_repaired = self.repairDatasetInfo( info, roleIndex, laneIndex )
+            return_val[0] = successfully_repaired
 
     def repairDatasetInfo(self, info, roleIndex, laneIndex):
         """Open the dataset properties editor and return True if the new properties are acceptable."""
