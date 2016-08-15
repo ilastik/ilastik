@@ -164,7 +164,7 @@ class OpEdgeTraining(Operator):
         logger.info("Loading groundtruth for lane {}...".format(lane_index))
         gt_vol = op_view.GroundtruthSegmentation[:].wait()
         gt_vol = vigra.taggedView(gt_vol, op_view.GroundtruthSegmentation.meta.axistags)
-        gt_vol.withAxes(''.join(tag.key for tag in op_view.Superpixels.meta.axistags))
+        gt_vol = gt_vol.withAxes(''.join(tag.key for tag in op_view.Superpixels.meta.axistags))
         gt_vol = gt_vol.dropChannelAxis()
 
         rag = op_view.opRagCache.Output.value
