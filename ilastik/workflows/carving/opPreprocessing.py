@@ -556,7 +556,7 @@ class OpPreprocessing(Operator):
         self._opOverlayCache.fixAtCurrent.setValue(False)
         self._opOverlayCache.innerBlockShape.setValue( cacheBlockShape )
         self._opOverlayCache.outerBlockShape.setValue( cacheBlockShape )
-        self._opOverlayCache.Input.connect( self._opRawNormalize.Output )
+        self._opOverlayCache.Input.connect( self._opOverlayNormalize.Output )
 
         self._opInputCache.fixAtCurrent.setValue(False)
         self._opInputCache.innerBlockShape.setValue( cacheBlockShape )
