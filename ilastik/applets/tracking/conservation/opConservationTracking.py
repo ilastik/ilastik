@@ -360,8 +360,6 @@ class OpConservationTracking(Operator, ExportingOperator):
         # Insert the solution into the hypotheses graph and from that deduce the lineages
         if hypotheses_graph:
             hypotheses_graph.insertSolution(result)
-            hypotheses_graph.computeLineage()
-            
             
         # Merger resolution
         if withMergerResolution:
