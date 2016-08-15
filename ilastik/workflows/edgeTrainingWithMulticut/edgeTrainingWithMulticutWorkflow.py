@@ -39,6 +39,8 @@ logger = logging.getLogger(__name__)
 
 class EdgeTrainingWithMulticutWorkflow(Workflow):
     workflowName = "Edge Training With Multicut"
+    workflowDisplayName = "(BETA) Edge Training With Multicut"
+
     workflowDescription = "A workflow based around training a classifier for merging superpixels and joining them via multicut."
     defaultAppletIndex = 0 # show DataSelection by default
 
