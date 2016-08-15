@@ -758,13 +758,13 @@ class OpConservationTracking(Operator, ExportingOperator):
                 traxel.set_feature_value("count", 0, float(size))
 
                 # Add traxel to traxelstore after checking position, time, and size ranges
-                if (x >= x_range[0] or x <= x_range[1] or
-                            y >= y_range[0] or y <= y_range[1] or
-                            z >= z_range[0] or z <= z_range[1] or
-                            size >= size_range[0] or size <= size_range[1]):
-                    traxelstore.TraxelsPerFrame.setdefault(int(t), {})[int(idx + 1)] = traxel
+                if (x < x_range[0] or x >= x_range[1] or
+                            y < y_range[0] or y > y_range[1] or
+                            z < z_range[0] or z > z_range[1] or
+                            size < size_range[0] or size > size_range[1]):
+                    logger.info("Omitting traxel with ID: {}".format(traxel.Id))
                 else:
-                    logger.info("Ommiting traxel with ID: {}".format(traxel.Id))
+                    traxelstore.TraxelsPerFrame.setdefault(int(t), {})[int(idx + 1)] = traxel
 
             if len(filtered_labels_at) > 0:
                 filtered_labels[str(int(t) - time_range[0])] = filtered_labels_at
