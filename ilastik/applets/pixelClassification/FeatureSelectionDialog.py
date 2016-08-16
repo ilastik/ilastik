@@ -44,11 +44,11 @@ class FeatureSelectionResult(object):
 
         if self.selection_method == "filter" or self.selection_method == "gini":
             if self.parameters["num_of_feat"] == 0:
-                name = "%%d features(auto), %s selection" % ( numpy.sum(self.feature_matrix), self.selection_method)
+                name = "%d features(auto), %s selection" % ( numpy.sum(self.feature_matrix), self.selection_method)
             else:
                 name = "%d features, %s selection" % (self.parameters["num_of_feat"], self.selection_method)
         elif self.selection_method == "wrapper":
-            name = "%i features, wrapper method" % (numpy.sum(self.feature_matrix), self.selection_method)
+            name = "%d features, wrapper method" % numpy.sum(self.feature_matrix)
         else:
             name = self.selection_method
         return name
