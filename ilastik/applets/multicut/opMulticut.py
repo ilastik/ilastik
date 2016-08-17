@@ -60,6 +60,9 @@ if not NIFTY_SOLVER_NAMES:
 
 AVAILABLE_SOLVER_NAMES = NIFTY_SOLVER_NAMES + OPENGM_SOLVER_NAMES
 
+if not AVAILABLE_SOLVER_NAMES:
+    raise ImportError("Can't import OpMulticut: No solver libraries detected!")
+
 class OpMulticut(Operator):
     Beta = InputSlot(value=0.5)
     SolverName = InputSlot(value='Nifty_FmGreedy')
