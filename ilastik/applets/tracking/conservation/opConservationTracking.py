@@ -163,7 +163,7 @@ class OpConservationTracking(Operator, ExportingOperator):
                     self.mergerResolver.relabelMergers(result[t-roi.start[0],...,0], t)
                     result[t-roi.start[0],...,0] = self._labelLineageIds(result[t-roi.start[0],...,0], t)
                 else:
-                    result[t-roi.start[0],...][:] = 0
+                    result[t-roi.start[0],...,0] = self._labelLineageIds(result[t-roi.start[0],...,0], t)
 
             original[result != 0] = result[result != 0]
             result[:] = original
