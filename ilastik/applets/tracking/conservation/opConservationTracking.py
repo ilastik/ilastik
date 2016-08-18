@@ -370,15 +370,21 @@ class OpConservationTracking(Operator, ExportingOperator):
             self.resolvedMergersDict = self.mergerResolver.run()
             self.MergerOutput.setDirty()
 
+        # Uncomment to export a hypothese graph diagram
+        #logger.info("Exporting hypotheses graph diagram.")
+        #from hytra.util.hypothesesgraphdiagram import HypothesesGraphDiagram
+        #hgv = HypothesesGraphDiagram(hypotheses_graph, timeRange=(0, 9), fileName='HypothesesGraph.png' )
+
+        logger.info("Computing hypotheses graph lineages.")
         hypotheses_graph.computeLineage()
-        
+                
         self.hypotheses_graph = hypotheses_graph
 
         # Refresh (execute) output slots
         self.Output.setDirty()
         self.RelabeledImage.setDirty()
 
-        # Get events vector (only used whe saving old h5 events file)
+        # Get events vector (only used when saving old h5 events file)
         events = self._getEventsVector(result, model)
         self.EventsVector.setValue(events, check_changed=False)
         
