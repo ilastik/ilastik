@@ -600,6 +600,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         withNormalization = True
         withClassifierPrior = self._drawer.classifierPriorBox.isChecked()
         verbose = False
+        withNonNegativeWeights = False
         structuredLearningTrackerParameters = structuredLearningTracker.getStructuredLearningTrackingParameters(
             float(forbidden_cost),
             float(ep_gap),
@@ -622,7 +623,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             num_threads,
             withNormalization,
             withClassifierPrior,
-            verbose
+            verbose,
+            withNonNegativeWeights
         )
 
         # will be needed for python defined TRANSITION function
@@ -653,25 +655,47 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         epsZero = 0.01
         if self._detectionWeight < 0.0:
-            self._informationMessage ("Detection weight calculated was negative. It will be set to 0.01. " + \
-                "Add more training and recalculate the learning weights in order to improve your tracking solution.")
-            self._detectionWeight = epsZero
+            self._informationMessage ("Detection weight calculated was negative. Tracking solution will be re-calculated with non-negativity constraints for learning weights. " + \
+                "Furthermore, you should add more training and recalculate the learning weights in order to improve your tracking solution.")
+            #self._detectionWeight = epsZero
         elif self._divisionWeight < 0.0:
-            self._informationMessage ("Division weight calculated was negative. It will be set to 0.01. " + \
-                "Add more division cells to your training and recalculate the learning weights in order to improve your tracking solution.")
-            self._divisionWeight = epsZero
+            self._informationMessage ("Division weight calculated was negative. Tracking solution will be re-calculated with non-negativity constraints for learning weights. " + \
+                "Furthermore, you should add more division cells to your training and recalculate the learning weights in order to improve your tracking solution.")
+            #self._divisionWeight = epsZero
         elif self._transitionWeight < 0.0:
-            self._informationMessage ("Transition weight calculated was negative. It will be set to 0.01. " + \
-                "Add more transitions to your training and recalculate the learning weights in order to improve your tracking solution.")
-            self._transitionWeight = epsZero
+            self._informationMessage ("Transition weight calculated was negative. Tracking solution will be re-calculated with non-negativity constraints for learning weights. " + \
+                "Furthermore, you should add more transitions to your training and recalculate the learning weights in order to improve your tracking solution.")
+            #self._transitionWeight = epsZero
         elif self._appearanceWeight < 0.0:
-            self._informationMessage ("Appearance weight calculated was negative. It will be set to 0.01. " + \
-                "Add more appearances to your training and recalculate the learning weights in order to improve your tracking solution.")
-            self._appearanceWeight = epsZero
+            self._informationMessage ("Appearance weight calculated was negative. Tracking solution will be re-calculated with non-negativity constraints for learning weights. " + \
+                "Furthermore, you should add more appearances to your training and recalculate the learning weights in order to improve your tracking solution.")
+            #self._appearanceWeight = epsZero
         elif self._disappearanceWeight < 0.0:
-            self._informationMessage ("Disappearance weight calculated was negative. It will be set to 0.01. " + \
-                "Add more disappearances to your training and recalculate the learning weights in order to improve your tracking solution.")
-            self._disappearanceWeight = epsZero
+            self._informationMessage ("Disappearance weight calculated was negative. Tracking solution will be re-calculated with non-negativity constraints for learning weights. " + \
+                "Furthermore, you should add more disappearances to your training and recalculate the learning weights in order to improve your tracking solution.")
+            #self._disappearanceWeight = epsZero
+
+        if self._detectionWeight < 0.0 or self._divisionWeight < 0.0 or self._transitionWeight < 0.0 or self._appearanceWeight < 0.0 or self._disappearanceWeight < 0.0:
+            structuredLearningTrackerParameters.setWithNonNegativeWeights(True)
+            structuredLearningTracker.structuredLearning(structuredLearningTrackerParameters)
+            norm = 0
+            for i in range(5):
+                norm += structuredLearningTracker.weight(i)*structuredLearningTracker.weight(i)
+            norm = math.sqrt(norm)
+
+            if norm > 0.0000001:
+                self._detectionWeight = structuredLearningTracker.weight(0)/norm
+                self._divisionWeight = structuredLearningTracker.weight(1)/norm
+                self._transitionWeight = structuredLearningTracker.weight(2)/norm
+                self._appearanceWeight = structuredLearningTracker.weight(3)/norm
+                self._disappearanceWeight = structuredLearningTracker.weight(4)/norm
+
+            self._drawer.detWeightBox.setValue(self._detectionWeight);
+            self._drawer.divWeightBox.setValue(self._divisionWeight);
+            self._drawer.transWeightBox.setValue(self._transitionWeight);
+            self._drawer.appearanceBox.setValue(self._appearanceWeight);
+            self._drawer.disappearanceBox.setValue(self._disappearanceWeight);
+
 
         self.mainOperator.detectionWeight = self._detectionWeight
         self.mainOperator.divisionWeight = self._divisionWeight
