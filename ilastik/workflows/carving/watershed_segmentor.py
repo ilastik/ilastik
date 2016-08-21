@@ -70,8 +70,12 @@ class WatershedSegmentor(object):
     @timeLogged(logger, logging.INFO)
     def preprocess(self, labels, volume_features, roi_stop):
         assert not self.hasSeg, "gridSegmentor was finalized; cannot preprocess."
+        assert not self.gridSegmentor.isFinalized(), "gridSegmentor was finalized; cannot preprocess."
         self.gridSegmentor.preprocessing(labels=labels, weightArray=volume_features, roiEnd=roi_stop)
         self.nodeNum = self.gridSegmentor.nodeNum()
+
+    def finalize(self):
+        self.gridSegmentor.finalize()
 
     @timeLogged(logger, logging.INFO)
     def run(self, unaries, prios = None, noBiasBelow = 0, **kwargs):
@@ -123,6 +127,12 @@ class WatershedSegmentor(object):
     def saveH5G(self, h5g):
         g = h5g
         gridSeg = self.gridSegmentor
+
+        if not gridSeg.isFinalized():
+            logger.warning(
+                "GridSegmentor must be finalized prior to saving graph: '{}'.  File a bug report.".format(
+                    g.file.filename))
+            gridSeg.finalize()
 
         def saveDataArray(group_name, data_array):
             gc.collect()

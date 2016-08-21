@@ -307,7 +307,6 @@ class OpMstSegmentorProvider(Operator):
         self.MST.meta.shape = (1,)
         self.MST.meta.dtype = object
 
-    @Operator.forbidParallelExecute
     def execute(self, slot, subindex, unused_roi, result):
         assert slot == self.MST, "Invalid output slot: {}".format(slot.name)
 
@@ -364,6 +363,8 @@ class OpMstSegmentorProvider(Operator):
                     mst.preprocess(labelVolume[0,...,0], numpy.asarray(featureVolume[0,...,0], numpy.float32), TinyVector(block_roi[1:-1]))
 
                     updateProgressBar(b_id, block_count, labels_roi, mst, mstBlockTimer)
+
+            mst.finalize()
 
             result[0] = mst
             return result
