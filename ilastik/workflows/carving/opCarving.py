@@ -307,7 +307,6 @@ class OpCarving(Operator):
         logger.info( "click on %r, supervoxel=%d: %r" % (position3d, sv, names) )
         return names
 
-    @Operator.forbidParallelExecute
     def attachVoxelLabelsToObject(self, name, fgVoxels, bgVoxels):
         """
         Attaches Voxellabes to an object called name.
@@ -315,7 +314,6 @@ class OpCarving(Operator):
         self._mst.object_seeds_fg_voxels[name] = fgVoxels
         self._mst.object_seeds_bg_voxels[name] = bgVoxels
 
-    @Operator.forbidParallelExecute
     def clearCurrentLabeling(self, trigger_recompute=True):
         """
         Clears the current labeling.
@@ -426,8 +424,7 @@ class OpCarving(Operator):
         
         return True
 
-    
-    @Operator.forbidParallelExecute
+
     def deleteObject_impl(self, name):
         """
         Deletes an object called name.
@@ -469,8 +466,7 @@ class OpCarving(Operator):
         self.HasSegmentation.setValue(False)
         
         return True
-    
-    @Operator.forbidParallelExecute
+
     def saveCurrentObject(self):
         """
         Saves the objects which is currently edited.
@@ -483,7 +479,6 @@ class OpCarving(Operator):
             return name
         return ""
 
-    @Operator.forbidParallelExecute
     def saveCurrentObjectAs(self, name):
         """
         Saves current object as name.
