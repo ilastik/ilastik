@@ -57,7 +57,7 @@ class TestOpStreamingUfmfReader(object):
         
         for fmi in range(FRAME_NUM) :
             frame = np.full( (HEIGHT ,WIDTH), 255, dtype=np.uint8)  
-            frame[(HEIGHT/FRAME_NUM)*fmi:(HEIGHT/FRAME_NUM)*fmi+FRAME_NUM, (WIDTH/FRAME_NUM)*fmi:(WIDTH/FRAME_NUM)*fmi+FRAME_NUM] = 50
+            frame[(HEIGHT//FRAME_NUM)*fmi:(HEIGHT//FRAME_NUM)*fmi+FRAME_NUM, (WIDTH//FRAME_NUM)*fmi:(WIDTH//FRAME_NUM)*fmi+FRAME_NUM] = 50
             timestamp = fmi+1
             ufmfFile.add_frame( frame, timestamp, pts )   
         

@@ -16,7 +16,7 @@ def test_2d():
     sz = a.itemsize
     h,w = a.shape
     bh,bw = 2,2
-    shape = (h/bh, w/bw, bh, bw)
+    shape = (h//bh, w//bw, bh, bw)
     logger.debug("shape:{}".format(shape))
 
     strides = sz*numpy.array([w*bh,bw,w,1])

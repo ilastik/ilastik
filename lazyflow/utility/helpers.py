@@ -161,7 +161,7 @@ class newIterator:
             
 
     def nextStop(self,start,grid,roi):
-        mult = [b/l for b,l in zip(start,grid)]
+        mult = [b//l for b,l in zip(start,grid)]
         gridStop = [(m+1)*l for m,l in zip(mult,grid)]
         roiStop = roi[1]
         nextStop = [min(a,b) for a,b in zip(gridStop,roiStop)] 
@@ -214,7 +214,7 @@ class newIterator:
             srcGrid = self.srcGrid
         if trgtGrid is None:
             trgtGrid = self.trgtGrid
-        start = [start[i]/trgtGrid[i]*srcGrid[i] for i in range(len(start))]
+        start = [start[i]//trgtGrid[i]*srcGrid[i] for i in range(len(start))]
         stop = [start[i]+srcGrid[i] for i in range(len(stop))]
         return (start,stop)
     

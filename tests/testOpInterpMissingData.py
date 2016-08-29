@@ -113,7 +113,7 @@ def _volume(nx=64,ny=64,nz=100,method='linear'):
     if method == 'linear':
         for i in range(b.shape[2]): b[:,:,i]*=(i+1)+50
     elif method == 'cubic':
-        s = nz/3
+        s = nz//3
         for z in range(b.shape[2]): b[:,:,z]= (z-s)**2*z*150.0/(nz*(nz-s)**2) + 30
     elif method == 'constant':
         b[:] = 124

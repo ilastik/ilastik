@@ -20,6 +20,7 @@
 #		   http://ilastik.org/license/
 ###############################################################################
 from __future__ import division
+import sys
 from lazyflow.graph import Operator,InputSlot,OutputSlot
 from lazyflow.utility.helpers import newIterator
 from lazyflow.operators.generic import OpMultiArrayStacker
@@ -633,6 +634,8 @@ class OpPixelFeaturesPresmoothed(Operator):
             else:
                 # Only some input channels were dirty,
                 # so we must mark each dirty output region separately.
+                assert sys.version_info.major == 2, "Alert! This function has not been tested under python 3. "\
+                "please remove this assertion, and be wary of any strange behavior you encounter"
                 numFeatures = self.Output.meta.shape[channelAxis] // numChannels
                 for featureIndex in range(numFeatures):
                     startChannel = numChannels*featureIndex + roi.start[channelAxis]
