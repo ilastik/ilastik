@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 # Python
+from __future__ import division
 import os
 from functools import partial
 import logging
@@ -55,7 +56,6 @@ from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelecti
 
 
 # others
-from __future__ import division
 
 #===----------------------------------------------------------------------------------------------------------------===
 #=== FeatureSelectionGui                                                                                            ===

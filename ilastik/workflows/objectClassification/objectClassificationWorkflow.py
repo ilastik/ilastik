@@ -445,6 +445,10 @@ class ObjectClassificationWorkflow(Workflow):
         When the batch-processing mechanism was rewritten, this function broke.
         It could probably be fixed with minor changes.
         """
+        assert sys.version_info.major == 2, "Alert! This function has not been " \
+        "tested under python 3. Please remove this assertion, and be wary of any " \
+        "strange behavior you encounter"
+
         # TODO: Here, we hard-code to select from the first lane only.
         opBatchClassify = self.opBatchClassify[0]
         
