@@ -298,6 +298,8 @@ class DataSelectionApplet( Applet ):
         return filePaths
 
     def configureRoleFromJson(self, lane, role, dataset_info_namespace):
+        assert sys.version_info.major == 2, "Alert! This function has not been tested "\
+        "under python 3. Please remove this assetion and be wary of any strnage behavior you encounter"
         opDataSelection = self.topLevelOperator
         logger.debug( "Configuring dataset for role {}".format( role ) )
         logger.debug( "Params: {}".format(dataset_info_namespace) )
