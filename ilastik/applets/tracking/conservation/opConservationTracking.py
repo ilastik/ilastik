@@ -370,13 +370,13 @@ class OpConservationTracking(Operator, ExportingOperator):
             self.resolvedMergersDict = self.mergerResolver.run()
             self.MergerOutput.setDirty()
 
-        # Uncomment to export a hypothese graph diagram
-        #logger.info("Exporting hypotheses graph diagram.")
-        #from hytra.util.hypothesesgraphdiagram import HypothesesGraphDiagram
-        #hgv = HypothesesGraphDiagram(hypotheses_graph, timeRange=(0, 9), fileName='HypothesesGraph.png' )
-
-        logger.info("Computing hypotheses graph lineages.")
+        logger.info("Computing hypotheses graph lineages")
         hypotheses_graph.computeLineage()
+
+        # Uncomment to export a hypothese graph diagram
+        #logger.info("Exporting hypotheses graph diagram")
+        #from hytra.util.hypothesesgraphdiagram import HypothesesGraphDiagram
+        #hgv = HypothesesGraphDiagram(hypotheses_graph, timeRange=(0, 10), fileName='HypothesesGraph.png' )
                 
         self.hypotheses_graph = hypotheses_graph
 
@@ -552,10 +552,20 @@ class OpConservationTracking(Operator, ExportingOperator):
           
         for (time, object_id) in object_ids_generator: 
             object_ids.append((time, object_id))
-            frame_data = label_image_slot[time:time+1].wait()
-            if self.hypotheses_graph.hasNode((time,object_id)):
-                lineage_ids.append(self.hypotheses_graph.getLineageId(time, object_id))
-                track_ids.append(self.hypotheses_graph.getTrackId(time, object_id))
+            
+            if self.hypotheses_graph.hasNode((time,object_id)):        
+                lineage_id = self.hypotheses_graph.getLineageId(time, object_id)
+                if lineage_id:    
+                    lineage_ids.append(lineage_id)
+                else:
+                    logger.info("Empty lineage ID for node ({},{})".format(time, object_id))
+                    lineage_ids.append(0)
+                    
+                track_id = self.hypotheses_graph.getTrackId(time, object_id)    
+                if track_id:
+                    track_ids.append(track_id)
+                else:
+                    track_ids.append(0) 
             else:
                 lineage_ids.append(0)
                 track_ids.append(0)
