@@ -513,7 +513,7 @@ class SVR(object):
 
             subBoxIndices.append(len(split))
             for j, _ in enumerate(subBoxIndices[:-1]):
-                subVal = boxValues[j] * (subBoxIndices[j + 1] - subBoxIndices[j]) / (boxIndices[j + 1] - boxIndices[j])
+                subVal = boxValues[j] * (subBoxIndices[j + 1] - subBoxIndices[j]) // (boxIndices[j + 1] - boxIndices[j])
                 subBoxValues.append(subVal)
 
             subBoxFeatures = boxFeatures[split,:]

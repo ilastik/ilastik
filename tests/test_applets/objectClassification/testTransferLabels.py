@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from __future__ import division
 import ilastik.ilastik_logging
 ilastik.ilastik_logging.default_config.init()
 
@@ -48,7 +49,7 @@ class TestTransferLabelsFunction(object):
         assert len(oldlost["partial"])==1
         min4 = coords_old["Coord<Minimum>"][4]
         max4 = coords_old["Coord<Maximum>"][4]
-        assert numpy.all(oldlost["partial"]==(min4+(max4-min4)/2))
+        assert numpy.all(oldlost["partial"]==(min4+(max4-min4)//2))
         newmin4 =  coords_new["Coord<Minimum>"][4]
         newmax4 = coords_new["Coord<Maximum>"][4]
         assert numpy.all(newlost["conflict"]==(newmin4+(newmax4-newmin4)/2.))
