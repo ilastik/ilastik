@@ -323,7 +323,8 @@ class ParallelVigraRfLazyflowClassifier(LazyflowVectorwiseClassifierABC):
         del req
         pool.wait()
 
-        total_predictions[0] //= self._num_trees
+        #This returns prediction results, not an integer. Dont use floor operator //
+        total_predictions[0] /= self._num_trees
         return total_predictions[0]
     
     @property

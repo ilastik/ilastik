@@ -1519,7 +1519,7 @@ class OpHessianOfGaussian(OpBaseVigraFilter):
     supportsOut = True
 
     def resultingChannels(self):
-        temp = self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space)*(self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space) + 1) / 2
+        temp = self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space)*(self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space) + 1) // 2
         return temp
 
 class OpGaussianGradientMagnitude(OpBaseVigraFilter):

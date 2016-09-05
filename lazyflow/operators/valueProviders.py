@@ -435,7 +435,7 @@ class OpDummyData(Operator):
         # The pattern is simply a bunch of diagonal planes.
         pattern = numpy.indices( roi.stop - roi.start ).sum(0)
         pattern += numpy.sum(roi.start)
-        pattern = ((pattern / 20) == (pattern + 10) / 20).astype(int)
+        pattern = ((pattern // 20) == (pattern + 10) // 20).astype(int)
         # If dtype is a float, use 0/1.
         # If its an int, use 0/255
         if isinstance(result.dtype, numpy.integer):

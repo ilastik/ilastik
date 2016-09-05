@@ -230,7 +230,7 @@ class TiledVolume(object):
             tile_roi_in[0][0] = new_source_slice
             tile_roi_in[1][0] = new_source_slice+1
 
-        tile_index = numpy.array(tile_roi_in[0]) / tile_blockshape
+        tile_index = numpy.array(tile_roi_in[0]) // tile_blockshape
         rest_args = { 'z_start' : tile_roi_in[0][0],
                       'z_stop'  : tile_roi_in[1][0],
                       'y_start' : tile_roi_in[0][1],
