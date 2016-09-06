@@ -754,9 +754,12 @@ class AnnotationsGui(LayerViewerGui):
         newUnlabeledObjectsCount = int(self._drawer.unlabeledObjectsCount.text())
 
         if newUnlabeledObjectsCount == 0 and not unlabeledObjectsCount == 0:
-            self._criticalMessage("Info: All objects in the current crop have been assigned a track label.")
+            self._informationMessage("Info: All objects in the current crop have been assigned a track label.")
 
     def handleEditorRightClick(self, position5d, globalWindowCoordiante):
+        crop = self.getCurrentCrop()
+        unlabeledObjectsCount = int(self._drawer.unlabeledObjectsCount.text())
+
         if self.divLock:
             return
                 
@@ -875,7 +878,13 @@ class AnnotationsGui(LayerViewerGui):
 
         else:
             assert False, "cannot reach this"
-               
+
+        self.updateLabeledUnlabeledCount(crop)
+        newUnlabeledObjectsCount = int(self._drawer.unlabeledObjectsCount.text())
+
+        if newUnlabeledObjectsCount == 0 and not unlabeledObjectsCount == 0:
+            self._informationMessage("Info: All objects in the current crop have been assigned a track label.")
+
     def _delDivisionEvent(self, parent_label):
         children = self.mainOperator.divisions[parent_label][0]            
         text = "%d: %d, %d" % (parent_label, children[0], children[1])
@@ -1080,12 +1089,12 @@ class AnnotationsGui(LayerViewerGui):
                     self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t) + " left the current crop time boundary. " + \
                                          "Stopping automatic tracking at crop boundary.")
                     self._gotoObject(uniqueLabels[0], t, keepXYZ=True)
-                    return
+                    break
                 elif res == -99:
                     self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t) + " left the current crop spatial boundary. " + \
                                          "Stopping automatic tracking at crop boundary.")
                     self._gotoObject(uniqueLabels[0], t, keepXYZ=True)
-                    return
+                    break
                 elif res == -1:
                     self._gotoObject(uniqueLabels[0], t, keepXYZ=True)
                     return
@@ -1130,7 +1139,7 @@ class AnnotationsGui(LayerViewerGui):
         newUnlabeledObjectsCount = int(self._drawer.unlabeledObjectsCount.text())
 
         if newUnlabeledObjectsCount == 0 and not unlabeledObjectsCount == 0:
-            self._criticalMessage("Info: All objects in the current crop have been assigned a track label.")
+            self._informationMessage("Info: All objects in the current crop have been assigned a track label.")
 
     @threadRouted
     def _setPosModel(self, time=None, slicingPos=None, cursorPos=None):        
