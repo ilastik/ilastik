@@ -91,6 +91,49 @@ class AnnotationsGui(LayerViewerGui):
         self.topLevelOperatorView.Labels.setValue(self.topLevelOperatorView.labels)
         self.topLevelOperatorView.Divisions.setValue(self.topLevelOperatorView.divisions)
 
+        crop = self.getCurrentCrop()
+        self.updateLabeledUnlabeledCount(crop)
+
+    def getNumberOfAllObjects(self, crop):
+        num = 0
+        for t in range(crop["time"][0],crop["time"][1]+1):
+            roi = SubRegion(self.topLevelOperatorView.LabelImage,
+                                start=[t,crop["starts"][0],crop["starts"][1],crop["starts"][2],0],
+                                stop=[t+1,crop["stops"][0],crop["stops"][1],crop["stops"][2],1])
+            li = self.topLevelOperatorView.LabelImage.get(roi).wait()
+            uniqueLabels = numpy.unique(li)
+            if uniqueLabels[0] == 0:
+                num += len (uniqueLabels) - 1
+            else:
+                num += len (uniqueLabels)
+
+        return num
+
+    def getNumberOfLabeledObjects(self, crop):
+        num = 0
+        self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()#, {'RegionCenter','Coord<Minimum>','Coord<Maximum>'}).wait()
+
+        for time in range(crop["time"][0],crop["time"][1]+1):
+            if time in self.topLevelOperatorView.labels.keys():
+                for label in self.topLevelOperatorView.labels[time].keys():
+                    lower = self.features[time][default_features_key]['Coord<Minimum>'][label]
+                    upper = self.features[time][default_features_key]['Coord<Maximum>'][label]
+
+                    addAnnotation = False
+                    if len(lower) == 2:
+                        if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
+                            crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1]:
+                            addAnnotation = True
+                    else:
+                        if  crop["starts"][0] <= upper[0] and lower[0] <= crop["stops"][0] and \
+                            crop["starts"][1] <= upper[1] and lower[1] <= crop["stops"][1] and \
+                            crop["starts"][2] <= upper[2] and lower[2] <= crop["stops"][2]:
+                            addAnnotation = True
+
+                    if addAnnotation:
+                        num += 1
+        return num
+
     def updateTime(self):
         delta = self.topLevelOperatorView.Crops[self._drawer.cropListModel[self._drawer.cropListModel.selectedRow()].name][0][0] - self.editor.posModel.time
         if delta > 0:
@@ -433,6 +476,23 @@ class AnnotationsGui(LayerViewerGui):
         self.editor.cropModel.colorChanged.emit(brushColor)
         self._currentCrop = row
         self._currentCropName = currentName
+        self.updateLabeledUnlabeledCount(self.topLevelOperatorView.Crops.value[currentName])
+
+    def updateLabeledUnlabeledCount(self, crop):
+        labeledObjects = self.getNumberOfLabeledObjects(crop)
+        allObjects = self.getNumberOfAllObjects(crop)
+        self._drawer.labeledObjectsCount.setText(str(labeledObjects))
+        unlabeledObjects = allObjects - labeledObjects
+        if unlabeledObjects > 0:
+            unlabeledColor = 'red'
+            labeledColor = 'black'
+        else:
+            unlabeledColor = 'black'
+            labeledColor = 'green'
+        self._drawer.unlabeledObjects.setText("<font color="+unlabeledColor+">Unlabeled</font>" )
+        self._drawer.labeledObjects.setText("<font color="+labeledColor+">Labeled</font>" )
+        self._drawer.unlabeledObjectsCount.setText(str(unlabeledObjects))
+        self._drawer.allObjectsCount.setText(str(allObjects))
 
     def updateTime(self):
         delta = self.topLevelOperatorView.Crops.value[self._drawer.cropListModel[self._drawer.cropListModel.selectedRow()].name]["time"][0] - self.editor.posModel.time
@@ -612,6 +672,10 @@ class AnnotationsGui(LayerViewerGui):
             self.mainOperator.UntrackedImage.setDirty(roi)
 
     def handleEditorLeftClick(self, position5d, globalWindowCoordiante):
+
+        crop = self.getCurrentCrop()
+        unlabeledObjectsCount = int(self._drawer.unlabeledObjectsCount.text())
+
         if self.divLock:
             oid = self._getObject(self.mainOperator.LabelImage, position5d)
             item = (position5d[0], oid)
@@ -685,6 +749,12 @@ class AnnotationsGui(LayerViewerGui):
             self._setDirty(self.mainOperator.Labels, [t])
     
             self._setPosModel(time=self.editor.posModel.time + 1)
+
+        self.updateLabeledUnlabeledCount(crop)
+        newUnlabeledObjectsCount = int(self._drawer.unlabeledObjectsCount.text())
+
+        if newUnlabeledObjectsCount == 0 and not unlabeledObjectsCount == 0:
+            self._criticalMessage("Info: All objects in the current crop have been assigned a track label.")
 
     def handleEditorRightClick(self, position5d, globalWindowCoordiante):
         if self.divLock:
@@ -950,7 +1020,7 @@ class AnnotationsGui(LayerViewerGui):
 
         if self.misdetLock:
             self._onMarkMisdetectionPressed()
-        
+
     def _runSubtracking(self, position5d, oid):        
                
         def _subtracking():
@@ -1029,7 +1099,7 @@ class AnnotationsGui(LayerViewerGui):
             self._setDirty(self.mainOperator.TrackImage, range(t_start, max(t_start+1,t_end-1)))
             self._setDirty(self.mainOperator.UntrackedImage, range(t_start, max(t_start+1,t_end-1)))
             self._setDirty(self.mainOperator.Labels, range(t_start, max(t_start+1,t_end-1)))
-    
+
             if t_end > 0:
                 self._setPosModel(time=t_end)
         
@@ -1044,6 +1114,10 @@ class AnnotationsGui(LayerViewerGui):
             msg = "Exception raised during tracking.  See traceback above.\n"
             log_exception( logger, msg, exc_info )
         
+
+        crop = self.getCurrentCrop()
+        unlabeledObjectsCount = int(self._drawer.unlabeledObjectsCount.text())
+
         self.applet.busy = True
         self.applet.appletStateUpdateRequested.emit()
         self._enableButtons(enable=False)
@@ -1051,7 +1125,13 @@ class AnnotationsGui(LayerViewerGui):
         req.notify_failed( _handle_failure )
         req.notify_finished( _handle_finished )
         req.submit()
-        
+
+        self.updateLabeledUnlabeledCount(crop)
+        newUnlabeledObjectsCount = int(self._drawer.unlabeledObjectsCount.text())
+
+        if newUnlabeledObjectsCount == 0 and not unlabeledObjectsCount == 0:
+            self._criticalMessage("Info: All objects in the current crop have been assigned a track label.")
+
     @threadRouted
     def _setPosModel(self, time=None, slicingPos=None, cursorPos=None):        
         if slicingPos:
