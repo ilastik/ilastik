@@ -65,18 +65,6 @@ except ImportError as e:
     logger.warn( "Failed to import automatic tracking workflow (conservation tracking). For this workflow, see the installation"\
                  "instructions on our website ilastik.org; check dependencies: " + str(e) )
 
-import multicut
-try:
-    import multicut
-except ImportError as e:
-    logger.warn("Failed to import multicut workflow; check dependencies: " + str(e))
-
-import edgeTrainingWithMulticut
-try:
-    import edgeTrainingWithMulticut
-except ImportError as e:
-    logger.warn("Failed to import 'Edge Training With Multicut' workflow; check dependencies: " + str(e))
-
 try:
     import tracking.structured
     WORKFLOW_CLASSES += [tracking.structured.structuredTrackingWorkflow.StructuredTrackingWorkflowFromBinary,
@@ -84,12 +72,22 @@ try:
 except ImportError as e:
     logger.warn( "Failed to import structured learning tracking workflow. For this workflow, see the installation"\
              "instructions on our website ilastik.org; check dependencies: " + str(e) )
-
 try:
     import carving
     WORKFLOW_CLASSES += [carving.carvingWorkflow.CarvingWorkflow]    
 except ImportError as e:
     logger.warn( "Failed to import carving workflow; check vigra dependency: " + str(e) )
+
+# try:
+#     import multicut
+# except ImportError as e:
+#     logger.warn("Failed to import multicut workflow; check dependencies: " + str(e))
+
+try:
+    import edgeTrainingWithMulticut
+    WORKFLOW_CLASSES += [edgeTrainingWithMulticut.EdgeTrainingWithMulticutWorkflow]
+except ImportError as e:
+    logger.warn("Failed to import 'Edge Training With Multicut' workflow; check dependencies: " + str(e))
 
 try:
     import counting

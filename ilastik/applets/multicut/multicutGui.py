@@ -31,7 +31,7 @@ from ilastik.utility.gui import threadRouted
 from volumina.pixelpipeline.datasources import LazyflowSource
 from volumina.layer import SegmentationEdgesLayer
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
-from ilastik.applets.multicut.opMulticut import OpMulticutAgglomerator, AVAILABLE_SOLVER_NAMES
+from ilastik.applets.multicut.opMulticut import OpMulticutAgglomerator, AVAILABLE_SOLVER_NAMES, DEFAULT_SOLVER_NAME
 
 from lazyflow.request import Request
 
@@ -167,7 +167,17 @@ class MulticutGuiMixin(object):
         with self.set_updating():
             op = self.__topLevelOperatorView
             self.beta_box.setValue( op.Beta.value )
-            solver_index = AVAILABLE_SOLVER_NAMES.index( op.SolverName.value )
+            
+            solver_name = op.SolverName.value
+            try:
+                solver_index = AVAILABLE_SOLVER_NAMES.index( solver_name )
+            except ValueError:
+                # If the solver name is unknown to us, then
+                # this project file must have been created on a different machine,
+                # where we had access to different solvers.
+                # Override the solver name with the default.
+                solver_index = AVAILABLE_SOLVER_NAMES.index( DEFAULT_SOLVER_NAME )
+                op.SolverName.setValue( DEFAULT_SOLVER_NAME )
             self.solver_name_combo.setCurrentIndex( solver_index )
 
     def configure_operator_from_gui(self):

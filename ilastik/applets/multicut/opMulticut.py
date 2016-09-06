@@ -9,12 +9,15 @@ from lazyflow.utility import Timer
 import logging
 logger = logging.getLogger(__name__)
 
+DEFAULT_SOLVER_NAME = None
+
 ##
 ## Check for OpenGM
 ##
 try:
     import opengm_with_cplex as opengm
     OPENGM_SOLVER_NAMES = ['Opengm_IntersectionBased', 'Opengm_Cgc', 'Opengm_Exact']
+    DEFAULT_SOLVER_NAME = 'Opengm_Exact'
 except ImportError:
     # Are there any multicut solvers in OpenGM that work without CPLEX?
     # If not, there's no point in importing it at all.
@@ -32,6 +35,7 @@ try:
     NIFTY_SOLVER_NAMES = ['Nifty_FmGreedy',
                           'Nifty_FmCplex',
                           'Nifty_ExactCplex']
+    DEFAULT_SOLVER_NAME = 'Nifty_ExactCplex'
 except ImportError:
     NIFTY_SOLVER_NAMES = []
 
@@ -43,6 +47,7 @@ if not NIFTY_SOLVER_NAMES:
         NIFTY_SOLVER_NAMES = ['Nifty_FmGreedy',
                               'Nifty_FmGurobi',
                               'Nifty_ExactGurobi']
+        DEFAULT_SOLVER_NAME = 'Nifty_ExactGurobi'
     except ImportError:
         NIFTY_SOLVER_NAMES = []
 
@@ -52,17 +57,19 @@ if not NIFTY_SOLVER_NAMES:
         import nifty
         MulticutObjectiveUndirectedGraph = nifty.graph.multicut.MulticutObjectiveUndirectedGraph
         NIFTY_SOLVER_NAMES = ['Nifty_FmGreedy']
+        DEFAULT_SOLVER_NAME = 'Nifty_FmGreedy'
     except ImportError:
         # Nifty isn't available at all
         NIFTY_SOLVER_NAMES = []
 
-
-
 AVAILABLE_SOLVER_NAMES = NIFTY_SOLVER_NAMES + OPENGM_SOLVER_NAMES
+
+if not AVAILABLE_SOLVER_NAMES:
+    raise ImportError("Can't import OpMulticut: No solver libraries detected!")
 
 class OpMulticut(Operator):
     Beta = InputSlot(value=0.5)
-    SolverName = InputSlot(value='Nifty_FmGreedy')
+    SolverName = InputSlot(value=DEFAULT_SOLVER_NAME)
     FreezeCache = InputSlot(value=True)
 
     Rag = InputSlot() # value slot.  Rag object.

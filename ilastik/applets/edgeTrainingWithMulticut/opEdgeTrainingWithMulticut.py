@@ -1,6 +1,6 @@
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from ilastik.applets.edgeTraining.opEdgeTraining import OpEdgeTraining
-from ilastik.applets.multicut.opMulticut import OpMulticut
+from ilastik.applets.multicut.opMulticut import OpMulticut, DEFAULT_SOLVER_NAME
 
 from ilastik.utility import OpMultiLaneWrapper, OperatorSubView
 
@@ -11,7 +11,7 @@ class OpEdgeTrainingWithMulticut(Operator):
 
     # Multicut parameters
     Beta = InputSlot(value=0.5)
-    SolverName = InputSlot(value='Nifty_FmGreedy') # See opMulticut.py for list of solvers
+    SolverName = InputSlot(value=DEFAULT_SOLVER_NAME) # See opMulticut.py for list of solvers
     FreezeCache = InputSlot(value=True)
   
     # Lane-wise input slots

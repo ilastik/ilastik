@@ -733,7 +733,12 @@ class CarvingGui(LabelingGui):
             layer.visible = True
             layer.name = 'Overlay'
             layer.opacity = 1.0
+            # if the flag window_leveling is set the contrast 
+            # of the layer is adjustable
+            layer.window_leveling = True
+            self.labelingDrawerUi.thresToolButton.show()
             layers.append(layer)
+            del layer
 
         inputSlot = self.topLevelOperatorView.InputData
         if inputSlot.ready():
@@ -743,15 +748,17 @@ class CarvingGui(LabelingGui):
             #layer.visible = not rawSlot.ready()
             layer.visible = True
             layer.opacity = 1.0
-            # if the flag window_leveling is set the contrast 
-            # of the layer is adjustable
-            layer.window_leveling = True
-            layers.append(layer)
 
-            if layer.window_leveling:
+            # Window leveling is already active on the Overlay,
+            # but if no overlay was provided, then activate window_leveling on the raw data instead.
+            if not overlaySlot.ready():
+                # if the flag window_leveling is set the contrast 
+                # of the layer is adjustable
+                layer.window_leveling = True
                 self.labelingDrawerUi.thresToolButton.show()
-            else:
-                self.labelingDrawerUi.thresToolButton.hide()
+
+            layers.append(layer)
+            del layer
 
         filteredSlot = self.topLevelOperatorView.FilteredInputData
         if filteredSlot.ready():

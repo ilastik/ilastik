@@ -81,6 +81,7 @@ def main():
     #parsed_args.project='/magnetic/data/multicut-testdata/2d/MyMulticut2D.ilp'
     #parsed_args.project = '/Users/bergs/MyMulticutProject.ilp'
     #parsed_args.project = '/magnetic/data/multicut-testdata/chris-256/MyMulticutProject-chris256.ilp'
+    #parsed_args.project = '/magnetic/data/flyem/fib25-neuroproof-validation/fib25-multicut/mc-training/mc-training-with-corrected-gt.ilp'
 
     ## Headless-mode options
     #parsed_args.headless = True

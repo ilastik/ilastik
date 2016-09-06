@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ###############################################################################
+import argparse
 import numpy as np
 
 from ilastik.workflow import Workflow
@@ -39,6 +40,8 @@ logger = logging.getLogger(__name__)
 
 class EdgeTrainingWithMulticutWorkflow(Workflow):
     workflowName = "Edge Training With Multicut"
+    workflowDisplayName = "(BETA) Edge Training With Multicut"
+
     workflowDescription = "A workflow based around training a classifier for merging superpixels and joining them via multicut."
     defaultAppletIndex = 0 # show DataSelection by default
 
@@ -112,8 +115,13 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
 
         # -- Parse command-line arguments
         #    (Command-line args are applied in onProjectLoaded(), below.)
-        if workflow_cmdline_args:
-            self._data_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args( workflow_cmdline_args )
+        # Parse workflow-specific command-line args
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--retrain', help="Re-train the classifier based on labels stored in the project file, and re-save.", action="store_true")
+        self.parsed_workflow_args, unused_args = parser.parse_known_args(workflow_cmdline_args)
+        if unused_args:
+            # Parse batch export/input args.
+            self._data_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args( unused_args )
             self._batch_input_args, unused_args = self.batchProcessingApplet.parse_known_cmdline_args( unused_args )
         else:
             unused_args = None
@@ -236,6 +244,10 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
         if self._data_export_args:
             self.dataExportApplet.configure_operator_with_parsed_args( self._data_export_args )
 
+        # Retrain the classifier?
+        if self.parsed_workflow_args.retrain:
+            self._force_retrain_classifier(projectManager)
+
         if self._headless and self._batch_input_args and self._data_export_args:
             # Make sure the watershed can be computed if necessary.
             opWsdt = self.wsdtApplet.topLevelOperator
@@ -257,6 +269,21 @@ class EdgeTrainingWithMulticutWorkflow(Workflow):
             self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
             logger.info("Completed Batch Processing")
 
+    def _force_retrain_classifier(self, projectManager):
+        logger.info("Retraining edge classifier...")
+        op = self.edgeTrainingWithMulticutApplet.topLevelOperator
+
+        # Cause the classifier to be dirty so it is forced to retrain.
+        # (useful if the stored labels or features were changed outside ilastik)
+        op.FeatureNames.setDirty()
+        
+        # Request the classifier, which forces training
+        new_classifier = op.opEdgeTraining.opClassifierCache.Output.value
+        if new_classifier is None:
+            raise RuntimeError("Classifier could not be trained! Check your labels and features.")
+
+        # store new classifier to project file
+        projectManager.saveProject(force_all_save=False)
 
     def prepare_for_entire_export(self):
         """
