@@ -337,6 +337,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             numNearestNeighbors=max_nearest_neighbors,
             fieldOfView=fieldOfView,
             withDivisions=False,
+            maxNeighborDistance=maxDist,
             divisionThreshold=0.1
         )
 
@@ -354,8 +355,6 @@ class OpConservationTracking(Operator, ExportingOperator):
             weights = {u'weights': [transWeight, detectionWeight, divWeight, appearance_cost, disappearance_cost]}
             
         result = dpct.trackFlowBased(model, weights)
-        
-        #hytra.core.jsongraph.writeToFormattedJSON(options.result_filename, result)
         
         # Insert the solution into the hypotheses graph and from that deduce the lineages
         if hypotheses_graph:
