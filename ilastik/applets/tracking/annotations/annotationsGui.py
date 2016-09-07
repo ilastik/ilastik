@@ -797,7 +797,13 @@ class AnnotationsGui(LayerViewerGui):
         delSubtrackToEnd = {}
         delSubtrackToStart = {}
         setActiveTrack = {}
+        runTracking = {}
         for l in trackids:
+            if activeTrack != self.misdetIdx and t < crop["time"][1]:
+                text = "run automatic tracking for object " + str(oid) + " with track label " + str(l)
+                runTracking[text] = l
+                menu.addAction(text)
+
             text = "set active track to label " + str(l)
             setActiveTrack[text] = l
             menu.addAction(text)
@@ -807,19 +813,17 @@ class AnnotationsGui(LayerViewerGui):
             menu.addAction(text)
             
             if l != self.misdetIdx:
-                text = "remove label " + str(l) + " from here to end"
-                delSubtrackToEnd[text] = l
-                menu.addAction(text)
-            
-                text = "remove label " + str(l) + " from here to start"
-                delSubtrackToStart[text] = l
-                menu.addAction(text)
+                if t < crop["time"][1]:
+                    text = "remove label " + str(l) + " from here to end"
+                    delSubtrackToEnd[text] = l
+                    menu.addAction(text)
+
+                if t > crop["time"][0]:
+                    text = "remove label " + str(l) + " from here to start"
+                    delSubtrackToStart[text] = l
+                    menu.addAction(text)
             
             menu.addSeparator()
-        
-        if activeTrack != self.misdetIdx:
-            runTracking = "run automatic tracking for object " + str(oid)
-            menu.addAction(runTracking)
         
         delDivision = {}
         if activeTrack != self.misdetIdx:
@@ -865,8 +869,8 @@ class AnnotationsGui(LayerViewerGui):
             self._setDirty(self.mainOperator.UntrackedImage, range(0,t+1))
             self._setDirty(self.mainOperator.Labels, range(0,t+1))
             
-        elif selection == runTracking:
-            self._runSubtracking(position5d, oid)
+        elif selection in runTracking.keys():
+            self._runSubtracking(position5d, oid, runTracking[selection])
         
         elif selection in delDivision.keys():
             self._delDivisionEvent(delDivision[selection])
@@ -925,7 +929,9 @@ class AnnotationsGui(LayerViewerGui):
                 newTrack += 2
             elif newTrack % 256 == 0:
                 newTrack += 1
-            activeTrackBox.addItem(str(newTrack), self.ct[newTrack])
+            pm = QPixmap(16,16)
+            pm.fill(QColor(self.ct[newTrack]))
+            activeTrackBox.insertItem(newTrack, QIcon(pm), str(newTrack))
         activeTrackBox.setCurrentIndex(activeTrackBox.count()-1)
         return self._getActiveTrack()
         
@@ -1030,7 +1036,7 @@ class AnnotationsGui(LayerViewerGui):
         if self.misdetLock:
             self._onMarkMisdetectionPressed()
 
-    def _runSubtracking(self, position5d, oid):        
+    def _runSubtracking(self, position5d, oid, track):
                
         def _subtracking():
             window = [self._drawer.windowXBox.value(), self._drawer.windowYBox.value(), self._drawer.windowZBox.value()]
@@ -1123,6 +1129,9 @@ class AnnotationsGui(LayerViewerGui):
             msg = "Exception raised during tracking.  See traceback above.\n"
             log_exception( logger, msg, exc_info )
         
+        for i in range(self._drawer.activeTrackBox.count()):
+            if int(self._drawer.activeTrackBox.itemText(i)) == track:
+                self._drawer.activeTrackBox.setCurrentIndex(i)
 
         crop = self.getCurrentCrop()
         unlabeledObjectsCount = int(self._drawer.unlabeledObjectsCount.text())
