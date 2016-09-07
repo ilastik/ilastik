@@ -94,6 +94,24 @@ class AnnotationsGui(LayerViewerGui):
         crop = self.getCurrentCrop()
         self.updateLabeledUnlabeledCount(crop)
 
+        self._drawer.logOutput.setVisible(False)
+        self._drawer.labelDivisions.setVisible(False)
+        self._drawer.divisionsList.setVisible(False)
+        self._drawer.timeStepLabel.setVisible(False)
+        self._drawer.trackIDLabel.setVisible(False)
+        self._drawer.timeBox.setVisible(False)
+        self._drawer.tidBox.setVisible(False)
+        self._drawer.gotoLabel.setVisible(False)
+        self._drawer.automaticTrackingLabel.setVisible(False)
+        self._drawer.xLabel.setVisible(False)
+        self._drawer.yLabel.setVisible(False)
+        self._drawer.zLabel.setVisible(False)
+        self._drawer.windowXBox.setVisible(False)
+        self._drawer.windowYBox.setVisible(False)
+        self._drawer.windowZBox.setVisible(False)
+        self._drawer.exportLabel.setVisible(False)
+        self._drawer.initializeAnnotations.setVisible(False)
+
     def getNumberOfAllObjects(self, crop):
         num = 0
         for t in range(crop["time"][0],crop["time"][1]+1):
