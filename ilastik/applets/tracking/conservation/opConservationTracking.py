@@ -363,10 +363,29 @@ class OpConservationTracking(Operator, ExportingOperator):
         # Merger resolution
         if withMergerResolution:
             originalGraph = hypotheses_graph
-            labelVolume = self.LabelImage[:].wait()
             pluginPath = os.path.join(os.path.dirname(os.path.abspath(hytra.__file__)), 'plugins')
-            self.mergerResolver = IlastikMergerResolver(originalGraph, labelVolume, pluginPaths=[pluginPath])
+            
+            self.mergerResolver = IlastikMergerResolver(originalGraph, pluginPaths=[pluginPath])
+            
+            # Fit and refine merger nodes using a GMM 
+            # It has to be done per time-step in order to aviod loading the whole video on RAM
+            traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = getMappingsBetweenUUIDsAndTraxels(model)
+            timesteps = [int(t) for t in traxelIdPerTimestepToUniqueIdMap.keys()]
+            timesteps.sort()
+            
+            timeIndex = self.LabelImage.meta.axistags.index('t')
+            
+            for timestep in timesteps:
+                roi = [slice(None) for i in range(len(self.LabelImage.meta.shape))]
+                roi[timeIndex] = slice(timestep, timestep+1)
+                roi = tuple(roi)
+                
+                labelImage = self.LabelImage[roi].wait()
+                self.mergerResolver.fitAndRefineNodesForTimestep(labelImage[0, ..., 0], timestep)
+                
+            # Compute object features, re-run flow solver, update model and result, and get merger dictionary
             self.resolvedMergersDict = self.mergerResolver.run()
+            
             self.MergerOutput.setDirty()
 
         logger.info("Computing hypotheses graph lineages")
