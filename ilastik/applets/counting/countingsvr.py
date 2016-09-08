@@ -489,6 +489,10 @@ class SVR(object):
         
         if boxConstraints is None or type(boxConstraints) is not dict:
             return [None for i in range(numRegressors)]
+
+        assert sys.version_info.major == 2, "Alert! This function has not been tested "\
+        "under python 3. Please remove this assetion and be wary of any strnage behavior you encounter"
+
         boxIndices = boxConstraints["boxIndices"]
         boxValues = boxConstraints["boxValues"]
         boxFeatures = boxConstraints["boxFeatures"]

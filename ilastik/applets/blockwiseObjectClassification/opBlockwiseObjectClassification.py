@@ -374,6 +374,8 @@ class OpBlockwiseObjectClassification( Operator ):
             block_roi_tc = ( block_start_tc, block_start_tc + numpy.array([1,1]) )
             block_roi_t = (block_roi_tc[0][:-1], block_roi_tc[1][:-1])
 
+            assert sys.version_info.major == 2, "Alert! This loop has not been tested "\
+            "under python 3. Please remove this assetion and be wary of any strnage behavior you encounter"
             destination_start = numpy.array(block_start) // block_shape - roi.start
             destination_stop = destination_start + numpy.array( [1]*len(axiskeys) )
 
