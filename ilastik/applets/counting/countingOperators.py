@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 
+from __future__ import division
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)
@@ -38,6 +39,7 @@ from ilastik.applets.counting.countingsvr import SVR
 
 
 from lazyflow.operators.imgFilterOperators import OpGaussianSmoothing
+
 
 class OpLabelPreviewer(OpGaussianSmoothing):
     name = "LabelPreviewer"
@@ -177,7 +179,7 @@ class OpTrainCounter(Operator):
                 reqlistlabels = []
                 reqlistbg = []
                 reqlistfeat = []
-                progress += 10 / numImages
+                progress += 10 // numImages
                 self.progressSignal(progress)
                 
                 for b in blocks[0]:
@@ -196,10 +198,10 @@ class OpTrainCounter(Operator):
                 numLabelBlocks = len(reqlistlabels)
                 progress_outer = [progress]
                 if numLabelBlocks > 0:
-                    progressInc = (80 - 10)/(numLabelBlocks * numImages)
+                    progressInc = (80 - 10)//(numLabelBlocks * numImages)
 
                 def progressNotify(req):
-                    progress_outer[0] += progressInc/2
+                    progress_outer[0] += progressInc//2
                     self.progressSignal(progress_outer[0])
 
                 for ir, req in enumerate(reqlistfeat):

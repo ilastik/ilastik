@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from __future__ import division
 import argparse
 from lazyflow.graph import Graph
 from lazyflow.operators.opReorderAxes import OpReorderAxes
@@ -153,7 +154,7 @@ class SplitBodyCarvingWorkflow(Workflow):
                 if '*' in datasetInfo.filePath:
                     totalProgress = [-100]
                     def handleStackImportProgress( progress ):
-                        if progress / 10 != totalProgress[0] / 10:
+                        if progress // 10 != totalProgress[0] // 10:
                             totalProgress[0] = progress
                             logger.info( "Importing stack: {}%".format( totalProgress[0] ) )
                     serializer = self.dataSelectionApplet.dataSerializers[0]

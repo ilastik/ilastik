@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from __future__ import division
 import sys
 import copy
 import argparse
@@ -440,8 +441,8 @@ class PixelClassificationWorkflow(Workflow):
                 random_labels.flat[flat_index] = label_value
 
                 # Print progress every 10%
-                progress = float(sample_index) / labels_per_image
-                progress = 10 * (int(100*progress)/10)
+                progress = float(sample_index) // labels_per_image
+                progress = 10 * (int(100*progress)//10)
                 if progress != current_progress:
                     current_progress = progress
                     sys.stdout.write( "{}% ".format( current_progress ) )

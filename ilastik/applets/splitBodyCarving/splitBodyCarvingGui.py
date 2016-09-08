@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from __future__ import division
 import sys
 import os
 from functools import partial
@@ -159,7 +160,7 @@ class SplitBodyCarvingGui(CarvingGui):
 
         # Block must not exceed total bounds.
         # Shift start up if necessary
-        rendering_start_3d = TinyVector(self.editor.posModel.slicingPos) - TinyVector(rendered_volume_shape)/2
+        rendering_start_3d = TinyVector(self.editor.posModel.slicingPos) - TinyVector(rendered_volume_shape)//2
         rendering_start_3d = numpy.maximum( (0,0,0), rendering_start_3d )
 
         # Compute stop and shift down if necessary

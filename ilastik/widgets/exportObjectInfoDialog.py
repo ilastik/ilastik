@@ -1,3 +1,24 @@
+###############################################################################
+#   ilastik: interactive learning and segmentation toolkit
+#
+#       Copyright (C) 2011-2016, the ilastik developers
+#                                <team@ilastik.org>
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# In addition, as a special exception, the copyright holders of
+# ilastik give you permission to combine ilastik with applets,
+# workflows and plugins which are not covered under the GNU
+# General Public License.
+#
+# See the LICENSE file for details. License information is also available
+# on the ilastik web site at:
+#                  http://ilastik.org/license.html
+###############################################################################
+from __future__ import division
 from PyQt4 import uic
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -219,7 +240,7 @@ class ExportObjectInfoDialog(QDialog):
                 and self.raw_size >= RAW_LAYER_SIZE_LIMIT:
             title = "Warning"
             text = "Raw layer is very large (%d%s). Do you really want to include it?"
-            text %= (self.raw_size / 3, " Pixel")
+            text %= (self.raw_size // 3, " Pixel")
             buttons = QMessageBox.Yes | QMessageBox.No
             button = QMessageBox.question(self.parent(), title, text, buttons)
             if button == QMessageBox.No:

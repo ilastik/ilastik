@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #                 http://ilastik.org/license.html
 ###############################################################################
+from __future__ import division
 from PyQt4 import uic, QtGui, QtCore
 from PyQt4.QtGui import QColor, QPixmap, QIcon
 
@@ -972,7 +973,7 @@ class AnnotationsGui(LayerViewerGui):
                     
             sroi = [slice(0,1),]
             for idx,p in enumerate(position5d[1:-1]):
-                begin = max(0,p-window[idx]/2)
+                begin = max(0,p-window[idx]//2)
                 end = min(begin+window[idx], self.mainOperator.LabelImage.meta.shape[idx+1])
                 sroi += [ slice(begin,end), ]
             
@@ -1514,7 +1515,7 @@ class AnnotationsGui(LayerViewerGui):
         roi = SubRegion(self.mainOperator.LabelImage, start=[t,0,0,0,0], stop=[t+1,] + list(self.mainOperator.LabelImage.meta.shape[1:]))
         li = self.mainOperator.LabelImage.get(roi).wait()
         coords = numpy.where(li == oid)
-        mid = len(coords[1]) / 2
+        mid = len(coords[1]) // 2
         cur_slicing_pos = self.editor.posModel.slicingPos
         new_slicing_pos = [coords[1][mid], coords[2][mid], coords[3][mid]]
          

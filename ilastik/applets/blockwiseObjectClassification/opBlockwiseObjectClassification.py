@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 # Built-in
+from __future__ import division
 import logging
 
 # Third-party
@@ -294,7 +295,7 @@ class OpBlockwiseObjectClassification( Operator ):
         self.ProbabilityChannelImage.meta.shape = tuple( prediction_channels_tagged_shape.values() )
         self.ProbabilityChannelImage.meta.ram_usage_per_requested_pixel = prediction_ruprp
 
-        region_feature_output_shape = ( numpy.array( self.PredictionImage.meta.shape ) + block_shape - 1 ) / block_shape
+        region_feature_output_shape = ( numpy.array( self.PredictionImage.meta.shape ) + block_shape - 1 ) // block_shape
         self.BlockwiseRegionFeatures.meta.shape = tuple(region_feature_output_shape)
         self.BlockwiseRegionFeatures.meta.dtype = object
         self.BlockwiseRegionFeatures.meta.axistags = self.PredictionImage.meta.axistags
@@ -373,7 +374,9 @@ class OpBlockwiseObjectClassification( Operator ):
             block_roi_tc = ( block_start_tc, block_start_tc + numpy.array([1,1]) )
             block_roi_t = (block_roi_tc[0][:-1], block_roi_tc[1][:-1])
 
-            destination_start = numpy.array(block_start) / block_shape - roi.start
+            assert sys.version_info.major == 2, "Alert! This loop has not been tested "\
+            "under python 3. Please remove this assetion and be wary of any strnage behavior you encounter"
+            destination_start = numpy.array(block_start) // block_shape - roi.start
             destination_stop = destination_start + numpy.array( [1]*len(axiskeys) )
 
             opBlockPipeline = self._blockPipelines[block_start]
