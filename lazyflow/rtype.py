@@ -247,6 +247,8 @@ class SubRegion(Roi):
         return self
 
     def adjustChannel(self,cPerC,cIndex,channelRes):
+        assert sys.version_info.major == 2, "Alert! This function has not been tested "\
+        "under python 3. Please remove this assetion and be wary of any strnage behavior you encounter"
         if cPerC != 1 and channelRes == 1:
             start = [self.start[i]//cPerC if i == cIndex else self.start[i] for i in range(len(self.start))]
             stop = [self.stop[i]//cPerC+1 if i==cIndex else self.stop[i] for i in range(len(self.stop))]

@@ -197,7 +197,7 @@ class OpPatchCreator(Operator):
             gWidth = self.GridWidth.value
             gHeight = self.GridHeight.value
 
-            numPatchesVertical = (gHeight - pHeight) // skipVertical) + 1
+            numPatchesVertical = ((gHeight - pHeight) // skipVertical) + 1
             numPatchesHorizontal = ((gWidth - pWidth) // skipHorizontal) + 1
             numpatches = numpy.zeros((2,))
             numpatches[:] = (numPatchesVertical, numPatchesHorizontal)
