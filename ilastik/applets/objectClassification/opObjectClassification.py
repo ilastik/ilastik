@@ -333,6 +333,21 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
             self._ambiguousLabels.insert(imageIndex, None)
             self._labelBBoxes.insert(imageIndex, dict())
 
+    def clearLabel(self, label):
+        # set this label to 0 in the label inputs
+        for islot, label_slot in enumerate(self.LabelInputs):
+            if not label_slot.ready() or islot>= len(self.RawImages) or \
+                not self.RawImages[islot].ready():
+                continue
+
+            cur_labels = label_slot.value
+            for t in cur_labels.keys():
+                label_values_t = cur_labels[t]
+                label_values_t[label_values_t==label]=0
+                cur_labels[t] = label_values_t
+                label_slot.setValue(cur_labels)
+            label_slot.setDirty([])
+
     def removeLabel(self, label):
         #remove this label from the inputs
         for islot, label_slot in enumerate(self.LabelInputs):
