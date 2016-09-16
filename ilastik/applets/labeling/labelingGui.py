@@ -204,8 +204,10 @@ class LabelingGui(LayerViewerGui):
             if selection != QMessageBox.Ok:
                 return
 
-            # This only works if the top-level operator has a 'mergeLabels' function.
+            # This only works if the top-level operator has a 'clearLabel' function.
             self.topLevelOperatorView.clearLabel( row+1 )
+            self._labelControlUi.checkInteractive.setChecked(True)
+
         _labelControlUi.labelListView.clearRequested.connect( handleClearRequested )
 
         def handleLabelMergeRequested(from_row, from_name, into_row, into_name):
