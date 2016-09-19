@@ -206,7 +206,6 @@ class LabelingGui(LayerViewerGui):
 
             # This only works if the top-level operator has a 'clearLabel' function.
             self.topLevelOperatorView.clearLabel( row+1 )
-            self._labelControlUi.checkInteractive.setChecked(True)
 
         _labelControlUi.labelListView.clearRequested.connect( handleClearRequested )
 
