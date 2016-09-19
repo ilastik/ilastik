@@ -492,7 +492,6 @@ class ObjectClassificationGui(LabelingGui):
                 value.pop(start)
                 # Force dirty propagation even though the list id is unchanged.
                 slot.setValue(value, check_changed=False)
-        self._labelControlUi.checkInteractive.setChecked(True)
 
         
     def createLabelLayer(self, direct=False):
