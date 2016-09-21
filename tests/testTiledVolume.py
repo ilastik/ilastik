@@ -32,7 +32,7 @@ volume_description_text = \
  
     "tile_shape_2d_yx" : [200,200],
  
-    "tile_url_format" : "http://localhost:8000/tile_z{z_start:05}_y{y_start:05}_x{x_start:05}.png",
+    "tile_url_format" : "http://localhost:8888/tile_z{z_start:05}_y{y_start:05}_x{x_start:05}.png",
     "extend_slices" : [ [40, [41]],
                         [44, [45, 46, 47]] ]
 }
@@ -171,7 +171,7 @@ class DataSetup(object):
         class Server(SocketServer.TCPServer):
             # http://stackoverflow.com/questions/10613977/a-simple-python-server-using-simplehttpserver-and-socketserver-how-do-i-close-t
             allow_reuse_address = True
-        server = Server(("", 8000), Handler)
+        server = Server(("", 8888), Handler)
         import threading
         server_thread = threading.Thread(target=server.serve_forever)
         server_thread.start()

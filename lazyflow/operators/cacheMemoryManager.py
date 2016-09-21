@@ -185,13 +185,12 @@ class CacheMemoryManager(threading.Thread):
 
             # check current memory state
             cache_memory = Memory.getAvailableRamCaches()
-
-            logger.debug( "Process memory usage is {:0.2f} GB (out of {:0.2f})"
-                          .format( Memory.getMemoryUsage()/2.**30, Memory.getAvailableRam()/2.**30 ) )
-            msg = "Caches are using {} memory".format( Memory.format(total) )
-            if cache_memory > 0:
-                msg += " ({:.1f}% of allowed)".format( total*100.0/cache_memory )
-            logger.debug(msg)
+            cache_pct = 0.0
+            if cache_memory:
+                cache_pct = total*100.0/cache_memory
+            
+            logger.debug( "Process memory usage is {:0.2f} GB out of {:0.2f} (caches are {}, {:.1f}% of allowed)"
+                          .format( Memory.getMemoryUsage()/2.**30, Memory.getAvailableRam()/2.**30 , Memory.format(total), cache_pct ) )
 
             if total <= self._max_usage * cache_memory:
                 return

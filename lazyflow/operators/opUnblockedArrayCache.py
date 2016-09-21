@@ -29,8 +29,7 @@ import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.operators.opCache import ManagedBlockedCache
 from lazyflow.request import RequestLock
-from lazyflow.roi import getIntersection, roiFromShape, roiToSlice, containing_rois,\
-    sliceToRoi
+from lazyflow.roi import getIntersection, roiFromShape, roiToSlice, containing_rois, sliceToRoi
 
 import logging
 logger = logging.getLogger(__name__)
@@ -60,6 +59,8 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
         super( OpUnblockedArrayCache, self ).__init__(*args, **kwargs)
         self._lock = RequestLock()
         self._resetBlocks()
+
+        self.Input.notifyUnready(self._resetBlocks)
 
         # Now that we're initialized, it's safe to register with the memory manager
         self.registerWithMemoryManager()
@@ -260,7 +261,7 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
     def freeDirtyMemory(self):
         return 0.0
 
-    def _resetBlocks(self):
+    def _resetBlocks(self, *_):
         with self._lock:
             self._block_data = {}
             self._block_locks = {}
