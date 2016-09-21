@@ -128,6 +128,20 @@ class StructuredTrackingWorkflowBase( Workflow ):
         self._applets.append(self.trackingApplet)
         self._applets.append(self.dataExportTrackingApplet)
 
+        if self.divisionDetectionApplet:
+            opDivDetection = self.divisionDetectionApplet.topLevelOperator
+            opDivDetection.SelectedFeatures.setValue(configConservation.selectedFeaturesDiv)
+            opDivDetection.LabelNames.setValue(['Not Dividing', 'Dividing'])
+            opDivDetection.AllowDeleteLabels.setValue(False)
+            opDivDetection.AllowAddLabel.setValue(False)
+            opDivDetection.EnableLabelTransfer.setValue(False)
+
+        opCellClassification = self.cellClassificationApplet.topLevelOperator
+        opCellClassification.SelectedFeatures.setValue(configConservation.selectedFeaturesObjectCount )
+        opCellClassification.SuggestedLabelNames.setValue( ['False Detection',] + [str(1) + ' Object'] + [str(i) + ' Objects' for i in range(2,10) ] )
+        opCellClassification.AllowDeleteLastLabelOnly.setValue(True)
+        opCellClassification.EnableLabelTransfer.setValue(False)
+
     def connectLane(self, laneIndex):
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opObjExtraction = self.objectExtractionApplet.topLevelOperator.getLane(laneIndex)
@@ -180,26 +194,18 @@ class StructuredTrackingWorkflowBase( Workflow ):
         feature_dict_division[config.features_division_name] = { name: {} for name in config.division_features }
         opTrackingFeatureExtraction.FeatureNamesDivision.setValue(feature_dict_division)
 
-        opDivDetection.BinaryImages.connect( op5Binary.Output )
-        opDivDetection.RawImages.connect( op5Raw.Output )
-        opDivDetection.SegmentationImages.connect(opTrackingFeatureExtraction.LabelImage)
-        opDivDetection.ObjectFeatures.connect(opTrackingFeatureExtraction.RegionFeaturesAll)
-        opDivDetection.ComputedFeatureNames.connect(opTrackingFeatureExtraction.ComputedFeatureNamesAll)
-        opDivDetection.SelectedFeatures.setValue(configConservation.selectedFeaturesDiv)
-        opDivDetection.LabelNames.setValue(['Not Dividing', 'Dividing'])
-        opDivDetection.AllowDeleteLabels.setValue(False)
-        opDivDetection.AllowAddLabel.setValue(False)
-        opDivDetection.EnableLabelTransfer.setValue(False)
+        if self.divisionDetectionApplet:
+            opDivDetection.BinaryImages.connect( op5Binary.Output )
+            opDivDetection.RawImages.connect( op5Raw.Output )
+            opDivDetection.SegmentationImages.connect(opTrackingFeatureExtraction.LabelImage)
+            opDivDetection.ObjectFeatures.connect(opTrackingFeatureExtraction.RegionFeaturesAll)
+            opDivDetection.ComputedFeatureNames.connect(opTrackingFeatureExtraction.ComputedFeatureNamesAll)
 
         opCellClassification.BinaryImages.connect( op5Binary.Output )
         opCellClassification.RawImages.connect( op5Raw.Output )
         opCellClassification.SegmentationImages.connect(opTrackingFeatureExtraction.LabelImage)
         opCellClassification.ObjectFeatures.connect(opTrackingFeatureExtraction.RegionFeaturesAll)
         opCellClassification.ComputedFeatureNames.connect(opTrackingFeatureExtraction.ComputedFeatureNamesNoDivisions)
-        opCellClassification.SelectedFeatures.setValue(configConservation.selectedFeaturesObjectCount )
-        opCellClassification.SuggestedLabelNames.setValue( ['False Detection',] + [str(1) + ' Object'] + [str(i) + ' Objects' for i in range(2,10) ] )
-        opCellClassification.AllowDeleteLastLabelOnly.setValue(True)
-        opCellClassification.EnableLabelTransfer.setValue(False)
 
         opAnnotations.RawImage.connect( op5Raw.Output )
         opAnnotations.BinaryImage.connect( op5Binary.Output )
@@ -217,16 +223,18 @@ class StructuredTrackingWorkflowBase( Workflow ):
         opStructuredTracking.RawImage.connect( op5Raw.Output )
         opStructuredTracking.LabelImage.connect( opTrackingFeatureExtraction.LabelImage )
         opStructuredTracking.ObjectFeatures.connect( opTrackingFeatureExtraction.RegionFeaturesVigra )
-        opStructuredTracking.ObjectFeaturesWithDivFeatures.connect( opTrackingFeatureExtraction.RegionFeaturesAll)
         opStructuredTracking.ComputedFeatureNames.connect( opTrackingFeatureExtraction.FeatureNamesVigra )
-        opStructuredTracking.ComputedFeatureNamesWithDivFeatures.connect( opTrackingFeatureExtraction.ComputedFeatureNamesAll )
+
+        if self.divisionDetectionApplet:
+            opStructuredTracking.ObjectFeaturesWithDivFeatures.connect( opTrackingFeatureExtraction.RegionFeaturesAll)
+            opStructuredTracking.ComputedFeatureNamesWithDivFeatures.connect( opTrackingFeatureExtraction.ComputedFeatureNamesAll )
+            opStructuredTracking.DivisionProbabilities.connect( opDivDetection.Probabilities )
 
         # configure tracking export settings
         settings = {'file path': self.default_tracking_export_filename, 'compression': {}, 'file type': 'csv'}
         selected_features = ['Count', 'RegionCenter']
         opStructuredTracking.configure_table_export_settings(settings, selected_features)
 
-        opStructuredTracking.DivisionProbabilities.connect( opDivDetection.Probabilities )
         opStructuredTracking.DetectionProbabilities.connect( opCellClassification.Probabilities )
         opStructuredTracking.NumLabels.connect( opCellClassification.NumLabels )
         opStructuredTracking.Crops.connect (opCropSelection.Crops)
@@ -287,7 +295,6 @@ class StructuredTrackingWorkflowBase( Workflow ):
                     all([sub[i].ready() for i in range(nRoles)])
         else:
             input_ready = False
-
         return input_ready
 
     def handleAppletStateUpdateRequested(self):
@@ -303,7 +310,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
             thresholdingOutput = opThresholding.CachedOutput
             thresholding_ready = input_ready and len(thresholdingOutput) > 0
         else:
-            thresholding_ready = True and input_ready
+            thresholding_ready = input_ready
 
         opTrackingFeatureExtraction = self.trackingFeatureExtractionApplet.topLevelOperator
         trackingFeatureExtractionOutput = opTrackingFeatureExtraction.ComputedFeatureNamesAll
@@ -324,8 +331,6 @@ class StructuredTrackingWorkflowBase( Workflow ):
         annotations_ready = features_ready and \
                            len(opAnnotations.Labels) > 0 and \
                            opAnnotations.Labels.ready() and \
-                           len(opAnnotations.Divisions) > 0 and \
-                           opAnnotations.Divisions.ready() and \
                            opAnnotations.TrackImage.ready()
 
         opStructuredTracking = self.trackingApplet.topLevelOperator
@@ -336,6 +341,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
         busy |= self.annotationsApplet.busy
         # busy |= self.dataExportAnnotationsApplet.busy
         busy |= self.trackingApplet.busy
+        busy |= self.dataExportTrackingApplet.busy
 
         self._shell.enableProjectChanges( not busy )
 
@@ -356,14 +362,14 @@ class StructuredTrackingWorkflowBase( Workflow ):
 
 class StructuredTrackingWorkflowFromBinary( StructuredTrackingWorkflowBase ):
     workflowName = "Structured Learning Tracking Workflow from binary image"
-    workflowDisplayName = "Tracking with Learning (BETA) [Inputs: Raw Data, Binary Image]"
+    workflowDisplayName = "(BETA) Tracking with Learning [Inputs: Raw Data, Binary Image]"
     workflowDescription = "Structured learning tracking of objects, based on binary images."
 
     fromBinary = True
 
 class StructuredTrackingWorkflowFromPrediction( StructuredTrackingWorkflowBase ):
     workflowName = "Structured Learning Tracking Workflow from prediction image"
-    workflowDisplayName = "Tracking with Learning (BETA)[Inputs: Raw Data, Pixel Prediction Map]"
+    workflowDisplayName = "(BETA) Tracking with Learning [Inputs: Raw Data, Pixel Prediction Map]"
     workflowDescription = "Structured learning tracking of objects, based on prediction maps."
 
     fromBinary = False

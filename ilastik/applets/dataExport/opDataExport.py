@@ -363,6 +363,7 @@ class OpImageOnDiskProvider(Operator):
             metadata = {}
             metadata['axistags'] = self.Input.meta.axistags
             metadata['drange'] = self.Input.meta.drange
+            metadata['display_mode'] = self.Input.meta.display_mode
             self._opMetadataInjector = OpMetadataInjector( parent=self )
             self._opMetadataInjector.Input.connect( self._opReader.Output )
             self._opMetadataInjector.Metadata.setValue( metadata )

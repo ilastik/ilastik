@@ -183,7 +183,7 @@ class PixelClassificationWorkflow(Workflow):
         """
         # When the new lane is added, dirty notifications will propagate throughout the entire graph.
         # This means the classifier will be marked 'dirty' even though it is still usable.
-        # Before that happens, let's store the classifier, so we can restore it at the end of connectLane(), below.
+        # Before that happens, let's store the classifier, so we can restore it in handleNewLanesAdded(), below.
         opPixelClassification = self.pcApplet.topLevelOperator
         if opPixelClassification.classifier_cache.Output.ready() and \
            not opPixelClassification.classifier_cache._dirty:
@@ -339,10 +339,18 @@ class PixelClassificationWorkflow(Workflow):
             logger.info("Completed Batch Processing")
 
     def prepare_for_entire_export(self):
+        """
+        Assigned to DataExportApplet.prepare_for_entire_export
+        (See above.)
+        """
         self.freeze_status = self.pcApplet.topLevelOperator.FreezePredictions.value
         self.pcApplet.topLevelOperator.FreezePredictions.setValue(False)
 
     def post_process_entire_export(self):
+        """
+        Assigned to DataExportApplet.post_process_entire_export
+        (See above.)
+        """
         self.pcApplet.topLevelOperator.FreezePredictions.setValue(self.freeze_status)
 
     def _force_retrain_classifier(self, projectManager):

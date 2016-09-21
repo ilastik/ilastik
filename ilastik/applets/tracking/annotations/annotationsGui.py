@@ -20,7 +20,7 @@
 ###############################################################################
 from __future__ import division
 from PyQt4 import uic, QtGui, QtCore
-from PyQt4.QtGui import QColor
+from PyQt4.QtGui import QColor, QPixmap, QIcon
 
 import os
 import numpy
@@ -80,6 +80,7 @@ class AnnotationsGui(LayerViewerGui):
         self._drawer.gotoLabel.pressed.connect(self._onGotoLabel)
         self._drawer.saveAnnotations.pressed.connect(self._onSaveAnnotations)
         self._drawer.initializeAnnotations.pressed.connect(self._onInitializeAnnotations)
+        self._drawer.activeTrackBox.setToolTip("Active track label and colour.")
 
         self.editor.showCropLines(True)
         self.editor.cropModel.editableChanged.emit (False)
@@ -163,9 +164,6 @@ class AnnotationsGui(LayerViewerGui):
         self.misdetLock = False
         self.misdetIdx = -1
 
-        self.currentLabels = {}
-        self.currentDivisions = {}
-
         if self.mainOperator.LabelImage.meta.shape:
             # FIXME: assumes t,x,y,z,c
             if self.mainOperator.LabelImage.meta.shape[3] == 1: # 2D images
@@ -197,7 +195,6 @@ class AnnotationsGui(LayerViewerGui):
         self.deleteAllTraining = False
 
     def _onInitializeAnnotations(self):
-
         self._questionMessage("All your annotations will be lost! You should save the project, " + \
                                   "then save it under a new name and continue without loss of current annotations. " + \
                                   "Do you really want to delete all your annotations?")
@@ -226,9 +223,6 @@ class AnnotationsGui(LayerViewerGui):
         self.mainOperator.initOutputs()
 
         self._reset()
-
-        self.currentLabels = {}
-        self.currentDivisions = {}
 
         self._setDirty(self.mainOperator.LabelImage, range(self.mainOperator.TrackImage.meta.shape[0]))
         self._setDirty(self.mainOperator.Labels, range(self.mainOperator.TrackImage.meta.shape[0]))
@@ -305,7 +299,6 @@ class AnnotationsGui(LayerViewerGui):
     def _initAnnotations(self):
         for name in self.topLevelOperatorView.Crops.value.keys():
             self._onSaveAnnotations(name=name)
-
         self.topLevelOperatorView.Labels.setValue(self.topLevelOperatorView.labels)
         self.topLevelOperatorView.Divisions.setValue(self.topLevelOperatorView.divisions)
 
@@ -395,10 +388,9 @@ class AnnotationsGui(LayerViewerGui):
                     if parentTrack not in self.topLevelOperatorView.Annotations.value[name]["divisions"].keys():
                         self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = {}
                     self.topLevelOperatorView.Annotations.value[name]["divisions"][parentTrack] = self.topLevelOperatorView.divisions[parentTrack]
-
         self._setDirty(self.mainOperator.Annotations, range(self.mainOperator.TrackImage.meta.shape[0]))
-        self._setDirty(self.mainOperator.Labels, [])
-        self._setDirty(self.mainOperator.Divisions, [])
+        self._setDirty(self.mainOperator.Labels, range(self.mainOperator.TrackImage.meta.shape[0]))
+        self._setDirty(self.mainOperator.Divisions, range(self.mainOperator.TrackImage.meta.shape[0]))
 
     def getLabel(self, time, track):
         for label in self.mainOperator.labels[time].keys():
@@ -577,7 +569,9 @@ class AnnotationsGui(LayerViewerGui):
             
         for tid in sorted(allTracks):
             if tid not in items:
-                activeTrackBox.addItem(str(tid), self.ct[tid])
+                pm = QPixmap(16,16)
+                pm.fill(QColor(self.ct[tid]))
+                activeTrackBox.insertItem(tid, QIcon(pm), str(tid))
 
         if activeTrackBox.count() >= 1:
             activeTrackBox.setCurrentIndex(activeTrackBox.count()-1)
@@ -730,8 +724,12 @@ class AnnotationsGui(LayerViewerGui):
         delLabel = {}
         delSubtrackToEnd = {}
         delSubtrackToStart = {}
-        
+        setActiveTrack = {}
         for l in trackids:
+            text = "set active track to label " + str(l)
+            setActiveTrack[text] = l
+            menu.addAction(text)
+
             text = "remove label " + str(l)
             delLabel[text] = l
             menu.addAction(text)
@@ -800,7 +798,12 @@ class AnnotationsGui(LayerViewerGui):
         
         elif selection in delDivision.keys():
             self._delDivisionEvent(delDivision[selection])
-            
+
+        elif selection in setActiveTrack.keys():
+            for i in range(self._drawer.activeTrackBox.count()):
+                if int(self._drawer.activeTrackBox.itemText(i)) == setActiveTrack[selection]:
+                    self._drawer.activeTrackBox.setCurrentIndex(i)
+
         else:
             assert False, "cannot reach this"
                
@@ -821,8 +824,7 @@ class AnnotationsGui(LayerViewerGui):
     
     def _currentActiveTrackChanged(self):
         self.mainOperator.ActiveTrack.setValue(self._getActiveTrack())
-        self._setStyleSheet(self._drawer.activeTrackBox, QColor(self.ct[self._getActiveTrack()]))
-        
+
     def _getActiveTrack(self):
         if self._drawer.activeTrackBox.count() > 0:
             return int(self._drawer.activeTrackBox.currentText())
@@ -921,7 +923,9 @@ class AnnotationsGui(LayerViewerGui):
             self.mainOperator.labels[t][oid] = set()
         if activeTrack == self.misdetIdx:
             if len(self.mainOperator.labels[t][oid]) > 0:
-                self._criticalMessage("Error: This object is already marked as part of a track, cannot mark it as a misdetection.")            
+                if self.misdetIdx not in self.mainOperator.labels[t][oid]:
+                    self._criticalMessage("Error: This object is already marked as part of a track, cannot mark it as a misdetection.")
+                self._onMarkMisdetectionPressed()
                 return -1
         else:
             for tracklist in self.mainOperator.labels[t].values():
@@ -937,12 +941,16 @@ class AnnotationsGui(LayerViewerGui):
         
         if self.misdetIdx in self.mainOperator.labels[t][oid]:
             self._criticalMessage("Error: This object is already marked as a misdetection. Cannot mark it as part of a track.")            
+            if self.misdetLock:
+                self._onMarkMisdetectionPressed()
             return -1
         
         self.mainOperator.labels[t][oid].add(activeTrack)  
         self._setDirty(self.mainOperator.Labels, [t])
         self._log('(t,object_id,track_id) = ' + str((t,oid, activeTrack)) + ' added.')
-        
+
+        if self.misdetLock:
+            self._onMarkMisdetectionPressed()
         
     def _runSubtracking(self, position5d, oid):        
                
@@ -989,28 +997,28 @@ class AnnotationsGui(LayerViewerGui):
                     uniqueLabels.remove(0)
                 if len(uniqueLabels) != 1:
                     self._log('tracking candidates at t = ' + str(t) + ': ' + str(uniqueLabels))
-                    self._gotoObject(oid_prev, t-1, True)
+                    self._gotoObject(oid_prev, t-1, keepXYZ=True)
                     t_end = t-1
                     break            
                 if numpy.count_nonzero(li_product) < 0.2 * numpy.count_nonzero(li_prev_oid):
                     self._log('too little overlap at t = ' + str(t))
-                    self._gotoObject(oid_prev, t-1, True)
+                    self._gotoObject(oid_prev, t-1, keepXYZ=True)
                     t_end = t-1
                     break
 
                 res = self._addObjectToTrack(activeTrack, uniqueLabels[0], t)
                 if res == -98:
-                    self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t) + " left the current crop time boundary." + \
+                    self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t) + " left the current crop time boundary. " + \
                                          "Stopping automatic tracking at crop boundary.")
-                    self._gotoObject(uniqueLabels[0], t, False)
+                    self._gotoObject(uniqueLabels[0], t, keepXYZ=True)
                     return
                 elif res == -99:
-                    self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t) + " left the current crop spatial boundary." + \
+                    self._informationMessage("Info: Object " + str(oid) + " in time frame " + str(t) + " left the current crop spatial boundary. " + \
                                          "Stopping automatic tracking at crop boundary.")
-                    self._gotoObject(uniqueLabels[0], t, False)
+                    self._gotoObject(uniqueLabels[0], t, keepXYZ=True)
                     return
                 elif res == -1:
-                    self._gotoObject(uniqueLabels[0], t, False)
+                    self._gotoObject(uniqueLabels[0], t, keepXYZ=True)
                     return
                 
                 oid_prev = uniqueLabels[0]
@@ -1065,15 +1073,15 @@ class AnnotationsGui(LayerViewerGui):
         self._enableButtons(exceptButtons=[self._drawer.divEvent], enable=(not self.divLock))                      
 
 
-    def _setStyleSheet(self, widget, qcolor):                         
+    def _setStyleSheet(self, widget, qcolor, qType="QComboBox"):
         values = "{r}, {g}, {b}, {a}".format(r = qcolor.red(),
                                      g = qcolor.green(),
                                      b = qcolor.blue(),
                                      a = qcolor.alpha()
                                      )
-        widget.setStyleSheet("QComboBox { background-color: rgba("+values+"); }")
+        widget.setStyleSheet(qType+" { background-color: rgba("+values+"); }")
     
-    
+
     def _onDivisionsListActivated(self):        
         parent = int(str(self._drawer.divisionsList.currentItem().text()).split(':')[0])
         t = self.mainOperator.divisions[parent][1]        
@@ -1099,6 +1107,7 @@ class AnnotationsGui(LayerViewerGui):
         
         if self.misdetLock:            
             self.lastActiveTrackIdx = activeTrackBox.currentIndex()
+            self._drawer.markMisdetection.setText("Mark as False Detection (Turn Off)")
             self._enableButtons(exceptButtons=[self._drawer.markMisdetection], enable=False)
                     
             # add -1 to the tracks if not already present
@@ -1118,7 +1127,8 @@ class AnnotationsGui(LayerViewerGui):
                 activeTrackBox.setCurrentIndex(self.lastActiveTrackIdx)
                 self._currentActiveTrackChanged()
             
-            self._enableButtons(exceptButtons=[self._drawer.markMisdetection], enable=True)            
+            self._drawer.markMisdetection.setText("Mark as False Detection")
+            self._enableButtons(exceptButtons=[self._drawer.markMisdetection], enable=True)
         
         
     @staticmethod
@@ -1501,7 +1511,7 @@ class AnnotationsGui(LayerViewerGui):
         
         
     
-    def _gotoObject(self, oid, t, keepZ=False):
+    def _gotoObject(self, oid, t, keepZ=False, keepXYZ=False):
         roi = SubRegion(self.mainOperator.LabelImage, start=[t,0,0,0,0], stop=[t+1,] + list(self.mainOperator.LabelImage.meta.shape[1:]))
         li = self.mainOperator.LabelImage.get(roi).wait()
         coords = numpy.where(li == oid)
@@ -1511,6 +1521,9 @@ class AnnotationsGui(LayerViewerGui):
          
         if keepZ:
             new_slicing_pos[2] = cur_slicing_pos[2]
+        if keepXYZ:
+            for i in range(3):
+                new_slicing_pos[i] = cur_slicing_pos[i]
         self.editor.navCtrl.panSlicingViews(new_slicing_pos, [0,1,2])
         self._setPosModel(time=t, slicingPos=new_slicing_pos, cursorPos=new_slicing_pos)      
 

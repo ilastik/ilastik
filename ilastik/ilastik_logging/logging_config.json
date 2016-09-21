@@ -5,6 +5,8 @@
     "loggers": {
         "py.warnings": {  "level":"WARN" },
 
+        "wsdt": { "level": "DEBUG" },
+
         "__main__":                                                 { "level":"DEBUG" },
         "ilastik_main":                                             { "level":"INFO" },
         "thread_start":                                             { "level":"INFO" },
@@ -40,6 +42,7 @@
         "lazyflow.operators.ioOperators.ioOperators.OpH5WriterBigDataset":  	{ "level":"INFO" },
         "lazyflow.operators.classifierOperators":                   { "level":"INFO" },
         "lazyflow.operators.opCompressedCache":                     { "level":"INFO" },
+        "lazyflow.operators.opRelabelConsecutive":                  { "level":"INFO" },
         "lazyflow.utility.bigRequestStreamer":                      { "level":"INFO" },
         "lazyflow.utility.roiRequestBatch":                         { "level":"INFO" },
         "lazyflow.utility.io_util.RESTfulVolume":                        { "level":"INFO" },

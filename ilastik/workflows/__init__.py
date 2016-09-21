@@ -72,12 +72,22 @@ try:
 except ImportError as e:
     logger.warn( "Failed to import structured learning tracking workflow. For this workflow, see the installation"\
              "instructions on our website ilastik.org; check dependencies: " + str(e) )
-
 try:
     import carving
     WORKFLOW_CLASSES += [carving.carvingWorkflow.CarvingWorkflow]    
 except ImportError as e:
     logger.warn( "Failed to import carving workflow; check vigra dependency: " + str(e) )
+
+# try:
+#     import multicut
+# except ImportError as e:
+#     logger.warn("Failed to import multicut workflow; check dependencies: " + str(e))
+
+try:
+    import edgeTrainingWithMulticut
+    WORKFLOW_CLASSES += [edgeTrainingWithMulticut.EdgeTrainingWithMulticutWorkflow]
+except ImportError as e:
+    logger.warn("Failed to import 'Edge Training With Multicut' workflow; check dependencies: " + str(e))
 
 try:
     import counting
@@ -91,6 +101,7 @@ WORKFLOW_CLASSES += [examples.dataConversion.dataConversionWorkflow.DataConversi
 # Examples
 if ilastik.config.cfg.getboolean('ilastik', 'debug'):
     import vigraWatershed
+    import wsdt
     import examples.layerViewer
     import examples.thresholdMasking
     import examples.deviationFromMean

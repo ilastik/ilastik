@@ -112,10 +112,11 @@ class Applet( object ):
         return self._base_initialized
 
 class DatasetConstraintError(Exception):
-    def __init__(self, appletName, message ):
+    def __init__(self, appletName, message, unfixable=False ):
         super( DatasetConstraintError, self ).__init__()
         self.appletName = appletName
         self.message = message
+        self.unfixable = unfixable
     
     def __str__(self):
         return "Constraint of '{}' applet was violated: {}".format(self.appletName, self.message)

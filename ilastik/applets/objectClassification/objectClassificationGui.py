@@ -492,7 +492,7 @@ class ObjectClassificationGui(LabelingGui):
                 value.pop(start)
                 # Force dirty propagation even though the list id is unchanged.
                 slot.setValue(value, check_changed=False)
-        
+
         
     def createLabelLayer(self, direct=False):
         """Return a colortable layer that displays the label slot
