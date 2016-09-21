@@ -44,7 +44,7 @@ def test_3d():
     """
     orig_data = numpy.random.random( (6, 9, 16) )
     blockshape = (2,3,4)
-    final_shape = tuple(numpy.array(orig_data.shape) / blockshape) + blockshape
+    final_shape = tuple(numpy.array(orig_data.shape) // blockshape) + blockshape
     assert final_shape == (3,3,4,2,3,4), final_shape
 
     blockwise_copy = numpy.zeros( final_shape )
