@@ -408,7 +408,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         # Uncomment to export a hypothese graph diagram
         #logger.info("Exporting hypotheses graph diagram")
         #from hytra.util.hypothesesgraphdiagram import HypothesesGraphDiagram
-        #hgv = HypothesesGraphDiagram(hypotheses_graph, timeRange=(0, 10), fileName='HypothesesGraph.png' )
+        #hgv = HypothesesGraphDiagram(hypotheses_graph._graph, timeRange=(0, 10), fileName='HypothesesGraph.png' )
                 
         self.hypotheses_graph = hypotheses_graph
 
