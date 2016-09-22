@@ -72,7 +72,6 @@ class AnnotationsGui(LayerViewerGui):
         self._drawer.exportMergers.pressed.connect(self._onExportMergersButtonPressed)
         self._drawer.exportDivisions.pressed.connect(self._onExportDivisionsButtonPressed)
         self._drawer.activeTrackBox.currentIndexChanged.connect(self._currentActiveTrackChanged)
-        self._drawer.cropBoxView.currentIndexChanged.connect(self._currentCropBoxChanged)
         self._drawer.divisionsList.itemActivated.connect(self._onDivisionsListActivated)
         self._drawer.markMisdetection.pressed.connect(self._onMarkMisdetectionPressed)
         self._drawer.exportButton.pressed.connect(self._onExportButtonPressed)
@@ -251,6 +250,7 @@ class AnnotationsGui(LayerViewerGui):
         self.topLevelOperatorView.Crops.notifyDirty( bind(self._cropListViewInit) )
         self.__cleanup_fns.append( partial( self.topLevelOperatorView.Labels.unregisterDirty, bind(self._updateLabels) ) )
         self.__cleanup_fns.append( partial( self.topLevelOperatorView.Crops.unregisterDirty, bind(self._cropListViewInit) ) )
+        self._drawer.cropBoxView.currentIndexChanged.connect(self._currentCropBoxChanged)
 
         self.volumeEditorWidget.quadViewStatusBar.setToolTipTimeButtonsCrop(True)
         self.volumeEditorWidget.quadViewStatusBar.setToolTipTimeSliderCrop(True)
@@ -306,9 +306,9 @@ class AnnotationsGui(LayerViewerGui):
 
 
     def _cropListViewInit(self):
-
         if self.topLevelOperatorView.Crops.value != {}:
             self._drawer.cropListModel=CropListModel()
+            self._drawer.cropBoxView.clear()
             crops = self.topLevelOperatorView.Crops.value
             count = 0
             for key in sorted(crops):
@@ -326,21 +326,20 @@ class AnnotationsGui(LayerViewerGui):
 
                 pm = QPixmap(16,16)
                 pm.fill(QColor(pmapColor))
-                self._drawer.cropBoxView.insertItem(count, QIcon(pm), str(key))
+                self._drawer.cropBoxView.insertItem(newRow, QIcon(pm), str(key))
 
                 if count == 0:
                     self._currentCropName = key
 
                 count =+ 1
 
-            self._drawer.cropBoxView.currentIndexChanged.connect(self._onCropSelected)
-            self._drawer.cropListModel.elementSelected.connect(self._onCropSelected)
-
             self._drawer.cropListView.setModel(self._drawer.cropListModel)
             self._drawer.cropListView.updateGeometry()
             self._drawer.cropListView.update()
             self._drawer.cropListView.allowDelete = False
             self._drawer.cropListView.selectRow(0)
+            self._drawer.cropBoxView.setCurrentIndex(0)
+            self._onCropSelected(0)
             self._selectedRow = 0
             self._previousCrop = -1
             self._currentCrop = 0
@@ -476,18 +475,16 @@ class AnnotationsGui(LayerViewerGui):
         # self._drawer.cropListView still exists and can be reused
         # row = self._drawer.cropListModel.selectedRow()
         # name = self._drawer.cropListModel[row].name
-        # crop = self.topLevelOperatorView.Crops.value[name]
         row = self._drawer.cropBoxView.currentIndex()
         name = self._drawer.cropBoxView.itemText(row)
         crop = self.topLevelOperatorView.Crops.value[str(name)]
         return crop
 
     def _onCropSelected(self, row):
-        #logger.debug("switching to crop=%r" % (self._drawer.cropListModel[row]))
 
         self._selectedRow = row
-        currentName = self._drawer.cropListModel[row].name
-
+        #currentName = self._drawer.cropListModel[row].name
+        currentName = str(self._drawer.cropBoxView.itemText(row))
         self.editor.brushingModel.setDrawnNumber(row+1)
         brushColor = self._drawer.cropListModel[row].brushColor()
         self.editor.brushingModel.setBrushColor( brushColor )
@@ -945,7 +942,10 @@ class AnnotationsGui(LayerViewerGui):
 
     def _currentCropBoxChanged(self):
         self._currentCrop = self._drawer.cropBoxView.currentIndex()
-        self._currentCropName = str(self._drawer.cropBoxView.itemText(self._currentCrop))
+        if self._currentCrop >= 0:
+            self._currentCropName = str(self._drawer.cropBoxView.itemText(self._currentCrop))
+            self._drawer.cropListModel.select(self._currentCrop)
+            self._onCropSelected(self._currentCrop)
 
     def _getActiveTrack(self):
         if self._drawer.activeTrackBox.count() > 0:

@@ -84,9 +84,9 @@ class CropSelectionGui(CroppingGui):
         super(CropSelectionGui, self).__init__(parentApplet, cropSlots, self.topLevelOperatorView, self.uiPath )
 
         self.topLevelOperatorView = topLevelOperatorView
-        self.topLevelOperatorView.CropNames.notifyDirty( bind(self.handleCropSelectionChange) )
+        self.topLevelOperatorView.Crops.notifyDirty( bind(self.handleCropSelectionChange) )
         self.__cleanup_fns = []
-        self.__cleanup_fns.append( partial( self.topLevelOperatorView.CropNames.unregisterDirty, bind(self.handleCropSelectionChange) ) )
+        self.__cleanup_fns.append( partial( self.topLevelOperatorView.Crops.unregisterDirty, bind(self.handleCropSelectionChange) ) )
 
         self.render = False
         self._renderMgr = None
@@ -170,11 +170,6 @@ class CropSelectionGui(CroppingGui):
     @pyqtSlot()
     @threadRouted
     def handleCropSelectionChange(self):
-        enabled = False
-        if self.topLevelOperatorView.CropNames.ready():
-            enabled = True
-            enabled &= len(self.topLevelOperatorView.CropNames.value) > 0
-
         self._cropControlUi.cropListView.update()
 
     def _getNext(self, slot, parentFun, transform=None):
@@ -458,7 +453,6 @@ class CropSelectionGui(CroppingGui):
         return [[start, stop] for dim, start, stop in zip("xyz", starts, stops)]
 
     def _onCropSelected(self, row):
-
         self._cropControlUi._minSliderT.setValue(self.topLevelOperatorView.Crops.value[self._cropControlUi.cropListModel[row].name]["time"][0])
         self._cropControlUi._maxSliderT.setValue(self.topLevelOperatorView.Crops.value[self._cropControlUi.cropListModel[row].name]["time"][1])
 
