@@ -15,6 +15,9 @@ from lazyflow.operators.valueProviders import OpZeroDefault
 from lazyflow.roi import sliceToRoi
 from opRelabeledMergerFeatureExtraction import OpRelabeledMergerFeatureExtraction
 
+from functools import partial
+from lazyflow.request import Request, RequestPool
+
 import hytra
 from hytra.core.ilastik_project_options import IlastikProjectOptions
 from hytra.core.jsongraph import JsonTrackingGraph
@@ -381,7 +384,18 @@ class OpConservationTracking(Operator, ExportingOperator):
                 roi = tuple(roi)
                 
                 labelImage = self.LabelImage[roi].wait()
-                self.mergerResolver.fitAndRefineNodesForTimestep(labelImage[0, ..., 0], timestep)
+                
+                # Get coordinates for object IDs in label image. Used by GMM merger fit.
+                objectIds = np.unique(labelImage[0, ..., 0])
+                coordinatesForIds = {}
+                
+                pool = RequestPool()
+                for objectId in objectIds:
+                    pool.add(Request(partial(self.mergerResolver.getCoordinatesForObjectId, coordinatesForIds, labelImage[0, ..., 0], objectId)))                   
+                pool.wait()                
+                
+                # Fit mergers and store fit info in nodes  
+                self.mergerResolver.fitAndRefineNodesForTimestep(coordinatesForIds, timestep)
                 
             # Compute object features, re-run flow solver, update model and result, and get merger dictionary
             self.resolvedMergersDict = self.mergerResolver.run()
