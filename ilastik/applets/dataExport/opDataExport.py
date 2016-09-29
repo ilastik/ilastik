@@ -65,6 +65,9 @@ class OpDataExport(Operator):
     OutputInternalPath = InputSlot(value='exported_data')
     OutputFormat = InputSlot(value='hdf5')
     
+    # Only export csv file (don't export volume)
+    CsvOnly = InputSlot(value=False)
+    
     ExportPath = OutputSlot() # Location of the saved file after export is complete.
     
     ConvertedImage = OutputSlot() # Cropped image, not yet re-ordered (useful for guis)
@@ -260,7 +263,7 @@ class OpDataExport(Operator):
 
     def run_export(self):
         # If we're not dirty, we don't have to do anything.
-        if self.Dirty.value:
+        if not self.CsvOnly.value and self.Dirty.value:
             self.cleanupOnDiskView()
             self._opFormattedExport.run_export()
             self.Dirty.setValue( False )

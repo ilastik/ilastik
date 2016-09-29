@@ -100,6 +100,8 @@ class DataExportApplet( Applet ):
         arg_parser.add_argument( '--output_internal_path', help='Specifies dataset name within an hdf5 dataset (applies to hdf5 output only), e.g. /volume/data', required=False )
 
         arg_parser.add_argument( '--export_source', help='The data to export.  See the dropdown list on the Data Export page for choices.', required=False )
+        
+        arg_parser.add_argument( '--csv_only', help='Export only csv table.', action='store_true', default=False )
 
         return arg_parser
 
@@ -251,6 +253,9 @@ class DataExportApplet( Applet ):
 
         if parsed_args.output_format:
             opDataExport.OutputFormat.setValue( parsed_args.output_format )
+            
+        if parsed_args.csv_only:
+            opDataExport.CsvOnly.setValue(True)
 
         # Re-connect the 'transaction' slot to apply all settings at once.
         opDataExport.TransactionSlot.setValue(True)
