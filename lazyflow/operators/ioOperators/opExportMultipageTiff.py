@@ -96,7 +96,7 @@ class OpExportMultipageTiff(Operator):
             available_ram = psutil.virtual_memory().available
             available_ram *= 0.5
 
-            parallel_requests = available_ram // ram_usage_per_slice
+            parallel_requests = int(available_ram // ram_usage_per_slice)
         
         # Start with a batch of images
         reqs = collections.deque()
