@@ -99,7 +99,7 @@ class SerialPredictionSlot(SerialSlot):
         try:
             num = len(slot)
             if num > 0:
-                increment = 100 // float(num)
+                increment = 100 / float(num)
 
             progress = 0
             for imageIndex in range(num):
@@ -118,7 +118,7 @@ class SerialPredictionSlot(SerialSlot):
                 def handleProgress(percent):
                     # Stop sending progress if we were cancelled
                     if self.predictionStorageEnabled:
-                        curprogress = progress + percent * (increment // 100.0)
+                        curprogress = progress + percent * (increment / 100.0)
                         self.progressSignal.emit(curprogress)
                 opWriter.progressSignal.subscribe(handleProgress)
 

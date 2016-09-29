@@ -110,7 +110,7 @@ class BatchProcessingApplet( Applet ):
                     Request.raise_if_cancelled()
                     
                     def emit_progress(dataset_percent):
-                        overall_progress = (batch_dataset_index + dataset_percent//100)/len(datas_by_batch_index)
+                        overall_progress = (batch_dataset_index + dataset_percent/100.0)/len(datas_by_batch_index)
                         self.progressSignal.emit(100*overall_progress)
 
                     # Now use the new lane to export the batch results for the current file.

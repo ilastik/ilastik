@@ -208,7 +208,7 @@ class AutocontextClassificationSerializer(AppletSerializer):
                         numImages = len(self.mainOperator.PredictionProbabilities)
         
                         if numImages > 0:
-                            increment = (endProgress - startProgress) // numImages
+                            increment = (endProgress - startProgress) / float(numImages)
         
                         for imageIndex in range(numImages):
                             # Have we been cancelled?
@@ -231,7 +231,7 @@ class AutocontextClassificationSerializer(AppletSerializer):
                             def handleProgress(percent):
                                 # Stop sending progress if we were cancelled
                                 if self.predictionStorageEnabled:
-                                    progress[0] = startProgress + percent * (increment // 100)
+                                    progress[0] = startProgress + percent * (increment / 100.0)
                                     self.progressSignal.emit( progress[0] )
                             opWriter.progressSignal.subscribe( handleProgress )
         
