@@ -19,6 +19,7 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
+from __future__ import division
 from lazyflow.graph import Operator, InputSlot, OutputSlot, Graph
 from lazyflow.request import RequestLock
 import numpy
@@ -196,8 +197,8 @@ class OpPatchCreator(Operator):
             gWidth = self.GridWidth.value
             gHeight = self.GridHeight.value
 
-            numPatchesVertical = int((gHeight - pHeight) / skipVertical) + 1
-            numPatchesHorizontal = int((gWidth - pWidth) / skipHorizontal) + 1
+            numPatchesVertical = ((gHeight - pHeight) // skipVertical) + 1
+            numPatchesHorizontal = ((gWidth - pWidth) // skipHorizontal) + 1
             numpatches = numpy.zeros((2,))
             numpatches[:] = (numPatchesVertical, numPatchesHorizontal)
             return numpatches

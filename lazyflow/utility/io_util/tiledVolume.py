@@ -221,6 +221,8 @@ class TiledVolume(object):
                      (Note that the size of the ROI is usually, but not always, the same as tile_blockshape.
                      Near the volume borders, the tile_roi_in may be smaller.)
         """
+        assert sys.version_info.major == 2, "Alert! This function has not been tested "\
+        "under python 3. Please remove this assetion and be wary of any strnage behavior you encounter"
         # Special feature: 
         # Some slices are missing, in which case we provide fake data from a different slice.
         # Overwrite the rest args to pull data from an alternate source tile.
@@ -230,7 +232,7 @@ class TiledVolume(object):
             tile_roi_in[0][0] = new_source_slice
             tile_roi_in[1][0] = new_source_slice+1
 
-        tile_index = numpy.array(tile_roi_in[0]) / tile_blockshape
+        tile_index = numpy.array(tile_roi_in[0]) // tile_blockshape
         rest_args = { 'z_start' : tile_roi_in[0][0],
                       'z_stop'  : tile_roi_in[1][0],
                       'y_start' : tile_roi_in[0][1],

@@ -19,6 +19,7 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
+from __future__ import division
 import os
 import collections
 
@@ -87,7 +88,7 @@ class OpExportMultipageTiff(Operator):
         if ram_usage_per_requested_pixel is not None:
             pixels_per_slice = numpy.prod(shape_yx)
             if 'c' in tagged_shape:
-                pixels_per_slice /= tagged_shape['c']
+                pixels_per_slice //= tagged_shape['c']
             
             ram_usage_per_slice = pixels_per_slice * ram_usage_per_requested_pixel
 
@@ -95,7 +96,7 @@ class OpExportMultipageTiff(Operator):
             available_ram = psutil.virtual_memory().available
             available_ram *= 0.5
 
-            parallel_requests = int(available_ram / ram_usage_per_slice)
+            parallel_requests = int(available_ram // ram_usage_per_slice)
         
         # Start with a batch of images
         reqs = collections.deque()

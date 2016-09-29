@@ -19,6 +19,7 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
+from __future__ import division
 import os
 import math
 
@@ -92,9 +93,9 @@ class OpExportMultipageTiffSequence(Operator):
                 opExportBlock.Input.connect( opSubregion.Output )
                 opExportBlock.Filepath.setValue( formatted_path )
 
-                block_start_progress = 100*block_index / tagged_shape[step_axis]
+                block_start_progress = 100*block_index // tagged_shape[step_axis]
                 def _handleBlockProgress(block_progress):
-                    self.progressSignal( block_start_progress + block_progress/tagged_shape[step_axis] )
+                    self.progressSignal( block_start_progress + block_progress//tagged_shape[step_axis] )
                 opExportBlock.progressSignal.subscribe( _handleBlockProgress )
 
                 # Run the export for this block

@@ -19,6 +19,7 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
+from __future__ import division
 import sys
 from functools import partial
 
@@ -234,7 +235,7 @@ class RoiRequestBatch( object ):
                 # Report progress (if possible)
                 if self._totalVolume is not None:
                     self._processedVolume += numpy.prod( numpy.subtract(roi[1], roi[0]) )
-                    progress = 100 * self._processedVolume / self._totalVolume
+                    progress = 100 * self._processedVolume // self._totalVolume
                     self.progressSignal( progress )
 
                 logger.debug("Request completed for roi: {}".format(roi))

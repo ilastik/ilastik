@@ -23,6 +23,7 @@
 import copy
 import logging
 import threading
+import sys
 
 #SciPy
 import numpy
@@ -431,11 +432,13 @@ class OpDummyData(Operator):
         self.Output.meta.assignFrom(self.Input.meta)
 
     def execute(self, slot, subindex, roi, result):
+        assert sys.version_info.major == 2, "Alert! This function has not been tested "\
+        "under python 3. Please remove this assetion and be wary of any strange behavior you encounter"
         # Replace this entire request with a simple pattern to indicate "not available"
         # The pattern is simply a bunch of diagonal planes.
         pattern = numpy.indices( roi.stop - roi.start ).sum(0)
         pattern += numpy.sum(roi.start)
-        pattern = ((pattern / 20) == (pattern + 10) / 20).astype(int)
+        pattern = ((pattern // 20) == (pattern + 10) // 20).astype(int)
         # If dtype is a float, use 0/1.
         # If its an int, use 0/255
         if isinstance(result.dtype, numpy.integer):

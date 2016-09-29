@@ -16,7 +16,7 @@ def test_2d():
     sz = a.itemsize
     h,w = a.shape
     bh,bw = 2,2
-    shape = (h/bh, w/bw, bh, bw)
+    shape = (h//bh, w//bw, bh, bw)
     logger.debug("shape:{}".format(shape))
 
     strides = sz*numpy.array([w*bh,bw,w,1])
@@ -44,7 +44,7 @@ def test_3d():
     """
     orig_data = numpy.random.random( (6, 9, 16) )
     blockshape = (2,3,4)
-    final_shape = tuple(numpy.array(orig_data.shape) / blockshape) + blockshape
+    final_shape = tuple(numpy.array(orig_data.shape) // blockshape) + blockshape
     assert final_shape == (3,3,4,2,3,4), final_shape
 
     blockwise_copy = numpy.zeros( final_shape )
@@ -76,7 +76,7 @@ def test_3d_aslist():
     """
     orig_data = numpy.random.random( (6, 9, 16) )
     blockshape = (2,3,4)
-    final_shape = tuple(numpy.array(orig_data.shape) / blockshape) + blockshape
+    final_shape = tuple(numpy.array(orig_data.shape) // blockshape) + blockshape
     assert final_shape == (3,3,4,2,3,4), final_shape
 
     array_view = blockwise_view( orig_data, blockshape )

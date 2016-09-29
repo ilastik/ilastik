@@ -350,7 +350,7 @@ class OpPixelFeaturesPresmoothed(Operator):
             else:
                 # Only some input channels were dirty, 
                 #  so we must mark each dirty output region separately.
-                numFeatures = self.Output.meta.shape[channelAxis] / numChannels
+                numFeatures = self.Output.meta.shape[channelAxis] // numChannels
                 for featureIndex in range(numFeatures):
                     startChannel = numChannels*featureIndex + roi.start[channelAxis]
                     stopChannel = startChannel + roi.stop[channelAxis]
@@ -832,7 +832,7 @@ class OpPixelFeaturesInterpPresmoothed(Operator):
             else:
                 # Only some input channels were dirty, 
                 #  so we must mark each dirty output region separately.
-                numFeatures = self.Output.meta.shape[channelAxis] / numChannels
+                numFeatures = self.Output.meta.shape[channelAxis] // numChannels
                 for featureIndex in range(numFeatures):
                     startChannel = numChannels*featureIndex + roi.start[channelAxis]
                     stopChannel = startChannel + roi.stop[channelAxis]
@@ -1519,7 +1519,7 @@ class OpHessianOfGaussian(OpBaseVigraFilter):
     supportsOut = True
 
     def resultingChannels(self):
-        temp = self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space)*(self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space) + 1) / 2
+        temp = self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space)*(self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space) + 1) // 2
         return temp
 
 class OpGaussianGradientMagnitude(OpBaseVigraFilter):

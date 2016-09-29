@@ -455,7 +455,7 @@ class OpDetectMissing(Operator):
         pool = RequestPool()
 
         chunkSize = 1000  # FIXME magic number??
-        nChunks = len(X)/chunkSize + (1 if len(X) % chunkSize > 0 else 0)
+        nChunks = len(X)//chunkSize + (1 if len(X) % chunkSize > 0 else 0)
 
         s = [slice(k*chunkSize, min((k+1)*chunkSize, len(X)))
              for k in range(nChunks)]
@@ -617,9 +617,9 @@ def _patchify(data, patchSize, haloSize):
 
     patches = []
     slices = []
-    nPatchesX = data.shape[1]/patchSize + \
+    nPatchesX = data.shape[1]//patchSize + \
         (1 if data.shape[1] % patchSize > 0 else 0)
-    nPatchesY = data.shape[0]/patchSize + \
+    nPatchesY = data.shape[0]//patchSize + \
         (1 if data.shape[0] % patchSize > 0 else 0)
 
     for y in range(nPatchesY):
@@ -676,13 +676,13 @@ def _defaultTrainingHistograms():
     hists = np.zeros((nHists, n))
 
     # generate nHists/2 positive sets
-    for i in range(nHists/2):
+    for i in range(nHists//2):
         (hists[i, :n-1], _) = np.histogram(
             np.zeros((64, 64), dtype=np.uint8), bins=_defaultBinSize,
             range=(0, 255), density=True)
         hists[i, n-1] = 1
 
-    for i in range(nHists/2, nHists):
+    for i in range(nHists//2, nHists):
         (hists[i, :n-1], _) = np.histogram(
             np.random.random_integers(60, 180, (64, 64)), bins=_defaultBinSize,
             range=(0, 255), density=True)

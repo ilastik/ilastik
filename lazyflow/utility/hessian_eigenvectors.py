@@ -83,7 +83,7 @@ def convert_symmetric_tensor_vector_to_full_tensor_matrix(tensor_vector_image, t
     If upper_only is True, then the lower triangular elements will be left UNINITIALIZED.
     """
     image_shape = tensor_vector_image.shape[:-1] # Shape WITHOUT tensor dimensions
-    assert tensor_vector_image.shape[-1] == tensor_ndim*(tensor_ndim+1)/2
+    assert tensor_vector_image.shape[-1] == tensor_ndim*(tensor_ndim+1)//2
 
     # 2D: Use a stride trick to return a view
     if tensor_ndim == 2:

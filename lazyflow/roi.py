@@ -576,7 +576,7 @@ def determineBlockShape( max_shape, target_block_volume ):
     
     for (m, i), num_remaining_axes in zip(sorted_max, range(ndims, 0, -1)):
         # Make a block_shape that is isometric in the remaining dimensions
-        remaining_factor = target_block_volume/volume_so_far
+        remaining_factor = target_block_volume//volume_so_far
         block_side = int( pow( remaining_factor, 1.0/num_remaining_axes ) + 0.5 )
         block_side = min( block_side, m )
         block_shape.append( block_side )
@@ -616,7 +616,7 @@ def determine_optimal_request_blockshape( max_blockshape, ideal_blockshape, ram_
     max_blockshape = numpy.asarray( max_blockshape )
     ideal_blockshape = numpy.asarray( ideal_blockshape )
 
-    target_block_volume_bytes = available_ram / num_threads
+    target_block_volume_bytes = available_ram // num_threads
     target_block_volume_pixels = target_block_volume_bytes / ram_usage_per_requested_pixel
     
     # Replace 0's in the ideal_blockshape with the corresponding piece of max_blockshape
