@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from __future__ import division
 from ilastik.applets.base.appletSerializer import \
     AppletSerializer, deleteIfPresent, SerialSlot, SerialCountingSlot, \
     SerialBlockSlot, SerialListSlot

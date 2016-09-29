@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from __future__ import division
 import numpy as np
 import vigra
 import itertools
@@ -30,6 +31,7 @@ import h5py, cPickle
 import sys
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 class RegressorC(object):
@@ -487,6 +489,10 @@ class SVR(object):
         
         if boxConstraints is None or type(boxConstraints) is not dict:
             return [None for i in range(numRegressors)]
+
+        assert sys.version_info.major == 2, "Alert! This function has not been tested "\
+        "under python 3. Please remove this assetion and be wary of any strnage behavior you encounter"
+
         boxIndices = boxConstraints["boxIndices"]
         boxValues = boxConstraints["boxValues"]
         boxFeatures = boxConstraints["boxFeatures"]
@@ -511,7 +517,7 @@ class SVR(object):
 
             subBoxIndices.append(len(split))
             for j, _ in enumerate(subBoxIndices[:-1]):
-                subVal = boxValues[j] * (subBoxIndices[j + 1] - subBoxIndices[j]) / (boxIndices[j + 1] - boxIndices[j])
+                subVal = boxValues[j] * (subBoxIndices[j + 1] - subBoxIndices[j]) // (boxIndices[j + 1] - boxIndices[j])
                 subBoxValues.append(subVal)
 
             subBoxFeatures = boxFeatures[split,:]
@@ -547,7 +553,7 @@ class SVR(object):
         splitBoxConstraints = self.splitBoxConstraints(numRegressors, boxConstraints)
         
         for i in range(numRegressors):
-            indices = np.random.randint(0,numVariables, size = numVariables / numRegressors)    
+            indices = np.random.randint(0,numVariables, size = numVariables // numRegressors)    
             indices.sort()
             cut = np.where(indices < tags[0])
             newTags = [len(cut[0]), len(indices) - len(cut[0])]
