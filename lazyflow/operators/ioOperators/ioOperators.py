@@ -225,13 +225,7 @@ class OpStackWriter(Operator):
             # Fudge factor: Reduce RAM usage by a bit
             available_ram = psutil.virtual_memory().available
             available_ram *= 0.5
-  
-            #Dont change it to floor operation //
-            #PEP 238 says that: a // b == floor(a/b)
-            # except that the result type will be the common type into which a and b
-            # are coerced before the operation
-            #In this particular case, we deliberately typecast to int because parallel_requests
-            # is used subsequently in range function which expects integer
+
             parallel_requests = int(available_ram / ram_usage_per_slice)
 
         streamer = BigRequestStreamer( self.Input,
