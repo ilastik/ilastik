@@ -63,15 +63,19 @@ class OpExport2DImage(Operator):
         """
         # Check for errors...
         tagged_shape = self.Input.meta.getTaggedShape()
-        nonzero_dims = filter( lambda (k,v): k != 'c' and v > 1, tagged_shape.items() )
-        assert len(nonzero_dims) <= 2, "Image must have no more than 2 non-singleton dimensions."
+        non_singleton_dims = filter( lambda (k,v): k != 'c' and v > 1, tagged_shape.items() )
+        assert len(non_singleton_dims) <= 2, \
+            "Image to export must have no more than 2 non-singleton dimensions.\n"\
+            "You are attempting to export a {}D result into a 2D file format."\
+            .format( len(non_singleton_dims) )
 
         data = self._opExportToArray.run_export_to_array()
         data = vigra.taggedView( data, self.Input.meta.axistags )
         data = data.squeeze()
         if len(data.shape) == 1 or len(data.shape) == 2 and data.axistags.channelIndex < 2:
             data = data[numpy.newaxis, :]
-        assert len(data.shape) == 2 or (len(data.shape) == 3 and data.axistags.channelIndex < 3), "Image has shape {}, channelIndex is {}".format(data.shape, data.axistags.channelIndex)
+        assert len(data.shape) == 2 or (len(data.shape) == 3 and data.axistags.channelIndex < 3), \
+            "Image has shape {}, channelIndex is {}".format(data.shape, data.axistags.channelIndex)
         
         vigra.impex.writeImage(data, self.Filepath.value)
 
