@@ -300,7 +300,7 @@ class ObjectClassificationWorkflow(Workflow):
             return
         
         if not (self._batch_input_args and self._batch_export_args):
-            raise RuntimeError("Currently, this workflow has no batch mode and headless mode support")
+            raise RuntimeError("Was not able to understand the batch mode command-line arguments.")
         
         # Check for problems: Is the project file ready to use?
         opObjClassification = self.objectClassificationApplet.topLevelOperator
