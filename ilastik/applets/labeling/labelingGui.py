@@ -806,6 +806,14 @@ class LabelingGui(LayerViewerGui):
             labellayer.contexts.append( QAction("Import...", None,
                                         triggered=partial(import_labeling_layer, labellayer, self._labelingSlots, self)) )
 
+            labellayer.shortcutRegistration = ( "0", ShortcutManager.ActionInfo(
+                                                        "Labeling",
+                                                        "LabelVisibility",
+                                                        "Show/Hide Labels",
+                                                        labellayer.toggleVisible,
+                                                        self.viewerControlWidget(),
+                                                        labellayer ) )
+
             return labellayer, labelsrc
 
     def setupLayers(self):
