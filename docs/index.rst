@@ -13,6 +13,7 @@ Contents:
 
    overview
    applet_api
+   new_workflow
    workflow_design
    applet_library
    projectManager
@@ -20,6 +21,7 @@ Contents:
    plugin_system
    dependencies
    testing
+   documentation
 
 
 Indices and tables
