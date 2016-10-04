@@ -365,7 +365,10 @@ class OpConservationTracking(Operator, ExportingOperator):
             
         # Merger resolution
         if withMergerResolution:
-            originalGraph = hypotheses_graph
+            logger.info("Resolving mergers.")
+            
+            originalGraph = hypotheses_graph.referenceTraxelGraph if withTracklets else hypotheses_graph
+            
             pluginPath = os.path.join(os.path.dirname(os.path.abspath(hytra.__file__)), 'plugins')
             
             self.mergerResolver = IlastikMergerResolver(originalGraph, pluginPaths=[pluginPath])
@@ -410,7 +413,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         #from hytra.util.hypothesesgraphdiagram import HypothesesGraphDiagram
         #hgv = HypothesesGraphDiagram(hypotheses_graph._graph, timeRange=(0, 10), fileName='HypothesesGraph.png' )
                 
-        self.hypotheses_graph = hypotheses_graph
+        self.hypotheses_graph = hypotheses_graph.referenceTraxelGraph if withTracklets else hypotheses_graph
 
         # Refresh (execute) output slots
         self.Output.setDirty()
