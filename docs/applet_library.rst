@@ -181,9 +181,11 @@ with object features can be found in the $ILASTIK/examples directory.
 To get your plugins discovered by ilastik, you have to add their path 
 to the .ilastikrc file in your home directory. The file should look
 as follows:
-    [ilastik]
-    
-    plugin_directories: /path/to/cool_features
+.. code::
+
+        [ilastik]
+            
+        plugin_directories: /path/to/cool_features
 
 The cool_features directory in this case should contain the .py and the .yapsy-plugin files.
 

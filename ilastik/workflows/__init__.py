@@ -114,3 +114,11 @@ if ilastik.config.cfg.getboolean('ilastik', 'debug'):
 #     if ilastik.config.cfg.getboolean('ilastik', 'debug'):
 #         logger.warn( "Failed to import nanshe workflow. Check dependencies: " + str(e) )
 
+
+try:
+    import workflowExample
+    WORKFLOW_CLASSES += [workflowExample.workflowExampleWorkflow.WorkflowExampleWorkflow]
+except ImportError as e:
+    logger.warn("Failed to import 'workflowExample' workflow; check dependencies: " + str(e))
+
+

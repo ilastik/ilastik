@@ -20,20 +20,20 @@
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
-from opWsdt import OpCachedWsdt
-from wsdtSerializer import WsdtSerializer
+from opAppletExample import OpCachedAppletExample #TODO
+from appletExampleSerializer import AppletExampleSerializer #TODO
 
-class WsdtApplet( StandardApplet ):
+class AppletExampleApplet( StandardApplet ): #TODO
     """
     Distance-transform-based watershed applet
     """
     def __init__( self, workflow, guiName, projectFileGroupName ):
-        super(WsdtApplet, self).__init__(guiName, workflow)
-        self._serializableItems = [ WsdtSerializer(self.topLevelOperator, projectFileGroupName) ]
+        super(AppletExampleApplet, self).__init__(guiName, workflow) #TODO
+        self._serializableItems = [ AppletExampleSerializer(self.topLevelOperator, projectFileGroupName) ] #TODO
 
     @property
     def singleLaneOperatorClass(self):
-        return OpCachedWsdt
+        return OpCachedAppletExample
 
     @property
     def broadcastingSlots(self):
@@ -48,8 +48,8 @@ class WsdtApplet( StandardApplet ):
 
     @property
     def singleLaneGuiClass(self):
-        from wsdtGui import WsdtGui
-        return WsdtGui
+        from appletExampleGui import AppletExampleGui #TODO
+        return AppletExampleGui #TODO
 
     @property
     def dataSerializers(self):

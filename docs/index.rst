@@ -13,8 +13,9 @@ Contents:
 
    overview
    applet_api
-   new_workflow
+   appletExample
    workflow_design
+   workflowExample
    applet_library
    projectManager
    utilities
