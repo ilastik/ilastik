@@ -48,7 +48,7 @@ class WorkflowExampleWorkflow(Workflow): #TODO
         graph = Graph()
 
         #call the __init__ of its upperclass, here Workflow
-        super(WorkflowExampleWorkflow, self).__init__( shell, headless, workflow_cmdline_args, project_creation_workflow, graph=graph, *args, **kwargs)
+        super(WorkflowExampleWorkflow, self).__init__( shell, headless, workflow_cmdline_args, project_creation_workflow, graph=graph, *args, **kwargs) #TODO
 
 
         #################################################################

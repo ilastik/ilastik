@@ -25,3 +25,12 @@ __init__.py:
 
 The lines marked with TODO should be replaced for a new applet.
 There you can include the desired applets.
+
+For an additional widget that shall be seen for this specific applet, 
+you can use the following files in volumina/volumina/widgets:
+
+TODO create these two files
+
+#. appletExampleWidget.py
+#. ui/appletExampleWidget.ui
+

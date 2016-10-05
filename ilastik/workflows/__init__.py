@@ -121,4 +121,8 @@ try:
 except ImportError as e:
     logger.warn("Failed to import 'workflowExample' workflow; check dependencies: " + str(e))
 
-
+try:
+    import eigenesThreshold
+    WORKFLOW_CLASSES += [eigenesThreshold.eigenesThresholdWorkflow.EigenesThresholdWorkflow]
+except ImportError as e:
+    logger.warn("Failed to import 'eigenesThreshold' workflow; check dependencies: " + str(e))

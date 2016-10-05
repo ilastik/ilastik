@@ -23,7 +23,7 @@ import numpy as np
 from ilastik.workflow import Workflow
 
 from ilastik.applets.dataSelection import DataSelectionApplet
-from ilastik.applets.wsdt import WsdtApplet
+from ilastik.applets.wsdt.wsdtApplet import WsdtApplet
 from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 from ilastik.applets.batchProcessing import BatchProcessingApplet
 
