@@ -126,3 +126,10 @@ try:
     WORKFLOW_CLASSES += [eigenesThreshold.eigenesThresholdWorkflow.EigenesThresholdWorkflow]
 except ImportError as e:
     logger.warn("Failed to import 'eigenesThreshold' workflow; check dependencies: " + str(e))
+
+
+try:
+    import watershedSegmentation
+    WORKFLOW_CLASSES += [watershedSegmentation.watershedSegmentationWorkflow.WatershedSegmentationWorkflow]
+except ImportError as e:
+    logger.warn("Failed to import 'watershedSegmentation' workflow; check dependencies: " + str(e))
