@@ -165,7 +165,7 @@ class OpMulticutAgglomerator(Operator):
                            " (num_sp = {}, max_sp = {})".format( rag.num_sp, rag.max_sp ) )
         #
         # Solve
-        #        
+        #
         edge_weights = compute_edge_weights(edge_probabilities, beta)
         assert edge_weights.shape == (rag.num_edges,)
 
@@ -179,7 +179,7 @@ class OpMulticutAgglomerator(Operator):
 
         #
         # Project solution onto supervoxels, return segmentation image
-        #            
+        #
         agglomerated_labels = mapping_index_array[rag.label_img]
         assert agglomerated_labels.shape == rag.label_img.shape
         return agglomerated_labels
@@ -187,7 +187,7 @@ class OpMulticutAgglomerator(Operator):
 def compute_edge_weights( edge_probabilities, beta ):
     """
     Convert edge probabilities to energies for the multicut problem.
-    
+
     edge_probabilities: 1-D, float
     beta: scalar, float
     """
@@ -197,13 +197,13 @@ def compute_edge_weights( edge_probabilities, beta ):
 
     edge_weights = np.log(p0/p1) + np.log( (1-beta)/(beta) )
     return edge_weights
-    
+
 
 def solve_with_nifty(edge_ids, edge_weights, node_count, solver_method):
     """
     Solve the given multicut problem with the 'Nifty' library and return an
     index array that maps node IDs to segment IDs.
-    
+
     edge_ids: The list of edges in the graph. shape=(N, 2)
 
     edge_weights: Edge energies. shape=(N,)
@@ -212,33 +212,31 @@ def solve_with_nifty(edge_ids, edge_weights, node_count, solver_method):
                 Note: Must be greater than the max ID found in edge_ids.
                       If your superpixel IDs are not consecutive, node_count should be max_sp_id+1
 
-    solver_method: One of 'ExactCplex', 'FmGreedy', etc. 
+    solver_method: One of 'ExactCplex', 'FmGreedy', etc.
     """
     # TODO: I don't know if this handles non-consecutive sp-ids properly
     g = nifty.graph.UndirectedGraph( int(node_count) )
     g.insertEdges(edge_ids)
     obj = nifty.graph.multicut.multicutObjective(g, edge_weights)
 
-    moug = MulticutObjectiveUndirectedGraph
-
     def getIlpFac(ilpSolver):
-        return moug.multicutIlpFactory(
+        return obj.multicutIlpFactory(
                    ilpSolver=ilpSolver,
                    verbose=0,
                    addThreeCyclesConstraints=True,
                    addOnlyViolatedThreeCyclesConstraints=True)
 
     def getFmFac(subFac):
-        return moug.fusionMoveBasedFactory(
+        return obj.fusionMoveBasedFactory(
             verbose=1,
-            fusionMove=moug.fusionMoveSettings(mcFactory=subFac),
-            proposalGen=moug.watershedProposals(sigma=1,seedFraction=0.01),
+            fusionMove=obj.fusionMoveSettings(mcFactory=subFac),
+            proposalGen=obj.watershedProposals(sigma=1,seedFraction=0.01),
             numberOfIterations=500,
             numberOfParallelProposals=8,
             stopIfNoImprovement=20,
             fuseN=2
         )
-    
+
      # TODO finetune parameters
     ret = None
     if solver_method == 'ExactCplex':
@@ -248,27 +246,27 @@ def solve_with_nifty(edge_ids, edge_weights, node_count, solver_method):
         inf = getIlpFac('gurobi').create(obj)
 
     elif solver_method == 'FmCplex':
-        greedy=moug.greedyAdditiveFactory().create(obj)
+        greedy=obj.greedyAdditiveFactory().create(obj)
         ret = greedy.optimize()
         inf = getFmFac(getIlpFac('cplex')).create(obj)
 
     elif solver_method == 'FmGurobi':
-        greedy=moug.greedyAdditiveFactory().create(obj)
+        greedy=obj.greedyAdditiveFactory().create(obj)
         ret = greedy.optimize()
         inf = getFmFac(getIlpFac('gurobi')).create(obj)
 
     elif solver_method == 'FmGreedy':
-        greedy=moug.greedyAdditiveFactory().create(obj)
+        greedy=obj.greedyAdditiveFactory().create(obj)
         ret = greedy.optimize()
-        inf = getFmFac(moug.greedyAdditiveFactory()).create(obj)
+        inf = getFmFac(obj.greedyAdditiveFactory()).create(obj)
 
     else:
         assert False, "Unknown solver method: {}".format( solver_method )
 
     if ret is None:
-        ret = inf.optimize(visitor=moug.multicutVerboseVisitor())
+        ret = inf.optimize(visitor=obj.multicutVerboseVisitor())
     else:
-        ret = inf.optimize(visitor=moug.multicutVerboseVisitor(), nodeLabels=ret)
+        ret = inf.optimize(visitor=obj.multicutVerboseVisitor(), nodeLabels=ret)
 
     mapping_index_array = ret.astype(np.uint32)
     return mapping_index_array
@@ -277,7 +275,7 @@ def solve_with_opengm(edge_ids, edge_weights, node_count, solver_method):
     """
     Solve the given multicut problem with OpenGM and return an
     index array that maps node IDs to segment IDs.
-    
+
     edge_ids: The list of edges in the graph. shape=(N, 2)
 
     edge_weights: Edge energies. shape=(N,)
@@ -286,7 +284,7 @@ def solve_with_opengm(edge_ids, edge_weights, node_count, solver_method):
                 Note: Must be greater than the max ID found in edge_ids.
                       If your superpixel IDs are not consecutive, node_count should be max_sp_id+1
 
-    solver_method: One of 'Exact', 'IntersectionBased', or 'Cgc'. 
+    solver_method: One of 'Exact', 'IntersectionBased', or 'Cgc'.
     """
     gm = opengm.gm( np.ones(node_count)*node_count )
     pf = opengm.pottsFunctions( [node_count, node_count], np.array([0]), edge_weights )
@@ -308,7 +306,7 @@ def solve_with_opengm(edge_ids, edge_weights, node_count, solver_method):
 
     mapping_index_array = inf.arg().astype(np.uint32)
     return mapping_index_array
-            
+
 
 if __name__ == "__main__":
     import vigra
