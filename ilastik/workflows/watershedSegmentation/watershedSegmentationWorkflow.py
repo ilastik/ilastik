@@ -30,8 +30,8 @@ from ilastik.applets.batchProcessing import BatchProcessingApplet
 from lazyflow.graph import Graph
 
 class WatershedSegmentationWorkflow(Workflow):
-    workflowName = "Watershed Over Distance Transform"
-    workflowDescription = "A bare-bones workflow for using the WSDT applet"
+    workflowName = "Watershed Segmentation ['Raw Data', ' Probabilities']"
+    workflowDescription = "A workflow that includes all watershed related applets"
     defaultAppletIndex = 0 # show DataSelection by default
 
     DATA_ROLE_RAW = 0
@@ -111,6 +111,7 @@ class WatershedSegmentationWorkflow(Workflow):
 
         # watershed inputs
         opWatershedSegmentation.RawData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
+        #TODO Probability maps must be loaded
         opWatershedSegmentation.Input.connect( opDataSelection.ImageGroup[self.DATA_ROLE_PROBABILITIES] )
 
         # DataExport inputs

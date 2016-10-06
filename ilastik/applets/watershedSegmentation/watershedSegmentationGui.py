@@ -100,6 +100,8 @@ class WatershedSegmentationGui(LayerViewerGui):
             if sip.isdeleted(channel_box):
                 return
             channel_box.setMinimum(0)
+            #TODO
+            print "\n\n" , op.Input.meta.getTaggedShape()['c'] , "\n\n"
             channel_box.setMaximum( op.Input.meta.getTaggedShape()['c']-1 )
         set_channel_box_range()
         op.Input.notifyMetaChanged( set_channel_box_range )

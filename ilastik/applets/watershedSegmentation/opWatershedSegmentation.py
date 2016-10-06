@@ -2,7 +2,14 @@
 from collections import OrderedDict
 import numpy as np
 
-from wsdt.WsdtApplet import wsDtSegmentation
+#for wsDtSegmentation
+#from ilastik.applets.wsdt.wsdtApplet.WsdtApplet import wsDtSegmentation
+from ilastik.applets.wsdt.wsdtApplet import WsdtApplet
+#from wsdtApplet.WsdtApplet import wsDtSegmentation
+#from WsdtApplet import wsDtSegmentation
+
+#Target:
+#from WsdtApplet import wsDtSegmentation
 
 from lazyflow.utility import OrderedSignal
 from lazyflow.graph import Operator, InputSlot, OutputSlot
