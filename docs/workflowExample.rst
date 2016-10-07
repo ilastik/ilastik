@@ -36,15 +36,12 @@ ilastik/workflows/
 with the name workflowExample:
 In this directory there are 2 files:
 #. __init__.py
-#. workflowExampleWorkflow.py
-
-__init__.py:
-
 .. literalinclude:: ../ilastik/workflows/workflowExample/__init__.py
     :linenos:
     :language: python
-
-workflowExampleWorkflow.py
+#. workflowExampleWorkflow.py
+   * Includes all the applets for this workflow and how they are connected with each other
+   * Includes all the exposing to the shell and the update handling for applets
 
 The lines marked with TODO should be replaced for a new workflow.
 There you can include the desired applets.

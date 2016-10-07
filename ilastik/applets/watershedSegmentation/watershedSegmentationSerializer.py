@@ -21,6 +21,11 @@
 from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialBlockSlot
 
 class WatershedSegmentationSerializer(AppletSerializer):
+    """
+    Add all the slots, you want to use in the gui later, into its __init__
+    operator is mainly the topLevelOperator
+    """
+    
     def __init__(self, operator, projectFileGroupName):
         slots = [ SerialSlot(operator.ChannelSelection),
                   SerialSlot(operator.Pmin), 

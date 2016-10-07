@@ -34,9 +34,11 @@ class WatershedSegmentationWorkflow(Workflow):
     workflowDescription = "A workflow that includes all watershed related applets"
     defaultAppletIndex = 0 # show DataSelection by default
 
+    # give your input data a number, so the group can be found for them
     DATA_ROLE_RAW = 0
     DATA_ROLE_PROBABILITIES = 1
     ROLE_NAMES = ['Raw Data', 'Probabilities']
+
     EXPORT_NAMES = ['Watershed']
 
     @property
@@ -51,7 +53,8 @@ class WatershedSegmentationWorkflow(Workflow):
         # Create a graph to be shared by all operators
         graph = Graph()
 
-        super(WatershedSegmentationWorkflow, self).__init__( shell, headless, workflow_cmdline_args, project_creation_workflow, graph=graph, *args, **kwargs)
+        super(WatershedSegmentationWorkflow, self).__init__( \
+                shell, headless, workflow_cmdline_args, project_creation_workflow, graph=graph, *args, **kwargs)
         self._applets = []
 
         # -- DataSelection applet
@@ -64,7 +67,8 @@ class WatershedSegmentationWorkflow(Workflow):
 
         # -- WatershedSegmentation applet
         #
-        self.watershedSegmentationApplet = WatershedSegmentationApplet(self, "Watershed", "WatershedSegmentation Watershed")
+        # ( workflow=self, guiName='', projectFileGroupName='' )
+        self.watershedSegmentationApplet = WatershedSegmentationApplet(self, "Watershed", "WatershedSegmentation")
 
         # -- DataExport applet
         #
@@ -105,13 +109,16 @@ class WatershedSegmentationWorkflow(Workflow):
         """
         Override from base class.
         """
-        opDataSelection = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
+        opDataSelection         = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opWatershedSegmentation = self.watershedSegmentationApplet.topLevelOperator.getLane(laneIndex)
-        opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
+        opDataExport            = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
 
         # watershed inputs
+        # ensure that the watershed can only be clicked or whatelse, 
+        # if raw data and prediction map are loaded
+        # TODO
+        # till now, raised assertion if prob maps not loaded and nothing if raw data not loaded
         opWatershedSegmentation.RawData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
-        #TODO Probability maps must be loaded
         opWatershedSegmentation.Input.connect( opDataSelection.ImageGroup[self.DATA_ROLE_PROBABILITIES] )
 
         # DataExport inputs

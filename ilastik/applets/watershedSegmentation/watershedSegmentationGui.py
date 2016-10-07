@@ -100,9 +100,13 @@ class WatershedSegmentationGui(LayerViewerGui):
             if sip.isdeleted(channel_box):
                 return
             channel_box.setMinimum(0)
-            #TODO
-            print "\n\n" , op.Input.meta.getTaggedShape()['c'] , "\n\n"
+            #TODO throws an exception, if probabilities in input data aren't there, 
+            # use a control machanism, that watershed can't be clicked on, or that a warning will be seen
+            #print "\n\n" , op.Input.meta.getTaggedShape()['c'] , "\n\n"
             channel_box.setMaximum( op.Input.meta.getTaggedShape()['c']-1 )
+
+        #Setting the Layout of the widget starts here. 
+        #There is no .ui file used, just code
         set_channel_box_range()
         op.Input.notifyMetaChanged( set_channel_box_range )
         configure_update_handlers( channel_box.valueChanged, op.ChannelSelection )
@@ -242,6 +246,10 @@ class WatershedSegmentationGui(LayerViewerGui):
         th.start()
 
     def setupLayers(self):
+        """
+        These are the views (e.g. opacitiy of Raw Data)
+        that can be adjusted in the left corner of the program
+        """
         layers = []
         op = self.topLevelOperatorView
 

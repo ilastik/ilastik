@@ -5,23 +5,30 @@ Building your own applet: appletExample
 Basic Structure
 ========================================
 
-Example used from wsdt.
+A good example of a basic applet could watershedSegmentation, that is based on the wsdti applet.
 
 Then create a folder in 
 ilastik/applets/
 with the name appletExample:
 In this directory there are 5 files:
 #. __init__.py
-#. appletExampleApplet.py
-#. appletExampleGui.py
-#. appletExampleSerializer.py
-#. opAppletExample.py
-
-__init__.py:
-
 .. literalinclude:: ../ilastik/applets/appletExample/__init__.py
     :linenos:
     :language: python
+#. appletExampleApplet.py
+   * for initialization
+   * for communication with workflow (e.g. with slotbroadcasting)
+#. appletExampleGui.py
+   * handles the graphical user interface and the slots, that are 
+   * handles the views of the layer
+#. appletExampleSerializer.py
+   include here all the slots used in before, that can be used in the applet
+#. opAppletExample.py
+   * The algorithms are executed here
+   
+
+
+
 
 The lines marked with TODO should be replaced for a new applet.
 There you can include the desired applets.

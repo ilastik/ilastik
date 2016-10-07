@@ -1,15 +1,9 @@
-
 from collections import OrderedDict
 import numpy as np
 
 #for wsDtSegmentation
-#from ilastik.applets.wsdt.wsdtApplet.WsdtApplet import wsDtSegmentation
 from ilastik.applets.wsdt.wsdtApplet import WsdtApplet
-#from wsdtApplet.WsdtApplet import wsDtSegmentation
-#from WsdtApplet import wsDtSegmentation
 
-#Target:
-#from WsdtApplet import wsDtSegmentation
 
 from lazyflow.utility import OrderedSignal
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -18,6 +12,11 @@ from lazyflow.operators import OpBlockedArrayCache, OpValueCache
 from lazyflow.operators.generic import OpPixelOperator, OpSingleChannelSelector
 
 class OpWatershedSegmentation(Operator):
+    """
+    Initialize the parameters for the calculations (and Gui)
+    Provide execution function for the execution of the watershed algorithm
+    """
+
     Input = InputSlot() # Can be multi-channel (but you'll have to choose which channel you want to use)
     ChannelSelection = InputSlot(value=0)
 
@@ -63,6 +62,7 @@ class OpWatershedSegmentation(Operator):
 
         if self.debug_results:
             self.debug_results.clear()
+        #execute the actual watershed Segmentation
         wsDtSegmentation( pmap[...,0],
                           self.Pmin.value,
                           self.MinMembraneSize.value,
@@ -113,6 +113,7 @@ class OpCachedWatershedSegmentation(Operator):
             "OpCachedWatershedSegmentation should have all of the slots that OpWatershedSegmentation has (and maybe more). "\
             "Did you add a slot to OpWatershedSegmentation and forget to add it to OpCachedWatershedSegmentation?"
         
+        # connect the slots for the input of the gui with the internal handling, or something equal
         self._opWatershedSegmentation = OpWatershedSegmentation( parent=self )
         self._opWatershedSegmentation.Input.connect( self.Input )
         self._opWatershedSegmentation.ChannelSelection.connect( self.ChannelSelection )
@@ -146,7 +147,6 @@ class OpCachedWatershedSegmentation(Operator):
         return self._opWatershedSegmentation.debug_results
 
 
-    #TODO maybe this function could have a better name or better functionality
     @property 
     def watershed_completed(self):
         return self._opWatershedSegmentation.watershed_completed
