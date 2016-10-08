@@ -30,6 +30,8 @@ from hytra.core.probabilitygenerator import Traxel
 
 import dpct
 
+import vigra
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -389,7 +391,7 @@ class OpConservationTracking(Operator, ExportingOperator):
                 labelImage = self.LabelImage[roi].wait()
                 
                 # Get coordinates for object IDs in label image. Used by GMM merger fit.
-                objectIds = np.unique(labelImage[0, ..., 0])
+                objectIds = vigra.analysis.unique(labelImage[0,...,0])
                 coordinatesForIds = {}
                 
                 pool = RequestPool()
