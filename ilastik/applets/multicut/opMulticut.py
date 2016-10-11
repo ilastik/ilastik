@@ -166,7 +166,7 @@ class OpMulticutAgglomerator(Operator):
         #
         # Solve
         #
-        edge_weights = compute_edge_weights(edge_probabilities, beta)
+        edge_weights = compute_edge_weights(rag.edge_ids, edge_probabilities, beta)
         assert edge_weights.shape == (rag.num_edges,)
 
         solver_library, solver_method = solver_name.split('_')
@@ -184,18 +184,35 @@ class OpMulticutAgglomerator(Operator):
         assert agglomerated_labels.shape == rag.label_img.shape
         return agglomerated_labels
 
-def compute_edge_weights( edge_probabilities, beta ):
+def compute_edge_weights( edge_ids, edge_probabilities, beta ):
     """
     Convert edge probabilities to energies for the multicut problem.
+    
+    edge_ids:
+        The list of edges in the graph. shape=(N, 2)
+    edge_probabilities:
+        1-D, float (1.0 means edge is CUT, disconnecting the two SPs)
+    beta:
+        scalar (float)
 
-    edge_probabilities: 1-D, float
-    beta: scalar, float
+    Special behavior:
+        If any node has ID 0, all of it's edges will be given an
+        artificially low energy, to prevent it from merging with its
+        neighbors, regardless of what the edge_probabilities say.
     """
-    p1 = edge_probabilities # P(Edge=ON)
+    p1 = edge_probabilities # P(Edge=CUT)
     p1 = np.clip(p1, 0.001, 0.999)
-    p0 = 1.0 - p1 # P(Edge=OFF)
+    p0 = 1.0 - p1 # P(Edge=NOT CUT)
 
     edge_weights = np.log(p0/p1) + np.log( (1-beta)/(beta) )
+
+    # See note special behavior, above
+    edges_touching_zero = edge_ids[:,0] == 0
+    if edges_touching_zero.any():
+        logger.warn("Volume contains label 0, which will be excluded from the segmentation.")
+        MINIMUM_ENERGY = -1000.0
+        edge_weights[edges_touching_zero] = MINIMUM_ENERGY
+    
     return edge_weights
 
 
