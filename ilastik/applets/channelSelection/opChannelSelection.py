@@ -22,7 +22,7 @@ class OpSingleChannelSelector(Operator):
 
     def setupOutputs(self):
         
-        channelAxis=self.Input.meta.axistags.channelIndex
+        channelAxis = self.Input.meta.axistags.channelIndex
         inshape     = list(self.Input.meta.shape)
         outshape    = list(inshape)
         outshape.pop(channelAxis)
@@ -95,6 +95,7 @@ class OpChannelSelection(Operator):
 
     Output = OutputSlot()
 
+    #TODO ab hier bis unten
     def setupOutputs(self):
         assert self.InputA.meta.shape == self.InputB.meta.shape, "Can't add images of different shapes!"
         self.Output.meta.assignFrom(self.InputA.meta)

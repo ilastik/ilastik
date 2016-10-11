@@ -108,6 +108,62 @@ class ChannelSelectionGui(LayerViewerGui):
         #Configure the Gui
         ############################################################
         #visibility
+        op = self.topLevelOperatorView
+        #channelAxis = Number of channels used
+        self.channelAxis = op.RawData.meta.axistags.channelIndex
+        visibility_box = []
+        self.visibility_box = []
+        for i in range(self.channelAxis):
+            print "Number of channels: ",  self.channelAxis
+
+            box = QCheckBox()
+            visibility_box.append(box)
+            del box
+            configure_update_handlers( visibility_box[i].stateChanged, op.Visibility )
+            drawer_layout.addLayout( control_layout( "Channel: " + str(i), visibility_box[i] ) )
+        self.visibility_box = visibility_box
+        
+        ############################################################
+        #Init the drawer for the Applet
+        ############################################################
+
+        # Finally, the whole drawer widget
+        drawer = QWidget(parent=self)
+        drawer.setLayout(drawer_layout)
+
+        # Save these members for later use
+        self._drawer = drawer
+
+        # Initialize everything with the operator's initial values
+        self.configure_gui_from_operator()
+
+
+
+
+
+
+        #TODO
+        #Test for changes
+        for i in range(self.channelAxis):
+            self.visibility_box[i].stateChanged.connect(self._onCheckboxClicked)
+
+
+    def _onCheckboxClicked(self):
+        for i in range(self.channelAxis):
+            if (self.visibility_box[i].isChecked()):
+                print "checked"
+                self.getLayerByName("Channel " + str(i)).visible = True
+
+            else:
+                print "not checked"
+                self.getLayerByName("Channel " + str(i)).visible = False
+
+        '''
+        ############################################################
+        #Configure the Gui
+        ############################################################
+        #These are working
+        #visibility
         visibility_box = QCheckBox()
         #visibility_box.setDecimals(2)
         #visibility_box.setMinimum(0.00)
@@ -117,12 +173,38 @@ class ChannelSelectionGui(LayerViewerGui):
         drawer_layout.addLayout( control_layout( "Visibility", visibility_box ) )
         self.visibility_box = visibility_box
         
+        ############################################################
+        #Init the drawer for the Applet
+        ############################################################
+
+        # Finally, the whole drawer widget
+        drawer = QWidget(parent=self)
+        drawer.setLayout(drawer_layout)
+
+        # Save these members for later use
+        self._drawer = drawer
+
+        # Initialize everything with the operator's initial values
+        self.configure_gui_from_operator()
 
 
 
 
+
+        #TODO
         #Test for changes
         self.visibility_box.stateChanged.connect(self._onCheckboxClicked)
+
+
+    def _onCheckboxClicked(self):
+        if (self.visibility_box.isChecked()):
+            print "checked"
+            self.getLayerByName("Raw Data").visible = True
+        else:
+            print "not checked"
+            self.getLayerByName("Raw Data").visible = False
+
+        '''
 
 
         '''
@@ -204,19 +286,7 @@ class ChannelSelectionGui(LayerViewerGui):
         drawer_layout.setSpacing(0)
         drawer_layout.addSpacerItem( QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding) )
     '''
-        ############################################################
-        #Init the drawer for the Applet
-        ############################################################
 
-        # Finally, the whole drawer widget
-        drawer = QWidget(parent=self)
-        drawer.setLayout(drawer_layout)
-
-        # Save these members for later use
-        self._drawer = drawer
-
-        # Initialize everything with the operator's initial values
-        self.configure_gui_from_operator()
         
 
     @contextmanager
@@ -238,9 +308,11 @@ class ChannelSelectionGui(LayerViewerGui):
             if input_layer:
                 input_layer.channel = op.ChannelSelection.value
             '''
+            #worked
+            #self.visibility_box.setChecked( op.Visibility.value )
             
-            #self.visibility_box.setCheckState( op.Visibility.checkState() )
-            self.visibility_box.setChecked( op.Visibility.value )
+            for i in range(self.channelAxis):
+                self.visibility_box[i].setChecked( op.Visibility.value )
             '''
             self.membrane_size_box.setValue( op.MinMembraneSize.value )
             self.superpixel_size_box.setValue( op.MinSegmentSize.value )
@@ -256,11 +328,13 @@ class ChannelSelectionGui(LayerViewerGui):
             return False
         with self.set_updating():
             op = self.topLevelOperatorView
-            #op.Visibility.setCheckState( self.visibility_box.checkState() )
-            op.Visibility.setValue( self.visibility_box.isChecked() )
+            #worked
+            #op.Visibility.setValue( self.visibility_box.isChecked() )
+
+            for i in range(self.channelAxis):
+                op.Visibility.setValue( self.visibility_box[i].isChecked() )
 
 
-            #TODO self.getLayerByName("Raw Data").visible = False
 
             '''
             op.ChannelSelection.setValue( self.channel_box.value() )
@@ -350,6 +424,9 @@ class ChannelSelectionGui(LayerViewerGui):
         '''
         # Input Data (grayscale) (Probabilities)
         if op.Input.ready():
+        #TODO hier nur den jeweiligen channel, am besten in einer anderen Farbe darstellen lassen.
+        #TODO
+
             layer = self.createStandardLayerFromSlot( op.Input )
             #layer = self._create_grayscale_layer_from_slot( op.Input, op.Input.meta.getTaggedShape()['c'] )
             layer.name = "Input"
@@ -360,11 +437,13 @@ class ChannelSelectionGui(LayerViewerGui):
 
         # Raw Data (grayscale)
         if op.RawData.ready():
-            layer = self.createStandardLayerFromSlot( op.RawData )
-            layer.name = "Raw Data"
-            layer.visible = True
-            layer.opacity = 1.0
-            layers.append(layer)
-            del layer
+            #For each channel, add one View
+            for i in range(self.channelAxis):
+                layer = self.createStandardLayerFromSlot( op.RawData )
+                layer.name = "Channel " + str(i)
+                layer.visible = True
+                layer.opacity = 1.0
+                layers.append(layer)
+                del layer
 
         return layers
