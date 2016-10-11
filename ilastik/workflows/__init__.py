@@ -133,3 +133,13 @@ try:
     WORKFLOW_CLASSES += [watershedSegmentation.watershedSegmentationWorkflow.WatershedSegmentationWorkflow]
 except ImportError as e:
     logger.warn("Failed to import 'watershedSegmentation' workflow; check dependencies: " + str(e))
+
+
+
+try:
+    import test
+    WORKFLOW_CLASSES += [test.testWorkflow.TestWorkflow]
+except ImportError as e:
+    logger.warn("Failed to import 'test' workflow; check dependencies: " + str(e))
+
+

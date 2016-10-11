@@ -41,7 +41,8 @@ import logging
 from PyQt4.Qt import QCheckBox
 logger = logging.getLogger(__name__)
 
-class WatershedSegmentationGui(LayerViewerGui):
+class ChannelSelectionGui(LayerViewerGui):
+
 
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
@@ -50,13 +51,14 @@ class WatershedSegmentationGui(LayerViewerGui):
     def appletDrawer(self):
         return self._drawer
 
+    #take all the unregisteredDirty Slots and clean them, so something like this
     def stopAndCleanUp(self):
         # Unsubscribe to all signals
         for fn in self.__cleanup_fns:
             fn()
 
         # Base class
-        super( WatershedSegmentationGui, self ).stopAndCleanUp()
+        super( ChannelSelectionGui, self ).stopAndCleanUp()
     
     ###########################################
     ###########################################
@@ -65,7 +67,8 @@ class WatershedSegmentationGui(LayerViewerGui):
         self.__cleanup_fns = []
         self._currently_updating = False
         self.topLevelOperatorView = topLevelOperatorView
-        super(WatershedSegmentationGui, self).__init__( parentApplet, topLevelOperatorView )
+        super(ChannelSelectionGui, self).__init__( parentApplet, topLevelOperatorView )
+        '''
         
         self._sp_colortable = generateRandomColors(256, clamp={'v': 1.0, 's' : 0.5}, zeroIsTransparent=True)
         
@@ -74,6 +77,7 @@ class WatershedSegmentationGui(LayerViewerGui):
 
         # Any time watershed is re-computed, re-update the layer set, in case the set of debug layers has changed.
         self.topLevelOperatorView.watershed_completed.subscribe( self.updateAllLayers )
+        '''
 
     def initAppletDrawerUi(self):
         """
@@ -81,10 +85,14 @@ class WatershedSegmentationGui(LayerViewerGui):
         """
         op = self.topLevelOperatorView
         
+        
+        #handler which takes the qt_signal and the slot that fits to this signal and connects them
+        # clean-up and dirty-Notification will be done here too
         def configure_update_handlers( qt_signal, op_slot ):
             qt_signal.connect( self.configure_operator_from_gui )
             op_slot.notifyDirty( self.configure_gui_from_operator )
             self.__cleanup_fns.append( partial( op_slot.unregisterDirty, self.configure_gui_from_operator ) )
+            
 
         def control_layout( label_text, widget ):
             row_layout = QHBoxLayout()
@@ -94,6 +102,30 @@ class WatershedSegmentationGui(LayerViewerGui):
             return row_layout
 
         drawer_layout = QVBoxLayout()
+        #for i in range(3):
+
+        ############################################################
+        #Configure the Gui
+        ############################################################
+        #visibility
+        visibility_box = QCheckBox()
+        #visibility_box.setDecimals(2)
+        #visibility_box.setMinimum(0.00)
+        #visibility_box.setMaximum(1.0)
+        #visibility_box.setSingleStep(0.1)
+        configure_update_handlers( visibility_box.stateChanged, op.Visibility )
+        drawer_layout.addLayout( control_layout( "Visibility", visibility_box ) )
+        self.visibility_box = visibility_box
+        
+
+
+
+
+        #Test for changes
+        self.visibility_box.stateChanged.connect(self._onCheckboxClicked)
+
+
+        '''
 
         channel_box = QSpinBox()
         def set_channel_box_range(*args):
@@ -171,7 +203,11 @@ class WatershedSegmentationGui(LayerViewerGui):
 
         drawer_layout.setSpacing(0)
         drawer_layout.addSpacerItem( QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding) )
-        
+    '''
+        ############################################################
+        #Init the drawer for the Applet
+        ############################################################
+
         # Finally, the whole drawer widget
         drawer = QWidget(parent=self)
         drawer.setLayout(drawer_layout)
@@ -181,6 +217,7 @@ class WatershedSegmentationGui(LayerViewerGui):
 
         # Initialize everything with the operator's initial values
         self.configure_gui_from_operator()
+        
 
     @contextmanager
     def set_updating(self):
@@ -189,29 +226,43 @@ class WatershedSegmentationGui(LayerViewerGui):
         yield
         self._currently_updating = False
 
+    #see configure_update_handlers
     def configure_gui_from_operator(self, *args):
         if self._currently_updating:
             return False
         with self.set_updating():
             op = self.topLevelOperatorView
+            '''
             self.channel_box.setValue( op.ChannelSelection.value )
             input_layer = self.getLayerByName("Input")
             if input_layer:
                 input_layer.channel = op.ChannelSelection.value
+            '''
             
-            self.threshold_box.setValue( op.Pmin.value )
+            #self.visibility_box.setCheckState( op.Visibility.checkState() )
+            self.visibility_box.setChecked( op.Visibility.value )
+            '''
             self.membrane_size_box.setValue( op.MinMembraneSize.value )
             self.superpixel_size_box.setValue( op.MinSegmentSize.value )
             self.seed_presmoothing_box.setValue( op.SigmaMinima.value )
             self.watershed_presmoothing_box.setValue( op.SigmaWeights.value )
             self.seed_method_combo.setCurrentIndex( int(op.GroupSeeds.value) )
             self.enable_debug_box.setChecked( op.EnableDebugOutputs.value )
+            '''
 
+    #see configure_update_handlers
     def configure_operator_from_gui(self):
         if self._currently_updating:
             return False
         with self.set_updating():
             op = self.topLevelOperatorView
+            #op.Visibility.setCheckState( self.visibility_box.checkState() )
+            op.Visibility.setValue( self.visibility_box.isChecked() )
+
+
+            #TODO self.getLayerByName("Raw Data").visible = False
+
+            '''
             op.ChannelSelection.setValue( self.channel_box.value() )
             op.Pmin.setValue( self.threshold_box.value() )
             op.MinMembraneSize.setValue( self.membrane_size_box.value() )
@@ -220,6 +271,8 @@ class WatershedSegmentationGui(LayerViewerGui):
             op.SigmaWeights.setValue( self.watershed_presmoothing_box.value() )
             op.GroupSeeds.setValue( bool(self.seed_method_combo.currentIndex()) )
             op.EnableDebugOutputs.setValue( self.enable_debug_box.isChecked() )
+            '''
+    '''
 
     def onUpdateWatershedsButton(self):
         def updateThread():
@@ -244,14 +297,20 @@ class WatershedSegmentationGui(LayerViewerGui):
         self.getLayerByName("Superpixels").visible = True
         th = threading.Thread(target=updateThread)
         th.start()
+    '''
 
     def setupLayers(self):
         """
+        Responsable for the elements in the 'Viewer Controls'
         These are the views (e.g. opacitiy of Raw Data)
         that can be adjusted in the left corner of the program
+        And for the Elements, that can be seen in the 'Central Widget', 
+        these are excactly the one, that are shown in the Viewer Controls
+
         """
         layers = []
         op = self.topLevelOperatorView
+        '''
 
         # Superpixels
         if op.Superpixels.ready():
@@ -288,9 +347,11 @@ class WatershedSegmentationGui(LayerViewerGui):
             layers.append(layer)
             del layer
 
+        '''
         # Input Data (grayscale) (Probabilities)
         if op.Input.ready():
-            layer = self._create_grayscale_layer_from_slot( op.Input, op.Input.meta.getTaggedShape()['c'] )
+            layer = self.createStandardLayerFromSlot( op.Input )
+            #layer = self._create_grayscale_layer_from_slot( op.Input, op.Input.meta.getTaggedShape()['c'] )
             layer.name = "Input"
             layer.visible = False
             layer.opacity = 1.0

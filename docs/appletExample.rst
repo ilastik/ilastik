@@ -25,6 +25,9 @@ In this directory there are 5 files:
    include here all the slots used in before, that can be used in the applet
 #. opAppletExample.py
    * The algorithms are executed here
+   * more Information, how you can implement or use operators can be looked up in the lazyflow 
+     documentation under the point of 'operator overview' and 'advanced concepts' 
+     which is worth reading for a better understanding
    
 
 

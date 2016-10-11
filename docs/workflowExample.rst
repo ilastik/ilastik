@@ -39,6 +39,7 @@ In this directory there are 2 files:
 .. literalinclude:: ../ilastik/workflows/workflowExample/__init__.py
     :linenos:
     :language: python
+
 #. workflowExampleWorkflow.py
    * Includes all the applets for this workflow and how they are connected with each other
    * Includes all the exposing to the shell and the update handling for applets
