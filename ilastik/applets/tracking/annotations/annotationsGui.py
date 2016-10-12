@@ -210,6 +210,7 @@ class AnnotationsGui(LayerViewerGui):
 
         super(AnnotationsGui, self).__init__(parentApplet, topLevelOperatorView)
         
+        self.editor.cropModel.editableChanged.emit (False)
         self.mainOperator = topLevelOperatorView
         
         self.applet = self.mainOperator.parent.parent.annotationsApplet
