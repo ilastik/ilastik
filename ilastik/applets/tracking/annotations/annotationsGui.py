@@ -82,7 +82,7 @@ class AnnotationsGui(LayerViewerGui):
         self._drawer.activeTrackBox.setToolTip("Active track label and colour.")
 
         self.editor.showCropLines(True)
-        self.editor.cropModel.editableChanged.emit (False)
+        self.editor.cropModel.setEditable (False)
 
         self.editor.posModel.timeChanged.connect(self.updateTime)
 
@@ -210,7 +210,7 @@ class AnnotationsGui(LayerViewerGui):
 
         super(AnnotationsGui, self).__init__(parentApplet, topLevelOperatorView)
         
-        self.editor.cropModel.editableChanged.emit (False)
+        self.editor.cropModel.setEditable(False)
         self.mainOperator = topLevelOperatorView
         
         self.applet = self.mainOperator.parent.parent.annotationsApplet
