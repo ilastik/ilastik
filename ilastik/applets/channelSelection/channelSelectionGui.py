@@ -38,7 +38,7 @@ from lazyflow.request import Request
 from lazyflow.utility import TransposedView
 
 import logging
-from PyQt4.Qt import QCheckBox
+from PyQt4.Qt import QCheckBox, QLineEdit, QButtonGroup, QRadioButton
 logger = logging.getLogger(__name__)
 
 class ChannelSelectionGui(LayerViewerGui):
@@ -94,12 +94,46 @@ class ChannelSelectionGui(LayerViewerGui):
             self.__cleanup_fns.append( partial( op_slot.unregisterDirty, self.configure_gui_from_operator ) )
             
 
-        def control_layout( label_text, widget ):
+
+        def control_layout_labels( label1, label2, label3, label4, label5): #, label6):
+            '''
+            Define the way, how the labels for input widgets are shown in the gui
+            The spaces are adjusted to the widgets width
+            They are added to a horizontal BoxLayout and afterwards 
+            this layout is added to a vertivalLayoutBox
+            '''
+
+            #TODO make function for addSpace
+            row_layout = QHBoxLayout()
+            row_layout.addWidget( QLabel(label1) )
+            row_layout.addSpacerItem( QSpacerItem(10, 0, QSizePolicy.Expanding) )
+            row_layout.addWidget( QLabel(label2) )
+            row_layout.addSpacerItem( QSpacerItem(50, 0, QSizePolicy.Expanding) )
+            row_layout.addWidget( QLabel(label3) )
+            row_layout.addSpacerItem( QSpacerItem(3, 0, QSizePolicy.Expanding) )
+            row_layout.addWidget( QLabel(label4) )
+            row_layout.addSpacerItem( QSpacerItem(3, 0, QSizePolicy.Expanding) )
+            row_layout.addWidget( QLabel(label5) )
+            #row_layout.addSpacerItem( QSpacerItem(10, 0, QSizePolicy.Expanding) )
+            return row_layout
+
+
+        def control_layout(label_text, *args):
+            '''
+            Define the way, how the input widgets are shown in the gui
+            They are added to a horizontal BoxLayout and afterwards 
+            this layout is added to a vertivalLayoutBox
+            '''
+            space=10
             row_layout = QHBoxLayout()
             row_layout.addWidget( QLabel(label_text) )
-            row_layout.addSpacerItem( QSpacerItem(10, 0, QSizePolicy.Expanding) )
-            row_layout.addWidget(widget)
+            # Add all other arguments passed on
+            for widget in args:
+                row_layout.addSpacerItem( QSpacerItem(space, 0, QSizePolicy.Expanding) )
+                row_layout.addWidget(widget)
             return row_layout
+
+
 
         drawer_layout = QVBoxLayout()
         #for i in range(3):
@@ -107,27 +141,72 @@ class ChannelSelectionGui(LayerViewerGui):
         ############################################################
         #Configure the Gui
         ############################################################
-        #visibility
         op = self.topLevelOperatorView
-        #channelAxis = Number of channels used
-        self.channelAxis = op.RawData.meta.axistags.channelIndex
-        visibility_box = []
-        self.visibility_box = []
-        for i in range(self.channelAxis):
-            print "Number of channels: ",  self.channelAxis
 
-            box = QCheckBox()
-            visibility_box.append(box)
-            del box
+        #TODO visability = Image of eye
+        #drawer_layout.addLayout( control_layout_labels( "#" , "Label", "Seed", "Visability", "Utilize" ) )
+        drawer_layout.addLayout( control_layout_labels( "#" , "Label", "Seed", "View", "Use" ) )
+        #lists for the boxes (gui elements)
+        visibility_box  = []
+        utilize_box     = []
+        text_box        = []
+        radio_box       = []
+        radio_group     = QButtonGroup()
+
+        #TODO RaWData maybe not the wanted thing, but Input
+        self.numChannels = op.RawData.meta.getTaggedShape()['c']
+        for i in range(self.numChannels):
+            print "Number of channels: ", self.numChannels
+
+
+            #labels
+            text = QLineEdit()
+            text.setText("Label " + str(i))
+            text_box.append(text)
+            del text
+            #TODO updateHandler
+
+            #RadioButton for seeds
+            radio = QRadioButton()
+            radio_group.addButton(radio)
+            radio_box.append(radio)
+            if i == 0:
+                radio.setChecked(True)
+            del radio
+            #TODO updateHandler
+
+
+            #visibility
+            checkbox = QCheckBox()
+            visibility_box.append(checkbox)
+            del checkbox
             configure_update_handlers( visibility_box[i].stateChanged, op.Visibility )
-            drawer_layout.addLayout( control_layout( "Channel: " + str(i), visibility_box[i] ) )
+            
+            #utilization
+            checkbox = QCheckBox()
+            checkbox.setChecked(True)
+            utilize_box.append(checkbox)
+            del checkbox
+
+            # Add all elements of one channel to the layout
+            drawer_layout.addLayout( control_layout( str(i), \
+                    text_box[i], radio_box[i],  visibility_box[i], utilize_box[i] ) )
+
+
+        #self.visibility_box = []
         self.visibility_box = visibility_box
+        self.utilize_box    = utilize_box
+        self.text_box       = text_box
+        self.radio_box      = radio_box
+        self.radio_group      = radio_group
         
         ############################################################
         #Init the drawer for the Applet
         ############################################################
 
-        # Finally, the whole drawer widget
+        # Finally, the whole drawer widget, 
+        # which means all widgets created before are initilized to one widget, 
+        # that is saved as a class member
         drawer = QWidget(parent=self)
         drawer.setLayout(drawer_layout)
 
@@ -137,25 +216,28 @@ class ChannelSelectionGui(LayerViewerGui):
         # Initialize everything with the operator's initial values
         self.configure_gui_from_operator()
 
+        # Delete the Space from the 
+        drawer_layout.setSpacing(0)
+        drawer_layout.addSpacerItem( QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding) )
 
 
 
 
 
         #TODO
-        #Test for changes
-        for i in range(self.channelAxis):
+        for i in range(self.numChannels):
             self.visibility_box[i].stateChanged.connect(self._onCheckboxClicked)
+        #TODO when the eye of the layer is clicked, the visibility should be cleared as well
 
 
     def _onCheckboxClicked(self):
-        for i in range(self.channelAxis):
+        for i in range(self.numChannels):
             if (self.visibility_box[i].isChecked()):
-                print "checked"
+                #print "checked"
                 self.getLayerByName("Channel " + str(i)).visible = True
 
             else:
-                print "not checked"
+                #print "not checked"
                 self.getLayerByName("Channel " + str(i)).visible = False
 
         '''
@@ -219,38 +301,12 @@ class ChannelSelectionGui(LayerViewerGui):
             #print "\n\n" , op.Input.meta.getTaggedShape()['c'] , "\n\n"
             channel_box.setMaximum( op.Input.meta.getTaggedShape()['c']-1 )
 
-        #Setting the Layout of the widget starts here. 
         #There is no .ui file used, just code
         set_channel_box_range()
         op.Input.notifyMetaChanged( set_channel_box_range )
         configure_update_handlers( channel_box.valueChanged, op.ChannelSelection )
         drawer_layout.addLayout( control_layout( "Input Channel", channel_box ) )
         self.channel_box = channel_box
-
-        threshold_box = QDoubleSpinBox()
-        threshold_box.setDecimals(2)
-        threshold_box.setMinimum(0.00)
-        threshold_box.setMaximum(1.0)
-        threshold_box.setSingleStep(0.1)
-        configure_update_handlers( threshold_box.valueChanged, op.Pmin )
-        drawer_layout.addLayout( control_layout( "Threshold", threshold_box ) )
-        self.threshold_box = threshold_box
-
-        membrane_size_box = QSpinBox()
-        membrane_size_box.setMinimum(0)
-        membrane_size_box.setMaximum(1000000)
-        configure_update_handlers( membrane_size_box.valueChanged, op.MinMembraneSize )
-        drawer_layout.addLayout( control_layout( "Min Membrane Size", membrane_size_box ) )
-        self.membrane_size_box = membrane_size_box
-
-        seed_presmoothing_box = QDoubleSpinBox()
-        seed_presmoothing_box.setDecimals(1)
-        seed_presmoothing_box.setMinimum(0.0)
-        seed_presmoothing_box.setMaximum(10.0)
-        seed_presmoothing_box.setSingleStep(0.1)
-        configure_update_handlers( seed_presmoothing_box.valueChanged, op.SigmaMinima )
-        drawer_layout.addLayout( control_layout( "Presmooth before seeds", seed_presmoothing_box ) )
-        self.seed_presmoothing_box = seed_presmoothing_box
 
         seed_method_combo = QComboBox()
         seed_method_combo.addItem("Connected")
@@ -259,32 +315,9 @@ class ChannelSelectionGui(LayerViewerGui):
         drawer_layout.addLayout( control_layout( "Seed Labeling", seed_method_combo ) )
         self.seed_method_combo = seed_method_combo
         
-        watershed_presmoothing_box = QDoubleSpinBox()
-        watershed_presmoothing_box.setDecimals(1)
-        watershed_presmoothing_box.setMinimum(0.0)
-        watershed_presmoothing_box.setMaximum(10.0)
-        watershed_presmoothing_box.setSingleStep(0.1)
-        configure_update_handlers( watershed_presmoothing_box.valueChanged, op.SigmaWeights )
-        drawer_layout.addLayout( control_layout( "Presmooth before watershed", watershed_presmoothing_box ) )
-        self.watershed_presmoothing_box = watershed_presmoothing_box
-
-        superpixel_size_box = QSpinBox()
-        superpixel_size_box.setMinimum(0)
-        superpixel_size_box.setMaximum(1000000)
-        configure_update_handlers( superpixel_size_box.valueChanged, op.MinSegmentSize )
-        drawer_layout.addLayout( control_layout( "Min Superpixel Size", superpixel_size_box ) )
-        self.superpixel_size_box = superpixel_size_box
-
-        enable_debug_box = QCheckBox()
-        configure_update_handlers( enable_debug_box.toggled, op.EnableDebugOutputs )
-        drawer_layout.addLayout( control_layout( "Show Debug Layers", enable_debug_box ) )
-        self.enable_debug_box = enable_debug_box
-
         compute_button = QPushButton("Update Watershed", clicked=self.onUpdateWatershedsButton)
         drawer_layout.addWidget( compute_button )
 
-        drawer_layout.setSpacing(0)
-        drawer_layout.addSpacerItem( QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding) )
     '''
 
         
@@ -311,15 +344,11 @@ class ChannelSelectionGui(LayerViewerGui):
             #worked
             #self.visibility_box.setChecked( op.Visibility.value )
             
-            for i in range(self.channelAxis):
+            for i in range(self.numChannels):
                 self.visibility_box[i].setChecked( op.Visibility.value )
             '''
             self.membrane_size_box.setValue( op.MinMembraneSize.value )
-            self.superpixel_size_box.setValue( op.MinSegmentSize.value )
-            self.seed_presmoothing_box.setValue( op.SigmaMinima.value )
-            self.watershed_presmoothing_box.setValue( op.SigmaWeights.value )
             self.seed_method_combo.setCurrentIndex( int(op.GroupSeeds.value) )
-            self.enable_debug_box.setChecked( op.EnableDebugOutputs.value )
             '''
 
     #see configure_update_handlers
@@ -331,20 +360,12 @@ class ChannelSelectionGui(LayerViewerGui):
             #worked
             #op.Visibility.setValue( self.visibility_box.isChecked() )
 
-            for i in range(self.channelAxis):
+            for i in range(self.numChannels):
                 op.Visibility.setValue( self.visibility_box[i].isChecked() )
 
-
-
             '''
-            op.ChannelSelection.setValue( self.channel_box.value() )
-            op.Pmin.setValue( self.threshold_box.value() )
             op.MinMembraneSize.setValue( self.membrane_size_box.value() )
-            op.MinSegmentSize.setValue( self.superpixel_size_box.value() )
-            op.SigmaMinima.setValue( self.seed_presmoothing_box.value() )
-            op.SigmaWeights.setValue( self.watershed_presmoothing_box.value() )
             op.GroupSeeds.setValue( bool(self.seed_method_combo.currentIndex()) )
-            op.EnableDebugOutputs.setValue( self.enable_debug_box.isChecked() )
             '''
     '''
 
@@ -424,8 +445,8 @@ class ChannelSelectionGui(LayerViewerGui):
         '''
         # Input Data (grayscale) (Probabilities)
         if op.Input.ready():
-        #TODO hier nur den jeweiligen channel, am besten in einer anderen Farbe darstellen lassen.
         #TODO
+        #probability shall be chosen for channel selection, not RawData
 
             layer = self.createStandardLayerFromSlot( op.Input )
             #layer = self._create_grayscale_layer_from_slot( op.Input, op.Input.meta.getTaggedShape()['c'] )
@@ -438,8 +459,13 @@ class ChannelSelectionGui(LayerViewerGui):
         # Raw Data (grayscale)
         if op.RawData.ready():
             #For each channel, add one View
-            for i in range(self.channelAxis):
-                layer = self.createStandardLayerFromSlot( op.RawData )
+            for i in range(self.numChannels):
+
+
+                #TODO, create_single_color... doesn't work with 3D-Koehte, see exceptions 
+                #layer = self.createStandardLayerFromSlot( op.RawData )
+                layer = self._create_single_color_layer_from_slot( op.RawData, i )
+                #layer = self._create_binary_mask_layer_from_slot(op.RawData)
                 layer.name = "Channel " + str(i)
                 layer.visible = True
                 layer.opacity = 1.0
