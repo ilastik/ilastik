@@ -1,11 +1,16 @@
-import warnings
 import numpy
 
 # Note: tifffile can also be imported from skimage.external.tifffile.tifffile_local,
 #       but we can't use that module because it is based on a version of tifffile that has a bug.
 #       (It doesn't properly import the tifffile.c extension module.)
 #import skimage.external.tifffile.tifffile_local as tifffile
+
 import tifffile
+import _tifffile
+if tifffile.decodelzw != _tifffile.decodelzw:
+    import warnings
+    warnings.warn("tifffile C-extension is not working, probably due to a bug in tifffile._replace_by().\n"
+                  "TIFF decompression will be VERY SLOW.")
 
 import vigra
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -39,9 +44,6 @@ class OpTiffReader(Operator):
         self._page_shape = None
     
     def setupOutputs(self):
-        assert map(int, tifffile.__version__.split('.')) >= [0,9,2], \
-            "This code requires at tifffile 0.9.2 or greater."
-
         self._filepath = self.Filepath.value
         with tifffile.TiffFile(self._filepath) as tiff_file:
             series = tiff_file.series[0]
@@ -55,7 +57,7 @@ class OpTiffReader(Operator):
             first_page = pages[0]
     
             dtype_code = first_page.dtype
-            if first_page.is_indexed:
+            if first_page.is_palette:
                 # For now, we don't support colormaps.
                 # Drop the (last) channel axis
                 # (Yes, there can be more than one :-/)
@@ -101,21 +103,14 @@ class OpTiffReader(Operator):
             assert self._non_page_shape or len(pages) == 1
             
             axes = axes.lower().replace('s', 'c')
-            axes = list(axes)
-
-            for i, axis in enumerate(axes):
-                if axis not in 'tzcyx':
-                    for k in 'tzc':
-                        if k not in axes:
-                            axes[i] = k
-                            warnings.warn( "Encountered unknown TIFF axis label '{}'.  Re-interpreting as '{}'"
-                                           .format( axis.upper(), k.upper() ) )
-                            break
-                    if axis in axes:
-                        raise RuntimeError("Image has an 'I' or 'Q' (unknown) axis type, and I don't know what it represents. "
-                                           "(Separate T,Z,C axes already exist.)")
-            
-            axes = "".join(axes)
+            if 'i' in axes:
+                for k in 'tzc':
+                    if k not in axes:
+                        axes = axes.replace('i', k)
+                        break
+                if 'i' in axes:
+                    raise RuntimeError("Image has an 'I' axis, and I don't know what it represents. "
+                                       "(Separate T,Z,C axes already exist.)")
             
             self.Output.meta.shape = shape
             self.Output.meta.axistags = vigra.defaultAxistags( axes )
@@ -161,11 +156,11 @@ if __name__ == "__main__":
     
     graph = Graph()
     opReader = OpTiffReader(graph=graph)
-    opReader.Filepath.setValue('/tmp/out.ome.tiff')
+    opReader.Filepath.setValue('/groups/flyem/home/bergs/Downloads/Tiff_t4_HOM3_10frames_4slices_28sec.tif')
     print opReader.Output.meta.axistags
     print opReader.Output.meta.shape
     print opReader.Output.meta.dtype
-    #print opReader.Output[2:3,2:3,2:3,10:20,20:50].wait().shape
+    print opReader.Output[2:3,2:3,2:3,10:20,20:50].wait().shape
 
 #     opReader.Filepath.setValue('/magnetic/data/synapse_small.tiff')
 #     print opReader.Output.meta.axistags
