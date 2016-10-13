@@ -123,7 +123,7 @@ class TestWorkflow(Workflow):
         # TODO
         # till now, raised assertion if prob maps not loaded and nothing if raw data not loaded
         opChannelSelection.RawData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
-        opChannelSelection.Input.connect( opDataSelection.ImageGroup[self.DATA_ROLE_PROBABILITIES] )
+        opChannelSelection.Probability.connect( opDataSelection.ImageGroup[self.DATA_ROLE_PROBABILITIES] )
 
         # DataExport inputs
         opDataExport.RawData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )

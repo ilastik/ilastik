@@ -21,18 +21,30 @@ class OpChannelSelection(Operator):
     Seed        = InputSlot(value=0.0) 
     Label       = InputSlot(value=0.0) 
 
-    #RawData     = InputSlot(optional=False) # Used by the GUI for display only
-    Input       = InputSlot(optional=True) # Used by the GUI for display only
 
-    RawData     = InputSlot()
+    #Image Inputs
+    Probability = InputSlot(optional=False) 
+    RawData     = InputSlot(optional=True) # Used by the GUI for display only
+
+    #Outputs
+    Seed_Channel= OutputSlot()
+
     InputB      = InputSlot()
 
-    Output = OutputSlot()
+    Output      = OutputSlot()
 
     #TODO ab hier bis unten
     def setupOutputs(self):
-        assert self.InputA.meta.shape == self.InputB.meta.shape, "Can't add images of different shapes!"
-        self.Output.meta.assignFrom(self.InputA.meta)
+        self.Seed_Channel.meta.assignFrom(self.InputA.meta)
+
+
+        assert self.Input.meta.getAxisKeys()[-1] == 'c', \
+            "This operator assumes that channel is the last axis."
+        self.Superpixels.meta.assignFrom( self.Input.meta )
+        self.Superpixels.meta.shape = self.Input.meta.shape[:-1] + (1,)
+        self.Superpixels.meta.dtype = np.uint32
+        self.Superpixels.meta.display_mode = "random-colortable"
+
 
     def execute(self, slot, subindex, roi, result):
         a = self.InputA.get(roi).wait()

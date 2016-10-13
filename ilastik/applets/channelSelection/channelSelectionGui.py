@@ -70,9 +70,7 @@ class ChannelSelectionGui(LayerViewerGui):
         self.topLevelOperatorView = topLevelOperatorView
         super(ChannelSelectionGui, self).__init__( parentApplet, topLevelOperatorView )
         '''
-        
         self._sp_colortable = generateRandomColors(256, clamp={'v': 1.0, 's' : 0.5}, zeroIsTransparent=True)
-        
         self._threshold_colortable = [ QColor(0, 0, 0, 0).rgba(),      # transparent
                                        QColor(0, 255, 0, 255).rgba() ] # green
 
@@ -139,12 +137,11 @@ class ChannelSelectionGui(LayerViewerGui):
 
 
 
-        drawer_layout = QVBoxLayout()
-        #for i in range(3):
 
         ############################################################
         #Configure the Gui
         ############################################################
+        drawer_layout = QVBoxLayout()
         op = self.topLevelOperatorView
 
         drawer_layout.addLayout( control_layout_labels( "#" , "Label", "Seed", "View", "Use" ) )
@@ -155,8 +152,8 @@ class ChannelSelectionGui(LayerViewerGui):
         radio_box       = []
         radio_group     = QButtonGroup()
 
-        #TODO RaWData maybe not the wanted thing, but Input
-        self.numChannels = op.RawData.meta.getTaggedShape()['c']
+        # take the number of channels from the Probability input
+        self.numChannels = op.Probability.meta.getTaggedShape()['c']
         for i in range(self.numChannels):
             #print "Number of channels: ", self.numChannels
 
@@ -223,9 +220,6 @@ class ChannelSelectionGui(LayerViewerGui):
         drawer_layout.addSpacerItem( QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding) )
 
 
-
-
-
         #Change the visibility of the Channels when clicked on the checkbox
         for i in range(self.numChannels):
             self.visibility_box[i].stateChanged.connect(self._onCheckboxClicked)
@@ -264,8 +258,11 @@ class ChannelSelectionGui(LayerViewerGui):
         yield
         self._currently_updating = False
 
-    #see configure_update_handlers
     def configure_gui_from_operator(self, *args):
+        """
+        see configure_update_handlers
+        """
+
         if self._currently_updating:
             return False
         with self.set_updating():
@@ -288,8 +285,11 @@ class ChannelSelectionGui(LayerViewerGui):
             self.seed_method_combo.setCurrentIndex( int(op.GroupSeeds.value) )
             '''
 
-    #see configure_update_handlers
     def configure_operator_from_gui(self):
+        """
+        see configure_update_handlers
+        """
+
         if self._currently_updating:
             return False
         with self.set_updating():
@@ -306,32 +306,6 @@ class ChannelSelectionGui(LayerViewerGui):
             op.MinMembraneSize.setValue( self.membrane_size_box.value() )
             op.GroupSeeds.setValue( bool(self.seed_method_combo.currentIndex()) )
             '''
-    '''
-
-    def onUpdateWatershedsButton(self):
-        def updateThread():
-            """
-            Temporarily unfreeze the cache and freeze it again after the views are finished rendering.
-            """
-            self.topLevelOperatorView.FreezeCache.setValue(False)
-            
-            # This is hacky, but for now it's the only way to do it.
-            # We need to make sure the rendering thread has actually seen that the cache
-            # has been updated before we ask it to wait for all views to be 100% rendered.
-            # If we don't wait, it might complete too soon (with the old data).
-            ndim = len(self.topLevelOperatorView.Superpixels.meta.shape)
-            self.topLevelOperatorView.Superpixels((0,)*ndim, (1,)*ndim).wait()
-
-            # Wait for the image to be rendered into all three image views
-            for imgView in self.editor.imageViews:
-                if imgView.isVisible():
-                    imgView.scene().joinRenderingAllTiles()
-            self.topLevelOperatorView.FreezeCache.setValue(True)
-
-        self.getLayerByName("Superpixels").visible = True
-        th = threading.Thread(target=updateThread)
-        th.start()
-    '''
 
     def setupLayers(self):
         """
@@ -362,24 +336,12 @@ class ChannelSelectionGui(LayerViewerGui):
                 layers.append(layer)
                 del layer
         '''
-        # Input Data (grayscale) (Probabilities)
-        if op.Input.ready():
-        #TODO
-        #probability shall be chosen for channel selection, not RawData
 
-            layer = self.createStandardLayerFromSlot( op.Input )
-            #layer = self._create_grayscale_layer_from_slot( op.Input, op.Input.meta.getTaggedShape()['c'] )
-            layer.name = "Input"
-            layer.visible = False
-            layer.opacity = 1.0
-            layers.append(layer)
-            del layer
-
-        # Raw Data (grayscale)
-        if op.RawData.ready():
+        # Probabilities
+        if op.Probability.ready():
             #For each channel, add one View
             for i in range(self.numChannels):
-                layer = self._create_single_color_layer_from_slot( op.RawData, i )
+                layer = self._create_single_color_layer_from_slot( op.Probability, i )
                 layer.name = "Channel " + str(i)
                 layer.visible = True
                 layer.opacity = 1.0
@@ -387,6 +349,16 @@ class ChannelSelectionGui(LayerViewerGui):
                 layer.visibleChanged.connect(self._onLayerVisibleClicked)
                 layers.append(layer)
                 del layer
+
+        # Raw Data 
+        if op.RawData.ready():
+            layer = self.createStandardLayerFromSlot( op.RawData )
+            #layer = self._create_grayscale_layer_from_slot( op.Input, op.Input.meta.getTaggedShape()['c'] )
+            layer.name = "RawData"
+            layer.visible = False
+            layer.opacity = 1.0
+            layers.append(layer)
+            del layer
 
         return layers
 
