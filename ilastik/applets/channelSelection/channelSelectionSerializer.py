@@ -28,17 +28,12 @@ class ChannelSelectionSerializer(AppletSerializer):
     
     def __init__(self, operator, projectFileGroupName):
         slots = [ 
-                  SerialSlot(operator.Visibility)
+                  SerialSlot(operator.Visibility),
+                  SerialSlot(operator.Utilize),
+                  SerialSlot(operator.Seed),
+                  SerialSlot(operator.Label)
                   ]
-                #TODO Slots anlegen, wie zB visibility
         '''
-                  SerialSlot(operator.ChannelSelection),
-                  SerialSlot(operator.Pmin), 
-                  SerialSlot(operator.MinMembraneSize), 
-                  SerialSlot(operator.MinSegmentSize), 
-                  SerialSlot(operator.SigmaMinima), 
-                  SerialSlot(operator.SigmaWeights), 
-                  SerialSlot(operator.GroupSeeds),
                   SerialBlockSlot(operator.Superpixels,
                                   operator.SuperpixelCacheInput,
                                   operator.CleanBlocks,

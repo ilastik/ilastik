@@ -38,20 +38,11 @@ class ChannelSelectionApplet( StandardApplet ):
 
     @property
     def broadcastingSlots(self):
-        ''' 
         return [
-        'FreezeCache',
-         'ChannelSelection',
-         'Pmin',
-         'MinMembraneSize',
-         'MinSegmentSize',
-         'SigmaMinima',
-         'SigmaWeights',
-         'GroupSeeds' 
-         ]
-        ''' 
-        return [
-                'Visibility'
+                'Visibility',
+                'Utilize', 
+                'Seed',
+                'Label'
                 ]
 
     @property

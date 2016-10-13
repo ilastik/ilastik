@@ -11,8 +11,40 @@ from lazyflow.roi import roiToSlice, sliceToRoi
 from lazyflow.operators import OpBlockedArrayCache, OpValueCache
 from lazyflow.operators.generic import OpPixelOperator, OpSingleChannelSelector
 
+class OpChannelSelection(Operator):
+    ############################################################
+    # Define Inputslots for Internal
+    ############################################################
+    #define slots and give a default value, not external input
+    Visibility  = InputSlot(value=1.0)
+    Utilize     = InputSlot(value=1.0) #value 1.0 sets the checkbox to checked
+    Seed        = InputSlot(value=0.0) 
+    Label       = InputSlot(value=0.0) 
 
+    #RawData     = InputSlot(optional=False) # Used by the GUI for display only
+    Input       = InputSlot(optional=True) # Used by the GUI for display only
 
+    RawData     = InputSlot()
+    InputB      = InputSlot()
+
+    Output = OutputSlot()
+
+    #TODO ab hier bis unten
+    def setupOutputs(self):
+        assert self.InputA.meta.shape == self.InputB.meta.shape, "Can't add images of different shapes!"
+        self.Output.meta.assignFrom(self.InputA.meta)
+
+    def execute(self, slot, subindex, roi, result):
+        a = self.InputA.get(roi).wait()
+        b = self.InputB.get(roi).wait()
+        result[...] = a+b
+        return result
+
+    def propagateDirty(self, dirtySlot, subindex, roi):
+        self.Output.setDirty(roi)
+    pass
+
+'''
 class OpSingleChannelSelector(Operator):
     name = "SingleChannelSelector"
     description = "Select One channel from a Multichannel Image"
@@ -78,37 +110,9 @@ class OpSingleChannelSelector(Operator):
             self.outputs["Output"].setDirty(tuple(newKey))
         else:
             self.Output.setDirty(slice(None))
+'''
 
 
-class OpChannelSelection(Operator):
-    ############################################################
-    # Define Inputslots for Internal
-    ############################################################
-    #define slots and give a default value, not external input
-    Visibility  = InputSlot(value=1.0)
-
-    #RawData     = InputSlot(optional=False) # Used by the GUI for display only
-    Input       = InputSlot(optional=True) # Used by the GUI for display only
-
-    RawData     = InputSlot()
-    InputB      = InputSlot()
-
-    Output = OutputSlot()
-
-    #TODO ab hier bis unten
-    def setupOutputs(self):
-        assert self.InputA.meta.shape == self.InputB.meta.shape, "Can't add images of different shapes!"
-        self.Output.meta.assignFrom(self.InputA.meta)
-
-    def execute(self, slot, subindex, roi, result):
-        a = self.InputA.get(roi).wait()
-        b = self.InputB.get(roi).wait()
-        result[...] = a+b
-        return result
-
-    def propagateDirty(self, dirtySlot, subindex, roi):
-        self.Output.setDirty(roi)
-    pass
 
 
 

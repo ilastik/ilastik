@@ -58,6 +58,7 @@ class ChannelSelectionGui(LayerViewerGui):
             fn()
 
         # Base class
+        # including: Remove all layers
         super( ChannelSelectionGui, self ).stopAndCleanUp()
     
     ###########################################
@@ -82,6 +83,7 @@ class ChannelSelectionGui(LayerViewerGui):
     def initAppletDrawerUi(self):
         """
         Overridden from base class (LayerViewerGui)
+        executed in __init__ of base class
         """
         op = self.topLevelOperatorView
         
@@ -96,34 +98,36 @@ class ChannelSelectionGui(LayerViewerGui):
 
 
         def control_layout_labels( label1, label2, label3, label4, label5): #, label6):
-            '''
+            """
             Define the way, how the labels for input widgets are shown in the gui
             The spaces are adjusted to the widgets width
             They are added to a horizontal BoxLayout and afterwards 
             this layout is added to a vertivalLayoutBox
-            '''
+            """
 
-            #TODO make function for addSpace
+            def addSpace(_row_layout, space):
+                _row_layout.addSpacerItem( QSpacerItem(space, 0))#, QSizePolicy.MinimumExpanding) )
+
             row_layout = QHBoxLayout()
             row_layout.addWidget( QLabel(label1) )
-            row_layout.addSpacerItem( QSpacerItem(10, 0, QSizePolicy.Expanding) )
+            addSpace(row_layout, 5)
             row_layout.addWidget( QLabel(label2) )
-            row_layout.addSpacerItem( QSpacerItem(50, 0, QSizePolicy.Expanding) )
+            addSpace(row_layout, 60)
             row_layout.addWidget( QLabel(label3) )
-            row_layout.addSpacerItem( QSpacerItem(3, 0, QSizePolicy.Expanding) )
+            addSpace(row_layout, 3)
             row_layout.addWidget( QLabel(label4) )
-            row_layout.addSpacerItem( QSpacerItem(3, 0, QSizePolicy.Expanding) )
+            addSpace(row_layout, 3)
             row_layout.addWidget( QLabel(label5) )
-            #row_layout.addSpacerItem( QSpacerItem(10, 0, QSizePolicy.Expanding) )
+            #addSpace(row_layout, 10)
             return row_layout
 
 
         def control_layout(label_text, *args):
-            '''
+            """
             Define the way, how the input widgets are shown in the gui
             They are added to a horizontal BoxLayout and afterwards 
             this layout is added to a vertivalLayoutBox
-            '''
+            """
             space=10
             row_layout = QHBoxLayout()
             row_layout.addWidget( QLabel(label_text) )
@@ -143,8 +147,6 @@ class ChannelSelectionGui(LayerViewerGui):
         ############################################################
         op = self.topLevelOperatorView
 
-        #TODO visability = Image of eye
-        #drawer_layout.addLayout( control_layout_labels( "#" , "Label", "Seed", "Visability", "Utilize" ) )
         drawer_layout.addLayout( control_layout_labels( "#" , "Label", "Seed", "View", "Use" ) )
         #lists for the boxes (gui elements)
         visibility_box  = []
@@ -156,7 +158,7 @@ class ChannelSelectionGui(LayerViewerGui):
         #TODO RaWData maybe not the wanted thing, but Input
         self.numChannels = op.RawData.meta.getTaggedShape()['c']
         for i in range(self.numChannels):
-            print "Number of channels: ", self.numChannels
+            #print "Number of channels: ", self.numChannels
 
 
             #labels
@@ -164,7 +166,7 @@ class ChannelSelectionGui(LayerViewerGui):
             text.setText("Label " + str(i))
             text_box.append(text)
             del text
-            #TODO updateHandler
+            configure_update_handlers( text_box[i].textChanged, op.Label )
 
             #RadioButton for seeds
             radio = QRadioButton()
@@ -173,7 +175,7 @@ class ChannelSelectionGui(LayerViewerGui):
             if i == 0:
                 radio.setChecked(True)
             del radio
-            #TODO updateHandler
+            configure_update_handlers( radio_box[i].clicked, op.Seed )
 
 
             #visibility
@@ -184,21 +186,21 @@ class ChannelSelectionGui(LayerViewerGui):
             
             #utilization
             checkbox = QCheckBox()
-            checkbox.setChecked(True)
             utilize_box.append(checkbox)
             del checkbox
+            configure_update_handlers( utilize_box[i].stateChanged, op.Utilize )
 
             # Add all elements of one channel to the layout
             drawer_layout.addLayout( control_layout( str(i), \
                     text_box[i], radio_box[i],  visibility_box[i], utilize_box[i] ) )
 
 
-        #self.visibility_box = []
+        # set the boxes to class values
         self.visibility_box = visibility_box
         self.utilize_box    = utilize_box
         self.text_box       = text_box
         self.radio_box      = radio_box
-        self.radio_group      = radio_group
+        self.radio_group    = radio_group
         
         ############################################################
         #Init the drawer for the Applet
@@ -216,7 +218,7 @@ class ChannelSelectionGui(LayerViewerGui):
         # Initialize everything with the operator's initial values
         self.configure_gui_from_operator()
 
-        # Delete the Space from the 
+        # Delete space, so that the Layout lies on top of the page and not on bottom
         drawer_layout.setSpacing(0)
         drawer_layout.addSpacerItem( QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding) )
 
@@ -224,13 +226,27 @@ class ChannelSelectionGui(LayerViewerGui):
 
 
 
-        #TODO
+        #Change the visibility of the Channels when clicked on the checkbox
         for i in range(self.numChannels):
             self.visibility_box[i].stateChanged.connect(self._onCheckboxClicked)
-        #TODO when the eye of the layer is clicked, the visibility should be cleared as well
 
+        
+
+
+    def _onLayerVisibleClicked(self):
+        """
+        used when the layer-icon: eye is clicked and used to update the visibility box therefore
+        """
+        for i in range(self.numChannels):
+            if ( self.getLayerByName( "Channel " + str(i) ).visible == True):
+                self.visibility_box[i].setChecked(True)
+            else:
+                self.visibility_box[i].setChecked(False)
 
     def _onCheckboxClicked(self):
+        """
+        used when the visibility checkbox is clicked
+        """
         for i in range(self.numChannels):
             if (self.visibility_box[i].isChecked()):
                 #print "checked"
@@ -240,87 +256,6 @@ class ChannelSelectionGui(LayerViewerGui):
                 #print "not checked"
                 self.getLayerByName("Channel " + str(i)).visible = False
 
-        '''
-        ############################################################
-        #Configure the Gui
-        ############################################################
-        #These are working
-        #visibility
-        visibility_box = QCheckBox()
-        #visibility_box.setDecimals(2)
-        #visibility_box.setMinimum(0.00)
-        #visibility_box.setMaximum(1.0)
-        #visibility_box.setSingleStep(0.1)
-        configure_update_handlers( visibility_box.stateChanged, op.Visibility )
-        drawer_layout.addLayout( control_layout( "Visibility", visibility_box ) )
-        self.visibility_box = visibility_box
-        
-        ############################################################
-        #Init the drawer for the Applet
-        ############################################################
-
-        # Finally, the whole drawer widget
-        drawer = QWidget(parent=self)
-        drawer.setLayout(drawer_layout)
-
-        # Save these members for later use
-        self._drawer = drawer
-
-        # Initialize everything with the operator's initial values
-        self.configure_gui_from_operator()
-
-
-
-
-
-        #TODO
-        #Test for changes
-        self.visibility_box.stateChanged.connect(self._onCheckboxClicked)
-
-
-    def _onCheckboxClicked(self):
-        if (self.visibility_box.isChecked()):
-            print "checked"
-            self.getLayerByName("Raw Data").visible = True
-        else:
-            print "not checked"
-            self.getLayerByName("Raw Data").visible = False
-
-        '''
-
-
-        '''
-
-        channel_box = QSpinBox()
-        def set_channel_box_range(*args):
-            if sip.isdeleted(channel_box):
-                return
-            channel_box.setMinimum(0)
-            #TODO throws an exception, if probabilities in input data aren't there, 
-            # use a control machanism, that watershed can't be clicked on, or that a warning will be seen
-            #print "\n\n" , op.Input.meta.getTaggedShape()['c'] , "\n\n"
-            channel_box.setMaximum( op.Input.meta.getTaggedShape()['c']-1 )
-
-        #There is no .ui file used, just code
-        set_channel_box_range()
-        op.Input.notifyMetaChanged( set_channel_box_range )
-        configure_update_handlers( channel_box.valueChanged, op.ChannelSelection )
-        drawer_layout.addLayout( control_layout( "Input Channel", channel_box ) )
-        self.channel_box = channel_box
-
-        seed_method_combo = QComboBox()
-        seed_method_combo.addItem("Connected")
-        seed_method_combo.addItem("Clustered")
-        configure_update_handlers( seed_method_combo.currentIndexChanged, op.GroupSeeds )
-        drawer_layout.addLayout( control_layout( "Seed Labeling", seed_method_combo ) )
-        self.seed_method_combo = seed_method_combo
-        
-        compute_button = QPushButton("Update Watershed", clicked=self.onUpdateWatershedsButton)
-        drawer_layout.addWidget( compute_button )
-
-    '''
-
-        
 
     @contextmanager
     def set_updating(self):
@@ -346,6 +281,8 @@ class ChannelSelectionGui(LayerViewerGui):
             
             for i in range(self.numChannels):
                 self.visibility_box[i].setChecked( op.Visibility.value )
+                self.utilize_box[i].setChecked( op.Utilize.value )
+                self.radio_box[i].setChecked( op.Seed.value )
             '''
             self.membrane_size_box.setValue( op.MinMembraneSize.value )
             self.seed_method_combo.setCurrentIndex( int(op.GroupSeeds.value) )
@@ -362,6 +299,8 @@ class ChannelSelectionGui(LayerViewerGui):
 
             for i in range(self.numChannels):
                 op.Visibility.setValue( self.visibility_box[i].isChecked() )
+                op.Utilize.setValue( self.utilize_box[i].isChecked() )
+                op.Seed.setValue( self.radio_box[i].isChecked() )
 
             '''
             op.MinMembraneSize.setValue( self.membrane_size_box.value() )
@@ -406,16 +345,6 @@ class ChannelSelectionGui(LayerViewerGui):
         layers = []
         op = self.topLevelOperatorView
         '''
-
-        # Superpixels
-        if op.Superpixels.ready():
-            layer = ColortableLayer( LazyflowSource(op.Superpixels), self._sp_colortable )
-            layer.name = "Superpixels"
-            layer.visible = True
-            layer.opacity = 0.5
-            layers.append(layer)
-            del layer
-
         # Debug layers
         if op.debug_results:
             for name, compressed_array in op.debug_results.items():
@@ -432,16 +361,6 @@ class ChannelSelectionGui(LayerViewerGui):
                 layer.opacity = 1.0
                 layers.append(layer)
                 del layer
-
-        # Threshold
-        if op.ThresholdedInput.ready():
-            layer = ColortableLayer( LazyflowSource(op.ThresholdedInput), self._threshold_colortable )
-            layer.name = "Thresholded Input"
-            layer.visible = True
-            layer.opacity = 1.0
-            layers.append(layer)
-            del layer
-
         '''
         # Input Data (grayscale) (Probabilities)
         if op.Input.ready():
@@ -460,16 +379,30 @@ class ChannelSelectionGui(LayerViewerGui):
         if op.RawData.ready():
             #For each channel, add one View
             for i in range(self.numChannels):
-
-
-                #TODO, create_single_color... doesn't work with 3D-Koehte, see exceptions 
-                #layer = self.createStandardLayerFromSlot( op.RawData )
                 layer = self._create_single_color_layer_from_slot( op.RawData, i )
-                #layer = self._create_binary_mask_layer_from_slot(op.RawData)
                 layer.name = "Channel " + str(i)
                 layer.visible = True
                 layer.opacity = 1.0
+                #change the visibility of the Applet Checkbox when clicked of the Layer-Visibility Box
+                layer.visibleChanged.connect(self._onLayerVisibleClicked)
                 layers.append(layer)
                 del layer
 
         return layers
+
+
+
+            
+
+
+    """
+    TODO
+    Check: 1. Visibility wenn man unten klickt auch oben veraendern
+
+    2. Applet fuer 3. auf Blatt machen, also auswahl zwischen Threshold oder Maxima
+    2.1 Dazu muss man  den Output von ChannelSelection mit Seed steuern
+    2.2 Output von Channelselection ohne Seed nach watershed 
+        + Output von Threshold/Maxima Applet nach watershed
+
+        Output: If seed clicked, then it is utilized
+    """
