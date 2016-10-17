@@ -1,7 +1,16 @@
 from ilastik.applets.base.standardApplet import StandardApplet
-from ilastik.applets.tracking.conservation.opConservationTracking import OpConservationTracking
 from ilastik.applets.tracking.base.trackingSerializer import TrackingSerializer
 
+import logging
+logger = logging.getLogger(__name__)
+
+import os
+
+if os.name == 'nt': # Use old PgmLink tracking if OS is Windows
+    from ilastik.applets.tracking.conservation.opConservationTrackingPgmLink import OpConservationTrackingPgmLink as OpConservationTracking
+    logger.info("Using old conservation tracking workflow (PgmLink)")
+else:
+    from ilastik.applets.tracking.conservation.opConservationTracking import OpConservationTracking
 
 class ConservationTrackingApplet( StandardApplet ):
     def __init__( self, name="Tracking", workflow=None, projectFileGroupName="ConservationTracking" ):
