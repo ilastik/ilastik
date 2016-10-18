@@ -533,20 +533,44 @@ class OpPixelFeaturesPresmoothed(Operator):
                             tmp_key = getAllExceptAxis(len(sourceArraysForSigmas[j].shape),timeAxis, i)
                             
                             if WITH_FAST_FILTERS:
-                                buffer = fastfilters.gaussianSmoothing(vsa, tempSigma, window_size = self.WINDOW_SIZE )
+                                # Use fast filters (if available)
+                                if vsa.channels > 1:
+                                    buffer = numpy.zeros(vsa.shape).astype(vsa.dtype)
+                                    chInd = vsa.channelIndex
+                                    chSlice = [slice(None) for dim in range(len(vsa.shape))]
+                                    
+                                    for channel in range(vsa.channels):
+                                        chSlice[chInd] = slice(channel, channel+1)
+                                        buffer[chSlice] = fastfilters.gaussianSmoothing(vsa[chSlice], tempSigma, window_size = self.WINDOW_SIZE)
+                                else:
+                                    buffer = fastfilters.gaussianSmoothing(vsa, tempSigma, window_size = self.WINDOW_SIZE )
+                                    
                                 droi = roiToSlice(*droi)
                                 sourceArraysForSigmas[j][tmp_key] = buffer[droi]
                             else:
+                                # Use Vigra's filters
                                 sourceArraysForSigmas[j][tmp_key] = vigra.filters.gaussianSmoothing(vsa,tempSigma, roi = droi, window_size = self.WINDOW_SIZE )
 
                     else:
                         droi = (tuple(vigOpSourceStart._asint()), tuple(vigOpSourceStop._asint()))
                         
                         if WITH_FAST_FILTERS:
-                            buffer = fastfilters.gaussianSmoothing(sourceArrayV, tempSigma, window_size = self.WINDOW_SIZE )                                       
-                            droi = roiToSlice(*droi)
+                            # Use fast filters (if available)
+                            if sourceArrayV.channels > 1:
+                                buffer = numpy.zeros(sourceArrayV.shape).astype(sourceArrayV.dtype)
+                                chInd = sourceArrayV.channelIndex
+                                chSlice = [slice(None) for dim in range(len(sourceArrayV.shape))]
+                                
+                                for channel in range(sourceArrayV.channels):
+                                    chSlice[chInd] = slice(channel, channel+1)
+                                    buffer[chSlice] = fastfilters.gaussianSmoothing(sourceArrayV[chSlice], tempSigma, window_size = self.WINDOW_SIZE)
+                            else:    
+                                buffer = fastfilters.gaussianSmoothing(sourceArrayV, tempSigma, window_size = self.WINDOW_SIZE )  
+                                                                     
+                            droi = roiToSlice(*droi) 
                             sourceArraysForSigmas[j] = buffer[droi]
                         else:
+                            # Use Vigra's filters
                             sourceArraysForSigmas[j] = vigra.filters.gaussianSmoothing(sourceArrayV, sigma = tempSigma, roi = droi, window_size = self.WINDOW_SIZE)
                         
             except RuntimeError as e:
