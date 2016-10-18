@@ -1188,11 +1188,11 @@ def getAllExceptAxis(ndim,index,slicer):
     res[index] = slicer
     return tuple(res)
 
-class OpBaseVigraFilter(OpArrayPiper):
+class OpBaseFilter(OpArrayPiper):
     inputSlots = [InputSlot("Input"), InputSlot("sigma", stype = "float")]
     outputSlots = [OutputSlot("Output")]
 
-    name = "OpBaseVigraFilter"
+    name = "OpBaseFilter"
     category = "Vigra filter"
 
     vigraFilter = None
@@ -1481,7 +1481,7 @@ def coherenceOrientationOfStructureTensor(image,sigma0, sigma1, window_size, out
     return res
 
 
-class OpDifferenceOfGaussians(OpBaseVigraFilter):
+class OpDifferenceOfGaussians(OpBaseFilter):
     outputDtype = numpy.float32
     supportsOut = False
     supportsWindow = True
@@ -1506,7 +1506,7 @@ class OpDifferenceOfGaussians(OpBaseVigraFilter):
         vigraFilter = staticmethod(differenceOfGausssians)
 
 
-class OpGaussianSmoothing(OpBaseVigraFilter):
+class OpGaussianSmoothing(OpBaseFilter):
     outputDtype = numpy.float32
     supportsWindow = True
     
@@ -1527,7 +1527,7 @@ class OpGaussianSmoothing(OpBaseVigraFilter):
         vigraFilter = staticmethod(vigra.filters.gaussianSmoothing)
         
 
-class OpHessianOfGaussianEigenvalues(OpBaseVigraFilter):
+class OpHessianOfGaussianEigenvalues(OpBaseFilter):
     outputDtype = numpy.float32
     supportsWindow = True
     
@@ -1551,7 +1551,7 @@ class OpHessianOfGaussianEigenvalues(OpBaseVigraFilter):
         vigraFilter = staticmethod(vigra.filters.hessianOfGaussianEigenvalues)
         
 
-class OpStructureTensorEigenvalues(OpBaseVigraFilter):
+class OpStructureTensorEigenvalues(OpBaseFilter):
     outputDtype = numpy.float32
     supportsWindow = True
     
@@ -1575,7 +1575,7 @@ class OpStructureTensorEigenvalues(OpBaseVigraFilter):
         vigraFilter = staticmethod(vigra.filters.structureTensorEigenvalues)
 
 
-class OpHessianOfGaussianEigenvaluesFirst(OpBaseVigraFilter):
+class OpHessianOfGaussianEigenvaluesFirst(OpBaseFilter):
     name = "First Eigenvalue of Hessian Matrix"
     vigraFilter = staticmethod(firstHessianOfGaussianEigenvalues)
     outputDtype = numpy.float32
@@ -1589,7 +1589,7 @@ class OpHessianOfGaussianEigenvaluesFirst(OpBaseVigraFilter):
         return 1
 
 
-class OpHessianOfGaussian(OpBaseVigraFilter):
+class OpHessianOfGaussian(OpBaseFilter):
     name = "HessianOfGaussian"
     vigraFilter = staticmethod(vigra.filters.hessianOfGaussian)
     outputDtype = numpy.float32
@@ -1602,7 +1602,7 @@ class OpHessianOfGaussian(OpBaseVigraFilter):
         return temp
     
 
-class OpGaussianGradientMagnitude(OpBaseVigraFilter):
+class OpGaussianGradientMagnitude(OpBaseFilter):
     outputDtype = numpy.float32
     supportsWindow = True
     
@@ -1623,7 +1623,7 @@ class OpGaussianGradientMagnitude(OpBaseVigraFilter):
         vigraFilter = staticmethod(vigra.filters.gaussianGradientMagnitude)
 
 
-class OpLaplacianOfGaussian(OpBaseVigraFilter):
+class OpLaplacianOfGaussian(OpBaseFilter):
     outputDtype = numpy.float32
     supportsWindow = True
     
