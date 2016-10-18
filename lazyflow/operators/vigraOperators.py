@@ -1497,128 +1497,97 @@ def coherenceOrientationOfStructureTensor(image,sigma0, sigma1, window_size, out
 
 
 class OpDifferenceOfGaussians(OpBaseVigraFilter):
+    outputDtype = numpy.float32
+    supportsOut = False
+    supportsWindow = True
+    
+    def resultingChannels(self):
+        return 1
+    
+    inputSlots = [InputSlot("Input"), InputSlot("sigma0", stype = "float"), InputSlot("sigma1", stype = "float")]
+    
     if WITH_FAST_FILTERS:
         name = "DifferenceOfGaussiansFF"
+        supportsRoi = False
         
         def differenceOfGausssiansFF(image, sigma0, sigma1, window_size):
             return (fastfilters.gaussianSmoothing(image, sigma0, window_size) - fastfilters.gaussianSmoothing(image, sigma1, window_size) )
         
         vigraFilter = staticmethod(differenceOfGausssiansFF)
-        
-        outputDtype = numpy.float32
-        supportsOut = False
-        supportsWindow = True
-        supportsRoi = False
-        inputSlots = [InputSlot("Input"), InputSlot("sigma0", stype = "float"), InputSlot("sigma1", stype = "float")]
-    
-        def resultingChannels(self):
-            return 1
-    
     else:
         name = "DifferenceOfGaussians"
+        supportsRoi = True
         
         vigraFilter = staticmethod(differenceOfGausssians)
-        
-        outputDtype = numpy.float32
-        supportsOut = False
-        supportsWindow = True
-        supportsRoi = True
-        inputSlots = [InputSlot("Input"), InputSlot("sigma0", stype = "float"), InputSlot("sigma1", stype = "float")]
-    
-        def resultingChannels(self):
-            return 1
 
 
 class OpGaussianSmoothing(OpBaseVigraFilter):
+    outputDtype = numpy.float32
+    supportsWindow = True
+    
+    def resultingChannels(self):
+        return 1
+    
     if WITH_FAST_FILTERS:
         name = "GaussianSmoothingFF"
-
-        vigraFilter =  staticmethod(fastfilters.gaussianSmoothing)
-           
-        outputDtype = numpy.float32
         supportsRoi = False
-        supportsWindow = True
-        supportsOut = False
-        
-        def resultingChannels(self):
-            return 1
-        
+        supportsOut = False 
+
+        vigraFilter =  staticmethod(fastfilters.gaussianSmoothing)  
     else:
         name = "GaussianSmoothing"
+        supportsRoi = True
+        supportsOut = True
                 
         vigraFilter = staticmethod(vigra.filters.gaussianSmoothing)
-           
-        outputDtype = numpy.float32
-        supportsRoi = True
-        supportsWindow = True
-        supportsOut = True
         
-        def resultingChannels(self):
-            return 1
-
 
 class OpHessianOfGaussianEigenvalues(OpBaseVigraFilter):
+    outputDtype = numpy.float32
+    supportsWindow = True
+    
+    def resultingChannels(self):
+        temp = self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space)
+        return temp
+    
+    inputSlots = [InputSlot("Input"), InputSlot("scale", stype = "float")]
+    
     if WITH_FAST_FILTERS:
         name = "HessianOfGaussianEigenvaluesFF"
-        
-        vigraFilter = staticmethod(fastfilters.hessianOfGaussianEigenvalues)
-        
-        outputDtype = numpy.float32
         supportsRoi = False
-        supportsWindow = True
-        supportsOut = False
-        inputSlots = [InputSlot("Input"), InputSlot("scale", stype = "float")]
+        supportsOut = False 
         
-        def resultingChannels(self):
-            temp = self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space)
-            return temp        
-        
+        vigraFilter = staticmethod(fastfilters.hessianOfGaussianEigenvalues)   
     else:
         name = "HessianOfGaussianEigenvalues"
+        supportsRoi = True
+        supportsOut = True
         
         vigraFilter = staticmethod(vigra.filters.hessianOfGaussianEigenvalues)
         
-        outputDtype = numpy.float32
-        supportsRoi = True
-        supportsWindow = True
-        supportsOut = True
-        inputSlots = [InputSlot("Input"), InputSlot("scale", stype = "float")]
-        
-        def resultingChannels(self):
-            temp = self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space)
-            return temp
-
 
 class OpStructureTensorEigenvalues(OpBaseVigraFilter):
+    outputDtype = numpy.float32
+    supportsWindow = True
+    
+    def resultingChannels(self):
+        temp = self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space)
+        return temp
+    
+    inputSlots = [InputSlot("Input"), InputSlot("innerScale", stype = "float"),InputSlot("outerScale", stype = "float")]
+    
     if WITH_FAST_FILTERS:
         name = "StructureTensorEigenvaluesFF"
-    
-        vigraFilter = staticmethod(fastfilters.structureTensorEigenvalues)
-        
-        outputDtype = numpy.float32
         supportsRoi = False
-        supportsWindow = True
         supportsOut = False
-        inputSlots = [InputSlot("Input"), InputSlot("innerScale", stype = "float"),InputSlot("outerScale", stype = "float")]
     
-        def resultingChannels(self):
-            temp = self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space)
-            return temp
-    
+        vigraFilter = staticmethod(fastfilters.structureTensorEigenvalues)    
     else: 
         name = "StructureTensorEigenvalues"
+        supportsRoi = True
+        supportsOut = True
         
         vigraFilter = staticmethod(vigra.filters.structureTensorEigenvalues)
-        
-        outputDtype = numpy.float32
-        supportsRoi = True
-        supportsWindow = True
-        supportsOut = True
-        inputSlots = [InputSlot("Input"), InputSlot("innerScale", stype = "float"),InputSlot("outerScale", stype = "float")]
-    
-        def resultingChannels(self):
-            temp = self.inputs["Input"].meta.axistags.axisTypeCount(vigra.AxisType.Space)
-            return temp
 
 
 class OpHessianOfGaussianEigenvaluesFirst(OpBaseVigraFilter):
@@ -1649,61 +1618,47 @@ class OpHessianOfGaussian(OpBaseVigraFilter):
     
 
 class OpGaussianGradientMagnitude(OpBaseVigraFilter):
+    outputDtype = numpy.float32
+    supportsWindow = True
+    
+    def resultingChannels(self):
+        return 1
+    
     if WITH_FAST_FILTERS:
         name = "GaussianGradientMagnitudeFF"
-    
-        vigraFilter = staticmethod(fastfilters.gaussianGradientMagnitude)
-        
-        outputDtype = numpy.float32
         supportsRoi = False
-        supportsWindow = True
         supportsOut = False
     
-        def resultingChannels(self):
-            return 1
-    
+        vigraFilter = staticmethod(fastfilters.gaussianGradientMagnitude)
     else:
         name = "GaussianGradientMagnitude"
-        
-        vigraFilter = staticmethod(vigra.filters.gaussianGradientMagnitude)
-        
-        outputDtype = numpy.float32
         supportsRoi = True
-        supportsWindow = True
         supportsOut = True
         
-        def resultingChannels(self):
-            return 1
+        vigraFilter = staticmethod(vigra.filters.gaussianGradientMagnitude)
 
 
 class OpLaplacianOfGaussian(OpBaseVigraFilter):
+    outputDtype = numpy.float32
+    supportsWindow = True
+    
+    def resultingChannels(self):
+        return 1
+    
+    inputSlots = [InputSlot("Input"), InputSlot("scale", stype = "float")]
+    
     if WITH_FAST_FILTERS:
         name = "LaplacianOfGaussianFF"
-        
-        vigraFilter = staticmethod(fastfilters.laplacianOfGaussian)
-        
-        outputDtype = numpy.float32
         supportsOut = False
         supportsRoi = False
-        supportsWindow = True
-        inputSlots = [InputSlot("Input"), InputSlot("scale", stype = "float")]
-    
-        def resultingChannels(self):
-            return 1
-    
+        
+        vigraFilter = staticmethod(fastfilters.laplacianOfGaussian)
     else:
         name = "LaplacianOfGaussian"
-        
-        vigraFilter = staticmethod(vigra.filters.laplacianOfGaussian)
-        
-        outputDtype = numpy.float32
         supportsOut = True
         supportsRoi = True
-        supportsWindow = True
-        inputSlots = [InputSlot("Input"), InputSlot("scale", stype = "float")]
-    
-        def resultingChannels(self):
-            return 1
+        
+        vigraFilter = staticmethod(vigra.filters.laplacianOfGaussian)
 
 
 class OpImageReader(Operator):
