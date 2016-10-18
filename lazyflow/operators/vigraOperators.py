@@ -632,7 +632,7 @@ class OpPixelFeaturesPresmoothed(Operator):
             if vol.channels > 1:
                 result = numpy.zeros(vol.shape).astype(vol.dtype)
                 chInd = vol.channelIndex
-                chSlice = [slice(None) for dim in range(len(vsa.shape))]
+                chSlice = [slice(None) for dim in range(len(vol.shape))]
                 
                 for channel in range(vol.channels):
                     chSlice[chInd] = slice(channel, channel+1)
