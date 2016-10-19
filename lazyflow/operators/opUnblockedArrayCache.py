@@ -152,16 +152,16 @@ class OpUnblockedArrayCache(Operator, ManagedBlockedCache):
         Copy block_data and store it into the cache.
         The block_lock is not obtained here, so lock it before you call this.
         """
-        if self.CompressionEnabled.value and numpy.dtype(block_data.dtype) in [numpy.dtype(numpy.uint8),
-                                                                               numpy.dtype(numpy.uint32),
-                                                                               numpy.dtype(numpy.float32)]:
-            compressed_block = vigra.ChunkedArrayCompressed( block_data.shape, vigra.Compression.LZ4, block_data.dtype )
-            compressed_block[:] = block_data
-            block_storage_data = compressed_block
-        else:
-            block_storage_data = block_data.copy()
-
         with self._lock:
+            if self.CompressionEnabled.value and numpy.dtype(block_data.dtype) in [numpy.dtype(numpy.uint8),
+                                                                                   numpy.dtype(numpy.uint32),
+                                                                                   numpy.dtype(numpy.float32)]:
+                compressed_block = vigra.ChunkedArrayCompressed( block_data.shape, vigra.Compression.LZ4, block_data.dtype )
+                compressed_block[:] = block_data
+                block_storage_data = compressed_block
+            else:
+                block_storage_data = block_data.copy()
+
             # Store the data.
             # First double-check that the block wasn't removed from the 
             #   cache while we were requesting it. 
