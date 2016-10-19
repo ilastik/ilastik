@@ -1,5 +1,6 @@
 import cPickle as pickle
 import numpy
+import vigra
 from lazyflowClassifier import LazyflowVectorwiseClassifierABC, LazyflowVectorwiseClassifierFactoryABC
 
 import logging
@@ -36,7 +37,7 @@ class SklearnLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
             known_classes = sklearn_classifier.classes_
         except AttributeError:
             # Some sklearn classifiers don't have a 'classes_' attribute.
-            known_classes = numpy.unique(y)
+            known_classes = numpy.sort(vigra.analysis.unique(y))
         
         return SklearnLazyflowClassifier( sklearn_classifier, known_classes, X.shape[1], feature_names )
 

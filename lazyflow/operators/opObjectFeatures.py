@@ -21,7 +21,8 @@
 ###############################################################################
 from lazyflow.graph import Operator,InputSlot,OutputSlot
 from lazyflow.stype import ArrayLike, Opaque
-import numpy,vigra
+import numpy
+import vigra
 
 
 class OpObjectFeatures(Operator):
@@ -86,7 +87,7 @@ class OpObjectFeatures(Operator):
             
                 for name,feat in c_features_maxlen.items():
                     for cc in range(labels.shape[-1]):
-                        labs = numpy.unique(labels[...,cc])
+                        labs = numpy.sort(vigra.analysis.unique(labels[...,cc]))
                         feat[labs,...] = c_features[name][cc][labs,...]
 
                 

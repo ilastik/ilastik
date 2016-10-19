@@ -75,7 +75,7 @@ class TestOpCompressedUserLabelArray(object):
 
         # nonzeroValues
         #nz = op.nonzeroValues.value
-        #assert len(nz) == len(numpy.unique(inData))-1
+        #assert len(nz) == len(vigra.analysis.unique(inData))-1
 
     def testSetupTwice(self):
         """
@@ -364,7 +364,7 @@ class TestOpCompressedUserLabelArray_masked(object):
 
         # nonzeroValues
         #nz = op.nonzeroValues.value
-        #assert len(nz) == len(numpy.unique(inData))-1
+        #assert len(nz) == len(vigra.analysis.unique(inData))-1
 
     def testSetupTwice(self):
         """

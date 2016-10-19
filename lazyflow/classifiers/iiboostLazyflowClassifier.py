@@ -23,6 +23,7 @@ import cPickle as pickle
 from itertools import starmap
 
 import numpy
+import vigra
 
 import logging
 logger = logging.getLogger(__name__)
@@ -86,7 +87,7 @@ class IIBoostLazyflowClassifierFactory(LazyflowPixelwiseClassifierFactoryABC):
         # Save for future reference
         flattened_labels = map( numpy.ndarray.flatten, converted_labels )
         all_labels = numpy.concatenate(flattened_labels)
-        known_labels = numpy.unique(all_labels)
+        known_labels = numpy.sort(vigra.analysis.unique(all_labels))
         if known_labels[0] == 0:
             known_labels = known_labels[1:]
             

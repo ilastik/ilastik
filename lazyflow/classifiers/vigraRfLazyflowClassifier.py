@@ -24,7 +24,7 @@ class VigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFactoryABC):
         logger.debug( 'Training single-threaded vigra RF with feature importance' )
 
         # Save for future reference
-        known_labels = numpy.unique(y)
+        known_labels = numpy.sort(vigra.analysis.unique(y))
 
         X = numpy.asarray(X, numpy.float32)
         y = numpy.asarray(y, numpy.uint32)

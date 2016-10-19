@@ -374,8 +374,7 @@ class OpLazyConnectedComponents(Operator, ObservableCache):
                 # neighbouring chunk
                 extendingLabels = [b for a, b in zip(myLabels, otherLabels)
                                    if a in actualLabels]
-                extendingLabels = np.unique(extendingLabels
-                                            ).astype(_LABEL_TYPE)
+                extendingLabels = np.sort(vigra.analysis.unique(extendingLabels)).astype(_LABEL_TYPE)
 
                 # add the neighbour to our processing queue only if it actually
                 # shares objects
@@ -549,7 +548,7 @@ class OpLazyConnectedComponents(Operator, ObservableCache):
         newlabels = labels.copy()
         d = self._globalToFinal[(t, c)]
         labeler = self._labelIterators[(t, c)]
-        for k in np.unique(labels):
+        for k in numpy.sort(vigra.analysis.unique(labels)):
             l = self._uf.findIndex(k)
             if l == 0:
                 continue

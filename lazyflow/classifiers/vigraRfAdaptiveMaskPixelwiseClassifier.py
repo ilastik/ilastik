@@ -42,7 +42,7 @@ class VigraRfAdaptiveMaskPixelwiseClassifierFactory(LazyflowPixelwiseClassifierF
             all_labels = numpy.concatenate((all_labels, label_vector), axis=0)
         
         # Save for future reference
-        known_labels = numpy.unique(all_labels)
+        known_labels = numpy.sort(vigra.analysis.unique(all_labels))
 
         assert len(all_features) == len(all_labels)
         classifier = vigra.learning.RandomForest(*self._args, **self._kwargs)

@@ -163,7 +163,7 @@ class OpVigraWatershed(Operator):
             stop = tuple(s.stop for s in paddedSlices)
             self._maxLabels[ (start, stop) ] = maxLabel
         
-        #print numpy.unique(watershed[outputSlices]).shape
+        #print numpy.sort(vigra.analysis.unique(watershed[outputSlices])).shape
         # Return only the region the user requested
         result[:] = watershed[outputSlices].view(numpy.ndarray).reshape(result.shape)
         return result

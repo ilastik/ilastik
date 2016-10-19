@@ -72,7 +72,7 @@ class TestOpDenseLabelArray(object):
 
         # nonzeroValues
         #nz = op.nonzeroValues.value
-        #assert len(nz) == len(numpy.unique(inData))-1
+        #assert len(nz) == len(vigra.analysis.unique(inData))-1
 
     def testSetupTwice(self):
         """
