@@ -43,7 +43,7 @@ from lazyflow.utility import vigra_bincount
 from lazyflow.roi import TinyVector, roiToSlice, roiFromShape
 from lazyflow.operators.ioOperators import OpInputDataReader
 from lazyflow.operators.opReorderAxes import OpReorderAxes
-from lazyflow.operators.opArrayCache import OpArrayCache
+from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.operators.valueProviders import OpMetadataInjector
 
 # ilastik
@@ -85,7 +85,7 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
     try:
         # Initialize operators
         opImport = OpInputDataReader( parent=opLabels.parent )
-        opCache = OpArrayCache( parent=opLabels.parent )
+        opCache = OpBlockedArrayCache( parent=opLabels.parent )
         opMetadataInjector = OpMetadataInjector( parent=opLabels.parent )
         opReorderAxes = OpReorderAxes( parent=opLabels.parent )
     
@@ -100,8 +100,8 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
                                    os.path.pathsep.join(fileNames))
         assert opImport.Output.ready()
     
-        opCache.blockShape.setValue( opImport.Output.meta.shape )
         opCache.Input.connect( opImport.Output )
+        opCache.CompressionEnabled.setValue(True)
         assert opCache.Output.ready()
 
         opMetadataInjector.Input.connect( opCache.Output )
