@@ -23,6 +23,7 @@ Contents:
    dependencies
    testing
    documentation
+   troubleshooting
 
 
 Indices and tables
