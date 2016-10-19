@@ -19,7 +19,7 @@
 # This information is also available on the ilastik web site at:
 #		   http://ilastik.org/license/
 ###############################################################################
-from alternative_numpy_functions import vigra_bincount
+from alternative_numpy_functions import vigra_bincount, chunked_bincount
 from memory import Memory
 import helpers
 import jsonConfig
