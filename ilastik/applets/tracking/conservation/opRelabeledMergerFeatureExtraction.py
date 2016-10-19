@@ -82,7 +82,7 @@ class OpZeroBasedConsecutiveIndexRelabeling(Operator):
 
     def _updateMapping(self, roi, t):
         labelImage = self.LabelImage.get(roi).wait()
-        labels = list(np.unique(labelImage))
+        labels = list(np.sort(vigra.analysis.unique(labelImage)))
         # if 0 not in labels:
         #     labels = [0, ] + labels
         newIndices = range(0, len(labels))

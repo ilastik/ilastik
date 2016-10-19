@@ -21,6 +21,8 @@
 import h5py
 import numpy as np
 import os.path as path
+import vigra
+
 try:
     import pgmlink
 except:
@@ -32,7 +34,7 @@ logger = logging.getLogger(__name__)
 def relabel(volume, replace):
     mp = np.arange(0, np.amax(volume) + 1, dtype=volume.dtype)
     mp[1:] = 1
-    labels = np.unique(volume)
+    labels = np.sort(vigra.analysis.unique(volume))
     for label in labels:
         if label > 0:
             try:
@@ -46,7 +48,7 @@ def relabel(volume, replace):
 def highlightMergers(volume, merger):
     mp = np.arange(0, np.amax(volume) + 1, dtype=volume.dtype)
     mp[:] = 0
-    labels = np.unique(volume)
+    labels = np.sort(vigra.analysis.unique(volume))
     for label in labels:
         if label > 0:
             if label in merger:

@@ -24,6 +24,7 @@ from PyQt4.QtGui import QColor
 
 import os
 import numpy
+import vigra
 
 import logging
 from lazyflow.rtype import SubRegion
@@ -672,7 +673,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
                 
                 li_prev_oid = (li_prev == oid_prev)
                 li_product = li_prev_oid * li_cur
-                uniqueLabels = list(numpy.unique(li_product))
+                uniqueLabels = list(numpy.sort(vigra.analysis.unique(li_product)))
                 if 0 in uniqueLabels:
                     uniqueLabels.remove(0)
                 if len(uniqueLabels) != 1:                
@@ -1024,7 +1025,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
                         # write label image
                         seg.create_dataset("labels", data = labelImage, dtype=numpy.uint32, compression=1)
                         
-                        oids_meta = numpy.unique(labelImage).astype(numpy.uint32)[1:]  
+                        oids_meta = numpy.sort(vigra.analysis.unique(labelImage)).astype(numpy.uint32)[1:]  
                         ones = numpy.ones(oids_meta.shape, dtype=numpy.uint8)
                         if 'objects' in f_curr.keys(): del f_curr['objects']
                         f_meta = f_curr.create_group('objects').create_group('meta')

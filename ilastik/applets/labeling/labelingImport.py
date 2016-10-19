@@ -137,7 +137,7 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
         #unique_read_labels, readLabelCounts = numpy.unique(readData, return_counts=True)
 
         # This does the same as the above, albeit slower, and probably with more ram.
-        unique_read_labels = numpy.unique(readData)
+        unique_read_labels = numpy.sort( vigra.analysis.unique(readData) )
         readLabelCounts = vigra_bincount(readData)[unique_read_labels]
 
         labelInfo = (maxLabels, (unique_read_labels, readLabelCounts))

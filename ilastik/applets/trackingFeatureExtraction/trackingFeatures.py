@@ -21,6 +21,7 @@
 from __future__ import division
 import numpy as np
 import math
+import vigra
 
 def dotproduct(v1, v2):
     return sum((a*b) for a, b in zip(v1, v2))
@@ -242,7 +243,7 @@ class FeatureManager( object ):
 
                 # find all coms in the neighborhood of com_cur
                 subimg_next = img_next[roi]
-                labels_next = np.unique(subimg_next).tolist()
+                labels_next = np.sort(vigra.analysis.unique(subimg_next)).tolist()
 
                 for l in labels_next:
                     if l != 0:
