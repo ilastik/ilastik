@@ -29,7 +29,7 @@ import vigra
 
 # Lazyflow
 from lazyflow.graph import InputSlot, OutputSlot
-from lazyflow.roi import TinyVector, getIntersectingBlocks, getBlockBounds, roiToSlice, getIntersection, roiFromShape
+from lazyflow.roi import TinyVector, getIntersectingBlocks, getIntersectingRois, getBlockBounds, roiToSlice, getIntersection, roiFromShape
 from lazyflow.operators.opCompressedCache import OpUnmanagedCompressedCache
 from lazyflow.rtype import SubRegion
 
@@ -383,33 +383,64 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
         2: change to 2
         ...
         N: change to N
-        magic_eraser_value: change to 0  
+        eraser_magic_value: change to 0
         """
         if isinstance(new_pixels, vigra.VigraArray):
             new_pixels = new_pixels.view(numpy.ndarray)
 
-        # Extract the data to modify
-        original_data = self.Output.stype.allocateDestination(SubRegion(self.Output, *roiFromShape(new_pixels.shape)))
+        # Get logical blocking.
+        block_rois = getIntersectingRois( self.Output.meta.shape,
+                                          self._blockshape,
+                                          (roi.start, roi.stop) )
+        # Convert to tuples
+        block_rois = [ (tuple(start), tuple(stop)) for start, stop in block_rois ]
 
-        self.execute(self.Output, (), roi, original_data)
-        
-        # Reset the pixels we need to change (so we can use |= below)
-        original_data[new_pixels.nonzero()] = 0
-        
-        # Update
-        original_data |= new_pixels
+        max_label = 0
+        for block_roi in block_rois:
+            roi_within_data = numpy.array(block_roi) - roi.start
+            new_block_pixels = new_pixels[roiToSlice(*roi_within_data)]
 
-        # Replace 'eraser' values with zeros.
-        cleaned_data = original_data.copy()
-        cleaned_data[original_data == self._eraser_magic_value] = 0
+            # Shortcut: Nothing to change if this block is all zeros.
+            if not new_block_pixels.any():
+                continue
+            
+            block_slot_roi = SubRegion(self.Output, *block_roi)
+            
+            # Extract the data to modify
+            original_block_data = self.Output.stype.allocateDestination(block_slot_roi)
+            self.execute(self.Output, (), block_slot_roi, original_block_data)
+            
+            # Reset the pixels we need to change (so we can use |= below)
+            original_block_data[new_block_pixels.nonzero()] = 0
+            
+            # Update
+            original_block_data |= new_block_pixels
+    
+            # Replace 'eraser' values with zeros.
+            cleaned_block_data = original_block_data.copy()
+            cleaned_block_data[original_block_data == self._eraser_magic_value] = 0
+    
+            # Set in the cache (our superclass).
+            super( OpCompressedUserLabelArray, self )._setInSlotInput( slot,
+                                                                       subindex,
+                                                                       block_slot_roi,
+                                                                       cleaned_block_data,
+                                                                       store_zero_blocks=False )
 
-        # Set in the cache (our superclass).
-        super( OpCompressedUserLabelArray, self )._setInSlotInput( slot, subindex, roi, cleaned_data, store_zero_blocks=False )
+            max_label = max(max_label, cleaned_block_data.max())
         
-        # FIXME: Shouldn't this notification be triggered from within OpUnmanagedCompressedCache?
-        self.Output.setDirty( roi.start, roi.stop )
-        
-        return cleaned_data # Internal use: Return the cleaned_data        
+            # We could wait to send out one big dirty notification (instead of one per block),
+            # But that might result in a lot of unecessarily dirty pixels in cases when the
+            # new_pixels were mostly empty (such as when importing labels from disk).
+            # That's bad for downstream operators like OpFeatureMatrixCache
+            # So instead, we only send notifications for the blocks that were touched.
+            # During labeling, it makes no difference.
+            # During project import, this is slightly worse.
+            # But during label import from disk, this is very important.a
+            # FIXME: Shouldn't this notification be triggered from within OpUnmanagedCompressedCache?
+            self.Output.setDirty( *block_roi )
+
+        return max_label # Internal use: Return max label
 
     def ingestData(self, slot):
         """
@@ -436,9 +467,9 @@ class OpCompressedUserLabelArray(OpUnmanagedCompressedCache):
             
             # Write into the array
             subregion_roi = SubRegion(self.Output, *block_roi)
-            cleaned_block_data = self._setInSlotInput( self.Input, (), subregion_roi, block_data )
+            cleaned_block_max = self._setInSlotInput( self.Input, (), subregion_roi, block_data )
             
-            max_label = max( max_label, cleaned_block_data.max() )
+            max_label = max( max_label, cleaned_block_max )
         
         return max_label
             
