@@ -248,14 +248,16 @@ class OpFeatureMatrixCache(Operator):
         label_block_positions = numpy.nonzero(labels[...,0].view(numpy.ndarray))
         labels_matrix = labels[label_block_positions].astype(numpy.float32).view(numpy.ndarray)
         
+        del labels # Done with dense labels block; delete immediately.
+        
         if len(label_block_positions) == 0 or len(label_block_positions[0]) == 0:
             # No label points in this roi.
             # Return an empty label&feature matrix (of the correct shape)
             return numpy.ndarray( shape=(0, 1 + num_feature_channels), dtype=numpy.float32 )
 
         # Shrink the roi to the bounding box of nonzero labels
-        block_bounding_box_start = numpy.array( map( numpy.min, label_block_positions ) )
-        block_bounding_box_stop = 1 + numpy.array( map( numpy.max, label_block_positions ) )
+        block_bounding_box_start = numpy.min( label_block_positions, axis=1 )
+        block_bounding_box_stop = 1 + numpy.max( label_block_positions, axis=1 )
         
         global_bounding_box_start = block_bounding_box_start + label_block_roi[0][:-1]
         global_bounding_box_stop  = block_bounding_box_stop + label_block_roi[0][:-1]
