@@ -372,8 +372,8 @@ class OpLazyConnectedComponents(Operator, ObservableCache):
 
                 # determine which objects from this chunk continue in the
                 # neighbouring chunk
-                extendingLabels = [b for a, b in zip(myLabels, otherLabels)
-                                   if a in actualLabels]
+                extendingLabels = np.array([b for a, b in zip(myLabels, otherLabels)
+                                   if a in actualLabels])
                 extendingLabels = np.sort(vigra.analysis.unique(extendingLabels)).astype(_LABEL_TYPE)
 
                 # add the neighbour to our processing queue only if it actually
