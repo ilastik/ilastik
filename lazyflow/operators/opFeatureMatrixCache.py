@@ -58,7 +58,6 @@ class OpFeatureMatrixCache(Operator):
                                     # to a downstream operator (such as OpConcatenateFeatureMatrices),  
                                     # we provide the progressSignal member as an output slot.
 
-    MAX_BLOCK_PIXELS = 1e6
 
     def __init__(self, *args, **kwargs):
         super(OpFeatureMatrixCache, self).__init__(*args, **kwargs)
@@ -115,14 +114,17 @@ class OpFeatureMatrixCache(Operator):
         self.ProgressSignal.meta.dtype = object
         self.ProgressSignal.setValue( self.progressSignal )
 
-        # Auto-choose a blockshape
-        tagged_shape = self.LabelImage.meta.getTaggedShape()
-        if 't' in tagged_shape:
-            # A block should never span multiple time slices.
-            # For txy volumes, that could lead to lots of extra features being computed.
-            tagged_shape['t'] = 1
-        blockshape = determineBlockShape( tagged_shape.values(), OpFeatureMatrixCache.MAX_BLOCK_PIXELS )
-
+        if self.LabelImage.meta.ideal_blockshape is not None:
+            blockshape = self.LabelImage.meta.ideal_blockshape
+        else:
+            # Auto-choose a blockshape
+            tagged_shape = self.LabelImage.meta.getTaggedShape()
+            if 't' in tagged_shape:
+                # A block should never span multiple time slices.
+                # For txy volumes, that could lead to lots of extra features being computed.
+                tagged_shape['t'] = 1
+            blockshape = determineBlockShape( tagged_shape.values(), 1e6 )
+        
         # Don't span more than 256 px along any axis
         blockshape = tuple(min(x, 256) for x in blockshape)
         self._init_blocks(self.LabelImage.meta.shape, blockshape)
