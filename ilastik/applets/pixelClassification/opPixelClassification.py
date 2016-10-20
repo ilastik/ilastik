@@ -392,7 +392,7 @@ class OpLabelPipeline( Operator ):
             tagged_shape['t'] = 1
         
         # Aim for blocks that are roughly 1MB
-        block_shape = determineBlockShape( tagged_shape.values(), 1e6 )
+        block_shape = determineBlockShape( tagged_shape.values(), 20**3 )
         self.opLabelArray.blockShape.setValue( block_shape )
 
     def setInSlot(self, slot, subindex, roi, value):
