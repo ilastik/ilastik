@@ -95,7 +95,7 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
         tree_counts[:] = (tree_count for tree_count in tree_counts if tree_count != 0)        
 
         # Save for future reference
-        known_labels = numpy.sort(vigra.analysis.unique(y))
+        known_labels = numpy.unique(y)
 
         X = numpy.asarray(X, numpy.float32)
         y = numpy.asarray(y, numpy.uint32)
@@ -112,9 +112,9 @@ class ParallelVigraRfLazyflowClassifierFactory(LazyflowVectorwiseClassifierFacto
             idx = random.sample(range(X.shape[0]), row_num)
             X = X[idx,:]
             y = y[idx] 
-            assert (numpy.sort(vigra.analysis.unique(y)) == known_labels).all(), \
+            assert (numpy.unique(y) == known_labels).all(), \
                 "Sampled labels are not representative of the complete set: some label values are missing!\n"\
-                "Sampled labels include {}, but complete set has {}".format( numpy.sort(vigra.analysis.unique(y)), known_labels )
+                "Sampled labels include {}, but complete set has {}".format( numpy.unique(y), known_labels )
 
         # Create N forests to train
         # (treecount of each might differ)
