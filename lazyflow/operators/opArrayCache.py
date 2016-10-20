@@ -396,9 +396,8 @@ class OpArrayCache(Operator, ManagedCache):
                 cacheView = None
                 return
     
-    
-            extracted = numpy.extract( blockSet == OpArrayCache.IN_PROCESS, self._blockQuery[blockKey]).astype(numpy.uint32)
-            inProcessQueries = vigra.analysis.unique(extracted)
+            extracted = numpy.extract( blockSet == OpArrayCache.IN_PROCESS, self._blockQuery[blockKey])
+            inProcessQueries = numpy.unique(extracted)
     
             cond = (blockSet == OpArrayCache.DIRTY)
             tileWeights = fastWhere(cond, 1, 128**3, numpy.uint32)
