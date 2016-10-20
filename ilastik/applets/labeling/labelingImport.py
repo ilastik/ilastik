@@ -103,8 +103,8 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
         maxLabels = len(labelingSlots.labelNames.value)
     
         # We don't bother with counting the label pixels
-        # (and caching the data) if it's really big (2 GB)
-        if numpy.prod(opImport.Output.meta.shape) > 2e9:
+        # (and caching the data) if it's big (1 GB)
+        if numpy.prod(opImport.Output.meta.shape) > 1e9:
             reading_slot = opImport.Output
             
             # For huge data, we don't go through and search for the pixel values,
@@ -122,7 +122,7 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
 
             # We'll show a little window with a busy indicator while the data is loading
             busy_dlg = QProgressDialog(parent=parent_widget)
-            busy_dlg.setLabelText("Importing Label Data...")
+            busy_dlg.setLabelText("Scanning Label Data...")
             busy_dlg.setCancelButton(None)
             busy_dlg.setMinimum(100)
             busy_dlg.setMaximum(100)
