@@ -26,7 +26,10 @@ def subsample_h5(input_filepath, dset_name, output_filepath, sample_stride):
         # TODO: Process in blocks
         logger.info("Extracting subsampled volume (shape={})...".format(input_dset.shape))
         subsample_slicing = input_dset.ndim * (slice(None, None, sample_stride),)
-        subsampled_volume = input_file[dset_name][subsample_slicing]
+        
+        # Note: The extra [:] here is because h5py is really slow at slicing.
+        #       It's better to just read the whole volume and then let numpy do the slicing in RAM.
+        subsampled_volume = input_file[dset_name][:][subsample_slicing]
 
         logger.info("Writing subsampled volume (shape={})...".format(subsampled_volume.shape))
         output_dset = output_file.create_dataset( dset_name,
