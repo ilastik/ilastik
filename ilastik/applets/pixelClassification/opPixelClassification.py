@@ -130,7 +130,7 @@ class OpPixelClassification( Operator ):
         self.opTrain = OpTrainClassifierBlocked( parent=self )
         self.opTrain.ClassifierFactory.connect( self.ClassifierFactory )
         self.opTrain.Labels.connect( self.opLabelPipeline.Output )
-        self.opTrain.Images.connect( self.CachedFeatureImages )
+        self.opTrain.Images.connect( self.FeatureImages )
         self.opTrain.nonzeroLabelBlocks.connect( self.opLabelPipeline.nonzeroBlocks )
 
         # Hook up the Classifier Cache
