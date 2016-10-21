@@ -39,7 +39,7 @@ from lazyflow.utility import Memory
 import logging
 logger = logging.getLogger(__name__)
 
-default_refresh_interval = 1
+default_refresh_interval = 10
 
 
 class CacheMemoryManager(threading.Thread):
