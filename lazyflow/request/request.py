@@ -29,6 +29,7 @@ import multiprocessing
 import platform
 import traceback
 import StringIO
+from random import randrange
 
 import logging
 logger = logging.getLogger(__name__)
@@ -802,16 +803,13 @@ class RequestLock(object):
             item = self._l[0]
             self._l = self._l[1:]
             return item
-
-        def popNone(self):
-            self._l.remove(None)
     
     class RequestLockQueue(object):
         """
         This data structure is a pseudo-priority queue.
         If you're not ready to process the highest-priority item, you can simply push it back.
         It will be placed in a secondary queue while you continue to process other items.
-        
+
         Two priority queues are maintained: one for pushing, one for popping.
         Items are popped from the 'popping queue' until it is empty, and then the two
         queues are swapped.
@@ -833,16 +831,11 @@ class RequestLock(object):
         With this scheme, high-priority requests can opt not to monopolize access to a lock if
         they need to wait for lower-priority requests to complete before continuing.
         This is important for code involving condition variables, for instance.
-        
-        SPECIAL CASE: 'None' items are pushed onto this queue using the special pushNone()
-        and popNone() functions.  'None' items are automatically given immediate service.
-        They are placeholders for 'real' threads (as opposed to Requests), which are
-        prioritized over Requests.
         """
         def __init__(self):
             self._pushing_queue = []
             self._popping_queue = []
-        
+            
         def push(self, item):
             heapq.heappush(self._pushing_queue, item)
         
@@ -851,19 +844,10 @@ class RequestLock(object):
                 self._pushing_queue, self._popping_queue = self._popping_queue, self._pushing_queue
             return heapq.heappop(self._popping_queue)
 
-        def pushNone(self):
-            # 'None' items are special: they represent a native thread and must get top priority
-            # Therefore, push directly to the 'popping' thread.
-            heapq.heappush(self._popping_queue, None)
-        
-        def popNone(self):
-            if self._popping_queue and self._popping_queue[0] is None:
-                self._popping_queue = self._popping_queue[1:]
-            else:
-                assert self._pushing_queue[0] is None
-                self._pushing_queue = self._pushing_queue[1:]
-        
         def __len__(self):
+            """
+            Returns the number of waiting threads, but NOT the number of 
+            """
             return len(self._pushing_queue) + len(self._popping_queue)
 
     logger = logging.getLogger(__name__ + ".RequestLock")
@@ -881,6 +865,14 @@ class RequestLock(object):
             # Other waiting threads (i.e. non-request "foreign" threads) are each listed as a single "None" item. 
             self._pendingRequests = RequestLock.RequestLockQueue()
 
+            # Native threads have no intrinsic priority, but we generally want to schedule them
+            # favorably in comparison to requests.
+            # Instead of pushing them onto the pendingRequests queue, we track the number of
+            # waiting threads here in this counter.
+            # When deciding which request or thread to scheudle next, we choose randomly from
+            # either set.
+            self.num_waiting_threads = 0
+        
     def _debug_mode_init(self):
         """
         For debug purposes, the user can use an empty threadpool.
@@ -942,21 +934,18 @@ class RequestLock(object):
     
     def _acquire_from_within_thread(self, blocking):
         if not blocking:
-            return self._modelLock.acquire(blocking)
+            return self._modelLock.acquire(False)
 
         with self._selfProtectLock:
-            # Append "None" to indicate that a real thread is waiting (not a request)
-            self._pendingRequests.pushNone()
+            self.num_waiting_threads += 1
 
         # Wait for the internal lock to become free
-        got_it = self._modelLock.acquire(blocking)
+        self._modelLock.acquire(True)
     
         with self._selfProtectLock:
-            # Search for a "None" to pull off the list of pendingRequests.
-            # Don't take real requests from the queue
-            self._pendingRequests.popNone()
+            self.num_waiting_threads -= 1
 
-        return got_it
+        return True # got it
 
     def release(self):
         """
@@ -965,20 +954,32 @@ class RequestLock(object):
         assert self._modelLock.locked(), "Can't release a RequestLock that isn't already acquired!"
 
         with self._selfProtectLock:
-            if len(self._pendingRequests) == 0:
+            # This if/else statement could be simplified, but in this
+            # form it's easier to comment the explanation for each case.
+            if len(self._pendingRequests) == 0 and self.num_waiting_threads == 0:
                 # There were no waiting requests or threads, so the lock is free to be acquired again.
                 self._modelLock.release()
-            else:
+            elif len(self._pendingRequests) == 0 and self.num_waiting_threads > 0:
+                # There are not requests, but there is a waiting thread.
+                # Release the lock to wake it up (it will decrement the num_waiting_threads member)
+                self._modelLock.release()
+            elif len(self._pendingRequests) > 0 and self.num_waiting_threads == 0:
+                # There are no waiting 'native' threads, but there is a pending request.
                 # Instead of releasing the modelLock, just wake up a request that was waiting for it.
                 # He assumes that the lock is his when he wakes up.
-                r = self._pendingRequests.pop()
-                if r is not None:
-                    r._wake_up()
-                else:
-                    # The pending "request" is a real thread.
+                self._pendingRequests.pop()._wake_up()
+            elif len(self._pendingRequests) > 0 and self.num_waiting_threads > 0:
+                # There are both pending requests and native threads
+                # We generally want to give the threads priority, but not starve out requests.
+                # Therefore, give threads a 50% chance of getting selected.
+                # (Generally, there should be only one or two threads waiting on a lock, so 50% odds are quite high.)
+                if randrange(2):
                     # Release the lock to wake it up (he'll remove the _pendingRequest entry)
-                    self._pendingRequests.pushNone()
                     self._modelLock.release()
+                else:
+                    # Instead of releasing the modelLock, just wake up a request that was waiting for it.
+                    # He assumes that the lock is his when he wakes up.
+                    self._pendingRequests.pop()._wake_up()
 
     def __enter__(self):
         self.acquire()
