@@ -249,10 +249,14 @@ class OpTrainVectorwiseClassifierBlocked(Operator):
 
         # Progress reporting
         def _handleFeatureProgress( progress ):
+            # Note that these progress messages will probably appear out-of-order.
+            # See comments in OpFeatureMatrixCache
+            logger.debug("Training: {:02}% (Computing features)".format(int(progress)))
             self.progressSignal( 0.8*progress )
         self._opConcatenateFeatureMatrices.progressSignal.subscribe( _handleFeatureProgress )
         
         def _handleTrainingComplete():
+            logger.debug("Training: 100% (Complete)")
             self.progressSignal( 100.0 )
         self._opTrainFromFeatures.trainingCompleteSignal.subscribe( _handleTrainingComplete )
 
