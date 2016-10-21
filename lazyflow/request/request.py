@@ -808,14 +808,36 @@ class RequestLock(object):
     
     class RequestLockQueue(object):
         """
-        This is a pseudo-priority queue.
-        All items pushed consecutively (with no pop()s in between), will be prioritized.
-        But as soon as one call to pop() is made, newly pushed items will 
-        NOT be included in the current set until it is exhausted.
-        This way, if a high-priority item is popped() and then immediately
-        re-pushed, it is not simply replaced at the head of the queue.
+        This data structure is a pseudo-priority queue.
+        If you're not ready to process the highest-priority item, you can simply push it back.
+        It will be placed in a secondary queue while you continue to process other items.
+        
+        Two priority queues are maintained: one for pushing, one for popping.
+        Items are popped from the 'popping queue' until it is empty, and then the two
+        queues are swapped.
 
-        (It has to wait until the next "batch" of pops.) 
+        Suppose you pop an item (the highest priority item), but you discover you're not
+        able to use it immediately for some reason (e.g. it's a request that is still
+        waiting for a lock). Hence, you simply 'push' it back into this data structure.
+        
+        If there were only one queue, it would end up a the front of the queue again (it was the
+        highest priority item, after all).
+        
+        That is, you would never make any progress on the queue because you would just pop and
+        push the same item over and over!
+        
+        But since this data structure uses TWO queues, the pushed item will be put on the
+        'pushing queue' instead and, it won't be popped again until the popping queue is depleted
+        (at which point the two queues are swapped).
+
+        With this scheme, high-priority requests can opt not to monopolize access to a lock if
+        they need to wait for lower-priority requests to complete before continuing.
+        This is important for code involving condition variables, for instance.
+        
+        SPECIAL CASE: 'None' items are pushed onto this queue using the special pushNone()
+        and popNone() functions.  'None' items are automatically given immediate service.
+        They are placeholders for 'real' threads (as opposed to Requests), which are
+        prioritized over Requests.
         """
         def __init__(self):
             self._pushing_queue = []
@@ -828,6 +850,11 @@ class RequestLock(object):
             if not self._popping_queue:
                 self._pushing_queue, self._popping_queue = self._popping_queue, self._pushing_queue
             return heapq.heappop(self._popping_queue)
+
+        def pushNone(self):
+            # 'None' items are special: they represent a native thread and must get top priority
+            # Therefore, push directly to the 'popping' thread.
+            heapq.heappush(self._popping_queue, None)
         
         def popNone(self):
             if self._popping_queue and self._popping_queue[0] is None:
@@ -919,7 +946,7 @@ class RequestLock(object):
 
         with self._selfProtectLock:
             # Append "None" to indicate that a real thread is waiting (not a request)
-            self._pendingRequests.push(None)
+            self._pendingRequests.pushNone()
 
         # Wait for the internal lock to become free
         got_it = self._modelLock.acquire(blocking)
@@ -950,7 +977,7 @@ class RequestLock(object):
                 else:
                     # The pending "request" is a real thread.
                     # Release the lock to wake it up (he'll remove the _pendingRequest entry)
-                    self._pendingRequests.push(None)
+                    self._pendingRequests.pushNone()
                     self._modelLock.release()
 
     def __enter__(self):
