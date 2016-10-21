@@ -784,14 +784,6 @@ class TestRequestPool(object):
         for req in reqs:
             pool.add(req)
 
-        pool.submit()
-        
-        # All requests should be run in parallel...
-        for req in reqs:
-            assert req.started
-            if Request.global_thread_pool.num_workers > 0:
-                assert not req.finished
-        
         pool.wait()
 
         # Should all be done.        
