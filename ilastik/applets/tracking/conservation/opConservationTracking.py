@@ -462,7 +462,12 @@ class OpConservationTracking(Operator, ExportingOperator):
         # Populate events dictionary
         events = {}
         
+        # Save mergers, links, detections, and divisions
         for timestep in traxelIdPerTimestepToUniqueIdMap.keys():
+            # We need to add an extra column with zeros in order to be backward compatible with the older version
+            def stackExtraColumnWithZeros(array):
+                return np.hstack((array, np.zeros((array.shape[0], 1), dtype=array.dtype)))
+            
             dis = []
             app = []
             div = []
@@ -480,17 +485,35 @@ class OpConservationTracking(Operator, ExportingOperator):
             events[str(timestep)] = {}
          
             if len(dis) > 0:
+                dis = stackExtraColumnWithZeros(dis)
                 events[str(timestep)]['dis'] = dis
             if len(app) > 0:
+                app = stackExtraColumnWithZeros(app)
                 events[str(timestep)]['app'] = app
             if len(div) > 0:
+                div = stackExtraColumnWithZeros(div)
                 events[str(timestep)]['div'] = div
             if len(mov) > 0:
+                mov = stackExtraColumnWithZeros(mov)
                 events[str(timestep)]['mov'] = mov
             if len(mer) > 0:
+                mer = stackExtraColumnWithZeros(mer)
                 events[str(timestep)]['mer'] = mer
             if len(mul) > 0:
+                mul = stackExtraColumnWithZeros(mul)
                 events[str(timestep)]['mul'] = mul
+
+        # Write merger results dictionary
+        if self.resolvedMergersDict:
+            for timestep, results in self.resolvedMergersDict.items():
+                mergerRes = {}
+                for key, result in results.items():
+                    result.append(0) # append zero for backward compatibility
+                    mergerRes[key] = result
+                    
+                events[str(timestep)]['res'] = mergerRes
+        else:
+            logger.info("Resolved Merger Dictionary not available. Please click on the Track button.")
                 
         return events
 
