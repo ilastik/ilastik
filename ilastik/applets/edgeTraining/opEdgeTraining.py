@@ -294,7 +294,7 @@ class OpTrainEdgeClassifier(Operator):
             
             # Merge in features
             features_and_labels_df = pd.merge(edge_features_df, labels_df, how='right', on=['sp1', 'sp2'])
-            if all_features_and_labels_df:
+            if all_features_and_labels_df is not None:
                 all_features_and_labels_df = all_features_and_labels_df.append(features_and_labels_df)
             else:
                 all_features_and_labels_df = features_and_labels_df
