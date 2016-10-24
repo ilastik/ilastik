@@ -246,6 +246,7 @@ class WsdtGui(LayerViewerGui):
         # Superpixels
         if op.Superpixels.ready():
             layer = ColortableLayer( LazyflowSource(op.Superpixels), self._sp_colortable )
+            layer.colortableIsRandom = True
             layer.name = "Superpixels"
             layer.visible = True
             layer.opacity = 0.5

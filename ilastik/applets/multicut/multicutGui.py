@@ -235,6 +235,7 @@ class MulticutGuiMixin(object):
     
         layer = self.createStandardLayerFromSlot( op.Output )
         layer.name = "Multicut Segmentation"
+        layer.colortableIsRandom = True
         layer.visible = False # Off by default...
         layer.opacity = 0.5
         return layer
