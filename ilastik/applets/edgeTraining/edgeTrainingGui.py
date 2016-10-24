@@ -31,6 +31,7 @@ from PyQt4.QtGui import QWidget, QLabel, QDoubleSpinBox, QVBoxLayout, QHBoxLayou
 from ilastikrag.gui import FeatureSelectionDialog
 
 from ilastik.utility.gui import threadRouted
+from ilastik.shell.gui.iconMgr import ilastikIcons
 from volumina.pixelpipeline.datasources import LazyflowSource
 from volumina.layer import SegmentationEdgesLayer, LabelableSegmentationEdgesLayer
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
@@ -82,6 +83,10 @@ class EdgeTrainingGui(LayerViewerGui):
         feature_selection_button = QPushButton("Select Features", clicked=self._open_feature_selection_dlg)
         self.train_from_gt_button = QPushButton("Auto-label from GT", clicked=self._handle_label_from_gt_clicked)
         self.clear_labels_button = QPushButton("Clear Labels", clicked=self._handle_clear_labels_clicked)
+        self.live_update_button = QPushButton(text="Live Predict",
+                                              checkable=True,
+                                              icon=QIcon(ilastikIcons.Play),
+                                              clicked=self._handle_live_update_clicked)
         
         # Layout
         label_layout = QHBoxLayout()
@@ -93,6 +98,7 @@ class EdgeTrainingGui(LayerViewerGui):
         layout.addWidget(feature_selection_button)
         layout.setSpacing(1)
         layout.addLayout(label_layout)
+        layout.addWidget(self.live_update_button)
         layout.addSpacerItem( QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding) )
         
         # Finally, the whole drawer widget
@@ -180,6 +186,9 @@ class EdgeTrainingGui(LayerViewerGui):
             op = self.topLevelOperatorView
             op.EdgeLabelsDict.setValue( {} )
 
+    def _handle_live_update_clicked(self, checked):
+        op = self.topLevelOperatorView
+        op.FreezeClassifier.setValue( not checked )
 
     # Configure the handler for updated probability maps
     # FIXME: Should we make a new Layer subclass that handles this colortable mapping for us?  Yes.
@@ -239,6 +248,7 @@ class EdgeTrainingGui(LayerViewerGui):
         with self.set_updating():
             op = self.topLevelOperatorView
             self.train_from_gt_button.setEnabled( op.GroundtruthSegmentation.ready() )
+            self.live_update_button.setChecked( not op.FreezeClassifier.value )
 
     def configure_operator_from_gui(self):
         if self._currently_updating:

@@ -24,6 +24,7 @@ class OpEdgeTraining(Operator):
     # Shared across lanes
     DEFAULT_FEATURES = { "Grayscale": ['standard_edge_mean'] }
     FeatureNames = InputSlot(value=DEFAULT_FEATURES)
+    FreezeClassifier = InputSlot(value=True)
 
     # Lane-wise
     EdgeLabelsDict = InputSlot(level=1, value={})
@@ -64,6 +65,7 @@ class OpEdgeTraining(Operator):
         self.opClassifierCache = OpValueCache(parent=self)
         self.opClassifierCache.Input.connect( self.opTrainEdgeClassifier.EdgeClassifier )
         self.opClassifierCache.name = 'opClassifierCache'
+        self.opClassifierCache.fixAtCurrent.connect( self.FreezeClassifier )
         
         self.opPredictEdgeProbabilities = OpMultiLaneWrapper( OpPredictEdgeProbabilities, parent=self )
         self.opPredictEdgeProbabilities.EdgeClassifier.connect( self.opClassifierCache.Output )

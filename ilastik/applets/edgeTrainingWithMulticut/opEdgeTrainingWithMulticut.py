@@ -8,6 +8,7 @@ class OpEdgeTrainingWithMulticut(Operator):
     
     # Edge Training parameters
     FeatureNames = InputSlot(value=OpEdgeTraining.DEFAULT_FEATURES)
+    FreezeClassifier = InputSlot(value=True)
 
     # Multicut parameters
     Beta = InputSlot(value=0.5)
@@ -41,6 +42,7 @@ class OpEdgeTrainingWithMulticut(Operator):
         opEdgeTraining.EdgeLabelsDict.backpropagate_values = True
 
         opEdgeTraining.FeatureNames.connect( self.FeatureNames )
+        opEdgeTraining.FreezeClassifier.connect( self.FreezeClassifier )
         opEdgeTraining.RawData.connect( self.RawData )
         opEdgeTraining.VoxelData.connect( self.VoxelData )
         opEdgeTraining.Superpixels.connect( self.Superpixels )
