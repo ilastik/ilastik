@@ -81,6 +81,7 @@ import os
 
 # Import all known workflows now to make sure they are all registered with getWorkflowFromName()
 import ilastik.workflows
+from PyQt4.Qt import QSpinBox, QDialogButtonBox
 
 try:
     import libdvid
@@ -621,6 +622,8 @@ class IlastikShell(QMainWindow):
         menu.addAction("&Memory usage").triggered.connect(self.showMemUsageDialog)
         menu.addMenu(self._createProfilingSubmenu())
 
+        menu.addMenu(self._createAllocationTrackingSubmenu())
+
         menu.addAction("Show IPC Server Info", IPCFacade().show_info)
 
         def hideApplets(hideThem):
@@ -663,7 +666,6 @@ class IlastikShell(QMainWindow):
             assert not yappi.is_running()
 
             filename = 'ilastik_profile_sortedby_{}.txt'.format(sortby)
-
             recentPath = PreferencesManager().get('shell', 'recent sorted profile stats')
             if recentPath is None:
                 defaultPath = os.path.join(os.path.expanduser('~'), filename)
@@ -748,6 +750,70 @@ class IlastikShell(QMainWindow):
         # Must retain this reference, otherwise the menu gets automatically removed
         self._profilingSubmenu = profilingSubmenu
         return profilingSubmenu
+
+    def _createAllocationTrackingSubmenu(self):
+        allocationTrackingSubmenu = QMenu("Numpy Allocation Tracking")
+        self._allocation_threshold = 1000000 # 1 MB by default
+        
+        # Must retain this reference, otherwise the menu gets automatically removed
+        self._allocationTrackingSubmenu = allocationTrackingSubmenu
+
+        try:
+            from numpy_allocation_tracking.track_allocations import AllocationTracker
+        except ImportError:
+            errMsgAction = allocationTrackingSubmenu.addAction("Not installed. Please try:"
+                                                               "  conda install -c ilastik numpy-allocation-tracking")
+            errMsgAction.setEnabled(False)
+            return allocationTrackingSubmenu
+
+        def _setAllocationThreshold():
+            box = QSpinBox(minimum=1, maximum=1000000000, value=self._allocation_threshold, suffix='bytes')
+            layout = QHBoxLayout()
+            layout.addWidget(box)
+            layout.addWidget( QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel) )
+            dlg = QDialog("Minimum Tracked Allocation Size")
+            dlg.setLayout(layout)
+            if dlg.exec_() == QDialog.Accepted:
+                self._allocation_threshold = box.value()
+
+        def _startAllocationTracking():
+            self._allocation_tracker = AllocationTracker(self._allocation_threshold)
+            self._allocation_tracker.__enter__()
+            startAction.setEnabled(False)
+            stopAction.setEnabled(True)
+
+        def _stopAllocationTracking():
+            self._allocation_tracker.__exit__(None, None, None)
+            startAction.setEnabled(True)
+            stopAction.setEnabled(False)
+
+            filename = 'ilastik-tracked-numpy-allocations.html'
+            recentPath = PreferencesManager().get('shell', 'allocation tracking output html')
+            if recentPath is None:
+                defaultPath = os.path.join(os.path.expanduser('~'), filename)
+            else:
+                defaultPath = os.path.join(os.path.split(recentPath)[0], filename)
+            
+            htmlPath = QFileDialog.getSaveFileName(
+                self, "Export allocation tracking table", defaultPath, "HTML files (*.html)",
+                options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
+
+            if not htmlPath.isNull():
+                html_path = encode_from_qstring(htmlPath)
+                PreferencesManager().set('shell', 'allocation tracking output html', html_path)
+                self._allocation_tracker.write_html(html_path)
+
+                # As a convenience, go ahead and open it.
+                QDesktopServices.openUrl(QUrl.fromLocalFile(html_path))
+        
+        startAction = allocationTrackingSubmenu.addAction("Start")
+        startAction.triggered.connect(_startAllocationTracking)
+
+        stopAction = allocationTrackingSubmenu.addAction("Stop")
+        stopAction.triggered.connect(_stopAllocationTracking)
+        stopAction.setEnabled(False)
+        
+        return allocationTrackingSubmenu
 
     def showMemUsageDialog(self):
         if self._memDlg is None:
