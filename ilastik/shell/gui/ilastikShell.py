@@ -39,7 +39,7 @@ from PyQt4.QtCore import pyqtSignal, QObject, Qt, QUrl, QTimer
 from PyQt4.QtGui import QMainWindow, QWidget, QMenu, QApplication, \
     QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
     QProgressBar, QInputDialog, QIcon, QFont, QToolButton, \
-    QHBoxLayout, QSizePolicy, QDesktopServices, QLabel
+    QHBoxLayout, QSizePolicy, QDesktopServices, QLabel, QDialog, QSpinBox, QDialogButtonBox
 
 # lazyflow
 from ilastik.widgets.ipcserver.tcpServerInfoWidget import TCPServerInfoWidget
@@ -81,7 +81,6 @@ import os
 
 # Import all known workflows now to make sure they are all registered with getWorkflowFromName()
 import ilastik.workflows
-from PyQt4.Qt import QSpinBox, QDialogButtonBox
 
 try:
     import libdvid
@@ -731,9 +730,11 @@ class IlastikShell(QMainWindow):
 
         startAction = profilingSubmenu.addAction("Start (reset)")
         startAction.triggered.connect(_startProfiling)
+        startAction.setIcon(QIcon(ilastikIcons.Record))
 
         stopAction = profilingSubmenu.addAction("Stop")
         stopAction.triggered.connect(_stopProfiling)
+        stopAction.setIcon(QIcon(ilastikIcons.Stop))
 
         sortedExportSubmenu = profilingSubmenu.addMenu("Save Sorted Stats...")
         for sortby in ['calls', 'cumulative', 'filename', 'pcalls', 'line', 'name', 'nfl', 'stdname', 'time']:
@@ -752,10 +753,12 @@ class IlastikShell(QMainWindow):
         return profilingSubmenu
 
     def _createAllocationTrackingSubmenu(self):
-        allocationTrackingSubmenu = QMenu("Numpy Allocation Tracking")
-        self._allocation_threshold = 1000000 # 1 MB by default
-        
+        self._allocation_threshold = PreferencesManager().get('shell', 'allocation tracking threshold')
+        if self._allocation_threshold is None:
+            self._allocation_threshold = 1000000 # 1 MB by default
+
         # Must retain this reference, otherwise the menu gets automatically removed
+        allocationTrackingSubmenu = QMenu("Numpy Allocation Tracking")
         self._allocationTrackingSubmenu = allocationTrackingSubmenu
 
         try:
@@ -767,14 +770,23 @@ class IlastikShell(QMainWindow):
             return allocationTrackingSubmenu
 
         def _setAllocationThreshold():
-            box = QSpinBox(minimum=1, maximum=1000000000, value=self._allocation_threshold, suffix='bytes')
+            dlg = QDialog(windowTitle="Minimum Tracked Allocation Size")
+
+            box = QSpinBox(minimum=1, maximum=1000000000, suffix=' bytes')
+            box.setValue(self._allocation_threshold)
+
+            buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+            buttons.accepted.connect( dlg.accept )
+            buttons.rejected.connect( dlg.reject )
+
             layout = QHBoxLayout()
             layout.addWidget(box)
-            layout.addWidget( QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel) )
-            dlg = QDialog("Minimum Tracked Allocation Size")
+            layout.addWidget( buttons )
+
             dlg.setLayout(layout)
             if dlg.exec_() == QDialog.Accepted:
                 self._allocation_threshold = box.value()
+                PreferencesManager().set('shell', 'allocation tracking threshold', self._allocation_threshold)
 
         def _startAllocationTracking():
             self._allocation_tracker = AllocationTracker(self._allocation_threshold)
@@ -808,10 +820,15 @@ class IlastikShell(QMainWindow):
         
         startAction = allocationTrackingSubmenu.addAction("Start")
         startAction.triggered.connect(_startAllocationTracking)
+        startAction.setIcon(QIcon(ilastikIcons.Record))
 
         stopAction = allocationTrackingSubmenu.addAction("Stop")
         stopAction.triggered.connect(_stopAllocationTracking)
         stopAction.setEnabled(False)
+        stopAction.setIcon(QIcon(ilastikIcons.Stop))
+
+        setThresholdAction = allocationTrackingSubmenu.addAction("Set Threshold...")
+        setThresholdAction.triggered.connect(_setAllocationThreshold)
         
         return allocationTrackingSubmenu
 
