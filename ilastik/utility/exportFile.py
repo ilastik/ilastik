@@ -54,14 +54,7 @@ def flatten_ilastik_feature_table(table, selection, signal):
     frames = table.meta.shape[0]
 
     signal(0)
-    if frames > 1:
-        computed_feature = {}
-        for t in xrange(frames):
-            request = table([t])
-            computed_feature.update(request.wait())
-            signal(100 * t / frames)
-    else:
-        computed_feature = table([]).wait()
+    computed_feature = table([]).wait()
     signal(100)
 
     feature_names = []
