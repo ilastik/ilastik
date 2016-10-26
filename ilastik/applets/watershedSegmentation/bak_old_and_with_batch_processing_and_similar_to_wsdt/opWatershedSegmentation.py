@@ -17,14 +17,10 @@ class OpWatershedSegmentation(Operator):
     Provide execution function for the execution of the watershed algorithm
     """
 
-    RawData = InputSlot(optional=True) # Used by the GUI for display only
     Input = InputSlot() # Can be multi-channel (but you'll have to choose which channel you want to use)
-
-    ############################################################
-    # Define Inputslots for Internal Parameter Usage
-    ############################################################
     ChannelSelection = InputSlot(value=0)
-    '''
+
+    # Parameters
     Pmin = InputSlot(value=0.5)
     MinMembraneSize = InputSlot(value=0)
     MinSegmentSize = InputSlot(value=0)
@@ -35,18 +31,15 @@ class OpWatershedSegmentation(Operator):
     EnableDebugOutputs = InputSlot(value=False)
     
     Superpixels = OutputSlot()
-    '''
+
     def __init__(self, *args, **kwargs):
         super( OpWatershedSegmentation, self ).__init__(*args, **kwargs)
         self.debug_results = None
-        '''
         self.watershed_completed = OrderedSignal()
-        '''
 
     def setupOutputs(self):
         assert self.Input.meta.getAxisKeys()[-1] == 'c', \
             "This operator assumes that channel is the last axis."
-        '''
         self.Superpixels.meta.assignFrom( self.Input.meta )
         self.Superpixels.meta.shape = self.Input.meta.shape[:-1] + (1,)
         self.Superpixels.meta.dtype = np.uint32
@@ -55,25 +48,21 @@ class OpWatershedSegmentation(Operator):
         self.debug_results = None
         if self.EnableDebugOutputs.value:
             self.debug_results = OrderedDict()
-        '''
     
     def execute(self, slot, subindex, roi, result):
-        #assert slot is self.Superpixels, "Unknown or unconnected output slot: {}".format( slot )
+        assert slot is self.Superpixels, "Unknown or unconnected output slot: {}".format( slot )
         channel_index = self.ChannelSelection.value
 
-        '''
         pmap_roi = roi.copy()
         pmap_roi.start[-1] = channel_index
         pmap_roi.stop[-1] = channel_index+1
 
         # TODO: We could be sneaky and use the result array as a temporary here...
         pmap = self.Input(pmap_roi.start, pmap_roi.stop).wait()
-        '''
 
         if self.debug_results:
             self.debug_results.clear()
         #execute the actual watershed Segmentation
-        '''
         wsDtSegmentation( pmap[...,0],
                           self.Pmin.value,
                           self.MinMembraneSize.value,
@@ -85,13 +74,11 @@ class OpWatershedSegmentation(Operator):
                           out=result[...,0] )
         
         self.watershed_completed()
-        '''
         
     def propagateDirty(self, slot, subindex, roi):
         if slot is not self.EnableDebugOutputs:
             self.Superpixels.setDirty()
 
-'''
 class OpCachedWatershedSegmentation(Operator):
     RawData = InputSlot(optional=True) # Used by the GUI for display only
     FreezeCache = InputSlot(value=True)
@@ -177,4 +164,3 @@ class OpCachedWatershedSegmentation(Operator):
         if slot is self.EnableDebugOutputs and self.EnableDebugOutputs.value:
             # Force a refresh so the debug outputs will be updated.
             self._opCache.Input.setDirty()
-'''

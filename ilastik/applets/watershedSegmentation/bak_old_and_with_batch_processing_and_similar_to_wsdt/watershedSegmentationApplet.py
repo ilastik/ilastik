@@ -20,8 +20,7 @@
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
-#from opWatershedSegmentation import OpCachedWatershedSegmentation
-from opWatershedSegmentation import OpWatershedSegmentation
+from opWatershedSegmentation import OpCachedWatershedSegmentation
 from watershedSegmentationSerializer import WatershedSegmentationSerializer
 
 class WatershedSegmentationApplet( StandardApplet ):
@@ -34,14 +33,18 @@ class WatershedSegmentationApplet( StandardApplet ):
 
     @property
     def singleLaneOperatorClass(self):
-        return OpWatershedSegmentation
-        #return OpCachedWatershedSegmentation
+        return OpCachedWatershedSegmentation
 
     @property
     def broadcastingSlots(self):
-        #TODO
-        return [ 'ChannelSelection'
-                ]
+        return [ 'FreezeCache',
+                 'ChannelSelection',
+                 'Pmin',
+                 'MinMembraneSize',
+                 'MinSegmentSize',
+                 'SigmaMinima',
+                 'SigmaWeights',
+                 'GroupSeeds' ]
 
     @property
     def singleLaneGuiClass(self):

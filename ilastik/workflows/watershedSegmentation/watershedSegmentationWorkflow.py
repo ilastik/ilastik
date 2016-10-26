@@ -55,6 +55,9 @@ class WatershedSegmentationWorkflow(Workflow):
 
         super(WatershedSegmentationWorkflow, self).__init__( \
                 shell, headless, workflow_cmdline_args, project_creation_workflow, graph=graph, *args, **kwargs)
+        ############################################################
+        # Init and add the applets
+        ############################################################
         self._applets = []
 
         # -- DataSelection applet
@@ -108,6 +111,7 @@ class WatershedSegmentationWorkflow(Workflow):
     def connectLane(self, laneIndex):
         """
         Override from base class.
+        Connect the output and the input of each applet with each other
         """
         opDataSelection         = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
         opWatershedSegmentation = self.watershedSegmentationApplet.topLevelOperator.getLane(laneIndex)
@@ -124,8 +128,8 @@ class WatershedSegmentationWorkflow(Workflow):
         # DataExport inputs
         opDataExport.RawData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
         opDataExport.RawDatasetInfo.connect( opDataSelection.DatasetGroup[self.DATA_ROLE_RAW] )        
-        opDataExport.Inputs.resize( len(self.EXPORT_NAMES) )
-        opDataExport.Inputs[0].connect( opWatershedSegmentation.Superpixels )
+        #opDataExport.Inputs.resize( len(self.EXPORT_NAMES) )
+        #opDataExport.Inputs[0].connect( opWatershedSegmentation.Superpixels )
         for slot in opDataExport.Inputs:
             assert slot.partner is not None
         
@@ -165,7 +169,8 @@ class WatershedSegmentationWorkflow(Workflow):
         self._shell.setAppletEnabled( self.watershedSegmentationApplet,\
                 not batch_processing_busy and input_ready )
         self._shell.setAppletEnabled( self.dataExportApplet,\
-                not batch_processing_busy and input_ready and opWatershedSegmentation.Superpixels.ready())
+                not batch_processing_busy and input_ready ) #TODO (add the watershedSegementation here)
+                #and opWatershedSegmentation.Superpixels.ready())
         self._shell.setAppletEnabled( self.batchProcessingApplet,\
                 not batch_processing_busy and input_ready )
 

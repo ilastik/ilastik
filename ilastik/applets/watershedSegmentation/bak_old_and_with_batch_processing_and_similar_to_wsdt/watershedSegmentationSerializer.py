@@ -27,6 +27,19 @@ class WatershedSegmentationSerializer(AppletSerializer):
     """
     
     def __init__(self, operator, projectFileGroupName):
-        slots = [ SerialSlot(operator.ChannelSelection)
-                ]
+        slots = [ SerialSlot(operator.ChannelSelection),
+                  SerialSlot(operator.Pmin), 
+                  SerialSlot(operator.MinMembraneSize), 
+                  SerialSlot(operator.MinSegmentSize), 
+                  SerialSlot(operator.SigmaMinima), 
+                  SerialSlot(operator.SigmaWeights), 
+                  SerialSlot(operator.GroupSeeds),
+                  SerialBlockSlot(operator.Superpixels,
+                                  operator.SuperpixelCacheInput,
+                                  operator.CleanBlocks,
+                                  name='Superpixels',
+                                  subname='superpixels{:03d}',
+                                  selfdepends=False,
+                                  shrink_to_bb=False,
+                                  compression_level=1) ]
         super(WatershedSegmentationSerializer, self).__init__(projectFileGroupName, slots=slots, operator=operator)
