@@ -78,6 +78,15 @@ class WatershedSegmentationGui(LayerViewerGui):
         self.topLevelOperatorView.watershed_completed.subscribe( self.updateAllLayers )
         '''
 
+    #TODO
+    def test_print(self):
+        #TODO erstelle Button, welcher beim klicken diese werte ausgibt
+        #print "\n\n\n"
+        print "\n"
+        print self.volumeEditorWidget.quadViewStatusBar.xSpinBox.value()
+        print self.volumeEditorWidget.quadViewStatusBar.ySpinBox.value()
+        print self.volumeEditorWidget.quadViewStatusBar.zSpinBox.value()
+
     def initAppletDrawerUi(self):
         """
         Overridden from base class (LayerViewerGui)
@@ -104,13 +113,75 @@ class WatershedSegmentationGui(LayerViewerGui):
             row_layout.addWidget(widget)
             return row_layout
 
+        def control_layout_add_text( label_text ):
+            """
+            Define the way, how the labels for input widgets are shown in the gui
+            They are added to a horizontal BoxLayout and afterwards 
+            this layout is added to a vertivalLayoutBox
+            """
+            row_layout = QHBoxLayout()
+            row_layout.addWidget( QLabel(label_text) )
+            return row_layout
 
 
         ############################################################
         #Configure the Gui
         ############################################################
+            ############################################################
+            # additional seeds
+            ############################################################
         drawer_layout = QVBoxLayout()
+        drawer_layout.addLayout( control_layout_add_text("Set additional seeds:") )
+        drawer_layout.addLayout( control_layout_add_text("Caution: no effect in Batch Processing") )
 
+        ############################################################
+        # BEGIN TODO
+        ############################################################
+
+        #TODO distinguish between 2D and 3D images
+        #see volumina/volumina/sliceSelctorHud.py
+        
+        #from: def _handlePositionBoxValueChanged(self, axis, value):
+        #self=QuadStatusBar
+        #signal: self.positionChanged.emit(*new_position)
+        #connection in /volumina/volumina/volumeEditorWidget.py
+        #self=VolumneEditorWidget
+        #self.quadViewStatusBar.positionChanged.connect( setPositionFromQuadBar )
+
+
+        #self.xSpinBox.delayedValueChanged.connect( partial(self._handlePositionBoxValueChanged, 'x') )
+
+        #cursor changed:
+        #self.editor.posModel.cursorPositionChanged.connect(self._updateInfoLabels)
+
+        #volumina/volumina/volumeEditorWidget.py:        self.quadViewStatusBar = QuadStatusBar()
+        #positionChanged = pyqtSignal(int, int, int) # x,y,z
+        
+        def print_val(x,y,z):
+            print "\n\n\n", x, y, z, "  \n\n\n"
+        #TODO
+        #volumeEditorWidget not really initilaized
+        self.volumeEditorWidget.quadViewStatusBar.positionChanged.connect( print_val )#.setToolTipTimeButtonsCrop(True)
+
+        #only for a single spinbox
+        #class SpinBoxImageView(QHBoxLayout):
+            #valueChanged = pyqtSignal(int)
+
+
+
+        test_button = QPushButton("test position", clicked=self.test_print)
+        drawer_layout.addWidget( test_button )
+
+        ############################################################
+        # END TODO
+        ############################################################
+
+            ############################################################
+            # seeded watershed
+            ############################################################
+        drawer_layout.addLayout( control_layout_add_text("Seeded watershed:") )
+
+        '''
         channel_box = QSpinBox()
         def set_channel_box_range(*args):
             if sip.isdeleted(channel_box):
@@ -128,6 +199,7 @@ class WatershedSegmentationGui(LayerViewerGui):
         configure_update_handlers( channel_box.valueChanged, op.ChannelSelection )
         drawer_layout.addLayout( control_layout( "Input Channel", channel_box ) )
         self.channel_box = channel_box
+        '''
 
         '''
         threshold_box = QDoubleSpinBox()
@@ -222,10 +294,12 @@ class WatershedSegmentationGui(LayerViewerGui):
             return False
         with self.set_updating():
             op = self.topLevelOperatorView
+            '''
             self.channel_box.setValue( op.ChannelSelection.value )
             input_layer = self.getLayerByName("Input")
             if input_layer:
                 input_layer.channel = op.ChannelSelection.value
+            '''
             
             #self.threshold_box.setValue( op.Pmin.value )
             #self.membrane_size_box.setValue( op.MinMembraneSize.value )
@@ -243,7 +317,9 @@ class WatershedSegmentationGui(LayerViewerGui):
             return False
         with self.set_updating():
             op = self.topLevelOperatorView
+            '''
             op.ChannelSelection.setValue( self.channel_box.value() )
+            '''
             #op.Pmin.setValue( self.threshold_box.value() )
             #op.MinMembraneSize.setValue( self.membrane_size_box.value() )
             #op.MinSegmentSize.setValue( self.superpixel_size_box.value() )

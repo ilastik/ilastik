@@ -17,8 +17,11 @@ class OpWatershedSegmentation(Operator):
     Provide execution function for the execution of the watershed algorithm
     """
 
-    RawData = InputSlot(optional=True) # Used by the GUI for display only
-    Input = InputSlot() # Can be multi-channel (but you'll have to choose which channel you want to use)
+    RawData = InputSlot() 
+    #RawData = InputSlot(optional=True) # Used by the GUI for display only
+    #Input = InputSlot() # Can be multi-channel (but you'll have to choose which channel you want to use)
+    #TODO remove optional
+    Input = InputSlot(optional=True) # Can be multi-channel (but you'll have to choose which channel you want to use)
 
     ############################################################
     # Define Inputslots for Internal Parameter Usage
@@ -44,8 +47,9 @@ class OpWatershedSegmentation(Operator):
         '''
 
     def setupOutputs(self):
-        assert self.Input.meta.getAxisKeys()[-1] == 'c', \
-            "This operator assumes that channel is the last axis."
+        pass
+        #assert self.Input.meta.getAxisKeys()[-1] == 'c', \
+        "This operator assumes that channel is the last axis."
         '''
         self.Superpixels.meta.assignFrom( self.Input.meta )
         self.Superpixels.meta.shape = self.Input.meta.shape[:-1] + (1,)

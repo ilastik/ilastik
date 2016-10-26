@@ -51,3 +51,4 @@ class WatershedSegmentationApplet( StandardApplet ):
     @property
     def dataSerializers(self):
         return self._serializableItems
+
