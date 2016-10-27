@@ -373,7 +373,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             
             pluginPath = os.path.join(os.path.dirname(os.path.abspath(hytra.__file__)), 'plugins')
             
-            self.mergerResolver = IlastikMergerResolver(originalGraph, pluginPaths=[pluginPath])
+            self.mergerResolver = IlastikMergerResolver(originalGraph, pluginPaths=[pluginPath], withFullGraph=True)
             
             # Fit and refine merger nodes using a GMM 
             # It has to be done per time-step in order to aviod loading the whole video on RAM
