@@ -78,14 +78,36 @@ class WatershedSegmentationGui(LayerViewerGui):
         self.topLevelOperatorView.watershed_completed.subscribe( self.updateAllLayers )
         '''
 
-    #TODO
-    def test_print(self):
-        #TODO erstelle Button, welcher beim klicken diese werte ausgibt
-        #print "\n\n\n"
-        print "\n"
-        print self.volumeEditorWidget.quadViewStatusBar.xSpinBox.value()
-        print self.volumeEditorWidget.quadViewStatusBar.ySpinBox.value()
-        print self.volumeEditorWidget.quadViewStatusBar.zSpinBox.value()
+    def on_SpinBox_valueChanged(self, i):
+        """
+        executed when x,y or z is changed
+        get the current values and change the view for the pixel-value
+        The spinbox has updated its value, 
+        so the new value i (of signal) == x.SpinBox.value() (for y,z as well)
+
+        """
+        x = self.volumeEditorWidget.quadViewStatusBar.xSpinBox.value()
+        y = self.volumeEditorWidget.quadViewStatusBar.ySpinBox.value()
+        z = self.volumeEditorWidget.quadViewStatusBar.zSpinBox.value()
+        self.changeToNewPixelValue(x, y, z)
+
+    def changeToNewPixelValue(self, x, y, z):
+        #TODO check for dimension or for tag t
+        op = self.topLevelOperatorView
+        xIndex = op.RawData.meta.axistags.index('x')
+        yIndex = op.RawData.meta.axistags.index('y')
+        zIndex = op.RawData.meta.axistags.index('z')
+        array = [0,0,0]
+        array[xIndex] = x
+        array[yIndex] = y
+        array[zIndex] = z
+
+        newValue = op.RawData.value[array[0],array[1],array[2]][0]
+        self.pixelValue.setText(str(newValue))
+        #print op.RawData.value[x,y,z]
+
+
+
 
     def initAppletDrawerUi(self):
         """
@@ -106,7 +128,6 @@ class WatershedSegmentationGui(LayerViewerGui):
             They are added to a horizontal BoxLayout and afterwards 
             this layout is added to a vertivalLayoutBox
             """
-            #TODO
             row_layout = QHBoxLayout()
             row_layout.addWidget( QLabel(label_text) )
             row_layout.addSpacerItem( QSpacerItem(10, 0, QSizePolicy.Expanding) )
@@ -139,38 +160,30 @@ class WatershedSegmentationGui(LayerViewerGui):
         ############################################################
 
         #TODO distinguish between 2D and 3D images
-        #see volumina/volumina/sliceSelctorHud.py
+
+        pixelValue = QLabel('empty')
+        #TODO configure_update_handlers( threshold_box.valueChanged, op.Pmin )
+        drawer_layout.addLayout( control_layout("Pixel-Value:", pixelValue) )
+        self.pixelValue = pixelValue
         
-        #from: def _handlePositionBoxValueChanged(self, axis, value):
-        #self=QuadStatusBar
-        #signal: self.positionChanged.emit(*new_position)
-        #connection in /volumina/volumina/volumeEditorWidget.py
-        #self=VolumneEditorWidget
-        #self.quadViewStatusBar.positionChanged.connect( setPositionFromQuadBar )
-
-
-        #self.xSpinBox.delayedValueChanged.connect( partial(self._handlePositionBoxValueChanged, 'x') )
-
-        #cursor changed:
-        #self.editor.posModel.cursorPositionChanged.connect(self._updateInfoLabels)
-
-        #volumina/volumina/volumeEditorWidget.py:        self.quadViewStatusBar = QuadStatusBar()
-        #positionChanged = pyqtSignal(int, int, int) # x,y,z
         
-        def print_val(x,y,z):
-            print "\n\n\n", x, y, z, "  \n\n\n"
-        #TODO
-        #volumeEditorWidget not really initilaized
-        self.volumeEditorWidget.quadViewStatusBar.positionChanged.connect( print_val )#.setToolTipTimeButtonsCrop(True)
+        # Connect the standard signal, that is emitted, when a QSpinBox changes its value, 
+        # 'valueChanged' with the function that handles this change
+        # to compute the changed value of the pixel with the new coordinates
+        # Origin for better understanding:
+        # volumina/volumina/sliceSelctorHud.py:
+        # QuadStatusBar.xSpinBox (and y,z)
+        # with standard signal: valueChanged
+        # /volumina/volumina/volumeEditorWidget.py
+        # self=VolumneEditorWidget
+        # self.quadViewStatusBar = QuadStatusBar()
+        self.volumeEditorWidget.quadViewStatusBar.xSpinBox.valueChanged.connect( 
+                self.on_SpinBox_valueChanged )
+        self.volumeEditorWidget.quadViewStatusBar.ySpinBox.valueChanged.connect( 
+                self.on_SpinBox_valueChanged )
+        self.volumeEditorWidget.quadViewStatusBar.zSpinBox.valueChanged.connect( 
+                self.on_SpinBox_valueChanged )
 
-        #only for a single spinbox
-        #class SpinBoxImageView(QHBoxLayout):
-            #valueChanged = pyqtSignal(int)
-
-
-
-        test_button = QPushButton("test position", clicked=self.test_print)
-        drawer_layout.addWidget( test_button )
 
         ############################################################
         # END TODO
