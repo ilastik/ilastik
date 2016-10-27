@@ -63,6 +63,7 @@ class WatershedSegmentationGui(LayerViewerGui):
     ###########################################
     
     def __init__(self, parentApplet, topLevelOperatorView):
+        self.RawDataName = "Seeds"
         self.__cleanup_fns = []
         self._currently_updating = False
         self.topLevelOperatorView = topLevelOperatorView
@@ -84,29 +85,132 @@ class WatershedSegmentationGui(LayerViewerGui):
         get the current values and change the view for the pixel-value
         The spinbox has updated its value, 
         so the new value i (of signal) == x.SpinBox.value() (for y,z as well)
+        i remains unused
 
         """
         x = self.volumeEditorWidget.quadViewStatusBar.xSpinBox.value()
         y = self.volumeEditorWidget.quadViewStatusBar.ySpinBox.value()
         z = self.volumeEditorWidget.quadViewStatusBar.zSpinBox.value()
-        self.changeToNewPixelValue(x, y, z)
+        t = self.volumeEditorWidget.quadViewStatusBar.timeSpinBox.value()
+        #TODO take channels into account, not always looking at the first channel
+        c = self.channel_box.value()
+        self.changeToNewPixelValue(x, y, z, t, c)
 
-    def changeToNewPixelValue(self, x, y, z):
-        #TODO check for dimension or for tag t
+    def changeToNewPixelValue(self, x, y, z, t, c):
         op = self.topLevelOperatorView
-        xIndex = op.RawData.meta.axistags.index('x')
-        yIndex = op.RawData.meta.axistags.index('y')
-        zIndex = op.RawData.meta.axistags.index('z')
-        array = [0,0,0]
-        array[xIndex] = x
-        array[yIndex] = y
-        array[zIndex] = z
+        data = op.RawData
+        tags = data.meta.axistags
+        if data.ready():
+            # rearrangement to have the correct axis-order
+            # indices always start with 0,1,...
+            xIndex = tags.index('x')
+            yIndex = tags.index('y')
+            zIndex = tags.index('z')
+            tIndex = tags.index('t')
+            cIndex = tags.index('c')
 
-        newValue = op.RawData.value[array[0],array[1],array[2]][0]
-        self.pixelValue.setText(str(newValue))
-        #print op.RawData.value[x,y,z]
+            count = 0
+            array = [0,0,0,0,0]
+            # if the dimensions are tagged, then they are ordered like: 0,1,2
+            # and not like 1, 2, 3
+            # so that the section with e.g. count == 3 makes sense
+            
+            if ('x' in tags):
+                count+=1
+                array[xIndex] = x
+            if ('y' in tags):
+                count+=1
+                array[yIndex] = y
+            if ('z' in tags):
+                count+=1
+                array[zIndex] = z
+            if ('t' in tags):
+                count+=1
+                array[tIndex] = t
+            if ('c' in tags):
+                count+=1
+                array[cIndex] = c
+
+            if (count == 2):
+                newValue = data.value[array[0],array[1]]
+            elif (count == 3):
+                newValue = data.value[array[0],array[1],array[2]]
+            elif (count == 4):
+                newValue = data.value[array[0],array[1],array[2],array[3]]
+            elif (count == 5):
+                newValue = data.value[array[0],array[1],array[2],array[3],array[4]]
+
+            #show the value of the pixel under the curser on the gui
+            self.pixelValue.setText(str(newValue))
+
+            """print infos
+            print xIndex, ":", yIndex, ":", zIndex, ":", tIndex
+            print tags
+            print data
+            print "array:", array
+            print "pixelValue:", newValue
+            """
 
 
+
+
+
+
+    def toggleConnectionPixelValue(self):
+        """
+        connect or disconnect the valueChanged signals from 
+        coordinates x,y,z,t,c with the slot: on_SpinBox_valueChanged
+        so that changes can be registered or not
+        Additionally: change the label of the pixelValue
+
+        Explanation for the x,y,z,timeSpinBox:
+        # Connect the standard signal, that is emitted, when a QSpinBox changes its value, 
+        # 'valueChanged' with the function that handles this change
+        # to compute the changed value of the pixel with the new coordinates
+        # Origin for better understanding:
+        # volumina/volumina/sliceSelctorHud.py:
+        # QuadStatusBar.xSpinBox (and y,z)
+        # with standard signal: valueChanged
+        # /volumina/volumina/volumeEditorWidget.py
+        # self=VolumneEditorWidget
+        # self.quadViewStatusBar = QuadStatusBar()
+        """
+
+        if self.showPixelValue.isChecked():
+            #connect x,y,z,t,c
+            self.volumeEditorWidget.quadViewStatusBar.xSpinBox.valueChanged.connect( 
+                    self.on_SpinBox_valueChanged )
+            self.volumeEditorWidget.quadViewStatusBar.ySpinBox.valueChanged.connect( 
+                    self.on_SpinBox_valueChanged )
+            self.volumeEditorWidget.quadViewStatusBar.zSpinBox.valueChanged.connect( 
+                    self.on_SpinBox_valueChanged )
+            self.volumeEditorWidget.quadViewStatusBar.timeSpinBox.valueChanged.connect( 
+                    self.on_SpinBox_valueChanged )
+            self.channel_box.valueChanged.connect( 
+                    self.on_SpinBox_valueChanged )
+            #emit signal (of local widget) to read in the pixel values immediately 
+            #number is irrelevant, see on_SpinBox_valueChanged
+            self.channel_box.valueChanged.emit(0)
+        else:
+            #disconnect x,y,z,t,c
+            self.volumeEditorWidget.quadViewStatusBar.xSpinBox.valueChanged.disconnect( 
+                    self.on_SpinBox_valueChanged )
+            self.volumeEditorWidget.quadViewStatusBar.ySpinBox.valueChanged.disconnect( 
+                    self.on_SpinBox_valueChanged )
+            self.volumeEditorWidget.quadViewStatusBar.zSpinBox.valueChanged.disconnect( 
+                    self.on_SpinBox_valueChanged )
+            self.volumeEditorWidget.quadViewStatusBar.timeSpinBox.valueChanged.disconnect( 
+                    self.on_SpinBox_valueChanged )
+            self.channel_box.valueChanged.disconnect( 
+                    self.on_SpinBox_valueChanged )
+            #reset pixelValue-Label
+            self.pixelValue.setText("unused")
+
+
+    def on_RawData_Layer_channelChanged(self, i):
+        self.channel_box.setValue(i)
+        #setValue() will emit valueChanged() if the new value is different from the old one.
+        #not necessary: self.channel_box.valueChanged.emit(i)
 
 
     def initAppletDrawerUi(self):
@@ -122,68 +226,95 @@ class WatershedSegmentationGui(LayerViewerGui):
             op_slot.notifyDirty( self.configure_gui_from_operator )
             self.__cleanup_fns.append( partial( op_slot.unregisterDirty, self.configure_gui_from_operator ) )
 
-        def control_layout( label_text, widget ):
+        def control_layout_wlw( widget1, label_text, widget2 ):
             """
             Define the way, how the labels for input widgets are shown in the gui
             They are added to a horizontal BoxLayout and afterwards 
             this layout is added to a vertivalLayoutBox
             """
             row_layout = QHBoxLayout()
+            row_layout.addWidget(widget1)
             row_layout.addWidget( QLabel(label_text) )
             row_layout.addSpacerItem( QSpacerItem(10, 0, QSizePolicy.Expanding) )
-            row_layout.addWidget(widget)
+            row_layout.addWidget(widget2)
             return row_layout
 
-        def control_layout_add_text( label_text ):
+        def control_layout(*args):
             """
-            Define the way, how the labels for input widgets are shown in the gui
+            Define the way, how the input widgets are shown in the gui
             They are added to a horizontal BoxLayout and afterwards 
             this layout is added to a vertivalLayoutBox
             """
+            space=10
             row_layout = QHBoxLayout()
-            row_layout.addWidget( QLabel(label_text) )
+            begin = True
+            # Add all arguments passed on
+            for widget in args:
+                #convert strings to QLabel
+                #for python3.x add:
+                #basestring = str
+                if isinstance(widget, basestring):
+                    widget = QLabel(widget)
+                #only add space after first widget
+                if not begin:
+                    row_layout.addSpacerItem( QSpacerItem(space, 0, QSizePolicy.Expanding) )
+                row_layout.addWidget(widget)
+                begin = False
             return row_layout
+
 
 
         ############################################################
         #Configure the Gui
         ############################################################
+        drawer_layout = QVBoxLayout()
+
             ############################################################
             # additional seeds
             ############################################################
-        drawer_layout = QVBoxLayout()
-        drawer_layout.addLayout( control_layout_add_text("Set additional seeds:") )
-        drawer_layout.addLayout( control_layout_add_text("Caution: no effect in Batch Processing") )
+        drawer_layout.addLayout( control_layout("Set additional seeds:") )
+        drawer_layout.addLayout( control_layout("Caution: no effect in Batch Processing") )
+        drawer_layout.addLayout( control_layout("") )
 
+        #channel Selection
+        channel_box = QSpinBox()
+        def set_channel_box_range(*args):
+            if sip.isdeleted(channel_box):
+                return
+            channel_box.setMinimum(0)
+            #throws an exception, if probabilities in input data aren't there, 
+            #Fixed with op.Input.ready()
+            if op.RawData.ready():
+                channel_box.setMaximum( op.RawData.meta.getTaggedShape()['c']-1 )
+            else:
+                #only showed in debug mode
+                #TODO not good, because emitted everytime when Input Data is changed
+                logging.warning( "RawData not ready (maybe not existing)" )
+
+        set_channel_box_range()
+        op.RawData.notifyMetaChanged( set_channel_box_range )
+        configure_update_handlers( channel_box.valueChanged, op.ChannelSelection )
+        drawer_layout.addLayout( control_layout( self.RawDataName + " Channel", channel_box ) )
+        self.channel_box = channel_box
+
+
+        #show pixel value
+        pixelValue = QLabel('unused')
+        showPixelValue = QCheckBox()
+        #configure_update_handlers not necessary here, 
+        #because no information is passed on for calculations
+        drawer_layout.addLayout( control_layout_wlw(showPixelValue, "Show Pixel-Value:", pixelValue) )
+        self.pixelValue = pixelValue
+        self.showPixelValue = showPixelValue
+        self.showPixelValue.stateChanged.connect(self.toggleConnectionPixelValue)
+        
+        
         ############################################################
         # BEGIN TODO
         ############################################################
 
-        #TODO distinguish between 2D and 3D images
-
-        pixelValue = QLabel('empty')
-        #TODO configure_update_handlers( threshold_box.valueChanged, op.Pmin )
-        drawer_layout.addLayout( control_layout("Pixel-Value:", pixelValue) )
-        self.pixelValue = pixelValue
-        
-        
-        # Connect the standard signal, that is emitted, when a QSpinBox changes its value, 
-        # 'valueChanged' with the function that handles this change
-        # to compute the changed value of the pixel with the new coordinates
-        # Origin for better understanding:
-        # volumina/volumina/sliceSelctorHud.py:
-        # QuadStatusBar.xSpinBox (and y,z)
-        # with standard signal: valueChanged
-        # /volumina/volumina/volumeEditorWidget.py
-        # self=VolumneEditorWidget
-        # self.quadViewStatusBar = QuadStatusBar()
-        self.volumeEditorWidget.quadViewStatusBar.xSpinBox.valueChanged.connect( 
-                self.on_SpinBox_valueChanged )
-        self.volumeEditorWidget.quadViewStatusBar.ySpinBox.valueChanged.connect( 
-                self.on_SpinBox_valueChanged )
-        self.volumeEditorWidget.quadViewStatusBar.zSpinBox.valueChanged.connect( 
-                self.on_SpinBox_valueChanged )
-
+        #TODO for the range of point 2.
+        #op.RawData.meta.drange
 
         ############################################################
         # END TODO
@@ -192,26 +323,11 @@ class WatershedSegmentationGui(LayerViewerGui):
             ############################################################
             # seeded watershed
             ############################################################
-        drawer_layout.addLayout( control_layout_add_text("Seeded watershed:") )
+        drawer_layout.addLayout( control_layout("") )
+        drawer_layout.addLayout( control_layout("Seeded watershed:") )
+
 
         '''
-        channel_box = QSpinBox()
-        def set_channel_box_range(*args):
-            if sip.isdeleted(channel_box):
-                return
-            channel_box.setMinimum(0)
-            #TODO throws an exception, if probabilities in input data aren't there, 
-            # use a control machanism, that watershed can't be clicked on, or that a warning will be seen
-            #print "\n\n" , op.Input.meta.getTaggedShape()['c'] , "\n\n"
-            channel_box.setMaximum( op.Input.meta.getTaggedShape()['c']-1 )
-
-        #Setting the Layout of the widget starts here. 
-        #There is no .ui file used, just code
-        set_channel_box_range()
-        op.Input.notifyMetaChanged( set_channel_box_range )
-        configure_update_handlers( channel_box.valueChanged, op.ChannelSelection )
-        drawer_layout.addLayout( control_layout( "Input Channel", channel_box ) )
-        self.channel_box = channel_box
         '''
 
         '''
@@ -426,6 +542,7 @@ class WatershedSegmentationGui(LayerViewerGui):
             layers.append(layer)
             del layer
 
+        """
         # Raw Data (grayscale)
         if op.RawData.ready():
             layer = self.createStandardLayerFromSlot( op.RawData )
@@ -434,5 +551,19 @@ class WatershedSegmentationGui(LayerViewerGui):
             layer.opacity = 1.0
             layers.append(layer)
             del layer
+        """
+
+        # Input Data (grayscale) (Probabilities)
+        if op.RawData.ready():
+            layer = self._create_grayscale_layer_from_slot( op.RawData, op.RawData.meta.getTaggedShape()['c'] )
+            #changing the Channel in the layer, 
+            #changes the RawData Channel in the applet gui as well
+            layer.channelChanged.connect(self.on_RawData_Layer_channelChanged)
+            layer.name = self.RawDataName
+            layer.visible = True
+            layer.opacity = 1.0
+            layers.append(layer)
+            del layer
+
 
         return layers
