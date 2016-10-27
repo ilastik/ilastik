@@ -256,7 +256,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             disappearance_cost = 500,
             motionModelWeight=10.0,
             force_build_hypotheses_graph = False,
-            max_nearest_neighbors = 1,
+            max_nearest_neighbors = 2,
             withBatchProcessing = False,
             solverName="ILP"
             ):
@@ -294,6 +294,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         parameters['y_range'] = y_range
         parameters['z_range'] = z_range
         parameters['size_range'] = size_range
+        parameters['max_nearest_neighbors'] = max_nearest_neighbors
 
         if cplex_timeout:
             parameters['cplex_timeout'] = cplex_timeout

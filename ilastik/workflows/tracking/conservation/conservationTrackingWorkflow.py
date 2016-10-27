@@ -348,6 +348,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
             cplex_timeout = parameters['cplex_timeout'],
             appearance_cost = parameters['appearanceCost'],
             disappearance_cost = parameters['disappearanceCost'],
+            max_nearest_neighbors = parameters['max_nearest_neighbors'],
             force_build_hypotheses_graph = False,
             withBatchProcessing = True
         )

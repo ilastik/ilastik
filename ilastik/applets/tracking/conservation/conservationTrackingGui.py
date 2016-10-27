@@ -84,6 +84,8 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             self._drawer.appearanceBox.setValue(parameters['appearanceCost'])
         if 'disappearanceCost' in parameters.keys():
             self._drawer.disappearanceBox.setValue(parameters['disappearanceCost'])
+        if 'max_nearest_neighbors' in parameters.keys():
+            self._drawer.maxNearestNeighborsSpinBox.setValue(parameters['max_nearest_neighbors'])
         
         if 'withAnimalTracking' in parameters.keys() and parameters['withAnimalTracking'] == True:
             self._drawer.divisionsBox.hide()       
