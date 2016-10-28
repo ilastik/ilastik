@@ -76,38 +76,60 @@ class VigraObjFeats(ObjectFeaturesPlugin):
                 v['margin'] = 0
             #build human readable names from vigra names
             #TODO: many cases are not covered
-            if "Central<PowerSum<" in f:
-                v['tooltip'] = "Unnormalized central moment: Sum_i{(X_i-object_mean)^n}"
-                v['advanced'] = True
-            elif "PowerSum<" in f:
-                v['tooltip'] = "Unnormalized moment: Sum_i{(X_i)^n}"
-                v['advanced'] = True
-            elif "Minimum" in f:
-                v['tooltip'] = "Minimum"
-            elif "Maximum" in f:
-                v['tooltip'] = "Maximum"
-            elif "Variance" in f:
-                v['tooltip'] = "Variance"
-            elif "Skewness" in f:
-                v['tooltip'] = "Skewness"
-            elif "Kurtosis" in f:
-                v['tooltip'] = "Kurtosis"
-            else:
-                v['tooltip'] = f
-            if "Principal<" in f:
-                v['tooltip'] = v['tooltip'] + ", projected onto PCA eigenvectors"
-                v['advanced'] = True
-            if "Coord<" in f:
-                v['tooltip'] = v['tooltip'] + ", computed from object pixel coordinates"
-            if not "Coord<" in f:
-                v['tooltip'] = v['tooltip'] + ", computed from raw pixel values"
-            if "DivideByCount<" in f:
-                v['tooltip'] = v['tooltip'] + ", divided by the number of pixels"
-                v['advanced'] = True
-            if self.local_suffix in f:
-                v['tooltip'] = v['tooltip'] + ", as defined by neighborhood size below"
+            props = self.find_properties(f)
+            for prop_name, prop_value in props.iteritems():
+                v[prop_name] = prop_value
         
         return result
+
+    def find_properties(self, feature_name):
+
+        tooltip = feature_name
+        advanced = False
+        displaytext = feature_name
+        detailtext = feature_name
+
+        if feature_name == "Count":
+            displaytext = "Size in pixels"
+            detailtext = "Size in pixels as we usually compute it. Just that. Nothing else."
+
+        if "Central<PowerSum<" in feature_name:
+            tooltip =  "Unnormalized central moment: Sum_i{(X_i-object_mean)^n}"
+            advanced = True
+        elif "PowerSum<" in feature_name:
+            tooltip = "Unnormalized moment: Sum_i{(X_i)^n}"
+            advanced = True
+        elif "Minimum" in feature_name:
+            tooltip = "Minimum"
+
+        elif "Maximum" in feature_name:
+            tooltip = "Maximum"
+        elif "Variance" in feature_name:
+            tooltip = "Variance"
+        elif "Skewness" in feature_name:
+            tooltip = "Skewness"
+        elif "Kurtosis" in feature_name:
+            tooltip = "Kurtosis"
+
+        if "Principal<" in feature_name:
+            tooltip = tooltip + ", projected onto PCA eigenvectors"
+            advanced = True
+        if "Coord<" in feature_name:
+            tooltip = tooltip + ", computed from object pixel coordinates"
+        if not "Coord<" in feature_name:
+            tooltip = tooltip + ", computed from raw pixel values"
+        if "DivideByCount<" in feature_name:
+            tooltip = tooltip + ", divided by the number of pixels"
+            advanced = True
+        if self.local_suffix in feature_name:
+            tooltip = tooltip + ", as defined by neighborhood size below"
+
+        props = {}
+        props["tooltip"] = tooltip
+        props["advanced"] = advanced
+        props["displaytext"] = displaytext
+        props["detailtext"] = detailtext
+        return props
 
     def _do_4d(self, image, labels, features, axes):
         if self.ndim==2:

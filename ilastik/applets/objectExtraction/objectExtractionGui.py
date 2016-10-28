@@ -41,8 +41,9 @@ import volumina.colortables as colortables
 from volumina.utility import encode_from_qstring
 
 import vigra
-import numpy as np
+import numpy
 
+from PyQt4 import QtGui
 from PyQt4.QtGui import QDialog, QFileDialog
 
 import cPickle as pickle
@@ -66,11 +67,12 @@ class FeatureSelectionDialog(QDialog):
         """
         QDialog.__init__(self, parent)
         self.featureDict = featureDict
+        self.displayNamesDict = {}
         if selectedFeatures is None or len(selectedFeatures) == 0:
             selectedFeatures = defaultdict(list)
         self.selectedFeatures = selectedFeatures
         self.setWindowTitle("Object Features")
-        ui_class, widget_class = uic.loadUiType(os.path.split(__file__)[0] + "/featureSelection.ui")
+        ui_class, widget_class = uic.loadUiType(os.path.split(__file__)[0] + "/featureSelectionWithHelp.ui")
         self.ui = ui_class()
         self.ui.setupUi(self)
         self.ui.buttonBox.accepted.connect(self.accept)
@@ -78,6 +80,12 @@ class FeatureSelectionDialog(QDialog):
 
         self.ui.allButton.pressed.connect(self.handleAll)
         self.ui.noneButton.pressed.connect(self.handleNone)
+
+        #self.ui.treeWidget.header().setResizeMode(QtGui.QHeaderView.ResizeToContents)
+        self.ui.treeWidget.header().setResizeMode(QtGui.QHeaderView.Stretch)
+        self.ui.treeWidget.header().setStretchLastSection(False)
+
+        self.ui.textBrowser.setText("Click on the \"?\" to get detailed information about a feature")
 
         self.countChecked = {}
         self.countAll = {}
@@ -89,12 +97,13 @@ class FeatureSelectionDialog(QDialog):
         self.setObjectName("FeatureSelectionDialog")
 
     def populate(self):
-        self.ui.treeWidget.setColumnCount(1)
+        #self.ui.treeWidget.setColumnCount(2)
         for pluginName, features in self.featureDict.iteritems():
             if pluginName=="TestFeatures" and not ilastik_config.getboolean("ilastik", "debug"):
                 continue
             parent = QTreeWidgetItem(self.ui.treeWidget)
             parent.setText(0, pluginName)
+            parent.setText(1, "?")
             parent.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
             # hack to ensure checkboxes visible
             parent.setCheckState(0, Qt.Checked)
@@ -115,10 +124,21 @@ class FeatureSelectionDialog(QDialog):
                 parameters = features[name]
                 
                 item = QTreeWidgetItem(parent)
-                item.setText(0, name)
+                if 'displaytext' in parameters:
+                    itemtext = parameters['displaytext']
+                else:
+                    itemtext = name
+                item.setText(0, itemtext)
+                item.setText(1, "?")
+                #from PyQt4.QtGui import QStyle, QIcon
+                #item.setIcon(1, QIcon(QStyle.SP_TitleBarContextHelpButton))
+
+                self.displayNamesDict[itemtext] = name
                 item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
                 if 'tooltip' in parameters:
                     item.setToolTip(0, parameters['tooltip'])
+                #if 'detailtext' in parameters:
+                #    item.setText(1, parameters['detailtext'])
                 # hack to ensure checkboxes visible
                 item.setCheckState(0, Qt.Checked)
                 item.setCheckState(0, Qt.Unchecked)
@@ -135,6 +155,8 @@ class FeatureSelectionDialog(QDialog):
             self.updateToolTip(parent)
         # facilitates switching of the CheckBox when clicking on the Text of a QTreeWidgetItem
         self.ui.treeWidget.setCurrentItem(None)
+        #self.ui.treeWidget.resizeColumnToContents(0)
+        #self.ui.treeWidget.resizeColumnToContents(1)
 
     def updateTree(self, item, col):
         # Clicking on the CheckBox OR Text of a QTreeWidgetItem should change the check.
@@ -148,6 +170,9 @@ class FeatureSelectionDialog(QDialog):
         currentItem = self.ui.treeWidget.currentItem()
         if itemParent == None: # user clicked a Plugin Name
             pluginName=str(item.text(0))
+            if col==1:
+                self.ui.textBrowser.setText("here we will have plugin help")
+                return
             if currentItem == item: # user clicked on the text
                 if item.checkState(0) == Qt.PartiallyChecked or item.checkState(0) == Qt.Unchecked:
                     item.setCheckState(0, Qt.Checked)
@@ -166,6 +191,13 @@ class FeatureSelectionDialog(QDialog):
         else: # user clicked a Feature
             pluginName=str(itemParent.text(0))
             itemName=str(item.text(0))
+            if col==1:
+                plugin_feature_name = self.displayNamesDict[itemName]
+                try:
+                    self.ui.textBrowser.setText(self.featureDict[pluginName][plugin_feature_name]["detailtext"])
+                except KeyError:
+                    self.ui.textBrowser.setText("Sorry, no detailed description is available for this feature")
+                return
             if currentItem == item: # user clicked on the text
                 if item.checkState(0) == Qt.Checked:
                     item.setCheckState(0, Qt.Unchecked)
@@ -219,13 +251,19 @@ class FeatureSelectionDialog(QDialog):
             featnames = list(str(item.text(0)) for item in parent.takeChildren()
                          if item.checkState(0) == Qt.Checked)
             if len(featnames) > 0:
+                # we are building the dictionary again, have to transfer all the properties
                 features = {}
-                for f in featnames:
-                    features[f] = {}
-                    if 'margin' in self.featureDict[plugin][f]:
-                        features[f]['margin'] = margin
-                    if 'advanced' in self.featureDict[plugin][f]:
-                        features[f]['advanced'] = True
+                for ff in featnames:
+                    #do the reverse lookup from displayed names to names in the plugin
+                    plugin_feature_name = self.displayNamesDict[ff]
+                    features[plugin_feature_name] = {}
+                    # properties other than margin have not changed, copy them over
+                    for prop_name, prop_value in self.featureDict[plugin][plugin_feature_name].iteritems():
+                        features[plugin_feature_name][prop_name] = prop_value
+                    # update the margin
+                    if 'margin' in self.featureDict[plugin][plugin_feature_name]:
+                        features[plugin_feature_name]['margin'] = margin
+
                 selectedFeatures[plugin] = features
         self.selectedFeatures = selectedFeatures
 
@@ -390,7 +428,6 @@ class ObjectExtractionGui(LayerViewerGui):
 
         plugins = pluginManager.getPluginsOfCategory('ObjectFeatures')
         taggedShape = mainOperator.RawImage.meta.getTaggedShape()
-        fakeimg = None
         fakeimgshp = [taggedShape['x'], taggedShape['y']]
         fakelabelsshp = [taggedShape['x'], taggedShape['y']]
         ndim = 3
@@ -403,8 +440,8 @@ class ObjectExtractionGui(LayerViewerGui):
         if 'c' in taggedShape and taggedShape['c']>1:
             fakeimgshp.append(taggedShape['c'])
         
-        fakeimg = np.empty(fakeimgshp, dtype=np.float32)
-        fakelabels = np.empty(fakelabelsshp, dtype=np.uint32)
+        fakeimg = numpy.empty(fakeimgshp, dtype=numpy.float32)
+        fakelabels = numpy.empty(fakelabelsshp, dtype=numpy.uint32)
         
         if ndim==3:
             fakelabels = vigra.taggedView(fakelabels, 'xyz')
@@ -418,6 +455,7 @@ class ObjectExtractionGui(LayerViewerGui):
                 fakeimg = vigra.taggedView(fakeimg, 'xyc')
             else:
                 fakeimg = vigra.taggedView(fakeimg, 'xy')
+
         for pluginInfo in plugins:
             availableFeatures = pluginInfo.plugin_object.availableFeatures(fakeimg, fakelabels)
             if len(availableFeatures) > 0:

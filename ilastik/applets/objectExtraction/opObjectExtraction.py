@@ -25,7 +25,7 @@ import collections
 from functools import partial
 
 # SciPy
-import numpy as np
+import numpy
 import vigra.analysis
 
 #lazyflow
@@ -95,22 +95,22 @@ def make_bboxes(binary_bbox, margin):
 
     """
     # object and context
-    max_margin = np.max(margin).astype(np.float32)
+    max_margin = numpy.max(margin).astype(numpy.float32)
     scaled_margin = (max_margin // margin)
     if len(margin) > 2:
-        dt = vigra.filters.distanceTransform(np.asarray(binary_bbox, dtype=np.float32),
+        dt = vigra.filters.distanceTransform(numpy.asarray(binary_bbox, dtype=numpy.float32),
                                                background=True,
-                                               pixel_pitch=np.asarray(scaled_margin).astype(np.float64))
+                                               pixel_pitch=numpy.asarray(scaled_margin).astype(numpy.float64))
     else:
-        dt = vigra.filters.distanceTransform(np.asarray(binary_bbox.squeeze(), dtype=np.float32),
-                                               pixel_pitch=np.asarray(scaled_margin).astype(np.float64))
+        dt = vigra.filters.distanceTransform(numpy.asarray(binary_bbox.squeeze(), dtype=numpy.float32),
+                                               pixel_pitch=numpy.asarray(scaled_margin).astype(numpy.float64))
         dt = dt.reshape(dt.shape + (1,))
 
     assert dt.ndim == 3
-    passed = np.asarray(dt < max_margin).astype(np.bool)
+    passed = numpy.asarray(dt < max_margin).astype(numpy.bool)
 
     # context only
-    context = np.asarray(passed) - np.asarray(binary_bbox).astype(np.bool)
+    context = numpy.asarray(passed) - numpy.asarray(binary_bbox).astype(numpy.bool)
     return passed, context
 
 
@@ -156,7 +156,7 @@ class OpCachedRegionFeatures(Operator):
         taggedOutputShape = self.LabelImage.meta.getTaggedShape()
         taggedRawShape = self.RawImage.meta.getTaggedShape()
 
-        if not np.all(list(taggedOutputShape.get(k, 0) == taggedRawShape.get(k, 0)
+        if not numpy.all(list(taggedOutputShape.get(k, 0) == taggedRawShape.get(k, 0)
                            for k in "txyz")):
             raise DatasetConstraintError( "Object Extraction",
                                           "Raw Image and Label Image shapes do not match.\n"\
@@ -286,8 +286,8 @@ class OpObjectCenterImage(Operator):
                 a = b
                 T += 1
             time_index = self.BinaryImage.meta.axistags.index('t')
-            stop = np.asarray(self.BinaryImage.meta.shape, dtype=np.int)
-            start = np.zeros_like(stop)
+            stop = numpy.asarray(self.BinaryImage.meta.shape, dtype=numpy.int)
+            start = numpy.zeros_like(stop)
             stop[time_index] = T
             start[time_index] = t
             
@@ -465,22 +465,22 @@ class OpObjectExtraction(Operator):
         # Convert to str.
         dtype_names = map(str, dtype_names)
         
-        dtype_types.insert(0, np.dtype(np.uint32).str)
-        dtype_types.insert(0, np.dtype(np.uint32).str)
+        dtype_types.insert(0, numpy.dtype(numpy.uint32).str)
+        dtype_types.insert(0, numpy.dtype(numpy.uint32).str)
         
         nobjects_total = sum(nobjects)
         
-        table = np.zeros(nobjects_total, dtype = {'names': dtype_names, 'formats': dtype_types})
+        table = numpy.zeros(nobjects_total, dtype = {'names': dtype_names, 'formats': dtype_types})
         
-        #table = np.zeros(4, dtype = {'names': ['Mean', 'Coord<Maximum>_ch_0'], \
-        #                           'formats': [np.dtype(np.uint32), np.dtype(np.uint8)]})
+        #table = numpy.zeros(4, dtype = {'names': ['Mean', 'Coord<Maximum>_ch_0'], \
+        #                           'formats': [numpy.dtype(numpy.uint32), numpy.dtype(numpy.uint8)]})
         
         
         start = 0
         finish = start
         for itime in range(ntimes):
             finish = start+nobjects[itime]
-            table["Object id"][start: finish] = np.arange(nobjects[itime])
+            table["Object id"][start: finish] = numpy.arange(nobjects[itime])
             table["Time"][start: finish] = itime
             nfeat = 2
             for plugin_name, plugins in features[itime].iteritems():
@@ -529,7 +529,7 @@ class OpRegionFeatures(Operator):
         taggedOutputShape = self.LabelVolume.meta.getTaggedShape()
         taggedRawShape = self.RawVolume.meta.getTaggedShape()
 
-        if not np.all(list(taggedOutputShape.get(k, 0) == taggedRawShape.get(k, 0)
+        if not numpy.all(list(taggedOutputShape.get(k, 0) == taggedRawShape.get(k, 0)
                            for k in "txyz")):
             raise Exception("shapes do not match. label volume shape: {}."
                             " raw data shape: {}".format(
@@ -668,7 +668,7 @@ class OpRegionFeatures(Operator):
                 extrafeats[feat_key] = feature
         else:
             logger.debug("default features not computed, computing separately")
-            extrafeats_acc = vigra.analysis.extractRegionFeatures(image[slc3d].squeeze().astype(np.float32), labels.squeeze(),
+            extrafeats_acc = vigra.analysis.extractRegionFeatures(image[slc3d].squeeze().astype(numpy.float32), labels.squeeze(),
                                                         default_features.keys(),
                                                         ignoreLabel=0)
             #remove the 0th object, we'll add it again later
@@ -702,14 +702,14 @@ class OpRegionFeatures(Operator):
                     break
             
                             
-        if np.any(margin) > 0:
+        if numpy.any(margin) > 0:
             #starting from 0, we stripped 0th background object in global computation
             for i in range(0, nobj):
                 logger.debug("processing object {}".format(i))
                 extent = self.compute_extent(i, image, mincoords, maxcoords, axes, margin)
                 rawbbox = self.compute_rawbbox(image, extent, axes)
                 #it's i+1 here, because the background has label 0
-                binary_bbox = np.where(labels[tuple(extent)] == i+1, 1, 0).astype(np.bool)
+                binary_bbox = numpy.where(labels[tuple(extent)] == i+1, 1, 0).astype(numpy.bool)
                 for plugin_name, feature_dict in feature_names.iteritems():
                     if not has_local_features[plugin_name]:
                         continue
@@ -723,7 +723,7 @@ class OpRegionFeatures(Operator):
             for key in pfeats.keys():
                 value = pfeats[key]
                 try:
-                    pfeats[key] = np.vstack(list(v.reshape(1, -1) for v in value))
+                    pfeats[key] = numpy.vstack(list(v.reshape(1, -1) for v in value))
                 except:
                     logger.warn('feature {} failed'.format(key))
                     del pfeats[key]
@@ -746,11 +746,11 @@ class OpRegionFeatures(Operator):
 
                 # because object classification operator expects nobj to
                 # include background. FIXME: we should change that assumption.
-                value = np.vstack((np.zeros(value.shape[1]),
+                value = numpy.vstack((numpy.zeros(value.shape[1]),
                                    value))
-                value = value.astype(np.float32) #turn Nones into numpy.NaNs
+                value = value.astype(numpy.float32) #turn Nones into numpy.NaNs
 
-                assert value.dtype == np.float32
+                assert value.dtype == numpy.float32
                 assert value.shape[0] == nobj+1
                 assert value.ndim == 2
 
