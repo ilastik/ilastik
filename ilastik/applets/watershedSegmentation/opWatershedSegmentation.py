@@ -26,7 +26,8 @@ class OpWatershedSegmentation(Operator):
     ############################################################
     # Define Inputslots for Internal Parameter Usage
     ############################################################
-    ChannelSelection = InputSlot(value=0)
+    ChannelSelection    = InputSlot(value=0)
+    BrushValue          = InputSlot(value=0)
     '''
     Pmin = InputSlot(value=0.5)
     MinMembraneSize = InputSlot(value=0)
@@ -92,8 +93,10 @@ class OpWatershedSegmentation(Operator):
         '''
         
     def propagateDirty(self, slot, subindex, roi):
-        if slot is not self.EnableDebugOutputs:
-            self.Superpixels.setDirty()
+        pass
+        #TODO for watershed calculations
+        #if slot is not self.EnableDebugOutputs:
+            #self.Superpixels.setDirty()
 
 '''
 class OpCachedWatershedSegmentation(Operator):

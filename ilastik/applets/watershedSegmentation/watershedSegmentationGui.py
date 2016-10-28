@@ -21,6 +21,7 @@
 from functools import partial
 from contextlib import contextmanager
 import threading
+import os
 
 import numpy as np
 
@@ -28,12 +29,17 @@ import sip
 from PyQt4.QtCore import Qt
 from PyQt4.QtGui import QWidget, QLabel, QSpinBox, QDoubleSpinBox, QVBoxLayout, \
                         QHBoxLayout, QSpacerItem, QSizePolicy, QColor, QPen, QComboBox, QPushButton
-from PyQt4.Qt import QCheckBox, QLineEdit, QButtonGroup, QRadioButton
+from PyQt4.Qt import QCheckBox, QLineEdit, QButtonGroup, QRadioButton, pyqtSlot
+
+
 
 from ilastik.utility.gui import threadRouted
 from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
 from volumina.layer import GrayscaleLayer, ColortableLayer, generateRandomColors
+#TODO TODO
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+from ilastik.applets.labeling.labelingGui import LabelingGui
+
 
 from lazyflow.request import Request
 from lazyflow.utility import TransposedView
@@ -42,7 +48,10 @@ import logging
 from PyQt4.Qt import QCheckBox
 logger = logging.getLogger(__name__)
 
+#LayerViewerGui->LabelingGui->WatershedSegmentationGui
+#TODO TODO
 class WatershedSegmentationGui(LayerViewerGui):
+#class WatershedSegmentationGui(LabelingGui):
 
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
@@ -62,7 +71,10 @@ class WatershedSegmentationGui(LayerViewerGui):
     ###########################################
     ###########################################
     
+    #TODO TODO
+    #def __init__(self, parentApplet, labelingSlots, topLevelOperatorView, drawerUiPath=None, rawInputSlot=None, crosshair=True):
     def __init__(self, parentApplet, topLevelOperatorView):
+
         self.RawDataName = "Seeds"
         self.__cleanup_fns = []
         self._currently_updating = False
@@ -79,6 +91,8 @@ class WatershedSegmentationGui(LayerViewerGui):
         self.topLevelOperatorView.watershed_completed.subscribe( self.updateAllLayers )
         '''
 
+    #slightly faster with pyqtSlot
+    @pyqtSlot(int)
     def on_SpinBox_valueChanged(self, i):
         """
         executed when x,y or z is changed
@@ -101,36 +115,34 @@ class WatershedSegmentationGui(LayerViewerGui):
         data = op.RawData
         tags = data.meta.axistags
         if data.ready():
-            # rearrangement to have the correct axis-order
-            # indices always start with 0,1,...
-            xIndex = tags.index('x')
-            yIndex = tags.index('y')
-            zIndex = tags.index('z')
-            tIndex = tags.index('t')
-            cIndex = tags.index('c')
-
             count = 0
             array = [0,0,0,0,0]
+            # rearrangement of the indices of x,y,z,t,c to have the correct axis-order
+            # indices always start with 0,1,...
             # if the dimensions are tagged, then they are ordered like: 0,1,2
             # and not like 1, 2, 3
             # so that the section with e.g. count == 3 makes sense
             
-            if ('x' in tags):
-                count+=1
-                array[xIndex] = x
-            if ('y' in tags):
-                count+=1
-                array[yIndex] = y
-            if ('z' in tags):
-                count+=1
-                array[zIndex] = z
-            if ('t' in tags):
-                count+=1
-                array[tIndex] = t
-            if ('c' in tags):
-                count+=1
-                array[cIndex] = c
+            tupl = (('x', x, tags.index('x')),
+                    ('y', y, tags.index('y')),
+                    ('z', z, tags.index('z')),
+                    ('t', t, tags.index('t')),
+                    ('c', c, tags.index('c')))
 
+            #copy the axis-value into the array at the right index for all axes
+            for (letter, value, index) in tupl:
+                if (letter in tags):
+                    count+=1
+                    array[index] = value
+
+
+            """ worse performance than if..elif..
+            def f(count, data, array):
+                for i in range(count):
+                    data = data[array[i]]
+                return data
+            newValue = f(count, data.value, array)
+            """
             if (count == 2):
                 newValue = data.value[array[0],array[1]]
             elif (count == 3):
@@ -156,6 +168,7 @@ class WatershedSegmentationGui(LayerViewerGui):
 
 
 
+    @pyqtSlot()
     def toggleConnectionPixelValue(self):
         """
         connect or disconnect the valueChanged signals from 
@@ -174,43 +187,29 @@ class WatershedSegmentationGui(LayerViewerGui):
         # /volumina/volumina/volumeEditorWidget.py
         # self=VolumneEditorWidget
         # self.quadViewStatusBar = QuadStatusBar()
+        # e.g. 
+        #self.volumeEditorWidget.quadViewStatusBar.zSpinBox.valueChanged.connect( self.on_SpinBox_valueChanged )
         """
 
+        #tuple with x,y,z,t,c and their spinBoxes
+        sBar = self.volumeEditorWidget.quadViewStatusBar
+        tupl = (sBar.xSpinBox,  sBar.ySpinBox, sBar.zSpinBox, sBar.timeSpinBox, self.channel_box)
         if self.showPixelValue.isChecked():
             #connect x,y,z,t,c
-            self.volumeEditorWidget.quadViewStatusBar.xSpinBox.valueChanged.connect( 
-                    self.on_SpinBox_valueChanged )
-            self.volumeEditorWidget.quadViewStatusBar.ySpinBox.valueChanged.connect( 
-                    self.on_SpinBox_valueChanged )
-            self.volumeEditorWidget.quadViewStatusBar.zSpinBox.valueChanged.connect( 
-                    self.on_SpinBox_valueChanged )
-            self.volumeEditorWidget.quadViewStatusBar.timeSpinBox.valueChanged.connect( 
-                    self.on_SpinBox_valueChanged )
-            self.channel_box.valueChanged.connect( 
-                    self.on_SpinBox_valueChanged )
+            for box in tupl:
+                box.valueChanged.connect(self.on_SpinBox_valueChanged)
+
             #emit signal (of local widget) to read in the pixel values immediately 
             #number is irrelevant, see on_SpinBox_valueChanged
             self.channel_box.valueChanged.emit(0)
         else:
             #disconnect x,y,z,t,c
-            self.volumeEditorWidget.quadViewStatusBar.xSpinBox.valueChanged.disconnect( 
-                    self.on_SpinBox_valueChanged )
-            self.volumeEditorWidget.quadViewStatusBar.ySpinBox.valueChanged.disconnect( 
-                    self.on_SpinBox_valueChanged )
-            self.volumeEditorWidget.quadViewStatusBar.zSpinBox.valueChanged.disconnect( 
-                    self.on_SpinBox_valueChanged )
-            self.volumeEditorWidget.quadViewStatusBar.timeSpinBox.valueChanged.disconnect( 
-                    self.on_SpinBox_valueChanged )
-            self.channel_box.valueChanged.disconnect( 
-                    self.on_SpinBox_valueChanged )
+            for box in tupl:
+                box.valueChanged.disconnect(self.on_SpinBox_valueChanged)
             #reset pixelValue-Label
             self.pixelValue.setText("unused")
 
 
-    def on_RawData_Layer_channelChanged(self, i):
-        self.channel_box.setValue(i)
-        #setValue() will emit valueChanged() if the new value is different from the old one.
-        #not necessary: self.channel_box.valueChanged.emit(i)
 
 
     def initAppletDrawerUi(self):
@@ -296,6 +295,8 @@ class WatershedSegmentationGui(LayerViewerGui):
         configure_update_handlers( channel_box.valueChanged, op.ChannelSelection )
         drawer_layout.addLayout( control_layout( self.RawDataName + " Channel", channel_box ) )
         self.channel_box = channel_box
+        #connect the channel spinbox with the layer channel box
+        self.channel_box.valueChanged.connect(self.on_RawData_channelChanged)
 
 
         #show pixel value
@@ -309,12 +310,55 @@ class WatershedSegmentationGui(LayerViewerGui):
         self.showPixelValue.stateChanged.connect(self.toggleConnectionPixelValue)
         
         
+
+        #brush value dropdown or similar
+        brush_value_box = QSpinBox()
+        
+        def set_brush_value_box_range(*args):
+            if sip.isdeleted(brush_value_box):
+                return
+            brush_value_box.setMinimum(0)
+            #throws an exception, if probabilities in input data aren't there, 
+            #Fixed with op.Input.ready()
+            if op.RawData.ready():
+                if op.RawData.meta.drange:
+                    #set min and max to the value range of the image
+                    brush_value_box.setMinimum( op.RawData.meta.drange[0] )
+                    brush_value_box.setMaximum( op.RawData.meta.drange[1] )
+            else:
+                #only showed in debug mode
+                #TODO not good, because emitted everytime when Input Data is changed
+                logging.warning( "RawData not ready (maybe not existing)" )
+        set_brush_value_box_range()
+        op.RawData.notifyMetaChanged( set_brush_value_box_range )
+        configure_update_handlers( brush_value_box.valueChanged, op.BrushValue )
+        drawer_layout.addLayout( control_layout("Brush value:", brush_value_box) )
+        self.brush_value_box = brush_value_box
+        #self.showPixelValue.stateChanged.connect(self.toggleConnectionPixelValue)
+
         ############################################################
         # BEGIN TODO
         ############################################################
 
-        #TODO for the range of point 2.
-        #op.RawData.meta.drange
+        #pixel classification training applets
+        # We provide our own UI file (which adds an extra control for interactive mode)
+        #labelingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
+
+        #SIEHE TODO LISTE AUF BLOCK
+
+        #toolBar = QToolBar()
+        #first =  QToolButton()
+        #arrowToolButton
+        #paintToolButton
+        #eraserToolButton
+        #thresToolButton
+        #brushSizeCaption
+        #brushSizeComboBox
+        
+        #c++
+        #button->setIcon(QIcon("<imagePath>"));
+        #button->setIconSize(QSize(65,65));
+
 
         ############################################################
         # END TODO
@@ -327,8 +371,6 @@ class WatershedSegmentationGui(LayerViewerGui):
         drawer_layout.addLayout( control_layout("Seeded watershed:") )
 
 
-        '''
-        '''
 
         '''
         threshold_box = QDoubleSpinBox()
@@ -419,17 +461,18 @@ class WatershedSegmentationGui(LayerViewerGui):
         """
         see configure_update_handlers
         """
+        #TODO don't now, why to do this
         if self._currently_updating:
             return False
         with self.set_updating():
             op = self.topLevelOperatorView
-            '''
             self.channel_box.setValue( op.ChannelSelection.value )
-            input_layer = self.getLayerByName("Input")
-            if input_layer:
-                input_layer.channel = op.ChannelSelection.value
-            '''
             
+            rawData_layer = self.getLayerByName(self.RawDataName)
+            if rawData_layer:
+                rawData_layer.channel = op.ChannelSelection.value
+            
+            self.brush_value_box.setValue( op.BrushValue.value )
             #self.threshold_box.setValue( op.Pmin.value )
             #self.membrane_size_box.setValue( op.MinMembraneSize.value )
             #self.superpixel_size_box.setValue( op.MinSegmentSize.value )
@@ -446,9 +489,9 @@ class WatershedSegmentationGui(LayerViewerGui):
             return False
         with self.set_updating():
             op = self.topLevelOperatorView
-            '''
             op.ChannelSelection.setValue( self.channel_box.value() )
-            '''
+            op.BrushValue.setValue( self.brush_value_box.value() )
+
             #op.Pmin.setValue( self.threshold_box.value() )
             #op.MinMembraneSize.setValue( self.membrane_size_box.value() )
             #op.MinSegmentSize.setValue( self.superpixel_size_box.value() )
@@ -482,6 +525,17 @@ class WatershedSegmentationGui(LayerViewerGui):
         th = threading.Thread(target=updateThread)
         th.start()
     '''
+
+    @pyqtSlot(int)
+    def on_RawData_channelChanged(self, channel):
+        """
+        update the layer-channel after the channel_box has changed its value
+        """
+        rawData_layer = self.getLayerByName(self.RawDataName)
+        if rawData_layer:
+            rawData_layer.channel = self.channel_box.value()
+        
+
 
     def setupLayers(self):
         """
@@ -553,12 +607,15 @@ class WatershedSegmentationGui(LayerViewerGui):
             del layer
         """
 
-        # Input Data (grayscale) (Probabilities)
+        # Raw Data (grayscale) (should be seeds)
         if op.RawData.ready():
             layer = self._create_grayscale_layer_from_slot( op.RawData, op.RawData.meta.getTaggedShape()['c'] )
             #changing the Channel in the layer, 
             #changes the RawData Channel in the applet gui as well
-            layer.channelChanged.connect(self.on_RawData_Layer_channelChanged)
+            layer.channelChanged.connect(self.channel_box.setValue)
+            #setValue() will emit valueChanged() if the new value is different from the old one.
+            #not necessary: self.channel_box.valueChanged.emit(i)
+
             layer.name = self.RawDataName
             layer.visible = True
             layer.opacity = 1.0

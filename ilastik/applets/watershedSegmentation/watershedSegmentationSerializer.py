@@ -27,6 +27,7 @@ class WatershedSegmentationSerializer(AppletSerializer):
     """
     
     def __init__(self, operator, projectFileGroupName):
-        slots = [ SerialSlot(operator.ChannelSelection)
+        slots = [ SerialSlot(operator.ChannelSelection),
+                  SerialSlot(operator.BrushValue)
                 ]
         super(WatershedSegmentationSerializer, self).__init__(projectFileGroupName, slots=slots, operator=operator)

@@ -39,6 +39,7 @@ class WatershedSegmentationWorkflow(Workflow):
     DATA_ROLE_PROBABILITIES = 1
     ROLE_NAMES = ['Raw Data', 'Probabilities']
 
+    #define the names of the data, that can be exported in the DataExport Applet
     EXPORT_NAMES = ['Watershed']
 
     @property

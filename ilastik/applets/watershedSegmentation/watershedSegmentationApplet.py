@@ -40,7 +40,8 @@ class WatershedSegmentationApplet( StandardApplet ):
     @property
     def broadcastingSlots(self):
         #TODO
-        return [ 'ChannelSelection'
+        return [ 'ChannelSelection',
+                 'BrushValue'
                 ]
 
     @property
