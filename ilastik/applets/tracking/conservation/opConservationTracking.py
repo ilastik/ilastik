@@ -376,36 +376,42 @@ class OpConservationTracking(Operator, ExportingOperator):
             
             self.mergerResolver = IlastikMergerResolver(originalGraph, pluginPaths=[pluginPath], withFullGraph=True)
             
-            # Fit and refine merger nodes using a GMM 
-            # It has to be done per time-step in order to aviod loading the whole video on RAM
-            traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = getMappingsBetweenUUIDsAndTraxels(model)
-            timesteps = [int(t) for t in traxelIdPerTimestepToUniqueIdMap.keys()]
-            timesteps.sort()
-            
-            timeIndex = self.LabelImage.meta.axistags.index('t')
-            
-            for timestep in timesteps:
-                roi = [slice(None) for i in range(len(self.LabelImage.meta.shape))]
-                roi[timeIndex] = slice(timestep, timestep+1)
-                roi = tuple(roi)
+            # Check if graph contains mergers, otherwise skip merger resolving
+            if not self.mergerResolver.mergerNum:
+                logger.info("Graph contains no mergers. Skipping merger resolving.")
+                self.mergerResolver = None
+                self.resolvedMergersDict = {}
+            else:        
+                # Fit and refine merger nodes using a GMM 
+                # It has to be done per time-step in order to aviod loading the whole video on RAM
+                traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = getMappingsBetweenUUIDsAndTraxels(model)
+                timesteps = [int(t) for t in traxelIdPerTimestepToUniqueIdMap.keys()]
+                timesteps.sort()
                 
-                labelImage = self.LabelImage[roi].wait()
+                timeIndex = self.LabelImage.meta.axistags.index('t')
                 
-                # Get coordinates for object IDs in label image. Used by GMM merger fit.
-                objectIds = vigra.analysis.unique(labelImage[0,...,0])
-                coordinatesForIds = {}
+                for timestep in timesteps:
+                    roi = [slice(None) for i in range(len(self.LabelImage.meta.shape))]
+                    roi[timeIndex] = slice(timestep, timestep+1)
+                    roi = tuple(roi)
+                    
+                    labelImage = self.LabelImage[roi].wait()
+                    
+                    # Get coordinates for object IDs in label image. Used by GMM merger fit.
+                    objectIds = vigra.analysis.unique(labelImage[0,...,0])
+                    coordinatesForIds = {}
+                    
+                    pool = RequestPool()
+                    for objectId in objectIds:
+                        pool.add(Request(partial(self.mergerResolver.getCoordinatesForObjectId, coordinatesForIds, labelImage[0, ..., 0], objectId)))                   
+                    pool.wait()                
+                    
+                    # Fit mergers and store fit info in nodes  
+                    self.mergerResolver.fitAndRefineNodesForTimestep(coordinatesForIds, timestep)
+                    
+                # Compute object features, re-run flow solver, update model and result, and get merger dictionary
+                self.resolvedMergersDict = self.mergerResolver.run()
                 
-                pool = RequestPool()
-                for objectId in objectIds:
-                    pool.add(Request(partial(self.mergerResolver.getCoordinatesForObjectId, coordinatesForIds, labelImage[0, ..., 0], objectId)))                   
-                pool.wait()                
-                
-                # Fit mergers and store fit info in nodes  
-                self.mergerResolver.fitAndRefineNodesForTimestep(coordinatesForIds, timestep)
-                
-            # Compute object features, re-run flow solver, update model and result, and get merger dictionary
-            self.resolvedMergersDict = self.mergerResolver.run()
-            
             self.MergerOutput.setDirty()
 
         logger.info("Computing hypotheses graph lineages")
@@ -612,7 +618,7 @@ class OpConservationTracking(Operator, ExportingOperator):
                 if lineage_id:    
                     lineage_ids.append(lineage_id)
                 else:
-                    logger.info("Empty lineage ID for node ({},{})".format(time, object_id))
+                    logger.debug("Empty lineage ID for node ({},{})".format(time, object_id))
                     lineage_ids.append(0)
                     
                 track_id = self.hypotheses_graph.getTrackId(time, object_id)    
