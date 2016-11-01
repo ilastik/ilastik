@@ -44,7 +44,8 @@ class WsdtApplet( StandardApplet ):
                  'MinSegmentSize',
                  'SigmaMinima',
                  'SigmaWeights',
-                 'GroupSeeds' ]
+                 'GroupSeeds',
+                 'PreserveMembranePmaps' ]
 
     @property
     def singleLaneGuiClass(self):
