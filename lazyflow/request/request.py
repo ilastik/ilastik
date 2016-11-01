@@ -1238,6 +1238,11 @@ class RequestPool(object):
             After each request is processed in _clear_finishing_requests(), it is removed from the
             'finishing' set and the RequestPool retains no references to it any more.
         """
+        if Request.global_thread_pool.num_workers == 0:
+            # Simple wait() functionality when using debug mode
+            self._debug_mode_wait()
+            return
+
         if self._started:
             raise RequestPool.RequestPoolError("Can't re-start a RequestPool that was already started.")
         self._started = True
@@ -1245,6 +1250,7 @@ class RequestPool(object):
         try:
             # Launch the initial batch
             n_first_batch = min(self._max_active, len(self._unsubmitted_requests))
+            assert n_first_batch > 0
             for _ in range(n_first_batch):
                 self._activate_next_request()
             
@@ -1360,6 +1366,24 @@ class RequestPool(object):
         Convenience function to construct a request for the given callable and add it to the pool.
         """
         self.add( Request(func) )
+    
+    def _debug_mode_wait(self):
+        if self._started:
+            raise RequestPool.RequestPoolError("Can't re-start a RequestPool that was already started.")
+        self._started = True
+
+        try:
+            while self._unsubmitted_requests:
+                req = self._unsubmitted_requests.pop()
+                req.wait()
+                del req
+        except:
+            self._failed = True
+            raise
+        finally:
+            self._finished = True
+            self.clean()
+
     
 class RequestPool_SIMPLE(object):
     # This simplified version doesn't attempt to be efficient with RAM like the standard version (above).
