@@ -1308,26 +1308,6 @@ class RequestPool(object):
         for req in self._active_requests:
             req.cancel()
         self.clean()
-    
-#     def submit(self):
-#         """
-#         Submit all the requests in the pool.  The pool must not be submitted yet.  
-#         Otherwise, an exception is raised.
-#         Since wait() automatically calls submit(), there is usually no advantage to calling submit() yourself.
-#         """
-#         if self._started:
-#             raise RequestPool.RequestPoolError("Can't re-start a RequestPool that was already started.")
-# 
-#         try:        
-#             # Use copy here because requests may remove themselves from self._active_requests as they complete.
-#             requests = self._active_requests.copy()
-#             while requests:
-#                 requests.pop().submit()
-#                 self._clear_finishing_requests()
-#         except:
-#             self._failed = True
-#             self.clean()
-#             raise
 
     def _transfer_request_to_finishing_queue(self, req, reason, *args):
         """
