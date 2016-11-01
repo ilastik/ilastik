@@ -21,7 +21,7 @@ def main():
     parser.add_argument('filter_specs', help='json file containing filter list')
     parser.add_argument('output_path', help='example: my-predictions.h5/volume')
     parser.add_argument('--compute-blockwise', help='Compute blockwise instead of as a whole', action='store_true')
-    parser.add_argument('--thread-count', help='The threadpool size', default=0)
+    parser.add_argument('--thread-count', help='The threadpool size', default=0, type=int)
     args = parser.parse_args()
 
     # Show log messages on the console.
