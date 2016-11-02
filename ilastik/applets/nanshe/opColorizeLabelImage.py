@@ -128,7 +128,7 @@ class OpColorizeLabelImage(Operator):
             self.colors = OpColorizeLabelImage.colorTableList(self.NumColors.value)
 
         processed = numpy.empty(nanshe.util.iters.len_slices(key), dtype=numpy.uint8)
-        for each_label in numpy.unique(raw):
+        for each_label in vigra.analysis.unique(raw):
             mask = (raw == each_label)
             mask = mask[..., 0]
             processed[mask, :] = self.colors[each_label, key[-1]]

@@ -29,6 +29,7 @@ class WsdtSerializer(AppletSerializer):
                   SerialSlot(operator.SigmaMinima), 
                   SerialSlot(operator.SigmaWeights), 
                   SerialSlot(operator.GroupSeeds),
+                  SerialSlot(operator.PreserveMembranePmaps),
                   SerialBlockSlot(operator.Superpixels,
                                   operator.SuperpixelCacheInput,
                                   operator.CleanBlocks,

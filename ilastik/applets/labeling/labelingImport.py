@@ -39,11 +39,11 @@ from volumina.utility import PreferencesManager
 
 #lazyflow
 import lazyflow
-from lazyflow.utility import vigra_bincount
+from lazyflow.utility import chunked_bincount
 from lazyflow.roi import TinyVector, roiToSlice, roiFromShape
 from lazyflow.operators.ioOperators import OpInputDataReader
 from lazyflow.operators.opReorderAxes import OpReorderAxes
-from lazyflow.operators.opArrayCache import OpArrayCache
+from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 from lazyflow.operators.valueProviders import OpMetadataInjector
 
 # ilastik
@@ -85,64 +85,79 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
     try:
         # Initialize operators
         opImport = OpInputDataReader( parent=opLabels.parent )
-        opCache = OpArrayCache( parent=opLabels.parent )
+        opCache = OpBlockedArrayCache( parent=opLabels.parent )
         opMetadataInjector = OpMetadataInjector( parent=opLabels.parent )
         opReorderAxes = OpReorderAxes( parent=opLabels.parent )
     
         # Set up the pipeline as follows:
         #
-        #   opImport --> opCache --> opMetadataInjector --------> opReorderAxes --(inject via setInSlot)--> labelInput
-        #                           /                            /
-        #   User-specified axisorder    labelInput.meta.axistags
+        #   opImport --> (opCache) --> opMetadataInjector --------> opReorderAxes --(inject via setInSlot)--> labelInput
+        #                             /                            /
+        #     User-specified axisorder    labelInput.meta.axistags
     
         opImport.WorkingDirectory.setValue(defaultDirectory)
         opImport.FilePath.setValue(fileNames[0] if len(fileNames) == 1 else
                                    os.path.pathsep.join(fileNames))
         assert opImport.Output.ready()
-    
-        opCache.blockShape.setValue( opImport.Output.meta.shape )
-        opCache.Input.connect( opImport.Output )
-        assert opCache.Output.ready()
 
-        opMetadataInjector.Input.connect( opCache.Output )
-        metadata = opCache.Output.meta.copy()
+        maxLabels = len(labelingSlots.labelNames.value)
+    
+        # We don't bother with counting the label pixels
+        # (and caching the data) if it's big (1 GB)
+        if numpy.prod(opImport.Output.meta.shape) > 1e9:
+            reading_slot = opImport.Output
+            
+            # For huge data, we don't go through and search for the pixel values,
+            # because that takes an annoyingly long amount of time.
+            # Instead, we make the reasonable assumption that the input labels are already 1,2,3..N
+            # and we don't tell the user what the label pixel counts are.
+            unique_read_labels = numpy.array(range(maxLabels+1))
+            readLabelCounts = numpy.array([-1]*(maxLabels+1))
+            labelInfo = (maxLabels, (unique_read_labels, readLabelCounts))
+        else:    
+            opCache.Input.connect( opImport.Output )
+            opCache.CompressionEnabled.setValue(True)
+            assert opCache.Output.ready()
+            reading_slot = opCache.Output
+
+            # We'll show a little window with a busy indicator while the data is loading
+            busy_dlg = QProgressDialog(parent=parent_widget)
+            busy_dlg.setLabelText("Scanning Label Data...")
+            busy_dlg.setCancelButton(None)
+            busy_dlg.setMinimum(100)
+            busy_dlg.setMaximum(100)
+            def close_busy_dlg(*args):
+                QApplication.postEvent(busy_dlg, QCloseEvent())
+        
+            # Load the data from file into our cache
+            # When it's done loading, close the progress dialog.
+            req = reading_slot[:]
+            req.notify_finished( close_busy_dlg )
+            req.notify_failed( close_busy_dlg )
+            req.submit()
+            busy_dlg.exec_()
+    
+            readData = req.result
+
+            # Can't use return_counts feature because that requires numpy >= 1.9
+            #unique_read_labels, readLabelCounts = numpy.unique(readData, return_counts=True)
+    
+            # This does the same as the above, albeit slower, and probably with more ram.
+            bincounts = chunked_bincount(readData)
+            unique_read_labels = bincounts.nonzero()[0].astype(readData.dtype, copy=False)
+            readLabelCounts = bincounts[unique_read_labels]
+    
+            labelInfo = (maxLabels, (unique_read_labels, readLabelCounts))
+            del readData
+    
+        opMetadataInjector.Input.connect( reading_slot )
+        metadata = reading_slot.meta.copy()
         opMetadataInjector.Metadata.setValue( metadata )
         opReorderAxes.Input.connect( opMetadataInjector.Output )
 
         # Transpose the axes for assignment to the labeling operator.
         opReorderAxes.AxisOrder.setValue( writeSeeds.meta.getAxisKeys() )
-    
-        # We'll show a little window with a busy indicator while the data is loading
-        busy_dlg = QProgressDialog(parent=parent_widget)
-        busy_dlg.setLabelText("Importing Label Data...")
-        busy_dlg.setCancelButton(None)
-        busy_dlg.setMinimum(100)
-        busy_dlg.setMaximum(100)
-        def close_busy_dlg(*args):
-            QApplication.postEvent(busy_dlg, QCloseEvent())
-    
-        # Load the data from file into our cache
-        # When it's done loading, close the progress dialog.
-        req = opCache.Output[:]
-        req.notify_finished( close_busy_dlg )
-        req.notify_failed( close_busy_dlg )
-        req.submit()
-        busy_dlg.exec_()
 
-        readData = req.result
-        
-        maxLabels = len(labelingSlots.labelNames.value)
-
-        # Can't use return_counts feature because that requires numpy >= 1.9
-        #unique_read_labels, readLabelCounts = numpy.unique(readData, return_counts=True)
-
-        # This does the same as the above, albeit slower, and probably with more ram.
-        unique_read_labels = numpy.unique(readData)
-        readLabelCounts = vigra_bincount(readData)[unique_read_labels]
-
-        labelInfo = (maxLabels, (unique_read_labels, readLabelCounts))
-        del readData
-    
         # Ask the user how to interpret the data.
         settingsDlg = LabelImportOptionsDlg( parent_widget,
                                              fileNames, opMetadataInjector.Output,
@@ -182,7 +197,7 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
         if labelMapping.keys() == labelMapping.values():
             labelMapping = None
 
-        # This will be fast (it's already cached)
+        # If the data was already cached, this will be fast.
         label_data = opReorderAxes.Output[:].wait()
         
         # Map input labels to output labels
@@ -288,7 +303,7 @@ class LabelImportOptionsDlg(QDialog):
         label_mapping = collections.defaultdict(int)
 
         max_labels, read_labels_info = labelInfo
-        labels, label_counts = read_labels_info
+        labels, _label_counts = read_labels_info
         label_idx = max_labels;
 
         for i in reversed(labels):

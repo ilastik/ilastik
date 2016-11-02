@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from __future__ import division
 # Standard
 from Queue import Queue
 import re
@@ -37,8 +38,8 @@ from PyQt4 import uic
 from PyQt4.QtCore import pyqtSignal, QObject, Qt, QUrl, QTimer
 from PyQt4.QtGui import QMainWindow, QWidget, QMenu, QApplication, \
     QStackedWidget, qApp, QFileDialog, QKeySequence, QMessageBox, \
-    QProgressBar, QInputDialog, QIcon, QFont, QToolButton, \
-    QHBoxLayout, QSizePolicy, QDesktopServices, QLabel
+    QProgressBar, QInputDialog, QIcon, QFont, QToolButton, QVBoxLayout, \
+    QHBoxLayout, QSizePolicy, QDesktopServices, QLabel, QDialog, QSpinBox, QDialogButtonBox
 
 # lazyflow
 from ilastik.widgets.ipcserver.tcpServerInfoWidget import TCPServerInfoWidget
@@ -246,7 +247,7 @@ class ProgressDisplayManager(QObject):
 
         numActive = len(self.appletPercentages)
         if numActive > 0:
-            totalPercentage = numpy.sum(self.appletPercentages.values()) / numActive
+            totalPercentage = numpy.sum(self.appletPercentages.values()) // numActive
 
         # If any applet gave -1, put progress bar in "busy indicator" mode
         if (TinyVector(self.appletPercentages.values()) == -1).any():
@@ -620,6 +621,8 @@ class IlastikShell(QMainWindow):
         menu.addAction("&Memory usage").triggered.connect(self.showMemUsageDialog)
         menu.addMenu(self._createProfilingSubmenu())
 
+        menu.addMenu(self._createAllocationTrackingSubmenu())
+
         menu.addAction("Show IPC Server Info", IPCFacade().show_info)
 
         def hideApplets(hideThem):
@@ -662,7 +665,6 @@ class IlastikShell(QMainWindow):
             assert not yappi.is_running()
 
             filename = 'ilastik_profile_sortedby_{}.txt'.format(sortby)
-
             recentPath = PreferencesManager().get('shell', 'recent sorted profile stats')
             if recentPath is None:
                 defaultPath = os.path.join(os.path.expanduser('~'), filename)
@@ -728,9 +730,11 @@ class IlastikShell(QMainWindow):
 
         startAction = profilingSubmenu.addAction("Start (reset)")
         startAction.triggered.connect(_startProfiling)
+        startAction.setIcon(QIcon(ilastikIcons.Record))
 
         stopAction = profilingSubmenu.addAction("Stop")
         stopAction.triggered.connect(_stopProfiling)
+        stopAction.setIcon(QIcon(ilastikIcons.Stop))
 
         sortedExportSubmenu = profilingSubmenu.addMenu("Save Sorted Stats...")
         for sortby in ['calls', 'cumulative', 'filename', 'pcalls', 'line', 'name', 'nfl', 'stdname', 'time']:
@@ -747,6 +751,105 @@ class IlastikShell(QMainWindow):
         # Must retain this reference, otherwise the menu gets automatically removed
         self._profilingSubmenu = profilingSubmenu
         return profilingSubmenu
+
+    def _createAllocationTrackingSubmenu(self):
+        self._allocation_threshold = PreferencesManager().get('shell', 'allocation tracking threshold')
+        if self._allocation_threshold is None:
+            self._allocation_threshold = 1000000 # 1 MB by default
+        
+        self._traceback_depth = PreferencesManager().get('shell', 'allocation tracking traceback depth')
+        if self._traceback_depth is None:
+            self._traceback_depth = 3 # default
+
+        # Must retain this reference, otherwise the menu gets automatically removed
+        allocationTrackingSubmenu = QMenu("Numpy Allocation Tracking")
+        self._allocationTrackingSubmenu = allocationTrackingSubmenu
+
+        try:
+            from numpy_allocation_tracking import PrettyAllocationTracker
+        except ImportError:
+            errMsgAction = allocationTrackingSubmenu.addAction("Not installed. Please try:"
+                                                               "  conda install -c ilastik numpy-allocation-tracking")
+            errMsgAction.setEnabled(False)
+            return allocationTrackingSubmenu
+
+        def _configureSettings():
+            dlg = QDialog(windowTitle="Allocation Tracking Settings")
+
+            threshold_box = QSpinBox(minimum=1, maximum=1000000000, suffix=' bytes')
+            threshold_box.setValue(self._allocation_threshold)
+
+            threshold_layout = QHBoxLayout()
+            threshold_layout.addWidget(QLabel("Allocation Threshold"))
+            threshold_layout.addWidget(threshold_box)
+
+            traceback_depth_box = QSpinBox(minimum=1, maximum=100, suffix=' frames')
+            traceback_depth_box.setValue(self._traceback_depth)
+
+            traceback_layout = QHBoxLayout()
+            traceback_layout.addWidget(QLabel("Displayed Stack Frames"))
+            traceback_layout.addWidget(traceback_depth_box)
+
+            buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+            buttons.accepted.connect( dlg.accept )
+            buttons.rejected.connect( dlg.reject )
+
+            layout = QVBoxLayout()
+            layout.addLayout(threshold_layout)
+            layout.addLayout(traceback_layout)
+            layout.addWidget( buttons )
+
+            dlg.setLayout(layout)
+            if dlg.exec_() == QDialog.Accepted:
+                self._allocation_threshold = threshold_box.value()
+                PreferencesManager().set('shell', 'allocation tracking threshold', self._allocation_threshold)
+
+                self._traceback_depth = traceback_depth_box.value()
+                PreferencesManager().set('shell', 'allocation tracking traceback depth', self._traceback_depth)
+
+        def _startAllocationTracking():
+            self._allocation_tracker = PrettyAllocationTracker(self._allocation_threshold, self._traceback_depth)
+            self._allocation_tracker.__enter__()
+            startAction.setEnabled(False)
+            stopAction.setEnabled(True)
+
+        def _stopAllocationTracking():
+            self._allocation_tracker.__exit__(None, None, None)
+            startAction.setEnabled(True)
+            stopAction.setEnabled(False)
+
+            filename = 'ilastik-tracked-numpy-allocations.html'
+            recentPath = PreferencesManager().get('shell', 'allocation tracking output html')
+            if recentPath is None:
+                defaultPath = os.path.join(os.path.expanduser('~'), filename)
+            else:
+                defaultPath = os.path.join(os.path.split(recentPath)[0], filename)
+            
+            htmlPath = QFileDialog.getSaveFileName(
+                self, "Export allocation tracking table", defaultPath, "HTML files (*.html)",
+                options=QFileDialog.Options(QFileDialog.DontUseNativeDialog))
+
+            if not htmlPath.isNull():
+                html_path = encode_from_qstring(htmlPath)
+                PreferencesManager().set('shell', 'allocation tracking output html', html_path)
+                self._allocation_tracker.write_html(html_path)
+
+                # As a convenience, go ahead and open it.
+                QDesktopServices.openUrl(QUrl.fromLocalFile(html_path))
+        
+        startAction = allocationTrackingSubmenu.addAction("Start")
+        startAction.triggered.connect(_startAllocationTracking)
+        startAction.setIcon(QIcon(ilastikIcons.Record))
+
+        stopAction = allocationTrackingSubmenu.addAction("Stop")
+        stopAction.triggered.connect(_stopAllocationTracking)
+        stopAction.setEnabled(False)
+        stopAction.setIcon(QIcon(ilastikIcons.Stop))
+
+        configureAction = allocationTrackingSubmenu.addAction("Configure...")
+        configureAction.triggered.connect(_configureSettings)
+        
+        return allocationTrackingSubmenu
 
     def showMemUsageDialog(self):
         if self._memDlg is None:

@@ -21,7 +21,7 @@ def main():
     parser.add_argument('filter_specs', help='json file containing filter list')
     parser.add_argument('output_path', help='example: my-predictions.h5/volume')
     parser.add_argument('--compute-blockwise', help='Compute blockwise instead of as a whole', action='store_true')
-    parser.add_argument('--thread-count', help='The threadpool size', default=0)
+    parser.add_argument('--thread-count', help='The threadpool size', default=0, type=int)
     args = parser.parse_args()
 
     # Show log messages on the console.
@@ -34,7 +34,7 @@ def main():
     logger.info("DONE.")
 
 def load_and_predict( input_data_or_path, classifier_filepath, feature_list_json_path, output_path=None, compute_blockwise=False ):
-    assert output_path is None or isinstance( output_path, str )
+    assert output_path is None or isinstance( output_path, basestring )
 
     # Load
     input_data = load_data( input_data_or_path )
@@ -140,7 +140,11 @@ def define_filter(is_vector_valued=False):
         """
         Decorator for filter functions.
         Performs basic checks on the inputs (for shape, dtype, etc.).
+
         Also, convert the roi to an np.array.
+
+        Lastly, attach an attribute to the function object 'is_vector_valued',
+        for clients to read if they want.
         """
         @wraps(filter_func)
         def wrapper(input_data, scale, out, roi):
@@ -249,6 +253,21 @@ FilterSpec = collections.namedtuple( 'FilterSpec', 'name scale' )
 
 def compute_features( input_grayscale, filter_spec_list, out=None, roi=None ):
     """
+    Given a grayscale volume and a list of FilterSpecs, compute the filters and store them to a single multi-channel array.
+    
+    input_grayscale:
+        A VigraArray, with axistags
+
+    filter_spec_list:
+        List of FilterSpec objects (tuples)
+
+    out:
+        Optional pre-allocated return value.
+
+    roi:
+        Optional (start, stop) tuple indicating which region to process,
+        where len(roi[0]) == input_grayscale.ndim
+        By default, the whole input volume is processed.
     """
     # Convert args as needed
     assert isinstance( input_grayscale, vigra.VigraArray )
@@ -335,7 +354,7 @@ def load_data( input_data ):
     Read from .h5 or .npy, drop channel axis (if any), and convert to float32.
     """
     # Load input data
-    if isinstance(input_data, str):
+    if isinstance(input_data, basestring):
         logger.info( "Loading {}".format(input_data) )
         input_path = input_data
         if '.h5' in input_path:

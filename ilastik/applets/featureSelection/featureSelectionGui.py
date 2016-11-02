@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 # Python
+from __future__ import division
 import os
 from functools import partial
 import logging
@@ -52,6 +53,9 @@ from ilastik.config import cfg as ilastik_config
 from ilastik.applets.base.applet import DatasetConstraintError
 
 from ilastik.applets.featureSelection.opFeatureSelection import OpFeatureSelection
+
+
+# others
 
 #===----------------------------------------------------------------------------------------------------------------===
 #=== FeatureSelectionGui                                                                                            ===
@@ -208,7 +212,7 @@ class FeatureSelectionGui(LayerViewerGui):
         numFeatureChannels = featureSlot.meta.shape[channelAxis]
 
         # Determine how many channels this feature has (up to 3)
-        featureChannelsPerInputChannel = numFeatureChannels / numInputChannels
+        featureChannelsPerInputChannel = numFeatureChannels // numInputChannels
         if not 0 < featureChannelsPerInputChannel <= 3:
             logger.warn( "The feature selection Gui does not yet support features with more than three channels per input channel. Some features will not be displayed entirely." ) 
 

@@ -1111,20 +1111,6 @@ class BoxController(QObject):
 import numpy as np
 import colorsys
 
-def _get_colors(num_colors,seed=42):
-    golden_ratio_conjugate = 0.618033988749895
-    np.random.seed(seed)
-    colors=[]
-    hue=np.random.rand()*360
-    for i in np.arange(0., 360., 360. / num_colors):
-        hue += golden_ratio_conjugate
-        lightness = (50 + 1 * 10)/100.
-        saturation = (90 + 1 * 10)/100.
-
-        colors.append(colorsys.hsv_to_rgb(hue, 0.99,0.99))
-    return colors
-
-
 def _createDefault16ColorColorTable():
     from PyQt4.QtGui import QColor
     from PyQt4.QtCore import Qt
@@ -1161,8 +1147,6 @@ def RandomColorGenerator(seed=42):
             yield default[i]
         else:
             hue=np.random.rand()*360
-            lightness = (50 + 1 * 10)/100.
-            saturation = (90 + 1 * 10)/100.
 
             color=colorsys.hsv_to_rgb(hue, 0.99,0.99)
             color=[c*255.0 for c in color]

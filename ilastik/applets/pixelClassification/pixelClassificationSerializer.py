@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 import numpy
+import vigra
 from ilastik.applets.base.appletSerializer import AppletSerializer, SerialClassifierSlot, SerialBlockSlot, SerialListSlot, SerialClassifierFactorySlot
 
 import logging
@@ -69,7 +70,7 @@ class PixelClassificationSerializer(AppletSerializer):
                 # For each label block
                 for block in group.values():
                     data = block[:]
-                    all_labels.update( numpy.unique(data) )
+                    all_labels.update( vigra.analysis.unique(data) )
 
             if all_labels:
                 max_label = max(all_labels)

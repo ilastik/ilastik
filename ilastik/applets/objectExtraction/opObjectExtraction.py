@@ -19,6 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 #Python
+from __future__ import division
 from copy import copy, deepcopy
 import collections
 from functools import partial
@@ -95,7 +96,7 @@ def make_bboxes(binary_bbox, margin):
     """
     # object and context
     max_margin = np.max(margin).astype(np.float32)
-    scaled_margin = (max_margin / margin)
+    scaled_margin = (max_margin // margin)
     if len(margin) > 2:
         dt = vigra.filters.distanceTransform(np.asarray(binary_bbox, dtype=np.float32),
                                                background=True,

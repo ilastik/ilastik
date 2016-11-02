@@ -26,14 +26,17 @@ import numpy as np
 from PyQt4.QtCore import Qt
 from PyQt4.QtGui import QWidget, QLabel, QDoubleSpinBox, QVBoxLayout, QHBoxLayout, \
                         QSpacerItem, QSizePolicy, QColor, QPen, QPushButton, QMessageBox, \
-                        QAction, QMenu
+                        QAction, QMenu, QIcon
 
 from ilastikrag.gui import FeatureSelectionDialog
 
 from ilastik.utility.gui import threadRouted
+from ilastik.shell.gui.iconMgr import ilastikIcons
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+
 from volumina.pixelpipeline.datasources import LazyflowSource
 from volumina.layer import SegmentationEdgesLayer, LabelableSegmentationEdgesLayer
-from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+from volumina.utility import ShortcutManager, PreferencesManager
 
 from lazyflow.request import Request
 
@@ -79,10 +82,22 @@ class EdgeTrainingGui(LayerViewerGui):
 
     def createDrawerControls(self):
         # Controls
-        feature_selection_button = QPushButton("Select Features", clicked=self._open_feature_selection_dlg)
-        self.train_from_gt_button = QPushButton("Auto-label from GT", clicked=self._handle_label_from_gt_clicked)
-        self.clear_labels_button = QPushButton("Clear Labels", clicked=self._handle_clear_labels_clicked)
-        
+        feature_selection_button = QPushButton(text="Select Features",
+                                               icon=QIcon(ilastikIcons.AddSel),
+                                               toolTip="Select edge/superpixel features to use for classification.",
+                                               clicked=self._open_feature_selection_dlg)
+        self.train_from_gt_button = QPushButton(text="Auto-label",
+                                                icon=QIcon(ilastikIcons.Segment),
+                                                toolTip="Automatically label all edges according to your pre-loaded groundtruth volume.",
+                                                clicked=self._handle_label_from_gt_clicked)
+        self.clear_labels_button = QPushButton(text="Clear Labels",
+                                               icon=QIcon(ilastikIcons.Clear),
+                                               toolTip="Remove all edge labels. (Start over on this image.)",
+                                               clicked=self._handle_clear_labels_clicked)
+        self.live_update_button = QPushButton(text="Live Predict",
+                                              checkable=True,
+                                              icon=QIcon(ilastikIcons.Play),
+                                              toggled=self._handle_live_update_clicked)
         # Layout
         label_layout = QHBoxLayout()
         label_layout.addWidget(self.clear_labels_button)
@@ -93,11 +108,25 @@ class EdgeTrainingGui(LayerViewerGui):
         layout.addWidget(feature_selection_button)
         layout.setSpacing(1)
         layout.addLayout(label_layout)
+        layout.addWidget(self.live_update_button)
         layout.addSpacerItem( QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding) )
         
         # Finally, the whole drawer widget
         drawer = QWidget(parent=self)
         drawer.setLayout(layout)
+
+        # Widget Shortcuts
+        mgr = ShortcutManager()
+        ActionInfo = ShortcutManager.ActionInfo
+        shortcut_group = "Edge Training"
+        mgr.register( "l", ActionInfo( shortcut_group,
+                                       "Live Predict",
+                                       "Toggle live edge classifier update mode",
+                                       self.live_update_button.toggle,
+                                       self.live_update_button,
+                                       self.live_update_button ) )
+
+        
         return drawer
 
 
@@ -180,6 +209,9 @@ class EdgeTrainingGui(LayerViewerGui):
             op = self.topLevelOperatorView
             op.EdgeLabelsDict.setValue( {} )
 
+    def _handle_live_update_clicked(self, checked):
+        op = self.topLevelOperatorView
+        op.FreezeClassifier.setValue( not checked )
 
     # Configure the handler for updated probability maps
     # FIXME: Should we make a new Layer subclass that handles this colortable mapping for us?  Yes.
@@ -239,6 +271,7 @@ class EdgeTrainingGui(LayerViewerGui):
         with self.set_updating():
             op = self.topLevelOperatorView
             self.train_from_gt_button.setEnabled( op.GroundtruthSegmentation.ready() )
+            self.live_update_button.setChecked( not op.FreezeClassifier.value )
 
     def configure_operator_from_gui(self):
         if self._currently_updating:
@@ -263,6 +296,7 @@ class EdgeTrainingGui(LayerViewerGui):
     def setupLayers(self):
         layers = []
         op = self.topLevelOperatorView
+        ActionInfo = ShortcutManager.ActionInfo
 
         # Superpixels -- Edge Labels 
         if op.Superpixels.ready() and op.EdgeLabelsDict.ready():
@@ -275,6 +309,15 @@ class EdgeTrainingGui(LayerViewerGui):
             self.update_labeled_edges() # Initialize
             layer.labelsChanged.connect( self._handle_edge_label_clicked )
             layer.contexts.append( self.create_prefetch_menu("Edge Labels") )
+
+            layer.shortcutRegistration = ( "0",
+                                           ActionInfo(
+                                               "Edge Training Layers",
+                                                "LabelVisibility",
+                                                "Show/Hide Edge Labels",
+                                                layer.toggleVisible,
+                                                self.viewerControlWidget(),
+                                                layer ) )
             
             layers.append(layer)
             del layer
@@ -288,6 +331,17 @@ class EdgeTrainingGui(LayerViewerGui):
             self.update_probability_edges() # Initialize
 
             layer.contexts.append( self.create_prefetch_menu("Edge Probabilities") )
+
+            
+            layer.shortcutRegistration = ( "p",
+                                           ActionInfo(
+                                               "Edge Training Layers",
+                                                "EdgePredictionsVisibility",
+                                                "Show/Hide Edge Predictions",
+                                                layer.toggleVisible,
+                                                self.viewerControlWidget(),
+                                                layer ) )
+            
             layers.append(layer)
             del layer
                 
@@ -308,6 +362,16 @@ class EdgeTrainingGui(LayerViewerGui):
             layer.name = "Naive Segmentation"
             layer.visible = False
             layer.opacity = 0.5
+
+            layer.shortcutRegistration = ( "n",
+                                           ActionInfo(
+                                               "Edge Training Layers",
+                                                "NaiveSegmentationVisibility",
+                                                "Show/Hide Naive Segmentation (shows output if classifier output is respected verbatim)",
+                                                layer.toggleVisible,
+                                                self.viewerControlWidget(),
+                                                layer ) )
+            
             layers.append(layer)
             del layer
          
@@ -317,6 +381,16 @@ class EdgeTrainingGui(LayerViewerGui):
             layer.name = "Groundtruth"
             layer.visible = False
             layer.opacity = 0.5
+
+            layer.shortcutRegistration = ( "g",
+                                           ActionInfo(
+                                               "Edge Training Layers",
+                                                "GroundtruthVisibility",
+                                                "Show/Hide Groundtruth",
+                                                layer.toggleVisible,
+                                                self.viewerControlWidget(),
+                                                layer ) )
+
             layers.append(layer)
             del layer
  

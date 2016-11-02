@@ -409,7 +409,7 @@ class NewAutocontextWorkflowBase(Workflow):
             logging.getLogger("lazyflow.operators.classifierOperators").setLevel(logging.DEBUG)
 
         if self.retrain:
-            self._force_retrain_classifiers()
+            self._force_retrain_classifiers(projectManager)
         
         # Configure the data export operator.
         if self._batch_export_args:
@@ -454,7 +454,7 @@ class NewAutocontextWorkflowBase(Workflow):
         for pcApplet, freeze_status in zip(self.pcApplets, self.freeze_statuses):
             pcApplet.topLevelOperator.FreezePredictions.setValue(freeze_status)
 
-    def _force_retrain_classifiers(self):
+    def _force_retrain_classifiers(self, projectManager):
         # Cause the FIRST classifier to be dirty so it is forced to retrain.
         # (useful if the stored labels were changed outside ilastik)
         self.pcApplets[0].topLevelOperator.opTrain.ClassifierFactory.setDirty()

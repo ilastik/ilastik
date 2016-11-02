@@ -18,6 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from __future__ import division
 import sys
 import os
 import warnings
@@ -299,7 +300,7 @@ class ObjectClassificationWorkflow(Workflow):
             return
         
         if not (self._batch_input_args and self._batch_export_args):
-            raise RuntimeError("Currently, this workflow has no batch mode and headless mode support")
+            logger.warn("Was not able to understand the batch mode command-line arguments.")
         
         # Check for problems: Is the project file ready to use?
         opObjClassification = self.objectClassificationApplet.topLevelOperator
@@ -444,6 +445,10 @@ class ObjectClassificationWorkflow(Workflow):
         When the batch-processing mechanism was rewritten, this function broke.
         It could probably be fixed with minor changes.
         """
+        assert sys.version_info.major == 2, "Alert! This function has not been " \
+        "tested under python 3. Please remove this assertion, and be wary of any " \
+        "strange behavior you encounter"
+
         # TODO: Here, we hard-code to select from the first lane only.
         opBatchClassify = self.opBatchClassify[0]
         
@@ -452,7 +457,7 @@ class ObjectClassificationWorkflow(Workflow):
         block_shape = opBatchClassify.get_blockshape()
         assert all(block_shape == blockwise_fileset.description.sub_block_shape), "block shapes don't match"
         assert all((roi[0] % block_shape) == 0), "Sub-blocks must exactly correspond to the blockwise object classification blockshape"
-        sub_block_index = roi[0] / blockwise_fileset.description.sub_block_shape
+        sub_block_index = roi[0] // blockwise_fileset.description.sub_block_shape
 
         sub_block_start = sub_block_index
         sub_block_stop = sub_block_start + 1

@@ -130,7 +130,7 @@ class OpPixelClassification( Operator ):
         self.opTrain = OpTrainClassifierBlocked( parent=self )
         self.opTrain.ClassifierFactory.connect( self.ClassifierFactory )
         self.opTrain.Labels.connect( self.opLabelPipeline.Output )
-        self.opTrain.Images.connect( self.CachedFeatureImages )
+        self.opTrain.Images.connect( self.FeatureImages )
         self.opTrain.nonzeroLabelBlocks.connect( self.opLabelPipeline.nonzeroBlocks )
 
         # Hook up the Classifier Cache
@@ -392,7 +392,7 @@ class OpLabelPipeline( Operator ):
             tagged_shape['t'] = 1
         
         # Aim for blocks that are roughly 1MB
-        block_shape = determineBlockShape( tagged_shape.values(), 1e6 )
+        block_shape = determineBlockShape( tagged_shape.values(), 20**3 )
         self.opLabelArray.blockShape.setValue( block_shape )
 
     def setInSlot(self, slot, subindex, roi, value):

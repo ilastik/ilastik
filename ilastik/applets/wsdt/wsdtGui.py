@@ -155,6 +155,11 @@ class WsdtGui(LayerViewerGui):
         drawer_layout.addLayout( control_layout( "Min Superpixel Size", superpixel_size_box ) )
         self.superpixel_size_box = superpixel_size_box
 
+        preserve_pmaps_box = QCheckBox()
+        configure_update_handlers( preserve_pmaps_box.toggled, op.PreserveMembranePmaps )
+        drawer_layout.addLayout( control_layout( "Preserve membrane probabilities", preserve_pmaps_box ) )
+        self.preserve_pmaps_box = preserve_pmaps_box
+
         enable_debug_box = QCheckBox()
         configure_update_handlers( enable_debug_box.toggled, op.EnableDebugOutputs )
         drawer_layout.addLayout( control_layout( "Show Debug Layers", enable_debug_box ) )
@@ -199,6 +204,7 @@ class WsdtGui(LayerViewerGui):
             self.seed_presmoothing_box.setValue( op.SigmaMinima.value )
             self.watershed_presmoothing_box.setValue( op.SigmaWeights.value )
             self.seed_method_combo.setCurrentIndex( int(op.GroupSeeds.value) )
+            self.preserve_pmaps_box.setChecked( op.PreserveMembranePmaps.value )
             self.enable_debug_box.setChecked( op.EnableDebugOutputs.value )
 
     def configure_operator_from_gui(self):
@@ -213,6 +219,7 @@ class WsdtGui(LayerViewerGui):
             op.SigmaMinima.setValue( self.seed_presmoothing_box.value() )
             op.SigmaWeights.setValue( self.watershed_presmoothing_box.value() )
             op.GroupSeeds.setValue( bool(self.seed_method_combo.currentIndex()) )
+            op.PreserveMembranePmaps.setValue( self.preserve_pmaps_box.isChecked() )
             op.EnableDebugOutputs.setValue( self.enable_debug_box.isChecked() )
 
     def onUpdateWatershedsButton(self):
@@ -246,6 +253,7 @@ class WsdtGui(LayerViewerGui):
         # Superpixels
         if op.Superpixels.ready():
             layer = ColortableLayer( LazyflowSource(op.Superpixels), self._sp_colortable )
+            layer.colortableIsRandom = True
             layer.name = "Superpixels"
             layer.visible = True
             layer.opacity = 0.5

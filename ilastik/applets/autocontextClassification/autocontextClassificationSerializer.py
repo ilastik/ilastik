@@ -36,6 +36,8 @@ traceLogger = logging.getLogger("TRACE." + __name__)
 
 from lazyflow.utility import Tracer
 
+from __future__ import division
+
 class Section():
     Labels = 0
     Classifiers = 1
@@ -100,7 +102,7 @@ class AutocontextClassificationSerializer(AppletSerializer):
             numSteps = sum( self._dirtyFlags.values() )
             progress = 0
             if numSteps > 0:
-                increment = 100/numSteps
+                increment = 100//numSteps
 
             if self._dirtyFlags[Section.Labels]:
                 self._serializeLabels( topGroup )            

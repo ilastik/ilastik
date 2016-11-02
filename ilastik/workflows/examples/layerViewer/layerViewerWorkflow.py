@@ -30,6 +30,8 @@ from ilastik.applets.dataExport.dataExportApplet import DataExportApplet
 import logging
 logger = logging.getLogger(__name__)
 
+ROLES = ["Raw Data", "Image 1", "Image 2", "Image 3", "Image 4", "Image 5"]
+
 class LayerViewerWorkflow(Workflow):
     def __init__(self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs):
         
@@ -38,17 +40,19 @@ class LayerViewerWorkflow(Workflow):
         super(LayerViewerWorkflow, self).__init__(shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs)
         self._applets = []
 
-        # Create applets 
+        # Roles
+
+        # Create applets
         self.dataSelectionApplet = DataSelectionApplet(self, 
                                                        "Input Data", 
                                                        "Input Data")
         self.viewerApplet = LayerViewerApplet(self)
         self.dataExportApplet = DataExportApplet(self, "Data Export")
         opDataExport = self.dataExportApplet.topLevelOperator
-        opDataExport.SelectionNames.setValue( ['Raw Data', 'Other Data'] )
+        opDataExport.SelectionNames.setValue( ROLES )
 
         opDataSelection = self.dataSelectionApplet.topLevelOperator
-        opDataSelection.DatasetRoles.setValue( ["Raw Data", "Other Data"] )
+        opDataSelection.DatasetRoles.setValue( ROLES )
 
         self._applets.append( self.dataSelectionApplet )
         self._applets.append( self.viewerApplet )
@@ -70,15 +74,19 @@ class LayerViewerWorkflow(Workflow):
 
         # Connect top-level operators                                                                                                                 
         opLayerViewerView.RawInput.connect( opDataSelectionView.ImageGroup[0] )
-        opLayerViewerView.OtherInput.connect( opDataSelectionView.ImageGroup[1] )
+        
+        opLayerViewerView.OtherInput.resize(len(opDataSelectionView.ImageGroup)-1)
+        for i, role_output in enumerate(opDataSelectionView.ImageGroup[1:]):
+            opLayerViewerView.OtherInput[i].connect( role_output )
 
         opDataExportView.RawData.connect( opDataSelectionView.ImageGroup[0] )
         opDataExportView.RawDatasetInfo.connect( opDataSelectionView.DatasetGroup[0] )        
         opDataExportView.WorkingDirectory.connect( opDataSelectionView.WorkingDirectory )
 
-        opDataExportView.Inputs.resize(2)
-        opDataExportView.Inputs[0].connect( opDataSelectionView.ImageGroup[0] )
-        opDataExportView.Inputs[1].connect( opDataSelectionView.ImageGroup[1] )
+        opDataExportView.Inputs.resize(len(ROLES))
+
+        for i in range(len(ROLES)):        
+            opDataExportView.Inputs[i].connect( opDataSelectionView.ImageGroup[i] )
 
     @property
     def applets(self):

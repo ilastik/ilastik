@@ -30,6 +30,7 @@ from lazyflow.rtype import List, SubRegion
 from lazyflow.stype import Opaque
 
 import numpy as np
+import vigra
 
 import os
 import logging
@@ -153,7 +154,7 @@ class OpManualTracking(Operator, ExportingOperator):
     def _relabel(self, volume, replace):
         mp = np.arange(0, np.amax(volume) + 1, dtype=volume.dtype)
         mp[1:] = 0
-        labels = np.unique(volume).tolist()
+        labels = np.sort(vigra.analysis.unique(volume)).tolist()
         if 0 in labels:
             labels.remove(0)
         for label in labels:
@@ -168,7 +169,7 @@ class OpManualTracking(Operator, ExportingOperator):
     def _relabelUntracked(self, volume, tracked_at):
         mp = np.arange(0, np.amax(volume) + 1, dtype=volume.dtype)
         mp[1:] = 1
-        labels = np.unique(volume).tolist()
+        labels = np.sort(vigra.analysis.unique(volume)).tolist()
         if 0 in labels:
             labels.remove(0)
         for label in labels:

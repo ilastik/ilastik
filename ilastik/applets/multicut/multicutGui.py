@@ -25,11 +25,15 @@ import threading
 import numpy as np
 
 from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QWidget, QLabel, QDoubleSpinBox, QComboBox, QVBoxLayout, QHBoxLayout, QSpacerItem, QSizePolicy, QColor, QPen, QPushButton
+from PyQt4.QtGui import QWidget, QLabel, QDoubleSpinBox, QComboBox, QVBoxLayout, \
+                        QHBoxLayout, QSpacerItem, QSizePolicy, QColor, QPen, QPushButton, QIcon
 
 from ilastik.utility.gui import threadRouted
 from volumina.pixelpipeline.datasources import LazyflowSource
 from volumina.layer import SegmentationEdgesLayer
+from volumina.utility import ShortcutManager, PreferencesManager
+
+from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.multicut.opMulticut import OpMulticutAgglomerator, AVAILABLE_SOLVER_NAMES, DEFAULT_SOLVER_NAME
 
@@ -89,14 +93,16 @@ class MulticutGuiMixin(object):
         drawer_layout.setSpacing(1)
 
         # Beta
-        beta_box = QDoubleSpinBox(decimals=2, minimum=0.01, maximum=0.99, singleStep=0.1)
+        beta_box = QDoubleSpinBox(decimals=2, minimum=0.01, maximum=0.99, singleStep=0.1,
+                                  toolTip="Bias parameter for the multicut optimization.")
         configure_update_handlers( beta_box.valueChanged, op.Beta )
         beta_layout = control_layout("Beta", beta_box)
         drawer_layout.addLayout(beta_layout)
         self.beta_box = beta_box
 
         # Solver
-        solver_name_combo = QComboBox()
+        solver_name_combo = QComboBox(
+            toolTip="Multicut optimization technique. Available solvers depend on which optimizer library you have installed.")
         for solver_name in AVAILABLE_SOLVER_NAMES:
             solver_name_combo.addItem(solver_name)
         configure_update_handlers( solver_name_combo.currentIndexChanged, op.SolverName )
@@ -104,7 +110,9 @@ class MulticutGuiMixin(object):
         self.solver_name_combo = solver_name_combo
 
         # Update Button
-        update_button = QPushButton("Update Multicut", clicked=self.onUpdateMulticutButton)
+        update_button = QPushButton(text="Update Multicut",
+                                    icon=QIcon(ilastikIcons.Play),
+                                    clicked=self.onUpdateMulticutButton)
         drawer_layout.addWidget(update_button)
 
         # Layout
@@ -113,6 +121,17 @@ class MulticutGuiMixin(object):
         # Finally, the whole drawer widget
         drawer = QWidget(parent=self)
         drawer.setLayout(drawer_layout)
+
+        # Widget Shortcuts
+        mgr = ShortcutManager()
+        ActionInfo = ShortcutManager.ActionInfo
+        shortcut_group = "Multicut"
+        mgr.register( "u", ActionInfo( shortcut_group,
+                                       "UpdateMulticut",
+                                       "Run the multicut optimization using the current edge probabilities",
+                                       update_button.click,
+                                       update_button,
+                                       update_button ) )
 
         return drawer
 
@@ -214,6 +233,7 @@ class MulticutGuiMixin(object):
         th.start()
 
     def create_multicut_edge_layer(self):
+        ActionInfo = ShortcutManager.ActionInfo
         op = self.__topLevelOperatorView
         if not op.Output.ready():
             return None
@@ -225,6 +245,15 @@ class MulticutGuiMixin(object):
         layer.name = "Multicut Edges"
         layer.visible = False # Off by default...
         layer.opacity = 1.0
+
+        layer.shortcutRegistration = ( "m",
+                                       ActionInfo( "Multicut",
+                                                   "MulticutEdgesVisibility",
+                                                   "Show/Hide Multicut Edges",
+                                                   layer.toggleVisible,
+                                                   self.viewerControlWidget(),
+                                                   layer ) )
+        
         return layer
 
     def create_multicut_segmentation_layer(self):
@@ -235,6 +264,7 @@ class MulticutGuiMixin(object):
     
         layer = self.createStandardLayerFromSlot( op.Output )
         layer.name = "Multicut Segmentation"
+        layer.colortableIsRandom = True
         layer.visible = False # Off by default...
         layer.opacity = 0.5
         return layer

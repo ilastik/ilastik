@@ -309,6 +309,7 @@ class LayerViewerGui(QWidget):
     def _create_random_colortable_layer_from_slot(cls, slot, num_colors=256):
         colortable = generateRandomColors(num_colors, clamp={'v': 1.0, 's' : 0.5}, zeroIsTransparent=True)
         layer = ColortableLayer(LazyflowSource(slot), colortable)
+        layer.colortableIsRandom = True
         return layer
 
     @classmethod
@@ -430,13 +431,13 @@ class LayerViewerGui(QWidget):
             self.editor.dataShape = newDataShape
                        
             # Find the xyz midpoint
-            midpos5d = [x/2 for x in newDataShape]
+            midpos5d = [x//2 for x in newDataShape]
 
             # center viewer there
             self.setViewerPos(midpos5d)
 
             if not (self.editor.cropModel._crop_extents[0][0]  == None or self.editor.cropModel.cropZero()):
-                cropMidPos = [(b+a)/2 for [a,b] in self.editor.cropModel._crop_extents]
+                cropMidPos = [(b+a)//2 for [a,b] in self.editor.cropModel._crop_extents]
                 for i in range(3):
                     self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
 
@@ -524,7 +525,7 @@ class LayerViewerGui(QWidget):
             for i in range(3):
                 self.editor.navCtrl.changeSliceAbsolute(pos3d[i],i)
             if not (self.editor.cropModel._crop_extents[0][0]  == None or self.editor.cropModel.cropZero()):
-                cropMidPos = [(b+a)/2 for [a,b] in self.editor.cropModel._crop_extents]
+                cropMidPos = [(b+a)//2 for [a,b] in self.editor.cropModel._crop_extents]
                 for i in range(3):
                     self.editor.navCtrl.changeSliceAbsolute(cropMidPos[i],i)
 

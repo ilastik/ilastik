@@ -19,13 +19,13 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 """
-Mode along a numpy.ndarray axis. Taken from scipy.
+Mode along a numpy.ndarray axis. Modified from scipy.
 
 """
 import numpy as np
 
 def mode(a, axis=0):
-    scores = np.unique(np.ravel(a))       # get ALL unique values
+    scores = np.sort(vigra.analysis.unique(np.ravel(a)))       # get ALL unique values
     testshape = list(a.shape)
     testshape[axis] = 1
     oldmostfreq = np.zeros(testshape)

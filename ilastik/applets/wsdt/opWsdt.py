@@ -21,6 +21,7 @@ class OpWsdt(Operator):
     SigmaMinima = InputSlot(value=3.0)
     SigmaWeights = InputSlot(value=0.0)
     GroupSeeds = InputSlot(value=False)
+    PreserveMembranePmaps = InputSlot(value=False)
 
     EnableDebugOutputs = InputSlot(value=False)
     
@@ -63,6 +64,7 @@ class OpWsdt(Operator):
                           self.SigmaMinima.value,
                           self.SigmaWeights.value,
                           self.GroupSeeds.value,
+                          self.PreserveMembranePmaps.value,
                           out_debug_image_dict=self.debug_results,
                           out=result[...,0] )
         
@@ -86,6 +88,7 @@ class OpCachedWsdt(Operator):
     SigmaMinima = InputSlot(value=3.0)
     SigmaWeights = InputSlot(value=0.0)
     GroupSeeds = InputSlot(value=False)
+    PreserveMembranePmaps = InputSlot(value=False)
 
     EnableDebugOutputs = InputSlot(value=False)
     
@@ -115,6 +118,7 @@ class OpCachedWsdt(Operator):
         self._opWsdt.SigmaMinima.connect( self.SigmaMinima )
         self._opWsdt.SigmaWeights.connect( self.SigmaWeights )
         self._opWsdt.GroupSeeds.connect( self.GroupSeeds )
+        self._opWsdt.PreserveMembranePmaps.connect( self.PreserveMembranePmaps )
         self._opWsdt.EnableDebugOutputs.connect( self.EnableDebugOutputs )
         
         self._opCache = OpBlockedArrayCache( parent=self )

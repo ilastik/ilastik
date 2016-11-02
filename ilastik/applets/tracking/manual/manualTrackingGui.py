@@ -18,11 +18,13 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
+from __future__ import division
 from PyQt4 import uic, QtGui, QtCore
 from PyQt4.QtGui import QColor
 
 import os
 import numpy
+import vigra
 
 import logging
 from lazyflow.rtype import SubRegion
@@ -652,7 +654,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
                     
             sroi = [slice(0,1),]
             for idx,p in enumerate(position5d[1:-1]):
-                begin = max(0,p-window[idx]/2)
+                begin = max(0,p-window[idx]//2)
                 end = min(begin+window[idx], self.mainOperator.LabelImage.meta.shape[idx+1])
                 sroi += [ slice(begin,end), ]
             
@@ -671,7 +673,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
                 
                 li_prev_oid = (li_prev == oid_prev)
                 li_product = li_prev_oid * li_cur
-                uniqueLabels = list(numpy.unique(li_product))
+                uniqueLabels = list(numpy.sort(vigra.analysis.unique(li_product)))
                 if 0 in uniqueLabels:
                     uniqueLabels.remove(0)
                 if len(uniqueLabels) != 1:                
@@ -1023,7 +1025,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
                         # write label image
                         seg.create_dataset("labels", data = labelImage, dtype=numpy.uint32, compression=1)
                         
-                        oids_meta = numpy.unique(labelImage).astype(numpy.uint32)[1:]  
+                        oids_meta = numpy.sort(vigra.analysis.unique(labelImage)).astype(numpy.uint32)[1:]  
                         ones = numpy.ones(oids_meta.shape, dtype=numpy.uint8)
                         if 'objects' in f_curr.keys(): del f_curr['objects']
                         f_meta = f_curr.create_group('objects').create_group('meta')
@@ -1182,7 +1184,7 @@ class ManualTrackingGui(LayerViewerGui, ExportingGui):
         roi = SubRegion(self.mainOperator.LabelImage, start=[t,0,0,0,0], stop=[t+1,] + list(self.mainOperator.LabelImage.meta.shape[1:]))
         li = self.mainOperator.LabelImage.get(roi).wait()
         coords = numpy.where(li == oid)
-        mid = len(coords[1]) / 2
+        mid = len(coords[1]) // 2
         cur_slicing_pos = self.editor.posModel.slicingPos
         new_slicing_pos = [coords[1][mid], coords[2][mid], coords[3][mid]]
          

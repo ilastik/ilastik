@@ -347,6 +347,10 @@ class PixelClassificationGui(LabelingGui):
             thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[0].topLevelOperator.innerOperators[0]
         elif self.topLevelOperatorView.name=="OpPixelClassification1":
             thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[1].topLevelOperator.innerOperators[0]
+        elif self.topLevelOperatorView.name=="OpPixelClassification2":
+            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[2].topLevelOperator.innerOperators[0]
+        elif self.topLevelOperatorView.name=="OpPixelClassification3":
+            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[3].topLevelOperator.innerOperators[0]
         else:
             raise NotImplementedError
 
@@ -363,6 +367,10 @@ class PixelClassificationGui(LabelingGui):
             thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[0].topLevelOperator.innerOperators[0]
         elif self.topLevelOperatorView.name=="OpPixelClassification1":
             thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[1].topLevelOperator.innerOperators[0]
+        elif self.topLevelOperatorView.name=="OpPixelClassification2":
+            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[2].topLevelOperator.innerOperators[0]
+        elif self.topLevelOperatorView.name=="OpPixelClassification3":
+            thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplets[3].topLevelOperator.innerOperators[0]
         else:
             raise NotImplementedError
 

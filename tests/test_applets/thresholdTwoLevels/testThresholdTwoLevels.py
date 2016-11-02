@@ -579,7 +579,7 @@ class TestThresholdTwoLevels(Generator2):
 
         prod = cc_high_filtered.astype(numpy.uint8) * numpy.asarray(cc_low)
 
-        passed = numpy.unique(prod)
+        passed = numpy.sort(vigra.analysis.unique(prod))
         del prod
         all_label_values = numpy.zeros((cc_low.max()+1,), dtype=numpy.uint8)
         for i, l in enumerate(passed):
