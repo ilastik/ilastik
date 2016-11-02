@@ -68,9 +68,6 @@ FEATURES = {
     }
 }
 
-FILE_RAW = 'movie5000.h5'
-FILE_BINARY = 'movie5000_Simple Segmentation.h5'
-
 # Cleanup functions (used in vigra_objfeats.py)
 def cleanup_key(k):
     return k.replace(' ', '')
@@ -101,37 +98,36 @@ def cleanup(d, nObjects, features):
     newkeys = set(result.keys()) & set(features)
     return dict((k, result[k]) for k in newkeys)
 
-# Generate test raw and binary images to test object extraction
 def binaryImage():
-    img = np.zeros((2, 50, 50, 50, 1), dtype=np.float32)
-    img[0,  0:10,  0:10,  0:10, 0] = 1
-    img[0, 20:30, 20:30, 20:30, 0] = 1
-    img[0, 40:45, 40:45, 40:45, 0] = 1
+    frameNum = 500
+    
+    img = np.zeros((frameNum, 100, 100, 1), dtype=np.float32)
+    
+    for frame in range(frameNum):
+        img[frame,  0:10,  0:10, 0] = 1
+        img[frame, 20:30, 20:30, 0] = 1
+        img[frame, 40:45, 40:45, 0] = 1
+        img[frame, 60:80, 60:80, 0] = 1
 
-    img[1, 20:30, 20:30, 20:30, 0] = 1
-    img[1, 5:10, 5:10, 0, 0] = 1
-    img[1, 12:15, 12:15, 0, 0] = 1
     img = img.view(vigra.VigraArray)
-    img.axistags = vigra.defaultAxistags('txyzc')
+    img.axistags = vigra.defaultAxistags('txyc')
 
     return img
 
 def rawImage():
-    img = np.zeros((2, 50, 50, 50, 1), dtype=np.float32)
-    img[0,  0:10,  0:10,  0:10, 0] = 200
-    img[0, 20:30, 20:30, 20:30, 0] = 100
+    frameNum = 500
+    
+    img = np.zeros((frameNum, 100, 100, 1), dtype=np.float32)
+    
+    for frame in range(frameNum):
+        img[frame,  0:10,  0:10, 0] = 200
+        img[frame, 20:30, 20:30, 0] = 100
+        img[frame, 40:45, 40:45, 0] = 150
+        img[frame, 60:80, 60:80, 0] = 75
 
-    # this object is further out than the margin and tests
-    # regionCenter feature
-    img[0, 40:45, 40:45, 40:45, 0] = 75
 
-    img[1, 20:30, 20:30, 20:30, 0] = 50
-
-    # this and next object are in each other's excl features
-    img[1, 5:10, 5:10, 0, 0] = 25
-    img[1, 12:15, 12:15, 0, 0] = 13
     img = img.view(vigra.VigraArray)
-    img.axistags = vigra.defaultAxistags('txyzc')
+    img.axistags = vigra.defaultAxistags('txyc')
 
     return img
 
@@ -189,25 +185,16 @@ class TestOpComparison(object):
         
         g = Graph()     
         
-        # File reader operators
-        self.h5FileRaw = h5py.File(FILE_RAW, 'r')        
-        self.opReaderRaw = OpStreamingHdf5Reader(graph=g)
-        self.opReaderRaw.Hdf5File.setValue(self.h5FileRaw)
-        self.opReaderRaw.InternalPath.setValue('data')
-        
-        self.h5FileBinary = h5py.File(FILE_BINARY, 'r')
-        self.opReaderBinary = OpStreamingHdf5Reader(graph=g)
-        self.opReaderBinary.Hdf5File.setValue(self.h5FileBinary)
-        self.opReaderBinary.InternalPath.setValue('exported_data')
-        
         # Reorder axis operators 
         self.op5Raw = OpReorderAxes(graph=g)
         self.op5Raw.AxisOrder.setValue("txyzc")
-        self.op5Raw.Input.connect(self.opReaderRaw.OutputImage)#self.opReaderRaw.OutputImage)
+        #self.op5Raw.Input.connect(self.opReaderRaw.OutputImage)#self.opReaderRaw.OutputImage)
+        self.op5Raw.Input.setValue(raw_img)
         
         self.op5Binary = OpReorderAxes(graph=g)
         self.op5Binary.AxisOrder.setValue("txyzc")
-        self.op5Binary.Input.connect(self.opReaderBinary.OutputImage)
+        #self.op5Binary.Input.connect(self.opReaderBinary.OutputImage)
+        self.op5Binary.Input.setValue(binary_img)
         
         # Cache operators
         self.opCacheRaw = OpBlockedArrayCache(graph=g)
@@ -222,16 +209,6 @@ class TestOpComparison(object):
         self.opLabel = OpLabelVolume(graph=g)
         self.opLabel.Input.connect(self.op5Binary.Output)
         #self.opLabel.Input.connect(self.opCacheBinary.Output)
-           
-#         # Object region features operator
-#         self.opRegionFeatures = OpRegionFeatures(graph=g)
-#         self.opRegionFeatures.LabelVolume.connect(self.opLabel.Output)
-#         self.opRegionFeatures.RawVolume.connect(self.op5Raw.Output)
-#         #self.opRegionFeatures.RawVolume.connect(self.opCacheRaw.Output)
-#         self.opRegionFeatures.Features.setValue(FEATURES)
-#    
-#         self.opAdapt = OpAdaptTimeListRoi(graph=self.opRegionFeatures.graph)
-#         self.opAdapt.Input.connect(self.opRegionFeatures.Output)
         
         # Object extraction
         self.opObjectExtraction = OpObjectExtraction(graph=g)
@@ -258,7 +235,7 @@ class TestOpComparison(object):
 #         del binaryVol
     
         # Profile object extraction simplified
-        print "Starting object extraction simplified (single-thread, without cache)"
+        print "\nStarting object extraction simplified (single-thread, without cache)"
              
         with Timer() as timerObjectFeaturesSimp:
             featsObjectFeaturesSimp = self.opObjectFeaturesSimp.Features([]).wait()
@@ -266,7 +243,7 @@ class TestOpComparison(object):
         print "Simplified object extraction took: {} seconds".format(timerObjectFeaturesSimp.seconds())     
         
         # Profile object extraction optimized
-        print "Starting object extraction (without cache)"
+        print "\nStarting object extraction (multi-thread, without cache)"
           
         with Timer() as timerObjectExtraction:
             featsObjectExtraction = self.opObjectExtraction.RegionFeatures([]).wait()
@@ -274,9 +251,10 @@ class TestOpComparison(object):
         print "Object extraction took: {} seconds".format(timerObjectExtraction.seconds()) 
     
         # Profile for basic multi-threaded feature computation 
+        # just a multi-threaded loop that labels volumes and extract object features directly (No operators, no plugin system, no overhead, just a loop)
         featsBasicFeatureComp = dict.fromkeys( range(self.op5Raw.Output.meta.shape[0]), None)
             
-        print "Starting basic multi-threaded feature computation"
+        print "\nStarting basic multi-threaded feature computation"
         pool = RequestPool()    
         for t in range(0, self.op5Raw.Output.meta.shape[0], 1):
             pool.add( Request( partial(self._computeObjectFeatures, t, featsBasicFeatureComp) ) )
