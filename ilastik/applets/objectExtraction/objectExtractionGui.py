@@ -137,8 +137,7 @@ class FeatureSelectionDialog(QDialog):
                 item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
                 if 'tooltip' in parameters:
                     item.setToolTip(0, parameters['tooltip'])
-                #if 'detailtext' in parameters:
-                #    item.setText(1, parameters['detailtext'])
+
                 # hack to ensure checkboxes visible
                 item.setCheckState(0, Qt.Checked)
                 item.setCheckState(0, Qt.Unchecked)
@@ -171,6 +170,7 @@ class FeatureSelectionDialog(QDialog):
         if itemParent == None: # user clicked a Plugin Name
             pluginName=str(item.text(0))
             if col==1:
+                #early return, since the user clicked on "help" and didn't want to check the feature
                 self.ui.textBrowser.setText("here we will have plugin help")
                 return
             if currentItem == item: # user clicked on the text
@@ -197,6 +197,7 @@ class FeatureSelectionDialog(QDialog):
                     self.ui.textBrowser.setText(self.featureDict[pluginName][plugin_feature_name]["detailtext"])
                 except KeyError:
                     self.ui.textBrowser.setText("Sorry, no detailed description is available for this feature")
+                #early return, since the user clicked on "help" and didn't want to check the feature
                 return
             if currentItem == item: # user clicked on the text
                 if item.checkState(0) == Qt.Checked:

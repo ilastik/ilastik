@@ -91,7 +91,59 @@ class VigraObjFeats(ObjectFeaturesPlugin):
 
         if feature_name == "Count":
             displaytext = "Size in pixels"
-            detailtext = "Size in pixels as we usually compute it. Just that. Nothing else."
+            detailtext = "Total size of the object in pixels. No correction for anisotropic resolution or anything else."
+
+        if feature_name == "Maximum":
+            displaytext = "Maximum intensity"
+            detailtext = "Maximum intensity value inside the object. For multi-channel data, this feature is computed channel-wise."
+
+        if feature_name == "Minimum":
+            displaytext = "Minimum intensity"
+            detailtext = "Minimum intensity value inside the object. For multi-channel data, this feature is computed channel-wise."
+
+        if feature_name == "Coord<Minimum>":
+            displaytext = "Bounding Box Minimum"
+            detailtext = "The coordinates of the lower left corner of the object's bounding box. The first axis is x, then y, then z (if available)."
+
+        if feature_name == "Coord<Maximum>":
+            displaytext = "Bounding Box Maximum"
+            detailtext = "The coordinates of the upper right corner of the object's bounding box. The first axis is x, then y, then z (if available)."
+
+        if feature_name == "Mean":
+            displaytext = "Mean Intensity"
+            detailtext = "Mean intensity inside the object. For multi-channel data, this feature is computed channel-wise."
+
+        if feature_name == "Variance":
+            displaytext = "Variance of Intensity"
+            detailtext = "Variance of the intensity distribution inside the object. For multi-channel data, this feature is computed channel-wise."
+
+        if feature_name == "Skewness":
+            displaytext = "Skewness of Intensity"
+            detailtext = "Skewness of the intensity distribution inside the object, also known as the third standardized moment. This feature measures the asymmetry of the"  \
+                         "intensity distribution inside the object. For multi-channel data, this feature is computed channel-wise. "
+
+        if feature_name == "Kurtosis":
+            displaytext = "Kurtosis of Intensity"
+            detailtext = "Kurtosis of the intensity distribution inside the object, also known as the fourth standardized moment. This feature measures the heaviness of the" \
+                         "tails for the distribution of intensity over the object's pixels."
+
+        if feature_name == "RegionCenter":
+            displaytext = "Center of the object"
+            detailtext = "Average of the coordinates of this object's pixels."
+
+        if feature_name == "RegionRadii":
+            displaytext = "Radii of the object"
+            detailtext = "Eigenvalues of the PCA on the coordinates of the object's pixels. Very roughly, this corresponds to the radii of an ellipse fit to the object." \
+                        " The radii are ordered, with the largest value as first."
+
+        if feature_name == "RegionAxes":
+            displaytext = "Principal components of the object"
+            detailtext = "Eigenvectors of the PCA on the coordinates of the object's pixels. Very roughly, this corresponds to the axes of an ellipse fit to the object." \
+                        " The axes are ordered starting from the one with the largest eigenvalue."
+
+        if feature_name == "Quantiles":
+            displaytext = "Quantiles of Intensity"
+            detailtext = "Quantiles of the intensity distribution inside the object. "
 
         if "Central<PowerSum<" in feature_name:
             tooltip =  "Unnormalized central moment: Sum_i{(X_i-object_mean)^n}"
