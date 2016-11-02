@@ -18,7 +18,6 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ###############################################################################
-import unittest
 import os
 import numpy as np
 import vigra
@@ -174,8 +173,8 @@ class OpObjectFeaturesSimplified(Operator):
 
 
 # Object extraction running time comparison
-class TestOpComparison(object):
-    def setUp(self):
+class ObjectExtractionTimeComparison(object):
+    def __init__(self):
         # Set memory and number of threads here
         #lazyflow.request.Request.reset_thread_pool(2)
         #Memory.setAvailableRam(500*1024**2)
@@ -222,7 +221,7 @@ class TestOpComparison(object):
         self.opObjectFeaturesSimp.RawVol.connect(self.opCacheRaw.Output) 
         self.opObjectFeaturesSimp.BinaryVol.connect(self.opCacheBinary.Output) 
 
-    def test_object_extraction_time(self):
+    def run(self):
         
 #         # Load caches beforehand (To remove overhead of reading frames)
 #         with Timer() as timerCaches:    
@@ -290,13 +289,8 @@ class TestOpComparison(object):
 
 
 if __name__ == '__main__':
-    import sys
-    import nose
+    
+    # Run object extraction comparison
+    objectExtractionTimeComparison = ObjectExtractionTimeComparison()
+    objectExtractionTimeComparison.run()
 
-    # Don't steal stdout. Show it on the console as usual.
-    sys.argv.append("--nocapture")
-
-    # Don't set the logging level to DEBUG. Leave it alone.
-    sys.argv.append("--nologcapture")
-
-    nose.run(defaultTest=__file__)
