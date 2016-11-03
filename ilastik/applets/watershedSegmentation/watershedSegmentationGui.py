@@ -70,11 +70,18 @@ class WatershedSegmentationGui(LabelingGui):
     ###########################################
     
     def __init__(self, parentApplet, topLevelOperatorView, labelingDrawerUiPath=None ):
-    #def __init__(self, parentApplet, topLevelOperatorView, drawerUiPath=None, rawInputSlot=None, crosshair=True):
-    #def __init__(self, parentApplet, topLevelOperatorView):
 
-        #TODO
         #labeling slots
+        self.parentApplet = parentApplet
+        # Tell our base class which slots to monitor
+        labelSlots = LabelingGui.LabelingSlots()
+        labelSlots.labelInput = topLevelOperatorView.LabelInputs
+        labelSlots.labelOutput = topLevelOperatorView.LabelImages
+        labelSlots.labelEraserValue = topLevelOperatorView.opLabelPipeline.opLabelArray.eraser
+        labelSlots.labelDelete = topLevelOperatorView.opLabelPipeline.DeleteLabel
+        labelSlots.labelNames = topLevelOperatorView.LabelNames
+
+
         #logging.info("\n vor \n")
         self.RawDataName = "Seeds"
         self.__cleanup_fns = []
