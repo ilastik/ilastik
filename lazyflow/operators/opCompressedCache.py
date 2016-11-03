@@ -676,8 +676,9 @@ class OpCompressedCache(OpUnmanagedCompressedCache, ManagedBlockedCache):
             # *uncompressed* array
             mem = get_storage_size(ds)
             f.close()
-            del self._cacheFiles[block_id]
-            del self._last_access_times[block_id]
+            with self._lock:
+                del self._cacheFiles[block_id]
+                del self._last_access_times[block_id]
             return mem
 
     def getBlockAccessTimes(self):
