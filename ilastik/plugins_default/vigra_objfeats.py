@@ -57,7 +57,7 @@ def cleanup(d, nObjects, features):
 class VigraObjFeats(ObjectFeaturesPlugin):
     # features not in this list are assumed to be local.
     local_features = set(["Mean", "Variance", "Skewness", \
-                          "Kurtosis", "Histogram", "Sum", \
+                          "Kurtosis", "Histogram", \
                           "Covariance", "Minimum", "Maximum"])
     local_suffix = " in neighborhood" #note the space in front, it's important
     local_out_suffixes = [local_suffix, " in object and neighborhood"]
@@ -88,7 +88,8 @@ class VigraObjFeats(ObjectFeaturesPlugin):
         advanced = False
         displaytext = feature_name
         detailtext = feature_name
-
+        # NOTE: it's important to have the "inside the object" phrase in the description of features, that can also
+        # be computed in the object neighborhood
         if feature_name == "Count":
             displaytext = "Size in pixels"
             detailtext = "Total size of the object in pixels. No correction for anisotropic resolution or anything else."
@@ -125,7 +126,7 @@ class VigraObjFeats(ObjectFeaturesPlugin):
         if feature_name == "Kurtosis":
             displaytext = "Kurtosis of Intensity"
             detailtext = "Kurtosis of the intensity distribution inside the object, also known as the fourth standardized moment. This feature measures the heaviness of the" \
-                         "tails for the distribution of intensity over the object's pixels."
+                         "tails for the distribution of intensity over the object's pixels. For multi-channel data, this feature is computed channel-wise. "
 
         if feature_name == "RegionCenter":
             displaytext = "Center of the object"
@@ -143,37 +144,31 @@ class VigraObjFeats(ObjectFeaturesPlugin):
 
         if feature_name == "Quantiles":
             displaytext = "Quantiles of Intensity"
-            detailtext = "Quantiles of the intensity distribution inside the object. "
+            detailtext = "Quantiles of the intensity distribution inside the object, in the following order: 0%, 10%, 25%, 50%, 75%, 90%, 100%. "
 
-        if "Central<PowerSum<" in feature_name:
-            tooltip =  "Unnormalized central moment: Sum_i{(X_i-object_mean)^n}"
-            advanced = True
-        elif "PowerSum<" in feature_name:
-            tooltip = "Unnormalized moment: Sum_i{(X_i)^n}"
-            advanced = True
-        elif "Minimum" in feature_name:
-            tooltip = "Minimum"
+        if feature_name == "Histogram":
+            displaytext = "Histogram of Intensity"
+            detailtext = "Histogram of the intensity distribution inside the object. The histogram has 64 bins and its range is computed from the global minimum" \
+                         "and maximum intensity values in the whole image."
 
-        elif "Maximum" in feature_name:
-            tooltip = "Maximum"
-        elif "Variance" in feature_name:
-            tooltip = "Variance"
-        elif "Skewness" in feature_name:
-            tooltip = "Skewness"
-        elif "Kurtosis" in feature_name:
-            tooltip = "Kurtosis"
+        if feature_name == "Covariance":
+            displaytext = "Covariance of Channel Intensity"
+            detailtext = "For multi-channel images this feature computes the covariance between the channels inside the object."
 
-        if "Principal<" in feature_name:
-            tooltip = tooltip + ", projected onto PCA eigenvectors"
+        if feature_name == "Sum":
+            displaytext = "Total Intensity"
+            detailtext = "Sum of intensity values for all the pixels inside the object. For multi-channel images, computed channel-wise."
+
+        if "<" in feature_name and feature_name!="Coord<Minimum>" and feature_name!="Coord<Maximum>":
             advanced = True
-        if "Coord<" in feature_name:
-            tooltip = tooltip + ", computed from object pixel coordinates"
-        if not "Coord<" in feature_name:
-            tooltip = tooltip + ", computed from raw pixel values"
-        if "DivideByCount<" in feature_name:
-            tooltip = tooltip + ", divided by the number of pixels"
-            advanced = True
+
         if self.local_suffix in feature_name:
+            stripped_name = feature_name.replace(self.local_suffix, "")
+            # we have detailed info for this feature, let's apply it to the
+            texts = self.find_properties(stripped_name)
+            displaytext = texts["displaytext"] + " in neighborhood"
+            detailtext = texts["detailtext"].replace("inside the object", "in the object neighborhood")
+            detailtext = detailtext + " The size of the neighborhood is determined from the controls in the lower part of the dialogue."
             tooltip = tooltip + ", as defined by neighborhood size below"
 
         props = {}

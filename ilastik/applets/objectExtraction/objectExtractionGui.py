@@ -113,14 +113,25 @@ class FeatureSelectionDialog(QDialog):
             self.countAll[pluginName]=len(self.featureDict[pluginName])
             advanced_names = []
             simple_names = []
+            selected_names = []
             for name in sorted(features.keys()):
                 parameters = features[name]
-                if 'advanced' in parameters:
-                    advanced_names.append(name)
-                else:
+                try:
+                    if parameters['advanced'] is True:
+                        advanced_names.append(name)
+                    else:
+                        simple_names.append(name)
+                except KeyError:
                     simple_names.append(name)
+
+                if pluginName in self.selectedFeatures:
+                    if name in self.selectedFeatures[pluginName]:
+                        selected_names.append(name)
             
             for name in simple_names+advanced_names:
+                if name in advanced_names and (not name in selected_names):
+                    # do not display advanced features, if they have not been selected previously
+                    continue
                 parameters = features[name]
                 
                 item = QTreeWidgetItem(parent)
@@ -141,10 +152,9 @@ class FeatureSelectionDialog(QDialog):
                 # hack to ensure checkboxes visible
                 item.setCheckState(0, Qt.Checked)
                 item.setCheckState(0, Qt.Unchecked)
-                if pluginName in self.selectedFeatures:
-                    if name in self.selectedFeatures[pluginName]:
-                        item.setCheckState(0, Qt.Checked)
-                        self.countChecked[pluginName]+=1
+                if name in selected_names:
+                    item.setCheckState(0, Qt.Checked)
+                    self.countChecked[pluginName]+=1
             if self.countChecked[pluginName] == 0:
                 parent.setCheckState(0, Qt.Unchecked)
             elif self.countChecked[pluginName] == self.countAll[pluginName]:
