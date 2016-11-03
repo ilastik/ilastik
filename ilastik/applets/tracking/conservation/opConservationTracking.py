@@ -293,8 +293,11 @@ class OpConservationTracking(Operator, ExportingOperator):
         parameters['x_range'] = x_range
         parameters['y_range'] = y_range
         parameters['z_range'] = z_range
-        parameters['size_range'] = size_range
         parameters['max_nearest_neighbors'] = max_nearest_neighbors
+
+        # Set a size range with a minimum area equal to the max number of objects (since the GMM throws an error if we try to fit more gaussians than the number of pixels in the object)
+        size_range = (max(maxObj, size_range[0]), size_range[1])
+        parameters['size_range'] = size_range
 
         if cplex_timeout:
             parameters['cplex_timeout'] = cplex_timeout
