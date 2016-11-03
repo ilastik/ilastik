@@ -118,7 +118,7 @@ class OpPixelClassification( Operator ):
         #  from the InputImages slot, but it's shape must match.
         self.LabelInputs.connect( self.InputImages )
 
-        # Hook up Labeling Pipeline
+        # Hook up Brushing Pipeline
         self.opLabelPipeline = OpMultiLaneWrapper( OpLabelPipeline, parent=self, broadcastingSlotNames=['DeleteLabel'] )
         self.opLabelPipeline.RawImage.connect( self.InputImages )
         self.opLabelPipeline.LabelInput.connect( self.LabelInputs )
@@ -426,7 +426,7 @@ class OpPredictionPipelineNoCache(Operator):
         super( OpPredictionPipelineNoCache, self ).__init__( *args, **kwargs )
 
         # Random forest prediction using the raw feature image slot (not the cached features)
-        # This would be bad for interactive labeling, but it's good for headless flows 
+        # This would be bad for interactive brushing, but it's good for headless flows 
         #  because it avoids the overhead of cache.        
         self.cacheless_predict = OpClassifierPredict( parent=self )
         self.cacheless_predict.name = "OpClassifierPredict (Cacheless Path)"

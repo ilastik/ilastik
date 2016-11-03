@@ -45,7 +45,8 @@ from ilastik.config import cfg as ilastik_config
 from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted
 from ilastik.shell.gui.iconMgr import ilastikIcons
-from ilastik.applets.labeling.labelingGui import LabelingGui
+#from ilastik.applets.labeling.labelingGui import LabelingGui
+from ilastik.applets.brushing.brushingGui import BrushingGui
 from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui, H5VolumeSelectionDlg
 from ilastik.shell.gui.variableImportanceDialog import VariableImportanceDialog
 
@@ -142,7 +143,7 @@ class ClassifierSelectionDlg(QDialog):
         # Close the dlg
         super( ClassifierSelectionDlg, self ).accept()
     
-class PixelClassificationGui(LabelingGui):
+class PixelClassificationGui(BrushingGui):
 
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
@@ -270,10 +271,10 @@ class PixelClassificationGui(LabelingGui):
     ###########################################
     ###########################################
 
-    def __init__(self, parentApplet, topLevelOperatorView, labelingDrawerUiPath=None ):
+    def __init__(self, parentApplet, topLevelOperatorView, brushingDrawerUiPath=None ):
         self.parentApplet = parentApplet
         # Tell our base class which slots to monitor
-        labelSlots = LabelingGui.LabelingSlots()
+        labelSlots = BrushingGui.BrushingSlots()
         labelSlots.labelInput = topLevelOperatorView.LabelInputs
         labelSlots.labelOutput = topLevelOperatorView.LabelImages
         labelSlots.labelEraserValue = topLevelOperatorView.opLabelPipeline.opLabelArray.eraser
@@ -283,11 +284,11 @@ class PixelClassificationGui(LabelingGui):
         self.__cleanup_fns = []
 
         # We provide our own UI file (which adds an extra control for interactive mode)
-        if labelingDrawerUiPath is None:
-            labelingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
+        if brushingDrawerUiPath is None:
+            brushingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
 
         # Base class init
-        super(PixelClassificationGui, self).__init__( parentApplet, labelSlots, topLevelOperatorView, labelingDrawerUiPath )
+        super(PixelClassificationGui, self).__init__( parentApplet, labelSlots, topLevelOperatorView, brushingDrawerUiPath )
         
         self.topLevelOperatorView = topLevelOperatorView
 
@@ -297,17 +298,17 @@ class PixelClassificationGui(LabelingGui):
 
         self._currentlySavingPredictions = False
 
-        self.labelingDrawerUi.labelListView.support_merges = True
+        self.brushingDrawerUi.labelListView.support_merges = True
 
-        self.labelingDrawerUi.liveUpdateButton.setEnabled(False)
-        self.labelingDrawerUi.liveUpdateButton.setIcon( QIcon(ilastikIcons.Play) )
-        self.labelingDrawerUi.liveUpdateButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-        self.labelingDrawerUi.liveUpdateButton.toggled.connect( self.toggleInteractive )
+        self.brushingDrawerUi.liveUpdateButton.setEnabled(False)
+        self.brushingDrawerUi.liveUpdateButton.setIcon( QIcon(ilastikIcons.Play) )
+        self.brushingDrawerUi.liveUpdateButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self.brushingDrawerUi.liveUpdateButton.toggled.connect( self.toggleInteractive )
 
         self.initFeatSelDlg()
-        self.labelingDrawerUi.suggestFeaturesButton.clicked.connect(self.show_feature_selection_dialog)
+        self.brushingDrawerUi.suggestFeaturesButton.clicked.connect(self.show_feature_selection_dialog)
         self.featSelDlg.accepted.connect(self.update_features_from_dialog)
-        self.labelingDrawerUi.suggestFeaturesButton.setEnabled(False)
+        self.brushingDrawerUi.suggestFeaturesButton.setEnabled(False)
 
         self.topLevelOperatorView.LabelNames.notifyDirty( bind(self.handleLabelSelectionChange) )
         self.__cleanup_fns.append( partial( self.topLevelOperatorView.LabelNames.unregisterDirty, bind(self.handleLabelSelectionChange) ) )
@@ -410,9 +411,9 @@ class PixelClassificationGui(LabelingGui):
         mgr.register( "l", ActionInfo( shortcutGroupName,
                                        "Live Prediction",
                                        "Toggle Live Prediction Mode",
-                                       self.labelingDrawerUi.liveUpdateButton.toggle,
-                                       self.labelingDrawerUi.liveUpdateButton,
-                                       self.labelingDrawerUi.liveUpdateButton ) )
+                                       self.brushingDrawerUi.liveUpdateButton.toggle,
+                                       self.brushingDrawerUi.liveUpdateButton,
+                                       self.brushingDrawerUi.liveUpdateButton ) )
 
     def _setup_contexts(self, layer):
         def callback(pos, clayer=layer):
@@ -434,10 +435,12 @@ class PixelClassificationGui(LabelingGui):
         Called by our base class when one of our data slots has changed.
         This function creates a layer for each slot we want displayed in the volume editor.
         """
+        #layers = []
         # Base class provides the label layer.
         layers = super(PixelClassificationGui, self).setupLayers()
 
         ActionInfo = ShortcutManager.ActionInfo
+        '''
 
         if ilastik_config.getboolean('ilastik', 'debug'):
 
@@ -458,12 +461,22 @@ class PixelClassificationGui(LabelingGui):
                     projectionLayer.visible = False
                     projectionLayer.opacity = 1.0
                     layers.append(projectionLayer)
+        '''
 
         # Show the mask over everything except labels
         maskSlot = self.topLevelOperatorView.PredictionMasks
         if maskSlot.ready():
             maskLayer = self._create_binary_mask_layer_from_slot( maskSlot )
             maskLayer.name = "Mask"
+            maskLayer.visible = False
+            maskLayer.opacity = 1.0
+            layers.append( maskLayer )
+
+        #for visualisation only, not more, could be reomved afterwards
+        imageSlot = self.topLevelOperatorView.InputImages
+        if imageSlot.ready():
+            maskLayer = self._create_binary_mask_layer_from_slot( imageSlot )
+            maskLayer.name = "Input"
             maskLayer.visible = True
             maskLayer.opacity = 1.0
             layers.append( maskLayer )
@@ -487,8 +500,11 @@ class PixelClassificationGui(LabelingGui):
                                                                        uncertaintyLayer ) )
             layers.append(uncertaintyLayer)
 
+        '''
         labels = self.labelListData
+        '''
 
+        '''
         # Add each of the segmentations
         for channel, segmentationSlot in enumerate(self.topLevelOperatorView.SegmentationChannels):
             if segmentationSlot.ready() and channel < len(labels):
@@ -500,7 +516,7 @@ class PixelClassificationGui(LabelingGui):
                                                 normalize=(0.0, 1.0) )
 
                 segLayer.opacity = 1
-                segLayer.visible = False #self.labelingDrawerUi.liveUpdateButton.isChecked()
+                segLayer.visible = False #self.brushingDrawerUi.liveUpdateButton.isChecked()
                 segLayer.visibleChanged.connect(self.updateShowSegmentationCheckbox)
 
                 def setLayerColor(c, segLayer_=segLayer, initializing=False):
@@ -538,6 +554,8 @@ class PixelClassificationGui(LabelingGui):
                     #we're checking for 4 dimensions
                     self._setup_contexts(segLayer)
                 layers.append(segLayer)
+        '''
+        '''
         
         # Add each of the predictions
         for channel, predictionSlot in enumerate(self.topLevelOperatorView.PredictionProbabilityChannels):
@@ -549,7 +567,7 @@ class PixelClassificationGui(LabelingGui):
                                                     range=(0.0, 1.0),
                                                     normalize=(0.0, 1.0) )
                 predictLayer.opacity = 0.25
-                predictLayer.visible = self.labelingDrawerUi.liveUpdateButton.isChecked()
+                predictLayer.visible = self.brushingDrawerUi.liveUpdateButton.isChecked()
                 predictLayer.visibleChanged.connect(self.updateShowPredictionCheckbox)
 
                 def setLayerColor(c, predictLayer_=predictLayer, initializing=False):
@@ -604,11 +622,12 @@ class PixelClassificationGui(LabelingGui):
             
             # The thresholding button can only be used if the data is displayed as grayscale.
             if inputLayer.window_leveling:
-                self.labelingDrawerUi.thresToolButton.show()
+                self.brushingDrawerUi.thresToolButton.show()
             else:
-                self.labelingDrawerUi.thresToolButton.hide()
+                self.brushingDrawerUi.thresToolButton.hide()
         
         self.handleLabelSelectionChange()
+        '''
         return layers
 
     def toggleInteractive(self, checked):
@@ -617,8 +636,8 @@ class PixelClassificationGui(LabelingGui):
         if checked==True:
             if not self.topLevelOperatorView.FeatureImages.ready() \
             or self.topLevelOperatorView.FeatureImages.meta.shape==None:
-                self.labelingDrawerUi.liveUpdateButton.setChecked(False)
-                self.labelingDrawerUi.suggestFeaturesButton.setEnabled(False)
+                self.brushingDrawerUi.liveUpdateButton.setChecked(False)
+                self.brushingDrawerUi.suggestFeaturesButton.setEnabled(False)
                 mexBox=QMessageBox()
                 mexBox.setText("There are no features selected ")
                 mexBox.exec_()
@@ -627,20 +646,20 @@ class PixelClassificationGui(LabelingGui):
         # If we're changing modes, enable/disable our controls and other applets accordingly
         if self.interactiveModeActive != checked:
             if checked:
-                self.labelingDrawerUi.suggestFeaturesButton.setEnabled(False)
-                self.labelingDrawerUi.labelListView.allowDelete = False
-                self.labelingDrawerUi.AddLabelButton.setEnabled( False )
+                self.brushingDrawerUi.suggestFeaturesButton.setEnabled(False)
+                self.brushingDrawerUi.labelListView.allowDelete = False
+                self.brushingDrawerUi.AddLabelButton.setEnabled( False )
             else:
                 num_label_classes = self._labelControlUi.labelListModel.rowCount()
-                self.labelingDrawerUi.labelListView.allowDelete = ( num_label_classes > self.minLabelNumber )
-                self.labelingDrawerUi.AddLabelButton.setEnabled( ( num_label_classes < self.maxLabelNumber ) )
-                self.labelingDrawerUi.suggestFeaturesButton.setEnabled(True)
+                self.brushingDrawerUi.labelListView.allowDelete = ( num_label_classes > self.minLabelNumber )
+                self.brushingDrawerUi.AddLabelButton.setEnabled( ( num_label_classes < self.maxLabelNumber ) )
+                self.brushingDrawerUi.suggestFeaturesButton.setEnabled(True)
 
         self.interactiveModeActive = checked
 
         self.topLevelOperatorView.FreezePredictions.setValue( not checked )
-        self.labelingDrawerUi.liveUpdateButton.setChecked(checked)
-        #self.labelingDrawerUi.suggestFeaturesButton.setEnabled(checked)
+        self.brushingDrawerUi.liveUpdateButton.setChecked(checked)
+        #self.brushingDrawerUi.suggestFeaturesButton.setEnabled(checked)
         # Auto-set the "show predictions" state according to what the user just clicked.
         if checked:
             self._viewerControlUi.checkShowPredictions.setChecked( True )
@@ -710,14 +729,14 @@ class PixelClassificationGui(LabelingGui):
             # FIXME: also check that each label has scribbles?
         
         if not enabled:
-            self.labelingDrawerUi.liveUpdateButton.setChecked(False)
+            self.brushingDrawerUi.liveUpdateButton.setChecked(False)
             self._viewerControlUi.checkShowPredictions.setChecked(False)
             self._viewerControlUi.checkShowSegmentation.setChecked(False)
             self.handleShowPredictionsClicked()
             self.handleShowSegmentationClicked()
 
-        self.labelingDrawerUi.liveUpdateButton.setEnabled(enabled)
-        self.labelingDrawerUi.suggestFeaturesButton.setEnabled(enabled)
+        self.brushingDrawerUi.liveUpdateButton.setEnabled(enabled)
+        self.brushingDrawerUi.suggestFeaturesButton.setEnabled(enabled)
         self._viewerControlUi.checkShowPredictions.setEnabled(enabled)
         self._viewerControlUi.checkShowSegmentation.setEnabled(enabled)
 
