@@ -20,7 +20,6 @@ logger = logging.getLogger(__name__)
 
 class ConservationTrackingWorkflowBase( Workflow ):
     workflowName = "Automatic Tracking Workflow (Conservation Tracking) BASE"
-    #withAnimalTracking = False
 
     def __init__( self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs ):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()

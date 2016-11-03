@@ -87,8 +87,11 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         if 'max_nearest_neighbors' in parameters.keys():
             self._drawer.maxNearestNeighborsSpinBox.setValue(parameters['max_nearest_neighbors'])
         
+        # Hide division GUI widgets
         if 'withAnimalTracking' in parameters.keys() and parameters['withAnimalTracking'] == True:
-            self._drawer.divisionsBox.hide()       
+            self._drawer.divisionsBox.hide()
+            self._drawer.divWeightBox.hide()
+            self._drawer.label_6.hide()       
         
         return self._drawer
 
