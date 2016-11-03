@@ -1,7 +1,7 @@
 import ilastiktools
 import gc
 
-from lazyflow.roi import getIntersectingBlocks, getBlockBounds, roiFromShape, roiToSlice, enlargeRoiForHalo, TinyVector
+from lazyflow.roi import getIntersectingBlocks, getBlockBounds, roiFromShape, TinyVector
 from lazyflow.utility.timer import timeLogged
 
 import logging
@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 class WatershedSegmentor(object):
-    def __init__(self, labels, h5file=None):
+    def __init__(self, labels, blockSize, prepGrp=None, graphGrp=None):
         self.object_names = dict()
         self.objects = dict()
         self.object_seeds_fg = dict()
@@ -20,52 +20,59 @@ class WatershedSegmentor(object):
         self.no_bias_below = dict()
         self.object_lut = dict()
         self.hasSeg = False
+        self._blockSize = blockSize
 
-        if h5file is None:
-            self.supervoxelUint32 = labels
-            ndim = self.supervoxelUint32.value.squeeze().ndim
-            if ndim == 3:
-                self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
-            elif ndim == 2:
-                self.gridSegmentor = ilastiktools.GridSegmentor_2D_UInt32()
-            else:
-                raise RuntimeError("internal error")
+        def isSegmentorValid(prepGrp, graphGrp):
+            if not prepGrp or not graphGrp:
+                return False
 
+            # require valid watershed labels cache
+            watershedGrp = prepGrp.require_group('watershed_labels')
+            watershedValid = len(watershedGrp.keys()) > 0 and \
+                                'cache_valid' in watershedGrp.attrs.keys() and \
+                                watershedGrp.attrs['cache_valid']
+
+            # require valid graph
+            graphValid = 'numNodes' in graphGrp.attrs.keys() and \
+                         'graph' in graphGrp.keys() and \
+                         'edgeWeights' in graphGrp.keys() and \
+                         'nodeSeeds' in  graphGrp.keys() and \
+                         'resultSegmentation' in graphGrp.keys()
+
+            return watershedValid and graphValid
+
+        # create segmentor
+        self.supervoxelUint32 = labels
+        ndim = len(filter(lambda x:x,(TinyVector(self.supervoxelUint32.meta.shape) > 1)))
+        if ndim == 3:
+            self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
+        elif ndim == 2:
+            # TODO: labels and filters are 3D; they would need to be 2D to use GridSegmentor_2D
+            #self.gridSegmentor = ilastiktools.GridSegmentor_2D_UInt32()
+            self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
+        else:
+            raise RuntimeError("internal error")
+
+        # initialize segmentor
+        if isSegmentorValid(prepGrp, graphGrp):
+            self.nodeNum = graphGrp.attrs['numNodes']
+
+            graphS = graphGrp['graph'][:]
+            edgeWeights = graphGrp['edgeWeights'][:]
+            nodeSeeds = graphGrp['nodeSeeds'][:]
+            resultSegmentation = graphGrp['resultSegmentation'][:]
+
+            self.gridSegmentor.initFromSerialization(serialization=graphS,
+                                                     edgeWeights=edgeWeights,
+                                                     nodeSeeds=nodeSeeds,
+                                                     resultSegmentation=resultSegmentation)
+
+            self.hasSeg = resultSegmentation.max() > 0
+        else :
             self.gridSegmentor.init()
             self.nodeNum = self.gridSegmentor.nodeNum()
             self.hasSeg = False
-        else:
-            self.supervoxelUint32 = labels
-            ndim = self.supervoxelUint32.value.squeeze().ndim
-            if ndim == 3:
-                self.gridSegmentor = ilastiktools.GridSegmentor_3D_UInt32()
-            elif ndim == 2:
-                self.gridSegmentor = ilastiktools.GridSegmentor_2D_UInt32()
-            else:
-                raise RuntimeError("internal error")
 
-            self.nodeNum = h5file.attrs["numNodes"]
-
-            graphS = h5file['graph'][:]
-            edgeWeights = h5file['edgeWeights'][:]
-            nodeSeeds = h5file['nodeSeeds'][:]
-            resultSegmentation = h5file['resultSegmentation'][:]
-
-            # TODO: remove after preprocess fixed                
-            #if(self.supervoxelUint32.squeeze().ndim == 3):
-            #    self.gridSegmentor.preprocessingFromSerialization(labels=self.supervoxelUint32,
-            #        serialization=graphS, edgeWeights=edgeWeights, nodeSeeds=nodeSeeds, 
-            #        resultSegmentation=resultSegmentation)
-            #else:
-            #    self.gridSegmentor.preprocessingFromSerialization(labels=self.supervoxelUint32.squeeze(),
-            #        serialization=graphS, edgeWeights=edgeWeights, nodeSeeds=nodeSeeds, 
-            #        resultSegmentation=resultSegmentation)
-
-            self.gridSegmentor.initFromSerialization(serialization=graphS,
-                edgeWeights=edgeWeights, nodeSeeds=nodeSeeds,
-                resultSegmentation=resultSegmentation)
-
-            self.hasSeg = resultSegmentation.max()>0
 
     @timeLogged(logger, logging.INFO)
     def preprocess(self, labels, volume_features, roi_stop):
@@ -89,11 +96,16 @@ class WatershedSegmentor(object):
     def setSeeds(self, fgSeeds, bgSeeds):
         self.gridSegmentor.clearSeeds()
 
-        # TODO: handle iterating over labels correctly - read labels blockwise -  see opPreprocessing.execute for example
-        labels = self.supervoxelUint32.value[0,...,0]
-        labels_roi_begin = TinyVector([0] * len(labels.shape))
-        self.gridSegmentor.addSeeds(labels=labels, labelsOffset=labels_roi_begin,
-                                    fgSeeds=fgSeeds, bgSeeds=bgSeeds)
+        bsz = self._blockSize
+        block_shape = (1,bsz,bsz,bsz,1)
+        block_starts = getIntersectingBlocks( block_shape, roiFromShape(self.supervoxelUint32.meta.shape) )
+        for b_id, block in enumerate(block_starts):
+            labels_roi = getBlockBounds(self.supervoxelUint32.meta.shape,block_shape, block)
+            labels = self.supervoxelUint32(*labels_roi).wait()[0, ..., 0]
+            labels_roi_begin = TinyVector(labels_roi[0][1:-1])
+            self.gridSegmentor.addSeeds(labels=labels,
+                                        labelsOffset=labels_roi_begin,
+                                        fgSeeds=fgSeeds, bgSeeds=bgSeeds)
 
     def addSeeds(self, roi, brushStroke):
         roiShape = [s.stop-s.start for s in roi.toSlice()]

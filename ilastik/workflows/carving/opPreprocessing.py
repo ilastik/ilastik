@@ -19,9 +19,9 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 #Python
+import os
 import sys
 import threading
-from functools import partial
 
 #SciPy
 import numpy
@@ -37,6 +37,7 @@ from lazyflow.utility.timer import Timer
 from lazyflow.utility import Memory
 
 # ilastik
+from ilastik.config import cfg as ilastik_config
 from ilastik.applets.base.applet import DatasetConstraintError
 
 #carving tools
@@ -98,8 +99,8 @@ class OpFilter(Operator):
                     logger.info( " lowest eigenvalue of Hessian of Gaussian" )
                     options = vigra.blockwise.BlockwiseConvolutionOptions3D()
                     options.stdDev = (sigma, )*3
-                    #TODO: verify working blockwise (fix local inversion; should be 255 - result_view)
                     result_view[...] = vigra.blockwise.hessianOfGaussianLastEigenvalue(fvol,options)[roi_orig_slice]
+                    #TODO: fix local inversion; should be global max - result_view
                     result_view[:] = numpy.max(result_view) - result_view
                 
                 elif volume_filter == OpFilter.HESSIAN_DARK:
@@ -110,49 +111,42 @@ class OpFilter(Operator):
 
                 elif volume_filter == OpFilter.STEP_EDGES:
                     logger.info( " Gaussian Gradient Magnitude" )
-                    #TODO: verify working blockwise
                     result_view[...] = vigra.filters.gaussianGradientMagnitude(fvol,sigma)[roi_orig_slice]
                     
                 elif volume_filter == OpFilter.RAW:
                     logger.info( " Gaussian Smoothing" )
-                    #TODO: verify working blockwise
                     result_view[...] = vigra.filters.gaussianSmoothing(fvol,sigma)[roi_orig_slice]
                     
                 elif volume_filter == OpFilter.RAW_INVERTED:
                     logger.info( " negative Gaussian Smoothing" )
-                    #TODO: verify working blockwise
                     result_view[...] = vigra.filters.gaussianSmoothing(-fvol,sigma)[roi_orig_slice]
             else:
                 # 2D Image
-                #TODO: verify working blockwise
+                roi_orig_slice = roiToSlice(*roi_orig)[1:-2]
                 fvol = fvol[:,:,0]
                 if volume_filter == OpFilter.HESSIAN_BRIGHT:
                     logger.info( " lowest eigenvalue of Hessian of Gaussian" )
-                    #TODO: get working blockwise (see 3D example)
-                    volume_feat = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,1]
+                    volume_feat = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[roi_orig_slice][:,:,1]
+                    #TODO: fix local inversion; should be global max - result_view
                     volume_feat[:] = numpy.max(volume_feat) - volume_feat
                 
                 elif volume_filter == OpFilter.HESSIAN_DARK:
                     logger.info( " greatest eigenvalue of Hessian of Gaussian" )
-                    #TODO: get working blockwise (see 3D example)
-                    volume_feat = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[:,:,0]
+                    volume_feat = vigra.filters.hessianOfGaussianEigenvalues(fvol,sigma)[roi_orig_slice][:,:,0]
                      
                 elif volume_filter == OpFilter.STEP_EDGES:
                     logger.info( " Gaussian Gradient Magnitude" )
-                    #TODO: get working blockwise (see 3D example)
-                    volume_feat = vigra.filters.gaussianGradientMagnitude(fvol,sigma)
+                    volume_feat = vigra.filters.gaussianGradientMagnitude(fvol,sigma)[roi_orig_slice]
                     
                 elif volume_filter == OpFilter.RAW:
                     logger.info( " Gaussian Smoothing" )
-                    #TODO: get working blockwise (see 3D example)
-                    volume_feat = vigra.filters.gaussianSmoothing(fvol,sigma)
+                    volume_feat = vigra.filters.gaussianSmoothing(fvol,sigma)[roi_orig_slice]
                     
                 elif volume_filter == OpFilter.RAW_INVERTED:
                     logger.info( " negative Gaussian Smoothing" )
-                    #TODO: get working blockwise (see 3D example)
-                    volume_feat = vigra.filters.gaussianSmoothing(-fvol,sigma)
+                    volume_feat = vigra.filters.gaussianSmoothing(-fvol,sigma)[roi_orig_slice]
 
-                result_view[:,:,0] = volume_feat
+                result_view[:, :, 0] = volume_feat
 
             logger.info( "Filter took {} seconds".format( filterTimer.seconds() ) )
 
@@ -169,9 +163,10 @@ class OpBlockwiseTotalStats(Operator):
     Input = InputSlot()
     Output = OutputSlot(stype='object')
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, blockSize, *args, **kwargs):
         super( OpBlockwiseTotalStats, self ).__init__(*args, **kwargs)
         self._lock = RequestLock()
+        self._blockSize = blockSize
         self._stats = None
 
     def setupOutputs(self):
@@ -191,8 +186,7 @@ class OpBlockwiseTotalStats(Operator):
                 # calculate stats
                 with Timer() as statsTimer:
                     stats = {self.MINIMUM:sys.float_info.max, self.MAXIMUM:sys.float_info.min}
-                    # TODO: this needs to match with bsz shape from OpMstSegmentorProvider.execute
-                    bsz = 256 #block size
+                    bsz = self._blockSize
                     block_shape = (1,bsz,bsz,bsz,1)
                     block_starts = getIntersectingBlocks( block_shape, roiFromShape(self.Input.meta.shape) )
                     block_count = len(block_starts)
@@ -253,8 +247,15 @@ class OpSimpleWatershed(Operator):
     Input = InputSlot()
     Output = OutputSlot()
 
-    # TODO: fix hack -- assumes watersheds are only calculated once per region for given opSimpleWatershed instance
-    # TODO: fix hack -- doesn't work with re-calculated blocks
+    # NOTE: Watershed operator depends on Output being completely cached;
+    #       assumes watersheds are only calculated once per region;
+    #       does not work with re-calculated blocks.
+    #       The vigra.watershedsNew operator correctly calculates
+    #       unique local label IDs, but we need globally unique IDs.
+    #       When processing blockwise we offset each new local block
+    #       by the previous max label ID, producing a contiguous sequence
+    #       of globally unique IDs; however, with the usage restrictions
+    #       specified above.
     _maxSeedValue = 0 # the largest seed value found so far
     _maxSeedValueLock = threading.Lock()
 
@@ -290,6 +291,7 @@ class OpSimpleWatershed(Operator):
         return result
 
     def propagateDirty(self, slot, subindex, roi):
+        self._maxSeedValue = 0
         self.Output.setDirty(slice(None))
 
 
@@ -299,9 +301,10 @@ class OpMstSegmentorProvider(Operator):
     
     MST = OutputSlot(stype='object')
     
-    def __init__(self, applet, *args, **kwargs):
+    def __init__(self, applet, blockSize, *args, **kwargs):
         super( OpMstSegmentorProvider, self ).__init__(*args, **kwargs)
         self.applet = applet
+        self._blockSize = blockSize
 
     def setupOutputs(self):
         self.MST.meta.shape = (1,)
@@ -326,20 +329,19 @@ class OpMstSegmentorProvider(Operator):
             logger.info( "  roi: {}".format(roi) )
             logger.info( "  mst: nodes: {} (max id: {}), edges: {} (max id: {})".format(
                         gridSeg.nodeNum(), gridSeg.maxNodeId(),
-                        gridSeg.edgeNum(), gridSeg.maxEdgeId()) ) 
+                        gridSeg.edgeNum(), gridSeg.maxEdgeId()) )
             logger.info( "  memory: used {} out of {} total avail (cache: {}, compute: {})".format(
                         Memory.format(Memory.getMemoryUsage()),
                         Memory.format(Memory.getAvailableRam()),
                         Memory.format(Memory.getAvailableRamCaches()),
                         Memory.format(Memory.getAvailableRamComputation())) )
 
-        # TODO: this needs to match with bsz shape from other operators
-        bsz = 256 #block size
+        bsz = self._blockSize
         halo_size = (False, True, True, True, False)
         block_shape = (1,bsz,bsz,bsz,1)
         block_starts = getIntersectingBlocks( block_shape, roiFromShape(self.Image.meta.shape) )
 
-        mst = WatershedSegmentor(labels=self.LabelImage)
+        mst = WatershedSegmentor(labels=self.LabelImage, blockSize=self._blockSize)
 
         try:
             block_count = len(block_starts)
@@ -444,22 +446,32 @@ class OpPreprocessing(Operator):
         self._unsavedData = False # set to True if data is not yet saved
         self._dirty = False       # set to True if any Input is dirty
 
-        # TODO: find a better way to reference project file
-        #self.ProjectFile.setValue(self.parent.parent.children[0].ProjectFile.value)
-        self._hdf5File = self.parent.parent.children[0].ProjectFile.value
-        # TODO: options?
-        #self.applet.topLevelOperator.ProjectFile.ready()
-        #self.applet.topLevelOperator.ProjectDataGroup.ready()
+        self._hdf5File = self.parent.parent.shell.projectManager.currentProjectFile
+        h5ProjectMetadataGrp = self._hdf5File.require_group('ProjectMetadata')
+        # block size is fixed to default on creation of project file
+        if "block_size" in h5ProjectMetadataGrp.attrs.keys():
+            self._blockSize = h5ProjectMetadataGrp.attrs["block_size"]
+        else:
+            default_blockSize = os.getenv("ILASTIK_DEFAULT_BLOCKSIZE", None)
+            if default_blockSize:
+                self._blockSize = int(default_blockSize)
+            else:
+                self._blockSize = ilastik_config.getint('ilastik', 'default_blocksize')
+
+            self._blockSize = max(self._blockSize, 64)
+            logger.info( "Setting BlockSize to: {}".format(self._blockSize))
+
+            h5ProjectMetadataGrp.attrs["block_size"] = self._blockSize
 
         self.initialSigma = None  # save settings of last preprocess
         self.initialFilter = None # applied to gui by pressing reset
-        
+
         self._opFilter = OpFilter(parent=self)
         self._opFilter.Input.connect( self.InputData )
         self._opFilter.Sigma.connect( self.Sigma )
         self._opFilter.Filter.connect( self.Filter )
 
-        self._opFilterStats = OpBlockwiseTotalStats(parent=self)
+        self._opFilterStats = OpBlockwiseTotalStats(self._blockSize, parent=self)
         self._opFilterStats.Input.connect( self._opFilter.Output )
 
         self._opFilterNormalize = OpNormalize255( parent=self )
@@ -472,7 +484,7 @@ class OpPreprocessing(Operator):
         self._opOverlayFilter.Input.connect( self.OverlayData )
         self._opOverlayFilter.Sigma.connect( self.Sigma )
         
-        self._opOverlayNormalizeStats = OpBlockwiseTotalStats(parent=self)
+        self._opOverlayNormalizeStats = OpBlockwiseTotalStats(self._blockSize, parent=self)
         self._opOverlayNormalizeStats.Input.connect( self._opOverlayFilter.Output )
 
         self._opOverlayNormalize = OpNormalize255( parent=self )
@@ -485,7 +497,7 @@ class OpPreprocessing(Operator):
         self._opInputFilter.Input.connect( self.InputData )
         self._opInputFilter.Sigma.connect( self.Sigma )
 
-        self._opInputNormalizeStats = OpBlockwiseTotalStats(parent=self)
+        self._opInputNormalizeStats = OpBlockwiseTotalStats(self._blockSize, parent=self)
         self._opInputNormalizeStats.Input.connect( self._opInputFilter.Output )
 
         self._opInputNormalize = OpNormalize255( parent=self )
@@ -503,12 +515,10 @@ class OpPreprocessing(Operator):
 
         self._opWatershedArrayCache = OpBlockedArrayCache( parent=self )
 
-        self._opMstProvider = OpMstSegmentorProvider( self.applet, parent=self )
+        self._opMstProvider = OpMstSegmentorProvider( self.applet, self._blockSize, parent=self )
         self._opMstProvider.Image.connect( self._opFilterCache.Output )
         self._opMstProvider.LabelImage.connect( self._opWatershedArrayCache.Output )
 
-        #self.PreprocessedData.connect( self._opMstProvider.MST )
-        
         # Display slots
         self.FilteredImage.connect( self._opFilterCache.Output )
         self.WatershedImage.connect( self._opWatershedArrayCache.Output )
@@ -545,8 +555,7 @@ class OpPreprocessing(Operator):
         self.PreprocessedData.meta.shape = (1,)
         self.PreprocessedData.meta.dtype = object
 
-        # TODO: this needs to match with bsz shape from OpMstSegmentorProvider.execute
-        bsz = 256 #block size
+        bsz = self._blockSize
         cacheBlockShape = (1,bsz,bsz,bsz,1)
 
         self._opFilterCache.fixAtCurrent.setValue(False)
@@ -588,14 +597,11 @@ class OpPreprocessing(Operator):
         # opWatershedCache
         h5PreprocessingGrp = self._hdf5File.require_group('preprocessing')
         h5WatershedGrp = h5PreprocessingGrp.require_group('watershed_labels')
-        h5WatershedCached = len(h5WatershedGrp.keys()) > 0
 
-        self._opWatershedHdf5Cache.fixAtCurrent.setValue(h5WatershedCached)
+        self._opWatershedHdf5Cache.fixAtCurrent.setValue(not self.is_dirty(h5WatershedGrp))
         self._opWatershedHdf5Cache.innerBlockShape.setValue( cacheBlockShape )
         self._opWatershedHdf5Cache.outerBlockShape.setValue( cacheBlockShape )
-
         self._hdf5File.file.flush()
-
         self._opWatershedHdf5Cache.H5CacheGroup.setValue( h5WatershedGrp )
 
         self._opWatershedArrayCache.fixAtCurrent.setValue(False)
@@ -606,8 +612,21 @@ class OpPreprocessing(Operator):
 
     def execute(self,slot,subindex,unused_roi,result):
         assert slot == self.PreprocessedData, "Invalid output slot"
-        if self._prepData[0] is not None and not self._dirty:
+
+        h5PreprocessingGrp = self._hdf5File.require_group('preprocessing')
+        h5WatershedGrp = h5PreprocessingGrp.require_group('watershed_labels')
+
+        isValid = not self.is_dirty(h5WatershedGrp)
+
+        if self._prepData[0] is not None and isValid:
             return self._prepData
+
+        # invalidate
+        if not isValid:
+            h5WatershedGrp.attrs['cache_valid'] = False
+            h5WatershedGrp.file.flush()
+            self._opWatershedHdf5Cache.fixAtCurrent.setValue(False)
+            self._opWatershedProvider.Input.setDirty(slice(None))
 
         with Timer() as mstProviderTimer:
             logger.info( "Creating Segmentor..." )
@@ -616,6 +635,11 @@ class OpPreprocessing(Operator):
             mst = self._opMstProvider.MST.value
 
             logger.info( "Created Segmentor in {} seconds".format( mstProviderTimer.seconds() ) )
+
+        # set cache valid
+        self._opWatershedHdf5Cache.fixAtCurrent.setValue(True)
+        h5WatershedGrp.attrs['cache_valid'] = True
+        h5WatershedGrp.file.flush()
 
         #save settings for reloading them if asked by user
         self.initialSigma = self.Sigma.value
@@ -634,18 +658,11 @@ class OpPreprocessing(Operator):
             mst.bg_priority = self._prepData[0].bg_priority
             mst.no_bias_below = self._prepData[0].no_bias_below
             
-        
+        result[0] = mst
+
         #Cache result
         self._prepData = result
         
-        #Wonder why this is set?
-        #The preprocess is only called by the run button.
-        #By setting the output dirty, this event is propagated to the
-        #carving-Operator, who copies the result just calculated.
-        #This is to gain control over when the preprocess is executed.
-        #self.PreprocessedData.setDirty()
-        
-        result[0] = mst
         return result
 
     
@@ -700,5 +717,20 @@ class OpPreprocessing(Operator):
         '''reset sigma and filter to values of last preprocess'''
         self.applet._gui.setSigma(self.initialSigma)
         self.applet._gui.setFilter(self.initialFilter)
-    
+
+    def isDirty(self):
+        h5PreprocessingGrp = self._hdf5File.require_group('preprocessing')
+        h5WatershedGrp = h5PreprocessingGrp.require_group('watershed_labels')
+
+        return self.is_dirty(h5WatershedGrp)
+
+    def is_dirty(self, watershedGrp):
+        if self._dirty:
+           return True
+
+        watershedValid = len(watershedGrp.keys()) > 0 and \
+                         'cache_valid' in watershedGrp.attrs.keys() and \
+                         watershedGrp.attrs['cache_valid']
+        return not watershedValid
+
 

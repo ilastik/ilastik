@@ -49,7 +49,7 @@ except ImportError:
 from lazyflow.utility.timer import timeLogged
 
 #ilastik
-from ilastik.widgets.labelListModel import LabelListModel
+from lazyflow.roi import getIntersectingBlocks, getBlockBounds, roiFromShape
 from ilastik.utility import bind
 from ilastik.applets.labeling.labelingGui import LabelingGui
 
@@ -83,7 +83,12 @@ class CarvingGui(LabelingGui):
         self.dialogdirSAD = os.path.join(directory, 'saveAsDialog.ui')
 
         super(CarvingGui, self).__init__(parentApplet, labelingSlots, topLevelOperatorView, drawerUiPath)
-        
+
+        hdf5File = parentApplet.topLevelOperator._parent._shell.projectManager.currentProjectFile
+        h5ProjectMetadataGrp = hdf5File.require_group('ProjectMetadata')
+        assert "block_size" in h5ProjectMetadataGrp.attrs.keys()
+        self._blockSize = h5ProjectMetadataGrp.attrs["block_size"]
+
         self.labelingDrawerUi.currentObjectLabel.setText("<not saved yet>")
 
         # Init special base class members
@@ -407,7 +412,7 @@ class CarvingGui(LabelingGui):
 
 
     @timeLogged(logger, logging.INFO)
-    def _exportAllObjectMeshes(self):
+    def _exportAllObjectMeshes(self, extra):
         """
         Export all objects in the project as separate .obj files, stored to a user-specified directory.
         """
@@ -500,9 +505,17 @@ class CarvingGui(LabelingGui):
         object_supervoxels = mst.object_lut[object_name]
         object_lut = numpy.zeros(mst.nodeNum+1, dtype=numpy.int8)
         object_lut[object_supervoxels] = 1
-        # TODO: process blockwise
-        supervoxel_volume = mst.supervoxelUint32.value[0,...,0]
-        object_volume = object_lut[supervoxel_volume]
+
+        object_volume = numpy.zeros(mst.supervoxelUint32.meta.shape[1:-1], dtype=numpy.int8)
+
+        bsz = self._blockSize
+        block_shape = (1,bsz,bsz,bsz,1)
+        block_starts = getIntersectingBlocks( block_shape, roiFromShape(mst.supervoxelUint32.meta.shape) )
+        for b_id, block in enumerate(block_starts):
+            labels_roi = getBlockBounds(mst.supervoxelUint32.meta.shape,block_shape, block)
+            supervoxel_volume = mst.supervoxelUint32(*labels_roi).wait()[0, ..., 0]
+            block_slice = map(lambda x: slice(x[0], x[1]), zip(labels_roi[0][1:-1], labels_roi[1][1:-1]))
+            object_volume[block_slice] = object_lut[supervoxel_volume]
 
         # Run the mesh extractor
         window = MeshExtractorDialog(parent=self)
@@ -545,8 +558,9 @@ class CarvingGui(LabelingGui):
         self._shownObjects3D = dict((k, v) for k, v in self._shownObjects3D.iteritems()
                                     if k in op.MST.value.object_lut.keys())
 
-        # TODO: self._renderMgr.volume value is set correctly first time, but doesn't appear (possibly isn't connected to UI yet?)
-        if self._showSegmentationIn3D and op._opSegmentationCache.Output.ready():
+        # Note: don't waste time calculating segmentation here if scene will be re-initialized)
+        if not self._renderMgr._overview_scene._needs_reinit \
+                and self._showSegmentationIn3D and op._opSegmentationCache.Output.ready():
             seg = op._opSegmentationCache.Output
             self._renderMgr.volume[:] = seg.value[0,...,0]
             self._renderMgr.volume[self._renderMgr.volume>0] -= 1

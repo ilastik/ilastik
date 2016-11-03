@@ -139,6 +139,11 @@ class OpCarving(Operator):
                 raise RuntimeError("Could not open pmap overlay '%s'" % pmapOverlayFile)
             self._pmap  = f["/data"].value[numpy.newaxis, :,:,:, numpy.newaxis]
 
+        self._hdf5File = self.parent.parent.shell.projectManager.currentProjectFile
+        h5ProjectMetadataGrp = self._hdf5File.require_group('ProjectMetadata')
+        assert "block_size" in h5ProjectMetadataGrp.attrs.keys()
+        self._blockSize = h5ProjectMetadataGrp.attrs["block_size"]
+
         self._setCurrObjectName("<not saved yet>")
         self.HasSegmentation.setValue(False)
         
@@ -248,8 +253,7 @@ class OpCarving(Operator):
         
         self.AllObjectNames.meta.dtype = object
 
-        # TODO: this needs to match with bsz shape from OpMstSegmentorProvider.execute for best performance
-        bsz = 256 #block size
+        bsz = self._blockSize
         cacheBlockShape = (1,bsz,bsz,bsz,1)
         self._opSegmentationCache.fixAtCurrent.setValue(False)
         self._opSegmentationCache.blockShape.setValue(cacheBlockShape)
@@ -257,16 +261,7 @@ class OpCarving(Operator):
     
     def connectToPreprocessingApplet(self,applet):
         self.PreprocessingApplet = applet
-    
-#     def updatePreprocessing(self):
-#         if self.PreprocessingApplet is None or self._mst is None:
-#             return
-        #FIXME: why were the following lines needed ?
-        # if len(self._mst.object_names)==0:
-        #     self.PreprocessingApplet.enableWriteprotect(True)
-        # else:
-        #     self.PreprocessingApplet.enableWriteprotect(False)
-    
+
     def hasCurrentObject(self):
         """
         Returns current object name. None if it is not set.
@@ -295,7 +290,6 @@ class OpCarving(Operator):
         assert len(position3d) == 3
 
         #find the supervoxel that was clicked
-        # TODO: handle 2D carving case?
         dim = len(self._mst.supervoxelUint32.meta.shape)
         pos = (0,)+position3d+(0,) if (dim == 5) else position3d
         posSlice = roiToSlice(pos, map(lambda x:x+1,pos))
@@ -577,8 +571,12 @@ class OpCarving(Operator):
         
         if slot == self.Segmentation:
             #avoid data being copied
-            temp = self._mst.getVoxelSegmentation(roi=roi)
-            temp.shape = (1,) + temp.shape + (1,)
+            if self._mst.hasSeg:
+                temp = self._mst.getVoxelSegmentation(roi=roi)
+                temp.shape = (1,) + temp.shape + (1,)
+            else:
+                result[0, :, :, :, 0] = 0
+                return result
         elif slot == self.Supervoxels:
             #avoid data being copied
             temp = self._mst.supervoxelUint32(roi.toSlice()).wait()

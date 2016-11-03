@@ -88,9 +88,6 @@ class PreprocessingGui(QMainWindow):
         self.drawer.invertWatershedSourceCheckbox.toggled.connect( self.handleInvertWatershedSourceChange )
         self.drawer.writeprotectBox.stateChanged.connect(self.handleWriterprotectStateChanged)
 
-        #FIXME: for release 0.6, disable this (the reset button made the gui even more complicated)            
-        #self.drawer.resetButton.clicked.connect(self.topLevelOperatorView.reset)
-
         # Slot change handlers (in case the operator is somehow changed *outside* the gui, such as by the workflow.
         self.topLevelOperatorView.Filter.notifyDirty(self.updateDrawerFromOperator)
         self.topLevelOperatorView.Sigma.notifyDirty(self.updateDrawerFromOperator)
@@ -158,9 +155,7 @@ class PreprocessingGui(QMainWindow):
     
     def enableReset(self,er):
         pass
-        #TODO: re-enable this after the 0.6 release
-        #self.drawer.resetButton.setEnabled(er)
-    
+
     def centralWidget( self ):
         return self.centralGui
     

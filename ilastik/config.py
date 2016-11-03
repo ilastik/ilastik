@@ -37,6 +37,7 @@ default_config = """
 [ilastik]
 debug: false
 plugin_directories: ~/.ilastik/plugins,
+default_blocksize: 256
 
 [lazyflow]
 threads: -1

@@ -106,7 +106,9 @@ class PreprocessingSerializer( AppletSerializer ):
             opPre.Filter.setValue(sfilter)
 
             mst = WatershedSegmentor(labels=opPre._opWatershedArrayCache.Output,
-                                     h5file=graphgroup)
+                                     blockSize=opPre._blockSize,
+                                     prepGrp=topGroup,
+                                     graphGrp=graphgroup)
             opPre._prepData[0] = mst
 
             opPre.applet.writeprotected = True
