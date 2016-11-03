@@ -55,7 +55,7 @@ class VigraSkeletonObjFeats(ObjectFeaturesPlugin):
         
         try:
             names = vigra.analysis.supportedSkeletonFeatures(labels)
-            logger.info('2D Skeleton Features: Supported Skeleton Features: done.')
+            logger.debug('2D Skeleton Features: Supported Skeleton Features: done.')
         except:
             logger.error('2D Skeleton Features: Supported Skeleton Features: failed (Vigra commit must be f8e48031abb1158ea804ca3cbfe781ccc62d09a2 or newer).')
             names = []
@@ -66,11 +66,52 @@ class VigraSkeletonObjFeats(ObjectFeaturesPlugin):
             names[names.index('Center')] = 'Skeleton Center'
         
         tooltips = {}
-        result = dict((n, {}) for n in names)  
+        result = dict((n, {}) for n in names)
+        result = self.fill_properties(result)
         for f, v in result.iteritems():
             v['tooltip'] = self.local_preffix + f
         
         return result
+
+    def fill_properties(self, features):
+        # fill in the detailed information about the features.
+        # NOTE, this function needs to be updated every time skeleton features change
+        for feature in features:
+            features[feature]["displaytext"] = feature
+            features[feature]["detailtext"] = feature + ", stay tuned for more details"
+            features[feature]["advanced"] = False
+            if feature == "Branch Count":
+                features[feature]["displaytext"] = "Number of Branches"
+                features[feature]["detailtext"] = "Total number of branches in the skeleton of this object."
+            if feature == "Hole Count":
+                features[feature]["displaytext"] = "Number of Holes"
+                features[feature]["detailtext"] = "The number of cycles in the skeleton (i.e. the number of cavities in the region)"
+            if feature == "Diameter":
+                features[feature]["displaytext"] = "Diameter"
+                features[feature]["detailtext"] = "The longest path between two endpoints on the skeleton."
+            if feature == "Euclidean Diameter":
+                features[feature]["displaytext"] = "Euclidean Diameter"
+                features[feature]["detailtext"] = "The Euclidean distance between the endpoints (terminals) of the longest path" \
+                                                  "on the skeleton"
+            if feature == "Skeleton Center":
+                features[feature]["displaytext"] = "Center of the Skeleton"
+                features[feature]["detailtext"] = "The coordinates of the midpoint on the longest path between the endpoints of the skeleton."
+            if feature == "Total Length":
+                features[feature]["displaytext"] = "Length of the Skeleton"
+                features[feature]["detailtext"] = "Total length of the skeleton in pixels"
+            if feature == "Average Length":
+                features[feature]["displaytext"] = "Average Branch Length"
+                features[feature]["detailtext"] = "Average length of a branch in the skeleton"
+            if feature == "Terminal 1":
+                features[feature]["displaytext"] = "Terminal 1"
+                features[feature]["detailtext"] = "First endpoint of the longest path between the skeleton's endpoints"
+                features[feature]["advanced"] = True
+            if feature == "Terminal 2":
+                features[feature]["displaytext"] = "Terminal 2"
+                features[feature]["detailtext"] = "Second endpoint of the longest path between the skeleton's endpoints"
+                features[feature]["advanced"] = True
+
+        return features
 
     def _do_4d(self, image, labels, features, axes):
         
