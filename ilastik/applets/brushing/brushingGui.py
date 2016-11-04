@@ -32,7 +32,7 @@ from PyQt4.QtCore import Qt
 from PyQt4.QtGui import QIcon, QColor, QApplication, QMessageBox, QAction
 
 # HCI
-from volumina.api import LazyflowSinkSource, ColortableLayer
+from volumina.api import LazyflowSinkSource, ColortableLayer, GrayscaleLayer
 from volumina.utility import ShortcutManager, PreferencesManager
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.widgets.labelListView import Label
@@ -165,7 +165,9 @@ class BrushingGui(LayerViewerGui):
         #self._brushingSlots.labelNames.notifyDirty( bind(self._updateLabelList) )
         #self.__cleanup_fns.append( partial( self._brushingSlots.labelNames.unregisterDirty, bind(self._updateLabelList) ) )
         
+        '''
         self._colorTable16 = self._createDefault16ColorColorTable()
+        '''
         self._programmaticallyRemovingLabels = False
 
         if drawerUiPath is None:
@@ -446,6 +448,7 @@ class BrushingGui(LayerViewerGui):
         The user has selected another applet or is closing the whole app.
         Save all preferences.
         """
+        #TODO save the value as well
         with PreferencesManager() as prefsMgr:
             prefsMgr.set('brushing', 'paint brush size', self.paintBrushSizeIndex)
             prefsMgr.set('brushing', 'eraser brush size', self.eraserSizeIndex)
@@ -540,6 +543,9 @@ class BrushingGui(LayerViewerGui):
     '''
 
     def _gui_setErasing(self):
+        """
+        change Enable and Checked and Texts and the Size for brushing
+        """
         self._labelControlUi.brushSizeComboBox.setEnabled(True)
         self._labelControlUi.brushSizeCaption.setEnabled(True)
         self._labelControlUi.eraserToolButton.setChecked(True)
@@ -832,12 +838,14 @@ class BrushingGui(LayerViewerGui):
             return None
         else:
             return labellayer
-    '''
 
-    '''
     def _getLabelLayer(self):
         return self.getLayer('Labels')
+    '''
 
+
+    '''
+    '''
     def createLabelLayer(self, direct=False):
         """
         Return a colortable layer that displays the label slot data, along with its associated label source.
@@ -851,14 +859,17 @@ class BrushingGui(LayerViewerGui):
             labelsrc = LazyflowSinkSource( self._brushingSlots.labelOutput,
                                            self._brushingSlots.labelInput)
 
-            labellayer = ColortableLayer(labelsrc, colorTable = self._colorTable16, direct=direct )
-            labellayer.name = "Labels"
+            #TODO TODO
+            #labellayer = ColortableLayer(labelsrc, colorTable = self._colorTable16, direct=direct )
+            labellayer = GrayscaleLayer(labelsrc, direct=direct )
+            labellayer.name = "Seeds"
             labellayer.ref_object = None
 
             labellayer.contexts.append( QAction("Import...", None,
                                         triggered=partial(import_brushing_layer, labellayer, self._brushingSlots, self)) )
 
             return labellayer, labelsrc
+    '''
     '''
 
     def setupLayers(self):
@@ -870,6 +881,7 @@ class BrushingGui(LayerViewerGui):
         layers = []
 
         '''
+        '''
         # Labels
         labellayer, labelsrc = self.createLabelLayer()
         if labellayer is not None:
@@ -878,6 +890,7 @@ class BrushingGui(LayerViewerGui):
             # Tell the editor where to draw label data
             self.editor.setLabelSink(labelsrc)
 
+        '''
         # Side effect 1: We want to guarantee that the label list
         #  is up-to-date before our subclass adds his layers
         self._updateLabelList()
@@ -894,6 +907,7 @@ class BrushingGui(LayerViewerGui):
 
         return layers
 
+    '''
     @staticmethod
     def _createDefault16ColorColorTable():
         colors = []
@@ -918,6 +932,7 @@ class BrushingGui(LayerViewerGui):
         colors.append( QColor(240, 230, 140) ) #khaki
         assert len(colors) == 16
         return [c.rgba() for c in colors]
+    '''
 
 
     '''
