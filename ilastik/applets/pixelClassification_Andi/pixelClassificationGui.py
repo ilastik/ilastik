@@ -67,6 +67,7 @@ def _listReplace(old, new):
     else:
         return new
 
+'''
 class ClassifierSelectionDlg(QDialog):
     """
     A simple window to let the user select a classifier type.
@@ -142,6 +143,7 @@ class ClassifierSelectionDlg(QDialog):
 
         # Close the dlg
         super( ClassifierSelectionDlg, self ).accept()
+'''
     
 class PixelClassificationGui(BrushingGui):
 
@@ -158,8 +160,10 @@ class PixelClassificationGui(BrushingGui):
         # Base class
         super(PixelClassificationGui, self).stopAndCleanUp()
 
+    '''
     def viewerControlWidget(self):
         return self._viewerControlUi
+    '''
 
     def menus( self ):
         menus = super( PixelClassificationGui, self ).menus()
@@ -283,15 +287,18 @@ class PixelClassificationGui(BrushingGui):
 
         self.__cleanup_fns = []
 
+        ''' we can use the standard one
         # We provide our own UI file (which adds an extra control for interactive mode)
         if brushingDrawerUiPath is None:
             brushingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
+        '''
 
         # Base class init
         super(PixelClassificationGui, self).__init__( parentApplet, labelSlots, topLevelOperatorView, brushingDrawerUiPath )
         
         self.topLevelOperatorView = topLevelOperatorView
 
+        '''
         self.interactiveModeActive = False
         # Immediately update our interactive state
         self.toggleInteractive( not self.topLevelOperatorView.FreezePredictions.value )
@@ -312,10 +319,13 @@ class PixelClassificationGui(BrushingGui):
 
         self.topLevelOperatorView.LabelNames.notifyDirty( bind(self.handleLabelSelectionChange) )
         self.__cleanup_fns.append( partial( self.topLevelOperatorView.LabelNames.unregisterDirty, bind(self.handleLabelSelectionChange) ) )
+        '''
         
+        '''
         self._initShortcuts()
+        '''
 
-
+        '''
         # FIXME: We MUST NOT enable the render manager by default,
         #        since it will drastically slow down the app for large volumes.
         #        For now, we leave it off by default.
@@ -340,7 +350,9 @@ class PixelClassificationGui(BrushingGui):
         # listen to freezePrediction changes
         self.topLevelOperatorView.FreezePredictions.notifyDirty( bind(FreezePredDirty) )
         self.__cleanup_fns.append( partial( self.topLevelOperatorView.FreezePredictions.unregisterDirty, bind(FreezePredDirty) ) )
+        '''
 
+    '''
     def initFeatSelDlg(self):
         if self.topLevelOperatorView.name=="OpPixelClassification":
             thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
@@ -352,11 +364,15 @@ class PixelClassificationGui(BrushingGui):
             raise NotImplementedError
 
         self.featSelDlg = FeatureSelectionDialog(thisOpFeatureSelection, self.topLevelOperatorView)
+    '''
 
+    '''
     def show_feature_selection_dialog(self):
         self.featSelDlg.exec_()
+    '''
 
 
+    '''
     def update_features_from_dialog(self):
         if self.topLevelOperatorView.name=="OpPixelClassification":
             thisOpFeatureSelection = self.topLevelOperatorView.parent.featureSelectionApplet.topLevelOperator.innerOperators[0]
@@ -371,7 +387,9 @@ class PixelClassificationGui(BrushingGui):
         thisOpFeatureSelection.SelectionMatrix.setValue(self.featSelDlg.selected_features_matrix)
         thisOpFeatureSelection.SelectionMatrix.setDirty()
         thisOpFeatureSelection.setupOutputs()
+    '''
 
+    ''' responsable for group-visibility and the Segmenation + Prediction checkbox
     def initViewerControlUi(self):
         localDir = os.path.split(__file__)[0]
         self._viewerControlUi = uic.loadUi( os.path.join( localDir, "viewerControls.ui" ) )
@@ -388,7 +406,9 @@ class PixelClassificationGui(BrushingGui):
         # The editor's layerstack is in charge of which layer movement buttons are enabled
         model = self.editor.layerStack
         self._viewerControlUi.viewerControls.setupConnections(model)
+    '''
        
+    '''
     def _initShortcuts(self):
         mgr = ShortcutManager()
         ActionInfo = ShortcutManager.ActionInfo
@@ -414,7 +434,9 @@ class PixelClassificationGui(BrushingGui):
                                        self.brushingDrawerUi.liveUpdateButton.toggle,
                                        self.brushingDrawerUi.liveUpdateButton,
                                        self.brushingDrawerUi.liveUpdateButton ) )
+    '''
 
+    '''
     def _setup_contexts(self, layer):
         def callback(pos, clayer=layer):
             name = clayer.name
@@ -429,6 +451,7 @@ class PixelClassificationGui(BrushingGui):
 
         if self.render:
             layer.contexts.append( QAction('Toggle 3D rendering', None, triggered=callback) )
+    '''
 
     def setupLayers(self):
         """
@@ -630,6 +653,7 @@ class PixelClassificationGui(BrushingGui):
         '''
         return layers
 
+    '''
     def toggleInteractive(self, checked):
         logger.debug("toggling interactive mode to '%r'" % checked)
 
@@ -669,7 +693,9 @@ class PixelClassificationGui(BrushingGui):
         # (For example, the downstream pixel classification applet can 
         #  be used now that there are features selected)
         self.parentApplet.appletStateUpdateRequested.emit()
+    '''
 
+    '''
     @pyqtSlot()
     def handleShowPredictionsClicked(self):
         checked = self._viewerControlUi.checkShowPredictions.isChecked()
@@ -717,7 +743,9 @@ class PixelClassificationGui(BrushingGui):
             self._viewerControlUi.checkShowSegmentation.setCheckState(Qt.Checked)
         else:
             self._viewerControlUi.checkShowSegmentation.setCheckState(Qt.PartiallyChecked)
+    '''
 
+    '''
     @pyqtSlot()
     @threadRouted
     def handleLabelSelectionChange(self):
@@ -739,7 +767,9 @@ class PixelClassificationGui(BrushingGui):
         self.brushingDrawerUi.suggestFeaturesButton.setEnabled(enabled)
         self._viewerControlUi.checkShowPredictions.setEnabled(enabled)
         self._viewerControlUi.checkShowSegmentation.setEnabled(enabled)
+    '''
 
+    '''
     def _getNext(self, slot, parentFun, transform=None):
         numLabels = self.labelListData.rowCount()
         value = slot.value
@@ -750,13 +780,17 @@ class PixelClassificationGui(BrushingGui):
             return result
         else:
             return parentFun()
+    '''
 
+    '''
     def _onLabelChanged(self, parentFun, mapf, slot):
         parentFun()
         new = map(mapf, self.labelListData)
         old = slot.value
         slot.setValue(_listReplace(old, new))
+    '''
 
+    '''
     def _onLabelRemoved(self, parent, start, end):
         # Call the base class to update the operator.
         super(PixelClassificationGui, self)._onLabelRemoved(parent, start, end)
@@ -808,7 +842,9 @@ class PixelClassificationGui(BrushingGui):
                                         l.pmapColor().green(),
                                         l.pmapColor().blue()),
                              self.topLevelOperatorView.PmapColors)
+    '''
 
+    '''
     def _update_rendering(self):
         if not self.render:
             return
@@ -840,6 +876,8 @@ class PixelClassificationGui(BrushingGui):
         self._update_colors()
         self._renderMgr.update()
 
+    '''
+    '''
     def _update_colors(self):
         for layer in self.layerstack:
             try:
@@ -849,3 +887,4 @@ class PixelClassificationGui(BrushingGui):
             color = layer.tintColor
             color = (color.red() / 255.0, color.green() / 255.0, color.blue() / 255.0)
             self._renderMgr.setColor(label, color)
+    '''

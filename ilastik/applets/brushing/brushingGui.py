@@ -56,7 +56,7 @@ class Tool():
     Navigation = 0 # Arrow
     Paint      = 1
     Erase      = 2
-    Threshold  = 3
+    #Threshold  = 3
 
 class BrushingGui(LayerViewerGui):
     """

@@ -59,6 +59,8 @@ class OpPixelClassification( Operator ):
 
     LabelInputs = InputSlot(optional = True, level=1) # Input for providing label data from an external source
     
+    '''
+    '''
     FeatureImages = InputSlot(level=1) # Computed feature images (each channel is a different feature)
     CachedFeatureImages = InputSlot(level=1) # Cached feature data.
 
@@ -72,11 +74,15 @@ class OpPixelClassification( Operator ):
 
     PredictionProbabilityChannels = OutputSlot(level=2) # Classification predictions, enumerated by channel
     SegmentationChannels = OutputSlot(level=2) # Binary image of the final selections.
+    '''
+    '''
     
     LabelImages = OutputSlot(level=1) # Labels from the user
     NonzeroLabelBlocks = OutputSlot(level=1) # A list if slices that contain non-zero label values
     Classifier = OutputSlot() # We provide the classifier as an external output for other applets to use
 
+    '''
+    '''
     CachedPredictionProbabilities = OutputSlot(level=1) # Classification predictions (via feature cache AND prediction cache)
 
     HeadlessPredictionProbabilities = OutputSlot(level=1) # Classification predictions ( via no image caches (except for the classifier itself )
@@ -86,6 +92,8 @@ class OpPixelClassification( Operator ):
     UncertaintyEstimate = OutputSlot(level=1)
     
     SimpleSegmentation = OutputSlot(level=1) # For debug, for now
+    '''
+    '''
 
     # GUI-only (not part of the pipeline, but saved to the project)
     LabelNames = OutputSlot()
@@ -109,10 +117,14 @@ class OpPixelClassification( Operator ):
         super(OpPixelClassification, self).__init__(*args, **kwargs)
         
         # Default values for some input slots
+        '''
+        '''
         self.FreezePredictions.setValue(True)
         self.LabelNames.setValue( [] )
         self.LabelColors.setValue( [] )
         self.PmapColors.setValue( [] )
+        '''
+        '''
 
         # SPECIAL connection: The LabelInputs slot doesn't get it's data  
         #  from the InputImages slot, but it's shape must match.
