@@ -19,7 +19,6 @@
 #           http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
-import logging
 
 #from opWatershedSegmentation import OpCachedWatershedSegmentation
 from opWatershedSegmentation import OpWatershedSegmentation

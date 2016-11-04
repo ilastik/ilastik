@@ -36,7 +36,8 @@ from PyQt4.Qt import QCheckBox, QLineEdit, QButtonGroup, QRadioButton, pyqtSlot
 from ilastik.utility.gui import threadRouted
 from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
 from volumina.layer import GrayscaleLayer, ColortableLayer, generateRandomColors
-#from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+#TODO TODO
+from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.labeling.labelingGui import LabelingGui
 
 
@@ -48,8 +49,9 @@ from PyQt4.Qt import QCheckBox
 logger = logging.getLogger(__name__)
 
 #LayerViewerGui->LabelingGui->WatershedSegmentationGui
-#class WatershedSegmentationGui(LayerViewerGui):
-class WatershedSegmentationGui(LabelingGui):
+#TODO TODO
+class WatershedSegmentationGui(LayerViewerGui):
+#class WatershedSegmentationGui(LabelingGui):
 
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
@@ -69,29 +71,16 @@ class WatershedSegmentationGui(LabelingGui):
     ###########################################
     ###########################################
     
-    def __init__(self, parentApplet, topLevelOperatorView, labelingDrawerUiPath=None ):
+    #TODO TODO
+    #def __init__(self, parentApplet, labelingSlots, topLevelOperatorView, drawerUiPath=None, rawInputSlot=None, crosshair=True):
+    def __init__(self, parentApplet, topLevelOperatorView):
 
-        #labeling slots
-        self.parentApplet = parentApplet
-        # Tell our base class which slots to monitor
-        labelSlots = LabelingGui.LabelingSlots()
-        labelSlots.labelInput = topLevelOperatorView.LabelInputs
-        labelSlots.labelOutput = topLevelOperatorView.LabelImages
-        labelSlots.labelEraserValue = topLevelOperatorView.opLabelPipeline.opLabelArray.eraser
-        labelSlots.labelDelete = topLevelOperatorView.opLabelPipeline.DeleteLabel
-        labelSlots.labelNames = topLevelOperatorView.LabelNames
-
-
-        #logging.info("\n vor \n")
         self.RawDataName = "Seeds"
         self.__cleanup_fns = []
         self._currently_updating = False
         self.topLevelOperatorView = topLevelOperatorView
-
-        #super(WatershedSegmentationGui, self).__init__( parentApplet, topLevelOperatorView )
-        #labelingDrawerUiPath = drawerUiPath
-        super(WatershedSegmentationGui, self).__init__( parentApplet, labelingSlots, topLevelOperatorView, drawerUiPath )    
-
+        super(WatershedSegmentationGui, self).__init__( parentApplet, topLevelOperatorView )
+        
         self._sp_colortable = generateRandomColors(256, clamp={'v': 1.0, 's' : 0.5}, zeroIsTransparent=True)
         
         self._threshold_colortable = [ QColor(0, 0, 0, 0).rgba(),      # transparent

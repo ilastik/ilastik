@@ -11,59 +11,6 @@ from lazyflow.roi import roiToSlice, sliceToRoi
 from lazyflow.operators import OpBlockedArrayCache, OpValueCache
 from lazyflow.operators.generic import OpPixelOperator, OpSingleChannelSelector
 
-
-#for brushing new seeds
-from ilastik.utility import OpMultiLaneWrapper
-
-
-
-#copied from pixel classification op
-class OpLabelPipeline( Operator ):
-    RawImage = InputSlot()
-    LabelInput = InputSlot()
-    DeleteLabel = InputSlot()
-    
-    Output = OutputSlot()
-    nonzeroBlocks = OutputSlot()
-    
-    def __init__(self, *args, **kwargs):
-        super( OpLabelPipeline, self ).__init__( *args, **kwargs )
-        
-        self.opLabelArray = OpCompressedUserLabelArray( parent=self )
-        self.opLabelArray.Input.connect( self.LabelInput )
-        self.opLabelArray.eraser.setValue(100)
-
-        self.opLabelArray.deleteLabel.connect( self.DeleteLabel )
-
-        # Connect external outputs to their internal sources
-        self.Output.connect( self.opLabelArray.Output )
-        self.nonzeroBlocks.connect( self.opLabelArray.nonzeroBlocks )
-    
-    def setupOutputs(self):
-        tagged_shape = self.RawImage.meta.getTaggedShape()
-        # labels are created for one channel (i.e. the label) and only in the
-        # current time slice, so we can set both c and t to 1
-        tagged_shape['c'] = 1
-        if 't' in tagged_shape:
-            tagged_shape['t'] = 1
-        
-        # Aim for blocks that are roughly 1MB
-        block_shape = determineBlockShape( tagged_shape.values(), 1e6 )
-        self.opLabelArray.blockShape.setValue( block_shape )
-
-    def setInSlot(self, slot, subindex, roi, value):
-        # Nothing to do here: All inputs that support __setitem__
-        #   are directly connected to internal operators.
-        pass
-
-    def execute(self, slot, subindex, roi, result):
-        assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
-
-    def propagateDirty(self, slot, subindex, roi):
-        # Our output changes when the input changed shape, not when it becomes dirty.
-        pass    
-
-
 class OpWatershedSegmentation(Operator):
     """
     Initialize the parameters for the calculations (and Gui)
@@ -75,25 +22,12 @@ class OpWatershedSegmentation(Operator):
     #Input = InputSlot() # Can be multi-channel (but you'll have to choose which channel you want to use)
     #TODO remove optional
     Input = InputSlot(optional=True) # Can be multi-channel (but you'll have to choose which channel you want to use)
-    InputImages = InputSlot(level=1) # Original input data.  Used for display only.
-
-    #for the brushing of new seeds (see pixelClassification and LabelingGui)
-    LabelInputs = InputSlot(optional = True, level=1) # Input for providing label data from an external source
-
 
     ############################################################
     # Define Inputslots for Internal Parameter Usage
     ############################################################
     ChannelSelection    = InputSlot(value=0)
     BrushValue          = InputSlot(value=0)
-
-
-    ############################################################
-    # outputs
-    ############################################################
-    LabelImages = OutputSlot(level=1) # Labels from the user
-
-
     '''
     Pmin = InputSlot(value=0.5)
     MinMembraneSize = InputSlot(value=0)
@@ -112,14 +46,6 @@ class OpWatershedSegmentation(Operator):
         '''
         self.watershed_completed = OrderedSignal()
         '''
-
-
-        #for brushing new seeds
-        self.opLabelPipeline = OpMultiLaneWrapper( OpLabelPipeline, parent=self, broadcastingSlotNames=['DeleteLabel'] )
-        self.opLabelPipeline.RawImage.connect( self.InputImages )
-        self.opLabelPipeline.LabelInput.connect( self.LabelInputs )
-        self.opLabelPipeline.DeleteLabel.setValue( -1 )
-        self.LabelImages.connect( self.opLabelPipeline.Output )
 
     def setupOutputs(self):
         pass
