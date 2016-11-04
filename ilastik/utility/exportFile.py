@@ -49,7 +49,7 @@ def flatten_tracking_table(table, extra_table, obj_counts, max_tracks, t_range):
     return array
 
 
-def flatten_ilastik_feature_table(table, selection, signal):
+def flatten_ilastik_feature_table(table, col_names, selection, signal):
     selection = list(selection)
     frames = table.meta.shape[0]
 
@@ -71,10 +71,14 @@ def flatten_ilastik_feature_table(table, selection, signal):
 
     for cat_name, category in computed_feature[0].iteritems():
         for feat_name, feat_array in category.iteritems():
+            try:
+                long_name = col_names[feat_name]
+            except KeyError:
+                long_name = feat_name
             if (cat_name == "Default features" or \
-                     feat_name in selection) and \
-                     feat_name not in feature_names:
-                feature_names.append(feat_name)
+                     long_name in selection) and \
+                     long_name not in feature_names:
+                feature_names.append(long_name)
                 feature_cats.append(cat_name)
                 feature_channels.append((feat_array.shape[1]))
                 feature_types.append(feat_array.dtype)
@@ -267,7 +271,7 @@ class ExportFile(object):
         elif mode == Mode.IlastikFeatureTable:
             if "selection" not in extra:
                 raise AttributeError("IlastikFeatureTable needs a feature selection (extra 'selection')")
-            columns = flatten_ilastik_feature_table(col_data, extra["selection"], self.InsertionProgress)
+            columns = flatten_ilastik_feature_table(col_data, extra["names"], extra["selection"], self.InsertionProgress)
         elif mode == Mode.NumpyStructArray:
             columns = col_data
         else:

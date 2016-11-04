@@ -430,7 +430,7 @@ class OpObjectExtraction(Operator):
             object-level data to csv and h5 files. The columns of the table are as follows:
             (t, object index, feature 1, feature 2, ...). Row-wise object index increases
             faster than time, so first all objects for time 0 are exported, then for time 1, etc  '''
-       
+
         ntimes = len(features.keys())
         nplugins = len(features[0].keys())
         nchannels = 0
@@ -638,7 +638,9 @@ class OpRegionFeatures(Operator):
         
         logger.debug("Computing default features")
 
+        #These are the feature names, selected by the user. Default ones are not in yet.
         feature_names = deepcopy(self.Features([]).wait())
+        feature_names_with_default = deepcopy(self.Features([]).wait())
 
         # do global features
         logger.debug("computing global features")
@@ -653,6 +655,8 @@ class OpRegionFeatures(Operator):
                 selected_vigra_features = feature_dict.keys()
                 feature_dict.update(default_features)
                 extra_features_computed = True
+                feature_names_with_default[default_features_key] = plugin.plugin_object.fill_properties(default_features)
+                self.Features.setValue(feature_names_with_default)
             global_features[plugin_name] = plugin.plugin_object.compute_global(image, labels, feature_dict, axes)
         
         extrafeats = {}

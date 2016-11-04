@@ -157,7 +157,11 @@ class ExportObjectInfoDialog(QDialog):
             parent = self.ui.featureView
         for entry, child in features.iteritems():
             item = QTreeWidgetItem(parent)
-            item.setText(0, entry)
+            try:
+                #if it's the feature name, show the human version of the text
+                item.setText(0, child["displaytext"])
+            except KeyError:
+                item.setText(0, entry)
             self._setup_features(child, req_features, selected_features, max_depth-1, item)
             if child == {} or max_depth == 1:  # no children
                 state = Qt.Unchecked

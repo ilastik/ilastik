@@ -130,6 +130,7 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
     # Override functions ExportingOperator mixin
     def configure_table_export_settings(self, settings, selected_features):
         self.ExportSettings.setValue( (settings, selected_features) )
+
     def get_table_export_settings(self):
         if self.ExportSettings.ready() and self.ExportSettings.value:
             (settings, selected_features) = self.ExportSettings.value
@@ -804,8 +805,20 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
         export_file.add_columns("table", zip(*probability_columns.values()), Mode.List, {"names": probability_column_names})
 
         # Object features
+        computed_names = self.ComputedFeatureNames.value
+        short_to_human_lut = {}
+        for pluginname, featurename in computed_names.iteritems():
+            for fname, attrs in featurename.iteritems():
+                try:
+                    short_to_human_lut[fname] = attrs["displaytext"]
+                except KeyError:
+                    short_to_human_lut[fname] = fname
+
+
+        print "LOOKUP TABLE:", short_to_human_lut
+        print "SELECTED FEATURES:", selected_features
         export_file.add_columns("table", self.ObjectFeatures[lane_index], Mode.IlastikFeatureTable,
-                                {"selection": selected_features})
+                                {"selection": selected_features, "names": short_to_human_lut})
 
         if settings["file type"] == "h5":
             export_file.add_rois(Default.LabelRoiPath, label_image, "table", settings["margin"], "labeling")
