@@ -75,7 +75,6 @@ class VigraObjFeats(ObjectFeaturesPlugin):
             if self.local_suffix in f:
                 v['margin'] = 0
             #build human readable names from vigra names
-            #TODO: many cases are not covered
             props = self.find_properties(f)
             for prop_name, prop_value in props.iteritems():
                 v[prop_name] = prop_value
@@ -120,12 +119,12 @@ class VigraObjFeats(ObjectFeaturesPlugin):
 
         if feature_name == "Skewness":
             displaytext = "Skewness of Intensity"
-            detailtext = "Skewness of the intensity distribution inside the object, also known as the third standardized moment. This feature measures the asymmetry of the"  \
+            detailtext = "Skewness of the intensity distribution inside the object, also known as the third standardized moment. This feature measures the asymmetry of the "  \
                          "intensity distribution inside the object. For multi-channel data, this feature is computed channel-wise. "
 
         if feature_name == "Kurtosis":
             displaytext = "Kurtosis of Intensity"
-            detailtext = "Kurtosis of the intensity distribution inside the object, also known as the fourth standardized moment. This feature measures the heaviness of the" \
+            detailtext = "Kurtosis of the intensity distribution inside the object, also known as the fourth standardized moment. This feature measures the heaviness of the " \
                          "tails for the distribution of intensity over the object's pixels. For multi-channel data, this feature is computed channel-wise. "
 
         if feature_name == "RegionCenter":
@@ -134,12 +133,12 @@ class VigraObjFeats(ObjectFeaturesPlugin):
 
         if feature_name == "RegionRadii":
             displaytext = "Radii of the object"
-            detailtext = "Eigenvalues of the PCA on the coordinates of the object's pixels. Very roughly, this corresponds to the radii of an ellipse fit to the object." \
+            detailtext = "Eigenvalues of the PCA on the coordinates of the object's pixels. Very roughly, this corresponds to the radii of an ellipse fit to the object. " \
                         " The radii are ordered, with the largest value as first."
 
         if feature_name == "RegionAxes":
             displaytext = "Principal components of the object"
-            detailtext = "Eigenvectors of the PCA on the coordinates of the object's pixels. Very roughly, this corresponds to the axes of an ellipse fit to the object." \
+            detailtext = "Eigenvectors of the PCA on the coordinates of the object's pixels. Very roughly, this corresponds to the axes of an ellipse fit to the object. " \
                         " The axes are ordered starting from the one with the largest eigenvalue."
 
         if feature_name == "Quantiles":
@@ -148,7 +147,7 @@ class VigraObjFeats(ObjectFeaturesPlugin):
 
         if feature_name == "Histogram":
             displaytext = "Histogram of Intensity"
-            detailtext = "Histogram of the intensity distribution inside the object. The histogram has 64 bins and its range is computed from the global minimum" \
+            detailtext = "Histogram of the intensity distribution inside the object. The histogram has 64 bins and its range is computed from the global minimum " \
                          "and maximum intensity values in the whole image."
 
         if feature_name == "Covariance":

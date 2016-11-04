@@ -19,17 +19,14 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.plugins import ObjectFeaturesPlugin
-import ilastik.applets.objectExtraction.opObjectExtraction
-#from ilastik.applets.objectExtraction.opObjectExtraction import make_bboxes, max_margin
 import vigra
-import numpy as np
-from lazyflow.request import Request, RequestPool
+import numpy
 import logging
 logger = logging.getLogger(__name__)
 
 def cleanup_value(val, nObjects):
     """ensure that the value is a numpy array with the correct shape."""
-    val = np.asarray(val)
+    val = numpy.asarray(val)
     
     if val.ndim == 1:
         val = val.reshape(-1, 1)
@@ -73,10 +70,12 @@ class VigraSkeletonObjFeats(ObjectFeaturesPlugin):
         
         return result
 
-    def fill_properties(self, features):
+    @staticmethod
+    def fill_properties(features):
         # fill in the detailed information about the features.
+        # features should be a dict with the feature_name as key.
         # NOTE, this function needs to be updated every time skeleton features change
-        for feature in features:
+        for feature in features.iterkeys():
             features[feature]["displaytext"] = feature
             features[feature]["detailtext"] = feature + ", stay tuned for more details"
             features[feature]["advanced"] = False
@@ -91,7 +90,7 @@ class VigraSkeletonObjFeats(ObjectFeaturesPlugin):
                 features[feature]["detailtext"] = "The longest path between two endpoints on the skeleton."
             if feature == "Euclidean Diameter":
                 features[feature]["displaytext"] = "Euclidean Diameter"
-                features[feature]["detailtext"] = "The Euclidean distance between the endpoints (terminals) of the longest path" \
+                features[feature]["detailtext"] = "The Euclidean distance between the endpoints (terminals) of the longest path " \
                                                   "on the skeleton"
             if feature == "Skeleton Center":
                 features[feature]["displaytext"] = "Center of the Skeleton"
@@ -115,7 +114,7 @@ class VigraSkeletonObjFeats(ObjectFeaturesPlugin):
 
     def _do_4d(self, image, labels, features, axes):
         
-        result = vigra.analysis.extractSkeletonFeatures(labels.squeeze().astype(np.uint32))
+        result = vigra.analysis.extractSkeletonFeatures(labels.squeeze().astype(numpy.uint32))
 
         # Rename 'Center' to 'Hull Center' to avoid name clash with skeleton features
         if 'Center' in result.keys():
