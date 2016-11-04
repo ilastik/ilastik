@@ -863,6 +863,12 @@ class BrushingGui(LayerViewerGui):
             #labellayer = ColortableLayer(labelsrc, colorTable = self._colorTable16, direct=direct )
             labellayer = GrayscaleLayer(labelsrc, direct=direct )
             labellayer.name = "Seeds"
+
+            #only look at the first index = 0
+            #labellayer.set_range(0, (1,255))
+            #print labellayer.range
+            #TODO TODO End
+
             labellayer.ref_object = None
 
             labellayer.contexts.append( QAction("Import...", None,
