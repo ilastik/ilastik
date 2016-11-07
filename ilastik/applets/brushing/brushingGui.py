@@ -189,6 +189,10 @@ class BrushingGui(LayerViewerGui):
         self.thunkEventHandler = ThunkEventHandler(self)
         self._changeInteractionMode(Tool.Navigation)
 
+        #new 
+        #add a new label, with which the users works onwards
+        self.newLabel()
+
     def _initLabelUic(self, drawerUiPath):
         _labelControlUi = uic.loadUi(drawerUiPath)
 
@@ -557,6 +561,11 @@ class BrushingGui(LayerViewerGui):
         self._labelControlUi.brushSizeCaption.setEnabled(False)
         self._labelControlUi.arrowToolButton.setChecked(True)
         # self._labelControlUi.arrowToolButton.setChecked(True) # why twice?
+
+        #TODO
+        #print self.labelImage
+        print self._brushingSlots.labelNames
+        print self._brushingSlots.labelNames.value
     
     def _gui_setBrushing(self):
         self._labelControlUi.brushSizeComboBox.setEnabled(True)
@@ -646,6 +655,43 @@ class BrushingGui(LayerViewerGui):
             self._labelControlUi.AddLabelButton.setEnabled(numLabels < self.maxLabelNumber)
     '''
 
+    #TODO TODO if not working with first label, then add a single label here
+    #new
+    def newLabel(self):
+        """
+        implemented to add a single label at init to have a 'user' label
+        to use for export and saving this informations
+        """
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        label = Label( self.getNextLabelName(), self.getNextLabelColor())
+
+        #maybe needed, maybe not
+        label.nameChanged.connect(self.onLabelNameChanged)
+        label.colorChanged.connect(self.onLabelColorChanged)
+        label.pmapColorChanged.connect(self.onPmapColorChanged)
+
+        # Update operator with new name
+        # and add the new label to the brushingSlots
+        operator_names = self._brushingSlots.labelNames.value
+        operator_names.append( label.name )
+        try:
+            self._brushingSlots.labelNames.setValue( operator_names, check_changed=False )
+        except:
+            # I have no idea why this is, but sometimes PyQt "loses" exceptions here.
+            # Print it out before it's too late!
+            log_exception( logger, "Logged the above exception just in case PyQt loses it." )
+            raise
+
+
+
+        # Call the 'changed' callbacks immediately to initialize any listeners
+        self.onLabelNameChanged()
+        self.onLabelColorChanged()
+        self.onPmapColorChanged()
+
+        QApplication.restoreOverrideCursor()
+
+
     '''
     def _addNewLabel(self):
         QApplication.setOverrideCursor(Qt.WaitCursor)
@@ -703,6 +749,23 @@ class BrushingGui(LayerViewerGui):
         QApplication.restoreOverrideCursor()
     '''
 
+    #new
+    def getNextLabelName(self):
+        """
+        Return a suitable name for the only label that has been added in the init
+        Subclasses may override this.
+        """
+        return "Label {}".format(1)
+
+    def getNextLabelColor(self):
+        """
+        Return a QColor to use for the only label made in the init
+        """
+        #color = QColor()
+        color = QColor( Qt.red )
+        color = color.rgba()
+        #color.setRgba(self._colorTable16[1]) # First entry is transparent (for zero label)
+        return color
     '''
     def getNextLabelName(self):
         """
@@ -715,9 +778,7 @@ class BrushingGui(LayerViewerGui):
             for n in nums:
                 maxNum = max(maxNum, int(n))
         return "Label {}".format(maxNum+1)
-    '''
 
-    '''
     def getNextLabelColor(self):
         """
         Return a QColor to use for the next label.

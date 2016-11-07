@@ -30,9 +30,11 @@ class PixelClassificationSerializer(AppletSerializer):
 
     """
     def __init__(self, operator, projectFileGroupName):
+        '''
         self._serialClassifierSlot =  SerialClassifierSlot(operator.Classifier,
                                                            operator.classifier_cache,
                                                            name="ClassifierForests")
+        '''
         slots = [SerialListSlot(operator.LabelNames,
                                 transform=str),
                  SerialListSlot(operator.LabelColors, transform=lambda x: tuple(x.flat)),
@@ -43,9 +45,9 @@ class PixelClassificationSerializer(AppletSerializer):
                                  name='LabelSets',
                                  subname='labels{:03d}',
                                  selfdepends=False,
-                                 shrink_to_bb=True),
-                 SerialClassifierFactorySlot(operator.ClassifierFactory),
-                 self._serialClassifierSlot ]
+                                 shrink_to_bb=True)]
+                 #SerialClassifierFactorySlot(operator.ClassifierFactory)]
+                 #self._serialClassifierSlot ]
 
         super(PixelClassificationSerializer, self).__init__(projectFileGroupName, slots, operator)
         
@@ -98,9 +100,12 @@ class PixelClassificationSerializer(AppletSerializer):
             self.operator.LabelColors.setValue( colors )
             self.operator.PmapColors.setValue( colors )
             
+            '''
             # Now RE-deserialize the classifier, so it isn't marked dirty
             self._serialClassifierSlot.deserialize(topGroup)
+            '''
 
+        '''
         # SPECIAL CLEANUP for backwards compatibility:
         # Due to a bug, it was possible for a project to be saved with a classifier that was 
         #  trained with more label classes than the project file saved in the end.
@@ -114,6 +119,7 @@ class PixelClassificationSerializer(AppletSerializer):
                     # Delete the classifier from the operator
                     logger.info( "Resetting classifier... will be forced to retrain" )
                     self.operator.classifier_cache.resetValue()
+        '''
         
 class Ilastik05ImportDeserializer(AppletSerializer):
     """

@@ -55,11 +55,12 @@ class OpPixelClassification( Operator ):
     # Graph inputs
     
     InputImages = InputSlot(level=1) # Original input data.  Used for display only.
+    '''
     PredictionMasks = InputSlot(level=1, optional=True) # Routed to OpClassifierPredict.PredictionMask.  See there for details.
+    '''
 
     LabelInputs = InputSlot(optional = True, level=1) # Input for providing label data from an external source
     
-    '''
     '''
     FeatureImages = InputSlot(level=1) # Computed feature images (each channel is a different feature)
     CachedFeatureImages = InputSlot(level=1) # Cached feature data.
@@ -75,13 +76,11 @@ class OpPixelClassification( Operator ):
     PredictionProbabilityChannels = OutputSlot(level=2) # Classification predictions, enumerated by channel
     SegmentationChannels = OutputSlot(level=2) # Binary image of the final selections.
     '''
-    '''
     
     LabelImages = OutputSlot(level=1) # Labels from the user
     NonzeroLabelBlocks = OutputSlot(level=1) # A list if slices that contain non-zero label values
     Classifier = OutputSlot() # We provide the classifier as an external output for other applets to use
 
-    '''
     '''
     CachedPredictionProbabilities = OutputSlot(level=1) # Classification predictions (via feature cache AND prediction cache)
 
@@ -92,7 +91,6 @@ class OpPixelClassification( Operator ):
     UncertaintyEstimate = OutputSlot(level=1)
     
     SimpleSegmentation = OutputSlot(level=1) # For debug, for now
-    '''
     '''
 
     # GUI-only (not part of the pipeline, but saved to the project)
@@ -118,8 +116,8 @@ class OpPixelClassification( Operator ):
         
         # Default values for some input slots
         '''
-        '''
         self.FreezePredictions.setValue(True)
+        '''
         self.LabelNames.setValue( [] )
         self.LabelColors.setValue( [] )
         self.PmapColors.setValue( [] )
@@ -138,13 +136,16 @@ class OpPixelClassification( Operator ):
         self.LabelImages.connect( self.opLabelPipeline.Output )
         self.NonzeroLabelBlocks.connect( self.opLabelPipeline.nonzeroBlocks )
 
+        '''
         # Hook up the Training operator
         self.opTrain = OpTrainClassifierBlocked( parent=self )
         self.opTrain.ClassifierFactory.connect( self.ClassifierFactory )
         self.opTrain.Labels.connect( self.opLabelPipeline.Output )
         self.opTrain.Images.connect( self.CachedFeatureImages )
         self.opTrain.nonzeroLabelBlocks.connect( self.opLabelPipeline.nonzeroBlocks )
+        '''
 
+        '''
         # Hook up the Classifier Cache
         # The classifier is cached here to allow serializers to force in
         #   a pre-calculated classifier (loaded from disk)
@@ -153,7 +154,9 @@ class OpPixelClassification( Operator ):
         self.classifier_cache.inputs["Input"].connect(self.opTrain.outputs['Classifier'])
         self.classifier_cache.inputs["fixAtCurrent"].connect( self.FreezePredictions )
         self.Classifier.connect( self.classifier_cache.Output )
+        '''
 
+        '''
         # Hook up the prediction pipeline inputs
         self.opPredictionPipeline = OpMultiLaneWrapper( OpPredictionPipeline, parent=self )
         self.opPredictionPipeline.FeatureImages.connect( self.FeatureImages )
@@ -162,12 +165,15 @@ class OpPixelClassification( Operator ):
         self.opPredictionPipeline.FreezePredictions.connect( self.FreezePredictions )
         self.opPredictionPipeline.PredictionsFromDisk.connect( self.PredictionsFromDisk )
         self.opPredictionPipeline.PredictionMask.connect( self.PredictionMasks )
+        '''
 
+        '''
         # Feature Selection Stuff
         self.opFeatureMatrixCaches = OpMultiLaneWrapper(OpFeatureMatrixCache, parent=self)
         self.opFeatureMatrixCaches.LabelImage.connect(self.opLabelPipeline.Output)
         self.opFeatureMatrixCaches.FeatureImage.connect(self.FeatureImages)
         self.opFeatureMatrixCaches.LabelImage.setDirty()  # do I still need this?
+        '''
 
         
         def _updateNumClasses(*args):
@@ -177,11 +183,14 @@ class OpPixelClassification( Operator ):
             we use this function to call setValue().
             """
             numClasses = len(self.LabelNames.value)
+            '''
             self.opTrain.MaxLabel.setValue( numClasses )
             self.opPredictionPipeline.NumClasses.setValue( numClasses )
+            '''
             self.NumClasses.setValue( numClasses )
         self.LabelNames.notifyDirty( _updateNumClasses )
 
+        '''
         # Prediction pipeline outputs -> Top-level outputs
         self.PredictionProbabilities.connect( self.opPredictionPipeline.PredictionProbabilities )
         self.PredictionProbabilitiesUint8.connect( self.opPredictionPipeline.PredictionProbabilitiesUint8 )
@@ -193,17 +202,22 @@ class OpPixelClassification( Operator ):
         self.UncertaintyEstimate.connect( self.opPredictionPipeline.UncertaintyEstimate )
         self.SimpleSegmentation.connect( self.opPredictionPipeline.SimpleSegmentation )
         self.HeadlessUncertaintyEstimate.connect( self.opPredictionPipeline.HeadlessUncertaintyEstimate )
+        '''
 
         def inputResizeHandler( slot, oldsize, newsize ):
             if ( newsize == 0 ):
                 self.LabelImages.resize(0)
                 self.NonzeroLabelBlocks.resize(0)
+                '''
                 self.PredictionProbabilities.resize(0)
                 self.CachedPredictionProbabilities.resize(0)
+                '''
         self.InputImages.notifyResized( inputResizeHandler )
 
+        '''
         # Debug assertions: Check to make sure the non-wrapped operators stayed that way.
         assert self.opTrain.Images.operator == self.opTrain
+        '''
 
         def handleNewInputImage( multislot, index, *args ):
             def handleInputReady(slot):
@@ -229,13 +243,19 @@ class OpPixelClassification( Operator ):
                 slot.notifyMetaChanged(handleFeatureMetaChanged)
             multislot[index].notifyReady(handleFeatureImageReady)
                 
+        '''
         self.FeatureImages.notifyInserted( handleNewFeatureImage )
+        '''
 
+        '''
         def handleNewMaskImage( multislot, index, *args ):
             def handleInputReady(slot):
                 self._checkConstraints( index )
             multislot[index].notifyReady(handleInputReady)        
+        '''
+        '''
         self.PredictionMasks.notifyInserted( handleNewMaskImage )
+        '''
 
         # All input multi-slots should be kept in sync
         # Output multi-slots will auto-sync via the graph
@@ -307,6 +327,7 @@ class OpPixelClassification( Operator ):
                  "Your new image has {} dimensions (including channel), but your other images have {} dimensions."\
                  .format( len(thisLaneTaggedShape), len(validShape) ) )
         
+        '''
         mask_slot = self.PredictionMasks[laneIndex]
         input_shape = self.InputImages[laneIndex].meta.shape
         if mask_slot.ready() and mask_slot.meta.shape[:-1] != input_shape[:-1]:
@@ -315,6 +336,7 @@ class OpPixelClassification( Operator ):
                  "If you supply a prediction mask, it must have the same shape as the input image."\
                  "Your input image has shape {}, but your mask has shape {}."\
                  .format( input_shape, mask_slot.meta.shape ) )
+        '''
     
     def setInSlot(self, slot, subindex, roi, value):
         # Nothing to do here: All inputs that support __setitem__
@@ -419,6 +441,7 @@ class OpLabelPipeline( Operator ):
         # Our output changes when the input changed shape, not when it becomes dirty.
         pass    
 
+'''
 class OpPredictionPipelineNoCache(Operator):
     """
     This contains only the cacheless parts of the prediction pipeline, for easy use in headless workflows.
@@ -473,6 +496,7 @@ class OpPredictionPipelineNoCache(Operator):
     def propagateDirty(self, slot, subindex, roi):
         # Our output changes when the input changed shape, not when it becomes dirty.
         pass
+'''
 
 class OpArgmaxChannel( Operator ):
     """
@@ -505,6 +529,7 @@ class OpArgmaxChannel( Operator ):
         roi.stop[-1] = 1
         self.Output.setDirty( roi.start, roi.stop )        
 
+'''
 class OpPredictionPipeline(OpPredictionPipelineNoCache):
     """
     This operator extends the cacheless prediction pipeline above with additional outputs for the GUI.
@@ -757,6 +782,8 @@ class OpWrapperFeatureSelection(Operator):
     def propagateDirty(self, slot, subindex, roi):
         self.SelectedFeatureIDs.setDirty()
 
+'''
+'''
 class OpGiniFeatureSelection(Operator):
     FeatureLabelMatrix = InputSlot(level=1)
     NumberOfSelectedFeatures = InputSlot()
@@ -784,7 +811,8 @@ class OpGiniFeatureSelection(Operator):
 
         # this was an attempt to use Jaime's recursive feature elimination using gini importance. It provided worse
         # results than simply choosing the k best features according to their importance, maybe I have a bug??
-        ''' removed_features = np.array([])
+        """
+        removed_features = np.array([])
         remaining_features = np.arange(data.shape[1])
 
         pyqtRemoveInputHook()
@@ -801,8 +829,10 @@ class OpGiniFeatureSelection(Operator):
             importances = rf.feature_importances_
 
         result = [removed_features[- self.NumberOfSelectedFeatures.value:].astype("int")]
-        '''
+        """
         return result
 
     def propagateDirty(self, slot, subindex, roi):
         self.SelectedFeatureIDs.setDirty()
+'''
+

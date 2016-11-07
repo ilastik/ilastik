@@ -46,7 +46,8 @@ class PixelClassificationWorkflow_Andi(Workflow):
     DATA_ROLE_RAW = 0
     DATA_ROLE_PREDICTION_MASK = 1
     ROLE_NAMES = ['Raw Data', 'Prediction Mask']
-    EXPORT_NAMES = ['Probabilities', 'Simple Segmentation', 'Uncertainty', 'Features', 'Labels']
+    EXPORT_NAMES = ['Labels']
+    #EXPORT_NAMES = ['Probabilities', 'Simple Segmentation', 'Uncertainty', 'Features', 'Labels']
     
     @property
     def applets(self):
@@ -62,6 +63,8 @@ class PixelClassificationWorkflow_Andi(Workflow):
         super( PixelClassificationWorkflow_Andi, self ).__init__( shell, headless, workflow_cmdline_args, project_creation_args, graph=graph, *args, **kwargs )
         self.stored_classifier = None
         self._applets = []
+        #TODO
+        '''
         self._workflow_cmdline_args = workflow_cmdline_args
         # Parse workflow-specific command-line args
         parser = argparse.ArgumentParser()
@@ -97,6 +100,7 @@ class PixelClassificationWorkflow_Andi(Workflow):
         
         data_instructions = "Select your input data using the 'Raw Data' tab shown on the right.\n\n"\
                             "Power users: Optionally use the 'Prediction Mask' tab to supply a binary image that tells ilastik where it should avoid computations you don't need."
+        '''
 
         # Applets for training (interactive) workflow 
         self.projectMetadataApplet = ProjectMetadataApplet()
@@ -107,13 +111,16 @@ class PixelClassificationWorkflow_Andi(Workflow):
         # see role constants, above
         opDataSelection.DatasetRoles.setValue( PixelClassificationWorkflow_Andi.ROLE_NAMES )
 
+        '''
         self.featureSelectionApplet = self.createFeatureSelectionApplet()
+        '''
 
         self.pcApplet = self.createPixelClassificationApplet()
         opClassify = self.pcApplet.topLevelOperator
 
         self.dataExportApplet = PixelClassificationDataExportApplet(self, "Prediction Export")
         opDataExport = self.dataExportApplet.topLevelOperator
+
         opDataExport.PmapColors.connect( opClassify.PmapColors )
         opDataExport.LabelNames.connect( opClassify.LabelNames )
         opDataExport.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
@@ -122,19 +129,26 @@ class PixelClassificationWorkflow_Andi(Workflow):
         # Expose for shell
         self._applets.append(self.projectMetadataApplet)
         self._applets.append(self.dataSelectionApplet)
+        '''
         self._applets.append(self.featureSelectionApplet)
+        '''
         self._applets.append(self.pcApplet)
         self._applets.append(self.dataExportApplet)
         
+        '''
         self.dataExportApplet.prepare_for_entire_export = self.prepare_for_entire_export
         self.dataExportApplet.post_process_entire_export = self.post_process_entire_export
+        '''
 
+        '''
         self.batchProcessingApplet = BatchProcessingApplet(self, 
                                                            "Batch Processing", 
                                                            self.dataSelectionApplet, 
                                                            self.dataExportApplet)
 
         self._applets.append(self.batchProcessingApplet)
+        '''
+        '''
         if unused_args:
             # We parse the export setting args first.  All remaining args are considered input files by the input applet.
             self._batch_export_args, unused_args = self.dataExportApplet.parse_known_cmdline_args( unused_args )
@@ -145,6 +159,7 @@ class PixelClassificationWorkflow_Andi(Workflow):
 
         if unused_args:
             logger.warn("Unused command-line args: {}".format( unused_args ))
+        '''
 
     def createDataSelectionApplet(self):
         """
@@ -159,6 +174,7 @@ class PixelClassificationWorkflow_Andi(Workflow):
                                     instructionText=data_instructions )
 
 
+    '''
     def createFeatureSelectionApplet(self):
         """
         Can be overridden by subclasses, if they want to return their own type of FeatureSelectionApplet.
@@ -166,6 +182,7 @@ class PixelClassificationWorkflow_Andi(Workflow):
               (If it looks like a duck...)
         """
         return FeatureSelectionApplet(self, "Feature Selection", "FeatureSelections", self.filter_implementation)
+    '''
 
     def createPixelClassificationApplet(self):
         """
@@ -184,52 +201,74 @@ class PixelClassificationWorkflow_Andi(Workflow):
         # This means the classifier will be marked 'dirty' even though it is still usable.
         # Before that happens, let's store the classifier, so we can restore it in handleNewLanesAdded(), below.
         opPixelClassification = self.pcApplet.topLevelOperator
+        '''
         if opPixelClassification.classifier_cache.Output.ready() and \
            not opPixelClassification.classifier_cache._dirty:
             self.stored_classifier = opPixelClassification.classifier_cache.Output.value
         else:
             self.stored_classifier = None
+        '''
         
     def handleNewLanesAdded(self):
         """
         Overridden from Workflow base class.
         Called immediately after a new lane is added to the workflow and initialized.
         """
+        '''
         # Restore classifier we saved in prepareForNewLane() (if any)
         if self.stored_classifier:
             self.pcApplet.topLevelOperator.classifier_cache.forceValue(self.stored_classifier)
             # Release reference
             self.stored_classifier = None
+        '''
+        pass
 
     def connectLane(self, laneIndex):
         # Get a handle to each operator
         opData = self.dataSelectionApplet.topLevelOperator.getLane(laneIndex)
+        '''
         opTrainingFeatures = self.featureSelectionApplet.topLevelOperator.getLane(laneIndex)
+        '''
         opClassify = self.pcApplet.topLevelOperator.getLane(laneIndex)
         opDataExport = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
         
         # Input Image -> Feature Op
         #         and -> Classification Op (for display)
+        '''
         opTrainingFeatures.InputImage.connect( opData.Image )
+        '''
         opClassify.InputImages.connect( opData.Image )
         
+        '''
         if ilastik_config.getboolean('ilastik', 'debug'):
             opClassify.PredictionMasks.connect( opData.ImageGroup[self.DATA_ROLE_PREDICTION_MASK] )
+        '''
         
+        '''
         # Feature Images -> Classification Op (for training, prediction)
         opClassify.FeatureImages.connect( opTrainingFeatures.OutputImage )
         opClassify.CachedFeatureImages.connect( opTrainingFeatures.CachedOutputImage )
+        '''
         
         # Data Export connections
         opDataExport.RawData.connect( opData.ImageGroup[self.DATA_ROLE_RAW] )
         opDataExport.RawDatasetInfo.connect( opData.DatasetGroup[self.DATA_ROLE_RAW] )
+        #very important! otherwise the data export won't work
         opDataExport.ConstraintDataset.connect( opData.ImageGroup[self.DATA_ROLE_RAW] )
+        #new
+        #opDataExport.Inputs.connect( opClassify.LabelImages )
+        opDataExport.Inputs.resize( len(self.EXPORT_NAMES) )
+        opDataExport.Inputs[0].connect( opClassify.LabelImages )
+
+        '''
         opDataExport.Inputs.resize( len(self.EXPORT_NAMES) )
         opDataExport.Inputs[0].connect( opClassify.HeadlessPredictionProbabilities )
         opDataExport.Inputs[1].connect( opClassify.SimpleSegmentation )
         opDataExport.Inputs[2].connect( opClassify.HeadlessUncertaintyEstimate )
         opDataExport.Inputs[3].connect( opClassify.FeatureImages )
         opDataExport.Inputs[4].connect( opClassify.LabelImages )
+
+        '''
         for slot in opDataExport.Inputs:
             assert slot.partner is not None
 
@@ -242,33 +281,44 @@ class PixelClassificationWorkflow_Andi(Workflow):
         opDataSelection = self.dataSelectionApplet.topLevelOperator
         input_ready = len(opDataSelection.ImageGroup) > 0 and not self.dataSelectionApplet.busy
 
+        '''
         opFeatureSelection = self.featureSelectionApplet.topLevelOperator
         featureOutput = opFeatureSelection.OutputImage
         features_ready = input_ready and \
                          len(featureOutput) > 0 and  \
                          featureOutput[0].ready() and \
                          (TinyVector(featureOutput[0].meta.shape) > 0).all()
+        '''
 
         opDataExport = self.dataExportApplet.topLevelOperator
         opPixelClassification = self.pcApplet.topLevelOperator
 
+        '''
         invalid_classifier = opPixelClassification.classifier_cache.fixAtCurrent.value and \
                              opPixelClassification.classifier_cache.Output.ready() and\
                              opPixelClassification.classifier_cache.Output.value is None
 
+        '''
+        '''
         predictions_ready = features_ready and \
                             not invalid_classifier and \
                             len(opDataExport.Inputs) > 0 and \
                             opDataExport.Inputs[0][0].ready() and \
                             (TinyVector(opDataExport.Inputs[0][0].meta.shape) > 0).all()
+        '''
 
+        '''
         # Problems can occur if the features or input data are changed during live update mode.
         # Don't let the user do that.
         live_update_active = not opPixelClassification.FreezePredictions.value
+        '''
         
+        '''
         # The user isn't allowed to touch anything while batch processing is running.
         batch_processing_busy = self.batchProcessingApplet.busy
+        '''
         
+        '''
         self._shell.setAppletEnabled(self.dataSelectionApplet, not live_update_active and not batch_processing_busy)
         self._shell.setAppletEnabled(self.featureSelectionApplet, input_ready and not live_update_active and not batch_processing_busy)
         self._shell.setAppletEnabled(self.pcApplet, features_ready and not batch_processing_busy)
@@ -277,15 +327,27 @@ class PixelClassificationWorkflow_Andi(Workflow):
         if self.batchProcessingApplet is not None:
             self._shell.setAppletEnabled(self.batchProcessingApplet, predictions_ready and not batch_processing_busy)
     
+        '''
+        #TODO just as a workaround at first
+        #new 
+        #self._shell.setAppletEnabled(self.pcApplet, True)
+        #self._shell.setAppletEnabled(self.dataExportApplet, True)
+
+
         # Lastly, check for certain "busy" conditions, during which we 
         #  should prevent the shell from closing the project.
         busy = False
         busy |= self.dataSelectionApplet.busy
+        '''
         busy |= self.featureSelectionApplet.busy
+        '''
         busy |= self.dataExportApplet.busy
+        '''
         busy |= self.batchProcessingApplet.busy
+        '''
         self._shell.enableProjectChanges( not busy )
 
+    '''
     def onProjectLoaded(self, projectManager):
         """
         Overridden from Workflow base class.  Called by the Project Manager.
@@ -336,7 +398,10 @@ class PixelClassificationWorkflow_Andi(Workflow):
             logger.info("Beginning Batch Processing")
             self.batchProcessingApplet.run_export_from_parsed_args(self._batch_input_args)
             logger.info("Completed Batch Processing")
+    '''
 
+    #TODO needed for watershed later
+    '''
     def prepare_for_entire_export(self):
         """
         Assigned to DataExportApplet.prepare_for_entire_export
@@ -351,7 +416,9 @@ class PixelClassificationWorkflow_Andi(Workflow):
         (See above.)
         """
         self.pcApplet.topLevelOperator.FreezePredictions.setValue(self.freeze_status)
+    '''
 
+    '''
     def _force_retrain_classifier(self, projectManager):
         # Cause the classifier to be dirty so it is forced to retrain.
         # (useful if the stored labels were changed outside ilastik)
@@ -363,6 +430,7 @@ class PixelClassificationWorkflow_Andi(Workflow):
 
         # store new classifier to project file
         projectManager.saveProject(force_all_save=False)
+    '''
 
     def _print_labels_by_slice(self, search_value):
         """
@@ -454,6 +522,7 @@ class PixelClassificationWorkflow_Andi(Workflow):
         logger.info( "Done injecting labels" )
 
 
+    '''
     def getHeadlessOutputSlot(self, slotId):
         """
         Not used by the regular app.
@@ -471,5 +540,6 @@ class PixelClassificationWorkflow_Andi(Workflow):
             return self.opBatchPredictionPipeline.HeadlessUint8PredictionProbabilities
         
         raise Exception("Unknown headless output slot")
+    '''
 
 

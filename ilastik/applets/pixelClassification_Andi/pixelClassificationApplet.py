@@ -29,6 +29,7 @@ class PixelClassificationApplet( StandardApplet ):
     def __init__( self, workflow, projectFileGroupName ):
         self._topLevelOperator = OpPixelClassification( parent=workflow )
         
+        '''
         def on_classifier_changed(slot, roi):
             if self._topLevelOperator.classifier_cache.Output.ready() and \
                self._topLevelOperator.classifier_cache.fixAtCurrent.value is True and \
@@ -37,6 +38,7 @@ class PixelClassificationApplet( StandardApplet ):
                 #  then notify the workflow. (Export applet should be disabled.)
                 self.appletStateUpdateRequested.emit()
         self._topLevelOperator.classifier_cache.Output.notifyDirty( on_classifier_changed )
+        '''
         
         super(PixelClassificationApplet, self).__init__( "Training" )
 
@@ -48,14 +50,18 @@ class PixelClassificationApplet( StandardApplet ):
 
         self._gui = None
         
+        '''
         # GUI needs access to the serializer to enable/disable prediction storage
         self.predictionSerializer = self._serializableItems[0]
+        '''
 
+        '''
         # FIXME: For now, we can directly connect the progress signal from the classifier training operator
         #  directly to the applet's overall progress signal, because it's the only thing we report progress for at the moment.
         # If we start reporting progress for multiple tasks that might occur simulatneously,
         #  we'll need to aggregate the progress updates.
         self._topLevelOperator.opTrain.progressSignal.subscribe(self.progressSignal.emit)
+        '''
     
     @property
     def topLevelOperator(self):

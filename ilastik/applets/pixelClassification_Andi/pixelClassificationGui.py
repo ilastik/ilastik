@@ -61,11 +61,13 @@ except ImportError:
 # Loggers
 logger = logging.getLogger(__name__)
 
+'''
 def _listReplace(old, new):
     if len(old) > len(new):
         return new + old[len(new):]
     else:
         return new
+'''
 
 '''
 class ClassifierSelectionDlg(QDialog):
@@ -166,10 +168,14 @@ class PixelClassificationGui(BrushingGui):
     '''
 
     def menus( self ):
+        """
+        additional menu like Project and Settings
+        """
         menus = super( PixelClassificationGui, self ).menus()
 
         advanced_menu = QMenu("Advanced", parent=self)
                     
+        '''
         def handleClassifierAction():
             dlg = ClassifierSelectionDlg(self.topLevelOperatorView, parent=self)
             dlg.exec_()
@@ -182,6 +188,7 @@ class PixelClassificationGui(BrushingGui):
             varImpDlg.exec_()
             
         advanced_menu.addAction("Variable Importance Table").triggered.connect(showVarImpDlg)            
+        '''
         
         def handleImportLabelsAction():
             # Find the directory of the most recently opened image file
@@ -486,6 +493,7 @@ class PixelClassificationGui(BrushingGui):
                     layers.append(projectionLayer)
         '''
 
+        '''
         # Show the mask over everything except labels
         maskSlot = self.topLevelOperatorView.PredictionMasks
         if maskSlot.ready():
@@ -494,6 +502,7 @@ class PixelClassificationGui(BrushingGui):
             maskLayer.visible = False
             maskLayer.opacity = 1.0
             layers.append( maskLayer )
+        '''
 
         #for visualisation only, not more, could be reomved afterwards
         imageSlot = self.topLevelOperatorView.InputImages
@@ -504,6 +513,7 @@ class PixelClassificationGui(BrushingGui):
             maskLayer.opacity = 1.0
             layers.append( maskLayer )
 
+        '''
         # Add the uncertainty estimate layer
         uncertaintySlot = self.topLevelOperatorView.UncertaintyEstimate
         if uncertaintySlot.ready():
@@ -523,6 +533,7 @@ class PixelClassificationGui(BrushingGui):
                                                                        uncertaintyLayer ) )
             layers.append(uncertaintyLayer)
 
+        '''
         '''
         labels = self.labelListData
         '''
@@ -781,6 +792,18 @@ class PixelClassificationGui(BrushingGui):
         else:
             return parentFun()
     '''
+    #new
+    def _onLabelChanged(self, parentFun, mapf, slot):
+        """
+        always set to second label (number 1), because this can be exported easily
+        here we have to do nothing, because there won't be a change in Labels after the init
+        """
+        #execute this function in the superClass
+        #parentFun()
+        #new = map(mapf, self.labelListData)
+        #old = slot.value
+        #slot.setValue(_listReplace(old, new))
+        pass
 
     '''
     def _onLabelChanged(self, parentFun, mapf, slot):
@@ -823,11 +846,15 @@ class PixelClassificationGui(BrushingGui):
             lambda x: QColor(*x)
         )
 
+    '''
+    def onLabelNameChanged(self):
+        #it was to renew the list of labels, but this isn't necessary here anymore
+        pass
+    '''
     def onLabelNameChanged(self):
         self._onLabelChanged(super(PixelClassificationGui, self).onLabelNameChanged,
                              lambda l: l.name,
                              self.topLevelOperatorView.LabelNames)
-
     def onLabelColorChanged(self):
         self._onLabelChanged(super(PixelClassificationGui, self).onLabelColorChanged,
                              lambda l: (l.brushColor().red(),
@@ -842,6 +869,15 @@ class PixelClassificationGui(BrushingGui):
                                         l.pmapColor().green(),
                                         l.pmapColor().blue()),
                              self.topLevelOperatorView.PmapColors)
+    '''
+
+    def onLabelColorChanged(self):
+        pass
+
+
+    def onPmapColorChanged(self):
+        pass
+    '''
     '''
 
     '''

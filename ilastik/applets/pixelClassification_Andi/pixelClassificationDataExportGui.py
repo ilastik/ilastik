@@ -50,8 +50,13 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
         # If those change, update this function!
         selection_names = opLane.SelectionNames.value
         
+        '''
         # see comment above
         for name, expected in zip(selection_names[0:5], ['Probabilities', 'Simple Segmentation', 'Uncertainty', 'Features', 'Labels']):
+            assert name.startswith(expected), "The Selection Names don't match the expected selection names."
+        '''
+        #new
+        for name, expected in zip(selection_names[0:1], ['Labels']):
             assert name.startswith(expected), "The Selection Names don't match the expected selection names."
         
         selection = selection_names[ opLane.InputSelection.value ]
@@ -68,6 +73,8 @@ class PixelClassificationResultsViewer(DataExportLayerViewerGui):
                 layer.visible = False
                 layer.name = layer.name + "- Preview"
             layers += previewLayers
+
+            #TODO TODO is Colortable for export viewing the right one?
         elif selection.startswith("Simple Segmentation") or selection.startswith("Labels"):
             exportedLayer = self._initColortablelayer(opLane.ImageOnDisk)
             if exportedLayer:
