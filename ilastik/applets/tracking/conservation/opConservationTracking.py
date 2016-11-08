@@ -10,7 +10,7 @@ from ilastik.applets.base.applet import DatasetConstraintError
 from ilastik.applets.tracking.base.trackingUtilities import relabel, highlightMergers
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key, OpRegionFeatures
 from ilastik.applets.tracking.base.trackingUtilities import get_dict_value, get_events
-from lazyflow.operators.opCompressedCache import OpCompressedCache
+from lazyflow.operators import OpBlockedArrayCache
 from lazyflow.operators.valueProviders import OpZeroDefault
 from lazyflow.roi import sliceToRoi
 from opRelabeledMergerFeatureExtraction import OpRelabeledMergerFeatureExtraction
@@ -47,10 +47,8 @@ class OpConservationTracking(Operator, ExportingOperator):
     Parameters = InputSlot(value={})
  
     # for serialization
-    InputHdf5 = InputSlot(optional=True)
     CleanBlocks = OutputSlot()
     AllBlocks = OutputSlot()
-    OutputHdf5 = OutputSlot()
     CachedOutput = OutputSlot()  # For the GUI (blockwise-access)
  
     Output = OutputSlot()
@@ -63,17 +61,13 @@ class OpConservationTracking(Operator, ExportingOperator):
     NumLabels = InputSlot()
 
     # compressed cache for merger output
-    MergerInputHdf5 = InputSlot(optional=True)
     MergerCleanBlocks = OutputSlot()
-    MergerOutputHdf5 = OutputSlot()
     MergerCachedOutput = OutputSlot() # For the GUI (blockwise access)
     MergerOutput = OutputSlot()
     
     CoordinateMap = OutputSlot()
 
-    RelabeledInputHdf5 = InputSlot(optional=True)
     RelabeledCleanBlocks = OutputSlot()
-    RelabeledOutputHdf5 = OutputSlot()
     RelabeledCachedOutput = OutputSlot() # For the GUI (blockwise access)
     RelabeledImage = OutputSlot()
 
@@ -91,11 +85,11 @@ class OpConservationTracking(Operator, ExportingOperator):
         self.divisions = None
         self.resolvedMergersDict = None
 
-        self._opCache = OpCompressedCache(parent=self)
-        self._opCache.InputHdf5.connect(self.InputHdf5)
+        self._opCache = OpBlockedArrayCache(parent=self)
+        self._opCache.name = "OpConservationTracking._opCache"
+        self._opCache.CompressionEnabled.setValue(True)
         self._opCache.Input.connect(self.Output)
         self.CleanBlocks.connect(self._opCache.CleanBlocks)
-        self.OutputHdf5.connect(self._opCache.OutputHdf5)
         self.CachedOutput.connect(self._opCache.Output)
 
         self.zeroProvider = OpZeroDefault(parent=self)
@@ -108,19 +102,20 @@ class OpConservationTracking(Operator, ExportingOperator):
         self.export_progress_dialog = None
         self.ExportSettings.setValue( (None, None) )
 
-        self._mergerOpCache = OpCompressedCache( parent=self )
-        self._mergerOpCache.InputHdf5.connect(self.MergerInputHdf5)
+        self._mergerOpCache = OpBlockedArrayCache(parent=self)
+        self._mergerOpCache.name = "OpConservationTracking._mergerOpCache"
+        self._mergerOpCache.CompressionEnabled.setValue(True)
         self._mergerOpCache.Input.connect(self.MergerOutput)
         self.MergerCleanBlocks.connect(self._mergerOpCache.CleanBlocks)
-        self.MergerOutputHdf5.connect(self._mergerOpCache.OutputHdf5)
         self.MergerCachedOutput.connect(self._mergerOpCache.Output)
 
-        self._relabeledOpCache = OpCompressedCache( parent=self )
-        self._relabeledOpCache.InputHdf5.connect(self.RelabeledInputHdf5)
+        self._relabeledOpCache = OpBlockedArrayCache(parent=self)
+        self._relabeledOpCache.name = "OpConservationTracking._mergerOpCache"
+        self._relabeledOpCache.CompressionEnabled.setValue(True)
         self._relabeledOpCache.Input.connect(self.RelabeledImage)
         self.RelabeledCleanBlocks.connect(self._relabeledOpCache.CleanBlocks)
-        self.RelabeledOutputHdf5.connect(self._relabeledOpCache.OutputHdf5)
         self.RelabeledCachedOutput.connect(self._relabeledOpCache.Output)
+        
         self.tracker = None
         self._ndim = 3        
 
@@ -132,7 +127,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         # FIXME: assumes t,x,y,z,c
         chunks[0] = 1  # 't'        
         self._blockshape = tuple(chunks)
-        self._opCache.BlockShape.setValue(self._blockshape)
+        self._opCache.outerBlockShape.setValue(self._blockshape)
 
         self.AllBlocks.meta.shape = (1,)
         self.AllBlocks.meta.dtype = object
@@ -141,8 +136,8 @@ class OpConservationTracking(Operator, ExportingOperator):
         self.RelabeledImage.meta.assignFrom(self.LabelImage.meta)
         self._ndim = 2 if self.LabelImage.meta.shape[3] == 1 else 3
 
-        self._mergerOpCache.BlockShape.setValue( self._blockshape )
-        self._relabeledOpCache.BlockShape.setValue( self._blockshape )
+        self._mergerOpCache.outerBlockShape.setValue( self._blockshape )
+        self._relabeledOpCache.outerBlockShape.setValue( self._blockshape )
         
         frame_shape = (1,) + self.LabelImage.meta.shape[1:] # assumes t,x,y,z,c order
         assert frame_shape[-1] == 1
