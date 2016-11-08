@@ -64,8 +64,6 @@ class OpConservationTracking(Operator, ExportingOperator):
     MergerCleanBlocks = OutputSlot()
     MergerCachedOutput = OutputSlot() # For the GUI (blockwise access)
     MergerOutput = OutputSlot()
-    
-    CoordinateMap = OutputSlot()
 
     RelabeledCleanBlocks = OutputSlot()
     RelabeledCachedOutput = OutputSlot() # For the GUI (blockwise access)
