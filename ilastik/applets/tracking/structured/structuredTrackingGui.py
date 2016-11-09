@@ -7,6 +7,7 @@ import re
 import traceback
 import math
 import random
+import h5py
 
 import pgmlink
 
@@ -180,6 +181,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._appearanceWeight = self.topLevelOperatorView.AppearanceWeight.value
         self._disappearanceWeight = self.topLevelOperatorView.DisappearanceWeight.value
 
+        self._drawer.exportWeights.clicked.connect(self._onExportWeightsButtonPressed)
+
         self._drawer.detWeightBox.setValue(self._detectionWeight)
         self._drawer.divWeightBox.setValue(self._divisionWeight)
         self._drawer.transWeightBox.setValue(self._transitionWeight)
@@ -209,6 +212,18 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self.topLevelOperatorView._appearanceWeight = self._appearanceWeight
         self.topLevelOperatorView._disappearanceWeight = self._disappearanceWeight
 
+    def _onExportWeightsButtonPressed (self):
+        path = os.path.split(self.parentApplet.workflow.shell.projectManager.currentProjectPath)
+        dir = path[0]
+        fileName = path[1]
+
+        index = fileName.find('.ilp')
+        with h5py.File(dir+'/'+fileName[:index]+'_exported_weights.h5','w') as f:
+            f["DetectionWeight"] = self._detectionWeight
+            f["DivisionWeight"] = self._divisionWeight
+            f["TransitionWeight"] = self._transitionWeight
+            f["AppearanceWeight"] = self._appearanceWeight
+            f["DisappearanceWeight"] = self._disappearanceWeight
 
     def _onOnesButtonPressed(self):
         val = math.sqrt(1.0/5)

@@ -77,11 +77,11 @@ class OpStructuredTracking(OpTrackingBase):
         self.consTracker = None
         self._parent = parent
 
-        self.DivisionWeight.setValue(1)
-        self.DetectionWeight.setValue(1)
-        self.TransitionWeight.setValue(1)
-        self.AppearanceWeight.setValue(1)
-        self.DisappearanceWeight.setValue(1)
+        self.DivisionWeight.setValue(0.6)
+        self.DetectionWeight.setValue(0.6)
+        self.TransitionWeight.setValue(0.01)
+        self.AppearanceWeight.setValue(0.3)
+        self.DisappearanceWeight.setValue(0.2)
 
         self.MaxNumObjOut.setValue(1)
 
