@@ -91,6 +91,7 @@ class WatershedSegmentationGui(LayerViewerGui):
         self.topLevelOperatorView.watershed_completed.subscribe( self.updateAllLayers )
         '''
 
+
     #slightly faster with pyqtSlot
     @pyqtSlot(int)
     def on_SpinBox_valueChanged(self, i):
