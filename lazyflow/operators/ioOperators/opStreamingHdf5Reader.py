@@ -71,6 +71,7 @@ class OpStreamingHdf5Reader(Operator):
             # Read the axistags property without actually importing the data
             axistagsJson = self._hdf5File[internalPath].attrs['axistags'] # Throws KeyError if 'axistags' can't be found
             axistags = vigra.AxisTags.fromJSON(axistagsJson)
+            axisorder = ''.join(tag.key for tag in axistags)
         except KeyError:
             # No axistags found.
             ndims = len(dataset.shape)
