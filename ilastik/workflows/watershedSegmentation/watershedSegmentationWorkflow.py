@@ -35,12 +35,13 @@ class WatershedSegmentationWorkflow(Workflow):
     defaultAppletIndex = 0 # show DataSelection by default
 
     # give your input data a number, so the group can be found for them
-    DATA_ROLE_RAW = 0
-    DATA_ROLE_PROBABILITIES = 1
-    ROLE_NAMES = ['Raw Data', 'Probabilities']
+    DATA_ROLE_RAW           = 0
+    DATA_ROLE_BOUNDARIES    = 1
+    DATA_ROLE_SEEDS         = 2
+    ROLE_NAMES = ['Raw Data', 'Object Boundaries', 'Seeds']
 
     #define the names of the data, that can be exported in the DataExport Applet
-    EXPORT_NAMES = ['Watershed']
+    EXPORT_NAMES = ['Corrected Seeds', 'Watershed']
 
     @property
     def applets(self):
@@ -63,7 +64,7 @@ class WatershedSegmentationWorkflow(Workflow):
 
         # -- DataSelection applet
         #
-        self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data")
+        self.dataSelectionApplet = DataSelectionApplet(self, "Input Data", "Input Data", "Input Data")
 
         # Dataset inputs
         opDataSelection = self.dataSelectionApplet.topLevelOperator
@@ -119,16 +120,16 @@ class WatershedSegmentationWorkflow(Workflow):
         opDataExport            = self.dataExportApplet.topLevelOperator.getLane(laneIndex)
 
         # watershed inputs
-        # ensure that the watershed can only be clicked or whatelse, 
-        # if raw data and prediction map are loaded
-        # TODO
-        # till now, raised assertion if prob maps not loaded and nothing if raw data not loaded
-        opWatershedSegmentation.RawData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
-        opWatershedSegmentation.Input.connect( opDataSelection.ImageGroup[self.DATA_ROLE_PROBABILITIES] )
+        opWatershedSegmentation.RawData.connect(    opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
+        opWatershedSegmentation.Boundaries.connect( opDataSelection.ImageGroup[self.DATA_ROLE_BOUNDARIES] )
+        opWatershedSegmentation.Seeds.connect(      opDataSelection.ImageGroup[self.DATA_ROLE_SEEDS] )
 
         # DataExport inputs
-        opDataExport.RawData.connect( opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
-        opDataExport.RawDatasetInfo.connect( opDataSelection.DatasetGroup[self.DATA_ROLE_RAW] )        
+        opDataExport.RawData.connect(       opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
+        opDataExport.RawDatasetInfo.connect(opDataSelection.DatasetGroup[self.DATA_ROLE_RAW] )        
+
+        #TODO export
+        #for more information, see ilastik.org/lazyflow/advanced.html OperatorWrapper class
         #opDataExport.Inputs.resize( len(self.EXPORT_NAMES) )
         #opDataExport.Inputs[0].connect( opWatershedSegmentation.Superpixels )
         for slot in opDataExport.Inputs:

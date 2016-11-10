@@ -3,6 +3,8 @@ import numpy as np
 
 #for wsDtSegmentation
 from ilastik.applets.wsdt.wsdtApplet import WsdtApplet
+#for OpLabelPipeline
+from lazyflow.roi import determineBlockShape
 
 
 from lazyflow.utility import OrderedSignal
@@ -10,6 +12,56 @@ from lazyflow.graph import Operator, InputSlot, OutputSlot
 from lazyflow.roi import roiToSlice, sliceToRoi
 from lazyflow.operators import OpBlockedArrayCache, OpValueCache
 from lazyflow.operators.generic import OpPixelOperator, OpSingleChannelSelector
+#for the LabelPipeline
+from lazyflow.operators import OpCompressedUserLabelArray
+
+
+#copied form pixelclassification
+class OpLabelPipeline( Operator ):
+    RawImage = InputSlot()
+    LabelInput = InputSlot()
+    DeleteLabel = InputSlot()
+    
+    Output = OutputSlot()
+    nonzeroBlocks = OutputSlot()
+    
+    def __init__(self, *args, **kwargs):
+        super( OpLabelPipeline, self ).__init__( *args, **kwargs )
+        
+
+        self.opLabelArray = OpCompressedUserLabelArray( parent=self )
+        self.opLabelArray.Input.connect( self.LabelInput )
+        self.opLabelArray.eraser.setValue(100)
+
+        self.opLabelArray.deleteLabel.connect( self.DeleteLabel )
+
+        # Connect external outputs to their internal sources
+        self.Output.connect( self.opLabelArray.Output )
+        self.nonzeroBlocks.connect( self.opLabelArray.nonzeroBlocks )
+    
+    def setupOutputs(self):
+        tagged_shape = self.RawImage.meta.getTaggedShape()
+        # labels are created for one channel (i.e. the label) and only in the
+        # current time slice, so we can set both c and t to 1
+        tagged_shape['c'] = 1
+        if 't' in tagged_shape:
+            tagged_shape['t'] = 1
+        
+        # Aim for blocks that are roughly 1MB
+        block_shape = determineBlockShape( tagged_shape.values(), 1e6 )
+        self.opLabelArray.blockShape.setValue( block_shape )
+
+    def setInSlot(self, slot, subindex, roi, value):
+        # Nothing to do here: All inputs that support __setitem__
+        #   are directly connected to internal operators.
+        pass
+
+    def execute(self, slot, subindex, roi, result):
+        assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
+
+    def propagateDirty(self, slot, subindex, roi):
+        # Our output changes when the input changed shape, not when it becomes dirty.
+        pass    
 
 class OpWatershedSegmentation(Operator):
     """
@@ -17,17 +69,42 @@ class OpWatershedSegmentation(Operator):
     Provide execution function for the execution of the watershed algorithm
     """
 
-    RawData = InputSlot() 
-    #RawData = InputSlot(optional=True) # Used by the GUI for display only
-    #Input = InputSlot() # Can be multi-channel (but you'll have to choose which channel you want to use)
-    #TODO remove optional
-    Input = InputSlot(optional=True) # Can be multi-channel (but you'll have to choose which channel you want to use)
+    ############################################################
+    # Inputslots for inputs from other applets
+    ############################################################
+    RawData         = InputSlot() # Used by the GUI for display only
+    Boundaries      = InputSlot() 
+    Seeds           = InputSlot(optional=True) 
+    #starts with the Seeds slot input and can be changed by the user. 
+    #needs new slot for reset
+    #no direct input
+    #TODO value=0 ok?
+    CorrectedSeedsIn = InputSlot(value=0)
 
     ############################################################
-    # Define Inputslots for Internal Parameter Usage
+    # Inputslots for Internal Parameter Usage
     ############################################################
     ChannelSelection    = InputSlot(value=0)
     BrushValue          = InputSlot(value=0)
+
+
+    ############################################################
+    # Output Slots
+    ############################################################
+    #for the labeling
+    CorrectedSeedsOut    = OutputSlot(level=1) # Labels from the user
+    NonzeroLabelBlocks  = OutputSlot(level=1) # A list if slices that contain non-zero label values
+
+
+    # GUI-only (not part of the pipeline, but saved to the project)
+    LabelNames = OutputSlot()
+    LabelColors = OutputSlot()
+    PmapColors = OutputSlot()
+
+    NumClasses = OutputSlot()
+
+
+
     '''
     Pmin = InputSlot(value=0.5)
     MinMembraneSize = InputSlot(value=0)
@@ -47,7 +124,39 @@ class OpWatershedSegmentation(Operator):
         self.watershed_completed = OrderedSignal()
         '''
 
+        # Default values for some input slots
+        self.LabelNames.setValue( [] )
+        self.LabelColors.setValue( [] )
+        self.PmapColors.setValue( [] )
+
+
+
+        ############################################################
+        # OpLabelPipeline setup
+        ############################################################
+        # Hook up Labeling Pipeline
+        #self.opLabelPipeline = OpMultiLaneWrapper( OpLabelPipeline, parent=self, broadcastingSlotNames=['DeleteLabel'] )
+        self.opLabelPipeline = OpLabelPipeline(parent=self)
+        self.opLabelPipeline.RawImage.connect( self.RawData )
+        self.opLabelPipeline.LabelInput.connect( self.Seeds )
+        #TODO instead of line before
+        #self.opLabelPipeline.LabelInput.connect( self.CorrectedSeedsIn )
+        self.opLabelPipeline.DeleteLabel.setValue( -1 )
+
+        #connect the output slot CorrectedSeeds with the Output of the LabelPipeline
+        self.CorrectedSeedsOut.connect(     self.opLabelPipeline.Output )
+        self.NonzeroLabelBlocks.connect(    self.opLabelPipeline.nonzeroBlocks )
+
+
+
     def setupOutputs(self):
+        self.LabelNames.meta.dtype = object
+        self.LabelNames.meta.shape = (1,)
+        self.LabelColors.meta.dtype = object
+        self.LabelColors.meta.shape = (1,)
+        self.PmapColors.meta.dtype = object
+        self.PmapColors.meta.shape = (1,)
+        #TODO
         pass
         #assert self.Input.meta.getAxisKeys()[-1] == 'c', \
         "This operator assumes that channel is the last axis."
@@ -185,3 +294,7 @@ class OpCachedWatershedSegmentation(Operator):
             # Force a refresh so the debug outputs will be updated.
             self._opCache.Input.setDirty()
 '''
+
+
+
+
