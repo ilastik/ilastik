@@ -33,7 +33,8 @@ class TrackingSerializer(AppletSerializer):
         slots = [SerialDictSlot(mainOperator.Parameters, selfdepends=True),
                  SerialDictSlot(mainOperator.EventsVector, transform=str, selfdepends=True),
                  SerialDictSlot(mainOperator.FilteredLabels, transform=str, selfdepends=True),
-                 SerialPickledValueSlot(mainOperator.ExportSettings)
+                 SerialPickledValueSlot(mainOperator.ExportSettings),
+                 SerialPickledValueSlot(mainOperator.HypothesesGraph)
                  ]
 
         super( TrackingSerializer, self ).__init__( projectFileGroupName, slots=slots )

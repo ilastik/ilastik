@@ -45,6 +45,7 @@ class OpConservationTracking(Operator, ExportingOperator):
     FilteredLabels = InputSlot(value={})
     RawImage = InputSlot()
     Parameters = InputSlot(value={})
+    HypothesesGraph = InputSlot(value={})
  
     # for serialization
     CleanBlocks = OutputSlot()
@@ -69,7 +70,6 @@ class OpConservationTracking(Operator, ExportingOperator):
     RelabeledCachedOutput = OutputSlot() # For the GUI (blockwise access)
     RelabeledImage = OutputSlot()
 
-    hypotheses_graph = None
     mergerResolver = None
 
     def __init__(self, parent=None, graph=None):
@@ -202,7 +202,7 @@ class OpConservationTracking(Operator, ExportingOperator):
                     
         elif slot == self.AllBlocks:
             # if nothing was computed, return empty list
-            if not self.hypotheses_graph:
+            if not self.HypothesesGraph.value:
                 result[0] = []
                 return result
 
@@ -424,7 +424,9 @@ class OpConservationTracking(Operator, ExportingOperator):
         #from hytra.util.hypothesesgraphdiagram import HypothesesGraphDiagram
         #hgv = HypothesesGraphDiagram(hypotheses_graph._graph, timeRange=(0, 10), fileName='HypothesesGraph.png' )
                 
-        self.hypotheses_graph = hypotheses_graph.referenceTraxelGraph if withTracklets else hypotheses_graph
+        # Set value of hypotheses grap slot (use referenceTraxelGraph if using tracklets)
+        hypotheses_graph = hypotheses_graph.referenceTraxelGraph if withTracklets else hypotheses_graph
+        self.HypothesesGraph.setValue(hypotheses_graph, check_changed=False)
 
         # Refresh (execute) output slots
         self.Output.setDirty()
@@ -448,6 +450,8 @@ class OpConservationTracking(Operator, ExportingOperator):
         if inputSlot is self.LabelImage:
             self.Output.setDirty(roi)
         elif inputSlot is self.EventsVector:
+            pass
+        elif inputSlot is self.HypothesesGraph:
             pass
         elif inputSlot == self.NumLabels:
             if self.parent.parent.trackingApplet._gui \
@@ -526,7 +530,9 @@ class OpConservationTracking(Operator, ExportingOperator):
 
         :return: the relabeled volume, where 0 means background, 1 means false detection, and all higher numbers indicate lineages
         """
-        if self.hypotheses_graph:
+        hypotheses_graph = self.HypothesesGraph.value
+        
+        if hypotheses_graph:
             indexMapping = np.zeros(np.amax(volume) + 1, dtype=volume.dtype)
             
             labels = np.unique(volume)
@@ -538,15 +544,15 @@ class OpConservationTracking(Operator, ExportingOperator):
                     values = self.resolvedMergersDict[time].values()
                 labels = [l for l in labels if l in itertools.chain(*values)]
             for label in labels:
-                if label > 0 and self.hypotheses_graph.hasNode((time,label)):
-                    lineage_id = self.hypotheses_graph.getLineageId(time, label)
+                if label > 0 and hypotheses_graph.hasNode((time,label)):
+                    lineage_id = hypotheses_graph.getLineageId(time, label)
                     if lineage_id is None:
                         lineage_id = 1
                     indexMapping[label] = lineage_id
                 
             return indexMapping[volume]
         else:
-            return volume        
+            return volume       
     
     def _setupRelabeledFeatureSlot(self, original_feature_slot):
         from ilastik.applets.trackingFeatureExtraction import config
@@ -602,7 +608,9 @@ class OpConservationTracking(Operator, ExportingOperator):
         from ilastik.utility.exportFile import objects_per_frame, ExportFile, ilastik_ids, Mode, Default, \
             flatten_dict, division_flatten_dict
 
-        if not self.hypotheses_graph:
+        hypotheses_graph = self.HypothesesGraph.value
+
+        if not hypotheses_graph:
             raise DatasetConstraintError('Tracking', 'Tracking solution not ready: Did you forgot to press the Track button?')
 
         obj_count = list(objects_per_frame(label_image_slot))        
@@ -615,15 +623,15 @@ class OpConservationTracking(Operator, ExportingOperator):
         for (time, object_id) in object_ids_generator: 
             object_ids.append((time, object_id))
             
-            if self.hypotheses_graph.hasNode((time,object_id)):        
-                lineage_id = self.hypotheses_graph.getLineageId(time, object_id)
+            if hypotheses_graph.hasNode((time,object_id)):        
+                lineage_id = hypotheses_graph.getLineageId(time, object_id)
                 if lineage_id:    
                     lineage_ids.append(lineage_id)
                 else:
                     logger.debug("Empty lineage ID for node ({},{})".format(time, object_id))
                     lineage_ids.append(0)
                     
-                track_id = self.hypotheses_graph.getTrackId(time, object_id)    
+                track_id = hypotheses_graph.getTrackId(time, object_id)    
                 if track_id:
                     track_ids.append(track_id)
                 else:
