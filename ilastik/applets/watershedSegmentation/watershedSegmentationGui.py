@@ -93,12 +93,21 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
         self._currently_updating = False
         self.topLevelOperatorView = topLevelOperatorView
+
+        '''
+        # We provide our own UI file (which adds an extra control for interactive mode)
+        if watershedLabelingDrawerUiPath is None:
+            watershedLabelingDrawerUiPath = os.path.split(__file__)[0] + '/watershedLabelingDrawer.ui'
+        '''
+
         super(WatershedSegmentationGui, self).__init__( parentApplet, \
                 labelSlots, topLevelOperatorView, watershedLabelingDrawerUiPath )
         #use the default watershedLabelingDrawerUi of the super-class
         #super(WatershedSegmentationGui, self).__init__( parentApplet, labelSlots, topLevelOperatorView)
 
+        '''
         self._sp_colortable = generateRandomColors(256, clamp={'v': 1.0, 's' : 0.5}, zeroIsTransparent=True)
+        '''
         
 
         # Any time watershed is re-computed, re-update the layer set, 
@@ -108,7 +117,10 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         '''
 
 
+        #pixel value functionality
+        self._labelControlUi.pixelValueCheckBox.stateChanged.connect(self.toggleConnectionPixelValue)
 
+        
 
     '''
 
@@ -568,7 +580,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
                 newValue = data.value[array[0],array[1],array[2],array[3],array[4]]
 
             #show the value of the pixel under the curser on the gui
-            self.pixelValue.setText(str(newValue))
+            self._labelControlUi.pixelValue.setText(str(newValue))
 
             """print infos
             print xIndex, ":", yIndex, ":", zIndex, ":", tIndex
@@ -610,7 +622,8 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         sBar = self.volumeEditorWidget.quadViewStatusBar
         #tupl = (sBar.xSpinBox,  sBar.ySpinBox, sBar.zSpinBox, sBar.timeSpinBox, self.channel_box)
         tupl = (sBar.xSpinBox,  sBar.ySpinBox, sBar.zSpinBox, sBar.timeSpinBox)
-        if self.showPixelValue.isChecked():
+        #if self.showPixelValue.isChecked():
+        if self._labelControlUi.pixelValueCheckBox.isChecked():
             #connect x,y,z,t,c
             for box in tupl:
                 box.valueChanged.connect(self.on_SpinBox_valueChanged)
@@ -624,6 +637,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
             for box in tupl:
                 box.valueChanged.disconnect(self.on_SpinBox_valueChanged)
             #reset pixelValue-Label
-            self.pixelValue.setText("unused")
+            self._labelControlUi.pixelValue.setText("unused")
+            #self.pixelValue.setText("unused")
 
 

@@ -155,6 +155,10 @@ class WatershedLabelingGui(LabelingGui):
         """
 
 
+        #take the watershedLabelingDrawer.ui instead of the labelingDrawer.ui
+        if drawerUiPath is None:
+            # Default ui file
+            drawerUiPath = os.path.split(__file__)[0] + '/watershedLabelingDrawer.ui'
         super(WatershedLabelingGui, self).__init__(parentApplet, watershedLabelingSlots, topLevelOperatorView, drawerUiPath, rawInputSlot, crosshair )
 
         #use a random 256 color table of volumina. But leave the name unchanged for convience,
