@@ -20,7 +20,7 @@
 ###############################################################################
 from ilastik.applets.base.appletSerializer import AppletSerializer, SerialBlockSlot
 
-class LabelingSerializer(AppletSerializer):
+class WatershedLabelingSerializer(AppletSerializer):
     """Encapsulate the serialization scheme for pixel classification
     workflow parameters and datasets.
 
@@ -32,4 +32,4 @@ class LabelingSerializer(AppletSerializer):
                                  name='LabelSets',
                                  subname='labels{:03d}',)
         ]
-        super(LabelingSerializer, self).__init__(projectFileGroupName, slots=slots)
+        super(WatershedLabelingSerializer, self).__init__(projectFileGroupName, slots=slots)

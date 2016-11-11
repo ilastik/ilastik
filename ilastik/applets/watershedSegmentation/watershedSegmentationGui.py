@@ -38,7 +38,7 @@ from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
 from volumina.layer import GrayscaleLayer, ColortableLayer, generateRandomColors
 #TODO TODO
 #from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
-from ilastik.applets.labeling.labelingGui import LabelingGui
+from ilastik.applets.watershedLabeling.watershedLabelingGui import WatershedLabelingGui
 
 
 from lazyflow.request import Request
@@ -54,7 +54,7 @@ from PyQt4.Qt import QCheckBox
 logger = logging.getLogger(__name__)
 
 #LayerViewerGui->LabelingGui->WatershedSegmentationGui
-class WatershedSegmentationGui(LabelingGui):
+class WatershedSegmentationGui(WatershedLabelingGui):
 
     ###########################################
     ### AppletGuiInterface Concrete Methods ###
@@ -78,10 +78,10 @@ class WatershedSegmentationGui(LabelingGui):
     ###########################################
     ###########################################
     
-    def __init__(self, parentApplet, topLevelOperatorView, labelingDrawerUiPath=None ):
+    def __init__(self, parentApplet, topLevelOperatorView, watershedLabelingDrawerUiPath=None ):
 
         #init the slots
-        labelSlots                  = LabelingGui.LabelingSlots()
+        labelSlots                  = WatershedLabelingGui.LabelingSlots()
         labelSlots.labelInput       = topLevelOperatorView.CorrectedSeedsIn
         labelSlots.labelOutput      = topLevelOperatorView.CorrectedSeedsOut
         labelSlots.labelEraserValue = topLevelOperatorView.opLabelPipeline.opLabelArray.eraser
@@ -93,10 +93,10 @@ class WatershedSegmentationGui(LabelingGui):
 
         self._currently_updating = False
         self.topLevelOperatorView = topLevelOperatorView
-        #super(WatershedSegmentationGui, self).__init__( parentApplet, \
-                #labelSlots, topLevelOperatorView, labelingDrawerUiPath )
-        #use the default labelingDrawerUi of the super-class
-        super(WatershedSegmentationGui, self).__init__( parentApplet, labelSlots, topLevelOperatorView)
+        super(WatershedSegmentationGui, self).__init__( parentApplet, \
+                labelSlots, topLevelOperatorView, watershedLabelingDrawerUiPath )
+        #use the default watershedLabelingDrawerUi of the super-class
+        #super(WatershedSegmentationGui, self).__init__( parentApplet, labelSlots, topLevelOperatorView)
 
         self._sp_colortable = generateRandomColors(256, clamp={'v': 1.0, 's' : 0.5}, zeroIsTransparent=True)
         
@@ -244,7 +244,7 @@ class WatershedSegmentationGui(LabelingGui):
 
         #pixel classification training applets
         # We provide our own UI file (which adds an extra control for interactive mode)
-        #labelingDrawerUiPath = os.path.split(__file__)[0] + '/labelingDrawer.ui'
+        #watershedLabelingDrawerUiPath = os.path.split(__file__)[0] + '/watershedLabelingDrawer.ui'
 
         #SIEHE TODO LISTE AUF BLOCK
 
@@ -278,7 +278,7 @@ class WatershedSegmentationGui(LabelingGui):
         seed_method_combo.addItem("Connected")
         seed_method_combo.addItem("Clustered")
         configure_update_handlers( seed_method_combo.currentIndexChanged, op.GroupSeeds )
-        drawer_layout.addLayout( control_layout( "Seed Labeling", seed_method_combo ) )
+        drawer_layout.addLayout( control_layout( "Seed WatershedLabeling", seed_method_combo ) )
         self.seed_method_combo = seed_method_combo
         
         enable_debug_box = QCheckBox()

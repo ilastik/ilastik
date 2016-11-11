@@ -23,12 +23,12 @@ from lazyflow.operators import OpCompressedUserLabelArray
 from ilastik.utility.operatorSubView import OperatorSubView
 from ilastik.utility import OpMultiLaneWrapper
 
-class OpLabelingTopLevel( Operator ):
+class OpWatershedLabelingTopLevel( Operator ):
     """
-    Top-level operator for the labelingApplet base class.
-    Provides all the slots needed by the labeling GUI, but any operator that provides the necessary slots can also be used with the LabelingGui.
+    Top-level operator for the watershedLabelingApplet base class.
+    Provides all the slots needed by the watershedLabeling GUI, but any operator that provides the necessary slots can also be used with the WatershedLabelingGui.
     """
-    name = "OpLabelingTopLevel"
+    name = "OpWatershedLabelingTopLevel"
 
     # Input slots
     InputImages = InputSlot(level=1) #: Original input data.
@@ -45,10 +45,10 @@ class OpLabelingTopLevel( Operator ):
     LabelColors = OutputSlot()
 
     def __init__(self, blockDims = None, *args, **kwargs):
-        super( OpLabelingTopLevel, self ).__init__( *args, **kwargs )
+        super( OpWatershedLabelingTopLevel, self ).__init__( *args, **kwargs )
 
-        # Use a wrapper to create a labeling operator for each image lane
-        self.opLabelLane = OpMultiLaneWrapper( OpLabelingSingleLane, operator_kwargs={'blockDims' : blockDims}, parent=self )
+        # Use a wrapper to create a watershedLabeling operator for each image lane
+        self.opLabelLane = OpMultiLaneWrapper( OpWatershedLabelingSingleLane, operator_kwargs={'blockDims' : blockDims}, parent=self )
 
         # Special connection: Label Input must get its metadata (shape, axistags) from the main input image.
         self.LabelInputs.connect( self.InputImages )
@@ -113,13 +113,13 @@ class OpLabelingTopLevel( Operator ):
     def getLane(self, laneIndex):
         return OperatorSubView(self, laneIndex)
 
-class OpLabelingSingleLane( Operator ):
+class OpWatershedLabelingSingleLane( Operator ):
     """
-    This is a single-lane operator that can be used with the labeling applet gui.
+    This is a single-lane operator that can be used with the watershedLabeling applet gui.
     It is basically a wrapper around the ``OpCompressedUserLabelArray`` (lazyflow), 
     with the 'shape' and 'blockshape' input slots taken care of for you.
     """
-    name="OpLabelingSingleLane"
+    name="OpWatershedLabelingSingleLane"
 
     # Input slots
     InputImage = InputSlot() #: Original input data.
@@ -142,7 +142,7 @@ class OpLabelingSingleLane( Operator ):
         """
         Instantiate all internal operators and connect them together.
         """
-        super(OpLabelingSingleLane, self).__init__( *args, **kwargs )
+        super(OpWatershedLabelingSingleLane, self).__init__( *args, **kwargs )
 
         # Configuration options
         if blockDims is None:
@@ -180,7 +180,7 @@ class OpLabelingSingleLane( Operator ):
 
     def cleanUp(self):
         self.LabelInput.disconnect()
-        super( OpLabelingSingleLane, self ).cleanUp()
+        super( OpWatershedLabelingSingleLane, self ).cleanUp()
 
     def propagateDirty(self, slot, subindex, roi):
         # Nothing to do here: All outputs are directly connected to 

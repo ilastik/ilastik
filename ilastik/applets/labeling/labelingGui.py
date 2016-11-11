@@ -183,6 +183,14 @@ class LabelingGui(LayerViewerGui):
         self.thunkEventHandler = ThunkEventHandler(self)
         self._changeInteractionMode(Tool.Navigation)
 
+    def _defineModel(self):
+        """
+        excluded from _initLabelUic to enable other ListModel-Functions in subclasses
+        Subclasses may override this
+        """
+        model = LabelListModel()
+        return model
+
     def _initLabelUic(self, drawerUiPath):
         _labelControlUi = uic.loadUi(drawerUiPath)
 
@@ -190,7 +198,8 @@ class LabelingGui(LayerViewerGui):
         self._labelControlUi = _labelControlUi
 
         # Initialize the label list model
-        model = LabelListModel()
+        #model = LabelListModel()
+        model = self._defineModel()
         _labelControlUi.labelListView.setModel(model)
         _labelControlUi.labelListModel=model
         _labelControlUi.labelListModel.rowsRemoved.connect(self._onLabelRemoved)
@@ -600,6 +609,16 @@ class LabelingGui(LayerViewerGui):
         if hasattr(self._labelControlUi, "AddLabelButton"):
             self._labelControlUi.AddLabelButton.setEnabled(numLabels < self.maxLabelNumber)
 
+    def _defineLabel(self):
+        """
+        excluded from _addNewLabel to enable other Label-Functions in subclasses
+        Subclasses may override this
+        """
+        label = Label( self.getNextLabelName(), self.getNextLabelColor(),
+                       pmapColor=self.getNextPmapColor(),
+                   )
+        return label
+
     def _addNewLabel(self):
         QApplication.setOverrideCursor(Qt.WaitCursor)
         
@@ -607,9 +626,7 @@ class LabelingGui(LayerViewerGui):
         Add a new label to the label list GUI control.
         Return the new number of labels in the control.
         """
-        label = Label( self.getNextLabelName(), self.getNextLabelColor(),
-                       pmapColor=self.getNextPmapColor(),
-                   )
+        label = self._defineLabel()
         label.nameChanged.connect(self._updateLabelShortcuts)
         label.nameChanged.connect(self.onLabelNameChanged)
         label.colorChanged.connect(self.onLabelColorChanged)

@@ -18,6 +18,6 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from labelingApplet import LabelingApplet
-from labelingSingleLaneApplet import LabelingSingleLaneApplet
-from opLabeling import OpLabelingTopLevel, OpLabelingSingleLane
+from watershedLabelingApplet import WatershedLabelingApplet
+from watershedLabelingSingleLaneApplet import WatershedLabelingSingleLaneApplet
+from opWatershedLabeling import OpWatershedLabelingTopLevel, OpWatershedLabelingSingleLane

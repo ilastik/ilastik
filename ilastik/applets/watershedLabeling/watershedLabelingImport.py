@@ -49,20 +49,20 @@ from lazyflow.operators.valueProviders import OpMetadataInjector
 # ilastik
 from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui
 
-def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
+def import_watershedLabeling_layer(labelLayer, watershedLabelingSlots, parent_widget=None):
     """
     Prompt the user for layer import settings, and perform the layer import.
     :param labelLayer: The top label layer source
-    :param labelingSlots: An instance of LabelingGui.LabelingSlots
+    :param watershedLabelingSlots: An instance of WatershedLabelingGui.WatershedLabelingSlots
     :param parent_widget: The Qt GUI parent object
     """
-    writeSeeds = labelingSlots.labelInput
+    writeSeeds = watershedLabelingSlots.labelInput
     assert isinstance(writeSeeds, lazyflow.graph.Slot), "slot is of type %r" % (type(writeSeeds))
     opLabels = writeSeeds.getRealOperator()
     assert isinstance(opLabels, lazyflow.graph.Operator), "slot's operator is of type %r" % (type(opLabels))
 
 
-    recentlyImported = PreferencesManager().get('labeling', 'recently imported')
+    recentlyImported = PreferencesManager().get('watershedLabeling', 'recently imported')
     mostRecentProjectPath = PreferencesManager().get('shell', 'recently opened')
     mostRecentImageFile = PreferencesManager().get( 'DataSelection', 'recent image' )
     if recentlyImported:
@@ -80,7 +80,7 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
     if not fileNames:
         return
 
-    PreferencesManager().set('labeling', 'recently imported', fileNames[0])
+    PreferencesManager().set('watershedLabeling', 'recently imported', fileNames[0])
 
     try:
         # Initialize operators
@@ -109,7 +109,7 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
         opMetadataInjector.Metadata.setValue( metadata )
         opReorderAxes.Input.connect( opMetadataInjector.Output )
 
-        # Transpose the axes for assignment to the labeling operator.
+        # Transpose the axes for assignment to the watershedLabeling operator.
         opReorderAxes.AxisOrder.setValue( writeSeeds.meta.getAxisKeys() )
     
         # We'll show a little window with a busy indicator while the data is loading
@@ -131,7 +131,7 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
 
         readData = req.result
         
-        maxLabels = len(labelingSlots.labelNames.value)
+        maxLabels = len(watershedLabelingSlots.labelNames.value)
 
         # Can't use return_counts feature because that requires numpy >= 1.9
         #unique_read_labels, readLabelCounts = numpy.unique(readData, return_counts=True)
@@ -146,7 +146,7 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
         # Ask the user how to interpret the data.
         settingsDlg = LabelImportOptionsDlg( parent_widget,
                                              fileNames, opMetadataInjector.Output,
-                                             labelingSlots.labelInput, labelInfo )
+                                             watershedLabelingSlots.labelInput, labelInfo )
 
         def handle_updated_axes():
             # The user is specifying a new interpretation of the file's axes
@@ -187,7 +187,7 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
         
         # Map input labels to output labels
         if labelMapping:
-            # There are other ways to do a relabeling (e.g skimage.segmentation.relabel_sequential)
+            # There are other ways to do a rewatershedLabeling (e.g skimage.segmentation.relabel_sequential)
             # But this supports potentially huge values of unique_read_labels (in the billions),
             # without needing GB of RAM.
             mapping_indexes = numpy.searchsorted(unique_read_labels, label_data)
