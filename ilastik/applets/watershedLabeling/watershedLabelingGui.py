@@ -34,6 +34,7 @@ from PyQt4.QtGui import QIcon, QColor, QApplication, QMessageBox, QAction
 # HCI
 from volumina.api import LazyflowSinkSource, ColortableLayer
 from volumina.utility import ShortcutManager, PreferencesManager
+import volumina.colortables as colortables
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.widgets.labelListModel import LabelListModel, Label, LabelWithNumber, LabelListModelWithNumber
 
@@ -156,6 +157,10 @@ class WatershedLabelingGui(LabelingGui):
 
         super(WatershedLabelingGui, self).__init__(parentApplet, watershedLabelingSlots, topLevelOperatorView, drawerUiPath, rawInputSlot, crosshair )
 
+        #use a random 256 color table of volumina. But leave the name unchanged for convience,
+        #because otherwise lots of things need to be changed
+        self._colorTable16 = colortables.create_random_8bit()
+        
         '''
         # Do have have all the slots we need?
         assert isinstance(watershedLabelingSlots, WatershedLabelingGui.WatershedLabelingSlots)
