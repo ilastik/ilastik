@@ -28,6 +28,8 @@ from hytra.core.ilastikmergerresolver import IlastikMergerResolver
 from hytra.core.probabilitygenerator import ProbabilityGenerator
 from hytra.core.probabilitygenerator import Traxel
 
+from hytra.pluginsystem.plugin_manager import TrackingPluginManager
+
 import dpct
 
 import vigra
@@ -69,8 +71,6 @@ class OpConservationTracking(Operator, ExportingOperator):
     RelabeledCleanBlocks = OutputSlot()
     RelabeledCachedOutput = OutputSlot() # For the GUI (blockwise access)
     RelabeledImage = OutputSlot()
-
-    mergerResolver = None
 
     def __init__(self, parent=None, graph=None):
         super(OpConservationTracking, self).__init__(parent=parent, graph=graph)
@@ -114,6 +114,10 @@ class OpConservationTracking(Operator, ExportingOperator):
         self.RelabeledCleanBlocks.connect(self._relabeledOpCache.CleanBlocks)
         self.RelabeledCachedOutput.connect(self._relabeledOpCache.Output)
         
+        pluginPaths = [os.path.join(os.path.dirname(os.path.abspath(hytra.__file__)), 'plugins')]
+        self.pluginManager = TrackingPluginManager(verbose=False, pluginPaths=pluginPaths)
+        self.mergerResolverPlugin = self.pluginManager.getMergerResolver()
+        
         self.tracker = None
         self._ndim = 3        
 
@@ -154,11 +158,11 @@ class OpConservationTracking(Operator, ExportingOperator):
             result[:] =  self.LabelImage.get(roi).wait()
 
             for t in trange:
-                if (self.mergerResolver 
+                if (self.resolvedMergersDict 
                         and 'time_range' in parameters 
                         and t <= parameters['time_range'][-1] 
                         and t >= parameters['time_range'][0]):
-                    self.mergerResolver.relabelMergers(result[t-roi.start[0],...,0], t)
+                    self._labelMergers(result[t-roi.start[0],...,0], t)
                     result[t-roi.start[0],...,0] = self._labelLineageIds(result[t-roi.start[0],...,0], t)
                 else:
                     result[t-roi.start[0],...,0] = self._labelLineageIds(result[t-roi.start[0],...,0], t)
@@ -173,14 +177,13 @@ class OpConservationTracking(Operator, ExportingOperator):
             result[:] =  self.LabelImage.get(roi).wait()
    
             for t in trange:
-                if (self.mergerResolver 
-                        and self.resolvedMergersDict 
+                if (self.resolvedMergersDict 
                         and t in self.resolvedMergersDict 
                         and 'time_range' in parameters 
                         and t <= parameters['time_range'][-1] 
                         and t >= parameters['time_range'][0]):
                     if 'withMergerResolution' in parameters.keys() and parameters['withMergerResolution']:
-                        self.mergerResolver.relabelMergers(result[t-roi.start[0],...,0], t)
+                        self._labelMergers(result[t-roi.start[0],...,0], t)
                         result[t-roi.start[0],...,0] = self._labelLineageIds(result[t-roi.start[0],...,0], t, onlyMergers=True)
                     else:
                         result[t-roi.start[0],...,0] = highlightMergers(result[t-roi.start[0],...,0], self.mergers[t])
@@ -194,11 +197,11 @@ class OpConservationTracking(Operator, ExportingOperator):
             result[:] =  self.LabelImage.get(roi).wait()
             
             for t in trange:
-                if (self.mergerResolver
+                if (self.resolvedMergersDict
                         and 'time_range' in parameters
                         and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]
                         and 'withMergerResolution' in parameters.keys() and parameters['withMergerResolution']):
-                    self.mergerResolver.relabelMergers(result[t-roi.start[0],...,0], t)
+                    self._labelMergers(result[t-roi.start[0],...,0], t)
                     
         elif slot == self.AllBlocks:
             # if nothing was computed, return empty list
@@ -376,12 +379,12 @@ class OpConservationTracking(Operator, ExportingOperator):
                 withFullGraph = True
                 logger.info("Computing full graph on merger resolver (Only enabled on animal tracking workflow)")
             
-            self.mergerResolver = IlastikMergerResolver(originalGraph, pluginPaths=[pluginPath], withFullGraph=withFullGraph)
+            mergerResolver = IlastikMergerResolver(originalGraph, pluginPaths=[pluginPath], withFullGraph=withFullGraph)
             
             # Check if graph contains mergers, otherwise skip merger resolving
-            if not self.mergerResolver.mergerNum:
+            if not mergerResolver.mergerNum:
                 logger.info("Graph contains no mergers. Skipping merger resolving.")
-                self.mergerResolver = None
+                mergerResolver = None
                 self.resolvedMergersDict = {}
             else:        
                 # Fit and refine merger nodes using a GMM 
@@ -405,14 +408,14 @@ class OpConservationTracking(Operator, ExportingOperator):
                     
                     pool = RequestPool()
                     for objectId in objectIds:
-                        pool.add(Request(partial(self.mergerResolver.getCoordinatesForObjectId, coordinatesForIds, labelImage[0, ..., 0], objectId)))                   
+                        pool.add(Request(partial(mergerResolver.getCoordinatesForObjectId, coordinatesForIds, labelImage[0, ..., 0], objectId)))                   
                     pool.wait()                
                     
                     # Fit mergers and store fit info in nodes  
-                    self.mergerResolver.fitAndRefineNodesForTimestep(coordinatesForIds, timestep)
+                    mergerResolver.fitAndRefineNodesForTimestep(coordinatesForIds, timestep)
                     
                 # Compute object features, re-run flow solver, update model and result, and get merger dictionary
-                self.resolvedMergersDict = self.mergerResolver.run()
+                self.resolvedMergersDict = mergerResolver.run()
                 
             self.MergerOutput.setDirty()
 
@@ -495,33 +498,52 @@ class OpConservationTracking(Operator, ExportingOperator):
             mer = np.asarray([[k,v] for k,v in mergersPerTimestep[timestep].iteritems()])
             mul = np.asarray(mul)
             
-            events[str(timestep)] = {}
+            events[timestep] = {}
          
             if len(dis) > 0:
-                events[str(timestep)]['dis'] = dis
+                events[timestep]['dis'] = dis
             if len(app) > 0:
-                events[str(timestep)]['app'] = app
+                events[timestep]['app'] = app
             if len(div) > 0:
-                events[str(timestep)]['div'] = div
+                events[timestep]['div'] = div
             if len(mov) > 0:
-                events[str(timestep)]['mov'] = mov
+                events[timestep]['mov'] = mov
             if len(mer) > 0:
-                events[str(timestep)]['mer'] = mer
+                events[timestep]['mer'] = mer
             if len(mul) > 0:
-                events[str(timestep)]['mul'] = mul
+                events[timestep]['mul'] = mul
 
-        # Write merger results dictionary
-        if self.resolvedMergersDict:
-            for timestep, results in self.resolvedMergersDict.items():
+            # Write merger results dictionary
+            if self.resolvedMergersDict:
                 mergerRes = {}
-                for key, result in results.items():
-                    mergerRes[key] = result
+                
+                for idx in mergersPerTimestep[timestep]:
+                    node = (int(timestep), idx)
+                    mergerRes[idx] = self.resolvedMergersDict[node]['newIds']
                     
-                events[str(timestep)]['res'] = mergerRes
+                events[timestep]['res'] = mergerRes
+                
         else:
             logger.info("Resolved Merger Dictionary not available. Please click on the Track button.")
                 
         return events
+
+    def _labelMergers(self, volume, time):
+        """
+        Label volume mergers with correspoding IDs, using the plugin GMM fit
+        """
+        idxs = np.unique(volume)
+        
+        for idx in idxs:
+            node = (time, idx)
+            
+            if node in self.resolvedMergersDict:
+                fits = self.resolvedMergersDict[node]['fits']
+                newIds = self.resolvedMergersDict[node]['newIds']
+                
+                self.mergerResolverPlugin.updateLabelImage(volume, idx, fits, newIds)
+        
+        return volume               
 
     def _labelLineageIds(self, volume, time, onlyMergers=False):
         """
@@ -539,10 +561,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             if onlyMergers:
                 # restrict the labels to only those that came out of a merger
                 assert(self.resolvedMergersDict is not None)
-                values = []
-                if time in self.resolvedMergersDict:
-                    values = self.resolvedMergersDict[time].values()
-                labels = [l for l in labels if l in itertools.chain(*values)]
+                labels = [label for label in labels if (time, label) in self.resolvedMergersDict]
             for label in labels:
                 if label > 0 and hypotheses_graph.hasNode((time,label)):
                     lineage_id = hypotheses_graph.getLineageId(time, label)
