@@ -384,8 +384,6 @@ class OpConservationTracking(Operator, ExportingOperator):
             # Check if graph contains mergers, otherwise skip merger resolving
             if not mergerResolver.mergerNum:
                 logger.info("Graph contains no mergers. Skipping merger resolving.")
-                mergerResolver = None
-                self.resolvedMergersDict = {}
             else:        
                 # Fit and refine merger nodes using a GMM 
                 # It has to be done per time-step in order to aviod loading the whole video on RAM
