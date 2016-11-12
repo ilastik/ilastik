@@ -532,7 +532,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         """
         Label volume mergers with correspoding IDs, using the plugin GMM fit
         """
-        idxs = np.unique(volume)
+        idxs = vigra.analysis.unique(volume)
         
         for idx in idxs:
             node = (time, idx)
@@ -557,7 +557,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         if hypotheses_graph:
             indexMapping = np.zeros(np.amax(volume) + 1, dtype=volume.dtype)
             
-            labels = np.unique(volume)
+            labels = vigra.analysis.unique(volume)
             if onlyMergers:
                 # restrict the labels to only those that came out of a merger
                 assert(self.resolvedMergersDict is not None)
