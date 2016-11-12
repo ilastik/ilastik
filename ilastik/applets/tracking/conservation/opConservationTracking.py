@@ -571,7 +571,7 @@ class OpConservationTracking(Operator, ExportingOperator):
                 
             return indexMapping[volume]
         else:
-            return volume       
+            return np.zeros_like(volume)       
     
     def _setupRelabeledFeatureSlot(self, original_feature_slot):
         from ilastik.applets.trackingFeatureExtraction import config
