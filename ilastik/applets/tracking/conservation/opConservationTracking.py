@@ -48,6 +48,7 @@ class OpConservationTracking(Operator, ExportingOperator):
     RawImage = InputSlot()
     Parameters = InputSlot(value={})
     HypothesesGraph = InputSlot(value={})
+    ResolvedMergers = InputSlot(value={})
  
     # for serialization
     CleanBlocks = OutputSlot()
@@ -81,7 +82,6 @@ class OpConservationTracking(Operator, ExportingOperator):
         self.track_id = None
         self.extra_track_ids = None
         self.divisions = None
-        self.resolvedMergersDict = None
 
         self._opCache = OpBlockedArrayCache(parent=self)
         self._opCache.name = "OpConservationTracking._opCache"
@@ -158,7 +158,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             result[:] =  self.LabelImage.get(roi).wait()
 
             for t in trange:
-                if (self.resolvedMergersDict 
+                if (self.ResolvedMergers.value 
                         and 'time_range' in parameters 
                         and t <= parameters['time_range'][-1] 
                         and t >= parameters['time_range'][0]):
@@ -177,8 +177,8 @@ class OpConservationTracking(Operator, ExportingOperator):
             result[:] =  self.LabelImage.get(roi).wait()
    
             for t in trange:
-                if (self.resolvedMergersDict 
-                        and t in self.resolvedMergersDict 
+                if (self.ResolvedMergers.value 
+                        and t in self.ResolvedMergers.value 
                         and 'time_range' in parameters 
                         and t <= parameters['time_range'][-1] 
                         and t >= parameters['time_range'][0]):
@@ -197,7 +197,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             result[:] =  self.LabelImage.get(roi).wait()
             
             for t in trange:
-                if (self.resolvedMergersDict
+                if (self.ResolvedMergers.value
                         and 'time_range' in parameters
                         and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]
                         and 'withMergerResolution' in parameters.keys() and parameters['withMergerResolution']):
@@ -413,7 +413,8 @@ class OpConservationTracking(Operator, ExportingOperator):
                     mergerResolver.fitAndRefineNodesForTimestep(coordinatesForIds, timestep)
                     
                 # Compute object features, re-run flow solver, update model and result, and get merger dictionary
-                self.resolvedMergersDict = mergerResolver.run()
+                resolvedMergersDict = mergerResolver.run()
+                self.ResolvedMergers.setValue(resolvedMergersDict, check_changed=False)
                 
             self.MergerOutput.setDirty()
 
@@ -453,6 +454,8 @@ class OpConservationTracking(Operator, ExportingOperator):
         elif inputSlot is self.EventsVector:
             pass
         elif inputSlot is self.HypothesesGraph:
+            pass
+        elif inputSlot is self.ResolvedMergers:
             pass
         elif inputSlot == self.NumLabels:
             if self.parent.parent.trackingApplet._gui \
@@ -512,12 +515,14 @@ class OpConservationTracking(Operator, ExportingOperator):
                 events[timestep]['mul'] = mul
 
             # Write merger results dictionary
-            if self.resolvedMergersDict:
+            resolvedMergersDict = self.ResolvedMergers.value
+            
+            if resolvedMergersDict:
                 mergerRes = {}
                 
                 for idx in mergersPerTimestep[timestep]:
                     node = (int(timestep), idx)
-                    mergerRes[idx] = self.resolvedMergersDict[node]['newIds']
+                    mergerRes[idx] = resolvedMergersDict[node]['newIds']
                     
                 events[timestep]['res'] = mergerRes
                 
@@ -532,12 +537,14 @@ class OpConservationTracking(Operator, ExportingOperator):
         """
         idxs = vigra.analysis.unique(volume)
         
+        resolvedMergersDict = self.ResolvedMergers.value
+        
         for idx in idxs:
             node = (time, idx)
             
-            if node in self.resolvedMergersDict:
-                fits = self.resolvedMergersDict[node]['fits']
-                newIds = self.resolvedMergersDict[node]['newIds']
+            if node in resolvedMergersDict:
+                fits = resolvedMergersDict[node]['fits']
+                newIds = resolvedMergersDict[node]['newIds']
                 
                 self.mergerResolverPlugin.updateLabelImage(volume, idx, fits, newIds)
         
@@ -552,14 +559,16 @@ class OpConservationTracking(Operator, ExportingOperator):
         """
         hypotheses_graph = self.HypothesesGraph.value
         
+        resolvedMergersDict = self.ResolvedMergers.value
+        
         if hypotheses_graph:
             indexMapping = np.zeros(np.amax(volume) + 1, dtype=volume.dtype)
             
             labels = vigra.analysis.unique(volume)
             if onlyMergers:
                 # restrict the labels to only those that came out of a merger
-                assert(self.resolvedMergersDict is not None)
-                labels = [label for label in labels if (time, label) in self.resolvedMergersDict]
+                assert(resolvedMergersDict is not None)
+                labels = [label for label in labels if (time, label) in resolvedMergersDict]
             for label in labels:
                 if label > 0 and hypotheses_graph.hasNode((time,label)):
                     lineage_id = hypotheses_graph.getLineageId(time, label)
