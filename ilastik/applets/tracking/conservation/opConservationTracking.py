@@ -114,8 +114,8 @@ class OpConservationTracking(Operator, ExportingOperator):
         self.RelabeledCleanBlocks.connect(self._relabeledOpCache.CleanBlocks)
         self.RelabeledCachedOutput.connect(self._relabeledOpCache.Output)
         
-        pluginPaths = [os.path.join(os.path.dirname(os.path.abspath(hytra.__file__)), 'plugins')]
-        self.pluginManager = TrackingPluginManager(verbose=False, pluginPaths=pluginPaths)
+        self.pluginPaths = [os.path.join(os.path.dirname(os.path.abspath(hytra.__file__)), 'plugins')]
+        self.pluginManager = TrackingPluginManager(verbose=False, pluginPaths=self.pluginPaths)
         self.mergerResolverPlugin = self.pluginManager.getMergerResolver()
         
         self.tracker = None
@@ -371,15 +371,13 @@ class OpConservationTracking(Operator, ExportingOperator):
             
             originalGraph = hypotheses_graph.referenceTraxelGraph if withTracklets else hypotheses_graph
             
-            pluginPath = os.path.join(os.path.dirname(os.path.abspath(hytra.__file__)), 'plugins')
-            
             # Enable full graph computation for animal tracking workflow
             withFullGraph = False
             if 'withAnimalTracking' in parameters and parameters['withAnimalTracking']: # TODO: Setting this parameter outside of the track() function (on AnimalConservationTrackingWorkflow) is not desirable 
                 withFullGraph = True
                 logger.info("Computing full graph on merger resolver (Only enabled on animal tracking workflow)")
             
-            mergerResolver = IlastikMergerResolver(originalGraph, pluginPaths=[pluginPath], withFullGraph=withFullGraph)
+            mergerResolver = IlastikMergerResolver(originalGraph, pluginPaths=self.pluginPaths, withFullGraph=withFullGraph)
             
             # Check if graph contains mergers, otherwise skip merger resolving
             if not mergerResolver.mergerNum:
