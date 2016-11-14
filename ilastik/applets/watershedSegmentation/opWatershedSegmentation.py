@@ -14,54 +14,10 @@ from lazyflow.operators import OpBlockedArrayCache, OpValueCache
 from lazyflow.operators.generic import OpPixelOperator, OpSingleChannelSelector
 #for the LabelPipeline
 from lazyflow.operators import OpCompressedUserLabelArray
+from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPipeline
 
 
-#copied form pixelclassification
-class OpLabelPipeline( Operator ):
-    RawImage = InputSlot()
-    LabelInput = InputSlot()
-    DeleteLabel = InputSlot()
-    
-    Output = OutputSlot()
-    nonzeroBlocks = OutputSlot()
-    
-    def __init__(self, *args, **kwargs):
-        super( OpLabelPipeline, self ).__init__( *args, **kwargs )
-        
 
-        self.opLabelArray = OpCompressedUserLabelArray( parent=self )
-        self.opLabelArray.Input.connect( self.LabelInput )
-        self.opLabelArray.eraser.setValue(100)
-
-        self.opLabelArray.deleteLabel.connect( self.DeleteLabel )
-
-        # Connect external outputs to their internal sources
-        self.Output.connect( self.opLabelArray.Output )
-        self.nonzeroBlocks.connect( self.opLabelArray.nonzeroBlocks )
-    
-    def setupOutputs(self):
-        tagged_shape = self.RawImage.meta.getTaggedShape()
-        # labels are created for one channel (i.e. the label) and only in the
-        # current time slice, so we can set both c and t to 1
-        tagged_shape['c'] = 1
-        if 't' in tagged_shape:
-            tagged_shape['t'] = 1
-        
-        # Aim for blocks that are roughly 1MB
-        block_shape = determineBlockShape( tagged_shape.values(), 1e6 )
-        self.opLabelArray.blockShape.setValue( block_shape )
-
-    def setInSlot(self, slot, subindex, roi, value):
-        # Nothing to do here: All inputs that support __setitem__
-        #   are directly connected to internal operators.
-        pass
-
-    def execute(self, slot, subindex, roi, result):
-        assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
-
-    def propagateDirty(self, slot, subindex, roi):
-        # Our output changes when the input changed shape, not when it becomes dirty.
-        pass    
 
 class OpWatershedSegmentation(Operator):
     """
@@ -75,11 +31,13 @@ class OpWatershedSegmentation(Operator):
     RawData         = InputSlot() # Used by the GUI for display only
     Boundaries      = InputSlot() 
     Seeds           = InputSlot(optional=True) 
-    #starts with the Seeds slot input and can be changed by the user. 
-    #needs new slot for reset
-    #no direct input
-    #TODO value=0 ok?
-    CorrectedSeedsIn = InputSlot(value=0)
+    #CorrectedSeedsIn is a ndarray, which has the value of the Seeds-InputSlot, 
+    #which can be reseted every time the user wants this to do
+    #also ideal to use for drawing Labels into
+    CorrectedSeedsIn            = InputSlot() 
+    CorrectedSeedsOut           = InputSlot() 
+
+    #CorrectedSeedsIn = InputSlot(value=0)
 
     ############################################################
     # Inputslots for Internal Parameter Usage
@@ -92,7 +50,8 @@ class OpWatershedSegmentation(Operator):
     # Output Slots
     ############################################################
     #for the labeling
-    CorrectedSeedsOut    = OutputSlot(level=1) # Labels from the user
+    #CorrectedSeedsOut    = OutputSlot(level=1) # Labels from the user
+    #CorrectedSeedsOut    = OutputSlot() # Labels from the user
     NonzeroLabelBlocks  = OutputSlot(level=1) # A list if slices that contain non-zero label values
 
 
@@ -134,18 +93,24 @@ class OpWatershedSegmentation(Operator):
         ############################################################
         # OpLabelPipeline setup
         ############################################################
+        """
         # Hook up Labeling Pipeline
         #self.opLabelPipeline = OpMultiLaneWrapper( OpLabelPipeline, parent=self, broadcastingSlotNames=['DeleteLabel'] )
         self.opLabelPipeline = OpLabelPipeline(parent=self)
         self.opLabelPipeline.RawImage.connect( self.RawData )
-        self.opLabelPipeline.LabelInput.connect( self.Seeds )
-        #TODO instead of line before
-        #self.opLabelPipeline.LabelInput.connect( self.CorrectedSeedsIn )
+        self.opLabelPipeline.LabelInput.connect( self.CorrectedSeedsIn )
         self.opLabelPipeline.DeleteLabel.setValue( -1 )
 
         #connect the output slot CorrectedSeeds with the Output of the LabelPipeline
+        #self.CorrectedSeedsOut.connect(     self.opLabelPipeline.Output, permit_distant_connection=True )
         self.CorrectedSeedsOut.connect(     self.opLabelPipeline.Output )
         self.NonzeroLabelBlocks.connect(    self.opLabelPipeline.nonzeroBlocks )
+        """
+        #TODO - doesn't work either
+        #test this here:
+        opLabelCache = OpCompressedUserLabelArray(parent=self)
+        opLabelCache.Input.connect(self.CorrectedSeedsIn)
+        self.CorrectedSeedsOut.connect(opLabelCache.Output)
 
 
 
@@ -296,5 +261,52 @@ class OpCachedWatershedSegmentation(Operator):
 '''
 
 
+'''
 
+#copied form pixelclassification
+class OpLabelPipeline( Operator ):
+    RawImage = InputSlot()
+    LabelInput = InputSlot()
+    DeleteLabel = InputSlot()
+    
+    Output = OutputSlot()
+    nonzeroBlocks = OutputSlot()
+    
+    def __init__(self, *args, **kwargs):
+        super( OpLabelPipeline, self ).__init__( *args, **kwargs )
+        
 
+        self.opLabelArray = OpCompressedUserLabelArray( parent=self )
+        self.opLabelArray.Input.connect( self.LabelInput )
+        self.opLabelArray.eraser.setValue(100)
+
+        self.opLabelArray.deleteLabel.connect( self.DeleteLabel )
+
+        # Connect external outputs to their internal sources
+        self.Output.connect( self.opLabelArray.Output )
+        self.nonzeroBlocks.connect( self.opLabelArray.nonzeroBlocks )
+    
+    def setupOutputs(self):
+        tagged_shape = self.RawImage.meta.getTaggedShape()
+        # labels are created for one channel (i.e. the label) and only in the
+        # current time slice, so we can set both c and t to 1
+        tagged_shape['c'] = 1
+        if 't' in tagged_shape:
+            tagged_shape['t'] = 1
+        
+        # Aim for blocks that are roughly 1MB
+        block_shape = determineBlockShape( tagged_shape.values(), 1e6 )
+        self.opLabelArray.blockShape.setValue( block_shape )
+
+    def setInSlot(self, slot, subindex, roi, value):
+        # Nothing to do here: All inputs that support __setitem__
+        #   are directly connected to internal operators.
+        pass
+
+    def execute(self, slot, subindex, roi, result):
+        assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
+
+    def propagateDirty(self, slot, subindex, roi):
+        # Our output changes when the input changed shape, not when it becomes dirty.
+        pass    
+'''

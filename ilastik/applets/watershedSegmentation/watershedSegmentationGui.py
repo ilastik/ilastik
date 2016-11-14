@@ -36,7 +36,6 @@ from PyQt4.Qt import QCheckBox, QLineEdit, QButtonGroup, QRadioButton, pyqtSlot
 from ilastik.utility.gui import threadRouted
 from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
 from volumina.layer import GrayscaleLayer, ColortableLayer, generateRandomColors
-#TODO TODO
 #from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.watershedLabeling.watershedLabelingGui import WatershedLabelingGui
 
@@ -120,7 +119,37 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         #pixel value functionality
         self._labelControlUi.pixelValueCheckBox.stateChanged.connect(self.toggleConnectionPixelValue)
 
-        
+        op = self.topLevelOperatorView 
+        ############################################################
+        # BEGIN TODO
+        ############################################################
+
+
+
+                
+
+        # init the CorrectedSeedsIn with the ndarray of Seeds
+        self.resetCorrectedSeedsInFromSeeds()
+
+        # add Seeds for drawing and illustration
+        self.addAsManyLabelsAsMaximumValueOfCorrectedSeedsIn()
+
+
+        '''
+        op = self.topLevelOperatorView 
+        array = op.Seeds.value
+        print array.shape
+        #array = [1,2,3,4,5]
+        #print array
+        #TODO mache Inputslot darus???
+        op.CorrectedSeedsIn.disconnect()
+        op.CorrectedSeedsIn.setValue ( array )
+        print op.CorrectedSeedsIn.value
+        #op.CorrectedSeedsIn.value(op.Seeds.value)
+        '''
+        ############################################################
+        # END TODO
+        ############################################################
 
     '''
 
@@ -474,12 +503,12 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         if op.RawData.ready():
             layer = self.createStandardLayerFromSlot( op.RawData )
             layer.name = "Raw Data"
-            layer.visible = True
+            layer.visible = False
             layer.opacity = 1.0
             layers.append(layer)
             del layer
 
-        #TODO Seeds to CorrectedSeedsIn
+        #TODO color?
         if op.Seeds.ready():
             layer = self._create_grayscale_layer_from_slot( op.Seeds, op.Seeds.meta.getTaggedShape()['c'] )
             #changing the Channel in the layer, 
@@ -489,14 +518,52 @@ class WatershedSegmentationGui(WatershedLabelingGui):
             #not necessary: self.channel_box.valueChanged.emit(i)
 
             layer.name = "Seeds"
-            layer.visible = True
+            layer.visible = False
             layer.opacity = 1.0
             layers.append(layer)
             del layer
 
 
+        #TODO color?
+        if op.CorrectedSeedsIn.ready():
+            layer = self.createStandardLayerFromSlot( op.CorrectedSeedsIn )
+            #layer = self._create_grayscale_layer_from_slot( op.CorrectedSeedsIn, op.CorrectedSeedsIn.meta.getTaggedShape()['c'] )
+            #changing the Channel in the layer, 
+            #changes the RawData Channel in the applet gui as well
+            #layer.channelChanged.connect(self.channel_box.setValue)
+            #setValue() will emit valueChanged() if the new value is different from the old one.
+            #not necessary: self.channel_box.valueChanged.emit(i)
+
+            layer.name = "Corrected Seeds"
+            layer.visible = True
+            layer.opacity = 1.0
+            layers.append(layer)
+            del layer
         return layers
 
+        '''
+        #TODO color?
+        if op.CorrectedSeedsOut.ready():
+            layer = self.createStandardLayerFromSlot( op.CorrectedSeedsOut )
+            #layer = self._create_grayscale_layer_from_slot( op.CorrectedSeedsIn, op.CorrectedSeedsIn.meta.getTaggedShape()['c'] )
+            #changing the Channel in the layer, 
+            #changes the RawData Channel in the applet gui as well
+            #layer.channelChanged.connect(self.channel_box.setValue)
+            #setValue() will emit valueChanged() if the new value is different from the old one.
+            #not necessary: self.channel_box.valueChanged.emit(i)
+
+            layer.name = "Corrected Seeds Out"
+            layer.visible = True
+            layer.opacity = 1.0
+            layers.append(layer)
+            del layer
+        else:
+            print op.CorrectedSeedsOut
+            logging.warning("CorrectedSeedsOut not ready")
+        '''
+
+
+        return layers
 
 
 
@@ -536,10 +603,16 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         self.changeToNewPixelValue(x, y, z, t, c)
 
 
+
     def changeToNewPixelValue(self, x, y, z, t, c):
+        """
+        get the coord. information and get the value of the array-coord
+        set the text of the gui to that value
+        """
         op = self.topLevelOperatorView
         #TODO change Seeds to CorrectedSeedsIn
-        data = op.Seeds
+        data = op.CorrectedSeedsIn
+        #data = op.Seeds
         tags = data.meta.axistags
         if data.ready():
             count = 0
@@ -641,3 +714,43 @@ class WatershedSegmentationGui(WatershedLabelingGui):
             #self.pixelValue.setText("unused")
 
 
+
+
+
+
+    def addAsManyLabelsAsMaximumValueOfCorrectedSeedsIn(self):
+        """
+        get the maximum value in CorrectedSeedsIn
+        add as many Labels (Seeds for Labeling) as the Maximum value
+        """
+        op = self.topLevelOperatorView 
+        #array = op.CorrectedSeedsIn
+        array = op.CorrectedSeedsIn.value
+        arrayMax = np.amax(array)
+
+        for i in range(arrayMax):
+            super( WatershedSegmentationGui, self )._addNewLabel()
+
+    def resetCorrectedSeedsInFromSeeds(self):
+        """
+        reset the InputSlot CorrectedSeedsIn to the Seeds
+        if Seeds is not ready, then initialize CorrectedSeedsIn with an array 
+        of the right dimensions and values of zero (=background)
+        CorrectedSeedsIn is connected to the OpLabelPipeline, so it is loaded into the cache
+        """
+
+        op = self.topLevelOperatorView 
+        if op.Seeds.ready():
+            # Read from file
+            # copy the meta-data and the array from Seeds
+            default_seeds_volume = op.Seeds[:].wait()
+            op.CorrectedSeedsIn.meta = op.Seeds.meta
+            op.CorrectedSeedsIn._value =  default_seeds_volume 
+
+
+            
+        else:
+        #TODO if the Seeds is empty, then the CorrectedSeedsIn must have the right dimensions,
+        #like the RawData (only one channel) and be a ndarray with values = 0
+        #FIXME
+            raise NotImplementedError
