@@ -42,6 +42,12 @@ except ImportError as ex:
         raise
     _supports_dvid = False
 
+try:
+    from lazyflow.operators.ioOperators.opH5BlockStoreReader import OpH5BlockStoreReader
+    _supports_h5blockreader = True
+except ImportError as ex:
+    _supports_h5blockreader = False
+
 import h5py
 import vigra
 import os
@@ -67,10 +73,17 @@ class OpInputDataReader(Operator):
     tiledExts = ['json']
     tiffExts = ['tif', 'tiff']
     vigraImpexExts = vigra.impex.listExtensions().split()
+
     SupportedExtensions = h5Exts + npyExts + rawExts + vigraImpexExts + blockwiseExts + videoExts + klbExts
+
     if _supports_dvid:
         dvidExts = ['dvidvol']
         SupportedExtensions += dvidExts
+
+    if _supports_h5blockreader:
+        h5blockstoreExts = ['json']
+        SupportedExtensions += h5blockstoreExts
+
 
     # FilePath is inspected to determine data type.
     # For hdf5 files, append the internal path to the filepath,
@@ -142,6 +155,7 @@ class OpInputDataReader(Operator):
                       self._attemptOpenAsHdf5,
                       self._attemptOpenAsNpy,
                       self._attemptOpenAsRawBinary,
+                      self._attemptOpenAsH5BlockStore,
                       self._attemptOpenAsBlockwiseFileset,
                       self._attemptOpenAsRESTfulBlockwiseFileset,
                       self._attemptOpenAsTiledVolume,
@@ -371,6 +385,20 @@ class OpInputDataReader(Operator):
             except OpRawBinaryFileReader.DatasetReadError as e:
                 raise OpInputDataReader.DatasetReadError( *e.args )
 
+    def _attemptOpenAsH5BlockStore(self, filePath):
+        if not os.path.splitext(filePath)[1] == '.json':
+            return ([], None)
+
+        op = OpH5BlockStoreReader( parent=self )
+        try:
+            # For now, there is no explicit schema validation for the json file,
+            # but H5BlockStore constructor will fail to load the json.
+            op.IndexFilepath.setValue(filePath)
+            return [op], op.Output
+        except:
+            raise # DELME
+            op.cleanUp()
+            return ([], None)
 
     def _attemptOpenAsDvidVolume(self, filePath):
         """
