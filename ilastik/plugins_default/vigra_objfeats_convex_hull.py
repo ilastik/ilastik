@@ -86,6 +86,7 @@ class VigraConvexHullObjFeats(ObjectFeaturesPlugin):
             features[feature]["displaytext"] = feature
             features[feature]["detailtext"] = feature + ", stay tuned for more details"
             features[feature]["advanced"] = False
+            features[feature]["group"] = "Shape"
 
             if feature == "Area":
                 features[feature]["displaytext"] = "Convex Hull Area"

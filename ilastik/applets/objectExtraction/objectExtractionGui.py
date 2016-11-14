@@ -20,7 +20,7 @@
 ###############################################################################
 from PyQt4.QtGui import QColor, QTreeWidgetItem, QMessageBox
 from PyQt4 import uic
-from PyQt4.QtCore import Qt
+from PyQt4.QtCore import Qt, QVariant
 
 from lazyflow.rtype import SubRegion
 import os
@@ -114,6 +114,8 @@ class FeatureSelectionDialog(QDialog):
             advanced_names = []
             simple_names = []
             selected_names = []
+
+            groups = set()
             for name in sorted(features.keys()):
                 parameters = features[name]
                 try:
@@ -123,18 +125,30 @@ class FeatureSelectionDialog(QDialog):
                         simple_names.append(name)
                 except KeyError:
                     simple_names.append(name)
+                try:
+                    groups.add(parameters["group"])
+                except KeyError:
+                    pass
 
                 if pluginName in self.selectedFeatures:
                     if name in self.selectedFeatures[pluginName]:
                         selected_names.append(name)
+            gr_items = {}
+            for gr in groups:
+                gr_items[gr] = QTreeWidgetItem(parent)
+                gr_items[gr].setText(0, gr)
+                #gr_items[gr].setFlags(Qt.ItemIsEnabled)
+                gr_items[gr].setExpanded(True)
             
             for name in simple_names+advanced_names:
                 if name in advanced_names and (not name in selected_names):
                     # do not display advanced features, if they have not been selected previously
                     continue
                 parameters = features[name]
-                
-                item = QTreeWidgetItem(parent)
+                if "group" in parameters:
+                    item = QTreeWidgetItem(gr_items[parameters["group"]])
+                else:
+                    item = QTreeWidgetItem(parent)
                 if 'displaytext' in parameters:
                     itemtext = parameters['displaytext']
                 else:
@@ -199,6 +213,10 @@ class FeatureSelectionDialog(QDialog):
                     self.countChecked[pluginName] = 0
             self.updateToolTip(item)
         else: # user clicked a Feature
+            #FIXME: fix the group clicking case
+            if item.childCount()>0:
+                #it's a group, nothing to do here
+                return
             pluginName=str(itemParent.text(0))
             itemName=str(item.text(0))
             if col==1:
@@ -537,8 +555,6 @@ class ObjectExtractionGui(LayerViewerGui):
         req.notify_finished(_handle_all_finished)
         reqs.append(req)
 
-        
-            
 
     @threadRouted
     def handleFeatureComputationFailure(self, exc, exc_info):

@@ -79,6 +79,7 @@ class VigraSkeletonObjFeats(ObjectFeaturesPlugin):
             features[feature]["displaytext"] = feature
             features[feature]["detailtext"] = feature + ", stay tuned for more details"
             features[feature]["advanced"] = False
+            features[feature]["group"] = "Shape"
             if feature == "Branch Count":
                 features[feature]["displaytext"] = "Number of Branches"
                 features[feature]["detailtext"] = "Total number of branches in the skeleton of this object."
