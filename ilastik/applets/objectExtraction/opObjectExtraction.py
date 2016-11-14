@@ -57,7 +57,7 @@ from ilastik.applets.base.applet import DatasetConstraintError
 default_features = {'Coord<Minimum>':{}, 'Coord<Maximum>':{}, 'RegionCenter': {}, 'Count':{}}
 
 # to distinguish them, they go in their own category with this name
-default_features_key = 'Default features'
+default_features_key = 'Default Features'
 
 
 def max_margin(d, default=(0, 0, 0)):
@@ -312,6 +312,7 @@ class OpObjectExtraction(Operator):
     # dict[plugin_name][feature_name][parameter_name] = parameter_value
     # for example {"Standard Object Features": {"Mean in neighborhood":{"margin": (5, 5, 2)}}}
     Features = InputSlot(rtype=List, stype=Opaque, value={})
+    FeaturesWithDefault = InputSlot(rtype=List, stype=Opaque, value={})
 
     LabelImage = OutputSlot()
     ObjectCenterImage = OutputSlot()
@@ -358,7 +359,7 @@ class OpObjectExtraction(Operator):
 
         self._opRegFeats.RawImage.connect(self.RawImage)
         self._opRegFeats.LabelImage.connect(self._opLabelVolume.CachedOutput)
-        self._opRegFeats.Features.connect(self.Features)
+        self._opRegFeats.Features.connect(self.FeaturesWithDefault)
         self.RegionFeaturesCleanBlocks.connect(self._opRegFeats.CleanBlocks)
 
         self._opRegFeats.CacheInput.connect(self.RegionFeaturesCacheInput)
@@ -422,6 +423,40 @@ class OpObjectExtraction(Operator):
         # Nothing to do here.
         # Our Input slots are directly fed into the cache,
         #  so all calls to __setitem__ are forwarded automatically
+
+    def augmentFeatureNames(self, feature_names):
+        # Take a dictionary of feature names, augment it by default features and set to Features() slot
+
+        feature_names_with_default = deepcopy(feature_names)
+
+        for plugin_name, feature_dict in feature_names_with_default.iteritems():
+            for feature_name, feature_props in feature_dict.iteritems():
+                feature_props["selected"] = True
+                feature_props["default"] = False
+                if feature_name in default_features.keys():
+                    # we don't care about plugin name here, because we require unique feature names for each plugin
+                    feature_props["default"] = True
+
+        #expand the feature list by our default features
+        logger.debug("attaching default features {} to vigra features {}".format(default_features, feature_dict))
+        plugin = pluginManager.getPluginByName("Standard Object Features", "ObjectFeatures")
+        all_default_props = plugin.plugin_object.fill_properties(default_features) #fill in display name and such
+        feature_names_with_default[default_features_key] = all_default_props
+
+        if not "Standard Object Features" in feature_names.keys():
+            # The user has not selected any standard features. Add them now
+            feature_names_with_default["Standard Object Features"] = {}
+
+
+        for default_feature_name, default_feature_props in default_features.iteritems():
+            if default_feature_name not in feature_names_with_default[plugin_name]:
+                # this feature has not been selected by the user, add it now.
+                feature_names_with_default["Standard Object Features"][default_feature_name] = all_default_props[default_feature_name]
+                feature_names_with_default["Standard Object Features"][default_feature_name]["selected"] = False
+
+        self.Features.setValue(feature_names)
+        self.FeaturesWithDefault.setValue(feature_names_with_default)
+
 
     @staticmethod
     def createExportTable(features):
@@ -648,39 +683,21 @@ class OpRegionFeatures(Operator):
         global_features = {}
         selected_vigra_features = []
         for plugin_name, feature_dict in feature_names.iteritems():
+            if plugin_name == default_features_key:
+                continue
             plugin = pluginManager.getPluginByName(plugin_name, "ObjectFeatures")
-            if plugin_name == "Standard Object Features":
-                #expand the feature list by our default features
-                logger.debug("attaching default features {} to vigra features {}".format(default_features, feature_dict))
-                selected_vigra_features = feature_dict.keys()
-                feature_dict.update(default_features)
-                extra_features_computed = True
-                feature_names_with_default[default_features_key] = plugin.plugin_object.fill_properties(default_features)
-                self.Features.setValue(feature_names_with_default)
             global_features[plugin_name] = plugin.plugin_object.compute_global(image, labels, feature_dict, axes)
         
         extrafeats = {}
-        if extra_features_computed:
-            for feat_key in default_features:
-                feature = None
-                if feat_key in selected_vigra_features:
-                    #we wanted that feature independently
-                    feature = global_features["Standard Object Features"][feat_key]
-                else:
-                    feature = global_features["Standard Object Features"].pop(feat_key)
-                    feature_names["Standard Object Features"].pop(feat_key)
-                extrafeats[feat_key] = feature
-        else:
-            logger.debug("default features not computed, computing separately")
-            extrafeats_acc = vigra.analysis.extractRegionFeatures(image[slc3d].squeeze().astype(numpy.float32), labels.squeeze(),
-                                                        default_features.keys(),
-                                                        ignoreLabel=0)
-            #remove the 0th object, we'll add it again later
-            for k, v in extrafeats_acc.iteritems():
-                extrafeats[k]=v[1:]
-                if len(v.shape)==1:
-                    extrafeats[k]=extrafeats[k].reshape(extrafeats[k].shape+(1,))
-        
+        for feat_key in default_features:
+            if not feature_names["Standard Object Features"][feat_key]["selected"]:
+                # This feature has not been selected by the user. Remove it from the computed dict into a special dict
+                # for default features
+                feature = global_features["Standard Object Features"].pop(feat_key)
+            else:
+                feature = global_features["Standard Object Features"][feat_key]
+            extrafeats[feat_key] = feature
+
         extrafeats = dict((k.replace(' ', ''), v)
                           for k, v in extrafeats.iteritems())
         

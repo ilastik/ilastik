@@ -76,6 +76,7 @@ class VigraObjFeats(ObjectFeaturesPlugin):
         return result
 
     def fill_properties(self, features):
+        # fills properties into the dictionary of features
 
         for feature_name in features.iterkeys():
             features[feature_name]["displaytext"] = feature_name

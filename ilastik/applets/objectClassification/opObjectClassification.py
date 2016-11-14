@@ -806,19 +806,9 @@ class OpObjectClassification(Operator, ExportingOperator, MultiLaneOperatorABC):
 
         # Object features
         computed_names = self.ComputedFeatureNames.value
-        short_to_human_lut = {}
-        for pluginname, featurename in computed_names.iteritems():
-            for fname, attrs in featurename.iteritems():
-                try:
-                    short_to_human_lut[fname] = attrs["displaytext"]
-                except KeyError:
-                    short_to_human_lut[fname] = fname
 
-
-        print "LOOKUP TABLE:", short_to_human_lut
-        print "SELECTED FEATURES:", selected_features
         export_file.add_columns("table", self.ObjectFeatures[lane_index], Mode.IlastikFeatureTable,
-                                {"selection": selected_features, "names": short_to_human_lut})
+                                {"selection": selected_features})
 
         if settings["file type"] == "h5":
             export_file.add_rois(Default.LabelRoiPath, label_image, "table", settings["margin"], "labeling")
