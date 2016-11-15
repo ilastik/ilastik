@@ -81,6 +81,14 @@ def test_pool_with_failed_requests():
  
     time.sleep(0.2)
 
+def test_empty_pool():
+    """
+    Test the edge case when we wait() for a
+    RequestPool that has no requests in it.
+    """
+    pool = RequestPool()
+    pool.wait()
+
 def _impl_test_pool_results_discarded():
     """
     After a RequestPool executes, none of its data should linger if the user didn't hang on to it.

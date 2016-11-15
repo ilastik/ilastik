@@ -1247,6 +1247,11 @@ class RequestPool(object):
             raise RequestPool.RequestPoolError("Can't re-start a RequestPool that was already started.")
         self._started = True
 
+        # Edge case: Empty RequestPool
+        if not self._unsubmitted_requests:
+            self._finished = True
+            return
+
         try:
             # Launch the initial batch
             n_first_batch = min(self._max_active, len(self._unsubmitted_requests))
