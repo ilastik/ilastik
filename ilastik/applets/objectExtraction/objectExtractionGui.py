@@ -191,11 +191,13 @@ class FeatureSelectionDialog(QDialog):
         # Relies on self.ui.treeWidget.setCurrentItem(None) in populate()
         itemParent = item.parent()
         currentItem = self.ui.treeWidget.currentItem()
-        if itemParent == None: # user clicked a Plugin Name
-            pluginName=str(item.text(0))
+        if item.childCount()>0: # user clicked a Plugin Name or a group
             if col==1:
-                #early return, since the user clicked on "help" and didn't want to check the feature
+                # early return, since the user clicked on "help" and didn't want to check the feature
                 self.ui.textBrowser.setText("here we will have plugin help")
+                return
+            if itemParent is not None:
+                # it's a group, nothing happens when you click
                 return
             if currentItem == item: # user clicked on the text
                 if item.checkState(0) == Qt.PartiallyChecked or item.checkState(0) == Qt.Unchecked:
@@ -203,21 +205,30 @@ class FeatureSelectionDialog(QDialog):
                 else:
                     item.setCheckState(0, Qt.Unchecked)
             self.ui.treeWidget.setCurrentItem(None)
-            if not item.checkState(0) == Qt.PartiallyChecked:
-                for child_id in range(item.childCount()):
-                    child = item.child(child_id)
-                    child.setCheckState(0, item.checkState(0))
+
+            def recursiveCheckChildren(twitem):
+                # check or uncheck all children of an item through the hierarchy
+                for child_id in range(twitem.childCount()):
+                    child = twitem.child(child_id)
+                    child.setCheckState(0, twitem.checkState(0))
+                    recursiveCheckChildren(child)
+
+            recursiveCheckChildren(item)
+            if itemParent is None: # user clicked a plugin name
+                pluginName=str(item.text(0))
                 if item.checkState(0) == Qt.Checked:
                     self.countChecked[pluginName] = self.countAll[pluginName]
                 elif item.checkState(0) == Qt.Unchecked:
                     self.countChecked[pluginName] = 0
-            self.updateToolTip(item)
+                self.updateToolTip(item)
         else: # user clicked a Feature
-            #FIXME: fix the group clicking case
-            if item.childCount()>0:
-                #it's a group, nothing to do here
-                return
-            pluginName=str(itemParent.text(0))
+            if itemParent.parent() is None:
+                # this feature is not in a group, but in a plugin directly
+                pluginItem = itemParent
+            else:
+                # this feature is in a group
+                pluginItem = itemParent.parent()
+            pluginName=str(pluginItem.text(0))
             itemName=str(item.text(0))
             if col==1:
                 plugin_feature_name = self.displayNamesDict[itemName]
@@ -230,10 +241,25 @@ class FeatureSelectionDialog(QDialog):
             if currentItem == item: # user clicked on the text
                 if item.checkState(0) == Qt.Checked:
                     item.setCheckState(0, Qt.Unchecked)
+                    # did we now uncheck all?
+                    self.countChecked[pluginName] -= 1
+                    if self.countChecked[pluginName] == 0:
+                        pluginItem.setCheckState(0, Qt.Unchecked)
+                    else:
+                        pluginItem.setCheckState(0, Qt.PartiallyChecked)
                 else:
                     item.setCheckState(0, Qt.Checked)
+                    # did we now check all?
+                    self.countChecked[pluginName] += 1
+                    if self.countChecked[pluginName] == self.countAll[pluginName]:
+                        pluginItem.setCheckState(0, Qt.Checked)
+                    else:
+                        pluginItem.setCheckState(0, Qt.PartiallyChecked)
+
             self.ui.treeWidget.setCurrentItem(None)
+            '''
             num=0
+
             for child_id in range(itemParent.childCount()):
                 child = itemParent.child(child_id)
                 if child.checkState(0) == Qt.Checked:
@@ -245,7 +271,8 @@ class FeatureSelectionDialog(QDialog):
                 itemParent.setCheckState(0, Qt.Checked)
             else:
                 itemParent.setCheckState(0, Qt.PartiallyChecked)
-            self.updateToolTip(itemParent)
+            '''
+            self.updateToolTip(pluginItem)
 
     def updateToolTip(self, item):
         name = str(item.text(0))

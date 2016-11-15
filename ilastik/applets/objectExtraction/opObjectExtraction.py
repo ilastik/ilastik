@@ -438,7 +438,7 @@ class OpObjectExtraction(Operator):
                     feature_props["default"] = True
 
         #expand the feature list by our default features
-        logger.debug("attaching default features {} to vigra features {}".format(default_features, feature_dict))
+        logger.debug("attaching default features {} to vigra features {}".format(default_features, feature_names))
         plugin = pluginManager.getPluginByName("Standard Object Features", "ObjectFeatures")
         all_default_props = plugin.plugin_object.fill_properties(default_features) #fill in display name and such
         feature_names_with_default[default_features_key] = all_default_props
@@ -447,9 +447,8 @@ class OpObjectExtraction(Operator):
             # The user has not selected any standard features. Add them now
             feature_names_with_default["Standard Object Features"] = {}
 
-
         for default_feature_name, default_feature_props in default_features.iteritems():
-            if default_feature_name not in feature_names_with_default[plugin_name]:
+            if default_feature_name not in feature_names_with_default["Standard Object Features"]:
                 # this feature has not been selected by the user, add it now.
                 feature_names_with_default["Standard Object Features"][default_feature_name] = all_default_props[default_feature_name]
                 feature_names_with_default["Standard Object Features"][default_feature_name]["selected"] = False
