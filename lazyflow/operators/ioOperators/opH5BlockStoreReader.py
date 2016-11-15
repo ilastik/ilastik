@@ -17,6 +17,8 @@ else:
     
         SUBSTACK_PADDING = 20 # FIXME: Don't hard-code this!
         
+        _opened_stores_this_process = set([])
+        
         def __init__(self, *args, **kwargs):
             super( OpH5BlockStoreReader, self ).__init__(*args, **kwargs)
             self._h5blockstore = None
@@ -24,7 +26,13 @@ else:
         def setupOutputs(self):
             index_filepath = self.IndexFilepath.value
             root_dir = os.path.split(index_filepath)[0]
-            self._h5blockstore = H5BlockStore( root_dir )
+
+            # To ease debugging and recover from prior crashes, we reset the locks in each blockstore
+            # we encounter, but only once, the first time we see it.
+            reset_access = not index_filepath in OpH5BlockStoreReader._opened_stores_this_process
+            OpH5BlockStoreReader._opened_stores_this_process.add(index_filepath)
+            
+            self._h5blockstore = H5BlockStore( root_dir, reset_access=reset_access )
             
             bounds_list = self._h5blockstore.get_block_bounds_list()
             max_bounds = np.array(bounds_list)[:,1].max(axis=0)
