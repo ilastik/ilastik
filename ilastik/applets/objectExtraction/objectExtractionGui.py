@@ -137,7 +137,7 @@ class FeatureSelectionDialog(QDialog):
             for gr in groups:
                 gr_items[gr] = QTreeWidgetItem(parent)
                 gr_items[gr].setText(0, gr)
-                #gr_items[gr].setFlags(Qt.ItemIsEnabled)
+                #gr_items[gr].setFlags(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable)
                 gr_items[gr].setExpanded(True)
             
             for name in simple_names+advanced_names:
@@ -181,6 +181,16 @@ class FeatureSelectionDialog(QDialog):
         #self.ui.treeWidget.resizeColumnToContents(0)
         #self.ui.treeWidget.resizeColumnToContents(1)
 
+    @staticmethod
+    def recursiveCheckChildren(twitem, val):
+        # check or uncheck all children of an item at the lowest level of the hierarchy
+        for child_id in range(twitem.childCount()):
+            child = twitem.child(child_id)
+            if child.childCount()>0:
+                FeatureSelectionDialog.recursiveCheckChildren(child, val)
+            else:
+                child.setCheckState(0, val)
+
     def updateTree(self, item, col):
         # Clicking on the CheckBox OR Text of a QTreeWidgetItem should change the check.
         # QTreeWidget signal itemClicked gets triggered by clicking on:
@@ -206,14 +216,7 @@ class FeatureSelectionDialog(QDialog):
                     item.setCheckState(0, Qt.Unchecked)
             self.ui.treeWidget.setCurrentItem(None)
 
-            def recursiveCheckChildren(twitem):
-                # check or uncheck all children of an item through the hierarchy
-                for child_id in range(twitem.childCount()):
-                    child = twitem.child(child_id)
-                    child.setCheckState(0, twitem.checkState(0))
-                    recursiveCheckChildren(child)
-
-            recursiveCheckChildren(item)
+            FeatureSelectionDialog.recursiveCheckChildren(item, item.checkState(0))
             if itemParent is None: # user clicked a plugin name
                 pluginName=str(item.text(0))
                 if item.checkState(0) == Qt.Checked:
@@ -238,40 +241,30 @@ class FeatureSelectionDialog(QDialog):
                     self.ui.textBrowser.setText("Sorry, no detailed description is available for this feature")
                 #early return, since the user clicked on "help" and didn't want to check the feature
                 return
-            if currentItem == item: # user clicked on the text
+            if currentItem == item: # user clicked on the text, check the box for the user
                 if item.checkState(0) == Qt.Checked:
                     item.setCheckState(0, Qt.Unchecked)
-                    # did we now uncheck all?
-                    self.countChecked[pluginName] -= 1
-                    if self.countChecked[pluginName] == 0:
-                        pluginItem.setCheckState(0, Qt.Unchecked)
-                    else:
-                        pluginItem.setCheckState(0, Qt.PartiallyChecked)
                 else:
                     item.setCheckState(0, Qt.Checked)
-                    # did we now check all?
-                    self.countChecked[pluginName] += 1
-                    if self.countChecked[pluginName] == self.countAll[pluginName]:
-                        pluginItem.setCheckState(0, Qt.Checked)
-                    else:
-                        pluginItem.setCheckState(0, Qt.PartiallyChecked)
 
             self.ui.treeWidget.setCurrentItem(None)
-            '''
-            num=0
 
-            for child_id in range(itemParent.childCount()):
-                child = itemParent.child(child_id)
-                if child.checkState(0) == Qt.Checked:
-                    num+=1
-            self.countChecked[pluginName]=num
-            if self.countChecked[pluginName] == 0:
-                itemParent.setCheckState(0, Qt.Unchecked)
-            elif self.countChecked[pluginName] == self.countAll[pluginName]:
-                itemParent.setCheckState(0, Qt.Checked)
-            else:
-                itemParent.setCheckState(0, Qt.PartiallyChecked)
-            '''
+            # did we now uncheck all?
+            if item.checkState(0) == Qt.Unchecked:
+                self.countChecked[pluginName] -= 1
+                if self.countChecked[pluginName] == 0:
+                    pluginItem.setCheckState(0, Qt.Unchecked)
+                else:
+                    pluginItem.setCheckState(0, Qt.PartiallyChecked)
+
+             # did we now check all?
+            if item.checkState(0) == Qt.Checked:
+                self.countChecked[pluginName] += 1
+                if self.countChecked[pluginName] == self.countAll[pluginName]:
+                    pluginItem.setCheckState(0, Qt.Checked)
+                else:
+                    pluginItem.setCheckState(0, Qt.PartiallyChecked)
+
             self.updateToolTip(pluginItem)
 
     def updateToolTip(self, item):
@@ -302,10 +295,21 @@ class FeatureSelectionDialog(QDialog):
         if self.ndim==3:
             margin.append(self.ui.spinBox_Z.value())
         root = self.ui.treeWidget.invisibleRootItem()
-        for parent in root.takeChildren():
-            plugin = str(parent.text(0))
-            featnames = list(str(item.text(0)) for item in parent.takeChildren()
-                         if item.checkState(0) == Qt.Checked)
+        for plug in root.takeChildren():
+            plugin_name = str(plug.text(0))
+            featnames = []
+            for child_id in range(plug.childCount()):
+                child = plug.child(child_id)
+                if child.childCount()>0:
+                    #it's a group, take its features
+                    for feature_id in range(child.childCount()):
+                        feature_item = child.child(feature_id)
+                        if feature_item.checkState(0) == Qt.Checked:
+                            featnames.append(str(feature_item.text(0)))
+                else:
+                    if child.checkState(0) == Qt.Checked:
+                        featnames.append(str(child.text(0)))
+
             if len(featnames) > 0:
                 # we are building the dictionary again, have to transfer all the properties
                 features = {}
@@ -314,29 +318,28 @@ class FeatureSelectionDialog(QDialog):
                     plugin_feature_name = self.displayNamesDict[ff]
                     features[plugin_feature_name] = {}
                     # properties other than margin have not changed, copy them over
-                    for prop_name, prop_value in self.featureDict[plugin][plugin_feature_name].iteritems():
+                    for prop_name, prop_value in self.featureDict[plugin_name][plugin_feature_name].iteritems():
                         features[plugin_feature_name][prop_name] = prop_value
                     # update the margin
-                    if 'margin' in self.featureDict[plugin][plugin_feature_name]:
+                    if 'margin' in self.featureDict[plugin_name][plugin_feature_name]:
                         features[plugin_feature_name]['margin'] = margin
 
-                selectedFeatures[plugin] = features
+                selectedFeatures[plugin_name] = features
         self.selectedFeatures = selectedFeatures
 
     def _setAll(self, val):
         root = self.ui.treeWidget.invisibleRootItem()
-        for parent_id in range(root.childCount()):
-            parent = root.child(parent_id)
-            parent.setCheckState(0, val)
-            for child_id in range(parent.childCount()):
-                child = parent.child(child_id)
-                child.setCheckState(0, val)
-            parentName=str(parent.text(0))
+        for plugin_id in range(root.childCount()):
+            plugin = root.child(plugin_id)
+            plugin.setCheckState(0, val)
+            FeatureSelectionDialog.recursiveCheckChildren(plugin, val)
+
+            pluginName=str(plugin.text(0))
             if val == Qt.Checked:
-                self.countChecked[parentName]=self.countAll[parentName]
+                self.countChecked[pluginName]=self.countAll[pluginName]
             else:
-                self.countChecked[parentName]=0
-            self.updateToolTip(parent)
+                self.countChecked[pluginName]=0
+            self.updateToolTip(plugin)
 
     def handleAll(self):
         self._setAll(Qt.Checked)
