@@ -178,7 +178,6 @@ class OpConservationTracking(Operator, ExportingOperator):
    
             for t in trange:
                 if (self.ResolvedMergers.value 
-                        and t in self.ResolvedMergers.value 
                         and 'time_range' in parameters 
                         and t <= parameters['time_range'][-1] 
                         and t >= parameters['time_range'][0]):
@@ -520,7 +519,7 @@ class OpConservationTracking(Operator, ExportingOperator):
                 
                 for idx in mergersPerTimestep[timestep]:
                     node = (int(timestep), idx)
-                    mergerRes[idx] = resolvedMergersDict[node]['newIds']
+                    mergerRes[idx] = resolvedMergersDict[int(timestep)][idx]['newIds']
                     
                 events[timestep]['res'] = mergerRes
                 
@@ -533,18 +532,17 @@ class OpConservationTracking(Operator, ExportingOperator):
         """
         Label volume mergers with correspoding IDs, using the plugin GMM fit
         """
-        idxs = vigra.analysis.unique(volume)
         
         resolvedMergersDict = self.ResolvedMergers.value
         
-        for idx in idxs:
-            node = (time, idx)
+        if time not in resolvedMergersDict:
+            return volume
+        
+        for idx in resolvedMergersDict[time]:
+            fits = resolvedMergersDict[time][idx]['fits']
+            newIds = resolvedMergersDict[time][idx]['newIds']
             
-            if node in resolvedMergersDict:
-                fits = resolvedMergersDict[node]['fits']
-                newIds = resolvedMergersDict[node]['newIds']
-                
-                self.mergerResolverPlugin.updateLabelImage(volume, idx, fits, newIds)
+            self.mergerResolverPlugin.updateLabelImage(volume, idx, fits, newIds)
         
         return volume               
 
@@ -563,10 +561,18 @@ class OpConservationTracking(Operator, ExportingOperator):
             indexMapping = np.zeros(np.amax(volume) + 1, dtype=volume.dtype)
             
             labels = vigra.analysis.unique(volume)
+            
             if onlyMergers:
                 # restrict the labels to only those that came out of a merger
                 assert(resolvedMergersDict is not None)
-                labels = [label for label in labels if (time, label) in resolvedMergersDict]
+                
+                if time not in resolvedMergersDict:
+                    labels = []
+                else:
+                    newIds = [nodeDict['newIds'] for _, nodeDict in resolvedMergersDict[time].items()]
+                    newIds = [id for ids in newIds for id in ids]
+                    labels = [id for id in labels if id in newIds]
+
             for label in labels:
                 if label > 0 and hypotheses_graph.hasNode((time,label)):
                     lineage_id = hypotheses_graph.getLineageId(time, label)
