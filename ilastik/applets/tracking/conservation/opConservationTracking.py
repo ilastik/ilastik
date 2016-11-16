@@ -147,28 +147,24 @@ class OpConservationTracking(Operator, ExportingOperator):
         
     
     def execute(self, slot, subindex, roi, result):
+        # Output showing lineage IDs
         if slot is self.Output:
             if not self.Parameters.ready():
                 raise Exception("Parameter slot is not ready")
             parameters = self.Parameters.value           
             trange = range(roi.start[0], roi.stop[0])
-            
-            original = np.zeros(result.shape, dtype=slot.meta.dtype)         
+       
             result[:] =  self.LabelImage.get(roi).wait()
 
             for t in trange:
-                if (self.ResolvedMergers.value 
-                        and 'time_range' in parameters 
-                        and t <= parameters['time_range'][-1] 
-                        and t >= parameters['time_range'][0]):
-                    self._labelMergers(result[t-roi.start[0],...,0], t)
+                if 'time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]:
+                    if self.ResolvedMergers.value:
+                        self._labelMergers(result[t-roi.start[0],...,0], t)
                     result[t-roi.start[0],...,0] = self._labelLineageIds(result[t-roi.start[0],...,0], t)
                 else:
-                    result[t-roi.start[0],...,0] = self._labelLineageIds(result[t-roi.start[0],...,0], t)
-
-            original[result != 0] = result[result != 0]
-            result[:] = original
-            
+                    result[t-roi.start[0],...][:] = 0
+        
+        # Output showing mergers only    
         elif slot is self.MergerOutput:
             parameters = self.Parameters.value
             trange = range(roi.start[0], roi.stop[0])
@@ -176,14 +172,14 @@ class OpConservationTracking(Operator, ExportingOperator):
             result[:] =  self.LabelImage.get(roi).wait()
    
             for t in trange:
-                if ('time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]):
+                if 'time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]:
                     if self.ResolvedMergers.value:
-                        self._labelMergers(result[t-roi.start[0],...,0], t)
-                          
+                        self._labelMergers(result[t-roi.start[0],...,0], t)   
                     result[t-roi.start[0],...,0] = self._labelLineageIds(result[t-roi.start[0],...,0], t, onlyMergers=True)
                 else:
                     result[t-roi.start[0],...][:] = 0
-            
+
+        # Output showing object Ids (before lineage IDs are assigned)   
         elif slot is self.RelabeledImage:
             parameters = self.Parameters.value
             trange = range(roi.start[0], roi.stop[0])
@@ -191,12 +187,10 @@ class OpConservationTracking(Operator, ExportingOperator):
             result[:] =  self.LabelImage.get(roi).wait()
             
             for t in trange:
-                if (self.ResolvedMergers.value
-                        and 'time_range' in parameters
-                        and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]
-                        and 'withMergerResolution' in parameters.keys() and parameters['withMergerResolution']):
+                if self.ResolvedMergers.value and 'time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]:
                     self._labelMergers(result[t-roi.start[0],...,0], t)
-                    
+        
+        # Cache blocks            
         elif slot == self.AllBlocks:
             # if nothing was computed, return empty list
             if not self.HypothesesGraph.value:
@@ -530,7 +524,6 @@ class OpConservationTracking(Operator, ExportingOperator):
         """
         Label volume mergers with correspoding IDs, using the plugin GMM fit
         """
-        
         resolvedMergersDict = self.ResolvedMergers.value
         
         if time not in resolvedMergersDict:
