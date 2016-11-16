@@ -7,7 +7,6 @@ from lazyflow.rtype import List
 from lazyflow.stype import Opaque
 
 from ilastik.applets.base.applet import DatasetConstraintError
-from ilastik.applets.tracking.base.trackingUtilities import relabel, highlightMergers
 from ilastik.applets.objectExtraction.opObjectExtraction import default_features_key, OpRegionFeatures
 from ilastik.applets.tracking.base.trackingUtilities import get_dict_value, get_events
 from lazyflow.operators import OpBlockedArrayCache
@@ -177,15 +176,11 @@ class OpConservationTracking(Operator, ExportingOperator):
             result[:] =  self.LabelImage.get(roi).wait()
    
             for t in trange:
-                if (self.ResolvedMergers.value 
-                        and 'time_range' in parameters 
-                        and t <= parameters['time_range'][-1] 
-                        and t >= parameters['time_range'][0]):
-                    if 'withMergerResolution' in parameters.keys() and parameters['withMergerResolution']:
+                if ('time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]):
+                    if self.ResolvedMergers.value:
                         self._labelMergers(result[t-roi.start[0],...,0], t)
-                        result[t-roi.start[0],...,0] = self._labelLineageIds(result[t-roi.start[0],...,0], t, onlyMergers=True)
-                    else:
-                        result[t-roi.start[0],...,0] = highlightMergers(result[t-roi.start[0],...,0], self.mergers[t])
+                          
+                    result[t-roi.start[0],...,0] = self._labelLineageIds(result[t-roi.start[0],...,0], t, onlyMergers=True)
                 else:
                     result[t-roi.start[0],...][:] = 0
             
@@ -365,6 +360,8 @@ class OpConservationTracking(Operator, ExportingOperator):
             hypotheses_graph.insertSolution(result)
             
         # Merger resolution
+        resolvedMergersDict = {}
+        
         if withMergerResolution:
             logger.info("Resolving mergers.")
             
@@ -411,9 +408,10 @@ class OpConservationTracking(Operator, ExportingOperator):
                     
                 # Compute object features, re-run flow solver, update model and result, and get merger dictionary
                 resolvedMergersDict = mergerResolver.run()
-                self.ResolvedMergers.setValue(resolvedMergersDict, check_changed=False)
                 
-            self.MergerOutput.setDirty()
+        self.ResolvedMergers.setValue(resolvedMergersDict, check_changed=False)
+                
+        self.MergerOutput.setDirty()
 
         logger.info("Computing hypotheses graph lineages")
         hypotheses_graph.computeLineage()
@@ -555,34 +553,37 @@ class OpConservationTracking(Operator, ExportingOperator):
         """
         hypotheses_graph = self.HypothesesGraph.value
         
-        resolvedMergersDict = self.ResolvedMergers.value
+        if not hypotheses_graph:
+            return np.zeros_like(volume) 
         
-        if hypotheses_graph:
-            indexMapping = np.zeros(np.amax(volume) + 1, dtype=volume.dtype)
-            
-            labels = vigra.analysis.unique(volume)
-            
-            if onlyMergers:
-                # restrict the labels to only those that came out of a merger
-                assert(resolvedMergersDict is not None)
-                
+        resolvedMergersDict = self.ResolvedMergers.value
+
+        indexMapping = np.zeros(np.amax(volume) + 1, dtype=volume.dtype)
+        
+        labels = vigra.analysis.unique(volume)
+        
+        # Reduce labels to the ones that contain mergers
+        if onlyMergers:
+            if resolvedMergersDict:
                 if time not in resolvedMergersDict:
                     labels = []
                 else:
                     newIds = [nodeDict['newIds'] for _, nodeDict in resolvedMergersDict[time].items()]
                     newIds = [id for ids in newIds for id in ids]
                     labels = [id for id in labels if id in newIds]
+            else:
+                labels = [label for label in labels if label > 0 and hypotheses_graph.hasNode((time,label)) and hypotheses_graph._graph.node[(time,label)]['value'] > 1]
 
-            for label in labels:
-                if label > 0 and hypotheses_graph.hasNode((time,label)):
-                    lineage_id = hypotheses_graph.getLineageId(time, label)
-                    if lineage_id is None:
-                        lineage_id = 1
-                    indexMapping[label] = lineage_id
-                
-            return indexMapping[volume]
-        else:
-            return np.zeros_like(volume)       
+        # Map labels to corresponding lineage IDs
+        for label in labels:
+            if label > 0 and hypotheses_graph.hasNode((time,label)):
+                lineage_id = hypotheses_graph.getLineageId(time, label)
+                if lineage_id is None:
+                    lineage_id = 1
+                indexMapping[label] = lineage_id
+            
+        return indexMapping[volume]
+                  
     
     def _setupRelabeledFeatureSlot(self, original_feature_slot):
         from ilastik.applets.trackingFeatureExtraction import config
