@@ -54,7 +54,7 @@ class OpConservationTracking(Operator, ExportingOperator):
     AllBlocks = OutputSlot()
     CachedOutput = OutputSlot()  # For the GUI (blockwise-access)
  
-    Output = OutputSlot()
+    Output = OutputSlot() # Volume relabelled with lineage IDs
  
     # Use a slot for storing the export settings in the project file.
     ExportSettings = InputSlot()
@@ -66,11 +66,11 @@ class OpConservationTracking(Operator, ExportingOperator):
     # compressed cache for merger output
     MergerCleanBlocks = OutputSlot()
     MergerCachedOutput = OutputSlot() # For the GUI (blockwise access)
-    MergerOutput = OutputSlot()
+    MergerOutput = OutputSlot() # Volume showing only merger IDs
 
     RelabeledCleanBlocks = OutputSlot()
     RelabeledCachedOutput = OutputSlot() # For the GUI (blockwise access)
-    RelabeledImage = OutputSlot()
+    RelabeledImage = OutputSlot() # Volume showing object IDs
 
     def __init__(self, parent=None, graph=None):
         super(OpConservationTracking, self).__init__(parent=parent, graph=graph)
@@ -244,6 +244,9 @@ class OpConservationTracking(Operator, ExportingOperator):
             withBatchProcessing = False,
             solverName="ILP"
             ):
+        """
+        Main conservation tracking function. Runs tracking solver, generates hypotheses graph, and resolves mergers.
+        """
         
         if not self.Parameters.ready():
             raise Exception("Parameter slot is not ready")
@@ -323,7 +326,7 @@ class OpConservationTracking(Operator, ExportingOperator):
                                    y_scale,
                                    z_scale])
 
-        hypotheses_graph = IlastikHypothesesGraph(
+        hypothesesGraph = IlastikHypothesesGraph(
             probabilityGenerator=traxelstore,
             timeRange=(0,time_range[-1]+1),
             maxNumObjects=maxObj,
@@ -335,10 +338,10 @@ class OpConservationTracking(Operator, ExportingOperator):
         )
 
         if withTracklets:
-            hypotheses_graph = hypotheses_graph.generateTrackletGraph()
+            hypothesesGraph = hypothesesGraph.generateTrackletGraph()
 
-        hypotheses_graph.insertEnergies()
-        trackingGraph = hypotheses_graph.toTrackingGraph()
+        hypothesesGraph.insertEnergies()
+        trackingGraph = hypothesesGraph.toTrackingGraph()
         trackingGraph.convexifyCosts()
         model = trackingGraph.model
 
@@ -350,8 +353,8 @@ class OpConservationTracking(Operator, ExportingOperator):
         result = dpct.trackFlowBased(model, weights)
         
         # Insert the solution into the hypotheses graph and from that deduce the lineages
-        if hypotheses_graph:
-            hypotheses_graph.insertSolution(result)
+        if hypothesesGraph:
+            hypothesesGraph.insertSolution(result)
             
         # Merger resolution
         resolvedMergersDict = {}
@@ -359,7 +362,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         if withMergerResolution:
             logger.info("Resolving mergers.")
             
-            originalGraph = hypotheses_graph.referenceTraxelGraph if withTracklets else hypotheses_graph
+            originalGraph = hypothesesGraph.referenceTraxelGraph if withTracklets else hypothesesGraph
             
             # Enable full graph computation for animal tracking workflow
             withFullGraph = False
@@ -408,16 +411,16 @@ class OpConservationTracking(Operator, ExportingOperator):
         self.MergerOutput.setDirty()
 
         logger.info("Computing hypotheses graph lineages")
-        hypotheses_graph.computeLineage()
+        hypothesesGraph.computeLineage()
 
         # Uncomment to export a hypothese graph diagram
         #logger.info("Exporting hypotheses graph diagram")
         #from hytra.util.hypothesesgraphdiagram import HypothesesGraphDiagram
-        #hgv = HypothesesGraphDiagram(hypotheses_graph._graph, timeRange=(0, 10), fileName='HypothesesGraph.png' )
+        #hgv = HypothesesGraphDiagram(hypothesesGraph._graph, timeRange=(0, 10), fileName='HypothesesGraph.png' )
                 
         # Set value of hypotheses grap slot (use referenceTraxelGraph if using tracklets)
-        hypotheses_graph = hypotheses_graph.referenceTraxelGraph if withTracklets else hypotheses_graph
-        self.HypothesesGraph.setValue(hypotheses_graph, check_changed=False)
+        hypothesesGraph = hypothesesGraph.referenceTraxelGraph if withTracklets else hypothesesGraph
+        self.HypothesesGraph.setValue(hypothesesGraph, check_changed=False)
 
         # Refresh (execute) output slots
         self.Output.setDirty()
@@ -544,9 +547,9 @@ class OpConservationTracking(Operator, ExportingOperator):
 
         :return: the relabeled volume, where 0 means background, 1 means false detection, and all higher numbers indicate lineages
         """
-        hypotheses_graph = self.HypothesesGraph.value
+        hypothesesGraph = self.HypothesesGraph.value
         
-        if not hypotheses_graph:
+        if not hypothesesGraph:
             return np.zeros_like(volume) 
         
         resolvedMergersDict = self.ResolvedMergers.value
@@ -565,12 +568,12 @@ class OpConservationTracking(Operator, ExportingOperator):
                     newIds = [id for ids in newIds for id in ids]
                     labels = [id for id in labels if id in newIds]
             else:
-                labels = [label for label in labels if label > 0 and hypotheses_graph.hasNode((time,label)) and hypotheses_graph._graph.node[(time,label)]['value'] > 1]
+                labels = [label for label in labels if label > 0 and hypothesesGraph.hasNode((time,label)) and hypothesesGraph._graph.node[(time,label)]['value'] > 1]
 
         # Map labels to corresponding lineage IDs
         for label in labels:
-            if label > 0 and hypotheses_graph.hasNode((time,label)):
-                lineage_id = hypotheses_graph.getLineageId(time, label)
+            if label > 0 and hypothesesGraph.hasNode((time,label)):
+                lineage_id = hypothesesGraph.getLineageId(time, label)
                 if lineage_id is None:
                     lineage_id = 1
                 indexMapping[label] = lineage_id
@@ -632,9 +635,9 @@ class OpConservationTracking(Operator, ExportingOperator):
         from ilastik.utility.exportFile import objects_per_frame, ExportFile, ilastik_ids, Mode, Default, \
             flatten_dict, division_flatten_dict
 
-        hypotheses_graph = self.HypothesesGraph.value
+        hypothesesGraph = self.HypothesesGraph.value
 
-        if not hypotheses_graph:
+        if not hypothesesGraph:
             raise DatasetConstraintError('Tracking', 'Tracking solution not ready: Did you forgot to press the Track button?')
 
         obj_count = list(objects_per_frame(label_image_slot))        
@@ -647,15 +650,15 @@ class OpConservationTracking(Operator, ExportingOperator):
         for (time, object_id) in object_ids_generator: 
             object_ids.append((time, object_id))
             
-            if hypotheses_graph.hasNode((time,object_id)):        
-                lineage_id = hypotheses_graph.getLineageId(time, object_id)
+            if hypothesesGraph.hasNode((time,object_id)):        
+                lineage_id = hypothesesGraph.getLineageId(time, object_id)
                 if lineage_id:    
                     lineage_ids.append(lineage_id)
                 else:
                     logger.debug("Empty lineage ID for node ({},{})".format(time, object_id))
                     lineage_ids.append(0)
                     
-                track_id = hypotheses_graph.getTrackId(time, object_id)    
+                track_id = hypothesesGraph.getTrackId(time, object_id)    
                 if track_id:
                     track_ids.append(track_id)
                 else:
