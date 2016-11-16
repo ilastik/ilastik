@@ -75,13 +75,6 @@ class OpConservationTracking(Operator, ExportingOperator):
     def __init__(self, parent=None, graph=None):
         super(OpConservationTracking, self).__init__(parent=parent, graph=graph)
 
-        self.mergers = []
-        self.resolvedto = []
-
-        self.track_id = None
-        self.extra_track_ids = None
-        self.divisions = None
-
         self._opCache = OpBlockedArrayCache(parent=self)
         self._opCache.name = "OpConservationTracking._opCache"
         self._opCache.CompressionEnabled.setValue(True)
@@ -113,12 +106,10 @@ class OpConservationTracking(Operator, ExportingOperator):
         self.RelabeledCleanBlocks.connect(self._relabeledOpCache.CleanBlocks)
         self.RelabeledCachedOutput.connect(self._relabeledOpCache.Output)
         
+        # Merger resolver plugin manager (contains GMM fit routine)
         self.pluginPaths = [os.path.join(os.path.dirname(os.path.abspath(hytra.__file__)), 'plugins')]
         self.pluginManager = TrackingPluginManager(verbose=False, pluginPaths=self.pluginPaths)
-        self.mergerResolverPlugin = self.pluginManager.getMergerResolver()
-        
-        self.tracker = None
-        self._ndim = 3        
+        self.mergerResolverPlugin = self.pluginManager.getMergerResolver()       
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.LabelImage.meta)
@@ -135,7 +126,6 @@ class OpConservationTracking(Operator, ExportingOperator):
         
         self.MergerOutput.meta.assignFrom(self.LabelImage.meta)
         self.RelabeledImage.meta.assignFrom(self.LabelImage.meta)
-        self._ndim = 2 if self.LabelImage.meta.shape[3] == 1 else 3
 
         self._mergerOpCache.outerBlockShape.setValue( self._blockshape )
         self._relabeledOpCache.outerBlockShape.setValue( self._blockshape )
@@ -144,8 +134,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         assert frame_shape[-1] == 1
         self.MergerOutput.meta.ideal_blockshape = frame_shape
         self.RelabeledImage.meta.ideal_blockshape = frame_shape
-        
-    
+          
     def execute(self, slot, subindex, roi, result):
         # Output showing lineage IDs
         if slot is self.Output:
@@ -589,7 +578,6 @@ class OpConservationTracking(Operator, ExportingOperator):
         opRelabeledRegionFeatures.LabelImage.connect(self.LabelImage)
         opRelabeledRegionFeatures.RelabeledImage.connect(self.RelabeledImage)
         opRelabeledRegionFeatures.OriginalRegionFeatures.connect(original_feature_slot)
-        opRelabeledRegionFeatures.ResolvedTo.setValue(self.resolvedto)
 
         vigra_features = list((set(config.vigra_features)).union(config.selected_features_objectcount[config.features_vigra_name]))
         feature_names_vigra = {}

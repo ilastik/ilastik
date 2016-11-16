@@ -130,7 +130,6 @@ class OpRelabeledMergerFeatureExtraction(Operator):
     RawImage = InputSlot()
     LabelImage = InputSlot()
     RelabeledImage = InputSlot()
-    ResolvedTo = InputSlot(rtype=List)
     OriginalRegionFeatures = InputSlot(stype=Opaque, rtype=List, value={})
 
     FeatureNames = InputSlot(rtype=List, stype=Opaque, value={})
@@ -249,7 +248,6 @@ class OpRelabeledMergerFeatureExtraction(Operator):
         self.RelabeledImage.disconnect()
         self.OriginalRegionFeatures.disconnect()
         self.RawImage.disconnect()
-        self.ResolvedTo.disconnect()
         self.FeatureNames.disconnect()
 
         super( OpRelabeledMergerFeatureExtraction, self ).cleanUp()
