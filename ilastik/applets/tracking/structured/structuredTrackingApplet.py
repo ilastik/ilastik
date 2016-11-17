@@ -15,7 +15,7 @@ class StructuredTrackingApplet( StandardApplet ):
 
     @property
     def broadcastingSlots( self ):
-        return []
+        return ['Parameters', 'ExportSettings']
 
     @property
     def singleLaneGuiClass( self ):
