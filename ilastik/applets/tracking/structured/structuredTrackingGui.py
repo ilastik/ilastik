@@ -63,6 +63,9 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._drawer.mergerResolutionBox.setChecked(True)
         self.connect( self, QtCore.SIGNAL('postInformationMessage(QString)'), self.postInformationMessage)
 
+        self.parentApplet = parentApplet
+        self._headless = False
+
     def _loadUiFile(self):
         localDir = os.path.split(__file__)[0]
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
@@ -218,7 +221,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         fileName = path[1]
 
         index = fileName.find('.ilp')
-        with h5py.File(dir+'/'+fileName[:index]+'_exported_weights.h5','w') as f:
+        with h5py.File(dir+'/'+fileName[:index]+'_Tracking-Weights.h5','w') as f:
             f["DetectionWeight"] = self._detectionWeight
             f["DivisionWeight"] = self._divisionWeight
             f["TransitionWeight"] = self._transitionWeight
@@ -904,6 +907,9 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         return self.topLevelOperatorView.RawImage.meta.shape
 
     def get_feature_names(self):
+        params = self.topLevelOperatorView.Parameters
+        if params.ready() and params.value["withDivisions"]:
+            return self.topLevelOperatorView.ComputedFeatureNamesWithDivFeatures([]).wait()
         return self.topLevelOperatorView.ComputedFeatureNames([]).wait()
 
     def get_color(self, pos5d):

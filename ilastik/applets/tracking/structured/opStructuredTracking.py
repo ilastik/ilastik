@@ -195,7 +195,10 @@ class OpStructuredTracking(OpTrackingBase):
             disappearance_cost = 500,
             graph_building_parameter_changed = True,
             trainingToHardConstraints = False,
-            max_nearest_neighbors = 1
+            max_nearest_neighbors = 1,
+            force_build_hypotheses_graph = False,
+            withBatchProcessing = False,
+            solverName = 'ILP'
             ):
         
         if not self.Parameters.ready():
@@ -288,6 +291,8 @@ class OpStructuredTracking(OpTrackingBase):
         if ndim == 2:
             assert z_range[0] * z_scale == 0 and (z_range[1]-1) * z_scale == 0, "fov of z must be (0,0) if ndim==2"
 
+        solverType = self.getPgmlinkSolverType(solverName)
+
         if(self.consTracker == None or graph_building_parameter_changed):# or do_build_hypotheses_graph):
 
             foundAllArcs = False;
@@ -298,16 +303,16 @@ class OpStructuredTracking(OpTrackingBase):
                 logger.info( '\033[94m' +"make new graph"+  '\033[0m' )
 
                 self.consTracker = pgmlink.ConsTracking(
-                    maxObj,
-                    sizeDependent,   # size_dependent_detection_prob
+                    int(maxObj),
+                    bool(sizeDependent),   # size_dependent_detection_prob
                     float(median_obj_size[0]), # median_object_size
                     float(maxDist),
-                    withDivisions,
+                    bool(withDivisions),
                     float(divThreshold),
                     "none",  # detection_rf_filename
                     fov,
                     "none", # dump traxelstore,
-                    pgmlink.ConsTrackingSolverType.CplexSolver,
+                    solverType,
                     ndim)
                 hypothesesGraph = self.consTracker.buildGraph(ts, new_max_nearest_neighbors)
 
@@ -408,11 +413,12 @@ class OpStructuredTracking(OpTrackingBase):
 
                 logger.info("max nearest neighbors={}".format(new_max_nearest_neighbors))
 
-        drawer = self.parent.parent.trackingApplet._gui.currentGui()._drawer
-        if new_max_nearest_neighbors > max_nearest_neighbors:
-            max_nearest_neighbors = new_max_nearest_neighbors
-            drawer.maxNearestNeighborsSpinBox.setValue(max_nearest_neighbors)
-            self.parent.parent.trackingApplet._gui.currentGui()._maxNearestNeighbors = max_nearest_neighbors
+        if not withBatchProcessing:
+            drawer = self.parent.parent.trackingApplet._gui.currentGui()._drawer
+            if new_max_nearest_neighbors > max_nearest_neighbors:
+                max_nearest_neighbors = new_max_nearest_neighbors
+                drawer.maxNearestNeighborsSpinBox.setValue(max_nearest_neighbors)
+                self.parent.parent.trackingApplet._gui.currentGui()._maxNearestNeighbors = max_nearest_neighbors
 
         # create dummy uncertainty parameter object with just one iteration, so no perturbations at all (iter=0 -> MAP)
         sigmas = pgmlink.VectorOfDouble()
@@ -420,11 +426,18 @@ class OpStructuredTracking(OpTrackingBase):
             sigmas.append(0.0)
         uncertaintyParams = pgmlink.UncertaintyParameter(1, pgmlink.DistrId.PerturbAndMAP, sigmas)
 
-        self.detectionWeight = drawer.detWeightBox.value()
-        self.divisionWeight = drawer.divWeightBox.value()
-        self.transitionWeight = drawer.transWeightBox.value()
-        self.appearanceWeight = drawer.appearanceBox.value()
-        self.disappearanceWeight = drawer.disappearanceBox.value()
+        if withBatchProcessing:
+            self.detectionWeight = 0.0
+            self.divisionWeight = 0.0
+            self.transitionWeight = 0.0
+            self.appearanceWeight = 0.0
+            self.disappearanceWeight = 0.0
+        else:
+            self.detectionWeight = drawer.detWeightBox.value()
+            self.divisionWeight = drawer.divWeightBox.value()
+            self.transitionWeight = drawer.transWeightBox.value()
+            self.appearanceWeight = drawer.appearanceBox.value()
+            self.disappearanceWeight = drawer.disappearanceBox.value()
 
         logger.info("detectionWeight= {}".format(self.detectionWeight))
         logger.info("divisionWeight={}".format(self.divisionWeight))
@@ -435,23 +448,23 @@ class OpStructuredTracking(OpTrackingBase):
         consTrackerParameters = self.consTracker.get_conservation_tracking_parameters(
                                         0,# forbidden_cost
                                         float(ep_gap),
-                                        withTracklets,
-                                        self.detectionWeight,
-                                        self.divisionWeight,
-                                        self.transitionWeight,
-                                        self.disappearanceWeight,
-                                        self.appearanceWeight,
-                                        withMergerResolution,
-                                        ndim,
-                                        self.transition_parameter,
-                                        borderAwareWidth,
+                                        bool(withTracklets),
+                                        float(self.detectionWeight),
+                                        float(self.divisionWeight),
+                                        float(self.transitionWeight),
+                                        float(self.disappearanceWeight),
+                                        float(self.appearanceWeight),
+                                        bool(withMergerResolution),
+                                        int(ndim),
+                                        float(self.transition_parameter),
+                                        float(borderAwareWidth),
                                         True, #with_constraints
                                         uncertaintyParams,
-                                        cplex_timeout,
+                                        float(cplex_timeout),
                                         None, # TransitionClassifier
-                                        pgmlink.ConsTrackingSolverType.CplexSolver,
+                                        solverType,
                                         trainingToHardConstraints,
-                                        1) # default: False
+                                        1) # num threads
 
         # will be needed for python defined TRANSITION function
         # consTrackerParameters.register_transition_func(self.track_transition_func)
@@ -475,8 +488,8 @@ class OpStructuredTracking(OpTrackingBase):
                     consTrackerParameters,
                     coordinate_map.get(),
                     float(ep_gap),
-                    transWeight,
-                    withTracklets,
+                    float(transWeight),
+                    bool(withTracklets),
                     ndim,
                     self.transition_parameter,
                     max_traxel_id_at,
@@ -498,14 +511,37 @@ class OpStructuredTracking(OpTrackingBase):
         self.EventsVector.setValue(events, check_changed=False)
         self.RelabeledImage.setDirty()
 
-        merger_layer_idx = self.parent.parent.trackingApplet._gui.currentGui().layerstack.findMatchingIndex(lambda x: x.name == "Merger")
-        tracking_layer_idx = self.parent.parent.trackingApplet._gui.currentGui().layerstack.findMatchingIndex(lambda x: x.name == "Tracking")
-        if 'withMergerResolution' in parameters.keys() and not parameters['withMergerResolution']:
-            self.parent.parent.trackingApplet._gui.currentGui().layerstack[merger_layer_idx].colorTable = \
-                self.parent.parent.trackingApplet._gui.currentGui().merger_colortable
+        if not withBatchProcessing:
+            merger_layer_idx = self.parent.parent.trackingApplet._gui.currentGui().layerstack.findMatchingIndex(lambda x: x.name == "Merger")
+            tracking_layer_idx = self.parent.parent.trackingApplet._gui.currentGui().layerstack.findMatchingIndex(lambda x: x.name == "Tracking")
+            if 'withMergerResolution' in parameters.keys() and not parameters['withMergerResolution']:
+                self.parent.parent.trackingApplet._gui.currentGui().layerstack[merger_layer_idx].colorTable = \
+                    self.parent.parent.trackingApplet._gui.currentGui().merger_colortable
+            else:
+                self.parent.parent.trackingApplet._gui.currentGui().layerstack[merger_layer_idx].colorTable = \
+                    self.parent.parent.trackingApplet._gui.currentGui().tracking_colortable
+
+    @staticmethod
+    def getPgmlinkSolverType(solverName):
+        if solverName == "ILP":
+            # select solver type
+            if hasattr(pgmlink.ConsTrackingSolverType, "CplexSolver"):
+                solver = pgmlink.ConsTrackingSolverType.CplexSolver
+            else:
+                raise AssertionError("Cannot select ILP solver if pgmlink was compiled without ILP support")
+        elif solverName == "Magnusson":
+            if hasattr(pgmlink.ConsTrackingSolverType, "DynProgSolver"):
+                solver = pgmlink.ConsTrackingSolverType.DynProgSolver
+            else:
+                raise AssertionError("Cannot select Magnusson solver if pgmlink was compiled without Magnusson support")
+        elif solverName == "Flow":
+            if hasattr(pgmlink.ConsTrackingSolverType, "FlowSolver"):
+                solver = pgmlink.ConsTrackingSolverType.FlowSolver
+            else:
+                raise AssertionError("Cannot select Flow solver if pgmlink was compiled without Flow support")
         else:
-            self.parent.parent.trackingApplet._gui.currentGui().layerstack[merger_layer_idx].colorTable = \
-                self.parent.parent.trackingApplet._gui.currentGui().tracking_colortable
+            raise ValueError("Unknown solver {} selected".format(solverName))
+        return solver
 
     def track_transition_func(self, traxel_1, traxel_2, state):
         return self.transitionWeight * self.track_transition_func_no_weight(traxel_1, traxel_2, state)
@@ -680,7 +716,7 @@ class OpStructuredTracking(OpTrackingBase):
         :return:
         """
 
-        assert lane_index == 0, "This has only been tested in tracking workflows with a single image."
+        #assert lane_index == 0, "This has only been tested in tracking workflows with a single image."
 
         with_divisions = self.Parameters.value["withDivisions"] if self.Parameters.ready() else False
         with_merger_resolution = self.Parameters.value["withMergerResolution"] if self.Parameters.ready() else False
