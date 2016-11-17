@@ -203,6 +203,7 @@ class ExportObjectInfoDialog(QDialog):
             if not self.is_valid_path(path):
                 title = "Warning"
                 text = "No file extension or invalid file extension ( %s )\nAllowed: %s"
+                match = path.rsplit(".", 1)
                 if len(match) == 1:
                     ext = "<none>"
                 else:

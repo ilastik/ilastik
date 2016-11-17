@@ -29,6 +29,7 @@ traceLogger = logging.getLogger('TRACE.' + __name__)
 import numpy
 
 #PyQt
+from PyQt4.QtCore import Qt
 from PyQt4.QtGui import *
 from PyQt4 import uic
 
@@ -40,7 +41,7 @@ from lazyflow.operators import OpSingleChannelSelector, OpWrapSlot
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
 #volumina
-from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ColortableLayer, LayerStackModel, generateRandomColors
+from volumina.api import LazyflowSource, GrayscaleLayer, RGBALayer, ColortableLayer, AlphaModulatedLayer, LayerStackModel, generateRandomColors
 from volumina.volumeEditor import VolumeEditor
 from volumina.utility import ShortcutManager
 from volumina.interpreter import ClickReportingInterpreter
@@ -290,6 +291,8 @@ class LayerViewerGui(QWidget):
             return cls._create_rgba_layer_from_slot(slot, numChannels, lastChannelIsAlpha)
         elif display_mode == "random-colortable":
             return cls._create_random_colortable_layer_from_slot(slot)
+        elif display_mode == "alpha-modulated":
+            return cls._create_alpha_modulated_layer_from_slot(slot)
         elif display_mode == "binary-mask":
             return cls._create_binary_mask_layer_from_slot(slot)
         else:
@@ -310,6 +313,14 @@ class LayerViewerGui(QWidget):
         colortable = generateRandomColors(num_colors, clamp={'v': 1.0, 's' : 0.5}, zeroIsTransparent=True)
         layer = ColortableLayer(LazyflowSource(slot), colortable)
         layer.colortableIsRandom = True
+        return layer
+
+    @classmethod
+    def _create_alpha_modulated_layer_from_slot(cls, slot):
+        layer = AlphaModulatedLayer( LazyflowSource(slot),
+                                     tintColor=QColor( Qt.cyan ),
+                                     range=(0.0, 1.0),
+                                     normalize=(0.0, 1.0) )
         return layer
 
     @classmethod

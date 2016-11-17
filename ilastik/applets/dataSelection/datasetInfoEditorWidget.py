@@ -870,6 +870,7 @@ class DatasetInfoEditorWidget(QDialog):
         self.displayModeComboBox.addItem("Grayscale", userData="grayscale")
         self.displayModeComboBox.addItem("RGBA", userData="rgba")
         self.displayModeComboBox.addItem("Random Colortable", userData="random-colortable")
+        self.displayModeComboBox.addItem("Alpha Modulated", userData="alpha-modulated")
         self.displayModeComboBox.addItem("Binary Mask", userData="binary-mask")
     
     def _initNormalizeDisplayCombo(self):
