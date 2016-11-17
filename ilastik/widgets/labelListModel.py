@@ -69,7 +69,7 @@ class Label(ListElement):
 class LabelWithNumber(Label, ListElementWithNumber):
     """
     used in watershedLabelingGui.py
-    to see the value/number of the label, with which will be drawn
+    to see the value/number of the label, with which the label will be drawn
     """
     def __init__(self, number, name, color, parent = None, pmapColor=None):
         #ListElementWithNumber: see widgets->listModel.py
@@ -198,6 +198,7 @@ class LabelListModelWithNumber(LabelListModel, ListModel):
         Delete = 3
         
         ncols  = 4
+
 
     def data(self, index, role):
         #handle the case of the Number

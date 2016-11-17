@@ -14,7 +14,7 @@ from lazyflow.operators import OpBlockedArrayCache, OpValueCache
 from lazyflow.operators.generic import OpPixelOperator, OpSingleChannelSelector
 #for the LabelPipeline
 from lazyflow.operators import OpCompressedUserLabelArray
-from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPipeline
+#from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPipeline
 
 
 
@@ -34,8 +34,11 @@ class OpWatershedSegmentation(Operator):
     #CorrectedSeedsIn is a ndarray, which has the value of the Seeds-InputSlot, 
     #which can be reseted every time the user wants this to do
     #also ideal to use for drawing Labels into
-    CorrectedSeedsIn            = InputSlot() 
-    CorrectedSeedsOut           = InputSlot() 
+    CorrectedSeedsIn            = InputSlot(optional=True) 
+    #CorrectedSeedsOut           = InputSlot() 
+
+    #for testing
+    #CorrectedSeedsInTemp            = InputSlot(optional=True) 
 
     #CorrectedSeedsIn = InputSlot(value=0)
 
@@ -51,9 +54,13 @@ class OpWatershedSegmentation(Operator):
     ############################################################
     #for the labeling
     #CorrectedSeedsOut    = OutputSlot(level=1) # Labels from the user
-    #CorrectedSeedsOut    = OutputSlot() # Labels from the user
-    NonzeroLabelBlocks  = OutputSlot(level=1) # A list if slices that contain non-zero label values
+    CorrectedSeedsOut   = OutputSlot() # Labels from the user
+    NonzeroLabelBlocks  = OutputSlot() # A list if slices that contain non-zero label values
 
+    Projection2D        = OutputSlot()
+
+    #for testing
+    #CorrectedSeedsOutTemp   = OutputSlot() # Labels from the user
 
     # GUI-only (not part of the pipeline, but saved to the project)
     LabelNames = OutputSlot()
@@ -93,25 +100,49 @@ class OpWatershedSegmentation(Operator):
         ############################################################
         # OpLabelPipeline setup
         ############################################################
-        """
         # Hook up Labeling Pipeline
         #self.opLabelPipeline = OpMultiLaneWrapper( OpLabelPipeline, parent=self, broadcastingSlotNames=['DeleteLabel'] )
         self.opLabelPipeline = OpLabelPipeline(parent=self)
         self.opLabelPipeline.RawImage.connect( self.RawData )
         self.opLabelPipeline.LabelInput.connect( self.CorrectedSeedsIn )
+        #self.opLabelPipeline.LabelInput.connect( self.Seeds )
+        #for testing
+        #self.opLabelPipeline.LabelInput.connect( self.CorrectedSeedsInTemp )
         self.opLabelPipeline.DeleteLabel.setValue( -1 )
 
         #connect the output slot CorrectedSeeds with the Output of the LabelPipeline
         #self.CorrectedSeedsOut.connect(     self.opLabelPipeline.Output, permit_distant_connection=True )
+
+
         self.CorrectedSeedsOut.connect(     self.opLabelPipeline.Output )
+        #for testing
+        #self.CorrectedSeedsOutTemp.connect(     self.opLabelPipeline.Output )
         self.NonzeroLabelBlocks.connect(    self.opLabelPipeline.nonzeroBlocks )
         """
         #TODO - doesn't work either
         #test this here:
-        opLabelCache = OpCompressedUserLabelArray(parent=self)
-        opLabelCache.Input.connect(self.CorrectedSeedsIn)
-        self.CorrectedSeedsOut.connect(opLabelCache.Output)
+        '''
+        import pdb
+        pdb.set_trace()
+        '''
 
+        print self.CorrectedSeedsOut
+        self.opLabelCache = OpCompressedUserLabelArray(parent=self)
+        #set the inputslots for opLabelCache
+        self.opLabelCache.Input.connect(self.CorrectedSeedsIn)
+        self.opLabelCache.blockShape.setValue(self.Seeds.meta.shape)
+        self.opLabelCache.eraser.setValue(255)
+        self.opLabelCache.deleteLabel.setValue(-1)
+        #set the outputslots for opLabelCache
+        self.CorrectedSeedsOut.connect(     self.opLabelCache.Output)
+        self.NonzeroLabelBlocks.connect(    self.opLabelCache.nonzeroBlocks )
+        self.Projection2D.connect(    self.opLabelCache.Projection2D )
+        #don't use it here, just for testing
+        self.CorrectedSeedsOut._setReady()
+        print self.CorrectedSeedsOut
+        print self.CorrectedSeedsOut.meta
+
+        """
 
 
     def setupOutputs(self):
@@ -171,6 +202,9 @@ class OpWatershedSegmentation(Operator):
         #TODO for watershed calculations
         #if slot is not self.EnableDebugOutputs:
             #self.Superpixels.setDirty()
+
+    def setInSlot(self, slot, subindex, roi, value):
+        pass
 
 '''
 class OpCachedWatershedSegmentation(Operator):
@@ -262,6 +296,7 @@ class OpCachedWatershedSegmentation(Operator):
 
 
 '''
+'''
 
 #copied form pixelclassification
 class OpLabelPipeline( Operator ):
@@ -285,18 +320,20 @@ class OpLabelPipeline( Operator ):
         # Connect external outputs to their internal sources
         self.Output.connect( self.opLabelArray.Output )
         self.nonzeroBlocks.connect( self.opLabelArray.nonzeroBlocks )
-    
+
     def setupOutputs(self):
         tagged_shape = self.RawImage.meta.getTaggedShape()
         # labels are created for one channel (i.e. the label) and only in the
         # current time slice, so we can set both c and t to 1
+
+        #TODO has no effect to CorrectedSeedsOut right now
         tagged_shape['c'] = 1
         if 't' in tagged_shape:
             tagged_shape['t'] = 1
-        
         # Aim for blocks that are roughly 1MB
         block_shape = determineBlockShape( tagged_shape.values(), 1e6 )
         self.opLabelArray.blockShape.setValue( block_shape )
+        
 
     def setInSlot(self, slot, subindex, roi, value):
         # Nothing to do here: All inputs that support __setitem__
@@ -309,4 +346,5 @@ class OpLabelPipeline( Operator ):
     def propagateDirty(self, slot, subindex, roi):
         # Our output changes when the input changed shape, not when it becomes dirty.
         pass    
+'''
 '''

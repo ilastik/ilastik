@@ -123,7 +123,9 @@ class WatershedSegmentationWorkflow(Workflow):
         opWatershedSegmentation.RawData.connect(    opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
         opWatershedSegmentation.Boundaries.connect( opDataSelection.ImageGroup[self.DATA_ROLE_BOUNDARIES] )
         opWatershedSegmentation.Seeds.connect(      opDataSelection.ImageGroup[self.DATA_ROLE_SEEDS] )
-        #opWatershedSegmentation.CorrectedSeedsIn.connect(      opDataSelection.ImageGroup[self.DATA_ROLE_SEEDS] )
+        opWatershedSegmentation.CorrectedSeedsIn.connect(      opDataSelection.ImageGroup[self.DATA_ROLE_SEEDS] )
+        #for testing
+        #opWatershedSegmentation.CorrectedSeedsInTemp.connect(      opDataSelection.ImageGroup[self.DATA_ROLE_SEEDS] )
 
         # DataExport inputs
         opDataExport.RawData.connect(       opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )

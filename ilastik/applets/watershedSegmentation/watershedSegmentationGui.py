@@ -36,6 +36,7 @@ from PyQt4.Qt import QCheckBox, QLineEdit, QButtonGroup, QRadioButton, pyqtSlot
 from ilastik.utility.gui import threadRouted
 from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
 from volumina.layer import GrayscaleLayer, ColortableLayer, generateRandomColors
+import volumina.colortables as colortables
 #from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.watershedLabeling.watershedLabelingGui import WatershedLabelingGui
 
@@ -79,15 +80,18 @@ class WatershedSegmentationGui(WatershedLabelingGui):
     
     def __init__(self, parentApplet, topLevelOperatorView, watershedLabelingDrawerUiPath=None ):
 
+
+        self._colortable = colortables.create_random_8bit()
+
         #init the slots
         labelSlots                  = WatershedLabelingGui.LabelingSlots()
         labelSlots.labelInput       = topLevelOperatorView.CorrectedSeedsIn
         labelSlots.labelOutput      = topLevelOperatorView.CorrectedSeedsOut
         labelSlots.labelEraserValue = topLevelOperatorView.opLabelPipeline.opLabelArray.eraser
         labelSlots.labelDelete      = topLevelOperatorView.opLabelPipeline.DeleteLabel
+
         labelSlots.labelNames       = topLevelOperatorView.LabelNames
 
-        self.RawDataName = "Seeds"
         self.__cleanup_fns = []
 
         self._currently_updating = False
@@ -116,7 +120,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         '''
 
 
-        #pixel value functionality
+        # pixel value functionality
         self._labelControlUi.pixelValueCheckBox.stateChanged.connect(self.toggleConnectionPixelValue)
 
         op = self.topLevelOperatorView 
@@ -125,14 +129,18 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         ############################################################
 
 
+        # resetSeedsPushButton functionality added by connecting signal with slot
+        self._labelControlUi.resetSeedsPushButton.clicked.connect(self.resetLabelsToCorrectedSeedsIn)
 
-                
 
-        # init the CorrectedSeedsIn with the ndarray of Seeds
-        self.resetCorrectedSeedsInFromSeeds()
+        # import the Labels from CorrectedSeedsIn
+        self.importLabelsfromCorrectedSeedsIn()
+            
 
+        # TODO
+        # maybe not needed anymore with importLabels
         # add Seeds for drawing and illustration
-        self.addAsManyLabelsAsMaximumValueOfCorrectedSeedsIn()
+        #self.addAsManyLabelsAsMaximumValueOfCorrectedSeedsIn()
 
 
         '''
@@ -352,6 +360,16 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         drawer_layout.addSpacerItem( QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding) )
 
     '''
+
+
+
+
+
+
+
+
+
+
     @contextmanager
     def set_updating(self):
         assert not self._currently_updating
@@ -450,7 +468,19 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
         """
 
+        # Base class provides the label layer.
+        '''
+        import pdb
+        pdb.set_trace()
+        '''
+        #needed to add here. otherwise the reset button doesn't work well
+        layers = super(WatershedSegmentationGui, self).setupLayers()
+        #layers[0].visible = False
+        #remove the Label-Layer, because it is not needed here
         layers = []
+
+
+
         op = self.topLevelOperatorView
 
         '''
@@ -489,6 +519,14 @@ class WatershedSegmentationGui(WatershedLabelingGui):
             layers.append(layer)
             del layer
         '''
+        # Raw Data (color)
+        if op.RawData.ready():
+            layer = self.createStandardLayerFromSlot( op.RawData )
+            layer.name = "Raw Data"
+            layer.visible = False
+            layer.opacity = 1.0
+            layers.append(layer)
+            del layer
 
         #Boundaries
         if op.Boundaries.ready():
@@ -499,18 +537,10 @@ class WatershedSegmentationGui(WatershedLabelingGui):
             layers.append(layer)
             del layer
 
-        # Raw Data (color)
-        if op.RawData.ready():
-            layer = self.createStandardLayerFromSlot( op.RawData )
-            layer.name = "Raw Data"
-            layer.visible = False
-            layer.opacity = 1.0
-            layers.append(layer)
-            del layer
 
-        #TODO color?
         if op.Seeds.ready():
-            layer = self._create_grayscale_layer_from_slot( op.Seeds, op.Seeds.meta.getTaggedShape()['c'] )
+            layer = self._create_8bit_ordered_random_colortable_layer_from_slot( op.CorrectedSeedsOut )
+            #layer = self._create_grayscale_layer_from_slot( op.Seeds, op.Seeds.meta.getTaggedShape()['c'] )
             #changing the Channel in the layer, 
             #changes the RawData Channel in the applet gui as well
             #layer.channelChanged.connect(self.channel_box.setValue)
@@ -524,28 +554,27 @@ class WatershedSegmentationGui(WatershedLabelingGui):
             del layer
 
 
-        #TODO color?
-        if op.CorrectedSeedsIn.ready():
-            layer = self.createStandardLayerFromSlot( op.CorrectedSeedsIn )
-            #layer = self._create_grayscale_layer_from_slot( op.CorrectedSeedsIn, op.CorrectedSeedsIn.meta.getTaggedShape()['c'] )
-            #changing the Channel in the layer, 
-            #changes the RawData Channel in the applet gui as well
-            #layer.channelChanged.connect(self.channel_box.setValue)
-            #setValue() will emit valueChanged() if the new value is different from the old one.
-            #not necessary: self.channel_box.valueChanged.emit(i)
-
-            layer.name = "Corrected Seeds"
-            layer.visible = True
-            layer.opacity = 1.0
-            layers.append(layer)
-            del layer
-        return layers
+        '''
+        import pdb
+        pdb.set_trace()
+        '''
 
         '''
-        #TODO color?
+        # Labels
+        labellayer, labelsrc = self.createLabelLayer(direct=True)
+        if labellayer is not None:
+            labellayer._allowToggleVisible = False
+            layers.append(labellayer)
+            # Tell the editor where to draw label data
+            self.editor.setLabelSink(labelsrc)
+        '''
+
+
         if op.CorrectedSeedsOut.ready():
-            layer = self.createStandardLayerFromSlot( op.CorrectedSeedsOut )
-            #layer = self._create_grayscale_layer_from_slot( op.CorrectedSeedsIn, op.CorrectedSeedsIn.meta.getTaggedShape()['c'] )
+            #layer = ColortableLayer( op.CorrectedSeedsOut, colorTable = self._colorTable8bit  )
+            #layer = self.createStandardLayerFromSlot( op.CorrectedSeedsOut )
+            #layer = self._create_grayscale_layer_from_slot( op.CorrectedSeedsOut, op.CorrectedSeedsOut.meta.getTaggedShape()['c'] )
+            layer = self._create_8bit_ordered_random_colortable_layer_from_slot( op.CorrectedSeedsOut )
             #changing the Channel in the layer, 
             #changes the RawData Channel in the applet gui as well
             #layer.channelChanged.connect(self.channel_box.setValue)
@@ -557,34 +586,99 @@ class WatershedSegmentationGui(WatershedLabelingGui):
             layer.opacity = 1.0
             layers.append(layer)
             del layer
-        else:
-            print op.CorrectedSeedsOut
-            logging.warning("CorrectedSeedsOut not ready")
-        '''
-
 
         return layers
 
 
 
+
+    ############################################################
+    # Labelmanagement: Import, Delete, Reset
+    ############################################################
+
+
+    def removeLabelsFromCacheAndList(self):
+        """
+        Remove every Label that is in the labelList and its value from cache.
+        Doesn't effect Cached-values that don't have a Label in the LabelList. But this should never happen
+        """
+
+        op = self.topLevelOperatorView
+        rows = self._labelControlUi.labelListModel.rowCount()
+        for i in range( rows ):
+            #get the value/number of the label, that is now the first one in the list
+            #print self._labelControlUi.labelListModel.__getitem__(0)._number
+            value = self._labelControlUi.labelListModel.__getitem__(0)._number
+            #delete the label with the value x from cache, means reset value x to zero 
+            op.opLabelPipeline.opLabelArray.clearLabel( value )
+            #alternatively use:
+            #op.opLabelPipeline.DeleteLabel.setValue( 2 )
+
+            #remove the Label with value x from the list of available Labels
+            #always take first one for simplicity
+            self._labelControlUi.labelListModel.removeRow(0)
+
+
+    def importLabels(self, slot):
+        """
+        original version from: pixelClassificationGui.importLabels
+        Add the data included in the slot to the LabelArray by ingestData
+        Add as many Labels as long as the tallest Label-Number and the ones before have a 
+        Label to draw with
+
+        :param slot:        slot with the data, that includes the seeds
+        """
+        op = self.topLevelOperatorView 
+        # Load the data into the cache
+        # Returns: the max label found in the slot.
+        new_max = op.opLabelPipeline.opLabelArray.ingestData( slot )
+
+        # Add to the list of label names if there's a new max label with correct colors
+        old_names = op.LabelNames.value
+        old_max = len(old_names)
+        if new_max > old_max:
+            new_names = old_names + map( lambda x: "Seed {}".format(x), 
+                                         range(old_max+1, new_max+1) )
+            #add the new Labelnames
+            op.LabelNames.setValue(new_names)
+
+            #set the colorvalue and the color that is displayed in the labellist to the correct color
+
+            # Use the 8bit colortable that is used everywhere else
+            # means: for new labels, for layer displaying etc
+            default_colors = self._colortable
+            label_colors = op.LabelColors.value
+            pmap_colors = op.PmapColors.value
+            
+            #correct the color here
+            op.LabelColors.setValue( label_colors + default_colors[old_max:new_max] )
+            op.PmapColors.setValue( pmap_colors + default_colors[old_max:new_max] )
+
+
+    def importLabelsfromCorrectedSeedsIn(self):
+        """
+        import the Labels from CorrectedSeedsIn
+        """
+        op = self.topLevelOperatorView 
+        self.importLabels( op.CorrectedSeedsIn )
+
+
+    @pyqtSlot()
+    def resetLabelsToCorrectedSeedsIn(self):
+        """
+        wipe the LabelCache and LabelList
+        import Labels from CorrectedSeedsIn Slot
+        """
+        self.removeLabelsFromCacheAndList()
+        # Finally, import the labels
+        self.importLabelsfromCorrectedSeedsIn()
+
+    ############################################################
+    # for pixel value displaying
+    ############################################################
+
     #slightly faster with pyqtSlot
     @pyqtSlot(int)
-    def on_SpinBox_valueChanged_depricated(self, i):
-        """
-        executed when x,y,z,t or c is changed
-        get the current values and change the view for the pixel-value
-        The spinbox has updated its value, 
-        so the new value i (of signal) == x.SpinBox.value() (for y,z as well)
-        i remains unused
-
-        """
-        x = self.volumeEditorWidget.quadViewStatusBar.xSpinBox.value()
-        y = self.volumeEditorWidget.quadViewStatusBar.ySpinBox.value()
-        z = self.volumeEditorWidget.quadViewStatusBar.zSpinBox.value()
-        t = self.volumeEditorWidget.quadViewStatusBar.timeSpinBox.value()
-        c = self.channel_box.value()
-        self.changeToNewPixelValue(x, y, z, t, c)
-
     def on_SpinBox_valueChanged(self, i):
         """
         executed when x,y,z or t is changed
@@ -610,8 +704,8 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         set the text of the gui to that value
         """
         op = self.topLevelOperatorView
-        #TODO change Seeds to CorrectedSeedsIn
-        data = op.CorrectedSeedsIn
+        #TODO change Seeds to CorrectedSeedsIn or something else
+        data = op.CorrectedSeedsOut
         #data = op.Seeds
         tags = data.meta.axistags
         if data.ready():
@@ -664,10 +758,6 @@ class WatershedSegmentationGui(WatershedLabelingGui):
             """
 
 
-
-
-
-
     @pyqtSlot()
     def toggleConnectionPixelValue(self):
         """
@@ -715,11 +805,33 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
 
 
+            
+    ############################################################
+    # depricated stuff
+    ############################################################
 
-
-
-    def addAsManyLabelsAsMaximumValueOfCorrectedSeedsIn(self):
+    #slightly faster with pyqtSlot
+    @pyqtSlot(int)
+    def on_SpinBox_valueChanged_depricated(self, i):
         """
+        executed when x,y,z,t or c is changed
+        get the current values and change the view for the pixel-value
+        The spinbox has updated its value, 
+        so the new value i (of signal) == x.SpinBox.value() (for y,z as well)
+        i remains unused
+
+        """
+        x = self.volumeEditorWidget.quadViewStatusBar.xSpinBox.value()
+        y = self.volumeEditorWidget.quadViewStatusBar.ySpinBox.value()
+        z = self.volumeEditorWidget.quadViewStatusBar.zSpinBox.value()
+        t = self.volumeEditorWidget.quadViewStatusBar.timeSpinBox.value()
+        c = self.channel_box.value()
+        self.changeToNewPixelValue(x, y, z, t, c)
+
+
+    def addAsManyLabelsAsMaximumValueOfCorrectedSeedsIn_depricated(self):
+        """
+        depricated: because not needed anymore. Everything done in importLabel
         get the maximum value in CorrectedSeedsIn
         add as many Labels (Seeds for Labeling) as the Maximum value
         """
@@ -731,14 +843,20 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         for i in range(arrayMax):
             super( WatershedSegmentationGui, self )._addNewLabel()
 
-    def resetCorrectedSeedsInFromSeeds(self):
+    @pyqtSlot()
+    def resetCorrectedSeedsInFromSeeds_depricated(self):
         """
+        depricated: because doesn't work
+
         reset the InputSlot CorrectedSeedsIn to the Seeds
         if Seeds is not ready, then initialize CorrectedSeedsIn with an array 
         of the right dimensions and values of zero (=background)
         CorrectedSeedsIn is connected to the OpLabelPipeline, so it is loaded into the cache
         """
 
+        #TODO has no effect to CorrectedSeedsOut right now
+
+        #print "In Function: resetCorrectedSeedsInFromSeeds"
         op = self.topLevelOperatorView 
         if op.Seeds.ready():
             # Read from file
@@ -754,3 +872,4 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         #like the RawData (only one channel) and be a ndarray with values = 0
         #FIXME
             raise NotImplementedError
+

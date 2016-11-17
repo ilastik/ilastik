@@ -894,6 +894,7 @@ class WatershedLabelingGui(LabelingGui):
 
             return labellayer, labelsrc
     '''
+    '''
 
     def setupLayers(self):
         """
@@ -959,3 +960,4 @@ class WatershedLabelingGui(LabelingGui):
         assume that all previous cell counts are given.
         """
         self._allowDeleteLastLabelOnly = enabled
+    '''

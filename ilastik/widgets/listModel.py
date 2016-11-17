@@ -52,7 +52,7 @@ class ListElement(QObject):
 class ListElementWithNumber(ListElement):
     """
     used in watershedLabelingGui.py
-    to see the value/number of the label, with which will be drawn
+    to see the value/number of the label, with which the label will be drawn
     """
     def __init__(self, number, name, parent = None):
         QObject.__init__(self, parent)
