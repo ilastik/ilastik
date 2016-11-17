@@ -101,6 +101,9 @@ class TrackingBaseGui( LayerViewerGui ):
                 merger_ct = self.merger_colortable
             else:
                 merger_ct = self.tracking_colortable
+                
+            # Using same color table for tracking with and without mergers (Is there any reason for using different color tables?)
+            merger_ct = self.tracking_colortable
 
             if self.topLevelOperatorView.MergerCachedOutput.ready():
                 self.mergersrc = LazyflowSource( self.topLevelOperatorView.MergerCachedOutput )

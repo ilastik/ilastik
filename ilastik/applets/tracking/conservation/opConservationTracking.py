@@ -418,16 +418,6 @@ class OpConservationTracking(Operator, ExportingOperator):
         # Get events vector (only used when saving old h5 events file)
         events = self._getEventsVector(result, model)
         self.EventsVector.setValue(events, check_changed=False)
-        
-        if not withBatchProcessing:
-            merger_layer_idx = self.parent.parent.trackingApplet._gui.currentGui().layerstack.findMatchingIndex(lambda x: x.name == "Merger")
-            tracking_layer_idx = self.parent.parent.trackingApplet._gui.currentGui().layerstack.findMatchingIndex(lambda x: x.name == "Tracking")
-            if 'withMergerResolution' in parameters.keys() and not parameters['withMergerResolution']:
-                self.parent.parent.trackingApplet._gui.currentGui().layerstack[merger_layer_idx].colorTable = \
-                    self.parent.parent.trackingApplet._gui.currentGui().merger_colortable
-            else:
-                self.parent.parent.trackingApplet._gui.currentGui().layerstack[merger_layer_idx].colorTable = \
-                    self.parent.parent.trackingApplet._gui.currentGui().tracking_colortable
 
     def propagateDirty(self, inputSlot, subindex, roi):
         if inputSlot is self.LabelImage:
