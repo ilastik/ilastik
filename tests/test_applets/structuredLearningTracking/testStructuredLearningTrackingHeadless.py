@@ -38,9 +38,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 class TestStructuredLearningTrackingHeadless(object):    
-    PROJECT_FILE = 'data/inputdata/mitocheckStructuredLearningTracking.ilp'
+    PROJECT_FILE = 'data/inputdata/mitocheckTrackingWithLearningFromSegmentation.ilp'
     RAW_DATA_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t.h5'
-    BINARY_SEGMENTATION_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_export.h5'
+    PREDICTION_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_export.h5'
+    BINARY_SEGMENTATION_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_Simple-Segmentation.h5'
 
     @classmethod
     def setupClass(cls):
@@ -59,7 +60,7 @@ class TestStructuredLearningTrackingHeadless(object):
 
     @classmethod
     def teardownClass(cls):
-        removeFiles = ['data/inputdata/smallVideo_Tracking-Result.h5', 'data/inputdata/smallVideo-exported_data_table.csv']
+        removeFiles = []#['data/inputdata/mitocheckStructuredLearningTracking_Tracking-Weights.h5','data/inputdata/mitocheckStructuredLearningTracking_Tracking-Result.h5']
         
         # Clean up: Delete any test files we generated
         for f in removeFiles:
@@ -71,7 +72,7 @@ class TestStructuredLearningTrackingHeadless(object):
 
 
     @timeLogged(logger)
-    def testTrackingHeadless(self):
+    def testStructuredLearningTrackingHeadless(self):
         # Skip test if structured learning tracking can't be imported. If it fails the problem is most likely that CPLEX is not installed.
         try:
             import ilastik.workflows.tracking.structured
@@ -86,8 +87,10 @@ class TestStructuredLearningTrackingHeadless(object):
         args = ' --project='+self.PROJECT_FILE
         args += ' --headless'
         args += ' --export_source=Tracking-Result'
-        args += ' --raw_data '+self.RAW_DATA_FILE+'/data'
-        args += ' --prediction_maps '+self.BINARY_SEGMENTATION_FILE+'/exported_data'
+        #args += ' --export_weights=_Tracking-Weights'
+        args += ' --raw_data '+self.RAW_DATA_FILE#+'/data'
+        #args += ' --prediction_maps '+self.PREDICTION_FILE#+'/exported_data'
+        args += ' --binary_image '+self.BINARY_SEGMENTATION_FILE#+'/exported_data'
 
         sys.argv = ['ilastik.py'] # Clear the existing commandline args so it looks like we're starting fresh.
         sys.argv += args.split()
