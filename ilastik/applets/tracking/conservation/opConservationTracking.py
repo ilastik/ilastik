@@ -394,11 +394,11 @@ class OpConservationTracking(Operator, ExportingOperator):
                     
                 # Compute object features, re-run flow solver, update model and result, and get merger dictionary
                 resolvedMergersDict = mergerResolver.run()
-                
+
+        # Set value of resolved mergers slot (Should be empty if mergers are disabled)         
         self.ResolvedMergers.setValue(resolvedMergersDict, check_changed=False)
                 
-        self.MergerOutput.setDirty()
-
+        # Computing tracking lineage IDs from within Hytra
         logger.info("Computing hypotheses graph lineages")
         hypothesesGraph.computeLineage()
 
@@ -411,8 +411,9 @@ class OpConservationTracking(Operator, ExportingOperator):
         hypothesesGraph = hypothesesGraph.referenceTraxelGraph if withTracklets else hypothesesGraph
         self.HypothesesGraph.setValue(hypothesesGraph, check_changed=False)
 
-        # Refresh (execute) output slots
+        # Set all the output slots dirty (See execute() function)
         self.Output.setDirty()
+        self.MergerOutput.setDirty()
         self.RelabeledImage.setDirty()
 
         # Get events vector (only used when saving old h5 events file)
@@ -492,7 +493,6 @@ class OpConservationTracking(Operator, ExportingOperator):
                 mergerRes = {}
                 
                 for idx in mergersPerTimestep[timestep]:
-                    node = (int(timestep), idx)
                     mergerRes[idx] = resolvedMergersDict[int(timestep)][idx]['newIds']
                     
                 events[timestep]['res'] = mergerRes
