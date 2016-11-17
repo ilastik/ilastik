@@ -19,7 +19,8 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.appletSerializer import AppletSerializer, SerialSlot, SerialDictSlot, deleteIfPresent,\
-    getOrCreateGroup, SerialHdf5BlockSlot, SerialPickleableSlot
+    getOrCreateGroup, SerialHdf5BlockSlot, SerialPickleableSlot, SerialPickledValueSlot
+from ilastik.applets.tracking.base.trackingSerializer import TrackingSerializer
 
 import pgmlink
 
@@ -89,7 +90,7 @@ class SerialLabelsSlot(SerialSlot):
         self.dirty = False
         
 class StructuredTrackingSerializer(AppletSerializer):
-    
+
     def __init__(self, topLevelOperator, projectFileGroupName):
         slots = [ SerialDictSlot(topLevelOperator.Parameters, selfdepends=True),
                  SerialHdf5BlockSlot(topLevelOperator.OutputHdf5,
@@ -98,6 +99,7 @@ class StructuredTrackingSerializer(AppletSerializer):
                                      name="CachedOutput"),
                   SerialDictSlot(topLevelOperator.EventsVector, transform=str, selfdepends=True),
                   SerialDictSlot(topLevelOperator.FilteredLabels, transform=str, selfdepends=True),
+                  SerialPickledValueSlot(topLevelOperator.ExportSettings),
                   SerialSlot(topLevelOperator.DivisionWeight),
                   SerialSlot(topLevelOperator.DetectionWeight),
                   SerialSlot(topLevelOperator.TransitionWeight),
@@ -105,7 +107,7 @@ class StructuredTrackingSerializer(AppletSerializer):
                   SerialSlot(topLevelOperator.DisappearanceWeight),
                   SerialSlot(topLevelOperator.MaxNumObjOut)
         ]
-    
+
         if 'MergerOutput' in topLevelOperator.outputs:
             slots.append(SerialHdf5BlockSlot(topLevelOperator.MergerOutputHdf5,
                                      topLevelOperator.MergerInputHdf5,
@@ -116,4 +118,4 @@ class StructuredTrackingSerializer(AppletSerializer):
         if 'CoordinateMap' in topLevelOperator.outputs:
             slots.append(SerialPickleableSlot(topLevelOperator.CoordinateMap, 1, pgmlink.TimestepIdCoordinateMap()))
 
-        super(StructuredTrackingSerializer, self ).__init__(projectFileGroupName, slots=slots)
+        super(StructuredTrackingSerializer, self ).__init__(projectFileGroupName, slots=slots, operator=topLevelOperator)
