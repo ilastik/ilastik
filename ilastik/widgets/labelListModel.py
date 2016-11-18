@@ -186,11 +186,13 @@ class LabelListModel(ListModel):
                                     QItemSelectionModel.Select)
 
 
+from PyQt4.QtCore import QModelIndex, pyqtSignal
 class LabelListModelWithNumber(LabelListModel, ListModel):
     """ 
     expand the LabelListModel by displaying a number which this label has
     this number could be used for drawing with the value of this number
     """
+    labelValueToBeDeleted = pyqtSignal(int)
     class ColumnID():
         Number = 0
         Color  = 1
@@ -224,3 +226,20 @@ class LabelListModelWithNumber(LabelListModel, ListModel):
             return Qt.NoItemFlags
         else:
             return LabelListModel.flags(self, index)
+
+
+
+    '''
+    '''
+    def removeRow(self, position, parent=QModelIndex()):
+        """
+        reimplemented the removeRow from superclass,
+        to emit a signal with the value of the label deleted
+        """
+        #emit signal with the value of the row, otherwise you can't get this value anymore
+        value = self._elements[position].number
+        self.labelValueToBeDeleted.emit(value)
+        #print value
+
+        super(LabelListModelWithNumber, self).removeRow(position, parent)
+

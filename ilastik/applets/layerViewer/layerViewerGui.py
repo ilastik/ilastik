@@ -358,6 +358,18 @@ class LayerViewerGui(QWidget):
         return layer
 
     @classmethod
+    def _create_8bit_ordered_random_colortable_zero_transparent_layer_from_slot(cls, slot):
+        """
+        Use the volumina random colortable 8bit
+        it includes a definite and ordered list of colors. This order is always the same
+        But the colors aren't ordered in sense of green follows blue, etc. 
+        """
+        colortable = colortables.create_random_8bit_zero_transparent()
+        layer = ColortableLayer(LazyflowSource(slot), colortable)
+        return layer
+
+
+    @classmethod
     def _create_random_colortable_layer_from_slot(cls, slot, num_colors=256):
         colortable = generateRandomColors(num_colors, clamp={'v': 1.0, 's' : 0.5}, zeroIsTransparent=True)
         layer = ColortableLayer(LazyflowSource(slot), colortable)

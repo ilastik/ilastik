@@ -55,7 +55,7 @@
         </sizepolicy>
        </property>
        <property name="text">
-        <string>&lt;b&gt;Problem specific labels:&lt;/b&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;value, color and name of seeds&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
       </widget>
      </item>

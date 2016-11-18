@@ -30,7 +30,7 @@ from ilastik.applets.batchProcessing import BatchProcessingApplet
 from lazyflow.graph import Graph
 
 class WatershedSegmentationWorkflow(Workflow):
-    workflowName = "Watershed Segmentation ['Raw Data', ' Probabilities']"
+    workflowName = "Watershed Segmentation ['Raw Data', 'Boundaries', 'Seeds (optional)']"
     workflowDescription = "A workflow that includes all watershed related applets"
     defaultAppletIndex = 0 # show DataSelection by default
 

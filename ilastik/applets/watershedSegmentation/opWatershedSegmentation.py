@@ -17,6 +17,8 @@ from lazyflow.operators import OpCompressedUserLabelArray
 #from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPipeline
 
 
+import logging
+logger = logging.getLogger(__name__)
 
 
 class OpWatershedSegmentation(Operator):
@@ -97,52 +99,62 @@ class OpWatershedSegmentation(Operator):
 
 
 
+
+
+
+
+        '''
+        # Check if all necessary InputSlots are available and ready
+        # and set CorrectedSeedsIn if not supplied
+        lst = [ self.RawData , self.Boundaries , self.Seeds , self.CorrectedSeedsIn ]
+        lst_seeds = [ self.Seeds , self.CorrectedSeedsIn ]
+        #show a debug information, so that the user knows that not all data is supplied, that is needed
+        for operator in lst:
+            if not operator.ready():
+                logger.info( "InputData: " + operator.name + " not ready")
+
+
+        for operator in lst_seeds:
+            if not operator.ready():
+                self._existingSeedsSlot = False
+                #if (not self.CorrectedSeedsIn.ready() and self.CorrectedSeedsIn.meta.shape == None ):
+                if self.Boundaries.ready():
+                    # copy the meta-data from boandaries
+                    #default_seeds_volume = self.Boundaries[:].wait()
+                    operator.meta = self.Boundaries.meta
+                    operator._value =  np.zeros(self.Boundaries.meta.shape)
+                    #print self.operator._value
+                else:
+                    logger.info( "Boundaries are not ready," +
+                        "can't init seeds and CorrectedSeedsIn with default zeros" )
+
+        '''
+        '''
+        #for debug
+        for operator in lst:
+            if operator.ready():
+                logger.info( "InputData: " + operator.name + " is ready now")
+        '''
+
+
+
+
         ############################################################
         # OpLabelPipeline setup
         ############################################################
         # Hook up Labeling Pipeline
-        #self.opLabelPipeline = OpMultiLaneWrapper( OpLabelPipeline, parent=self, broadcastingSlotNames=['DeleteLabel'] )
+        #Input
         self.opLabelPipeline = OpLabelPipeline(parent=self)
         self.opLabelPipeline.RawImage.connect( self.RawData )
         self.opLabelPipeline.LabelInput.connect( self.CorrectedSeedsIn )
-        #self.opLabelPipeline.LabelInput.connect( self.Seeds )
-        #for testing
-        #self.opLabelPipeline.LabelInput.connect( self.CorrectedSeedsInTemp )
         self.opLabelPipeline.DeleteLabel.setValue( -1 )
 
-        #connect the output slot CorrectedSeeds with the Output of the LabelPipeline
-        #self.CorrectedSeedsOut.connect(     self.opLabelPipeline.Output, permit_distant_connection=True )
+        #print self.CorrectedSeedsIn.ready()
+        #print self.opLabelPipeline.LabelInput.ready()
 
-
+        #Output
         self.CorrectedSeedsOut.connect(     self.opLabelPipeline.Output )
-        #for testing
-        #self.CorrectedSeedsOutTemp.connect(     self.opLabelPipeline.Output )
         self.NonzeroLabelBlocks.connect(    self.opLabelPipeline.nonzeroBlocks )
-        """
-        #TODO - doesn't work either
-        #test this here:
-        '''
-        import pdb
-        pdb.set_trace()
-        '''
-
-        print self.CorrectedSeedsOut
-        self.opLabelCache = OpCompressedUserLabelArray(parent=self)
-        #set the inputslots for opLabelCache
-        self.opLabelCache.Input.connect(self.CorrectedSeedsIn)
-        self.opLabelCache.blockShape.setValue(self.Seeds.meta.shape)
-        self.opLabelCache.eraser.setValue(255)
-        self.opLabelCache.deleteLabel.setValue(-1)
-        #set the outputslots for opLabelCache
-        self.CorrectedSeedsOut.connect(     self.opLabelCache.Output)
-        self.NonzeroLabelBlocks.connect(    self.opLabelCache.nonzeroBlocks )
-        self.Projection2D.connect(    self.opLabelCache.Projection2D )
-        #don't use it here, just for testing
-        self.CorrectedSeedsOut._setReady()
-        print self.CorrectedSeedsOut
-        print self.CorrectedSeedsOut.meta
-
-        """
 
 
     def setupOutputs(self):
@@ -346,5 +358,6 @@ class OpLabelPipeline( Operator ):
     def propagateDirty(self, slot, subindex, roi):
         # Our output changes when the input changed shape, not when it becomes dirty.
         pass    
+        self.Output.setDirty()
 '''
 '''

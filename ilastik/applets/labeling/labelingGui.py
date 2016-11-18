@@ -702,6 +702,9 @@ class LabelingGui(LayerViewerGui):
     def getNextPmapColor(self):
         """
         Return a QColor to use for the next label.
+        
+        in class Label in ilastik/widgets/labeListModel.py
+        if pmapColor is none, then the color for the drawing is used for the pmap
         """
         return None
 

@@ -163,7 +163,14 @@ class WatershedLabelingGui(LabelingGui):
 
         #use a random 256 color table of volumina. But leave the name unchanged for convience,
         #because otherwise lots of things need to be changed
-        self._colorTable16 = colortables.create_random_8bit()
+        self._colorTable16  = colortables.create_random_8bit_zero_transparent()
+        self._colorTable    = colortables.create_random_8bit_zero_transparent()        
+
+
+        #remember the value of a Label that shall be removed out of the LabelCache later
+        self._deleteLabelValue = None
+
+        self._labelControlUi.labelListModel.labelValueToBeDeleted.connect(self._beforeLabelRemoved)
         
         '''
         # Do have have all the slots we need?
@@ -660,6 +667,40 @@ class WatershedLabelingGui(LabelingGui):
         if hasattr(self._labelControlUi, "AddLabelButton"):
             self._labelControlUi.AddLabelButton.setEnabled(numLabels < self.maxLabelNumber)
     '''
+    '''
+    def _updateLabelList(self):
+        """
+        This function is called when the number of labels has changed without our knowledge.
+        We need to add/remove labels until we have the right number
+        """
+        # Get the number of labels in the label data
+        # (Or the number of the labels the user has added.)
+        names = self._labelingSlots.labelNames.value
+        numLabels = len(self._labelingSlots.labelNames.value)
+
+        # Add rows until we have the right number
+        while self._labelControlUi.labelListModel.rowCount() < numLabels:
+            self._addNewLabel()
+        print "updateLabelList"
+
+        # If we have too many rows, remove the rows that aren't in the list of names.
+        if self._labelControlUi.labelListModel.rowCount() > len(names):
+            indices_to_remove = []
+            for i in range(self._labelControlUi.labelListModel.rowCount()):
+                #print i
+                if self._labelControlUi.labelListModel[i].name not in names:
+                    indices_to_remove.append( i )
+        
+            for i in reversed(indices_to_remove):
+                self._labelControlUi.labelListModel.removeRow(i)
+
+        # synchronize labelNames
+        for i,n in enumerate(names):
+            self._labelControlUi.labelListModel[i].name = n
+                
+        if hasattr(self._labelControlUi, "AddLabelButton"):
+            self._labelControlUi.AddLabelButton.setEnabled(numLabels < self.maxLabelNumber)
+    '''
 
     def _defineLabel(self):
         """
@@ -733,12 +774,8 @@ class WatershedLabelingGui(LabelingGui):
         Subclasses may override this.
         Overriden
         """
-        maxNum = 0
-        for index, label in enumerate(self._labelControlUi.labelListModel):
-            nums = re.findall("\d+", label.name)
-            for n in nums:
-                maxNum = max(maxNum, int(n))
-        return "Seed {}".format(maxNum+1)
+        number = self.getNextLabelNumber()
+        return "Seed {}".format(number)
 
     def getNextLabelNumber(self):
         """
@@ -746,6 +783,8 @@ class WatershedLabelingGui(LabelingGui):
         first label =>   1
         second label => 2
         ...
+        go through all the labels and look at their number/value (not their position)
+        and return the highest number of these labels
         """
         maxNum = 0
         for index, label in enumerate(self._labelControlUi.labelListModel):
@@ -753,6 +792,18 @@ class WatershedLabelingGui(LabelingGui):
             for n in nums:
                 maxNum = max(maxNum, int(n))
         return maxNum+1
+
+    def getNextLabelColor(self):
+        """
+        Return a QColor to use for the next label.
+        Then take the color of the colortable to have common colors
+        """
+        number = self.getNextLabelNumber()
+
+        color = QColor()
+        color.setRgba(self._colorTable[number]) # First entry is transparent (for zero label)
+        return color
+
     '''
     def getNextLabelColor(self):
         """
@@ -772,6 +823,8 @@ class WatershedLabelingGui(LabelingGui):
     def getNextPmapColor(self):
         """
         Return a QColor to use for the next label.
+        in class Label in ilastik/widgets/labeListModel.py
+        if pmapColor is none, then the color for the drawing is used for the pmap
         """
         return None
 
@@ -809,7 +862,72 @@ class WatershedLabelingGui(LabelingGui):
         # Remove rows until we have the right number
         while self._labelControlUi.labelListModel.rowCount() > 0:
             self._removeLastLabel()
+    '''
 
+    #@pyqtSlot(int)
+    def _beforeLabelRemoved(self, number):
+        """
+        catch the information of the labelValue that shall be deleted from cache, 
+        because of the deletion of a label of the labelList
+        """
+        self._deleteLabelValue = number
+
+    def _onLabelRemoved(self, parent, start, end):
+        """
+        reset the focus
+        if labelnames aren't up to date with the number of labels, then:
+        delete the label with the value: _deleteLabelValue from labelCache and 
+        (this data comes from a signal, that is emitted on removing the 
+        labelListEntry in LabelListModelWithNumber)
+        delete the labeName from labeNames slot
+        """
+
+        
+        ############################################################
+        # BEGIN: copied from superclass
+        ############################################################
+
+        # Don't respond unless this actually came from the GUI
+        if self._programmaticallyRemovingLabels:
+            return
+
+        assert start == end
+        row = start
+
+        oldcount = self._labelControlUi.labelListModel.rowCount() + 1
+        logger.debug("removing label {} out of {}".format( row, oldcount ))
+
+        if self._allowDeleteLastLabelOnly:
+            # make previous label removable again
+            if oldcount >= 2:
+                self._labelControlUi.labelListModel.makeRowRemovable(oldcount - 2)
+
+        currentSelection = self._labelControlUi.labelListModel.selectedRow()
+        if currentSelection == -1:
+            # If we're deleting the currently selected row, then switch to a different row
+            self.thunkEventHandler.post( self._resetLabelSelection )
+
+        e = self._labelControlUi.labelListModel.rowCount() > 0
+        self._gui_enableLabeling(e)
+
+
+        ############################################################
+        # END: copied from superclass
+        ############################################################
+
+        # If the gui list model isn't in sync with the operator, update the operator.
+        if len(self._labelingSlots.labelNames.value) > self._labelControlUi.labelListModel.rowCount():
+            #remove the label, that has been marked for deletion
+            if not (self._deleteLabelValue == None):
+                self.topLevelOperatorView.opLabelPipeline.opLabelArray.clearLabel( self._deleteLabelValue )
+                self._deleteLabelValue = None
+    
+            #remove the labelname out of the list
+            labelNames = self._labelingSlots.labelNames.value
+            labelNames.pop(start)
+            self._labelingSlots.labelNames.setValue(labelNames, check_changed=False)
+
+    '''
     def _onLabelRemoved(self, parent, start, end):
         # Don't respond unless this actually came from the GUI
         if self._programmaticallyRemovingLabels:
@@ -843,22 +961,23 @@ class WatershedLabelingGui(LabelingGui):
             self.thunkEventHandler.post( self._resetLabelSelection )
 
         e = self._labelControlUi.labelListModel.rowCount() > 0
-        self._gui_enableWatershedLabeling(e)
+        self._gui_enableLabeling(e)
 
         # If the gui list model isn't in sync with the operator, update the operator.
-        if len(self._watershedLabelingSlots.labelNames.value) > self._labelControlUi.labelListModel.rowCount():
+        if len(self._labelingSlots.labelNames.value) > self._labelControlUi.labelListModel.rowCount():
             # Changing the deleteLabel input causes the operator (OpBlockedSparseArray)
             #  to search through the entire list of labels and delete the entries for the matching label.
-            self._watershedLabelingSlots.labelDelete.setValue(row+1)
+            self._labelingSlots.labelDelete.setValue(row+1)
     
             # We need to "reset" the deleteLabel input to -1 when we're finished.
             #  Otherwise, you can never delete the same label twice in a row.
             #  (Only *changes* to the input are acted upon.)
-            self._watershedLabelingSlots.labelDelete.setValue(-1)
+            self._labelingSlots.labelDelete.setValue(-1)
             
-            labelNames = self._watershedLabelingSlots.labelNames.value
+            labelNames = self._labelingSlots.labelNames.value
             labelNames.pop(start)
-            self._watershedLabelingSlots.labelNames.setValue(labelNames, check_changed=False)
+            self._labelingSlots.labelNames.setValue(labelNames, check_changed=False)
+
        
     def getLayer(self, name):
         """find a layer by name"""
@@ -872,29 +991,31 @@ class WatershedLabelingGui(LabelingGui):
     def _getLabelLayer(self):
         return self.getLayer('Labels')
 
+    '''
+
+    '''
     def createLabelLayer(self, direct=False):
         """
         Return a colortable layer that displays the label slot data, along with its associated label source.
         direct: whether this layer is drawn synchronously by volumina
         """
-        labelOutput = self._watershedLabelingSlots.labelOutput
+        labelOutput = self._labelingSlots.labelOutput
         if not labelOutput.ready():
             return (None, None)
         else:
             # Add the layer to draw the labels, but don't add any labels
-            labelsrc = LazyflowSinkSource( self._watershedLabelingSlots.labelOutput,
-                                           self._watershedLabelingSlots.labelInput)
+            labelsrc = LazyflowSinkSource( self._labelingSlots.labelOutput,
+                                           self._labelingSlots.labelInput)
 
             labellayer = ColortableLayer(labelsrc, colorTable = self._colorTable16, direct=direct )
+
             labellayer.name = "Labels"
             labellayer.ref_object = None
 
             labellayer.contexts.append( QAction("Import...", None,
-                                        triggered=partial(import_watershedLabeling_layer, labellayer, self._watershedLabelingSlots, self)) )
+                                        triggered=partial(import_labeling_layer, labellayer, self._labelingSlots, self)) )
 
             return labellayer, labelsrc
-    '''
-    '''
 
     def setupLayers(self):
         """
