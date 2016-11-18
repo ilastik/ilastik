@@ -38,10 +38,26 @@ import logging
 logger = logging.getLogger(__name__)
 
 class TestStructuredLearningTrackingHeadless(object):    
-    PROJECT_FILE = 'data/inputdata/mitocheckTrackingWithLearningFromSegmentation.ilp'
-    RAW_DATA_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t.h5'
-    PREDICTION_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_export.h5'
-    BINARY_SEGMENTATION_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_Simple-Segmentation.h5'
+    # PROJECT_FILE = 'data/inputdata/mitocheckStructuredLearningTracking.ilp'
+    # RAW_DATA_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t.h5'
+    # PREDICTION_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_export.h5'
+
+    # EXPECTED_TRACKING_RESULT_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_Tracking-Result.h5'
+    # EXPECTED_CSV_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t-tracking_exported_data_table.csv'
+    # EXPECTED_SHAPE = (9, 99, 105, 1, 1) # Expected shape for tracking results HDF5 files
+    # EXPECTED_NUM_LINES = 24 # Number of lines expected in exported csv file
+    # EXPECTED_MERGER_NUM = 0 # Number of mergers expected in exported csv file
+
+
+    PROJECT_FILE = 'data/inputdata/mitocheckStructuredLearningTrackingMergers.ilp'
+    RAW_DATA_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_mergers.h5'
+    PREDICTION_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_mergers_export.h5'
+
+    EXPECTED_TRACKING_RESULT_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_mergers_Tracking-Result.h5'
+    EXPECTED_CSV_FILE = 'data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_mergers-tracking_exported_data_table.csv'
+    EXPECTED_SHAPE = (6, 66, 62, 1, 1) # Expected shape for tracking results HDF5 files
+    EXPECTED_NUM_LINES = 29 # Number of lines expected in exported csv file
+    EXPECTED_MERGER_NUM = 5 # Number of mergers expected in exported csv file
 
     @classmethod
     def setupClass(cls):
@@ -60,8 +76,9 @@ class TestStructuredLearningTrackingHeadless(object):
 
     @classmethod
     def teardownClass(cls):
-        removeFiles = []#['data/inputdata/mitocheckStructuredLearningTracking_Tracking-Weights.h5','data/inputdata/mitocheckStructuredLearningTracking_Tracking-Result.h5']
-        
+        removeFiles = ['data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_mergers_Tracking-Result.h5','data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_mergers-tracking_exported_data_table.csv']
+        #removeFiles = ['data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t_Tracking-Result.h5','data/inputdata/mitocheck_2d+t/mitocheck_small_2D+t-tracking_exported_data_table.csv']
+
         # Clean up: Delete any test files we generated
         for f in removeFiles:
             try:
@@ -81,16 +98,14 @@ class TestStructuredLearningTrackingHeadless(object):
             raise nose.SkipTest 
         
         # Skip test because there are missing files
-        if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) or not os.path.isfile(self.BINARY_SEGMENTATION_FILE):
+        if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) or not os.path.isfile(self.PREDICTION_FILE):
             logger.info("Test files not found.")   
         
         args = ' --project='+self.PROJECT_FILE
         args += ' --headless'
         args += ' --export_source=Tracking-Result'
-        #args += ' --export_weights=_Tracking-Weights'
-        args += ' --raw_data '+self.RAW_DATA_FILE#+'/data'
-        #args += ' --prediction_maps '+self.PREDICTION_FILE#+'/exported_data'
-        args += ' --binary_image '+self.BINARY_SEGMENTATION_FILE#+'/exported_data'
+        args += ' --raw_data '+self.RAW_DATA_FILE
+        args += ' --prediction_maps '+self.PREDICTION_FILE
 
         sys.argv = ['ilastik.py'] # Clear the existing commandline args so it looks like we're starting fresh.
         sys.argv += args.split()
@@ -98,6 +113,39 @@ class TestStructuredLearningTrackingHeadless(object):
         # Start up the ilastik.py entry script as if we had launched it from the command line
         self.ilastik_startup.main()
 
+        # Examine the HDF5 output for basic attributes
+        with h5py.File(self.EXPECTED_TRACKING_RESULT_FILE, 'r') as f:
+            assert 'exported_data' in f, 'Dataset does not exist in the tracking result file'
+            shape = f['exported_data'].shape
+            assert shape == self.EXPECTED_SHAPE, 'Exported data has a wrong shape: {}'.format(shape)
+
+        # Load csv file
+        data = np.genfromtxt(self.EXPECTED_CSV_FILE, dtype=float, delimiter=',', names=True)
+
+        # Check for expected number of lines
+        assert data.shape[0] == self.EXPECTED_NUM_LINES, 'Number of rows in the csv file differs from expected'
+
+        # Check that the csv file contains the default fields.
+        assert 'object_id' in data.dtype.names, '\'object_id\' not found in the csv file!'
+        assert 'timestep' in data.dtype.names, '\'timestep\' not found in the csv file!'
+        assert 'labelimage_oid' in data.dtype.names, '\'labelimage_oid\' not found in the csv file!'
+        assert 'lineage_id' in data.dtype.names, '\'lineage_id\' not found in the csv file!'
+        assert 'track_id1' in data.dtype.names, '\'track_id1\' not found in the csv file!'
+        assert 'Count' in data.dtype.names, '\'Count\' not found in the csv file!'
+        assert 'CoordMinimum_0' in data.dtype.names, '\'Coord<Minimum>_0\' not found in the csv file!'
+        assert 'CoordMinimum_1' in data.dtype.names, '\'Coord<Minimum>_1\' not found in the csv file!'
+        assert 'RegionCenter_0' in data.dtype.names, '\'RegionCenter_0\' not found in the csv file!'
+        assert 'RegionCenter_1' in data.dtype.names, '\'RegionCenter_1\' not found in the csv file!'
+        assert 'CoordMaximum_0' in data.dtype.names, '\'Coord<Maximum>_0\' not found in the csv file!'
+        assert 'CoordMaximum_1' in data.dtype.names, '\'Coord<Maximum>_1\' not found in the csv file!'
+
+        # Check for expected number of mergers
+        merger_count = 0
+        for id in data['lineage_id']:
+            if id == 0:
+                merger_count += 1
+
+        assert merger_count == self.EXPECTED_MERGER_NUM, 'Number of mergers in the csv file differs from expected'
 
 if __name__ == "__main__":
     # Make the program quit on Ctrl+C

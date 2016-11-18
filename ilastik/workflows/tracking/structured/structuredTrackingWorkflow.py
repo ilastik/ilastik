@@ -326,6 +326,7 @@ class StructuredTrackingWorkflowBase( Workflow ):
             avgSize=parameters['avgSize'],
             withTracklets=parameters['withTracklets'],
             sizeDependent=parameters['sizeDependent'],
+            detWeight=parameters['detWeight'],
             divWeight=parameters['divWeight'],
             transWeight=parameters['transWeight'],
             withDivisions=parameters['withDivisions'],

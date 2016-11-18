@@ -11,6 +11,7 @@ from ilastik.applets.tracking.base.trackingUtilities import get_events
 from lazyflow.operators.opCompressedCache import OpCompressedCache
 from lazyflow.roi import sliceToRoi
 from ilastik.applets.tracking.conservation.opRelabeledMergerFeatureExtraction import OpRelabeledMergerFeatureExtraction
+from ilastik.applets.base.applet import DatasetConstraintError
 
 import sys
 
@@ -218,7 +219,8 @@ class OpStructuredTracking(OpTrackingBase):
         parameters['avgSize'] = avgSize
         parameters['withTracklets'] = withTracklets
         parameters['sizeDependent'] = sizeDependent
-        parameters['divWeight'] = divWeight   
+        parameters['detWeight'] = detWeight
+        parameters['divWeight'] = divWeight
         parameters['transWeight'] = transWeight
         parameters['withDivisions'] = withDivisions
         parameters['withOpticalCorrection'] = withOpticalCorrection
@@ -427,11 +429,11 @@ class OpStructuredTracking(OpTrackingBase):
         uncertaintyParams = pgmlink.UncertaintyParameter(1, pgmlink.DistrId.PerturbAndMAP, sigmas)
 
         if withBatchProcessing:
-            self.detectionWeight = 0.0
-            self.divisionWeight = 0.0
-            self.transitionWeight = 0.0
-            self.appearanceWeight = 0.0
-            self.disappearanceWeight = 0.0
+            self.divisionWeight = parameters['divWeight']
+            self.transitionWeight = parameters['transWeight']
+            self.appearanceWeight = parameters['appearanceCost']
+            self.disappearanceWeight = parameters['disappearanceCost']
+            self.detectionWeight = parameters['detWeight']
         else:
             self.detectionWeight = drawer.detWeightBox.value()
             self.divisionWeight = drawer.divWeightBox.value()
