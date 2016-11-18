@@ -344,13 +344,15 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
                 menu.addAction("Clear Hilite", IPCFacade().broadcast(Protocol.cmd("clear")))
             menu.exec_(win_coord)
             return
+        
+        hypothesesGraph = self.mainOperator.HypothesesGraph.value
 
-        if self.mainOperator.hypotheses_graph == None:
+        if hypothesesGraph == None:
             color = None
             track = None
         else:
-            color = self.mainOperator.hypotheses_graph.getLineageId(time, obj)
-            track = self.mainOperator.hypotheses_graph.getTrackId(time, obj)
+            color = hypothesesGraph.getLineageId(time, obj)
+            track = hypothesesGraph.getTrackId(time, obj)
 
         children = None 
         parents = None
