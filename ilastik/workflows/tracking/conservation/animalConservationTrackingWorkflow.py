@@ -26,12 +26,12 @@ class AnimalConservationTrackingWorkflowBase( ConservationTrackingWorkflowBase )
     
     def connectLane(self, laneIndex):        
         # Set animal tracking and disabled divisions in tracking op parameters
+        super(AnimalConservationTrackingWorkflowBase, self).connectLane(laneIndex)
+        
         opTracking = self.trackingApplet.topLevelOperator.getLane(laneIndex)
         opTracking.Parameters.value['withDivisions'] = False
         opTracking.Parameters.value['withAnimalTracking'] = self.withAnimalTracking     
-           
-        super(AnimalConservationTrackingWorkflowBase, self).connectLane(laneIndex) 
-        
+      
     def _createDivisionDetectionApplet(self,selectedFeatures=dict()):
         return None 
 

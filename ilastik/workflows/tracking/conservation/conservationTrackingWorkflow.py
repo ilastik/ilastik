@@ -20,7 +20,6 @@ logger = logging.getLogger(__name__)
 
 class ConservationTrackingWorkflowBase( Workflow ):
     workflowName = "Automatic Tracking Workflow (Conservation Tracking) BASE"
-    #withAnimalTracking = False
 
     def __init__( self, shell, headless, workflow_cmdline_args, project_creation_args, *args, **kwargs ):
         graph = kwargs['graph'] if 'graph' in kwargs else Graph()
@@ -348,6 +347,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
             cplex_timeout = parameters['cplex_timeout'],
             appearance_cost = parameters['appearanceCost'],
             disappearance_cost = parameters['disappearanceCost'],
+            max_nearest_neighbors = parameters['max_nearest_neighbors'],
             force_build_hypotheses_graph = False,
             withBatchProcessing = True
         )
