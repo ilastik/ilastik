@@ -140,15 +140,18 @@ class OpConservationTracking(Operator, ExportingOperator):
         if slot is self.Output:
             if not self.Parameters.ready():
                 raise Exception("Parameter slot is not ready")
-            parameters = self.Parameters.value           
+            parameters = self.Parameters.value
+            
+            # Assume [t,x,y,z,c] order           
             trange = range(roi.start[0], roi.stop[0])
+            offset = roi.start[1:-1]
        
             result[:] =  self.LabelImage.get(roi).wait()
 
             for t in trange:
                 if 'time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]:
                     if self.ResolvedMergers.value:
-                        self._labelMergers(result[t-roi.start[0],...,0], t)
+                        self._labelMergers(result[t-roi.start[0],...,0], t, offset)
                     result[t-roi.start[0],...,0] = self._labelLineageIds(result[t-roi.start[0],...,0], t)
                 else:
                     result[t-roi.start[0],...][:] = 0
@@ -156,14 +159,17 @@ class OpConservationTracking(Operator, ExportingOperator):
         # Output showing mergers only    
         elif slot is self.MergerOutput:
             parameters = self.Parameters.value
+            
+            # Assume [t,x,y,z,c] order
             trange = range(roi.start[0], roi.stop[0])
+            offset = roi.start[1:-1]
 
             result[:] =  self.LabelImage.get(roi).wait()
    
             for t in trange:
                 if 'time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]:
                     if self.ResolvedMergers.value:
-                        self._labelMergers(result[t-roi.start[0],...,0], t)   
+                        self._labelMergers(result[t-roi.start[0],...,0], t, offset)   
                     result[t-roi.start[0],...,0] = self._labelLineageIds(result[t-roi.start[0],...,0], t, onlyMergers=True)
                 else:
                     result[t-roi.start[0],...][:] = 0
@@ -171,13 +177,16 @@ class OpConservationTracking(Operator, ExportingOperator):
         # Output showing object Ids (before lineage IDs are assigned)   
         elif slot is self.RelabeledImage:
             parameters = self.Parameters.value
+            
+            # Assume [t,x,y,z,c] order
             trange = range(roi.start[0], roi.stop[0])
+            offset = roi.start[1:-1] 
 
             result[:] =  self.LabelImage.get(roi).wait()
             
             for t in trange:
                 if self.ResolvedMergers.value and 'time_range' in parameters and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]:
-                    self._labelMergers(result[t-roi.start[0],...,0], t)
+                    self._labelMergers(result[t-roi.start[0],...,0], t, offset)
         
         # Cache blocks            
         elif slot == self.AllBlocks:
@@ -502,7 +511,7 @@ class OpConservationTracking(Operator, ExportingOperator):
                 
         return events
 
-    def _labelMergers(self, volume, time):
+    def _labelMergers(self, volume, time, offset):
         """
         Label volume mergers with correspoding IDs, using the plugin GMM fit
         """
@@ -511,11 +520,13 @@ class OpConservationTracking(Operator, ExportingOperator):
         if time not in resolvedMergersDict:
             return volume
         
-        for idx in resolvedMergersDict[time]:
-            fits = resolvedMergersDict[time][idx]['fits']
-            newIds = resolvedMergersDict[time][idx]['newIds']
-            
-            self.mergerResolverPlugin.updateLabelImage(volume, idx, fits, newIds)
+        idxs = vigra.analysis.unique(volume)
+        
+        for idx in idxs: 
+            if idx in resolvedMergersDict[time]:
+                fits = resolvedMergersDict[time][idx]['fits']
+                newIds = resolvedMergersDict[time][idx]['newIds']
+                self.mergerResolverPlugin.updateLabelImage(volume, idx, fits, newIds, offset=offset)
         
         return volume               
 
