@@ -26,15 +26,21 @@ from hytra.core.fieldofview import FieldOfView
 from hytra.core.ilastikmergerresolver import IlastikMergerResolver
 from hytra.core.probabilitygenerator import ProbabilityGenerator
 from hytra.core.probabilitygenerator import Traxel
-
 from hytra.pluginsystem.plugin_manager import TrackingPluginManager
-
-import dpct
 
 import vigra
 
 import logging
 logger = logging.getLogger(__name__)
+
+import dpct
+try:
+    import multiHypoTracking_with_cplex as mht
+except ImportError:
+    try:
+        import multiHypoTracking_with_gurobi as mht
+    except ImportError:
+        logger.warning("Could not find any ILP solver")
 
 class OpConservationTracking(Operator, ExportingOperator):
     LabelImage = InputSlot()
@@ -240,7 +246,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             force_build_hypotheses_graph = False,
             max_nearest_neighbors = 2,
             withBatchProcessing = False,
-            solverName="ILP"
+            solverName="Flow-based"
             ):
         """
         Main conservation tracking function. Runs tracking solver, generates hypotheses graph, and resolves mergers.
@@ -347,8 +353,13 @@ class OpConservationTracking(Operator, ExportingOperator):
         weights = {u'weights': [transWeight, detectionWeight, appearance_cost, disappearance_cost]}
         if withDivisions:
             weights = {u'weights': [transWeight, detectionWeight, divWeight, appearance_cost, disappearance_cost]}
-            
-        result = dpct.trackFlowBased(model, weights)
+
+        if solverName == 'Flow-based' and dpct:
+            result = dpct.trackFlowBased(model, weights)
+        elif solverName == 'ILP' and mht:
+            result = mht.track(model, weights)
+        else:
+            raise ValueError("Invalid tracking solver selected")
         
         # Insert the solution into the hypotheses graph and from that deduce the lineages
         if hypothesesGraph:

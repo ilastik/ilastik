@@ -16,13 +16,18 @@ from ilastik.shell.gui.ipcManager import IPCFacade
 from ilastik.config import cfg as ilastik_config
 
 from lazyflow.request.request import Request
-try:
-    import pgmlink
-except:
-    import pgmlinkNoIlpSolver as pgmlink
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
+
+import dpct
+try:
+    import multiHypoTracking_with_cplex as mht
+except ImportError:
+    try:
+        import multiHypoTracking_with_gurobi as mht
+    except ImportError:
+        logger.warning("Could not find any ILP solver")
 
 class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
     
@@ -98,14 +103,16 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
     @staticmethod
     def getAvailablePgmlinkSolverTypes():
         solvers = []
-        if hasattr(pgmlink.ConsTrackingSolverType, "CplexSolver"):
-            solvers.append("ILP")
-
-        if hasattr(pgmlink.ConsTrackingSolverType, "DynProgSolver"):
-            solvers.append("Magnusson")
-
-        if hasattr(pgmlink.ConsTrackingSolverType, "FlowSolver"):
-            solvers.append("Flow")
+        try:
+            if dpct:
+                solvers.append('Flow-based')
+        except:
+            pass
+        try:
+            if mht:
+                solvers.append('ILP')
+        except:
+            pass
         return solvers
 
     def initAppletDrawerUi(self):
