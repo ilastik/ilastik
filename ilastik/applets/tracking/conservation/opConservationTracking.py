@@ -546,27 +546,27 @@ class OpConservationTracking(Operator, ExportingOperator):
 
         indexMapping = np.zeros(np.amax(volume) + 1, dtype=volume.dtype)
         
-        labels = vigra.analysis.unique(volume)
+        idxs = vigra.analysis.unique(volume)
         
         # Reduce labels to the ones that contain mergers
         if onlyMergers:
             if resolvedMergersDict:
                 if time not in resolvedMergersDict:
-                    labels = []
+                    idxs = []
                 else:
                     newIds = [nodeDict['newIds'] for _, nodeDict in resolvedMergersDict[time].items()]
                     newIds = [id for ids in newIds for id in ids]
-                    labels = [id for id in labels if id in newIds]
+                    idxs = [id for id in idxs if id in newIds]
             else:
-                labels = [label for label in labels if label > 0 and hypothesesGraph.hasNode((time,label)) and hypothesesGraph._graph.node[(time,label)]['value'] > 1]
+                idxs = [idx for idx in idxs if idx > 0 and hypothesesGraph.hasNode((time,idx)) and hypothesesGraph._graph.node[(time,idx)]['value'] > 1]
 
         # Map labels to corresponding lineage IDs
-        for label in labels:
-            if label > 0 and hypothesesGraph.hasNode((time,label)):
-                lineage_id = hypothesesGraph.getLineageId(time, label)
+        for idx in idxs:
+            if idx > 0 and hypothesesGraph.hasNode((time,idx)):
+                lineage_id = hypothesesGraph.getLineageId(time, idx)
                 if lineage_id is None:
                     lineage_id = 1
-                indexMapping[label] = lineage_id
+                indexMapping[idx] = lineage_id
             
         return indexMapping[volume]
                   
