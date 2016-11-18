@@ -169,7 +169,11 @@ class DataExportGui(QWidget):
 
         def _handleInputComboSelectionChanged( index ):
             assert index < len(self.topLevelOperator.SelectionNames.value)
-            self.topLevelOperator.InputSelection.setValue( index )
+            if self.drawer.inputSelectionCombo.currentText() == self.topLevelOperator.TableOnlyName.value:
+                self.topLevelOperator.TableOnly.setValue(True)
+            else:
+                self.topLevelOperator.TableOnly.setValue(False)
+                self.topLevelOperator.InputSelection.setValue( index )
         self.drawer.inputSelectionCombo.currentIndexChanged.connect( _handleInputComboSelectionChanged )
 
     def initCentralUic(self):

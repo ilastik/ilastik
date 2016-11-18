@@ -65,8 +65,9 @@ class OpDataExport(Operator):
     OutputInternalPath = InputSlot(value='exported_data')
     OutputFormat = InputSlot(value='hdf5')
     
-    # Only export csv file (don't export volume)
-    CsvOnly = InputSlot(value=False)
+    # Only export csv/HDF5 table (don't export volume)
+    TableOnlyName = InputSlot(value='Table-Only')
+    TableOnly = InputSlot(value=False)
     
     ExportPath = OutputSlot() # Location of the saved file after export is complete.
     
@@ -262,8 +263,8 @@ class OpDataExport(Operator):
             self._opImageOnDiskProvider.Dirty.setValue( False )
 
     def run_export(self):
-        # If we're not dirty, we don't have to do anything.
-        if not self.CsvOnly.value and self.Dirty.value:
+        # If Table-Only is disabled or we're not dirty, we don't have to do anything.
+        if not self.TableOnly.value and self.Dirty.value:
             self.cleanupOnDiskView()
             self._opFormattedExport.run_export()
             self.Dirty.setValue( False )
