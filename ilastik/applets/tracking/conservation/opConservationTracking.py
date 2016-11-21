@@ -28,6 +28,8 @@ from hytra.core.probabilitygenerator import ProbabilityGenerator
 from hytra.core.probabilitygenerator import Traxel
 from hytra.pluginsystem.plugin_manager import TrackingPluginManager
 
+from lazyflow.utility import Timer
+
 import vigra
 
 import logging
@@ -368,7 +370,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             
         # Merger resolution
         resolvedMergersDict = {}
-        
+                
         if withMergerResolution:
             logger.info("Resolving mergers.")
             
@@ -406,12 +408,37 @@ class OpConservationTracking(Operator, ExportingOperator):
                     coordinatesForIds = {}
                     
                     pool = RequestPool()
+                    poolIsNotEmpty = False
+                    
                     for objectId in objectIds:
-                        pool.add(Request(partial(mergerResolver.getCoordinatesForObjectId, coordinatesForIds, labelImage[0, ..., 0], objectId)))                   
-                    pool.wait()                
+                        node = (timestep, objectId)
+                         
+                        withCoords = False
+                         
+                        if originalGraph.hasNode(node) and 'value' in originalGraph._graph.node[node] and originalGraph._graph.node[node]['value'] > 1:
+                            withCoords = True
+                         
+                        if not withCoords:
+                            for edge in originalGraph._graph.out_edges(node):
+                                neighbor = edge[1]                        
+                                if  originalGraph.hasNode(neighbor) and 'value' in originalGraph._graph.node[neighbor] and  originalGraph._graph.node[neighbor]['value'] > 1:
+                                    withCoords = True
+                                    break
+                                                 
+                        if withCoords:    
+                            pool.add(Request(partial(mergerResolver.getCoordinatesForObjectId, coordinatesForIds, labelImage[0, ..., 0], objectId)))
+                            poolIsNotEmpty = True                   
+                    
+                    if poolIsNotEmpty:
+                        with Timer() as coordTimer:
+                            pool.wait()
+                        logger.info("Compute coordinates time: {}".format(coordTimer.seconds()))                
                     
                     # Fit mergers and store fit info in nodes  
-                    mergerResolver.fitAndRefineNodesForTimestep(coordinatesForIds, timestep)
+                    if coordinatesForIds:
+                        with Timer() as fitTimer:
+                            mergerResolver.fitAndRefineNodesForTimestep(coordinatesForIds, timestep)
+                        logger.info("Fit an refine time: {}".format(fitTimer.seconds()))      
                     
                 # Compute object features, re-run flow solver, update model and result, and get merger dictionary
                 resolvedMergersDict = mergerResolver.run()
