@@ -285,6 +285,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         parameters['y_range'] = y_range
         parameters['z_range'] = z_range
         parameters['max_nearest_neighbors'] = max_nearest_neighbors
+        parameters['solver'] = str(solverName)
 
         # Set a size range with a minimum area equal to the max number of objects (since the GMM throws an error if we try to fit more gaussians than the number of pixels in the object)
         size_range = (max(maxObj, size_range[0]), size_range[1])

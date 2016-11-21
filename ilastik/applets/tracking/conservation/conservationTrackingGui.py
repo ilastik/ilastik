@@ -92,6 +92,14 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         if 'max_nearest_neighbors' in parameters.keys():
             self._drawer.maxNearestNeighborsSpinBox.setValue(parameters['max_nearest_neighbors'])
         
+
+        # solver: use stored value only if that solver is available
+        self._drawer.solverComboBox.clear()
+        availableSolvers = self.getAvailableTrackingSolverTypes()
+        self._drawer.solverComboBox.addItems(availableSolvers)
+        if 'solver' in parameters.keys() and parameters['solver'] in availableSolvers:
+            self._drawer.solverComboBox.setCurrentIndex(availableSolvers.index(parameters['solver']))
+
         # Hide division GUI widgets
         if 'withAnimalTracking' in parameters.keys() and parameters['withAnimalTracking'] == True:
             self._drawer.divisionsBox.hide()
@@ -101,7 +109,7 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         return self._drawer
 
     @staticmethod
-    def getAvailablePgmlinkSolverTypes():
+    def getAvailableTrackingSolverTypes():
         solvers = []
         try:
             if dpct:
@@ -116,12 +124,10 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         return solvers
 
     def initAppletDrawerUi(self):
-        super(ConservationTrackingGui, self).initAppletDrawerUi()        
+        super(ConservationTrackingGui, self).initAppletDrawerUi()
 
         self._allowedTimeoutInputRegEx = re.compile('^[0-9]*$')
         self._drawer.timeoutBox.textChanged.connect(self._onTimeoutBoxChanged)
-        self._drawer.solverComboBox.clear()
-        self._drawer.solverComboBox.addItems(self.getAvailablePgmlinkSolverTypes())
 
         if not ilastik_config.getboolean("ilastik", "debug"):
             def checkboxAssertHandler(checkbox, assertEnabled=True):
