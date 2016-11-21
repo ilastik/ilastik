@@ -58,7 +58,7 @@ class VigraObjFeats(ObjectFeaturesPlugin):
     # features not in this list are assumed to be local.
     local_features = set(["Mean", "Variance", "Skewness", \
                           "Kurtosis", "Histogram", \
-                          "Covariance", "Minimum", "Maximum"])
+                          "Covariance", "Minimum", "Maximum", "Sum"])
     local_suffix = " in neighborhood" #note the space in front, it's important
     local_out_suffixes = [local_suffix, " in object and neighborhood"]
 

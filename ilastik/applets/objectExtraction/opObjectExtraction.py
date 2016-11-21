@@ -672,15 +672,12 @@ class OpRegionFeatures(Operator):
         
         logger.debug("Computing default features")
 
-        #These are the feature names, selected by the user. Default ones are not in yet.
+        #These are the feature names, selected by the user and the default feature names.
         feature_names = deepcopy(self.Features([]).wait())
-        feature_names_with_default = deepcopy(self.Features([]).wait())
 
         # do global features
         logger.debug("computing global features")
-        extra_features_computed = False
         global_features = {}
-        selected_vigra_features = []
         for plugin_name, feature_dict in feature_names.iteritems():
             if plugin_name == default_features_key:
                 continue
@@ -689,7 +686,13 @@ class OpRegionFeatures(Operator):
         
         extrafeats = {}
         for feat_key in default_features:
-            if not feature_names["Standard Object Features"][feat_key]["selected"]:
+            try:
+                sel = feature_names["Standard Object Features"][feat_key]["selected"]
+            except KeyError:
+                # this can happen, if the Features slot of the main operator has been set by a direct call to setValue
+                # rather than from the GUI
+                sel = True
+            if not sel:
                 # This feature has not been selected by the user. Remove it from the computed dict into a special dict
                 # for default features
                 feature = global_features["Standard Object Features"].pop(feat_key)
