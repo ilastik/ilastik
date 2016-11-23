@@ -14,7 +14,7 @@ from lazyflow.operators import OpBlockedArrayCache, OpValueCache
 from lazyflow.operators.generic import OpPixelOperator, OpSingleChannelSelector
 #for the LabelPipeline
 from lazyflow.operators import OpCompressedUserLabelArray
-#from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPipeline
+from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPipeline
 
 
 import logging
@@ -306,8 +306,58 @@ class OpCachedWatershedSegmentation(Operator):
             self._opCache.Input.setDirty()
 '''
 
+#TODO change this to fit our operator
+class OpWatershedSegmentationLabelPipeline( Operator ):
+    RawImage = InputSlot()
+    LabelInput = InputSlot()
+    DeleteLabel = InputSlot()
+    
+    Output = OutputSlot()
+    nonzeroBlocks = OutputSlot()
+    
+    def __init__(self, *args, **kwargs):
+        super( OpLabelPipeline, self ).__init__( *args, **kwargs )
+        
 
-'''
+        self.opLabelArray = OpCompressedUserLabelArray( parent=self )
+        self.opLabelArray.Input.connect( self.LabelInput )
+        self.opLabelArray.eraser.setValue(100)
+
+        self.opLabelArray.deleteLabel.connect( self.DeleteLabel )
+
+        # Connect external outputs to their internal sources
+        self.Output.connect( self.opLabelArray.Output )
+        self.nonzeroBlocks.connect( self.opLabelArray.nonzeroBlocks )
+
+    def setupOutputs(self):
+        tagged_shape = self.RawImage.meta.getTaggedShape()
+        # labels are created for one channel (i.e. the label) and only in the
+        # current time slice, so we can set both c and t to 1
+
+        #TODO has no effect to CorrectedSeedsOut right now
+        tagged_shape['c'] = 1
+        if 't' in tagged_shape:
+            tagged_shape['t'] = 1
+        # Aim for blocks that are roughly 1MB
+        block_shape = determineBlockShape( tagged_shape.values(), 1e6 )
+        self.opLabelArray.blockShape.setValue( block_shape )
+        
+
+    def setInSlot(self, slot, subindex, roi, value):
+        # Nothing to do here: All inputs that support __setitem__
+        #   are directly connected to internal operators.
+        pass
+
+    def execute(self, slot, subindex, roi, result):
+        assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
+
+    def propagateDirty(self, slot, subindex, roi):
+        # Our output changes when the input changed shape, not when it becomes dirty.
+        pass    
+        self.Output.setDirty()
+
+
+
 '''
 
 #copied form pixelclassification
@@ -359,5 +409,4 @@ class OpLabelPipeline( Operator ):
         # Our output changes when the input changed shape, not when it becomes dirty.
         pass    
         self.Output.setDirty()
-'''
 '''

@@ -27,15 +27,15 @@ class PixelValueDisplaying(object):
         :param channel:  int   the channel which shall be displayed 
         """
         #variable initialization
-        self.data = slot
-        self._pixelValue = pixelValue
-        self._pixelValueCheckBox = pixelValueCheckBox
-        self._statusBar = quadViewStatusBar
+        self.data               = slot
+        self._pixelValue        = pixelValue
+        self._pixelValueCheckBox= pixelValueCheckBox
+        self._statusBar         = quadViewStatusBar
         #check channel for validation
         if self._checkChannelIndex(channel):
-            self._channel = channel
+            self._channel       = channel
         else:
-            self._channel = 0
+            self._channel       = 0
             logger.info("Init channel as zero = 0")
 
         # pixel value functionality

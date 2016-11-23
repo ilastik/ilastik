@@ -33,6 +33,7 @@ from PyQt4.QtGui import QWidget, QLabel, QSpinBox, QDoubleSpinBox, QVBoxLayout, 
 from PyQt4.Qt import QCheckBox, QLineEdit, QButtonGroup, QRadioButton, pyqtSlot
 
 from pixelValueDisplaying import PixelValueDisplaying 
+from importAndResetLabels import ImportAndResetLabels 
 
 
 from ilastik.utility.gui import threadRouted
@@ -103,23 +104,28 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
         Use some things of a workflow: multicut where you can decide whether to have an input or not
         """
-        """
-        """
+
+
+        '''
+        #only for debugging
         op = self.topLevelOperatorView 
         # Check if all necessary InputSlots are available and ready
         # and set CorrectedSeedsIn if not supplied
         lst = [ op.RawData , op.Boundaries , op.Seeds , op.CorrectedSeedsIn ]
-        #lst_seeds = [ op.Seeds , op.CorrectedSeedsIn ]
-        lst_seeds = [ op.Seeds , op.CorrectedSeedsIn, op.opLabelPipeline.LabelInput]
         #show a debug information, so that the user knows that not all data is supplied, that is needed
         for operator in lst:
             if not operator.ready():
                 logger.info( "InputData: " + operator.name + " not ready")
+        '''
 
 
+        #lst_seeds = [ op.Seeds , op.CorrectedSeedsIn ]
+        lst_seeds = [ op.Seeds , op.CorrectedSeedsIn, op.opLabelPipeline.LabelInput]
         for operator in lst_seeds:
             if not operator.ready():
                 self._existingSeedsSlot = False
+                '''
+                #TODO setting the CorrectedSeedsIn here
                 #if (not op.CorrectedSeedsIn.ready() and op.CorrectedSeedsIn.meta.shape == None ):
                 if op.Boundaries.ready():
                     # copy the meta-data from boandaries
@@ -130,6 +136,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
                 else:
                     logger.info( "Boundaries are not ready," +
                         "can't init seeds and CorrectedSeedsIn with default zeros" )
+                '''
 
         '''
         #for debug
@@ -137,7 +144,6 @@ class WatershedSegmentationGui(WatershedLabelingGui):
             if operator.ready():
                 logger.info( "InputData: " + operator.name + " is ready now")
         '''
-        """
         """
 
         #TODO
@@ -420,6 +426,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
 
 
+    #TODO I think, the next functions can be removed (commented)
 
 
     @contextmanager
@@ -499,14 +506,6 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         th.start()
     '''
 
-    @pyqtSlot(int)
-    def on_RawData_channelChanged(self, channel):
-        """
-        update the layer-channel after the channel_box has changed its value
-        """
-        rawData_layer = self.getLayerByName(self.RawDataName)
-        if rawData_layer:
-            rawData_layer.channel = self.channel_box.value()
         
 
 
@@ -625,145 +624,6 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
 
 
-    ############################################################
-    # Labelmanagement: Import, Delete, Reset
-    ############################################################
-
-    def removeLabelsFromList(self):
-        """
-        Remove every Label that is in the labelList
-        """
-        op = self.topLevelOperatorView
-        rows = self._labelControlUi.labelListModel.rowCount()
-        for i in range( rows ):
-            self._labelControlUi.labelListModel.removeRow(0)
-
-    def removeLabelsFromCacheAndList(self):
-        """
-        Remove every Label that is in the labelList and its value from cache.
-        Doesn't effect Cached-values that don't have a Label in the LabelList. But this should never happen
-        """
-        op = self.topLevelOperatorView
-        rows = self._labelControlUi.labelListModel.rowCount()
-
-        for i in range( rows ):
-            #get the value/number of the label, that is now the first one in the list
-            #value = self._labelControlUi.labelListModel.__getitem__(0)._number
-            value = self._labelControlUi.labelListModel[0].number
-
-            #delete the label with the value x from cache, means reset value x to zero 
-            op.opLabelPipeline.opLabelArray.clearLabel( value )
-            #alternatively use:
-            #op.opLabelPipeline.DeleteLabel.setValue( 2 )
-
-            #remove the Label with value x from the list of available Labels
-            #always take first one for simplicity
-            self._labelControlUi.labelListModel.removeRow(0)
-
-
-
-    def importLabels(self, slot):
-        """
-        original version from: pixelClassificationGui.importLabels
-        Add the data included in the slot to the LabelArray by ingestData
-        Add as many Labels as long as the tallest Label-Number and the ones before have a 
-        Label to draw with
-
-        :param slot:        slot with the data, that includes the seeds
-        """
-        op = self.topLevelOperatorView 
-        # Load the data into the cache
-        # Returns: the max label found in the slot.
-        new_max = op.opLabelPipeline.opLabelArray.ingestData( slot )
-
-        # Add to the list of label names if there's a new max label with correct colors
-        old_names = op.LabelNames.value
-        old_max = len(old_names)
-        if new_max > old_max:
-            new_names = old_names + map( lambda x: "Seed {}".format(x), 
-                                         range(old_max+1, new_max+1) )
-            #add the new Labelnames
-            op.LabelNames.setValue(new_names)
-
-            #set the colorvalue and the color that is displayed in the labellist to the correct color
-
-            # Use the 8bit colortable that is used everywhere else
-            # means: for new labels, for layer displaying etc
-            default_colors = self._colortable
-            label_colors = op.LabelColors.value
-            pmap_colors = op.PmapColors.value
-            
-            #correct the color here
-            op.LabelColors.setValue( label_colors + default_colors[old_max:new_max] )
-            op.PmapColors.setValue( pmap_colors + default_colors[old_max:new_max] )
-
-            #for debug reasons
-            #colors
-            '''
-            print "\n\n"
-            print "old_max=", old_max, "; new_max=", new_max
-            for i in range(old_max, new_max):
-                color = QColor(default_colors[i])
-                intern_color = QColor(self._colortable[i])
-                print i, ": ", color.red(),", ", color.green(),", ",  color.blue()
-                print  i, ": ", intern_color.red(),", ", intern_color.green(),", ",  intern_color.blue()
-            print "\n\n"
-            '''
-
-    def print_colortable(self, color):
-        """
-        only used for debugging
-        """
-        print "\n\n"
-        for i in range(13):
-            intern_color = QColor(color[i])
-            print  i, ": ", intern_color.red(),", ", intern_color.green(),", ",  intern_color.blue()
-        print "\n\n"
-
-
-
-    def importLabelsFromCorrectedSeedsIn(self):
-        """
-        import the Labels from CorrectedSeedsIn
-        """
-        op = self.topLevelOperatorView 
-        #if no Seeds are supplied, do nothing
-        if self._existingSeedsSlot:
-            self.importLabels( op.CorrectedSeedsIn )
-        else:
-            logger.debug("In importLabelsFromCorrectedSeedsIn: No Seeds supplied, so no seeds are imported")
-
-
-    @pyqtSlot()
-    def resetLabelsToCorrectedSeedsIn(self):
-        """
-        wipe the LabelList
-        import Labels from CorrectedSeedsIn Slot which overrides the cache
-        """
-        #decision box with yes or no
-        msgBox = QMessageBox()
-        msgBox.setText('Are you sure to delete all progress in Corrected Seeds Out and reset to Seeds?')
-        msgBox.addButton(QMessageBox.Yes)
-        msgBox.addButton(QMessageBox.No)
-        #msgBox.addButton(QPushButton('Yes'), QMessageBox.YesRole)
-        #msgBox.addButton(QPushButton('No'), QMessageBox.NoRole)
-        #msgBox.addButton(QPushButton('Cancel'), QMessageBox.RejectRole)
-        ret = msgBox.exec_()
-
-        if (ret == QMessageBox.Yes):
-            if self._existingSeedsSlot:
-                #removing from Cache not necessary, because in importLabelsFromCorrectedSeedsIn 
-                #we override the cache, and therefore it is faster
-                #self.removeLabelsFromCacheAndList()
-                self.removeLabelsFromList()
-
-                #this works only if the CorrectedSeedsIn is not empty/full of zeros
-                #then we have to delete from cache and from labelList
-            else:
-                self.removeLabelsFromCacheAndList()
-
-            # Finally, import the labels
-            self.importLabelsFromCorrectedSeedsIn()
 
 
 
@@ -818,3 +678,11 @@ class Depricated():
         #FIXME
             raise NotImplementedError
 
+    @pyqtSlot(int)
+    def on_RawData_channelChanged(self, channel):
+        """
+        update the layer-channel after the channel_box has changed its value
+        """
+        rawData_layer = self.getLayerByName(self.RawDataName)
+        if rawData_layer:
+            rawData_layer.channel = self.channel_box.value()
