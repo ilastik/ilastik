@@ -162,7 +162,6 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
         labelSlots.labelNames       = topLevelOperatorView.LabelNames
 
-
         '''
         # We provide our own UI file (which adds an extra control for interactive mode)
         if watershedLabelingDrawerUiPath is None:
@@ -194,6 +193,8 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         # BEGIN TODO
         ############################################################
 
+        #print labelSlots.labelNames.value
+        #print self._labelControlUi
 
 
         ############################################################
@@ -637,8 +638,8 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
         for i in range( rows ):
             #get the value/number of the label, that is now the first one in the list
-            #print self._labelControlUi.labelListModel.__getitem__(0)._number
-            value = self._labelControlUi.labelListModel.__getitem__(0)._number
+            #value = self._labelControlUi.labelListModel.__getitem__(0)._number
+            value = self._labelControlUi.labelListModel[0].number
 
             #delete the label with the value x from cache, means reset value x to zero 
             op.opLabelPipeline.opLabelArray.clearLabel( value )
@@ -700,11 +701,14 @@ class WatershedSegmentationGui(WatershedLabelingGui):
             '''
 
     def print_colortable(self, color):
-            print "\n\n"
-            for i in range(13):
-                intern_color = QColor(color[i])
-                print  i, ": ", intern_color.red(),", ", intern_color.green(),", ",  intern_color.blue()
-            print "\n\n"
+        """
+        only used for debugging
+        """
+        print "\n\n"
+        for i in range(13):
+            intern_color = QColor(color[i])
+            print  i, ": ", intern_color.red(),", ", intern_color.green(),", ",  intern_color.blue()
+        print "\n\n"
 
 
 

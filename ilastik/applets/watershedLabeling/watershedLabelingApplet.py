@@ -54,10 +54,10 @@ class WatershedLabelingApplet( StandardApplet ):
         opWatershedLabeling = self.topLevelOperator.getLane(imageLaneIndex)
         
         watershedLabelingSlots = WatershedLabelingGui.WatershedLabelingSlots()
-        watershedLabelingSlots.labelInput = opWatershedLabeling.LabelInputs
-        watershedLabelingSlots.labelOutput = opWatershedLabeling.LabelImages
+        watershedLabelingSlots.labelInput       = opWatershedLabeling.LabelInputs
+        watershedLabelingSlots.labelOutput      = opWatershedLabeling.LabelImages
         watershedLabelingSlots.labelEraserValue = opWatershedLabeling.LabelEraserValue
-        watershedLabelingSlots.labelDelete = opWatershedLabeling.LabelDelete
-        watershedLabelingSlots.labelNames = opWatershedLabeling.LabelNames
+        watershedLabelingSlots.labelDelete      = opWatershedLabeling.LabelDelete
+        watershedLabelingSlots.labelNames       = opWatershedLabeling.LabelNames
 
         return WatershedLabelingGui( self, watershedLabelingSlots, opWatershedLabeling, rawInputSlot=opWatershedLabeling.InputImages )

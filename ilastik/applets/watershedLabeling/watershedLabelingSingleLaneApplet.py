@@ -47,11 +47,11 @@ class WatershedLabelingSingleLaneApplet( StandardApplet ):
         opWatershedLabeling = self.topLevelOperator.getLane(imageLaneIndex)
         
         watershedLabelingSlots = WatershedLabelingGui.WatershedLabelingSlots()
-        watershedLabelingSlots.labelInput = opWatershedLabeling.LabelInput
-        watershedLabelingSlots.labelOutput = opWatershedLabeling.LabelImage
+        watershedLabelingSlots.labelInput       = opWatershedLabeling.LabelInput
+        watershedLabelingSlots.labelOutput      = opWatershedLabeling.LabelImage
         watershedLabelingSlots.labelEraserValue = opWatershedLabeling.LabelEraserValue
-        watershedLabelingSlots.labelDelete = opWatershedLabeling.LabelDelete
-        watershedLabelingSlots.labelNames = opWatershedLabeling.LabelNames
+        watershedLabelingSlots.labelDelete      = opWatershedLabeling.LabelDelete
+        watershedLabelingSlots.labelNames       = opWatershedLabeling.LabelNames
         
         # Special hack for watershedLabeling, required by the internal label array operator
         # Normally, it is strange to connect two same-operator input slots together like this.

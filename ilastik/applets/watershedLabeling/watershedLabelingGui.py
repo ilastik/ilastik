@@ -170,6 +170,9 @@ class WatershedLabelingGui(LabelingGui):
         #remember the value of a Label that shall be removed out of the LabelCache later
         self._deleteLabelValue = None
 
+        # connect the signal, when a label is erased, with the slot, that 
+        # takes the number of the removed label, that is stored in with the function: 
+        # _beforeLabelRemoved
         self._labelControlUi.labelListModel.labelValueToBeDeleted.connect(self._beforeLabelRemoved)
         
         '''
@@ -615,19 +618,27 @@ class WatershedLabelingGui(LabelingGui):
         else:
             self.paintBrushSizeIndex = index
             self.editor.brushingModel.setBrushSize(newSize)
+    '''
 
     def _onLabelSelected(self, row):
+        """
+        1. change Interaction Mode to drawing and
+        2. set the value for drawing
+        3. set the color for drawing
+        """
         logger.debug("switching to label=%r" % (self._labelControlUi.labelListModel[row]))
 
         # If the user is selecting a label, he probably wants to be in paint mode
         self._changeInteractionMode(Tool.Paint)
 
         #+1 because first is transparent
-        #FIXME: shouldn't be just row+1 here
-        self.editor.brushingModel.setDrawnNumber(row+1)
+        # draw with the number/value of the given row 
+        number = self._labelControlUi.labelListModel[row].number
+        self.editor.brushingModel.setDrawnNumber(number)
         brushColor = self._labelControlUi.labelListModel[row].brushColor()
         self.editor.brushingModel.setBrushColor( brushColor )
 
+    '''
     def _resetLabelSelection(self):
         logger.debug("Resetting label selection")
         if len(self._labelControlUi.labelListModel) > 0:
