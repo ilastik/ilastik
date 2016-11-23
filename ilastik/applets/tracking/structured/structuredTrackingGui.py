@@ -75,6 +75,8 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             self._drawer.maxDistBox.setValue(parameters['maxDist'])
         if 'maxObj' in parameters.keys():
             self._drawer.maxObjectsBox.setValue(parameters['maxObj'])
+        if 'maxNearestNeighbors' in parameters.keys():
+            self._drawer.maxObjectsBox.setValue(parameters['maxNearestNeighbors'])
         if 'divThreshold' in parameters.keys():
             self._drawer.divThreshBox.setValue(parameters['divThreshold'])
         if 'avgSize' in parameters.keys():
@@ -167,7 +169,6 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._drawer.mergerResolutionBox.stateChanged.connect(self._onMaxObjectsBoxChanged)
 
         self._drawer.StructuredLearningButton.clicked.connect(self._onRunStructuredLearningButtonPressed)
-        self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()
 
         self._drawer.divWeightBox.valueChanged.connect(self._onDivisionWeightBoxChanged)                
         self._drawer.detWeightBox.valueChanged.connect(self._onDetectionWeightBoxChanged)                
@@ -199,10 +200,9 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         self.topLevelOperatorView.Labels.notifyReady( bind(self._updateLabelsFromOperator) )
         self.topLevelOperatorView.Divisions.notifyReady( bind(self._updateDivisionsFromOperator) )
-        self.topLevelOperatorView.Crops.notifyReady( bind(self._updateCropsFromOperator) )
 
         self.operator.labels = self.operator.Labels.value
-        self.initializeAnnotations()
+        self.topLevelOperatorView._updateCropsFromOperator()
 
         self._drawer.trainingToHardConstraints.setChecked(False)
         self._drawer.trainingToHardConstraints.setVisible(False) # will be used when we can handle sparse annotations
@@ -344,432 +344,22 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
     def _updateDivisionsFromOperator(self):
         self.operator.divisions = self.topLevelOperatorView.Divisions.wait()
 
-    @threadRouted
-    def _updateCropsFromOperator(self):
-        self._crops = self.topLevelOperatorView.Crops.wait()
-
-    def initializeAnnotations(self):
-
-        self._crops = self.topLevelOperatorView.Crops.value
-
     def getLabel(self, time, track):
         for label in self.operator.labels[time].keys():
             if self.operator.labels[time][label] == set([track]):
                 return label
         return False
 
-    def _onRunStructuredLearningButtonPressed(self):
-        if self.topLevelOperatorView.Annotations.value == {}:
-            self._criticalMessage("Error: Weights can not be calculated because there are no training annotations. " +\
-                                  "Go back to Training applet and Save your training for each crop.")
-            return
+    def _onRunStructuredLearningButtonPressed(self, withBatchProcessing=False):
 
-        self.initializeAnnotations()
-        median_obj_size = [0]
-
-        from_z = self._drawer.from_z.value()
-        to_z = self._drawer.to_z.value()
-        ndim=3
-        if (to_z - from_z == 0):
-            ndim=2
-
-        maxObj=self._maxNumObj
-
-        fieldOfView = pgmlink.FieldOfView(
-            float(0),
-            float(0),
-            float(0),
-            float(0),
-            float(self.topLevelOperatorView.LabelImage.meta.shape[0]),
-            float(self.topLevelOperatorView.LabelImage.meta.shape[1]),
-            float(self.topLevelOperatorView.LabelImage.meta.shape[2]),
-            float(self.topLevelOperatorView.LabelImage.meta.shape[3]))
-
-        foundAllArcs = False;
-        new_max_nearest_neighbors = self._maxNearestNeighbors-1
-        maxObjOK = True
-        while not foundAllArcs and maxObjOK:
-            new_max_nearest_neighbors += 1
-            withDivisions = self._drawer.divisionsBox.isChecked()
-            consTracker = pgmlink.ConsTracking(
-                maxObj, # max_number_objects
-                True, # size_dependent_detection_prob
-                float(median_obj_size[0]), # avg_obj_size
-                float(200), # max_neighbor_distance
-                withDivisions, # with_divisions
-                float(0.5), # division_threshold
-                "none", # random_forest_filename
-                fieldOfView,
-                "none", # event_vector_dump_filename
-                pgmlink.ConsTrackingSolverType.CplexSolver,
-                ndim)
-
-            time_range = range (0,self.topLevelOperatorView.LabelImage.meta.shape[0])
-            featureStore, traxelStore, empty_frame, max_traxel_id_at = self.mainOperator._generate_traxelstore(
-                time_range,
-                (0,self.topLevelOperatorView.LabelImage.meta.shape[1]),#x_range
-                (0,self.topLevelOperatorView.LabelImage.meta.shape[2]),#y_range
-                (0,self.topLevelOperatorView.LabelImage.meta.shape[3]),#z_range,
-                (0, 100000),#size_range
-                1.0,# x_scale
-                1.0,# y_scale
-                1.0,# z_scale,
-                median_object_size=median_obj_size,
-                with_div=withDivisions,
-                with_opt_correction=False,
-                with_classifier_prior=True)
-
-            if empty_frame:
-                raise DatasetConstraintError('Structured Learning', 'Can not track frames with 0 objects, abort.')
-            hypothesesGraph = consTracker.buildGraph(traxelStore, new_max_nearest_neighbors)
-
-            maxDist = 200
-            sizeDependent = False
-            divThreshold = float(0.5)
-
-            structuredLearningTracker = pgmlink.StructuredLearningTracking(
-                hypothesesGraph,
-                maxObj,
-                sizeDependent,
-                float(median_obj_size[0]),
-                maxDist,
-                withDivisions,
-                divThreshold,
-                "none",  # detection_rf_filename
-                fieldOfView,
-                "none", # dump traxelstore,
-                pgmlink.ConsTrackingSolverType.CplexSolver,
-                ndim)
-
-            logger.info("Structured Learning: Adding Training Annotations to Hypotheses Graph")
-
-            # could be merged with code in opStructuredTracking
-            structuredLearningTracker.addLabels()
-
-            mergeMsgStr = "Your tracking annotations contradict this model assumptions! All tracks must be continuous, tracks of length one are not allowed, and mergers may merge or split but all tracks in a merger appear/disappear together."
-            foundAllArcs = True;
-            numAllAnnotatedDivisions = 0
-            for cropKey in self.mainOperator.Crops.value.keys():
-                if foundAllArcs:
-
-                    if not cropKey in self.mainOperator.Annotations.value.keys():
-                        self._criticalMessage("You have not trained or saved your training for " + str(cropKey) + \
-                                              ". \nGo back to the Training applet and save all your training!")
-                        return
-
-                    crop = self.mainOperator.Annotations.value[cropKey]
-
-                    if "labels" in crop.keys():
-
-                        labels = crop["labels"]
-
-                        for time in labels.keys():
-
-                            if not foundAllArcs:
-                                break
-
-                            for label in labels[time].keys():
-
-                                if not foundAllArcs:
-                                    break
-
-                                trackSet = labels[time][label]
-                                center = self.features[time]['Default features']['RegionCenter'][label]
-                                trackCount = len(trackSet)
-
-                                if trackCount > maxObj:
-                                    logger.info("Your track count for object {} in time frame {} is {} =| {} |, which is greater than maximum object number {} defined by object count classifier!".format(label,time,trackCount,trackSet,maxObj))
-                                    logger.info("Either remove track(s) from this object or train the object count classifier with more labels!")
-                                    maxObjOK = False
-                                    raise DatasetConstraintError('Structured Learning', "Your track count for object "+str(label)+" in time frame " +str(time)+ " equals "+str(trackCount)+"=|"+str(trackSet)+"|," + \
-                                            " which is greater than the maximum object number "+str(maxObj)+" defined by object count classifier! " + \
-                                            "Either remove track(s) from this object or train the object count classifier with more labels!")
-
-                                for track in trackSet:
-
-                                    if not foundAllArcs:
-                                        logger.info("[structuredTrackingGui] Increasing max nearest neighbors!")
-                                        break
-
-                                    # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
-                                    type = self._type(cropKey, time, track) # returns [type, previous_label] if type=="LAST" or "INTERMEDIATE" (else [type])
-                                    if type == None:
-                                        raise DatasetConstraintError('Structured Learning', mergeMsgStr)
-
-                                    elif type[0] == "LAST" or type[0] == "INTERMEDIATE":
-                                        previous_label = int(type[1])
-                                        previousTrackSet = labels[time-1][previous_label]
-                                        intersectionSet = trackSet.intersection(previousTrackSet)
-                                        trackCountIntersection = len(intersectionSet)
-
-                                        if trackCountIntersection > maxObj:
-                                            logger.info("Your track count for transition ( {},{} ) ---> ( {},{} ) is {} =| {} |, which is greater than maximum object number {} defined by object count classifier!".format(previous_label,time-1,label,time,trackCountIntersection,intersectionSet,maxObj))
-                                            logger.info("Either remove track(s) from these objects or train the object count classifier with more labels!")
-                                            maxObjOK = False
-                                            raise DatasetConstraintError('Structured Learning', "Your track count for transition ("+str(previous_label)+","+str(time-1)+") ---> ("+str(label)+","+str(time)+") is "+str(trackCountIntersection)+"=|"+str(intersectionSet)+"|, " + \
-                                                    "which is greater than maximum object number "+str(maxObj)+" defined by object count classifier!" + \
-                                                    "Either remove track(s) from these objects or train the object count classifier with more labels!")
-
-
-                                        foundAllArcs &= structuredLearningTracker.addArcLabel(time-1, int(previous_label), int(label), float(trackCountIntersection))
-                                        if not foundAllArcs:
-                                            logger.info("[structuredTrackingGui] Increasing max nearest neighbors!")
-                                            break
-
-                                if type == None:
-                                    raise DatasetConstraintError('Structured Learning', mergeMsgStr)
-
-                                elif type[0] == "FIRST":
-                                    structuredLearningTracker.addFirstLabels(time, int(label), float(trackCount))
-                                    if time > self.mainOperator.Crops.value[cropKey]["time"][0]:
-                                        structuredLearningTracker.addDisappearanceLabel(time, int(label), 0.0)
-
-                                elif type[0] == "LAST":
-                                    structuredLearningTracker.addLastLabels(time, int(label), float(trackCount))
-                                    if time < self.mainOperator.Crops.value[cropKey]["time"][1]:
-                                        structuredLearningTracker.addAppearanceLabel(time, int(label), 0.0)
-
-                                elif type[0] == "INTERMEDIATE":
-                                    structuredLearningTracker.addIntermediateLabels(time, int(label), float(trackCount))
-
-                    if foundAllArcs and "divisions" in crop.keys():
-                        divisions = crop["divisions"]
-
-                        numAllAnnotatedDivisions = numAllAnnotatedDivisions + len(divisions)
-                        for track in divisions.keys():
-                            if not foundAllArcs:
-                                break
-
-                            division = divisions[track]
-                            time = int(division[1])
-
-                            parent = int(self.getLabelInCrop(cropKey, time, track))
-
-                            if parent >=0:
-                                structuredLearningTracker.addDivisionLabel(time, parent, 1.0)
-                                structuredLearningTracker.addAppearanceLabel(time, parent, 1.0)
-                                structuredLearningTracker.addDisappearanceLabel(time, parent, 1.0)
-
-                                child0 = int(self.getLabelInCrop(cropKey, time+1, division[0][0]))
-                                structuredLearningTracker.addDisappearanceLabel(time+1, child0, 1.0)
-                                structuredLearningTracker.addAppearanceLabel(time+1, child0, 1.0)
-                                foundAllArcs &= structuredLearningTracker.addArcLabel(time, parent, child0, 1.0)
-                                if not foundAllArcs:
-                                    logger.info("[structuredTrackingGui] Increasing max nearest neighbors!")
-                                    break
-
-                                child1 = int(self.getLabelInCrop(cropKey, time+1, division[0][1]))
-                                structuredLearningTracker.addDisappearanceLabel(time+1, child1, 1.0)
-                                structuredLearningTracker.addAppearanceLabel(time+1, child1, 1.0)
-                                foundAllArcs &= structuredLearningTracker.addArcLabel(time, parent, child1, 1.0)
-                                if not foundAllArcs:
-                                    logger.info("[structuredTrackingGui] Increasing max nearest neighbors!")
-                                    break
-        logger.info("max nearest neighbors=".format(new_max_nearest_neighbors))
-
-        if new_max_nearest_neighbors > self._maxNearestNeighbors:
-            self._maxNearestNeighbors = new_max_nearest_neighbors
-            self._drawer.maxNearestNeighborsSpinBox.setValue(self._maxNearestNeighbors)
-
-        forbidden_cost = 0.0
-        ep_gap = 0.005
-        withTracklets=False
-        withMergerResolution=True
-        transition_parameter = 5.0
-        borderAwareWidth = self._drawer.bordWidthBox.value()
-        sigmas = pgmlink.VectorOfDouble()
-        for i in range(5):
-            sigmas.append(0.0)
-        uncertaintyParams = pgmlink.UncertaintyParameter(1, pgmlink.DistrId.PerturbAndMAP, sigmas)
-
-        cplex_timeout=float(1000.0)
-        transitionClassifier = None
-
-        detectionWeight = self._detectionWeight
-        divisionWeight = self._divisionWeight
-        transitionWeight = self._transitionWeight
-        disappearanceWeight = self._disappearanceWeight
-        appearanceWeight = self._appearanceWeight
-
-        for key in self._crops.keys():
-            crop = self._crops[key]
-            fieldOfView = pgmlink.FieldOfView(
-                float(crop["time"][0]),float(crop["starts"][0]),float(crop["starts"][1]),float(crop["starts"][2]),
-                float(crop["time"][1]),float(crop["stops"][0]),float(crop["stops"][1]),float(crop["stops"][2]))
-
-            structuredLearningTracker.exportCrop(fieldOfView)
-
-        with_constraints = True
-        training_to_hard_constraints = False
-        num_threads = 8
-        withNormalization = True
-        withClassifierPrior = self._drawer.classifierPriorBox.isChecked()
-        verbose = False
-        withNonNegativeWeights = False
-        structuredLearningTrackerParameters = structuredLearningTracker.getStructuredLearningTrackingParameters(
-            float(forbidden_cost),
-            float(ep_gap),
-            withTracklets,
-            detectionWeight,
-            divisionWeight,
-            transitionWeight,
-            disappearanceWeight,
-            appearanceWeight,
-            withMergerResolution,
-            ndim,
-            transition_parameter,
-            borderAwareWidth,
-            with_constraints,
-            uncertaintyParams,
-            cplex_timeout,
-            transitionClassifier,
-            pgmlink.ConsTrackingSolverType.CplexSolver,
-            training_to_hard_constraints,
-            num_threads,
-            withNormalization,
-            withClassifierPrior,
-            verbose,
-            withNonNegativeWeights
-        )
-
-        # will be needed for python defined TRANSITION function
-        #structuredLearningTrackerParameters.register_transition_func(self.mainOperator.track_transition_func_no_weight)
-        structuredLearningTracker.structuredLearning(structuredLearningTrackerParameters)
-        if withDivisions and numAllAnnotatedDivisions == 0 and not structuredLearningTracker.weight(1) == 0.0:
-            self._informationMessage ("Divisible objects are checked, but you did not annotate any divisions in your tracking training. " + \
-                                 "The resulting division weight might be arbitrarily high and if there are divisions present in the dataset, " +\
-                                 "they might not be present in the tracking solution.")
-
-        norm = 0
-        for i in range(5):
-            norm += structuredLearningTracker.weight(i)*structuredLearningTracker.weight(i)
-        norm = math.sqrt(norm)
-
-        if norm > 0.0000001:
-            self._detectionWeight = structuredLearningTracker.weight(0)/norm
-            self._divisionWeight = structuredLearningTracker.weight(1)/norm
-            self._transitionWeight = structuredLearningTracker.weight(2)/norm
-            self._appearanceWeight = structuredLearningTracker.weight(3)/norm
-            self._disappearanceWeight = structuredLearningTracker.weight(4)/norm
-
-        self._drawer.detWeightBox.setValue(self._detectionWeight);
-        self._drawer.divWeightBox.setValue(self._divisionWeight);
-        self._drawer.transWeightBox.setValue(self._transitionWeight);
-        self._drawer.appearanceBox.setValue(self._appearanceWeight);
-        self._drawer.disappearanceBox.setValue(self._disappearanceWeight);
-
-        epsZero = 0.01
-        if self._detectionWeight < 0.0:
-            self._informationMessage ("Detection weight calculated was negative. Tracking solution will be re-calculated with non-negativity constraints for learning weights. " + \
-                "Furthermore, you should add more training and recalculate the learning weights in order to improve your tracking solution.")
-            #self._detectionWeight = epsZero
-        elif self._divisionWeight < 0.0:
-            self._informationMessage ("Division weight calculated was negative. Tracking solution will be re-calculated with non-negativity constraints for learning weights. " + \
-                "Furthermore, you should add more division cells to your training and recalculate the learning weights in order to improve your tracking solution.")
-            #self._divisionWeight = epsZero
-        elif self._transitionWeight < 0.0:
-            self._informationMessage ("Transition weight calculated was negative. Tracking solution will be re-calculated with non-negativity constraints for learning weights. " + \
-                "Furthermore, you should add more transitions to your training and recalculate the learning weights in order to improve your tracking solution.")
-            #self._transitionWeight = epsZero
-        elif self._appearanceWeight < 0.0:
-            self._informationMessage ("Appearance weight calculated was negative. Tracking solution will be re-calculated with non-negativity constraints for learning weights. " + \
-                "Furthermore, you should add more appearances to your training and recalculate the learning weights in order to improve your tracking solution.")
-            #self._appearanceWeight = epsZero
-        elif self._disappearanceWeight < 0.0:
-            self._informationMessage ("Disappearance weight calculated was negative. Tracking solution will be re-calculated with non-negativity constraints for learning weights. " + \
-                "Furthermore, you should add more disappearances to your training and recalculate the learning weights in order to improve your tracking solution.")
-            #self._disappearanceWeight = epsZero
-
-        if self._detectionWeight < 0.0 or self._divisionWeight < 0.0 or self._transitionWeight < 0.0 or self._appearanceWeight < 0.0 or self._disappearanceWeight < 0.0:
-            structuredLearningTrackerParameters.setWithNonNegativeWeights(True)
-            structuredLearningTracker.structuredLearning(structuredLearningTrackerParameters)
-            norm = 0
-            for i in range(5):
-                norm += structuredLearningTracker.weight(i)*structuredLearningTracker.weight(i)
-            norm = math.sqrt(norm)
-
-            if norm > 0.0000001:
-                self._detectionWeight = structuredLearningTracker.weight(0)/norm
-                self._divisionWeight = structuredLearningTracker.weight(1)/norm
-                self._transitionWeight = structuredLearningTracker.weight(2)/norm
-                self._appearanceWeight = structuredLearningTracker.weight(3)/norm
-                self._disappearanceWeight = structuredLearningTracker.weight(4)/norm
-
-            self._drawer.detWeightBox.setValue(self._detectionWeight);
-            self._drawer.divWeightBox.setValue(self._divisionWeight);
-            self._drawer.transWeightBox.setValue(self._transitionWeight);
-            self._drawer.appearanceBox.setValue(self._appearanceWeight);
-            self._drawer.disappearanceBox.setValue(self._disappearanceWeight);
-
-
-        self.mainOperator.detectionWeight = self._detectionWeight
-        self.mainOperator.divisionWeight = self._divisionWeight
-        self.mainOperator.transitionWeight = self._transitionWeight
-        self.mainOperator.appearanceWeight = self._appearanceWeight
-        self.mainOperator.disappearanceWeight = self._disappearanceWeight
-
-        self._drawer.detWeightBox.setValue(self._detectionWeight);
-        self._drawer.divWeightBox.setValue(self._divisionWeight);
-        self._drawer.transWeightBox.setValue(self._transitionWeight);
-        self._drawer.appearanceBox.setValue(self._appearanceWeight);
-        self._drawer.disappearanceBox.setValue(self._disappearanceWeight);
-
-        logger.info("Structured Learning Tracking Weights (normalized):")
-        logger.info("   detection weight     = {}".format(self._detectionWeight))
-        logger.info("   detection weight     = {}".format(self._divisionWeight))
-        logger.info("   detection weight     = {}".format(self._transitionWeight))
-        logger.info("   detection weight     = {}".format(self._appearanceWeight))
-        logger.info("   detection weight     = {}".format(self._disappearanceWeight))
-
-    def getLabelInCrop(self, cropKey, time, track):
-        labels = self.mainOperator.Annotations.value[cropKey]["labels"][time]
-        for label in labels.keys():
-            if self.mainOperator.Annotations.value[cropKey]["labels"][time][label] == set([track]):
-                return label
-        return -1
-
-    def _type(self, cropKey, time, track):
-        # returns [type, previous_label] (if type=="LAST" or "INTERMEDIATE" else [type])
-        type = None
-        if track == -1:
-            return ["FALSE_DETECTION"]
-        elif time == 0:
-            type = "FIRST"
-
-        labels = self.mainOperator.Annotations.value[cropKey]["labels"]
-        crop = self._crops[cropKey]
-        lastTime = -1
-        lastLabel = -1
-        for t in range(crop["time"][0],time):
-            for label in labels[t]:
-                if track in labels[t][label]:
-                    lastTime = t
-                    lastLabel = label
-        if lastTime == -1:
-            type = "FIRST"
-        elif lastTime < time-1:
-            logger.info("ERROR: Your annotations are not complete. See time frame {}.".format(time-1))
-        elif lastTime == time-1:
-            type =  "INTERMEDIATE"
-
-        firstTime = -1
-        for t in range(crop["time"][1],time,-1):
-            if t in labels.keys():
-                for label in labels[t]:
-                    if track in labels[t][label]:
-                        firstTime = t
-        if firstTime == -1:
-            if type == "FIRST":
-                return ["SINGLETON(FIRST_LAST)"]
-            else:
-                return ["LAST", lastLabel]
-        elif firstTime > time+1:
-            logger.info("ERROR: Your annotations are not complete. See time frame {}.".format(time+1))
-        elif firstTime == time+1:
-            if type ==  "INTERMEDIATE":
-                return ["INTERMEDIATE",lastLabel]
-            elif type != None:
-                return [type]
+        self.topLevelOperatorView._runStructuredLearning(
+            [self._drawer.from_z.value(),self._drawer.to_z.value()],
+            self._maxNumObj,
+            self._maxNearestNeighbors,
+            self._drawer.divisionsBox.isChecked(),
+            self._drawer.bordWidthBox.value(),
+            self._drawer.classifierPriorBox.isChecked(),
+            withBatchProcessing)
 
     def _onTrackButtonPressed( self ):
         if not self.mainOperator.ObjectFeatures.ready():
