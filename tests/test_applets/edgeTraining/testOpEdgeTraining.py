@@ -42,6 +42,7 @@ class TestOpEdgeTraining(object):
                    edge_D : 2 }
 
         op_view.EdgeLabelsDict.setValue( labels )
+        op_view.FreezeClassifier.setValue(False)
         
         assert op_view.EdgeProbabilities.ready()
         assert op_view.EdgeProbabilitiesDict.ready()
@@ -50,12 +51,12 @@ class TestOpEdgeTraining(object):
         edge_prob_dict = op_view.EdgeProbabilitiesDict.value
         
         # OFF
-        assert edge_prob_dict[edge_A] < 0.5
-        assert edge_prob_dict[edge_B] < 0.5
+        assert edge_prob_dict[edge_A] < 0.5, "Expected < 0.5, got {}".format(edge_prob_dict[edge_A])
+        assert edge_prob_dict[edge_B] < 0.5, "Expected < 0.5, got {}".format(edge_prob_dict[edge_B])
         
         # ON
-        assert edge_prob_dict[edge_C] > 0.5
-        assert edge_prob_dict[edge_D] > 0.5    
+        assert edge_prob_dict[edge_C] > 0.5, "Expected > 0.5, got {}".format(edge_prob_dict[edge_C])
+        assert edge_prob_dict[edge_D] > 0.5, "Expected > 0.5, got {}".format(edge_prob_dict[edge_D])
     
 if __name__ == "__main__":
     import sys
