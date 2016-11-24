@@ -18,42 +18,42 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ##############################################################################
-from functools import partial
-from contextlib import contextmanager
-import threading
-import os
+#from functools import partial
+#from contextlib import contextmanager
+#import threading
 
 import numpy as np
 
-import sip
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QWidget, QLabel, QSpinBox, QDoubleSpinBox, QVBoxLayout, \
-                        QHBoxLayout, QSpacerItem, QSizePolicy, QColor, QPen, QComboBox, QPushButton, \
-                        QMessageBox
-from PyQt4.Qt import QCheckBox, QLineEdit, QButtonGroup, QRadioButton, pyqtSlot
-
 from pixelValueDisplaying import PixelValueDisplaying 
 from importAndResetLabels import ImportAndResetLabels 
-
-
-from ilastik.utility.gui import threadRouted
-from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
-from volumina.layer import GrayscaleLayer, ColortableLayer, generateRandomColors
 import volumina.colortables as colortables
-#from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from ilastik.applets.watershedLabeling.watershedLabelingGui import WatershedLabelingGui
 
+import logging
+logger = logging.getLogger(__name__)
 
-from lazyflow.request import Request
-from lazyflow.utility import TransposedView
+
+
+#import sip
+#from ilastik.utility.gui import threadRouted
+#from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
+#from volumina.layer import GrayscaleLayer, ColortableLayer, generateRandomColors
+#from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
+#from lazyflow.request import Request
+#from lazyflow.utility import TransposedView
 #from lazyflow.operators import OpValueCache, OpTrainClassifierBlocked, OpClassifierPredict,\
                                #OpSlicedBlockedArrayCache, OpMultiArraySlicer2, \
                                #OpPixelOperator, OpMaxChannelIndicatorOperator, OpCompressedUserLabelArray, OpFeatureMatrixCache
 
 #for the LabelPipeline
 #from lazyflow.operators import OpCompressedUserLabelArray
-import logging
-logger = logging.getLogger(__name__)
+#from PyQt4.QtCore import Qt
+#from PyQt4.QtGui import QWidget, QLabel, QSpinBox, QDoubleSpinBox, QVBoxLayout, \
+                        #QHBoxLayout, QSpacerItem, QSizePolicy, QColor, QPen, QComboBox, QPushButton, \
+                        #QMessageBox
+#from PyQt4.Qt import QCheckBox, QLineEdit, QButtonGroup, QRadioButton, pyqtSlot
+
+
 
 #LayerViewerGui->LabelingGui->WatershedSegmentationGui
 class WatershedSegmentationGui(WatershedLabelingGui):
@@ -69,6 +69,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         return self._drawer
     '''
 
+    '''
     def stopAndCleanUp(self):
         # Unsubscribe to all signals
         for fn in self.__cleanup_fns:
@@ -76,6 +77,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
         # Base class
         super( WatershedSegmentationGui, self ).stopAndCleanUp()
+    '''
     
     ###########################################
     ###########################################
@@ -86,8 +88,8 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         op = self.topLevelOperatorView 
 
 
-        self.__cleanup_fns = []
-        self._currently_updating = False
+        #self.__cleanup_fns = []
+        #self._currently_updating = False
 
         #init the _existingSeedsSlot variable as True. Only reset it, if there is no seed input given
         self._existingSeedsSlot = True
@@ -149,8 +151,6 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         #op.opLabelPipeline.LabelInput.notifyDirty(op.CorrectedSeedsIn)
         #op.CorrectedSeedsIn.setDirty()
 
-        #print op.opLabelPipeline.LabelInput
-        #op.opLabelPipeline.LabelInput
         ############################################################
         # END TODO
         ############################################################
@@ -164,10 +164,10 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         labelSlots.labelOutput      = op.CorrectedSeedsOut
         labelSlots.labelEraserValue = op.opLabelPipeline.opLabelArray.eraser
         labelSlots.labelDelete      = op.opLabelPipeline.DeleteLabel
-
         labelSlots.labelNames       = op.LabelNames
 
         '''
+        import os
         # We provide our own UI file (which adds an extra control for interactive mode)
         if watershedLabelingDrawerUiPath is None:
             watershedLabelingDrawerUiPath = os.path.split(__file__)[0] + '/watershedLabelingDrawer.ui'
@@ -194,7 +194,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
                 op.LabelColors, 
                 op.PmapColors
                 )
-        # 1. First import seeds, 
+        # 1. First import seeds, and connect slot
         # 2. then look at their pixelValues (including looking at their channels) 
         #   in pixelValueDisplaying
         # import the Labels from CorrectedSeedsIn, if possible
@@ -205,12 +205,13 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
         # set the functionality of the pixelValue in the gui
         self.pixelValueDisplaying = PixelValueDisplaying (
-            op.CorrectedSeedsOut,  
-            self._labelControlUi.pixelValue,
-            self._labelControlUi.pixelValueCheckBox,
-            self.volumeEditorWidget.quadViewStatusBar,
-            channel=0
-            )
+                op.CorrectedSeedsOut,  
+                self._labelControlUi.pixelValue,
+                self._labelControlUi.pixelValueCheckBox,
+                self.volumeEditorWidget.quadViewStatusBar,
+                channel=0
+                )
+        self.pixelValueDisplaying.Label = "Show Corrected Seeds pixel value:"
         
 
 
@@ -220,8 +221,6 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         # BEGIN TODO
         ############################################################
 
-        #print labelSlots.labelNames.value
-        #print self._labelControlUi
 
 
         ############################################################
@@ -431,95 +430,6 @@ class WatershedSegmentationGui(WatershedLabelingGui):
     '''
 
 
-
-
-
-
-
-
-    #TODO I think, the next functions can be removed (commented)
-
-
-    @contextmanager
-    def set_updating(self):
-        assert not self._currently_updating
-        self._currently_updating = True
-        yield
-        self._currently_updating = False
-
-    def configure_gui_from_operator(self, *args):
-        """
-        see configure_update_handlers
-        """
-        #TODO don't now, why to do this
-        if self._currently_updating:
-            return False
-        with self.set_updating():
-            op = self.topLevelOperatorView
-            '''
-            self.channel_box.setValue( op.ChannelSelection.value )
-            rawData_layer = self.getLayerByName(self.RawDataName)
-            if rawData_layer:
-                rawData_layer.channel = op.ChannelSelection.value
-            '''
-            
-            self.brush_value_box.setValue( op.BrushValue.value )
-            #self.threshold_box.setValue( op.Pmin.value )
-            #self.membrane_size_box.setValue( op.MinMembraneSize.value )
-            #self.superpixel_size_box.setValue( op.MinSegmentSize.value )
-            #self.seed_presmoothing_box.setValue( op.SigmaMinima.value )
-            #self.watershed_presmoothing_box.setValue( op.SigmaWeights.value )
-            #self.seed_method_combo.setCurrentIndex( int(op.GroupSeeds.value) )
-            #self.enable_debug_box.setChecked( op.EnableDebugOutputs.value )
-
-    def configure_operator_from_gui(self):
-        """
-        see configure_update_handlers
-        """
-        if self._currently_updating:
-            return False
-        with self.set_updating():
-            op = self.topLevelOperatorView
-            op.ChannelSelection.setValue( self.channel_box.value() )
-            op.BrushValue.setValue( self.brush_value_box.value() )
-
-            #op.Pmin.setValue( self.threshold_box.value() )
-            #op.MinMembraneSize.setValue( self.membrane_size_box.value() )
-            #op.MinSegmentSize.setValue( self.superpixel_size_box.value() )
-            #op.SigmaMinima.setValue( self.seed_presmoothing_box.value() )
-            #op.SigmaWeights.setValue( self.watershed_presmoothing_box.value() )
-            #op.GroupSeeds.setValue( bool(self.seed_method_combo.currentIndex()) )
-            #op.EnableDebugOutputs.setValue( self.enable_debug_box.isChecked() )
-
-    '''
-    def onUpdateWatershedsButton(self):
-        def updateThread():
-            """
-            Temporarily unfreeze the cache and freeze it again after the views are finished rendering.
-            """
-            self.topLevelOperatorView.FreezeCache.setValue(False)
-            
-            # This is hacky, but for now it's the only way to do it.
-            # We need to make sure the rendering thread has actually seen that the cache
-            # has been updated before we ask it to wait for all views to be 100% rendered.
-            # If we don't wait, it might complete too soon (with the old data).
-            ndim = len(self.topLevelOperatorView.Superpixels.meta.shape)
-            self.topLevelOperatorView.Superpixels((0,)*ndim, (1,)*ndim).wait()
-
-            # Wait for the image to be rendered into all three image views
-            for imgView in self.editor.imageViews:
-                if imgView.isVisible():
-                    imgView.scene().joinRenderingAllTiles()
-            self.topLevelOperatorView.FreezeCache.setValue(True)
-
-        self.getLayerByName("Superpixels").visible = True
-        th = threading.Thread(target=updateThread)
-        th.start()
-    '''
-
-        
-
-
     def setupLayers(self):
         """
         Responsable for the elements in the 'Viewer Controls'
@@ -529,13 +439,8 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         these are excactly the one, that are shown in the Viewer Controls
 
         """
-        #print "\n\n in setupLayers\n\n"
 
         # Base class provides the label layer.
-        '''
-        import pdb
-        pdb.set_trace()
-        '''
         #needed to add here. otherwise the reset button doesn't work well
         layers = super(WatershedSegmentationGui, self).setupLayers()
         #layers[0].visible = False
@@ -624,7 +529,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
             #setValue() will emit valueChanged() if the new value is different from the old one.
             #not necessary: self.channel_box.valueChanged.emit(i)
 
-            layer.name = "Corrected Seeds Out"
+            layer.name = "Corrected Seeds"
             layer.visible = True
             layer.opacity = 1.0
             layers.append(layer)
@@ -633,67 +538,3 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         return layers
 
 
-
-
-
-
-
-
-            
-    ############################################################
-    # depricated stuff
-    ############################################################
-class Depricated():
-
-    def addAsManyLabelsAsMaximumValueOfCorrectedSeedsIn_depricated(self):
-        """
-        depricated: because not needed anymore. Everything done in importLabel
-        get the maximum value in CorrectedSeedsIn
-        add as many Labels (Seeds for Labeling) as the Maximum value
-        """
-        op = self.topLevelOperatorView 
-        #array = op.CorrectedSeedsIn
-        array = op.CorrectedSeedsIn.value
-        arrayMax = np.amax(array)
-
-        for i in range(arrayMax):
-            super( WatershedSegmentationGui, self )._addNewLabel()
-
-    @pyqtSlot()
-    def resetCorrectedSeedsInFromSeeds_depricated(self):
-        """
-        depricated: because doesn't work
-
-        reset the InputSlot CorrectedSeedsIn to the Seeds
-        if Seeds is not ready, then initialize CorrectedSeedsIn with an array 
-        of the right dimensions and values of zero (=background)
-        CorrectedSeedsIn is connected to the OpLabelPipeline, so it is loaded into the cache
-        """
-
-        #TODO has no effect to CorrectedSeedsOut right now
-
-        #print "In Function: resetCorrectedSeedsInFromSeeds"
-        op = self.topLevelOperatorView 
-        if op.Seeds.ready():
-            # Read from file
-            # copy the meta-data and the array from Seeds
-            default_seeds_volume = op.Seeds[:].wait()
-            op.CorrectedSeedsIn.meta = op.Seeds.meta
-            op.CorrectedSeedsIn._value =  default_seeds_volume 
-
-
-            
-        else:
-        #TODO if the Seeds is empty, then the CorrectedSeedsIn must have the right dimensions,
-        #like the RawData (only one channel) and be a ndarray with values = 0
-        #FIXME
-            raise NotImplementedError
-
-    @pyqtSlot(int)
-    def on_RawData_channelChanged(self, channel):
-        """
-        update the layer-channel after the channel_box has changed its value
-        """
-        rawData_layer = self.getLayerByName(self.RawDataName)
-        if rawData_layer:
-            rawData_layer.channel = self.channel_box.value()
