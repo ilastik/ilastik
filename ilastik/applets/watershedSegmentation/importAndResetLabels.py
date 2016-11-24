@@ -1,31 +1,70 @@
+import volumina.colortables as colortables
+from PyQt4.Qt import pyqtSlot
+from PyQt4.QtGui import QMessageBox
 
 class ImportAndResetLabels(object):
-    #TODO
-    def __init__(self, slot, isSlotContentNotEmpty, labelModelList, resetLayerName="Seeds", outputLayerName="Corrected Seeds Out"):
+    """
+    class that handles the import of slot-data into Labels and into a label-cache
+    as well as the deletion of this data from Cache
+
+    """
+    def __init__(self, 
+                slot, 
+                isSlotContentNotEmpty, 
+                labelListModel, 
+                opLabelArray, 
+                LabelNames, 
+                LabelColors, 
+                PmapColors, 
+                colortable = colortables.create_random_8bit_zero_transparent(),
+                LabelDefaultListName="Seed", 
+                resetLayerName="Seeds", 
+                outputLayerName="Corrected Seeds Out"):
         """
         :param slot:       InputSlot or OutputSlot the labels will be reset to the data 
             that is included in this slot
+        :param isSlotContentNotEmpty: Boolean if the initial input slot for the label input was empty or not
+            even if it was set to a default value afterwards
         :param labelListModel: the list in which the labels, there name, color, number etc is saved
             e.g. self._labelControlUi.labelListModel 
+        :param opLabelArray:    Operator where the Labels are Saved in Arrays;
+            used for deleting Labels out of the cache and to read in labels to the cache
+            member functions of opLabelArray used: clearLabel, ingestData
+            e.g.  topLevelOperatorView.opLabelPipeline.opLabelArray
+        :param LabelNames: Slot that contains the names of the Labels
+            When importing Labels, new Labels are added here 
+            GUI-only (not part of the pipeline, but saved to the project)
+        :param LabelColors: Slot that contains the Colors, with which the labels shall be drawn
+            When importing Labels, new LabelsColors from the colortable are added here 
+            GUI-only (not part of the pipeline, but saved to the project)
+        :param PmapColors: Slot that contains the Colors, that is related to a Label; 
+            When importing Labels, new LabelsColors from the colortable are added here 
+            GUI-only (not part of the pipeline, but saved to the project)
+        :param colortable: list of colors, that is used for LabelColors and PmapColors
+        :param LabelDefaultListName: give a default name, that is displayed in the labelListModel, 
+            when importing new labels
         :param resetLayerName: str name of the Layer, that is displayed in the setupLayer that 
             shows the original data, to which this operator will be reset 
             (only used for the MessageBox-question to really reset)
         :param outputLayerName: str name of the Layer, that is displayed in the setupLayer that 
             shows the output data, including all added labels 
             (only used for the MessageBox-question to really reset)
-        :param isSlotContentNotEmpty: Boolean if the initial input slot for the label input was empty or not
-            even if it was set to a default value afterwards
 
+        (self can be the class: WatershedSegmentationGui)
         """
 
         #variable initialization
-        self._slot = slot
-        self._labelListModel = labelListModel
-        self._pixelValueCheckBox = pixelValueCheckBox
-        self._statusBar = quadViewStatusBar
+        self._slot                  = slot
         self._isSlotContentNotEmpty = isSlotContentNotEmpty
-
-
+        self._labelListModel        = labelListModel
+        self._opLabelArray          = opLabelArray
+        self._LabelNames            = LabelNames
+        self._LabelColors           = LabelColors
+        self._PmapColors            = PmapColors
+        self._colortable            = colortable
+        self._LabelDefaultListName  = LabelDefaultListName
+        self._resetLayerName        = resetLayerName
+        self._outputLayerName       = outputLayerName
 
     ############################################################
     # Labelmanagement: Import, Delete, Reset
@@ -44,9 +83,7 @@ class ImportAndResetLabels(object):
         Remove every Label that is in the labelList and its value from cache.
         Doesn't effect Cached-values that don't have a Label in the LabelList. But this should never happen
         """
-        #TODO
-        op = self.topLevelOperatorView
-        rows = self.labelListModel.rowCount()
+        rows = self._labelListModel.rowCount()
 
         for i in range( rows ):
             #get the value/number of the label, that is now the first one in the list
@@ -54,8 +91,7 @@ class ImportAndResetLabels(object):
             value = self._labelListModel[0].number
 
             #delete the label with the value x from cache, means reset value x to zero 
-        #TODO
-            op.opLabelPipeline.opLabelArray.clearLabel( value )
+            self._opLabelArray.clearLabel( value )
             #alternatively use:
             #op.opLabelPipeline.DeleteLabel.setValue( 2 )
 
@@ -72,33 +108,34 @@ class ImportAndResetLabels(object):
         Add as many Labels as long as the tallest Label-Number and the ones before have a 
         Label to draw with
 
-        :param slot:        slot with the data, that includes the seeds
+        :param slot:        slot with the data, that includes the Labeldata
         """
-        op = self.topLevelOperatorView 
         # Load the data into the cache
         # Returns: the max label found in the slot.
-        new_max = op.opLabelPipeline.opLabelArray.ingestData( slot )
+        new_max = self._opLabelArray.ingestData( slot )
 
         # Add to the list of label names if there's a new max label with correct colors
-        old_names = op.LabelNames.value
+        old_names = self._LabelNames.value
         old_max = len(old_names)
         if new_max > old_max:
-            new_names = old_names + map( lambda x: "Seed {}".format(x), 
+            #new_names = old_names + map( lambda x: "Seed {}".format(x), 
+            #                             range(old_max+1, new_max+1) )
+            new_names = old_names + map( lambda x: self._LabelDefaultListName + " {}".format(x), 
                                          range(old_max+1, new_max+1) )
             #add the new Labelnames
-            op.LabelNames.setValue(new_names)
+            self._LabelNames.setValue(new_names)
 
             #set the colorvalue and the color that is displayed in the labellist to the correct color
 
             # Use the 8bit colortable that is used everywhere else
             # means: for new labels, for layer displaying etc
             default_colors = self._colortable
-            label_colors = op.LabelColors.value
-            pmap_colors = op.PmapColors.value
+            label_colors = self._LabelColors.value
+            pmap_colors = self._PmapColors.value
             
             #correct the color here
-            op.LabelColors.setValue( label_colors + default_colors[old_max:new_max] )
-            op.PmapColors.setValue( pmap_colors + default_colors[old_max:new_max] )
+            self._LabelColors.setValue( label_colors + default_colors[old_max:new_max] )
+            self._PmapColors.setValue( pmap_colors + default_colors[old_max:new_max] )
 
             #for debug reasons
             #colors
@@ -138,15 +175,15 @@ class ImportAndResetLabels(object):
 
 
     @pyqtSlot()
-    def resetLabelsToCorrectedSeedsIn(self):
+    def resetLabelsToSlot(self):
         """
         wipe the LabelList
-        import Labels from CorrectedSeedsIn Slot which overrides the cache
+        import Labels from Slot which overrides the cache
         """
         #decision box with yes or no
         msgBox = QMessageBox()
-        msgBox.setText('Are you sure to delete all progress in ' + outputLayerName 
-                + ' and reset to ' + resetLayerName + '?')
+        msgBox.setText('Are you sure to delete all progress in ' + self._outputLayerName 
+                + ' and reset to ' + self._resetLayerName + '?')
         msgBox.addButton(QMessageBox.Yes)
         msgBox.addButton(QMessageBox.No)
         #msgBox.addButton(QPushButton('Yes'), QMessageBox.YesRole)

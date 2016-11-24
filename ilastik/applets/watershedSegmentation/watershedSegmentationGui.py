@@ -144,7 +144,6 @@ class WatershedSegmentationGui(WatershedLabelingGui):
             if operator.ready():
                 logger.info( "InputData: " + operator.name + " is ready now")
         '''
-        """
 
         #TODO
         #op.opLabelPipeline.LabelInput.notifyDirty(op.CorrectedSeedsIn)
@@ -161,12 +160,12 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
         #init the slots
         labelSlots                  = WatershedLabelingGui.LabelingSlots()
-        labelSlots.labelInput       = topLevelOperatorView.CorrectedSeedsIn
-        labelSlots.labelOutput      = topLevelOperatorView.CorrectedSeedsOut
-        labelSlots.labelEraserValue = topLevelOperatorView.opLabelPipeline.opLabelArray.eraser
-        labelSlots.labelDelete      = topLevelOperatorView.opLabelPipeline.DeleteLabel
+        labelSlots.labelInput       = op.CorrectedSeedsIn
+        labelSlots.labelOutput      = op.CorrectedSeedsOut
+        labelSlots.labelEraserValue = op.opLabelPipeline.opLabelArray.eraser
+        labelSlots.labelDelete      = op.opLabelPipeline.DeleteLabel
 
-        labelSlots.labelNames       = topLevelOperatorView.LabelNames
+        labelSlots.labelNames       = op.LabelNames
 
         '''
         # We provide our own UI file (which adds an extra control for interactive mode)
@@ -184,11 +183,25 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         self.topLevelOperatorView.watershed_completed.subscribe( self.updateAllLayers )
         '''
 
+    
+        # init the class to import and reset Labels
+        self.importAndResetLabels = ImportAndResetLabels (
+                op.CorrectedSeedsIn,
+                self._existingSeedsSlot,
+                self._labelControlUi.labelListModel, 
+                op.opLabelPipeline.opLabelArray,
+                op.LabelNames, 
+                op.LabelColors, 
+                op.PmapColors
+                )
         # 1. First import seeds, 
         # 2. then look at their pixelValues (including looking at their channels) 
         #   in pixelValueDisplaying
         # import the Labels from CorrectedSeedsIn, if possible
-        self.importLabelsFromCorrectedSeedsIn()
+        self.importAndResetLabels.importLabelsFromSlot()
+
+        # resetSeedsPushButton functionality added by connecting signal with slot
+        self._labelControlUi.resetSeedsPushButton.clicked.connect(self.importAndResetLabels.resetLabelsToSlot)
 
         # set the functionality of the pixelValue in the gui
         self.pixelValueDisplaying = PixelValueDisplaying (
@@ -200,8 +213,6 @@ class WatershedSegmentationGui(WatershedLabelingGui):
             )
         
 
-        # resetSeedsPushButton functionality added by connecting signal with slot
-        self._labelControlUi.resetSeedsPushButton.clicked.connect(self.resetLabelsToCorrectedSeedsIn)
 
 
             
