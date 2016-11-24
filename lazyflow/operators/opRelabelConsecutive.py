@@ -17,7 +17,7 @@ class OpRelabelConsecutive(Operator):
     def execute(self, slot, subindex, roi, result):
         self.Input.get(roi).writeInto(result).wait()
         result = vigra.taggedView(result, self.Output.meta.axistags).withAxes('zyx')
-        _res, _max_label, _labelmap_dict = vigra.analysis.relabelConsecutive(result, self.StartLabel.value, out=result)
+        _res, _max_label, _labelmap_dict = vigra.analysis.relabelConsecutive(result, self.StartLabel.value, keep_zeros=False, out=result)
     
     def propagateDirty(self, slot, subindex, roi):
         self.Output.setDirty(roi.start, roi.stop)
