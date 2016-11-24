@@ -3,19 +3,9 @@ import vigra
 
 from lazyflow.graph import Graph
 from lazyflow.operators.opFeatureMatrixCache import OpFeatureMatrixCache
+from lazyflow.operators.opBlockedArrayCache import OpBlockedArrayCache
 
 class TestOpFeatureMatrixCache(object):
-    
-    @classmethod
-    def setupClass(cls):
-        # For better testing with small data, force a smaller block size
-        cls._REAL_MAX_BLOCK_PIXELS = OpFeatureMatrixCache.MAX_BLOCK_PIXELS
-        OpFeatureMatrixCache.MAX_BLOCK_PIXELS = 100
-
-    @classmethod
-    def teardownClass(cls):
-        # Restore the original block size
-        OpFeatureMatrixCache.MAX_BLOCK_PIXELS = cls._REAL_MAX_BLOCK_PIXELS
     
     def testBasic(self):
         features = numpy.indices( (100,100) ).astype(numpy.float32) + 0.5
@@ -31,8 +21,15 @@ class TestOpFeatureMatrixCache(object):
         labels[20,21] = 2
         
         graph = Graph()
+        # Use a cache for the labels so we can control the ideal_blockshape
+        # This ensures that the blockwise behavior is tested, even though we're
+        # testing with tiny data that would normally fall into a single block.
+        opLabelCache = OpBlockedArrayCache(graph=graph)
+        opLabelCache.outerBlockShape.setValue((10,10,1))
+        opLabelCache.Input.setValue(labels)
+        
         opFeatureMatrixCache = OpFeatureMatrixCache(graph=graph)
-        opFeatureMatrixCache.LabelImage.setValue(labels)
+        opFeatureMatrixCache.LabelImage.connect( opLabelCache.Output )
         opFeatureMatrixCache.FeatureImage.setValue(features)
         
         labels_and_features = opFeatureMatrixCache.LabelAndFeatureMatrix.value
