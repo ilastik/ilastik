@@ -22,18 +22,21 @@
 #from contextlib import contextmanager
 #import threading
 
+import vigra
+
 import numpy as np
 
 from pixelValueDisplaying import PixelValueDisplaying 
 from importAndResetLabels import ImportAndResetLabels 
-import volumina.colortables as colortables
 from ilastik.applets.watershedLabeling.watershedLabelingGui import WatershedLabelingGui
 
 import logging
 logger = logging.getLogger(__name__)
 
 
+from PyQt4.Qt import pyqtSlot
 
+#import volumina.colortables as colortables
 #import sip
 #from ilastik.utility.gui import threadRouted
 #from volumina.pixelpipeline.datasources import LazyflowSource, ArraySource
@@ -87,20 +90,16 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         self.topLevelOperatorView = topLevelOperatorView
         op = self.topLevelOperatorView 
 
-
-        #self.__cleanup_fns = []
-        #self._currently_updating = False
-
         #init the _existingSeedsSlot variable as True. Only reset it, if there is no seed input given
         self._existingSeedsSlot = True
 
-        #init the 256 color table with first color as invisible
-        self._colortable = colortables.create_random_8bit_zero_transparent()
 
         ############################################################
         # BEGIN TODO
         ############################################################
         """
+        THIS IS ONLY NECESSARY IF THE SEEDS INPUT FROM DATA SELECTION IS EMPTY
+
         #here try to propagate the dirty things:
         so that other slots see, that I changed the the correctedSeedsIn and the labelcache works fine
 
@@ -157,7 +156,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
 
 
-        self._LabelPipeline = op.opWSLP.opLabelPipeline
+        self._LabelPipeline         = op.opWSLP.opLabelPipeline
 
         #init the slots
         labelSlots                  = WatershedLabelingGui.LabelingSlots()
@@ -222,6 +221,9 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         # BEGIN TODO
         ############################################################
 
+        self._labelControlUi.runWatershedPushButton.clicked.connect(self.onRunWatershedPushButtonClicked)
+        # init this variable to True, that we know, that the button wasn't clicked before
+        self._firstClick_runWatershedPushButton = True
 
 
         ############################################################
@@ -430,6 +432,24 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
     '''
 
+    @pyqtSlot()
+    def onRunWatershedPushButtonClicked(self):
+        print "runWatershedPushButton clicked"
+        if self._firstClick_runWatershedPushButton:
+            self._firstClick_runWatershedPushButton = False
+            print "first time"
+            self.updateAllLayers()
+
+        #TODO execute the calculation here or elsewhere
+        op = self.topLevelOperatorView
+        op.opWSC.execWatershedAlgorithm()
+
+
+
+
+
+
+
     def initLayer(self, slot, name, layerList, visible=True, opacity=1.0, layerFunction=None):
         """
         :param slot: InputSlot or OutputSlot for which a layer will be created
@@ -485,6 +505,14 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
         #CorrectedSeedsOut
         self.initLayer(op.CorrectedSeedsOut, "Corrected Seeds", layers)
+
+
+        #handle the watershed output, 
+        #changes in slot ready/unready of all slots lead to the execution of setupLayers
+        if not self._firstClick_runWatershedPushButton:
+            #TODO change output to 
+            self.initLayer(op.WatershedCalculations, "Watershed Calculations", layers)
+            #self.initLayer(op.Boundaries, "Watershed Calculations", layers)
 
 
 
