@@ -254,7 +254,7 @@ class TestFeatureSelection(unittest.TestCase):
         g = Graph()
 
         features = {"Standard Object Features": {"Count":{}, "RegionCenter":{}, "Coord<Principal<Kurtosis>>":{}, \
-                                      "Coord<Minimum>":{}, "Coord<Maximum>":{}, "Mean":{}, \
+                                       "Coord<Maximum>":{}, "Mean":{}, \
                                       "Mean in neighborhood":{"margin":(30, 30, 1)}}}
         
         sel_features = {"Standard Object Features": {"Count":{}, "Mean":{}, "Mean in neighborhood":{"margin":(30, 30, 1)}, "Variance":{}}}
@@ -263,7 +263,6 @@ class TestFeatureSelection(unittest.TestCase):
         self.extrOp.BinaryImage.setValue(binimg)
         self.extrOp.RawImage.setValue(rawimg)
         self.extrOp.Features.setValue(features)
-        self.extrOp.FeaturesWithDefault.setValue(features)
 
         assert self.extrOp.RegionFeatures.ready()
         feats = self.extrOp.RegionFeatures([0, 1]).wait()
@@ -409,7 +408,6 @@ class TestFullOperator(unittest.TestCase):
         self.extrOp.BinaryImage.setValue(binimg)
         self.extrOp.RawImage.setValue(rawimg)
         self.extrOp.Features.setValue(features)
-        self.extrOp.FeaturesWithDefault.setValue(features)
         assert self.extrOp.RegionFeatures.ready()
         
         self.classOp = OpObjectClassification(graph=g)

@@ -537,8 +537,8 @@ class ObjectExtractionGui(LayerViewerGui):
         dlg.exec_()
 
         if dlg.result() == QDialog.Accepted:
+            mainOperator.Features.setValue(dlg.selectedFeatures)
             mainOperator.augmentFeatureNames(dlg.selectedFeatures)
-            #mainOperator.Features.setValue(dlg.selectedFeatures)
             self._calculateFeatures()
 
     def _calculateFeatures(self, interactive=True):

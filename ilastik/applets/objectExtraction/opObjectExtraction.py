@@ -373,6 +373,10 @@ class OpObjectExtraction(Operator):
         self._opCenterCache.name = "OpObjectExtraction._opCenterCache"
         self._opCenterCache.Input.connect(self._opObjectCenterImage.Output)
 
+        # Add default features if the value of features has changed
+        self.Features.notifyDirty(self.augmentFeatureNames)
+        self.Features.notifyValueChanged(self.augmentFeatureNames)
+
         # connect outputs
         self.LabelImage.connect(self._opLabelVolume.CachedOutput)
         self.ObjectCenterImage.connect(self._opCenterCache.Output)
@@ -424,37 +428,41 @@ class OpObjectExtraction(Operator):
         # Our Input slots are directly fed into the cache,
         #  so all calls to __setitem__ are forwarded automatically
 
-    def augmentFeatureNames(self, feature_names):
+    def augmentFeatureNames(self, *args):
         # Take a dictionary of feature names, augment it by default features and set to Features() slot
 
-        feature_names_with_default = deepcopy(feature_names)
+        if self.Features.ready():
+            feature_names = self.Features([]).wait()
+            feature_names_with_default = deepcopy(feature_names)
 
-        for plugin_name, feature_dict in feature_names_with_default.iteritems():
-            for feature_name, feature_props in feature_dict.iteritems():
-                feature_props["selected"] = True
-                feature_props["default"] = False
-                if feature_name in default_features.keys():
-                    # we don't care about plugin name here, because we require unique feature names for each plugin
-                    feature_props["default"] = True
+            print "CALLED AUGMENT FEATURE NAMES WITH NAMES:", feature_names
 
-        #expand the feature list by our default features
-        logger.debug("attaching default features {} to vigra features {}".format(default_features, feature_names))
-        plugin = pluginManager.getPluginByName("Standard Object Features", "ObjectFeatures")
-        all_default_props = plugin.plugin_object.fill_properties(default_features) #fill in display name and such
-        feature_names_with_default[default_features_key] = all_default_props
 
-        if not "Standard Object Features" in feature_names.keys():
-            # The user has not selected any standard features. Add them now
-            feature_names_with_default["Standard Object Features"] = {}
+            for plugin_name, feature_dict in feature_names_with_default.iteritems():
+                for feature_name, feature_props in feature_dict.iteritems():
+                    feature_props["selected"] = True
+                    feature_props["default"] = False
+                    if feature_name in default_features.keys():
+                        # we don't care about plugin name here, because we require unique feature names for each plugin
+                        feature_props["default"] = True
 
-        for default_feature_name, default_feature_props in default_features.iteritems():
-            if default_feature_name not in feature_names_with_default["Standard Object Features"]:
-                # this feature has not been selected by the user, add it now.
-                feature_names_with_default["Standard Object Features"][default_feature_name] = all_default_props[default_feature_name]
-                feature_names_with_default["Standard Object Features"][default_feature_name]["selected"] = False
+            #expand the feature list by our default features
+            logger.debug("attaching default features {} to vigra features {}".format(default_features, feature_names))
+            plugin = pluginManager.getPluginByName("Standard Object Features", "ObjectFeatures")
+            all_default_props = plugin.plugin_object.fill_properties(default_features) #fill in display name and such
+            feature_names_with_default[default_features_key] = all_default_props
 
-        self.Features.setValue(feature_names)
-        self.FeaturesWithDefault.setValue(feature_names_with_default)
+            if not "Standard Object Features" in feature_names.keys():
+                # The user has not selected any standard features. Add them now
+                feature_names_with_default["Standard Object Features"] = {}
+
+            for default_feature_name, default_feature_props in default_features.iteritems():
+                if default_feature_name not in feature_names_with_default["Standard Object Features"]:
+                    # this feature has not been selected by the user, add it now.
+                    feature_names_with_default["Standard Object Features"][default_feature_name] = all_default_props[default_feature_name]
+                    feature_names_with_default["Standard Object Features"][default_feature_name]["selected"] = False
+
+            self.FeaturesWithDefault.setValue(feature_names_with_default)
 
 
     @staticmethod
