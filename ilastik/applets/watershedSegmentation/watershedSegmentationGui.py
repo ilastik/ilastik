@@ -121,8 +121,8 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         '''
 
 
-        #lst_seeds = [ op.Seeds , op.CorrectedSeedsIn ]
-        lst_seeds = [ op.Seeds , op.CorrectedSeedsIn, op.opLabelPipeline.LabelInput]
+        lst_seeds = [ op.Seeds , op.CorrectedSeedsIn ]
+        #lst_seeds = [ op.Seeds , op.CorrectedSeedsIn, op.opLabelPipeline.LabelInput]
         for operator in lst_seeds:
             if not operator.ready():
                 self._existingSeedsSlot = False
@@ -157,13 +157,14 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
 
 
+        self._LabelPipeline = op.opWSLP.opLabelPipeline
 
         #init the slots
         labelSlots                  = WatershedLabelingGui.LabelingSlots()
         labelSlots.labelInput       = op.CorrectedSeedsIn
         labelSlots.labelOutput      = op.CorrectedSeedsOut
-        labelSlots.labelEraserValue = op.opLabelPipeline.opLabelArray.eraser
-        labelSlots.labelDelete      = op.opLabelPipeline.DeleteLabel
+        labelSlots.labelEraserValue = self._LabelPipeline.opLabelArray.eraser
+        labelSlots.labelDelete      = self._LabelPipeline.DeleteLabel
         labelSlots.labelNames       = op.LabelNames
 
         '''
@@ -189,7 +190,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
                 op.CorrectedSeedsIn,
                 self._existingSeedsSlot,
                 self._labelControlUi.labelListModel, 
-                op.opLabelPipeline.opLabelArray,
+                self._LabelPipeline.opLabelArray,
                 op.LabelNames, 
                 op.LabelColors, 
                 op.PmapColors
@@ -429,11 +430,33 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
     '''
 
+    def initLayer(self, slot, name, layerList, visible=True, opacity=1.0, layerFunction=None):
+        """
+        :param slot: InputSlot or OutputSlot for which a layer will be created
+        :param name: str is the name of the layer, that will be displayed in the gui
+        :param visible: bool whether the layer is visible or not (at the initialization)
+        :param opacity: float from 0.0 to 1.0; describes how much you can see through this layer 
+        :param layerFunction: if layerFunction is None, then use the default: 
+            self._create_8bit_ordered_random_colortable_zero_transparent_layer_from_slot
+        """
+        if layerFunction is None:
+            layerFunction = self.create_8bit_ordered_random_colortable_zero_transparent_layer_from_slot
+
+        if slot.ready():
+            layer           = layerFunction(slot)
+            layer.name      = name
+            layer.visible   = visible
+            layer.opacity   = opacity
+            layerList.append(layer)
+            del layer
+        else:
+            logger.info("slot not ready; didn't add a layer with name: " + name)
+
 
     def setupLayers(self):
         """
         Responsable for the elements in the 'Viewer Controls'
-        These are the views (e.g. opacitiy of Raw Data)
+        These are the views (e.g. opacity of Raw Data)
         that can be adjusted in the left corner of the program
         And for the Elements, that can be seen in the 'Central Widget', 
         these are excactly the one, that are shown in the Viewer Controls
@@ -447,93 +470,28 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         #remove the Label-Layer, because it is not needed here
         layers = []
 
-
-
         op = self.topLevelOperatorView
 
-        '''
-        # Superpixels
-        if op.Superpixels.ready():
-            layer = ColortableLayer( LazyflowSource(op.Superpixels), self._sp_colortable )
-            layer.name = "Superpixels"
-            layer.visible = True
-            layer.opacity = 0.5
-            layers.append(layer)
-            del layer
-
-        # Debug layers
-        if op.debug_results:
-            for name, compressed_array in op.debug_results.items():
-                axiskeys = op.Superpixels.meta.getAxisKeys()[:-1] # debug images don't have a channel axis
-                permutation = map(lambda key: axiskeys.index(key) if key in axiskeys else None, 'txyzc')
-                arraysource = ArraySource( TransposedView(compressed_array, permutation) )
-                if compressed_array.dtype == np.uint32:
-                    layer = ColortableLayer(arraysource, self._sp_colortable)
-                else:
-                    layer = GrayscaleLayer(arraysource)
-                    # TODO: Normalize? Maybe the drange should be included with the debug image.
-                layer.name = name
-                layer.visible = False
-                layer.opacity = 1.0
-                layers.append(layer)
-                del layer
-        '''
-
-        # Raw Data (color)
-        if op.RawData.ready():
-            layer = self.createStandardLayerFromSlot( op.RawData )
-            layer.name = "Raw Data"
-            layer.visible = False
-            layer.opacity = 1.0
-            layers.append(layer)
-            del layer
+        #Raw Data
+        self.initLayer(op.RawData, "Raw Data", layers, visible=False, 
+                layerFunction=self.createStandardLayerFromSlot ) 
 
         #Boundaries
-        if op.Boundaries.ready():
-            layer = self._create_grayscale_layer_from_slot( 
-                        op.Boundaries, op.Boundaries.meta.getTaggedShape()['c'] )
-            layer.name = "Boundaries"
-            layer.visible = True
-            layer.opacity = 0.10
-            layers.append(layer)
-            del layer
+        self.initLayer(op.Boundaries, "Boundaries", layers, opacity=0.1, 
+                layerFunction=self.createGrayscaleLayer) 
 
+        #Seeds
+        self.initLayer(op.Seeds, "Seeds", layers, visible=False)
 
-        if op.Seeds.ready():
-            layer = self._create_8bit_ordered_random_colortable_zero_transparent_layer_from_slot( 
-                        op.Seeds )
-            #layer = self._create_grayscale_layer_from_slot( op.Seeds, op.Seeds.meta.getTaggedShape()['c'] )
-            #changing the Channel in the layer, 
-            #changes the RawData Channel in the applet gui as well
-            #layer.channelChanged.connect(self.channel_box.setValue)
-            #setValue() will emit valueChanged() if the new value is different from the old one.
-            #not necessary: self.channel_box.valueChanged.emit(i)
-
-            layer.name = "Seeds"
-            layer.visible = False
-            layer.opacity = 1.0
-            layers.append(layer)
-            del layer
+        #CorrectedSeedsOut
+        self.initLayer(op.CorrectedSeedsOut, "Corrected Seeds", layers)
 
 
 
-        if op.CorrectedSeedsOut.ready():
-            #layer = ColortableLayer( op.CorrectedSeedsOut, colorTable = self._colorTable8bit  )
-            #layer = self.createStandardLayerFromSlot( op.CorrectedSeedsOut )
-            #layer = self._create_grayscale_layer_from_slot( op.CorrectedSeedsOut, op.CorrectedSeedsOut.meta.getTaggedShape()['c'] )
-            layer = self._create_8bit_ordered_random_colortable_zero_transparent_layer_from_slot( 
-                        op.CorrectedSeedsOut )
-            #changing the Channel in the layer, 
-            #changes the RawData Channel in the applet gui as well
-            #layer.channelChanged.connect(self.channel_box.setValue)
-            #setValue() will emit valueChanged() if the new value is different from the old one.
-            #not necessary: self.channel_box.valueChanged.emit(i)
-
-            layer.name = "Corrected Seeds"
-            layer.visible = True
-            layer.opacity = 1.0
-            layers.append(layer)
-            del layer
+        #if you have a channel-box in the gui, that shall be synchronized with the layer channel
+        #layer.channelChanged.connect(self.channel_box.setValue)
+        #setValue() will emit valueChanged() if the new value is different from the old one.
+        #not necessary: self.channel_box.valueChanged.emit(i)
 
         return layers
 

@@ -930,7 +930,7 @@ class WatershedLabelingGui(LabelingGui):
         if len(self._labelingSlots.labelNames.value) > self._labelControlUi.labelListModel.rowCount():
             #remove the label, that has been marked for deletion
             if not (self._deleteLabelValue == None):
-                self.topLevelOperatorView.opLabelPipeline.opLabelArray.clearLabel( self._deleteLabelValue )
+                self.topLevelOperatorView.opWSLP.opLabelPipeline.opLabelArray.clearLabel( self._deleteLabelValue )
                 self._deleteLabelValue = None
     
             #remove the labelname out of the list

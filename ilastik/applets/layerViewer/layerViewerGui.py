@@ -310,6 +310,12 @@ class LayerViewerGui(QWidget):
         return layer
 
     @classmethod
+    def createGrayscaleLayer(cls, slot):
+        source = LazyflowSource(slot)
+        layer = GrayscaleLayer(source)
+        return layer
+
+    @classmethod
     def _create_single_color_layer_from_slot(cls, slot, channelNumber):
         """
         only handle a single channel of an input-slot and give it a destinct color
@@ -347,7 +353,7 @@ class LayerViewerGui(QWidget):
         return layer
 
     @classmethod
-    def _create_8bit_ordered_random_colortable_layer_from_slot(cls, slot):
+    def create_8bit_ordered_random_colortable_layer_from_slot(cls, slot):
         """
         Use the volumina random colortable 8bit
         it includes a definite and ordered list of colors. This order is always the same
@@ -358,7 +364,7 @@ class LayerViewerGui(QWidget):
         return layer
 
     @classmethod
-    def _create_8bit_ordered_random_colortable_zero_transparent_layer_from_slot(cls, slot):
+    def create_8bit_ordered_random_colortable_zero_transparent_layer_from_slot(cls, slot):
         """
         Use the volumina random colortable 8bit
         it includes a definite and ordered list of colors. This order is always the same
