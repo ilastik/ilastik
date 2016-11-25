@@ -1,2 +1,2 @@
-from wsdtApplet import WsdtApplet
-from opWsdt import OpWsdt
+from .wsdtApplet import WsdtApplet
+from .opWsdt import OpWsdt

@@ -19,8 +19,8 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
-from opDeviationFromMean import OpDeviationFromMean
-from deviationFromMeanSerializer import DeviationFromMeanSerializer
+from .opDeviationFromMean import OpDeviationFromMean
+from .deviationFromMeanSerializer import DeviationFromMeanSerializer
 
 class DeviationFromMeanApplet( StandardApplet ):
     """
@@ -42,7 +42,7 @@ class DeviationFromMeanApplet( StandardApplet ):
 
     @property
     def singleLaneGuiClass(self):
-        from deviationFromMeanGui import DeviationFromMeanGui
+        from .deviationFromMeanGui import DeviationFromMeanGui
         return DeviationFromMeanGui
 
     @property

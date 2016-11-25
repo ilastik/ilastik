@@ -20,8 +20,8 @@
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
-from opMulticut import OpMulticut
-from multicutSerializer import MulticutSerializer
+from .opMulticut import OpMulticut
+from .multicutSerializer import MulticutSerializer
 
 class MulticutApplet( StandardApplet ):
     """
@@ -41,7 +41,7 @@ class MulticutApplet( StandardApplet ):
 
     @property
     def singleLaneGuiClass(self):
-        from multicutGui import MulticutGui
+        from .multicutGui import MulticutGui
         return MulticutGui
 
     @property

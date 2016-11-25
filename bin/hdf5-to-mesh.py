@@ -31,7 +31,7 @@ def main():
 
     output_file = os.path.splitext(parsed_args.input_hdf5_file)[0] + ".obj"
 
-    print "Loading volume..."
+    print("Loading volume...")
     with h5py.File(parsed_args.input_hdf5_file, 'r') as f_input:
         dataset_names = []
         f_input.visit(dataset_names.append)
@@ -54,21 +54,21 @@ def main():
 
     QTimer.singleShot(0, partial(dlg.run, volume, [0]))
     app.exec_()
-    print "DONE."
+    print("DONE.")
 
 def onMeshesComplete(dlg, obj_filepath):
     """
     Called when mesh extraction is complete.
     Writes the extracted mesh to an .obj file
     """
-    print "Mesh generation complete."
+    print("Mesh generation complete.")
     mesh_count = len( dlg.extractor.meshes )
 
     # Mesh count can sometimes be 0 for the '<not saved yet>' object...
     if mesh_count > 0:
         assert mesh_count == 1, \
             "Found {} meshes. (Only expected 1)".format( mesh_count )
-        mesh = dlg.extractor.meshes.values()[0]
+        mesh = list(dlg.extractor.meshes.values())[0]
 
         # Use VTK to write to a temporary .vtk file
         tmpdir = tempfile.mkdtemp()
@@ -80,7 +80,7 @@ def onMeshesComplete(dlg, obj_filepath):
         w.Write()
         
         # Now convert the file to .obj format.
-        print "Saving meshes to {}".format( obj_filepath )
+        print("Saving meshes to {}".format( obj_filepath ))
         convertVTPtoOBJ(vtkpoly_path, obj_filepath)
 
         shutil.rmtree( tmpdir )

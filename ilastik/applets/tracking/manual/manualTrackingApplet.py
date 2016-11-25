@@ -20,8 +20,8 @@
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
-from opManualTracking import OpManualTracking
-from manualTrackingSerializer import ManualTrackingSerializer
+from .opManualTracking import OpManualTracking
+from .manualTrackingSerializer import ManualTrackingSerializer
 
 class ManualTrackingApplet(StandardApplet):
     def __init__( self, name="Manual Tracking", workflow=None, projectFileGroupName="ManualTracking" ):
@@ -39,7 +39,7 @@ class ManualTrackingApplet(StandardApplet):
 
     @property
     def singleLaneGuiClass( self ):
-        from manualTrackingGui import ManualTrackingGui
+        from .manualTrackingGui import ManualTrackingGui
         return ManualTrackingGui
 
     @property

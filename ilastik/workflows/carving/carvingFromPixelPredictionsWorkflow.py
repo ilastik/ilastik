@@ -30,8 +30,8 @@ from ilastik.applets.pixelClassification import PixelClassificationApplet
 
 from lazyflow.operators import OpSingleChannelSelector
 
-from carvingApplet import CarvingApplet
-from preprocessingApplet import PreprocessingApplet
+from .carvingApplet import CarvingApplet
+from .preprocessingApplet import PreprocessingApplet
 
 import ilastik.config
 if ilastik.config.cfg.getboolean('ilastik', 'debug'):

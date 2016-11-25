@@ -18,4 +18,4 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from blockwiseObjectClassificationWorkflow import BlockwiseObjectClassificationWorkflow
+from .blockwiseObjectClassificationWorkflow import BlockwiseObjectClassificationWorkflow

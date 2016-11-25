@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from __future__ import division
+
 from lazyflow.graph import Operator, InputSlot, OutputSlot
 import numpy
 from ilastik.utility import MultiLaneOperatorABC, OperatorSubView
@@ -138,8 +138,8 @@ if __name__ == "__main__":
     op.Input[2].setValue( twos )
     
     expected = offset + scalingFactor * (ones - (zeros + ones + twos) // len(op.Input)) 
-    print "expected:", expected
+    print("expected:", expected)
 
     output = op.Output[1][:].wait()
-    print "output:",output
+    print("output:",output)
     assert ( output == expected).all()

@@ -28,7 +28,7 @@ from ilastik.applets.dataSelection import DataSelectionApplet
 
 from lazyflow.graph import Graph, OperatorWrapper
 
-from connectedComponentsApplet import ConnectedComponentsApplet
+from .connectedComponentsApplet import ConnectedComponentsApplet
 
 import logging
 logger = logging.getLogger(__name__)

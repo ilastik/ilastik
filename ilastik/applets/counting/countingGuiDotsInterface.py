@@ -45,7 +45,7 @@ from volumina.brushingcontroller import BrushingController,BrushingInterpreter
 import numpy as np
 import vigra
 
-from countingGuiBoxesInterface import OpArrayPiper2
+from .countingGuiBoxesInterface import OpArrayPiper2
 
 import logging
 logger = logging.getLogger(__name__)
@@ -268,7 +268,7 @@ class DotController(QObject):
                 
     def addNewDot(self,pos5D):
         pos=tuple(pos5D[1:3])
-        if self._currentDotsHash.has_key(pos): 
+        if pos in self._currentDotsHash: 
             logger.debug( "Dot is already there %s",self._currentDotsHash[pos] )
             return
         
@@ -299,17 +299,17 @@ class DotController(QObject):
     def setDotsRadius(self,radius):
         self._radius=radius
         self.signalRadiusChanged.emit(self._radius)
-        for _,v in self._currentDotsHash.items():
+        for _,v in list(self._currentDotsHash.items()):
             v.radius=radius
     
     def setDotsColor(self,qcolor):
         self._color=qcolor
-        for _,v in self._currentDotsHash.items():
+        for _,v in list(self._currentDotsHash.items()):
             v.setColor(qcolor)
         self.signalColorChanged.emit(qcolor)
     
     def sedDotsVisibility(self,boolval):
-        for _,v in self._currentDotsHash.items():
+        for _,v in list(self._currentDotsHash.items()):
             v.setVisible(boolval)
     
     

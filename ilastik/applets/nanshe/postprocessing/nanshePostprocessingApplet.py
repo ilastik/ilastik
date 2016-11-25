@@ -26,7 +26,7 @@ __date__ = "$Oct 23, 2014 16:26:21 EDT$"
 
 from ilastik.applets.base.standardApplet import StandardApplet
 
-from opNanshePostprocessing import OpNanshePostprocessing
+from .opNanshePostprocessing import OpNanshePostprocessing
 from ilastik.applets.nanshe.postprocessing.nanshePostprocessingSerializer import NanshePostprocessingSerializer
 
 class NanshePostprocessingApplet( StandardApplet ):

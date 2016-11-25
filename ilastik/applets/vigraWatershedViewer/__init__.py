@@ -18,6 +18,6 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from vigraWatershedViewerApplet import VigraWatershedViewerApplet
-from opVigraWatershedViewer import OpVigraWatershedViewer
+from .vigraWatershedViewerApplet import VigraWatershedViewerApplet
+from .opVigraWatershedViewer import OpVigraWatershedViewer
 #from vigraWatershedSerializer import VigraWatershedSerializer

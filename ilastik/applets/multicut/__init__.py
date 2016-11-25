@@ -1,2 +1,2 @@
-from multicutApplet import MulticutApplet
-from opMulticut import OpMulticut
+from .multicutApplet import MulticutApplet
+from .opMulticut import OpMulticut

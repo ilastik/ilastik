@@ -20,8 +20,8 @@
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
-from opFillMissingSlices import OpFillMissingSlices
-from fillMissingSlicesSerializer import FillMissingSlicesSerializer
+from .opFillMissingSlices import OpFillMissingSlices
+from .fillMissingSlicesSerializer import FillMissingSlicesSerializer
 
 from lazyflow.operatorWrapper import OperatorWrapper
 
@@ -48,7 +48,7 @@ class FillMissingSlicesApplet(StandardApplet):
 
     @property
     def singleLaneGuiClass(self):
-        from fillMissingSlicesGui import FillMissingSlicesGui
+        from .fillMissingSlicesGui import FillMissingSlicesGui
         return FillMissingSlicesGui
 
     @property

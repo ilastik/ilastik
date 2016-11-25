@@ -137,13 +137,13 @@ class OpNansheEstimateF0(Operator):
 
         halo = list(itertools.repeat(0, len(slicing) - 1))
         halo[0] = max(int(math.ceil(temporal_smoothing_gaussian_filter_window_size*temporal_smoothing_gaussian_filter_stdev)), half_window_size)
-        for i in xrange(1, len(halo)):
+        for i in range(1, len(halo)):
             halo[i] = int(math.ceil(spatial_smoothing_gaussian_filter_window_size*spatial_smoothing_gaussian_filter_stdev))
 
         halo_slicing = list(slicing)
         within_halo_slicing = list(slicing)
 
-        for i in xrange(len(halo)):
+        for i in range(len(halo)):
             halo_slicing_i_start = (halo_slicing[i].start - halo[i])
             within_halo_slicing_i_start = halo[i]
             if (halo_slicing_i_start < 0):
@@ -275,7 +275,7 @@ class OpNansheEstimateF0Cached(Operator):
         self.Output.connect( self.opCache_F0.Output )
 
     def setupOutputs(self):
-        axes_shape_iter = itertools.izip(self.opEstimateF0.Output.meta.axistags, self.opEstimateF0.Output.meta.shape)
+        axes_shape_iter = zip(self.opEstimateF0.Output.meta.axistags, self.opEstimateF0.Output.meta.shape)
 
         halo_center_slicing = []
 

@@ -19,8 +19,8 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
-from opPatchCreator import OpPatchCreator
-from patchCreatorSerializer import PatchCreatorSerializer
+from .opPatchCreator import OpPatchCreator
+from .patchCreatorSerializer import PatchCreatorSerializer
 from lazyflow.graph import OperatorWrapper
 
 class PatchCreatorApplet( StandardApplet ):
@@ -42,7 +42,7 @@ class PatchCreatorApplet( StandardApplet ):
 
     @property
     def singleLaneGuiClass(self):
-        from patchCreatorGui import PatchCreatorGui
+        from .patchCreatorGui import PatchCreatorGui
         return PatchCreatorGui
 
     @property

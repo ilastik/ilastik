@@ -1,4 +1,4 @@
-from itertools import izip, imap
+
 from functools import partial
 
 import numpy as np
@@ -100,7 +100,7 @@ class OpEdgeTraining(Operator):
 
         # All input multi-slots should be kept in sync
         # Output multi-slots will auto-sync via the graph
-        multiInputs = filter( lambda s: s.level >= 1, self.inputs.values() )
+        multiInputs = [s for s in list(self.inputs.values()) if s.level >= 1]
         for s1 in multiInputs:
             for s2 in multiInputs:
                 if s1 != s2:
@@ -120,7 +120,7 @@ class OpEdgeTraining(Operator):
         def subscribe_to_dirty_sp(slot, position, finalsize):
             # A new lane was added.  Subscribe to it's dirty signal.
             assert slot is self.Superpixels
-            print "Setting up listeners for {}".format(position)
+            print("Setting up listeners for {}".format(position))
             self.Superpixels[position].notifyDirty(self.handle_dirty_superpixels)
             self.Superpixels[position].notifyReady(self.handle_dirty_superpixels)
             self.Superpixels[position].notifyUnready(self.handle_dirty_superpixels)
@@ -174,8 +174,8 @@ class OpEdgeTraining(Operator):
         logger.info("Computing edge decisions from groundtruth...")
         decisions = rag.edge_decisions_from_groundtruth(gt_vol, asdict=False)
         edge_labels = decisions.view(np.uint8) + 1
-        edge_ids = map(tuple, rag.edge_ids)
-        edge_labels_dict = dict( zip(edge_ids, edge_labels) )
+        edge_ids = list(map(tuple, rag.edge_ids))
+        edge_labels_dict = dict( list(zip(edge_ids, edge_labels)) )
         op_view.EdgeLabelsDict.setValue( edge_labels_dict )
 
     def addLane(self, laneIndex):
@@ -250,8 +250,7 @@ class OpComputeEdgeFeatures(Operator):
             
             # Prefix all column names with the channel name, to guarantee uniqueness
             # (Generally a nice feature, but also required for serialization.)
-            edge_features_df.columns = map( lambda feature_name: channel_name + ' ' + feature_name,
-                                            edge_features_df.columns.values )
+            edge_features_df.columns = [channel_name + ' ' + feature_name for feature_name in edge_features_df.columns.values]
             edge_feature_dfs.append(edge_features_df)
 
         # Could use join() or merge() here, but we know the rows are already in the right order, and concat() should be faster.
@@ -284,12 +283,12 @@ class OpTrainEdgeClassifier(Operator):
             if not labels_dict:
                 continue
 
-            sp_columns = np.array(labels_dict.keys())
+            sp_columns = np.array(list(labels_dict.keys()))
             edge_features_df = features_slot.value
             assert list(edge_features_df.columns[0:2]) == ['sp1', 'sp2']
 
             labels_df = pd.DataFrame(sp_columns, columns=['sp1', 'sp2'])
-            labels_df['label'] = labels_dict.values()
+            labels_df['label'] = list(labels_dict.values())
 
             # Drop zero labels
             labels_df = labels_df[labels_df['label'] != 0]
@@ -371,7 +370,7 @@ class OpEdgeProbabilitiesDict(Operator):
 
         logger.info("Converting edge probabilities to dict...")
         edge_ids = rag.edge_ids
-        result[0] = dict(izip(imap(tuple, edge_ids), edge_probabilities))
+        result[0] = dict(zip(map(tuple, edge_ids), edge_probabilities))
         logger.info("...done")
 
     def propagateDirty(self, slot, subindex, roi):

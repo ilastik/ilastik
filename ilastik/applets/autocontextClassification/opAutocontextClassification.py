@@ -172,10 +172,10 @@ class OpAutocontextClassification( Operator ):
         for i in range(niter-1):
             for ifeat, feat in enumerate(self.autocontextFeatures[i]):
                 feat.inputs['Input'].connect( self.prediction_caches[i].Output)
-                print "Multi: Connecting an output", "Input%.2d"%(ifeat)
+                print("Multi: Connecting an output", "Input%.2d"%(ifeat))
                 self.autocontextFeaturesMulti[i].inputs["Input%.2d"%(ifeat)].connect(feat.outputs["Output"])
             # connect the pixel features to the same multislot
-            print "Multi: Connecting an output", "Input%.2d"%(len(self.autocontextFeatures[i]))
+            print("Multi: Connecting an output", "Input%.2d"%(len(self.autocontextFeatures[i])))
             self.autocontextFeaturesMulti[i].inputs["Input%.2d"%(len(self.autocontextFeatures[i]))].connect(self.CachedFeatureImages)
             # stack the autocontext features with pixel features
             self.featureStackers[i].inputs["Images"].connect(self.autocontextFeaturesMulti[i].outputs["Outputs"])
@@ -294,7 +294,7 @@ class OpAutocontextClassification( Operator ):
 
         # All input multi-slots should be kept in sync
         # Output multi-slots will auto-sync via the graph
-        multiInputs = filter( lambda s: s.level >= 1, self.inputs.values() )
+        multiInputs = [s for s in list(self.inputs.values()) if s.level >= 1]
         for s1 in multiInputs:
             for s2 in multiInputs:
                 if s1 != s2:

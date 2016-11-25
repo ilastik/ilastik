@@ -41,7 +41,7 @@ def cleanup_value(val, nObjects):
 
 def cleanup(d, nObjects, features):
     
-    result = dict((k, cleanup_value(v, nObjects)) for k, v in d.iteritems())
+    result = dict((k, cleanup_value(v, nObjects)) for k, v in d.items())
     newkeys = set(result.keys()) & set(features)
     return dict((k, result[k]) for k in newkeys)
 
@@ -67,7 +67,7 @@ class VigraSkeletonObjFeats(ObjectFeaturesPlugin):
         
         tooltips = {}
         result = dict((n, {}) for n in names)  
-        for f, v in result.iteritems():
+        for f, v in result.items():
             v['tooltip'] = self.local_preffix + f
         
         return result
@@ -77,7 +77,7 @@ class VigraSkeletonObjFeats(ObjectFeaturesPlugin):
         result = vigra.analysis.extractSkeletonFeatures(labels.squeeze().astype(np.uint32))
 
         # Rename 'Center' to 'Hull Center' to avoid name clash with skeleton features
-        if 'Center' in result.keys():
+        if 'Center' in list(result.keys()):
             # To avoid name clashes with convex hull features,
             # rename "center" to "skeleton center"
             result['Skeleton Center'] = result['Center']
@@ -92,5 +92,5 @@ class VigraSkeletonObjFeats(ObjectFeaturesPlugin):
 
     def compute_global(self, image, labels, features, axes):
         
-        return self._do_4d(image, labels, features.keys(), axes)
+        return self._do_4d(image, labels, list(features.keys()), axes)
 

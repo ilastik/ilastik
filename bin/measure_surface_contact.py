@@ -84,4 +84,4 @@ if __name__ == "__main__":
     # Alternative implementation:
     #contact_area = measure_surface_contact_B(volume, object_label_1, object_label_2, contact_distance=1)
 
-    print contact_area
+    print(contact_area)

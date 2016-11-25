@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from __future__ import division
+
 import numpy as np
 import vigra
 import itertools
@@ -27,7 +27,7 @@ try:
 except:
     pass
 
-import h5py, cPickle
+import h5py, pickle
 import sys
 
 import logging
@@ -59,7 +59,7 @@ class RegressorC(object):
         return result
     
     def fitcplex(self,X,Yl,tags, boxConstraints = None):
-        import cwrapper.cplex
+        from . import cwrapper.cplex
         import ctypes
         c_float_p = ctypes.POINTER(ctypes.c_float)
         c_char_p= ctypes.POINTER(ctypes.c_char)
@@ -106,7 +106,7 @@ class RegressorC(object):
         #self.dens[np.where(self.dens < 0)] = 0
 
     def fitgurobi(self,X,Yl,tags, boxConstraints = None):
-        import cwrapper.gurobi
+        from . import cwrapper.gurobi
         import ctypes
         #extlib.main()
         c_float_p = ctypes.POINTER(ctypes.c_float)
@@ -294,7 +294,7 @@ class RegressorGurobi(object):
 
             model.update()
 
-            for i, b_i,fore_i, z_i, boxConstraint in zip(range(len(boxConstraints)), b_vars, isForegroundIndicators, z_vars, boxConstraints):
+            for i, b_i,fore_i, z_i, boxConstraint in zip(list(range(len(boxConstraints))), b_vars, isForegroundIndicators, z_vars, boxConstraints):
                 value, features = boxConstraint
                 for b, fore, z, feature in zip(b_i, fore_i, z_i, features):
 
@@ -403,7 +403,7 @@ class SVR(object):
     def load(self, cachePath, targetname):
         f = h5py.File(cachePath, 'r')
         dataset = f[targetname]
-        obj = cPickle.loads(dataset[0])
+        obj = pickle.loads(dataset[0])
         f.close()
         return obj
 
@@ -418,7 +418,7 @@ class SVR(object):
         if sigma > 0:
             try:
                 dot = vigra.filters.gaussianSmoothing(dot.astype(np.float32).squeeze(), sigma) #TODO: use it later, but this
-            except Exception,e:
+            except Exception as e:
                 logger.error( "HHHHHHHH {} {}".format(dot.shape,dot.dtype) )
                 logger.error(str(e))
                 raise Exception
@@ -636,7 +636,7 @@ class SVR(object):
         f = h5py.File(cachePath)
         str_type = h5py.special_dtype(vlen = str)
         dataset = f.create_dataset(targetname, shape = (1,), dtype = str_type)
-        dataset[0] = cPickle.dumps(self)
+        dataset[0] = pickle.dumps(self)
         f.close()
 
     def get_params(self):
@@ -724,14 +724,14 @@ if __name__ == "__main__":
     boxConstraints = {"boxValues": boxValues, "boxIndices" : boxIndices, "boxFeatures" :boxFeatures}
     #boxConstraints = None
 
-    print testtags
+    print(testtags)
     numRegressors = 1
     success = Counter.fitPrepared(testimg[testmapping,:], testdot[testmapping], testtags,
                                   boxConstraints = boxConstraints, numRegressors = numRegressors)
-    print Counter._regressor[0].w
+    print(Counter._regressor[0].w)
     #3uccess = Counter.fitPrepared(testimg[indices,:], testdot[indices], testtags[:len(indices)], epsilon = 0.000)
     #print Counter.w, Counter.
-    print "learning finished"
+    print("learning finished")
 
     #conversion step
     #Q = kernelize(B, method = "gaussian")
@@ -746,10 +746,10 @@ if __name__ == "__main__":
     #print Counter.b, Counter.w
     newdot = Counter.predict(backup_image)
 
-    print "prediction"
+    print("prediction")
     #print img
     #print newdot
-    print "sum", np.sum(newdot) / numRegressors
+    print("sum", np.sum(newdot) / numRegressors)
     #try: 
     #    import matplotlib.pyplot as plt
     #    import matplotlib

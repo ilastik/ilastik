@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
-from opCropping import OpCroppingSingleLane
+from .opCropping import OpCroppingSingleLane
 
 class CroppingSingleLaneApplet( StandardApplet ):
     """
@@ -41,7 +41,7 @@ class CroppingSingleLaneApplet( StandardApplet ):
         return [] # TODO
 
     def createSingleLaneGui(self, imageLaneIndex):
-        from croppingGui import CroppingGui
+        from .croppingGui import CroppingGui
 
         opCropping = self.topLevelOperator.getLane(imageLaneIndex)
         

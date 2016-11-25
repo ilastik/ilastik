@@ -24,7 +24,7 @@ import os
 from PyQt4 import uic
 import qimage2ndarray
 import numpy
-import preView
+from . import preView
 
 class FeatureDlg(QDialog):
     def __init__(self, parent=None):
@@ -85,7 +85,7 @@ if __name__ == "__main__":
     import signal
     signal.signal(signal.SIGINT, signal.SIG_DFL)
     from PyQt4.QtGui import QApplication
-    from featureTableWidget import FeatureEntry
+    from .featureTableWidget import FeatureEntry
     
     app = QApplication(sys.argv)
     

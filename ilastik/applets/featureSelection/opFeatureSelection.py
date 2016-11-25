@@ -138,7 +138,7 @@ class OpFeatureSelectionNoCache(Operator):
         # drop non-channel singleton axes
         allAxes = 'txyzc'
         ts = self.InputImage.meta.getTaggedShape()
-        oldAxes = "".join(ts.keys())
+        oldAxes = "".join(list(ts.keys()))
         newAxes = "".join([a for a in allAxes
                            if a in ts and ts[a] > 1 or a == 'c'])
         self.opReorderIn.AxisOrder.setValue(newAxes)

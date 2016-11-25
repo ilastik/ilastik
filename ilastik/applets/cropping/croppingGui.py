@@ -309,7 +309,7 @@ class CroppingGui(LayerViewerGui):
          """
          # Uncheck all the other buttons
          if self.toolButtons != None:
-             for tool, button in self.toolButtons.items():
+             for tool, button in list(self.toolButtons.items()):
                  if tool != toolId:
                      button.setChecked(False)
 
@@ -536,7 +536,7 @@ class CroppingGui(LayerViewerGui):
     def getLayer(self, name):
         """find a layer by name"""
         try:
-            croplayer = itertools.ifilter(lambda l: l.name == name, self.layerstack).next()
+            croplayer = next(itertools.ifilter(lambda l: l.name == name, self.layerstack))
         except StopIteration:
             return None
         else:

@@ -22,8 +22,8 @@ from PyQt4.QtCore import pyqtSignal, pyqtSlot, Qt, QUrl, QObject, QEvent, QTimer
 from PyQt4.QtGui import QTableView, QHeaderView, QMenu, QAction, QWidget, \
         QHBoxLayout, QPushButton, QIcon, QItemDelegate
 
-from datasetDetailedInfoTableModel import DatasetDetailedInfoColumn
-from addFileButton import AddFileButton, FILEPATH
+from .datasetDetailedInfoTableModel import DatasetDetailedInfoColumn
+from .addFileButton import AddFileButton, FILEPATH
 
 from functools import partial
 
@@ -398,8 +398,8 @@ class DatasetDetailedInfoTableView(QTableView):
 
     def dropEvent(self, dropEvent):
         urls = dropEvent.mimeData().urls()
-        filepaths = map( QUrl.toLocalFile, urls )
-        filepaths = map( str, filepaths )
+        filepaths = list(map( QUrl.toLocalFile, urls ))
+        filepaths = list(map( str, filepaths ))
         self.addFilesRequestedDrop.emit( filepaths )
     
     def scrollContentsBy(self, dx, dy):

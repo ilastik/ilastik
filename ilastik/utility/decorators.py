@@ -55,7 +55,7 @@ def require(*attrs, **keyvalue):
             for attr in attrs:
                 if attrgetter(attr)(self) is None:
                     return
-            for key, value in keyvalue.iteritems():
+            for key, value in keyvalue.items():
                 if attrgetter(key)(self) != value:
                     return
             return method(self, *args, **kvargs)

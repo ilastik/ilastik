@@ -132,7 +132,7 @@ class OpNansheWaveletTransform(Operator):
 
         for i, each_scale in scale_iter:
             half_halo_i = 0
-            for j in xrange(1, 1+each_scale):
+            for j in range(1, 1+each_scale):
                 half_halo_i += 2**j
 
             halo_slicing_i_start = (halo_slicing[i].start - half_halo_i)
@@ -227,7 +227,7 @@ class OpNansheWaveletTransformCached(Operator):
         self.Output.connect( self.opCache.Output )
 
     def setupOutputs(self):
-        axes_shape_iter = itertools.izip(self.opWaveletTransform.Output.meta.axistags,
+        axes_shape_iter = zip(self.opWaveletTransform.Output.meta.axistags,
                                          self.opWaveletTransform.Output.meta.shape)
 
         halo_center_slicing = []

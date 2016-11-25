@@ -27,9 +27,9 @@ from volumina.utility import decode_to_qstring
 from lazyflow.utility import PathComponents, isUrl
 from ilastik.utility import bind
 from ilastik.utility.gui import ThreadRouter, threadRouted
-from opDataSelection import DatasetInfo
+from .opDataSelection import DatasetInfo
 
-from dataLaneSummaryTableModel import rowOfButtonsProxy
+from .dataLaneSummaryTableModel import rowOfButtonsProxy
 
 class DatasetDetailedInfoColumn():
     Nickname = 0

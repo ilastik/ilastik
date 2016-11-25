@@ -82,7 +82,7 @@ class OpManualTracking(Operator, ExportingOperator):
         self.UntrackedImage.meta.assignFrom(self.LabelImage.meta)
 
         for t in range(self.LabelImage.meta.shape[0]):
-            if t not in self.labels.keys():
+            if t not in list(self.labels.keys()):
                 self.labels[t] = {}
         
     def _checkConstraints(self, *args):
@@ -117,19 +117,19 @@ class OpManualTracking(Operator, ExportingOperator):
     def execute(self, slot, subindex, roi, result):
         if slot is self.Divisions:
             result = {}
-            for trackid in self.divisions.keys():
+            for trackid in list(self.divisions.keys()):
                 (children, t_parent) = self.divisions[trackid]
                 result[trackid] = (children, t_parent)
             return result
 
         if slot is self.Labels:
             result = {}
-            for t in self.labels.keys():
+            for t in list(self.labels.keys()):
                 result[t] = self.labels[t]
 
         elif slot is self.TrackImage:
             for t in range(roi.start[0], roi.stop[0]):
-                if t not in self.labels.keys():
+                if t not in list(self.labels.keys()):
                     result[t - roi.start[0], ...][:] = 0
                     return result
 
@@ -140,7 +140,7 @@ class OpManualTracking(Operator, ExportingOperator):
             for t in range(roi.start[0], roi.stop[0]):
                 result[t - roi.start[0], ...] = self.LabelImage.get(roi).wait()[t - roi.start[0], ...]
                 labels_at = {}
-                if t in self.labels.keys():
+                if t in list(self.labels.keys()):
                     labels_at = self.labels[t]
                 result[t - roi.start[0], ..., 0] = self._relabelUntracked(result[t - roi.start[0], ..., 0], labels_at)
 
@@ -173,7 +173,7 @@ class OpManualTracking(Operator, ExportingOperator):
         if 0 in labels:
             labels.remove(0)
         for label in labels:
-            if (label in tracked_at.keys()) and (len(tracked_at[label]) > 0):
+            if (label in list(tracked_at.keys())) and (len(tracked_at[label]) > 0):
                 mp[label] = 0
         return mp[volume]
 
@@ -190,7 +190,7 @@ class OpManualTracking(Operator, ExportingOperator):
             max_oid = np.max(self.LabelImage.get(troi).wait())
             for idx in range(max_oid + 1):
                 oid = int(idx) + 1
-                if t in self.labels.keys() and oid in self.labels[t].keys():
+                if t in list(self.labels.keys()) and oid in list(self.labels[t].keys()):
                     if misdet_idx not in self.labels[t][oid]:
                         oid2tids[t][oid] = self.labels[t][oid]
                         for l in self.labels[t][oid]:
@@ -211,7 +211,7 @@ class OpManualTracking(Operator, ExportingOperator):
     @staticmethod
     def lookup_oid_for_tid(oid2tid, tid, t):
         mapping = oid2tid[t]
-        for oid, tids in mapping.iteritems():
+        for oid, tids in mapping.items():
             if tid in tids:
                 return oid
         raise ValueError("TID {} at t={} not found!".format(tid, t))
@@ -232,7 +232,7 @@ class OpManualTracking(Operator, ExportingOperator):
         divisions = self.divisions
         t_range = (0, self.LabelImage.meta.shape[self.LabelImage.meta.axistags.index("t")])
         oid2tid, _ = self._getObjects(t_range, None)  # slow
-        max_tracks = max(max(map(len, i.values())) if map(len, i.values()) else 0 for i in oid2tid.values())
+        max_tracks = max(max(list(map(len, list(i.values())))) if list(map(len, list(i.values()))) else 0 for i in list(oid2tid.values()))
         ids = ilastik_ids(obj_count)
 
         file_path = settings["file path"]
@@ -244,7 +244,7 @@ class OpManualTracking(Operator, ExportingOperator):
         export_file.ExportProgress.subscribe(progress_slot)
         export_file.InsertionProgress.subscribe(progress_slot)
 
-        export_file.add_columns("table", range(sum(obj_count)), Mode.List, Default.KnimeId)
+        export_file.add_columns("table", list(range(sum(obj_count))), Mode.List, Default.KnimeId)
         export_file.add_columns("table", list(ids), Mode.List, Default.IlastikId)
         export_file.add_columns("table", oid2tid, Mode.IlastikTrackingTable,
                                 {"max": max_tracks, "counts": obj_count, "extra ids": {},
@@ -256,7 +256,7 @@ class OpManualTracking(Operator, ExportingOperator):
             ott = partial(self.lookup_oid_for_tid, oid2tid)
             divs = [(value[1], ott(key, value[1]), key, ott(value[0][0], value[1] + 1), value[0][0],
                      ott(value[0][1], value[1] + 1), value[0][1])
-                    for key, value in sorted(divisions.iteritems(), key=itemgetter(0))]
+                    for key, value in sorted(iter(divisions.items()), key=itemgetter(0))]
             assert sum(Default.ManualDivMap) == len(divs[0])
             names = list(compress(Default.DivisionNames["names"], Default.ManualDivMap))
             export_file.add_columns("divisions", divs, Mode.List, extra={"names": names})

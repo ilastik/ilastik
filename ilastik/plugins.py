@@ -95,12 +95,12 @@ class ObjectFeaturesPlugin(IPlugin):
 
     @staticmethod
     def combine_dicts(ds):
-        return dict(sum((d.items() for d in ds), []))
+        return dict(sum((list(d.items()) for d in ds), []))
 
     @staticmethod
     def combine_dicts_with_numpy(ds):
         #stack arrays which correspond to the same keys
-        keys = ds[0].keys()
+        keys = list(ds[0].keys())
         result = {}
         for key in keys:
             arrays = [d[key] for d in ds]
@@ -115,7 +115,7 @@ class ObjectFeaturesPlugin(IPlugin):
             prefix = ''
         if suffix is None:
             suffix = ''
-        return dict((prefix + k + suffix, v) for k, v in d.items())
+        return dict((prefix + k + suffix, v) for k, v in list(d.items()))
 
     def do_channels(self, fn, image, axes, **kwargs):
         """Helper for features that only take one channel.
@@ -137,14 +137,16 @@ class ObjectFeaturesPlugin(IPlugin):
 ###############
 # the manager #
 ###############
+import warnings
+warnings.warn("TBD - yapsy needs to be rebuilt, then uncomment", UserWarning)
 
-pluginManager = PluginManager()
-pluginManager.setPluginPlaces(plugin_paths)
+#pluginManager = PluginManager()
+#pluginManager.setPluginPlaces(plugin_paths)
 
-pluginManager.setCategoriesFilter({
-   "ObjectFeatures" : ObjectFeaturesPlugin,
-   })
+#pluginManager.setCategoriesFilter({
+#   "ObjectFeatures" : ObjectFeaturesPlugin,
+#   })
 
-pluginManager.collectPlugins()
-for pluginInfo in pluginManager.getAllPlugins():
-    pluginManager.activatePluginByName(pluginInfo.name)
+#pluginManager.collectPlugins()
+#for pluginInfo in pluginManager.getAllPlugins():
+#    pluginManager.activatePluginByName(pluginInfo.name)

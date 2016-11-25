@@ -50,7 +50,7 @@ def cleanup_value(val, nObjects, isGlobal):
     return val
 
 def cleanup(d, nObjects, features):
-    result = dict((cleanup_key(k), cleanup_value(v, nObjects, "Global" in k)) for k, v in d.iteritems())
+    result = dict((cleanup_key(k), cleanup_value(v, nObjects, "Global" in k)) for k, v in d.items())
     newkeys = set(result.keys()) & set(features)
     return dict((k, result[k]) for k in newkeys)
 
@@ -71,7 +71,7 @@ class VigraObjFeats(ObjectFeaturesPlugin):
         tooltips = {}
         names.extend([x+self.local_suffix for x in local])
         result = dict((n, {}) for n in names)  
-        for f, v in result.iteritems():
+        for f, v in result.items():
             if self.local_suffix in f:
                 v['margin'] = 0
             #build human readable names from vigra names
@@ -125,7 +125,7 @@ class VigraObjFeats(ObjectFeaturesPlugin):
         return cleanup(result, nobj, features)
 
     def compute_global(self, image, labels, features, axes):
-        features = features.keys()
+        features = list(features.keys())
         local = [x+self.local_suffix for x in self.local_features]
         features = list(set(features) - set(local))
         
@@ -143,7 +143,7 @@ class VigraObjFeats(ObjectFeaturesPlugin):
     def compute_local(self, image, binary_bbox, feature_dict, axes):
         """helper that deals with individual objects"""
         
-        featurenames = feature_dict.keys()
+        featurenames = list(feature_dict.keys())
         local = [x+self.local_suffix for x in self.local_features]
         featurenames = list(set(featurenames) & set(local))
         featurenames = [x.split(' ')[0] for x in featurenames]

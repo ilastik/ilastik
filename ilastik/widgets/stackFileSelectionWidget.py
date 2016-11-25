@@ -185,7 +185,7 @@ class StackFileSelectionWidget(QDialog):
         fileNames = QFileDialog.getOpenFileNames( 
                      self, "Select Images for Stack", defaultDirectory, filt, options=options )
         
-        fileNames = map(encode_from_qstring, fileNames)
+        fileNames = list(map(encode_from_qstring, fileNames))
 
         if len(fileNames) == 0:
             return

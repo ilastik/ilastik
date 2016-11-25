@@ -76,11 +76,11 @@ def main( parsed_args, workflow_cmdline_args=[] ):
     if ilastik_config.getboolean("ilastik", "debug"):
         message = 'Starting ilastik in debug mode from "%s".' % ilastik_dir
         logger.info(message)
-        print message     # always print the startup message
+        print(message)     # always print the startup message
     else:
         message = 'Starting ilastik from "%s".' % ilastik_dir
         logger.info(message)
-        print message     # always print the startup message
+        print(message)     # always print the startup message
     
     # Headless launch
     if parsed_args.headless:
@@ -181,7 +181,7 @@ def _init_threading_h5py_monkeypatch():
     See also: https://github.com/ilastik/ilastik/issues/1120
     """
     import h5py
-    if map(int, h5py.__version__.split('.')) <= [2,5,0]:
+    if list(map(int, h5py.__version__.split('.'))) <= [2,5,0]:
         import threading
         run_old = threading.Thread.run
         def run(*args, **kwargs):

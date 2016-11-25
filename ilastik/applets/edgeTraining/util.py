@@ -1,5 +1,5 @@
 import logging
-from itertools import imap, izip
+
 
 import numpy as np
 import networkx as nx
@@ -30,7 +30,7 @@ def edge_decisions( overseg_vol, groundtruth_vol, asdict=True ):
     decisions = sp_to_gt_mapping[unique_sp_edges[0]] != sp_to_gt_mapping[unique_sp_edges[1]]
 
     if asdict:    
-        return dict( izip(imap(tuple, unique_sp_edges), decisions) )
+        return dict( zip(map(tuple, unique_sp_edges), decisions) )
     return unique_sp_edges, decisions
 
 def relabel_volume_from_edge_decisions( supervoxels, edge_ids, edge_decisions, out=None ):
@@ -67,7 +67,7 @@ def relabel_volume_from_edge_decisions( supervoxels, edge_ids, edge_decisions, o
     # If any supervoxels are completely independent (not merged with any neighbors),
     # they haven't been added to the graph yet.
     # Add them now.
-    g.add_nodes_from(xrange(np.max(supervoxels)+1), dtype=edge_ids.dtype)
+    g.add_nodes_from(range(np.max(supervoxels)+1), dtype=edge_ids.dtype)
     
     sp_mapping = {}
     for i, sp_ids in enumerate(nx.connected_components(g), start=1):
@@ -107,4 +107,4 @@ if __name__ == "__main__":
     
     edge_ids, decisions = edge_decisions(vol1, vol2, asdict=False)
     relabel_volume_from_edge_decisions( vol1, edge_ids, decisions )
-    print "DONE"
+    print("DONE")

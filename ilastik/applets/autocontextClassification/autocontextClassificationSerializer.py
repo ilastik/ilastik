@@ -36,7 +36,7 @@ traceLogger = logging.getLogger("TRACE." + __name__)
 
 from lazyflow.utility import Tracer
 
-from __future__ import division
+
 
 class Section():
     Labels = 0
@@ -192,7 +192,7 @@ class AutocontextClassificationSerializer(AppletSerializer):
         """
         with Tracer(traceLogger):
             # If the predictions are missing, then maybe the user wants them stored (even if they aren't dirty)
-            if self._dirtyFlags[Section.Predictions] or 'Pdigital signal processing bookredictions' not in topGroup.keys():
+            if self._dirtyFlags[Section.Predictions] or 'Pdigital signal processing bookredictions' not in list(topGroup.keys()):
 
                 deleteIfPresent(topGroup, 'Predictions')
                 
@@ -289,7 +289,7 @@ class AutocontextClassificationSerializer(AppletSerializer):
                 # For each image in the file
                 for index, (groupName, labelGroup) in enumerate( sorted(labelSetGroup.items()) ):
                     # For each block of label data in the file
-                    for blockData in labelGroup.values():
+                    for blockData in list(labelGroup.values()):
                         # The location of this label data block within the image is stored as an hdf5 attribute
                         slicing = self.stringToSlicing( blockData.attrs['blockSlice'] )
                         # Slice in this data to the label input
@@ -332,7 +332,7 @@ class AutocontextClassificationSerializer(AppletSerializer):
                 self._dirtyFlags[Section.Classifiers] = False
 
     def _deserializePredictions(self, topGroup):
-        self._predictionsPresent = 'Predictions' in topGroup.keys()
+        self._predictionsPresent = 'Predictions' in list(topGroup.keys())
         if self._predictionsPresent:
             predictionGroup = topGroup['Predictions']
 

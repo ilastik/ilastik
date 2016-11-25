@@ -19,8 +19,8 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
-from opPixelClassification import OpPixelClassification
-from pixelClassificationSerializer import PixelClassificationSerializer, Ilastik05ImportDeserializer
+from .opPixelClassification import OpPixelClassification
+from .pixelClassificationSerializer import PixelClassificationSerializer, Ilastik05ImportDeserializer
 
 class PixelClassificationApplet( StandardApplet ):
     """
@@ -67,5 +67,5 @@ class PixelClassificationApplet( StandardApplet ):
 
     @property
     def singleLaneGuiClass(self):
-        from pixelClassificationGui import PixelClassificationGui
+        from .pixelClassificationGui import PixelClassificationGui
         return PixelClassificationGui

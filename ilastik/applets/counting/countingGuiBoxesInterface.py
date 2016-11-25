@@ -384,7 +384,7 @@ class QGraphicsResizableRect(QGraphicsRectItem):
             self._resizeHandles.append( h )
 
     def moveHandles(self):
-        for h, constrAxes in zip(self._resizeHandles, range(2)):
+        for h, constrAxes in zip(self._resizeHandles, list(range(2))):
             h.resetOffset(constrAxes, self.rect())
 
 
@@ -603,7 +603,7 @@ class CoupledRectangleElement(object):
             if self.boxLabel!=None:
                 from PyQt4.QtCore import QString
                 self.boxLabel.density=QString("%.1f"%value)
-        except Exception,e:
+        except Exception as e:
             import warnings
             warnings.warn("Warning: invalid subregion", RuntimeWarning)
 
@@ -809,7 +809,7 @@ class BoxInterpreter(QObject):
 
         #Rectangles under the current point
         items=watched.scene().items(QPointF(*pos[1:3]))
-        items=filter(lambda el: isinstance(el, QGraphicsResizableRect),items)
+        items=[el for el in items if isinstance(el, QGraphicsResizableRect)]
 
 
         #Keyboard interaction
@@ -846,7 +846,7 @@ class BoxInterpreter(QObject):
                 self.rubberBand.setGeometry(QRect(self.origin, QSize()))
 
                 itemsall=watched.scene().items(QPointF(*pos[1:3]))
-                itemsall =filter(lambda el: isinstance(el, ResizeHandle), itemsall)
+                itemsall =[el for el in itemsall if isinstance(el, ResizeHandle)]
 
 #                 if len(itemsall)==0: #show rubber band only if there is no rubbber band
 #                     self.rubberBand.show()
@@ -1007,14 +1007,14 @@ class BoxController(QObject):
     def itemsAtPos(self,pos5D):
         pos5D=pos5D[1:3]
         items=self.scene.items(QPointF(*pos5D))
-        items=filter(lambda el: isinstance(el, ResizeHandle),items)
+        items=[el for el in items if isinstance(el, ResizeHandle)]
         return items
 
     def onChangedPos(self,pos,gpos):
         pos=pos[1:3]
         items=self.scene.items(QPointF(*pos))
         #print items
-        items=filter(lambda el: isinstance(el, QGraphicsResizableRect),items)
+        items=[el for el in items if isinstance(el, QGraphicsResizableRect)]
 
         self.itemsAtpos=items
 
@@ -1061,12 +1061,12 @@ class BoxController(QObject):
         seed=42
         self._RandomColorGenerator=RandomColorGenerator(seed)
 
-        self._RandomColorGenerator.next() #discard black red and green
-        self._RandomColorGenerator.next()
-        self._RandomColorGenerator.next()
+        next(self._RandomColorGenerator) #discard black red and green
+        next(self._RandomColorGenerator)
+        next(self._RandomColorGenerator)
 
     def _getNextBoxColor(self):
-        color=self._RandomColorGenerator.next()
+        color=next(self._RandomColorGenerator)
         return color
 
 
@@ -1100,7 +1100,7 @@ class BoxController(QObject):
 
 
 
-        except IOError,e:
+        except IOError as e:
             logger.error( e )
             raise IOError
 
@@ -1288,7 +1288,7 @@ if __name__=="__main__":
 
     mainwin.layerstack.append(layer)
     mainwin.dataShape=(1,h,w,1,1)
-    print mainwin.centralWidget()
+    print(mainwin.centralWidget())
 
 
     BoxContr=BoxController(mainwin.editor,op.Output,boxListModel)

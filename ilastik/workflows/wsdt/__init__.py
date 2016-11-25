@@ -1,1 +1,1 @@
-from wsdtWorkflow import WsdtWorkflow
+from .wsdtWorkflow import WsdtWorkflow

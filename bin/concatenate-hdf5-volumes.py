@@ -5,23 +5,23 @@ import vigra
 def concatenate_hdf5_volumes(input_filepaths, output_filepath, axis=0):
     input_volumes = []
     for input_filepath in input_filepaths:
-        print "Loading " + input_filepath + " ..."
+        print("Loading " + input_filepath + " ...")
         with h5py.File(input_filepath, 'r') as f_in:
             vol = get_dataset(f_in)[:]
             input_volumes.append( vol )
 
-    print "Concatenating..."
+    print("Concatenating...")
     output_volume = numpy.concatenate( input_volumes, axis=axis )
 
-    print "Output has shape: {}".format( output_volume.shape )
-    print "Writing to: " + output_filepath + '/volume'
+    print("Output has shape: {}".format( output_volume.shape ))
+    print("Writing to: " + output_filepath + '/volume')
     with h5py.File(output_filepath, 'w') as f_out:
         f_out.create_dataset( 'volume', 
                               data=output_volume, 
                               chunks=True, 
                               compression='gzip', 
                               compression_opts=1 )
-    print "DONE."
+    print("DONE.")
 
 def get_dataset(f):
     """

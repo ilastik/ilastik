@@ -18,4 +18,4 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from layerViewerWorkflow import LayerViewerWorkflow
+from .layerViewerWorkflow import LayerViewerWorkflow

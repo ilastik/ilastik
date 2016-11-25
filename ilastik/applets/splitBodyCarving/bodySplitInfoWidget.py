@@ -31,9 +31,10 @@ from volumina.utility import encode_from_qstring, decode_to_qstring
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.utility import log_exception
 
-from opParseAnnotations import OpParseAnnotations
+from .opParseAnnotations import OpParseAnnotations
 
 import logging
+from functools import reduce
 logger = logging.getLogger(__name__)
 
 class BodyProgressBar(QProgressBar):
@@ -180,12 +181,12 @@ class BodySplitInfoWidget( QWidget ):
         self.bodyTreeWidget.setCurrentItem( bodyItem )
 
     def _handleBodyTreeDoubleClick(self, item, column):
-        if item in self._bodyTreeParentItems.values():
+        if item in list(self._bodyTreeParentItems.values()):
             
             selectedLabel = item.data(0, Qt.UserRole).toPyObject()
             
             # Find the first split point for this body
-            for coord3d, annotation in self._annotations.items():
+            for coord3d, annotation in list(self._annotations.items()):
                 if selectedLabel == annotation.ravelerLabel:
                     # Find a row to auto-select in the annotation table
                     for row in range( self.annotationTableWidget.rowCount() ):
@@ -228,7 +229,7 @@ class BodySplitInfoWidget( QWidget ):
             # For this raveler label, how many fragments do we have and how many do we expect?
             # Count the number of annotations with this label.
             num_splits = reduce( lambda count, ann: count + (ann.ravelerLabel == ravelerLabel),
-                                 self._annotations.values(),
+                                 list(self._annotations.values()),
                                  0 )
             num_expected = num_splits + 1
             num_fragments = len(fragmentNames)
@@ -291,8 +292,8 @@ class BodySplitInfoWidget( QWidget ):
         self._initAnnotationTableHeader()
         
         # Flip the key/value of the annotation list so we can sort them by label
-        annotations = self._annotations.items()
-        annotations = map( lambda (coord3d, (label,comment)): (label, coord3d, comment), annotations )
+        annotations = list(self._annotations.items())
+        annotations = [(coord3d_label_comment[1][0], coord3d_label_comment[0], coord3d_label_comment[1][1]) for coord3d_label_comment in annotations]
         annotations = sorted( annotations )
         
         for row, (ravelerLabel, coord3d, comment) in enumerate( annotations ):

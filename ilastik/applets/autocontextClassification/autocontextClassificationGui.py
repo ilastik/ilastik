@@ -385,7 +385,7 @@ class AutocontextClassificationGui(LabelingGui):
 
     def onLabelNameChanged(self):
         super( AutocontextClassificationGui, self ).onLabelNameChanged()
-        labelNames = map( lambda l: l.name, self.labelListData )
+        labelNames = [l.name for l in self.labelListData]
         self.topLevelOperatorView.LabelNames.setValue( labelNames )
 
     def getNextLabelColor(self):
@@ -398,7 +398,7 @@ class AutocontextClassificationGui(LabelingGui):
 
     def onLabelColorChanged(self):
         super( AutocontextClassificationGui, self ).onLabelColorChanged()
-        labelColors = map( lambda l: (l.color.red(), l.color.green(), l.color.blue()), self.labelListData )
+        labelColors = [(l.color.red(), l.color.green(), l.color.blue()) for l in self.labelListData]
         self.topLevelOperatorView.LabelColors.setValue( labelColors )
 
     def _update_rendering(self):
@@ -410,7 +410,7 @@ class AutocontextClassificationGui(LabelingGui):
             self._renderMgr.setup(shape)
 
         layernames = set(layer.name for layer in self.layerstack)
-        self._renderedLayers = dict((k, v) for k, v in self._renderedLayers.iteritems()
+        self._renderedLayers = dict((k, v) for k, v in self._renderedLayers.items()
                                 if k in layernames)
 
         newvolume = numpy.zeros(shape, dtype=numpy.uint8)

@@ -18,5 +18,5 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from blockwiseObjectClassificationApplet import BlockwiseObjectClassificationApplet
-from opBlockwiseObjectClassification import OpBlockwiseObjectClassification
+from .blockwiseObjectClassificationApplet import BlockwiseObjectClassificationApplet
+from .opBlockwiseObjectClassification import OpBlockwiseObjectClassification

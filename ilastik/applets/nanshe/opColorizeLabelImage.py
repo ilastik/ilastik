@@ -177,7 +177,7 @@ class OpColorizeLabelImageCached(Operator):
         self.Output.connect( self.opCache.Output )
 
     def setupOutputs(self):
-        axes_shape_iter = itertools.izip(self.opColorizeLabelImage.Output.meta.axistags,
+        axes_shape_iter = zip(self.opColorizeLabelImage.Output.meta.axistags,
                                          self.opColorizeLabelImage.Output.meta.shape)
 
         block_shape = []

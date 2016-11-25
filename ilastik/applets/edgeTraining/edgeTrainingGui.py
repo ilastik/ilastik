@@ -239,7 +239,7 @@ class EdgeTrainingGui(LayerViewerGui):
                 return
             edge_probs = op.EdgeProbabilitiesDict.value
             new_pens = {}
-            for id_pair, probability in edge_probs.items():
+            for id_pair, probability in list(edge_probs.items()):
                 new_pens[id_pair] = self.probability_pen_table[int(probability * 100)]
             self.apply_new_probability_edges(new_pens)
 

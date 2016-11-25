@@ -34,7 +34,7 @@ from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted 
 from lazyflow.operators.generic import OpSingleChannelSelector
 
-from opGraphcutSegment import haveGraphCut
+from .opGraphcutSegment import haveGraphCut
 
 # always available
 import numpy as np
@@ -77,7 +77,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
                                  'y' : self._drawer.sigmaSpinBox_Y,
                                  'z' : self._drawer.sigmaSpinBox_Z }
 
-        self._allWatchedWidgets = self._sigmaSpinBoxes.values() + \
+        self._allWatchedWidgets = list(self._sigmaSpinBoxes.values()) + \
         [
             self._drawer.inputChannelComboBox,
             self._drawer.lowThresholdSpinBox,
@@ -130,11 +130,11 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             numChannels = op.InputImage.meta.shape[channelIndex]
 
         if op.InputChannelColors.ready():
-            input_channel_colors = map(lambda (r,g,b): QColor(r,g,b), op.InputChannelColors.value)
+            input_channel_colors = [QColor(r_g_b[0],r_g_b[1],r_g_b[2]) for r_g_b in op.InputChannelColors.value]
         else:
             if self._defaultInputChannelColors is None:
                 self._defaultInputChannelColors = self._createDefault16ColorColorTable()
-            input_channel_colors = map(QColor, self._defaultInputChannelColors)
+            input_channel_colors = list(map(QColor, self._defaultInputChannelColors))
         for ichannel in range(numChannels):
             # make an icon
             pm = QPixmap(16, 16)
@@ -145,7 +145,7 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
 
         # Sigmas
         sigmaDict = self.topLevelOperatorView.SmootherSigma.value
-        for axiskey, spinBox in self._sigmaSpinBoxes.items():
+        for axiskey, spinBox in list(self._sigmaSpinBoxes.items()):
             spinBox.setValue( sigmaDict[axiskey] )
 
         # Thresholds
@@ -321,9 +321,9 @@ class ThresholdTwoLevelsGui( LayerViewerGui ):
             layers.append(outputLayer)
 
         if op.InputChannelColors.ready():
-            input_channel_colors = map(lambda (r,g,b): QColor(r,g,b), op.InputChannelColors.value)
+            input_channel_colors = [QColor(r_g_b1[0],r_g_b1[1],r_g_b1[2]) for r_g_b1 in op.InputChannelColors.value]
         else:
-            input_channel_colors = map(QColor, self._defaultInputChannelColors)
+            input_channel_colors = list(map(QColor, self._defaultInputChannelColors))
         for channel, channelProvider in enumerate(self._channelProviders):
             slot_drange = channelProvider.Output.meta.drange
             if slot_drange is not None:

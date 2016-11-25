@@ -24,7 +24,7 @@ from volumina.utility import decode_to_qstring
 
 from lazyflow.utility import PathComponents
 from ilastik.utility import bind
-from opDataSelection import DatasetInfo
+from .opDataSelection import DatasetInfo
 
 class LaneColumn():
     NumColumns = 0

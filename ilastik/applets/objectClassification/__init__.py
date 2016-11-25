@@ -18,5 +18,5 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from objectClassificationApplet import ObjectClassificationApplet
-from objectClassificationDataExportApplet import ObjectClassificationDataExportApplet
+from .objectClassificationApplet import ObjectClassificationApplet
+from .objectClassificationDataExportApplet import ObjectClassificationDataExportApplet

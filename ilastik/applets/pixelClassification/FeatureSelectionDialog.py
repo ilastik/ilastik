@@ -592,7 +592,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
         do_transpose = axisOrder.index('x') > axisOrder.index('y')
 
         # we need to reset the 'c' axis because it only has length 1 for segmentation
-        if 'c' not in bbox.keys():
+        if 'c' not in list(bbox.keys()):
             axisOrder += ['c']
 
         bbox['c'] = [0, 1]
@@ -626,7 +626,7 @@ class FeatureSelectionDialog(QtGui.QDialog):
         :param feat:
         :return:
         '''
-        import opSimplePixelClassification
+        from . import opSimplePixelClassification
         from lazyflow import graph
         from lazyflow.classifiers import ParallelVigraRfLazyflowClassifierFactory
 

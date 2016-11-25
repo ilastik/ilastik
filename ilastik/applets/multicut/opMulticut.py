@@ -355,4 +355,4 @@ if __name__ == "__main__":
 
     assert seg.min() == 0
 
-    print "DONE."
+    print("DONE.")

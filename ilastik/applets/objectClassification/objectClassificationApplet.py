@@ -20,8 +20,8 @@
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
-from opObjectClassification import OpObjectClassification
-from objectClassificationSerializer import ObjectClassificationSerializer
+from .opObjectClassification import OpObjectClassification
+from .objectClassificationSerializer import ObjectClassificationSerializer
 
 
 class ObjectClassificationApplet(StandardApplet):
@@ -52,5 +52,5 @@ class ObjectClassificationApplet(StandardApplet):
 
     @property
     def singleLaneGuiClass(self):
-        from objectClassificationGui import ObjectClassificationGui
+        from .objectClassificationGui import ObjectClassificationGui
         return ObjectClassificationGui

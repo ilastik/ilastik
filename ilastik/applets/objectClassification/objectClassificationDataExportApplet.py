@@ -35,7 +35,7 @@ class ObjectClassificationDataExportApplet( DataExportApplet ):
     def getMultiLaneGui(self):
         if self._gui is None:
             # Gui is a special subclass of the generic gui
-            from objectClassificationDataExportGui import ObjectClassificationDataExportGui
+            from .objectClassificationDataExportGui import ObjectClassificationDataExportGui
             self._gui = ObjectClassificationDataExportGui( self, self.topLevelOperator )
             self._gui.set_exporting_operator(self.exporting_op)
         return self._gui

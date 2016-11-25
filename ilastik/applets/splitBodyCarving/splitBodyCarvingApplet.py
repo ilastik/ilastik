@@ -21,8 +21,8 @@
 from ilastik.workflows.carving.carvingApplet import CarvingApplet
 from ilastik.utility import OpMultiLaneWrapper
 
-from opSplitBodyCarving import OpSplitBodyCarving
-from splitBodyCarvingSerializer import SplitBodyCarvingSerializer
+from .opSplitBodyCarving import OpSplitBodyCarving
+from .splitBodyCarvingSerializer import SplitBodyCarvingSerializer
 
 class SplitBodyCarvingApplet(CarvingApplet):
     
@@ -43,7 +43,7 @@ class SplitBodyCarvingApplet(CarvingApplet):
         """
         Override from base class.
         """
-        from splitBodyCarvingGui import SplitBodyCarvingGui
+        from .splitBodyCarvingGui import SplitBodyCarvingGui
         # Get a single-lane view of the top-level operator
         topLevelOperatorView = self.topLevelOperator.getLane(laneIndex)
 

@@ -80,7 +80,7 @@ class OpVolumeOperator(Operator):
                 blockCache = numpy.ndarray(shape = numpy.prod(numBlocks), dtype=self.Output.meta.dtype)
                 pool = RequestPool()
                 #blocks holds the different roi keys for each of the blocks
-                blocks = itertools.product(*[range(i) for i in numBlocks])
+                blocks = itertools.product(*[list(range(i)) for i in numBlocks])
                 blockKeys = []
                 for b in blocks:
                     start = b * fullBlockShape
@@ -318,7 +318,7 @@ class OpCounting( Operator ):
 
         # All input multi-slots should be kept in sync
         # Output multi-slots will auto-sync via the graph
-        multiInputs = filter( lambda s: s.level >= 1, self.inputs.values() )
+        multiInputs = [s for s in list(self.inputs.values()) if s.level >= 1]
         for s1 in multiInputs:
             for s2 in multiInputs:
                 if s1 != s2:
@@ -402,7 +402,7 @@ class OpCounting( Operator ):
         
         thisLaneTaggedShape = self.InputImages[laneIndex].meta.getTaggedShape()
         
-        if thisLaneTaggedShape.has_key('z'):
+        if 'z' in thisLaneTaggedShape:
             raise DatasetConstraintError(
                 "Objects Counting Workflow",
                 "All input images must be 2D (they cannot contain the z dimension).  "\
@@ -410,7 +410,7 @@ class OpCounting( Operator ):
                 .format( thisLaneTaggedShape['z']))
                 # Find a different lane and use it for comparison
         
-        if thisLaneTaggedShape.has_key('t'):
+        if 't' in thisLaneTaggedShape:
             raise DatasetConstraintError(
                 "Objects Counting Workflow",
                 "All input images must be 2D (they cannot contain the t dimension).  "\
@@ -620,7 +620,7 @@ class OpEnsembleMargin(Operator):
         pmap_sort.axistags = self.Input.meta.axistags
 
         res = pmap_sort.bindAxis('c', -1) - pmap_sort.bindAxis('c', -2)
-        res = res.withAxes( *taggedShape.keys() ).view(numpy.ndarray)
+        res = res.withAxes( *list(taggedShape.keys()) ).view(numpy.ndarray)
         result[...] = res
         return result 
 

@@ -109,7 +109,7 @@ class TestOpRegionFeatures(object):
         opAdapt.Input.connect(self.op.Output)
 
         feats = opAdapt.Output([0, 1]).wait()
-        print "feature length:", len(feats)
+        print("feature length:", len(feats))
         OpObjectExtraction.createExportTable(feats)
 
 
@@ -148,7 +148,7 @@ class testOpRegionFeaturesAgainstNumpy(object):
         feats = opAdapt.Output([0, 1]).wait()
         assert len(feats)==self.img.shape[0]
         for key in self.features[NAME]:
-            assert key in feats[0][NAME].keys()
+            assert key in list(feats[0][NAME].keys())
 
         labelimage = self.labelop.Output[:].wait()
         nt = labelimage.shape[0]

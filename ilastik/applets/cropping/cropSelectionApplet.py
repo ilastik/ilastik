@@ -20,8 +20,8 @@
 ###############################################################################
 
 from ilastik.applets.base.standardApplet import StandardApplet
-from opCropSelection import OpCropSelection
-from cropSelectionSerializer import CropSelectionSerializer
+from .opCropSelection import OpCropSelection
+from .cropSelectionSerializer import CropSelectionSerializer
 
 class CropSelectionApplet( StandardApplet ):
     """
@@ -42,7 +42,7 @@ class CropSelectionApplet( StandardApplet ):
     
     @property
     def singleLaneGuiClass(self):
-        from cropSelectionGui import CropSelectionGui
+        from .cropSelectionGui import CropSelectionGui
         return CropSelectionGui
 
     @property

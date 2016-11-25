@@ -35,7 +35,7 @@ class OperatorSubViewMetaclass(type):
             assert False, "OperatorSubView.outputSlots cannot be accessed as a class member.  It can only be accessed as an instance member"
         return type.__getattr__(self, name)
 
-class OperatorSubView(object):
+class OperatorSubView(object, metaclass=OperatorSubViewMetaclass):
     """
     An adapter class that makes a specific lane of a multi-image operator look like a single image operator.
     
@@ -47,8 +47,6 @@ class OperatorSubView(object):
     except that ALL MULTISLOT members will be replaced with a reference to the subslot for the specified index.
     Non-multislot members will not be replaced.
     """
-
-    __metaclass__ = OperatorSubViewMetaclass
     
     def viewed_operator(self):
         """
@@ -84,7 +82,7 @@ class OperatorSubView(object):
         self.__referenceSlotName = None
 
         self.inputs = InputDict(self)
-        for slot in op.inputs.values():
+        for slot in list(op.inputs.values()):
             if slot.level >= 1 and not slot.nonlane:
                 self.inputs[slot.name] = slot[index]
                 if self.__referenceSlotName is None:
@@ -97,7 +95,7 @@ class OperatorSubView(object):
         self.inputSlots = list( self.inputs.values() )
                 
         self.outputs = OutputDict(self)
-        for slot in op.outputs.values():
+        for slot in list(op.outputs.values()):
             if slot.level >= 1 and not slot.nonlane:
                 try:
                     self.outputs[slot.name] = slot[index]
@@ -118,7 +116,7 @@ class OperatorSubView(object):
         if isinstance(self.__op, OperatorWrapper):
             self.__innerOp = self.__op.innerOperators[index]
 
-        for name, member in self.__op.__dict__.items():
+        for name, member in list(self.__op.__dict__.items()):
             # If any of our members happens to itself be a multi-lane operator,
             #  then keep a view on it instead of the original.
             if name != '_parent' and isinstance(member, MultiLaneOperatorABC):

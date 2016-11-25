@@ -94,7 +94,7 @@ class DatasetInfo(object):
                 fromstack = True
     
                 # Convert all paths to absolute 
-                file_list = map(lambda f: make_absolute(f, cwd), file_list)
+                file_list = [make_absolute(f, cwd) for f in file_list]
                 if '*' in filepath:
                     filepath = make_absolute(filepath, cwd)
                 else:
@@ -356,7 +356,7 @@ class OpDataSelection(Operator):
             #  make sure the axes are re-ordered so that channel is last.
             if providerSlot.meta.axistags.index('c') != len( providerSlot.meta.axistags )-1:
                 op5 = OpReorderAxes( parent=self )
-                keys = providerSlot.meta.getTaggedShape().keys()
+                keys = list(providerSlot.meta.getTaggedShape().keys())
                 try:
                     # Remove if present.
                     keys.remove('c')

@@ -20,8 +20,8 @@
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
-from opEdgeTraining import OpEdgeTraining
-from edgeTrainingSerializer import EdgeTrainingSerializer
+from .opEdgeTraining import OpEdgeTraining
+from .edgeTrainingSerializer import EdgeTrainingSerializer
 
 class EdgeTrainingApplet( StandardApplet ):
     """
@@ -38,7 +38,7 @@ class EdgeTrainingApplet( StandardApplet ):
 
     @property
     def singleLaneGuiClass(self):
-        from edgeTrainingGui import EdgeTrainingGui
+        from .edgeTrainingGui import EdgeTrainingGui
         return EdgeTrainingGui
 
     @property

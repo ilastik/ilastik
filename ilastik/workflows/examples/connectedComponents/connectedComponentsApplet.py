@@ -38,5 +38,5 @@ class ConnectedComponentsApplet(StandardApplet):
 
     @property
     def singleLaneGuiClass(self):
-        from connectedComponentsGui import ConnectedComponentsGui
+        from .connectedComponentsGui import ConnectedComponentsGui
         return ConnectedComponentsGui

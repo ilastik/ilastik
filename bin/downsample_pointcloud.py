@@ -111,7 +111,7 @@ def density_volume_from_pointcloud( pointcloud_csv_filepath,
         "Your pointcloud data file does not contain all expected columns.\n"\
         "Expected columns: {},\n"\
         "Your file's columns: {}"\
-        .format( POINTCLOUD_COLUMNS, pointcloud_data.dtype.fields.keys() )
+        .format( POINTCLOUD_COLUMNS, list(pointcloud_data.dtype.fields.keys()) )
 
     # Determine offset if not provided.
     if not offset_xyz:
@@ -213,7 +213,7 @@ def array_from_csv( pointcloud_csv_filepath,
     """
     cache_path = pointcloud_csv_filepath + ".cache.npy"
     if use_cache:
-        if isinstance(use_cache, (str, unicode)):
+        if isinstance(use_cache, str):
             cache_path = use_cache
         if os.path.exists(cache_path):
             if os.path.getmtime(cache_path) > os.path.getmtime(pointcloud_csv_filepath):
@@ -227,7 +227,7 @@ def array_from_csv( pointcloud_csv_filepath,
     logger.debug("Loading data from csv file: {}".format( pointcloud_csv_filepath ))
     with open(pointcloud_csv_filepath, 'r') as f_in:
         csv_reader = csv.reader(f_in, **csv_format)
-        column_names = csv_reader.next()
+        column_names = next(csv_reader)
 
         # If user provided only a single dtype, it is the default type.
         if isinstance(column_dtypes, dict):
@@ -244,7 +244,7 @@ def array_from_csv( pointcloud_csv_filepath,
                 column_dtypes[column_name] = default_column_dtype
 
         dtype_list = [column_dtypes[column_name] for column_name in column_names]
-        row_dtype = zip( column_names, dtype_list )
+        row_dtype = list(zip( column_names, dtype_list ))
         csv_array_data = numpy.ndarray( shape=(num_points,), dtype=row_dtype )
     
         for row_index, row_data in enumerate(csv_reader):

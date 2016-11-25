@@ -20,8 +20,8 @@
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
-from opCounting import OpCounting
-from countingSerializer import CountingSerializer
+from .opCounting import OpCounting
+from .countingSerializer import CountingSerializer
 
 class CountingApplet(StandardApplet):
     def __init__(self,
@@ -49,5 +49,5 @@ class CountingApplet(StandardApplet):
 
     @property
     def singleLaneGuiClass(self):
-        from countingGui import CountingGui
+        from .countingGui import CountingGui
         return CountingGui

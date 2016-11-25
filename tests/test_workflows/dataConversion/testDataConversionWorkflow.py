@@ -49,7 +49,7 @@ class TestDataConversionWorkflow(object):
 
     @classmethod
     def setupClass(cls):
-        print 'starting setup...'
+        print('starting setup...')
 
         if hasattr(cls, 'SAMPLE_DATA'):
             cls.using_random_data = False
@@ -57,7 +57,7 @@ class TestDataConversionWorkflow(object):
             cls.using_random_data = True
             cls.create_random_tst_data()
 
-        print 'looking for ilastik.py...'
+        print('looking for ilastik.py...')
         # Load the ilastik startup script as a module.
         # Do it here in setupClass to ensure that it isn't loaded more than once.
         ilastik_entry_file_path = os.path.join( os.path.split( os.path.realpath(ilastik.__file__) )[0], "../ilastik.py" )

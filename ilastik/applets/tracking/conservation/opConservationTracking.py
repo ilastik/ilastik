@@ -13,7 +13,7 @@ from ilastik.applets.tracking.base.trackingUtilities import get_dict_value, get_
 from lazyflow.operators.opCompressedCache import OpCompressedCache
 from lazyflow.operators.valueProviders import OpZeroDefault
 from lazyflow.roi import sliceToRoi
-from opRelabeledMergerFeatureExtraction import OpRelabeledMergerFeatureExtraction
+from .opRelabeledMergerFeatureExtraction import OpRelabeledMergerFeatureExtraction
 
 from functools import partial
 from lazyflow.request import Request, RequestPool
@@ -155,7 +155,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             if not self.Parameters.ready():
                 raise Exception("Parameter slot is not ready")
             parameters = self.Parameters.value           
-            trange = range(roi.start[0], roi.stop[0])
+            trange = list(range(roi.start[0], roi.stop[0]))
             
             original = np.zeros(result.shape, dtype=slot.meta.dtype)         
             result[:] =  self.LabelImage.get(roi).wait()
@@ -175,7 +175,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             
         elif slot is self.MergerOutput:
             parameters = self.Parameters.value
-            trange = range(roi.start[0], roi.stop[0])
+            trange = list(range(roi.start[0], roi.stop[0]))
 
             result[:] =  self.LabelImage.get(roi).wait()
    
@@ -186,7 +186,7 @@ class OpConservationTracking(Operator, ExportingOperator):
                         and 'time_range' in parameters 
                         and t <= parameters['time_range'][-1] 
                         and t >= parameters['time_range'][0]):
-                    if 'withMergerResolution' in parameters.keys() and parameters['withMergerResolution']:
+                    if 'withMergerResolution' in list(parameters.keys()) and parameters['withMergerResolution']:
                         self.mergerResolver.relabelMergers(result[t-roi.start[0],...,0], t)
                         result[t-roi.start[0],...,0] = self._labelLineageIds(result[t-roi.start[0],...,0], t, onlyMergers=True)
                     else:
@@ -196,7 +196,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             
         elif slot is self.RelabeledImage:
             parameters = self.Parameters.value
-            trange = range(roi.start[0], roi.stop[0])
+            trange = list(range(roi.start[0], roi.stop[0]))
 
             result[:] =  self.LabelImage.get(roi).wait()
             
@@ -204,7 +204,7 @@ class OpConservationTracking(Operator, ExportingOperator):
                 if (self.mergerResolver
                         and 'time_range' in parameters
                         and t <= parameters['time_range'][-1] and t >= parameters['time_range'][0]
-                        and 'withMergerResolution' in parameters.keys() and parameters['withMergerResolution']):
+                        and 'withMergerResolution' in list(parameters.keys()) and parameters['withMergerResolution']):
                     self.mergerResolver.relabelMergers(result[t-roi.start[0],...,0], t)
                     
         elif slot == self.AllBlocks:
@@ -359,9 +359,9 @@ class OpConservationTracking(Operator, ExportingOperator):
         model = trackingGraph.model
 
         detectionWeight = 10.0 # FIXME: Should we store this weight in the parameters slot?
-        weights = {u'weights': [transWeight, detectionWeight, appearance_cost, disappearance_cost]}
+        weights = {'weights': [transWeight, detectionWeight, appearance_cost, disappearance_cost]}
         if withDivisions:
-            weights = {u'weights': [transWeight, detectionWeight, divWeight, appearance_cost, disappearance_cost]}
+            weights = {'weights': [transWeight, detectionWeight, divWeight, appearance_cost, disappearance_cost]}
             
         result = dpct.trackFlowBased(model, weights)
         
@@ -394,7 +394,7 @@ class OpConservationTracking(Operator, ExportingOperator):
                 # Fit and refine merger nodes using a GMM 
                 # It has to be done per time-step in order to aviod loading the whole video on RAM
                 traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = getMappingsBetweenUUIDsAndTraxels(model)
-                timesteps = [int(t) for t in traxelIdPerTimestepToUniqueIdMap.keys()]
+                timesteps = [int(t) for t in list(traxelIdPerTimestepToUniqueIdMap.keys())]
                 timesteps.sort()
                 
                 timeIndex = self.LabelImage.meta.axistags.index('t')
@@ -444,7 +444,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         if not withBatchProcessing:
             merger_layer_idx = self.parent.parent.trackingApplet._gui.currentGui().layerstack.findMatchingIndex(lambda x: x.name == "Merger")
             tracking_layer_idx = self.parent.parent.trackingApplet._gui.currentGui().layerstack.findMatchingIndex(lambda x: x.name == "Tracking")
-            if 'withMergerResolution' in parameters.keys() and not parameters['withMergerResolution']:
+            if 'withMergerResolution' in list(parameters.keys()) and not parameters['withMergerResolution']:
                 self.parent.parent.trackingApplet._gui.currentGui().layerstack[merger_layer_idx].colorTable = \
                     self.parent.parent.trackingApplet._gui.currentGui().merger_colortable
             else:
@@ -465,7 +465,7 @@ class OpConservationTracking(Operator, ExportingOperator):
 
     def _getEventsVector(self, result, model):        
         traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = getMappingsBetweenUUIDsAndTraxels(model)
-        timesteps = [t for t in traxelIdPerTimestepToUniqueIdMap.keys()]
+        timesteps = [t for t in list(traxelIdPerTimestepToUniqueIdMap.keys())]
         
         mergers, detections, links, divisions = getMergersDetectionsLinksDivisions(result, uuidToTraxelMap)
         
@@ -479,7 +479,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         events = {}
         
         # Save mergers, links, detections, and divisions
-        for timestep in traxelIdPerTimestepToUniqueIdMap.keys():
+        for timestep in list(traxelIdPerTimestepToUniqueIdMap.keys()):
             # We need to add an extra column with zeros in order to be backward compatible with the older version
             def stackExtraColumnWithZeros(array):
                 return np.hstack((array, np.zeros((array.shape[0], 1), dtype=array.dtype)))
@@ -493,9 +493,9 @@ class OpConservationTracking(Operator, ExportingOperator):
     
             dis = np.asarray(dis)
             app = np.asarray(app)
-            div = np.asarray([[k, v[0], v[1]] for k,v in divisionsPerTimestep[timestep].iteritems()])
+            div = np.asarray([[k, v[0], v[1]] for k,v in divisionsPerTimestep[timestep].items()])
             mov = np.asarray(linksPerTimestep[timestep])
-            mer = np.asarray([[k,v] for k,v in mergersPerTimestep[timestep].iteritems()])
+            mer = np.asarray([[k,v] for k,v in mergersPerTimestep[timestep].items()])
             mul = np.asarray(mul)
             
             events[str(timestep)] = {}
@@ -515,9 +515,9 @@ class OpConservationTracking(Operator, ExportingOperator):
 
         # Write merger results dictionary
         if self.resolvedMergersDict:
-            for timestep, results in self.resolvedMergersDict.items():
+            for timestep, results in list(self.resolvedMergersDict.items()):
                 mergerRes = {}
-                for key, result in results.items():
+                for key, result in list(results.items()):
                     mergerRes[key] = result
                     
                 events[str(timestep)]['res'] = mergerRes
@@ -542,7 +542,7 @@ class OpConservationTracking(Operator, ExportingOperator):
                 assert(self.resolvedMergersDict is not None)
                 values = []
                 if time in self.resolvedMergersDict:
-                    values = self.resolvedMergersDict[time].values()
+                    values = list(self.resolvedMergersDict[time].values())
                 labels = [l for l in labels if l in itertools.chain(*values)]
             for label in labels:
                 if label > 0 and self.hypotheses_graph.hasNode((time,label)):
@@ -652,7 +652,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         export_file.ExportProgress.subscribe(progress_slot)
         export_file.InsertionProgress.subscribe(progress_slot)
 
-        export_file.add_columns("table", range(sum(obj_count)), Mode.List, Default.KnimeId)
+        export_file.add_columns("table", list(range(sum(obj_count))), Mode.List, Default.KnimeId)
         export_file.add_columns("table", object_ids, Mode.List, Default.IlastikId)
         export_file.add_columns("table", lineage_ids, Mode.List, Default.Lineage)
         export_file.add_columns("table", track_ids, Mode.List, Default.TrackId)
@@ -758,7 +758,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         total_count = 0
         empty_frame = False
 
-        for t in feats.keys():
+        for t in list(feats.keys()):
             rc = feats[t][default_features_key]['RegionCenter']
             lower = feats[t][default_features_key]['Coord<Minimum>']
             upper = feats[t][default_features_key]['Coord<Maximum>']

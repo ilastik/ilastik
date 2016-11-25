@@ -77,7 +77,7 @@ class ExampleObjFeats(ObjectFeaturesPlugin):
         del kwargs['features']
         kwargs['label_bboxes'] = kwargs.pop('label_bboxes')
         results = []
-        features = features.keys()
+        features = list(features.keys())
         if 'lbp' in features:
             results.append(self.lbp(**kwargs))
         if 'radii_ratio' in features:

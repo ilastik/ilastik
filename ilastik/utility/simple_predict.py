@@ -34,7 +34,7 @@ def main():
     logger.info("DONE.")
 
 def load_and_predict( input_data_or_path, classifier_filepath, feature_list_json_path, output_path=None, compute_blockwise=False ):
-    assert output_path is None or isinstance( output_path, basestring )
+    assert output_path is None or isinstance( output_path, str )
 
     # Load
     input_data = load_data( input_data_or_path )
@@ -129,7 +129,7 @@ def bb_to_slicing(start, stop):
     
         >>> assert bb_to_slicing([1,2,3], [4,5,6]) == np.s_[1:4, 2:5, 3:6]
     """
-    return tuple( starmap( slice, zip(start, stop) ) )
+    return tuple( starmap( slice, list(zip(start, stop)) ) )
 
 # In vigra, 0.0 means 'automatically determined' (Toufiq uses 0.0)
 # In ilastik, we use 2.0 for all filters (except the pre-smoothing step)
@@ -333,7 +333,7 @@ def get_filter_channel_ranges( filter_spec_list, ndim ):
             num_output_channels = 1
         output_channel_steps.append( output_channel_steps[-1] + num_output_channels )
 
-    filter_channel_ranges = zip( output_channel_steps[:-1], output_channel_steps[1:] )
+    filter_channel_ranges = list(zip( output_channel_steps[:-1], output_channel_steps[1:] ))
     return filter_channel_ranges
     
 
@@ -354,7 +354,7 @@ def load_data( input_data ):
     Read from .h5 or .npy, drop channel axis (if any), and convert to float32.
     """
     # Load input data
-    if isinstance(input_data, basestring):
+    if isinstance(input_data, str):
         logger.info( "Loading {}".format(input_data) )
         input_path = input_data
         if '.h5' in input_path:

@@ -19,8 +19,8 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
-from opFeatureSelection import OpFeatureSelection
-from featureSelectionSerializer import FeatureSelectionSerializer, Ilastik05FeatureSelectionDeserializer
+from .opFeatureSelection import OpFeatureSelection
+from .featureSelectionSerializer import FeatureSelectionSerializer, Ilastik05FeatureSelectionDeserializer
 
 class FeatureSelectionApplet( StandardApplet ):
     """
@@ -48,7 +48,7 @@ class FeatureSelectionApplet( StandardApplet ):
 
     @property
     def singleLaneGuiClass(self):
-        from featureSelectionGui import FeatureSelectionGui
+        from .featureSelectionGui import FeatureSelectionGui
         return FeatureSelectionGui
 
 #    def createSingleLaneGui( self , laneIndex):

@@ -20,7 +20,7 @@
 ###############################################################################
 from PyQt4.QtGui import QColor, QPixmap, QIcon, QItemSelectionModel, QImage
 from PyQt4.QtCore import Qt, pyqtSignal, QModelIndex
-from listModel import ListModel,ListElement,_NPIXELS
+from .listModel import ListModel,ListElement,_NPIXELS
 
 import logging
 logger = logging.getLogger(__name__)

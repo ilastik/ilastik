@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
-from opLabeling import OpLabelingSingleLane
+from .opLabeling import OpLabelingSingleLane
 #from labelingSerializer import LabelingSerializer
 
 class LabelingSingleLaneApplet( StandardApplet ):
@@ -42,7 +42,7 @@ class LabelingSingleLaneApplet( StandardApplet ):
         return [] # TODO
 
     def createSingleLaneGui(self, imageLaneIndex):
-        from labelingGui import LabelingGui
+        from .labelingGui import LabelingGui
 
         opLabeling = self.topLevelOperator.getLane(imageLaneIndex)
         

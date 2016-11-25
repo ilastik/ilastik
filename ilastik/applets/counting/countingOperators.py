@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 
-from __future__ import division
+
 import logging
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger("TRACE." + __name__)

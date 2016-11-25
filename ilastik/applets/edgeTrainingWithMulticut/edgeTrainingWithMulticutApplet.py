@@ -23,7 +23,7 @@ from ilastik.applets.base.standardApplet import StandardApplet
 from ilastik.applets.edgeTraining.edgeTrainingSerializer import EdgeTrainingSerializer
 from ilastik.applets.multicut.multicutSerializer import MulticutSerializer
 
-from opEdgeTrainingWithMulticut import OpEdgeTrainingWithMulticut
+from .opEdgeTrainingWithMulticut import OpEdgeTrainingWithMulticut
 
 class EdgeTrainingWithMulticutApplet( StandardApplet ):
     """
@@ -44,7 +44,7 @@ class EdgeTrainingWithMulticutApplet( StandardApplet ):
 
     @property
     def singleLaneGuiClass(self):
-        from edgeTrainingWithMulticutGui import EdgeTrainingWithMulticutGui
+        from .edgeTrainingWithMulticutGui import EdgeTrainingWithMulticutGui
         return EdgeTrainingWithMulticutGui
 
     @property

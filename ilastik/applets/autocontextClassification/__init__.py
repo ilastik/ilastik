@@ -18,5 +18,5 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from autocontextClassificationApplet import *
+from .autocontextClassificationApplet import *
 

@@ -29,11 +29,15 @@ this_file = os.path.abspath(__file__)
 this_file = os.path.realpath( this_file )
 ilastik_package_dir = os.path.dirname(this_file)
 ilastik_repo_dir = os.path.dirname(ilastik_package_dir)
-submodule_dir = os.path.join( ilastik_repo_dir, 'submodules' )
+submodule_dir = os.path.dirname(ilastik_repo_dir)
 
 # Add all submodules to the PYTHONPATH
-import expose_submodules
+from . import expose_submodules
 expose_submodules.expose_submodules(submodule_dir)
+
+# switch on QString in Python3
+import sip
+sip.setapi('QString', 1)
 
 ##################
 ## Version info ##

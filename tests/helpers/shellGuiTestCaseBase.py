@@ -32,7 +32,7 @@ from PyQt4.QtGui import QMouseEvent, QApplication, QPixmap, qApp
 import ilastik.config
 from ilastik.shell.gui.startShellGui import launchShell
 from ilastik.utility.gui.threadRouter import ThreadRouter
-from mainThreadHelpers import wait_for_main_func, run_in_main_thread
+from .mainThreadHelpers import wait_for_main_func, run_in_main_thread
 
 from ilastik.ilastik_logging import default_config
 default_config.init(output_mode=default_config.OutputMode.CONSOLE)
@@ -153,10 +153,10 @@ class ShellGuiTestCaseBase(object):
         def impl():
             try:
                 func()
-            except AssertionError, e:
+            except AssertionError as e:
                 traceback.print_exc()
                 errors.append(e)
-            except Exception, e:
+            except Exception as e:
                 traceback.print_exc()
                 errors.append(e)
             testFinished.set()

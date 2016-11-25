@@ -21,7 +21,7 @@
 import os
 import logging.config
 import warnings
-import loggingHelpers
+from . import loggingHelpers
 from ilastik.config import cfg as ilastik_config
 
 DEFAULT_LOGFILE_PATH = os.path.expanduser("~/ilastik_log.txt")
@@ -263,9 +263,9 @@ def init(format_prefix="", output_mode=OutputMode.LOGFILE_WITH_CONSOLE_ERRORS, l
         
     
     # Custom format for warnings
-    def simple_warning_format(message, category, filename, lineno, line=None):
-        filename = os.path.split(filename)[1]
-        return filename + "(" + str(lineno) + "): " + category.__name__ + ": " + message[0]
+    #def simple_warning_format(message, category, filename, lineno, line=None):
+    #    filename = os.path.split(filename)[1]
+    #    return filename + "(" + str(lineno) + "): " + category.__name__ + ": " + message[0]
 
-    warnings.formatwarning = simple_warning_format
+    #warnings.formatwarning = simple_warning_format
     

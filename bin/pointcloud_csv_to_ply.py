@@ -25,7 +25,7 @@ def pointcloud_csv_to_ply( csv_filepath, ply_filepath, offset=None, scale=None )
     with open(csv_filepath, 'r') as f_in:
         csv_reader = csv.DictReader(f_in, **CSV_FORMAT)
         for row in csv_reader:
-            x_px, y_px, z_px = map(int, (row["x_px"], row["y_px"], row["z_px"]))
+            x_px, y_px, z_px = list(map(int, (row["x_px"], row["y_px"], row["z_px"])))
             point = Point3D(x_px, y_px, z_px)
             points.append(point)
 

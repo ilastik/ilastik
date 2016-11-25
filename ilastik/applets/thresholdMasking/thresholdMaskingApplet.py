@@ -20,8 +20,8 @@
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
-from opThresholdMasking import OpThresholdMasking
-from thresholdMaskingSerializer import ThresholdMaskingSerializer
+from .opThresholdMasking import OpThresholdMasking
+from .thresholdMaskingSerializer import ThresholdMaskingSerializer
 
 class ThresholdMaskingApplet( StandardApplet ):
     """
@@ -41,7 +41,7 @@ class ThresholdMaskingApplet( StandardApplet ):
     
     @property
     def singleLaneGuiClass(self):
-        from thresholdMaskingGui import ThresholdMaskingGui
+        from .thresholdMaskingGui import ThresholdMaskingGui
         return ThresholdMaskingGui
 
     @property

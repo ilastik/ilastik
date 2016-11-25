@@ -18,4 +18,4 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from deviationFromMeanWorkflow import DeviationFromMeanWorkflow
+from .deviationFromMeanWorkflow import DeviationFromMeanWorkflow

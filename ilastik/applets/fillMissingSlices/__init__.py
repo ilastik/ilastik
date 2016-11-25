@@ -18,5 +18,5 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from fillMissingSlicesApplet import FillMissingSlicesApplet
-from opFillMissingSlices import OpFillMissingSlices
+from .fillMissingSlicesApplet import FillMissingSlicesApplet
+from .opFillMissingSlices import OpFillMissingSlices

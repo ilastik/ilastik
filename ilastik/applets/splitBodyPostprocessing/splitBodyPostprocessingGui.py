@@ -127,7 +127,7 @@ class SplitBodyPostprocessingGui(LayerViewerGui):
                 for index, slot in enumerate(mslot):
                     if slot.ready():
                         raveler_label = slot.meta.selected_label
-                        colortable = map(QColor.rgba, self._fragmentColors)
+                        colortable = list(map(QColor.rgba, self._fragmentColors))
                         fragSegLayer = ColortableLayer(LazyflowSource(slot), colortable, direct=True)
                         fragSegLayer.name = "{} #{} ({})".format( name, index, raveler_label )
                         fragSegLayer.visible = False

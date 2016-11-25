@@ -43,7 +43,7 @@ from lazyflow.operators.opLabelVolume import OpLabelVolume
 from lazyflow.operators.opCompressedCache import OpCompressedCache
 from lazyflow.operators.opReorderAxes import OpReorderAxes
 
-from _OpGraphCut import segmentGC, OpGraphCut
+from ._OpGraphCut import segmentGC, OpGraphCut
 
 
 ## segment predictions with pre-thresholding

@@ -27,7 +27,7 @@ from lazyflow.operators import OpCrosshairMarkers, OpSelectLabel
 from lazyflow.operators.operators import OpArrayCache
 
 from ilastik.workflows.carving.opCarving import OpCarving
-from opParseAnnotations import OpParseAnnotations
+from .opParseAnnotations import OpParseAnnotations
 
 from ilastik.utility import bind
 
@@ -130,7 +130,7 @@ class OpSplitBodyCarving( OpCarving ):
 #                background_seed_block = background_seed_block.view(vigra.VigraArray)
 #                background_seed_block.axistags = background_block_view_3d.axistags
                 
-                axisorder = laneView.RavelerLabels.meta.getTaggedShape().keys()
+                axisorder = list(laneView.RavelerLabels.meta.getTaggedShape().keys())
                 
                 logger.debug("Writing backgound seeds: {}/{}".format( block_index, len(block_starts) ))
                 laneView.WriteSeeds[ roiToSlice( *block_roi ) ] = background_seed_block.withAxes(*axisorder)
@@ -175,7 +175,7 @@ class OpSplitBodyCarving( OpCarving ):
         if self._mst is None:
             result[0] = []
         else:
-            for fragmentName in self._mst.object_names.keys():
+            for fragmentName in list(self._mst.object_names.keys()):
                 bodyName = fragmentName[0:fragmentName.find('.')]
                 savedLabels.add( int(bodyName) )
     
@@ -257,7 +257,7 @@ class OpSplitBodyCarving( OpCarving ):
         # Names should match <raveler label>.<object id>
         pattern = "{}.".format( ravelerLabel )
         if mst is not None:
-            names = sorted(filter( lambda s: s.startswith(pattern), mst.object_names.keys() ))
+            names = sorted([s for s in list(mst.object_names.keys()) if s.startswith(pattern)])
             return names            
         return []
     
@@ -265,7 +265,7 @@ class OpSplitBodyCarving( OpCarving ):
         """
         Overridden from base class.
         """
-        is_new = ( name in self._mst.object_names.keys() )
+        is_new = ( name in list(self._mst.object_names.keys()) )
         super( OpSplitBodyCarving, self ).saveObjectAs(name)
         if is_new:
             self.EditedRavelerBodyList.setDirty()

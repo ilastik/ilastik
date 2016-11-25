@@ -18,5 +18,5 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from shellGuiTestCaseBase import ShellGuiTestCaseBase
-import mainThreadHelpers
+from .shellGuiTestCaseBase import ShellGuiTestCaseBase
+from . import mainThreadHelpers

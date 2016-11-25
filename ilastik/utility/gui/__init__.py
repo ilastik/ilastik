@@ -18,5 +18,5 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from thunkEvent import ThunkEvent, ThunkEventHandler
-from threadRouter import ThreadRouter, threadRouted, threadRoutedWithRouter
+from .thunkEvent import ThunkEvent, ThunkEventHandler
+from .threadRouter import ThreadRouter, threadRouted, threadRoutedWithRouter

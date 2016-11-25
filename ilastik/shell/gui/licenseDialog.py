@@ -53,7 +53,7 @@ def get_buildem_license():
 
 
 class LicenseDialog(QMessageBox):
-    LICENSE_SHORT = u"""<p>Copyright © 2011-2015, the ilastik developers <team@ilastik.org></p>
+    LICENSE_SHORT = """<p>Copyright © 2011-2015, the ilastik developers <team@ilastik.org></p>
 <p>
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -68,7 +68,7 @@ General Public License.
 </p>
 <p>See the <a href="http://ilastik.org/license.html">license page on the ilastik web site</a> for details.</p>
 """
-    LICENSE_ERROR = u"""Cannot find LICENSE file in ilastik sources.
+    LICENSE_ERROR = """Cannot find LICENSE file in ilastik sources.
 
 Please report this problem to ilastik-devel@ilastik.org.
 

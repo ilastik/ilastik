@@ -31,7 +31,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
     @threadRouted
     def _setMergerLegend(self, labels, selection):   
         param = self.topLevelOperatorView.Parameters.value
-        if 'withMergerResolution' in param.keys():
+        if 'withMergerResolution' in list(param.keys()):
             if param['withMergerResolution']:
                 selection = 1
         elif self._drawer.mergerResolutionBox.isChecked():
@@ -67,37 +67,37 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._drawer = uic.loadUi(localDir+"/drawer.ui")
         
         parameters = self.topLevelOperatorView.Parameters.value        
-        if 'maxDist' in parameters.keys():
+        if 'maxDist' in list(parameters.keys()):
             self._drawer.maxDistBox.setValue(parameters['maxDist'])
-        if 'maxObj' in parameters.keys():
+        if 'maxObj' in list(parameters.keys()):
             self._drawer.maxObjectsBox.setValue(parameters['maxObj'])
-        if 'divThreshold' in parameters.keys():
+        if 'divThreshold' in list(parameters.keys()):
             self._drawer.divThreshBox.setValue(parameters['divThreshold'])
-        if 'avgSize' in parameters.keys():
+        if 'avgSize' in list(parameters.keys()):
             self._drawer.avgSizeBox.setValue(parameters['avgSize'][0])
-        if 'withTracklets' in parameters.keys():
+        if 'withTracklets' in list(parameters.keys()):
             self._drawer.trackletsBox.setChecked(parameters['withTracklets'])
-        if 'sizeDependent' in parameters.keys():
+        if 'sizeDependent' in list(parameters.keys()):
             self._drawer.sizeDepBox.setChecked(parameters['sizeDependent'])
-        if 'divWeight' in parameters.keys():
+        if 'divWeight' in list(parameters.keys()):
             self._drawer.divWeightBox.setValue(parameters['divWeight'])
-        if 'transWeight' in parameters.keys():
+        if 'transWeight' in list(parameters.keys()):
             self._drawer.transWeightBox.setValue(parameters['transWeight'])
-        if 'withDivisions' in parameters.keys():
+        if 'withDivisions' in list(parameters.keys()):
             self._drawer.divisionsBox.setChecked(parameters['withDivisions'])
-        if 'withOpticalCorrection' in parameters.keys():
+        if 'withOpticalCorrection' in list(parameters.keys()):
             self._drawer.opticalBox.setChecked(parameters['withOpticalCorrection'])
-        if 'withClassifierPrior' in parameters.keys():
+        if 'withClassifierPrior' in list(parameters.keys()):
             self._drawer.classifierPriorBox.setChecked(parameters['withClassifierPrior'])
-        if 'withMergerResolution' in parameters.keys():
+        if 'withMergerResolution' in list(parameters.keys()):
             self._drawer.mergerResolutionBox.setChecked(parameters['withMergerResolution'])
-        if 'borderAwareWidth' in parameters.keys():
+        if 'borderAwareWidth' in list(parameters.keys()):
             self._drawer.bordWidthBox.setValue(parameters['borderAwareWidth'])
-        if 'cplex_timeout' in parameters.keys():
+        if 'cplex_timeout' in list(parameters.keys()):
             self._drawer.timeoutBox.setText(str(parameters['cplex_timeout']))
-        if 'appearanceCost' in parameters.keys():
+        if 'appearanceCost' in list(parameters.keys()):
             self._drawer.appearanceBox.setValue(parameters['appearanceCost'])
-        if 'disappearanceCost' in parameters.keys():
+        if 'disappearanceCost' in list(parameters.keys()):
             self._drawer.disappearanceBox.setValue(parameters['disappearanceCost'])
         
         return self._drawer
@@ -161,7 +161,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._drawer.mergerResolutionBox.stateChanged.connect(self._onMaxObjectsBoxChanged)
 
         self._drawer.StructuredLearningButton.clicked.connect(self._onRunStructuredLearningButtonPressed)
-        self.features = self.topLevelOperatorView.ObjectFeatures(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0])).wait()
+        self.features = self.topLevelOperatorView.ObjectFeatures(list(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0]))).wait()
 
         self._drawer.divWeightBox.valueChanged.connect(self._onDivisionWeightBoxChanged)                
         self._drawer.detWeightBox.valueChanged.connect(self._onDetectionWeightBoxChanged)                
@@ -348,7 +348,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         self._crops = self.topLevelOperatorView.Crops.value
 
     def getLabel(self, time, track):
-        for label in self.operator.labels[time].keys():
+        for label in list(self.operator.labels[time].keys()):
             if self.operator.labels[time][label] == set([track]):
                 return label
         return False
@@ -399,7 +399,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                 pgmlink.ConsTrackingSolverType.CplexSolver,
                 ndim)
 
-            time_range = range (0,self.topLevelOperatorView.LabelImage.meta.shape[0])
+            time_range = list(range(0,self.topLevelOperatorView.LabelImage.meta.shape[0]))
             featureStore, traxelStore, empty_frame, max_traxel_id_at = self.mainOperator._generate_traxelstore(
                 time_range,
                 (0,self.topLevelOperatorView.LabelImage.meta.shape[1]),#x_range
@@ -444,26 +444,26 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             mergeMsgStr = "Your tracking annotations contradict this model assumptions! All tracks must be continuous, tracks of length one are not allowed, and mergers may merge or split but all tracks in a merger appear/disappear together."
             foundAllArcs = True;
             numAllAnnotatedDivisions = 0
-            for cropKey in self.mainOperator.Crops.value.keys():
+            for cropKey in list(self.mainOperator.Crops.value.keys()):
                 if foundAllArcs:
 
-                    if not cropKey in self.mainOperator.Annotations.value.keys():
+                    if not cropKey in list(self.mainOperator.Annotations.value.keys()):
                         self._criticalMessage("You have not trained or saved your training for " + str(cropKey) + \
                                               ". \nGo back to the Training applet and save all your training!")
                         return
 
                     crop = self.mainOperator.Annotations.value[cropKey]
 
-                    if "labels" in crop.keys():
+                    if "labels" in list(crop.keys()):
 
                         labels = crop["labels"]
 
-                        for time in labels.keys():
+                        for time in list(labels.keys()):
 
                             if not foundAllArcs:
                                 break
 
-                            for label in labels[time].keys():
+                            for label in list(labels[time].keys()):
 
                                 if not foundAllArcs:
                                     break
@@ -527,11 +527,11 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
                                 elif type[0] == "INTERMEDIATE":
                                     structuredLearningTracker.addIntermediateLabels(time, int(label), float(trackCount))
 
-                    if foundAllArcs and "divisions" in crop.keys():
+                    if foundAllArcs and "divisions" in list(crop.keys()):
                         divisions = crop["divisions"]
 
                         numAllAnnotatedDivisions = numAllAnnotatedDivisions + len(divisions)
-                        for track in divisions.keys():
+                        for track in list(divisions.keys()):
                             if not foundAllArcs:
                                 break
 
@@ -586,7 +586,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
         disappearanceWeight = self._disappearanceWeight
         appearanceWeight = self._appearanceWeight
 
-        for key in self._crops.keys():
+        for key in list(self._crops.keys()):
             crop = self._crops[key]
             fieldOfView = pgmlink.FieldOfView(
                 float(crop["time"][0]),float(crop["starts"][0]),float(crop["starts"][1]),float(crop["starts"][2]),
@@ -718,7 +718,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
     def getLabelInCrop(self, cropKey, time, track):
         labels = self.mainOperator.Annotations.value[cropKey]["labels"][time]
-        for label in labels.keys():
+        for label in list(labels.keys()):
             if self.mainOperator.Annotations.value[cropKey]["labels"][time][label] == set([track]):
                 return label
         return -1
@@ -749,7 +749,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
 
         firstTime = -1
         for t in range(crop["time"][1],time,-1):
-            if t in labels.keys():
+            if t in list(labels.keys()):
                 for label in labels[t]:
                     if track in labels[t][label]:
                         firstTime = t
@@ -789,7 +789,7 @@ class StructuredTrackingGui(TrackingBaseGui, ExportingGui):
             from_size = self._drawer.from_size.value()
             to_size = self._drawer.to_size.value()        
             
-            self.time_range =  range(from_t, to_t + 1)
+            self.time_range =  list(range(from_t, to_t + 1))
             avgSize = [self._drawer.avgSizeBox.value()]
 
             cplex_timeout = None

@@ -189,7 +189,7 @@ if __name__ == "__main__":
 
     dlg = MemUsageDialog(update=False)
 
-    print reports
+    print(reports)
 
     dlg._showReports(reports)
     dlg.show()

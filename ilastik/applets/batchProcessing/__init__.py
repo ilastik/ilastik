@@ -1,1 +1,1 @@
-from batchProcessingApplet import BatchProcessingApplet
+from .batchProcessingApplet import BatchProcessingApplet

@@ -95,7 +95,7 @@ class TCPServerInfoWidget(QWidget):
         :type success: bool
         """
         text = "%s (" % cmd["command"]
-        for k, v in cmd.iteritems():
+        for k, v in cmd.items():
             if k == "command":
                 continue
             text += " %s:%s" % (k, v)
@@ -126,7 +126,7 @@ class TCPServerInfoWidget(QWidget):
         :type connections: dict
         """
         self.ui.connectionList.clear()
-        for c in connections.iterkeys():
+        for c in connections.keys():
             item = QListWidgetItem("%s (%s)" % (c[0], c[1]))
             enabled = connections[c]["enabled"]
             client = connections[c]["address"]
@@ -154,5 +154,5 @@ class TCPServerInfoWidget(QWidget):
             value = convert_to_type(value)
             kvargs[key] = value
         kvargs["command"] = command
-        print kvargs
+        print(kvargs)
         self.broadcast.emit(kvargs)

@@ -131,7 +131,7 @@ def write_events(events_at, directory, t, labelImage, mergers=None):
         try:
             with LineageH5(fn, 'w-') as f_curr:
                 # delete old label image
-                if "segmentation" in f_curr.keys():
+                if "segmentation" in list(f_curr.keys()):
                     del f_curr["segmentation"]
                 
                 seg = f_curr.create_group("segmentation")            
@@ -139,7 +139,7 @@ def write_events(events_at, directory, t, labelImage, mergers=None):
                 seg.create_dataset("labels", data = labelImage, dtype=np.uint32, compression=1)
                 
                 # delete old tracking
-                if "tracking" in f_curr.keys():
+                if "tracking" in list(f_curr.keys()):
                     del f_curr["tracking"]
     
                 tg = f_curr.create_group("tracking")            
@@ -173,7 +173,7 @@ def write_events(events_at, directory, t, labelImage, mergers=None):
                 if len(res):
                     rg = tg.create_group("ResolvedMergers")
                     rg.attrs["Format"] = "old cell label (current file), new cell labels of resolved cells (current file)"
-                    for k, v in res.iteritems():
+                    for k, v in res.items():
                         rg.create_dataset(str(k), data=v[:-1], dtype=np.uint32, compression=1)
         except IOError:                    
             raise IOError("File " + str(fn) + " exists already. Please choose a different folder or delete the file(s).")
@@ -239,7 +239,7 @@ class LineageTrees():
 
                 elif event.type == pgmlink.EventType.Disappearance:
                     label = event.traxel_ids[0]
-                    if str(self.getNodeName(t-1,str(label))) not in nodeMap.keys():
+                    if str(self.getNodeName(t-1,str(label))) not in list(nodeMap.keys()):
                         continue
                     if branchSize[str(self.getNodeName(t-1,str(label)))] == 0:
                         del nodeMap[str(self.getNodeName(t-1,str(label)))]
@@ -255,7 +255,7 @@ class LineageTrees():
                     labelOld = event.traxel_ids[0]
                     labelNew1 = event.traxel_ids[1]
                     labelNew2 = event.traxel_ids[2]                    
-                    if str(self.getNodeName(t-1,str(labelOld))) not in nodeMap.keys():
+                    if str(self.getNodeName(t-1,str(labelOld))) not in list(nodeMap.keys()):
                         continue
                     newNode = nodeMap[str(self.getNodeName(t-1,str(labelOld)))].add_child(
                             name = self.getNodeName(t-1,str(self.getNodeName(t-1,str(labelOld)))),
@@ -271,7 +271,7 @@ class LineageTrees():
                 elif event.type == pgmlink.EventType.Move:
                     labelOld = event.traxel_ids[0]
                     labelNew = event.traxel_ids[1]
-                    if str(self.getNodeName(t-1,str(labelOld))) not in nodeMap.keys():
+                    if str(self.getNodeName(t-1,str(labelOld))) not in list(nodeMap.keys()):
                         continue
                     nodeMap[str(self.getNodeName(t,str(labelNew)))] = nodeMap[str(self.getNodeName(t-1,str(labelOld)))]
                     del nodeMap[str(self.getNodeName(t-1,str(labelOld)))]
@@ -279,9 +279,9 @@ class LineageTrees():
                     del branchSize[str(self.getNodeName(t-1,str(labelOld)))]
                 
                 else:
-                    raise Exception, "lineage tree generation not implemented for event type " + str(event.type)
+                    raise Exception("lineage tree generation not implemented for event type " + str(event.type))
 
-        for label in nodeMap.keys():            
+        for label in list(nodeMap.keys()):            
             newNode = nodeMap[label].add_child(name = label,dist = branchSize[label])
         
         self.plotTree(tree, out_fn=fn, rotation=270, show_leaf_name=False, 
@@ -415,12 +415,12 @@ class LineageH5( h5py.File ):
         self._z_scale = 1.0
 
     def init_tracking( self, div=np.empty(0), mov=np.empty(0), dis=np.empty(0), app=np.empty(0)):
-        if "tracking" in self.keys():
+        if "tracking" in list(self.keys()):
             del self["tracking"]
         self.create_group("tracking")
 
     def has_tracking( self ):
-        if "tracking" in self.keys():
+        if "tracking" in list(self.keys()):
             return True
         else:
             return False
@@ -432,18 +432,18 @@ class LineageH5( h5py.File ):
         self.update_moves(new)
 
     def update_moves( self, mov_pairs ):
-        if path.basename(self.mov_ds) in self[self.track_gn].keys():
+        if path.basename(self.mov_ds) in list(self[self.track_gn].keys()):
             del self[self.mov_ds]
         if len(mov_pairs) > 0:
             self[self.track_gn].create_dataset("Moves", data=np.asarray( mov_pairs, dtype=np.int32))
 
     def get_moves( self ):
-        if self.has_tracking() and path.basename(self.mov_ds) in self[self.track_gn].keys():
+        if self.has_tracking() and path.basename(self.mov_ds) in list(self[self.track_gn].keys()):
             return self[self.mov_ds].value
         else:
             return np.empty(0)
     def get_move_energies( self ):
-        if path.basename(self.mov_ener_ds) in self[self.track_gn].keys():
+        if path.basename(self.mov_ener_ds) in list(self[self.track_gn].keys()):
             e = self[self.mov_ener_ds].value
             if isinstance(e, np.ndarray):
                 return e
@@ -454,19 +454,19 @@ class LineageH5( h5py.File ):
         
 
     def get_divisions( self ):
-        if self.has_tracking() and path.basename(self.div_ds) in self[self.track_gn].keys():
+        if self.has_tracking() and path.basename(self.div_ds) in list(self[self.track_gn].keys()):
             return self[self.div_ds].value
         else:
             return np.empty(0)
 
     def update_divisions( self, div_triples ):
-        if path.basename(self.div_ds) in self[self.track_gn].keys():
+        if path.basename(self.div_ds) in list(self[self.track_gn].keys()):
             del self[self.div_ds]
         if len(div_triples) > 0:
             self[self.track_gn].create_dataset("Splits", data=np.asarray( div_triples, dtype=np.int32))
 
     def get_division_energies( self ):
-        if path.basename(self.div_ener_ds) in self[self.track_gn].keys():
+        if path.basename(self.div_ener_ds) in list(self[self.track_gn].keys()):
             e = self[self.div_ener_ds].value
             if isinstance(e, np.ndarray):
                 return e
@@ -476,7 +476,7 @@ class LineageH5( h5py.File ):
             return np.empty(0)
 
     def get_disappearances( self ):
-        if self.has_tracking() and path.basename(self.dis_ds) in self[self.track_gn].keys():
+        if self.has_tracking() and path.basename(self.dis_ds) in list(self[self.track_gn].keys()):
             dis = self[self.dis_ds].value
             if isinstance(dis, np.ndarray):
                 return dis
@@ -486,13 +486,13 @@ class LineageH5( h5py.File ):
             return np.empty(0)
 
     def update_disappearances( self, dis_singlets ):
-        if path.basename(self.dis_ds) in self[self.track_gn].keys():
+        if path.basename(self.dis_ds) in list(self[self.track_gn].keys()):
             del self[self.dis_ds]
         if len(dis_singlets) > 0:
             self[self.track_gn].create_dataset("Disappearances", data=np.asarray( dis_singlets, dtype=np.int32))
         
     def get_disappearance_energies( self ):
-        if path.basename(self.dis_ener_ds) in self[self.track_gn].keys():
+        if path.basename(self.dis_ener_ds) in list(self[self.track_gn].keys()):
             e = self[self.dis_ener_ds].value
             if isinstance(e, np.ndarray):
                 return e
@@ -503,7 +503,7 @@ class LineageH5( h5py.File ):
 
 
     def get_appearances( self ):
-        if self.has_tracking() and path.basename(self.app_ds) in self[self.track_gn].keys():
+        if self.has_tracking() and path.basename(self.app_ds) in list(self[self.track_gn].keys()):
             app = self[self.app_ds].value
             if isinstance(app, np.ndarray):
                 return app
@@ -513,13 +513,13 @@ class LineageH5( h5py.File ):
             return np.empty(0)
 
     def update_appearances( self, app_singlets ):
-        if path.basename(self.app_ds) in self[self.track_gn].keys():
+        if path.basename(self.app_ds) in list(self[self.track_gn].keys()):
             del self[self.app_ds]
         if len(app_singlets) > 0:
             self[self.track_gn].create_dataset("Appearances", data=np.asarray( app_singlets, dtype=np.int32))
 
     def get_appearance_energies( self ):
-        if path.basename(self.app_ener_ds) in self[self.track_gn].keys():
+        if path.basename(self.app_ener_ds) in list(self[self.track_gn].keys()):
             e = self[self.app_ener_ds].value
             if isinstance(e, np.ndarray):
                 return e

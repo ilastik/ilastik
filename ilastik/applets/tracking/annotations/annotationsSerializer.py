@@ -30,13 +30,13 @@ class SerialAnnotationsSlot(SerialSlot):
         innerops = mainOperator.innerOperators
         for i, op in enumerate(innerops):
             gr = getOrCreateGroup(group, str(i))
-            for cropKey in op.Annotations.value.keys():
+            for cropKey in list(op.Annotations.value.keys()):
                 crop_gr = getOrCreateGroup(gr, str(cropKey))
 
                 labels_gr = getOrCreateGroup(crop_gr, str("labels"))
-                for t in op.Annotations.value[cropKey]["labels"].keys():
+                for t in list(op.Annotations.value[cropKey]["labels"].keys()):
                     t_gr = getOrCreateGroup(labels_gr, str(t))
-                    for oid in op.Annotations.value[cropKey]["labels"][t].keys():
+                    for oid in list(op.Annotations.value[cropKey]["labels"][t].keys()):
                         l = op.Annotations.value[cropKey]["labels"][t][oid]
                         dset = list(l)
                         if len(dset) > 0:
@@ -44,7 +44,7 @@ class SerialAnnotationsSlot(SerialSlot):
 
                 divisions_gr = getOrCreateGroup(crop_gr, str("divisions"))
                 dset = []
-                for trackid in op.Annotations.value[cropKey]["divisions"].keys():
+                for trackid in list(op.Annotations.value[cropKey]["divisions"].keys()):
                     (children, t_parent) = op.Annotations.value[cropKey]["divisions"][trackid]
                     dset.append([trackid, children[0], children[1], t_parent])
                 if len(dset) > 0:
@@ -57,27 +57,27 @@ class SerialAnnotationsSlot(SerialSlot):
         mainOperator = self.slot.getRealOperator()
         innerops = mainOperator.innerOperators
         opgroup = group[self.name]
-        for inner in opgroup.keys():
+        for inner in list(opgroup.keys()):
             gr = opgroup[inner]
             op = innerops[int(inner)]
             annotations = {}
 
 
-            for cropKey in gr.keys():
+            for cropKey in list(gr.keys()):
                 crop_gr = gr[cropKey]
                 annotations[cropKey] = {}
 
                 labels_gr = crop_gr["labels"]
                 annotations[cropKey]["labels"] = {}
-                for t in labels_gr.keys():
+                for t in list(labels_gr.keys()):
                     annotations[cropKey]["labels"][int(t)] = {}
                     t_gr = labels_gr[str(t)]
-                    for oid in t_gr.keys():
+                    for oid in list(t_gr.keys()):
                         annotations[cropKey]["labels"][int(t)][int(oid)] = set(t_gr[oid])
 
                 divisions_gr = crop_gr["divisions"]
                 annotations[cropKey]["divisions"] = {}
-                for divKey in divisions_gr.keys():
+                for divKey in list(divisions_gr.keys()):
                     dset = divisions_gr[divKey]
                     annotations[cropKey]["divisions"] = {}
                     for row in dset:
@@ -96,7 +96,7 @@ class SerialDivisionsSlot(SerialSlot):
         innerops = mainOperator.innerOperators
         for i, op in enumerate(innerops):
             dset = []
-            for trackid in op.divisions.keys():
+            for trackid in list(op.divisions.keys()):
                 (children, t_parent) = op.divisions[trackid]
                 dset.append([trackid, children[0], children[1], t_parent])
             if len(dset) > 0:
@@ -109,7 +109,7 @@ class SerialDivisionsSlot(SerialSlot):
         mainOperator = self.slot.getRealOperator()
         innerops = mainOperator.innerOperators
         opgroup = group[self.name]
-        for inner in opgroup.keys():
+        for inner in list(opgroup.keys()):
             dset = opgroup[inner]
             op = innerops[int(inner)]
             divisions = {}
@@ -128,9 +128,9 @@ class SerialLabelsSlot(SerialSlot):
         innerops = mainOperator.innerOperators
         for i, op in enumerate(innerops):
             gr = getOrCreateGroup(group, str(i))
-            for t in op.labels.keys():
+            for t in list(op.labels.keys()):
                 t_gr = getOrCreateGroup(gr, str(t))
-                for oid in op.labels[t].keys():
+                for oid in list(op.labels[t].keys()):
                     l = op.labels[t][oid]
                     dset = list(l)
                     if len(dset) > 0:
@@ -143,14 +143,14 @@ class SerialLabelsSlot(SerialSlot):
         mainOperator = self.slot.getRealOperator()
         innerops = mainOperator.innerOperators
         opgroup = group[self.name]
-        for inner in opgroup.keys():
+        for inner in list(opgroup.keys()):
             gr = opgroup[inner]
             op = innerops[int(inner)]
             labels = {}
-            for t in gr.keys():
+            for t in list(gr.keys()):
                 labels[int(t)] = {}
                 t_gr = gr[str(t)]
-                for oid in t_gr.keys():
+                for oid in list(t_gr.keys()):
                     labels[int(t)][int(oid)] = set(t_gr[oid])
             op.labels = labels
         self.dirty = False

@@ -24,7 +24,7 @@ from PyQt4.QtCore import pyqtSignal, Qt, QEvent, SIGNAL
 class OverlayTreeWidgetIter(QTreeWidgetItemIterator):
     def __init__(self, *args):
         QTreeWidgetItemIterator.__init__(self, *args)
-    def next(self):
+    def __next__(self):
         self.__iadd__(1)
         value = self.value()
         if value:
@@ -63,7 +63,7 @@ class OverlayTreeWidget(QTreeWidget):
     def addOverlaysToTreeWidget(self, overlayDict, forbiddenOverlays, preSelectedOverlays, singleOverlaySelection):
         self.singleOverlaySelection = singleOverlaySelection
         testItem = QTreeWidgetItem("a")
-        for keys in overlayDict.keys():
+        for keys in list(overlayDict.keys()):
             if overlayDict[keys] in forbiddenOverlays:
                 continue
             else:
@@ -130,7 +130,7 @@ class OverlayTreeWidget(QTreeWidget):
             if self.singleOverlaySelection == True and currentItem.checkState(column) == Qt.Checked:
                 if it.value() != currentItem:
                     it.value().setCheckState(0, Qt.Unchecked)
-            it.next()
+            next(it)
 
                                 
     def createSelectedItemList(self):
@@ -138,7 +138,7 @@ class OverlayTreeWidget(QTreeWidget):
         it = OverlayTreeWidgetIter(self, QTreeWidgetItemIterator.Checked)
         while (it.value()):
             selectedItemList.append(it.value().item)
-            it.next()
+            next(it)
         return selectedItemList
 
 

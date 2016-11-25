@@ -20,8 +20,8 @@
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
 
-from opWsdt import OpCachedWsdt
-from wsdtSerializer import WsdtSerializer
+from .opWsdt import OpCachedWsdt
+from .wsdtSerializer import WsdtSerializer
 
 class WsdtApplet( StandardApplet ):
     """
@@ -49,7 +49,7 @@ class WsdtApplet( StandardApplet ):
 
     @property
     def singleLaneGuiClass(self):
-        from wsdtGui import WsdtGui
+        from .wsdtGui import WsdtGui
         return WsdtGui
 
     @property

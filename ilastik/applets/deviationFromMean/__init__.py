@@ -18,5 +18,5 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from deviationFromMeanApplet import DeviationFromMeanApplet
-from opDeviationFromMean import OpDeviationFromMean
+from .deviationFromMeanApplet import DeviationFromMeanApplet
+from .opDeviationFromMean import OpDeviationFromMean

@@ -185,7 +185,7 @@ class ObjectClassificationGui(LabelingGui):
         nfeatures = 0
         
         if already_selected is not None:
-            for plugin_features in already_selected.itervalues():
+            for plugin_features in already_selected.values():
                 nfeatures += len(plugin_features)
         self.labelingDrawerUi.featuresSubset.setText("{} features selected,\nsome may have multiple channels".format(nfeatures))
 
@@ -321,14 +321,14 @@ class ObjectClassificationGui(LabelingGui):
         for pluginInfo in plugins:
             availableFeatures = pluginInfo.plugin_object.availableFeatures(fakeimg, fakelabels)
             if len(availableFeatures) > 0:
-                if pluginInfo.name in self.applet._selectedFeatures.keys(): 
-                    assert pluginInfo.name in computedFeatures.keys(), 'Object Classification: {} not found in available (computed) object features'.format(pluginInfo.name)
+                if pluginInfo.name in list(self.applet._selectedFeatures.keys()): 
+                    assert pluginInfo.name in list(computedFeatures.keys()), 'Object Classification: {} not found in available (computed) object features'.format(pluginInfo.name)
 
                 if not pluginInfo.name in selectedFeatures and pluginInfo.name in self.applet._selectedFeatures:
                         selectedFeatures[pluginInfo.name]=dict()
 
-                        for feature in self.applet._selectedFeatures[pluginInfo.name].keys():
-                            if feature in availableFeatures.keys():
+                        for feature in list(self.applet._selectedFeatures[pluginInfo.name].keys()):
+                            if feature in list(availableFeatures.keys()):
                                 selectedFeatures[pluginInfo.name][feature] = availableFeatures[feature]
 
         dlg = FeatureSubSelectionDialog(computedFeatures,
@@ -340,7 +340,7 @@ class ObjectClassificationGui(LabelingGui):
 
             mainOperator.SelectedFeatures.setValue(dlg.selectedFeatures)
             nfeatures = 0
-            for plugin_features in dlg.selectedFeatures.itervalues():
+            for plugin_features in dlg.selectedFeatures.values():
                 nfeatures += len(plugin_features)
             self.labelingDrawerUi.featuresSubset.setText("{} features selected,\nsome may have multiple channels".format(nfeatures))
         mainOperator.ComputedFeatureNames.setDirty(())
@@ -412,7 +412,7 @@ class ObjectClassificationGui(LabelingGui):
 
     def _onLabelChanged(self, parentFun, mapf, slot):
         parentFun()
-        new = map(mapf, self.labelListData)
+        new = list(map(mapf, self.labelListData))
         old = slot.value
         slot.setValue(_listReplace(old, new))
 
@@ -764,7 +764,7 @@ class ObjectClassificationGui(LabelingGui):
         if action.text() == text:
             numpy.set_printoptions(precision=4)
             print( "------------------------------------------------------------" )
-            print( "object:         {}".format(obj) )
+            print(( "object:         {}".format(obj) ))
             
             t = position5d[0]
             labels = self.op.LabelInputs([t]).wait()[t]
@@ -772,7 +772,7 @@ class ObjectClassificationGui(LabelingGui):
                 label = int(labels[obj])
             else:
                 label = "none"
-            print( "label:          {}".format(label) )
+            print(( "label:          {}".format(label) ))
             
             print( 'features:' )
             feats = self.op.ObjectFeatures([t]).wait()[t]
@@ -780,13 +780,13 @@ class ObjectClassificationGui(LabelingGui):
             for plugin in sorted(feats.keys()):
                 if plugin == default_features_key or plugin not in selected:
                     continue
-                print( "Feature category: {}".format(plugin) )
+                print(( "Feature category: {}".format(plugin) ))
                 for featname in sorted(feats[plugin].keys()):
                     if featname not in selected[plugin]:
                         continue
                     value = feats[plugin][featname]
                     ft = numpy.asarray(value.squeeze())[obj]
-                    print( "{}: {}".format(featname, ft) )
+                    print(( "{}: {}".format(featname, ft) ))
 
             if len(selected)>0:
                 pred = 'none'
@@ -801,8 +801,8 @@ class ObjectClassificationGui(LabelingGui):
                     if len(probs) >= obj:
                         prob = probs[obj]
     
-                print( "probabilities:  {}".format(prob) )
-                print( "prediction:     {}".format(pred) )
+                print(( "probabilities:  {}".format(prob) ))
+                print(( "prediction:     {}".format(pred) ))
 
             
             print( "------------------------------------------------------------" )
@@ -847,8 +847,8 @@ class ObjectClassificationGui(LabelingGui):
             temp = None
         if temp is not None:
             new_labels, old_labels_lost, new_labels_lost = temp
-            labels_lost = dict(old_labels_lost.items() + new_labels_lost.items())
-            if sum(len(v) for v in labels_lost.itervalues()) > 0:
+            labels_lost = dict(list(old_labels_lost.items()) + list(new_labels_lost.items()))
+            if sum(len(v) for v in labels_lost.values()) > 0:
                 self.warnLost(labels_lost)
 
     @threadRouted
@@ -867,7 +867,7 @@ class ObjectClassificationGui(LabelingGui):
 
         _sep = "\t"
         cases = []
-        for k, val in labels_lost.iteritems():
+        for k, val in labels_lost.items():
             if len(val) > 0:
                 msg = messages.get(k, default_message)
                 axis = _sep.join(["X", "Y", "Z"])

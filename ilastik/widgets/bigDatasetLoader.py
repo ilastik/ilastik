@@ -42,12 +42,12 @@ from volumina.pixelpipeline.datasources import ArraySource, LazyflowSinkSource
 
 
 
-from labelListView import LabelListView, Label
-from labelListModel import LabelListModel
+from .labelListView import LabelListView, Label
+from .labelListModel import LabelListModel
 
 from PyQt4 import QtCore, QtGui, uic
 
-from featureDlg import *
+from .featureDlg import *
 
 import  numpy
 
@@ -84,7 +84,7 @@ class Main(QMainWindow):
         self.layerstack.append(layer1)
         
         shape=readerNew.outputs["Output"].meta.shape
-        print shape
+        print(shape)
         self.editor = VolumeEditor(shape, self.layerstack)  
         #self.editor.setDrawingEnabled(False)
         

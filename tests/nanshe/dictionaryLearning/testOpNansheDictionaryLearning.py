@@ -80,10 +80,10 @@ class TestOpNansheDictionaryLearning(object):
 
         assert((g.astype(bool).max(axis = 0) == d.astype(bool).max(axis = 0)).all())
 
-        unmatched_g = range(len(g))
+        unmatched_g = list(range(len(g)))
         matched = dict()
 
-        for i in xrange(len(d)):
+        for i in range(len(d)):
             new_unmatched_g = []
             for j in unmatched_g:
                 if not (d[i] == g[j]).all():

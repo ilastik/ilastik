@@ -33,7 +33,7 @@ def _init_threading_h5py_monkeypatch():
     See also: https://github.com/ilastik/ilastik/issues/1120
     """
     import h5py
-    if map(int, h5py.__version__.split('.')) <= [2,5,0]:
+    if list(map(int, h5py.__version__.split('.'))) <= [2,5,0]:
         import threading
         run_old = threading.Thread.run
         def run(*args, **kwargs):
@@ -43,7 +43,7 @@ def _init_threading_h5py_monkeypatch():
 
 _init_threading_h5py_monkeypatch()
 
-from helpers import mainThreadHelpers
+from .helpers import mainThreadHelpers
 
 # For some mysterious reason, we need to make sure that volumina.api gets imported 
 #  from the main thread before nose imports it from a separate thread.

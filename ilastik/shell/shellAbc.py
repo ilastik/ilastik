@@ -26,12 +26,10 @@ def _has_attribute( cls, attr ):
 def _has_attributes( cls, attrs ):
     return True if all(_has_attribute(cls, a) for a in attrs) else False
 
-class ShellABC(object):
+class ShellABC(object, metaclass=ABCMeta):
     """
     This ABC defines the minimum interface that both the IlastikShell and HeadlessShell must implement.
     """
-    
-    __metaclass__ = ABCMeta
 
     @abstractproperty
     def workflow(self):

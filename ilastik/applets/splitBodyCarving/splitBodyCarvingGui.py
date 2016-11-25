@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from __future__ import division
+
 import sys
 import os
 from functools import partial
@@ -36,9 +36,9 @@ from ilastik.workflows.carving.carvingGui import CarvingGui
 from lazyflow.request import Request
 from lazyflow.roi import roiToSlice
 
-from opSplitBodyCarving import OpSplitBodyCarving
+from .opSplitBodyCarving import OpSplitBodyCarving
 
-from bodySplitInfoWidget import BodySplitInfoWidget
+from .bodySplitInfoWidget import BodySplitInfoWidget
 
 from ilastik.applets.labeling.labelingGui import Tool
 
@@ -270,7 +270,7 @@ class SplitBodyCarvingGui(CarvingGui):
 
         fragmentSegSlot = self.topLevelOperatorView.CurrentFragmentSegmentation
         if fragmentSegSlot.ready():
-            colortable = map(QColor.rgba, self._fragmentColors)
+            colortable = list(map(QColor.rgba, self._fragmentColors))
             fragSegLayer = ColortableLayer(LazyflowSource(fragmentSegSlot), colortable, direct=True)
             fragSegLayer.name = "Saved Fragments"
             fragSegLayer.visible = True

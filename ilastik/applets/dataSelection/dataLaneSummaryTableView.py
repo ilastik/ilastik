@@ -22,8 +22,8 @@ from functools import partial
 from PyQt4.QtCore import pyqtSignal, Qt
 from PyQt4.QtGui import QTableView, QHeaderView, QItemSelection, QItemSelectionModel, QMenu, QPushButton, QAction
 
-from dataLaneSummaryTableModel import DataLaneSummaryTableModel, LaneColumn, DatasetInfoColumn
-from addFileButton import AddFileButton
+from .dataLaneSummaryTableModel import DataLaneSummaryTableModel, LaneColumn, DatasetInfoColumn
+from .addFileButton import AddFileButton
 
 class DataLaneSummaryTableView(QTableView):
     dataLaneSelected = pyqtSignal(int) # Signature: (laneIndex)

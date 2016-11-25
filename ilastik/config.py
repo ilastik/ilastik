@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-import ConfigParser
+import configparser
 import io
 import os
 
@@ -33,7 +33,7 @@ plugin_directories: ~/.ilastik/plugins,
 logging_config: ~/custom_ilastik_logging_config.json
 """
 
-default_config = """
+default_config = b"""
 [ilastik]
 debug: false
 plugin_directories: ~/.ilastik/plugins,
@@ -69,7 +69,7 @@ filename: in
 """
 
 
-cfg = ConfigParser.SafeConfigParser()
+cfg = configparser.SafeConfigParser()
 
 
 def init_ilastik_config(userConfig=None):

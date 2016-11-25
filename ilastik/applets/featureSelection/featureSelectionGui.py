@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 # Python
-from __future__ import division
+
 import os
 from functools import partial
 import logging
@@ -162,7 +162,7 @@ class FeatureSelectionGui(LayerViewerGui):
                     layerListWidget.item(0).setSelected(True)
 
         def handleRemovedLayers(parent, start, end):
-            for i in reversed(range(start, end+1)):
+            for i in reversed(list(range(start, end+1))):
                 layerListWidget.takeItem(i)
         
         self.layerstack.dataChanged.connect(handleLayerStackDataChanged)
@@ -298,7 +298,7 @@ class FeatureSelectionGui(LayerViewerGui):
             options |= QFileDialog.DontUseNativeDialog
 
         filenames = QFileDialog.getOpenFileNames(self, 'Open Feature Files', '.', options=options)
-        filenames = map(encode_from_qstring, filenames)
+        filenames = list(map(encode_from_qstring, filenames))
         
         # Check if file exists
         if not filenames:

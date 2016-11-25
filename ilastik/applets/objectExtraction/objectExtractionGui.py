@@ -45,7 +45,7 @@ import numpy as np
 
 from PyQt4.QtGui import QDialog, QFileDialog
 
-import cPickle as pickle
+import pickle as pickle
 import threading
 
 import logging
@@ -90,7 +90,7 @@ class FeatureSelectionDialog(QDialog):
 
     def populate(self):
         self.ui.treeWidget.setColumnCount(1)
-        for pluginName, features in self.featureDict.iteritems():
+        for pluginName, features in self.featureDict.items():
             if pluginName=="TestFeatures" and not ilastik_config.getboolean("ilastik", "debug"):
                 continue
             parent = QTreeWidgetItem(self.ui.treeWidget)
@@ -359,7 +359,7 @@ class ObjectExtractionGui(LayerViewerGui):
         
         nfeatures = 0
         if selectedFeatures is not None:
-            for plugin_features in selectedFeatures.itervalues():
+            for plugin_features in selectedFeatures.values():
                 nfeatures += len(plugin_features)
 
         self._drawer.featuresSelected.setText("{} features computed, \nsome may have multiple channels".format(nfeatures))
@@ -425,7 +425,7 @@ class ObjectExtractionGui(LayerViewerGui):
 
         # Make sure no plugins use the same feature names.
         # (Currently, our feature export implementation doesn't support repeated column names.)
-        all_feature_names = chain(*[plugin_dict.keys() for plugin_dict in featureDict.values()])
+        all_feature_names = chain(*[list(plugin_dict.keys()) for plugin_dict in list(featureDict.values())])
         feature_set = set()
         for name in all_feature_names:
             assert name not in feature_set, \
@@ -458,9 +458,9 @@ class ObjectExtractionGui(LayerViewerGui):
             nchannels = 0
 
             try:
-                for pname, pfeats in feats[0].iteritems():
+                for pname, pfeats in feats[0].items():
                     if pname != 'Default features':
-                        for featname, feat in pfeats.iteritems():
+                        for featname, feat in pfeats.items():
                             nchannels += feat.shape[1]
                             nfeatures += 1
                 if interactive:

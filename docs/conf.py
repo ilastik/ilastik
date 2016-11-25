@@ -42,8 +42,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'ilastik'
-copyright = u'2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg'
+project = 'ilastik'
+copyright = '2012, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -187,8 +187,8 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'ilastik.tex', u'ilastik Documentation',
-   u'Christoph Sommer \\and Christoph Straehle \\and Bernhard X. Kausler \\and Thorben Kröger \\and Ullrich Köthe  \\and Fred A. Hamprecht \\and Anna Kreshuk \\and Luca Fiaschi \\and Stuart Berg',
+  ('index', 'ilastik.tex', 'ilastik Documentation',
+   'Christoph Sommer \\and Christoph Straehle \\and Bernhard X. Kausler \\and Thorben Kröger \\and Ullrich Köthe  \\and Fred A. Hamprecht \\and Anna Kreshuk \\and Luca Fiaschi \\and Stuart Berg',
    'manual'),
 ]
 
@@ -218,8 +218,8 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'ilastik', u'ilastik Documentation',
-     [u'Christoph Sommer, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg'], 1)
+    ('index', 'ilastik', 'ilastik Documentation',
+     ['Christoph Sommer, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg'], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -232,8 +232,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'ilastik', u'ilastik Documentation',
-   u'Christoph Sommer, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg', 'ilastik', 'One line description of project.',
+  ('index', 'ilastik', 'ilastik Documentation',
+   'Christoph Sommer, Christoph Straehle, Bernhard X. Kausler, Thorben Kröger, Ullrich Köthe , Fred A. Hamprecht, Anna Kreshuk, Luca Fiaschi, Stuart Berg', 'ilastik', 'One line description of project.',
    'Miscellaneous'),
 ]
 

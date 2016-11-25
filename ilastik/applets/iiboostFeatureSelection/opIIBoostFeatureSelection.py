@@ -116,7 +116,7 @@ class OpIIBoostFeatureSelection(Operator):
                  "IIBoost Pixel Classification: Feature Selection",
                  "This classifier handles only 3D data. Your input data has a time dimension, which is not allowed.")
 
-        if not set('xyz').issubset(tagged_shape.keys()):
+        if not set('xyz').issubset(list(tagged_shape.keys())):
             raise DatasetConstraintError(
                  "IIBoost Pixel Classification: Feature Selection",
                  "This classifier handles only 3D data. Your input data does not have all three spatial dimensions (xyz).")

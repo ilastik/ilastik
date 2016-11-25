@@ -18,4 +18,4 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from featureSelectionApplet import FeatureSelectionApplet
+from .featureSelectionApplet import FeatureSelectionApplet

@@ -23,8 +23,8 @@ from PyQt4.QtGui import QColorDialog, QVBoxLayout, QPushButton, QDialog,\
     QColor, QWidget
 from PyQt4.QtCore import Qt, pyqtSignal, QObject, QModelIndex
 from PyQt4 import uic
-from cropListModel import CropListModel, Crop
-from listView import ListView
+from .cropListModel import CropListModel, Crop
+from .listView import ListView
 
 class ColorDialog(QDialog):
     def __init__(self, parent=None):

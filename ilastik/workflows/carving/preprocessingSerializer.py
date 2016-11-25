@@ -23,7 +23,7 @@ import h5py
 import numpy
 import os
 
-from watershed_segmentor import WatershedSegmentor
+from .watershed_segmentor import WatershedSegmentor
 
 class PreprocessingSerializer( AppletSerializer ):
     def __init__(self, preprocessingTopLevelOperator, *args, **kwargs):
@@ -63,8 +63,8 @@ class PreprocessingSerializer( AppletSerializer ):
             
     def _deserializeFromHdf5(self, topGroup, groupVersion, hdf5File, projectFilePath,headless = False):
         
-        assert "sigma" in topGroup.keys()
-        assert "filter" in topGroup.keys()
+        assert "sigma" in list(topGroup.keys())
+        assert "filter" in list(topGroup.keys())
         
         sigma = topGroup["sigma"].value
         sfilter = topGroup["filter"].value
@@ -75,10 +75,10 @@ class PreprocessingSerializer( AppletSerializer ):
             watershed_source = None
             invert_watershed_source = False
         
-        if "graph" in topGroup.keys():
+        if "graph" in list(topGroup.keys()):
             graphgroup = topGroup["graph"]
         else:
-            assert "graphfile" in topGroup.keys()
+            assert "graphfile" in list(topGroup.keys())
             #feature: load preprocessed graph from file
             filePath = topGroup["graphfile"].value
             if not os.path.exists(filePath):

@@ -1,1 +1,1 @@
-from edgeTrainingWithMulticutApplet import EdgeTrainingWithMulticutApplet
+from .edgeTrainingWithMulticutApplet import EdgeTrainingWithMulticutApplet

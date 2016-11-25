@@ -41,7 +41,7 @@ with h5py.File(h5_path, 'w') as f:
     dset.attrs['axistags'] = axistags.toJSON()
 
     for c, files in enumerate(stack_lists):
-        print "Copying channel {}...".format( c )
+        print("Copying channel {}...".format( c ))
         for z, filename in enumerate(files):
             sys.stdout.write("{} ".format( z ))
             sys.stdout.flush()
@@ -49,5 +49,5 @@ with h5py.File(h5_path, 'w') as f:
             dset[z,:,:,c] = img.transpose()
         sys.stdout.write('\n')
 
-print "FINISHED"
+print("FINISHED")
 

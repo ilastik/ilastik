@@ -50,7 +50,7 @@ from ilastik.applets.dataSelection.dataSelectionGui import DataSelectionGui, H5V
 from ilastik.shell.gui.variableImportanceDialog import VariableImportanceDialog
 
 # import IPython
-from FeatureSelectionDialog import FeatureSelectionDialog
+from .FeatureSelectionDialog import FeatureSelectionDialog
 
 try:
     from volumina.view3d.volumeRendering import RenderingManager
@@ -77,7 +77,7 @@ class ClassifierSelectionDlg(QDialog):
         classifier_listwidget.setSelectionMode( QListWidget.SingleSelection )
 
         classifier_factories = self._get_available_classifier_factories()
-        for name, classifier_factory in classifier_factories.items():
+        for name, classifier_factory in list(classifier_factories.items()):
             item = QListWidgetItem( name )
             item.setData( Qt.UserRole, QVariant(classifier_factory) )
             classifier_listwidget.addItem(item)
@@ -186,7 +186,7 @@ class PixelClassificationGui(LabelingGui):
             else:
                 defaultDirectory = os.path.expanduser('~')
             fileNames = DataSelectionGui.getImageFileNamesToOpen(self, defaultDirectory)
-            fileNames = map(str, fileNames)
+            fileNames = list(map(str, fileNames))
             
             # For now, we require a single hdf5 file
             if len(fileNames) > 1:
@@ -245,7 +245,7 @@ class PixelClassificationGui(LabelingGui):
                 order = "".join( self.topLevelOperatorView.InputImages.meta.getAxisKeys() )
                 line = order[:-1].upper() + ": "
                 line += slicing_to_string( slicing[:-1], input_shape )
-                print line
+                print(line)
 
         labels_submenu = QMenu("Labels")
         self.labels_submenu = labels_submenu # Must retain this reference or else it gets auto-deleted.
@@ -742,7 +742,7 @@ class PixelClassificationGui(LabelingGui):
 
     def _onLabelChanged(self, parentFun, mapf, slot):
         parentFun()
-        new = map(mapf, self.labelListData)
+        new = list(map(mapf, self.labelListData))
         old = slot.value
         slot.setValue(_listReplace(old, new))
 
@@ -811,7 +811,7 @@ class PixelClassificationGui(LabelingGui):
             self._renderMgr.setup(shape)
 
         layernames = set(layer.name for layer in self.layerstack)
-        self._renderedLayers = dict((k, v) for k, v in self._renderedLayers.iteritems()
+        self._renderedLayers = dict((k, v) for k, v in self._renderedLayers.items()
                                 if k in layernames)
 
         newvolume = numpy.zeros(shape, dtype=numpy.uint8)

@@ -218,25 +218,25 @@ class OpBatchIoSelective(Operator):
                 #opH5Writer.Image.connect( self.ImageToExport )
                 opH5Writer.Image.connect(self.ImageCache.Output)
 
-                print "computing predictions for the selected slices:"
+                print("computing predictions for the selected slices:")
                 self.ImageCache.fixAtCurrent.setValue(False)
                 #check readiness
                 for inp in self.ImageCache.inputs:
-                    print inp, self.ImageCache.inputs[inp].ready()
+                    print(inp, self.ImageCache.inputs[inp].ready())
                 
-                print "input shape:", self.ImageCache.Input.meta.shape
-                print "output shape:", self.ImageCache.Output.meta.shape
+                print("input shape:", self.ImageCache.Input.meta.shape)
+                print("output shape:", self.ImageCache.Output.meta.shape)
                 
                 selectedSlices = self.SelectedSlices.value
                 zaxis = self.ImageToExport.meta.axistags.index('z')
                 for isl, sl in enumerate(selectedSlices):
-                    print "computing for slice ...", isl
+                    print("computing for slice ...", isl)
                     start = [0]*len(self.ImageToExport.meta.shape)
                     start[zaxis]=sl
                     stop = list(self.ImageToExport.meta.shape)
                     stop[zaxis]=sl+1
                     roi = SubRegion(self.ImageCache, start=start, stop=stop)
-                    print roi
+                    print(roi)
                     temp = self.ImageCache.Output[roi.toSlice()].wait()
                     #print temp
                     

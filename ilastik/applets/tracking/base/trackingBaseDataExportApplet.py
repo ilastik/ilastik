@@ -42,7 +42,7 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
     def getMultiLaneGui(self):
         if self._gui is None:
             # Gui is a special subclass of the generic gui
-            from trackingBaseDataExportGui import TrackingBaseDataExportGui
+            from .trackingBaseDataExportGui import TrackingBaseDataExportGui
             self._gui = TrackingBaseDataExportGui( self, self.topLevelOperator )
 
             assert self.export_op is not None, "Exporting Operator must be set!"

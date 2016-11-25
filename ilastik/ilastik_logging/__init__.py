@@ -18,6 +18,6 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-import default_config
-from default_config import DEFAULT_LOGFILE_PATH, get_logfile_path
-from loggingHelpers import updateFromConfigFile, startUpdateInterval, stopUpdates
+from . import default_config
+from .default_config import DEFAULT_LOGFILE_PATH, get_logfile_path
+from .loggingHelpers import updateFromConfigFile, startUpdateInterval, stopUpdates

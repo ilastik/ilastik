@@ -208,7 +208,7 @@ class Ilastik05FeatureSelectionDeserializer(AppletSerializer):
 
             newFeatureIds = self.topLevelOperator.FeatureIds.value
             # For each feature, determine which group's settings to take
-            for featureId, featureGroupIndex in featureToGroup.items():
+            for featureId, featureGroupIndex in list(featureToGroup.items()):
                 newRow = newFeatureIds.index(featureId)
                 # Copy the whole row of selections from the feature group
                 pipeLineSelectedFeatureMatrix[newRow] = userFriendlyFeatureMatrix[featureGroupIndex]

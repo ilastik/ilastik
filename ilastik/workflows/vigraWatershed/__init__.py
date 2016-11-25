@@ -18,5 +18,5 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from vigraWatershedWorkflow import VigraWatershedWorkflow
-from pixelClassificationWithWatershedWorkflow import PixelClassificationWithWatershedWorkflow
+from .vigraWatershedWorkflow import VigraWatershedWorkflow
+from .pixelClassificationWithWatershedWorkflow import PixelClassificationWithWatershedWorkflow

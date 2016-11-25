@@ -69,7 +69,7 @@ class PredictionViewerGui( LayerViewerGui ):
         opSlicer.Input.connect( predictionSlot )
         opSlicer.AxisFlag.setValue('c')
 
-        colors = map( lambda c: QColor(*c), colors )
+        colors = [QColor(*c) for c in colors]
         for channel in range( len(colors), len(opSlicer.Slices) ):
             colors.append( PredictionViewerGui.DefaultColors[channel] )
 

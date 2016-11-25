@@ -24,7 +24,7 @@ from ilastik.plugins import pluginManager
 import logging
 logger = logging.getLogger(__name__)
 
-from objectClassificationWorkflow import \
+from .objectClassificationWorkflow import \
     ObjectClassificationWorkflowPixel, \
     ObjectClassificationWorkflowBinary, \
     ObjectClassificationWorkflowPrediction

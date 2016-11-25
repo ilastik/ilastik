@@ -23,4 +23,4 @@ if __name__ == "__main__":
     os.chdir(original_cwd)
     
     # Execute the script with execfile.  This way, if __name__ == '__main__' sections should work.
-    execfile(f)
+    exec(compile(open(f).read(), f, 'exec'))

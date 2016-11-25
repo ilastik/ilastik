@@ -124,7 +124,7 @@ class Workflow( Operator ):
         try:
             server = self._shell.socketServer
             server.send(name, data)
-        except Exception, e:
+        except Exception as e:
             logger.error("Failed sending message to server '%s': %s" % (name, e))
 
     def postprocessClusterSubResult(self, roi, result, blockwise_fileset):
@@ -250,7 +250,7 @@ def getAvailableWorkflows():
     """
     alreadyListed = set()
 
-    import workflows
+    from . import workflows
     for W in workflows.WORKFLOW_CLASSES + all_subclasses(Workflow):
         if W.__name__ in alreadyListed:
             continue

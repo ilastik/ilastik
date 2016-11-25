@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.layerViewer import LayerViewerApplet
-from opLabelImageViewer import OpLabelImageViewer
+from .opLabelImageViewer import OpLabelImageViewer
 
 class LabelImageViewerApplet( LayerViewerApplet ):
     """
@@ -35,7 +35,7 @@ class LabelImageViewerApplet( LayerViewerApplet ):
     
     @property
     def singleLaneGuiClass(self):
-        from labelImageViewerGui import LabelImageViewerGui
+        from .labelImageViewerGui import LabelImageViewerGui
         return LabelImageViewerGui
 
     @property

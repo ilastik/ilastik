@@ -24,7 +24,7 @@ from volumina.api import ColortableLayer
 from volumina.pixelpipeline.datasources import LazyflowSource
 
 import os
-import opGridCreator
+from . import opGridCreator
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 

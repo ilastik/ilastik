@@ -29,8 +29,8 @@ from PyQt4.QtGui import QTableView, QColorDialog, \
 from PyQt4 import QtGui
 from PyQt4.QtCore import Qt, QString,QModelIndex, pyqtSignal
 from PyQt4 import uic
-from labelListModel import LabelListModel, Label
-from listView import ListView
+from .labelListModel import LabelListModel, Label
+from .listView import ListView
 
 logger = logging.getLogger(__name__)
 
@@ -175,7 +175,7 @@ class BoxListView(ListView):
                                                      self._colorDialog.getLineWidth(),
                                                      self._colorDialog.getFontColor())
         names=["color","fontsize","linewidth",'fontcolor']
-        d=dict(zip(names,prop))
+        d=dict(list(zip(names,prop)))
 
         modelIndex=self._colorDialog.getModelIndex()
         self._table.model().setData(modelIndex,d)
@@ -287,7 +287,7 @@ class BoxListView(ListView):
 
 
 if __name__=="__main__":
-    from boxListModel import BoxListModel,BoxLabel
+    from .boxListModel import BoxListModel,BoxLabel
     import numpy
     import sys
     from PyQt4.QtGui import QApplication

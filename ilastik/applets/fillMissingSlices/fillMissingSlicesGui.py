@@ -41,7 +41,7 @@ logger.setLevel(logging.DEBUG)
 
 def qstring2str(s):
     assert type(s) == QString
-    return unicode(s.toUtf8(), "utf-8").encode(sys.getfilesystemencoding())
+    return str(s.toUtf8(), "utf-8").encode(sys.getfilesystemencoding())
 
 
 class FillMissingSlicesGui(LayerViewerGui):

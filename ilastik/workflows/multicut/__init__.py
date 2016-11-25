@@ -1,1 +1,1 @@
-from multicutWorkflow import MulticutWorkflow
+from .multicutWorkflow import MulticutWorkflow

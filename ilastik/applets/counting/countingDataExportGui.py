@@ -25,7 +25,7 @@ from lazyflow.operators.generic import OpMultiArraySlicer2
 
 from volumina.api import LazyflowSource, ColortableLayer
 from volumina import colortables
-from countingGui import countingColorTable
+from .countingGui import countingColorTable
 
 from ilastik.utility import bind
 from ilastik.utility.gui import threadRouted

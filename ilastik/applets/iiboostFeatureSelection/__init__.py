@@ -18,6 +18,6 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from opIIBoostFeatureSelection import *
-from iiboostFeatureSelectionApplet import *
+from .opIIBoostFeatureSelection import *
+from .iiboostFeatureSelectionApplet import *
 

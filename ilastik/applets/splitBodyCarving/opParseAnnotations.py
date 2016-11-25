@@ -162,11 +162,11 @@ class OpParseAnnotations(Operator):
                 annotation_json_dict = json.load( annotationFile )
         except Exception as ex:
             raise cls.AnnotationParsingException(
-                 "Failed to parse your bookmark file.  It isn't valid JSON.", ex), None, sys.exc_info()[2]
+                 "Failed to parse your bookmark file.  It isn't valid JSON.", ex).with_traceback(sys.exc_info()[2])
 
         if 'data' not in annotation_json_dict:
             raise cls.AnnotationParsingException(
-                 "Couldn't find the 'data' list in your bookmark file.  Giving up."), None, sys.exc_info()[2]
+                 "Couldn't find the 'data' list in your bookmark file.  Giving up.").with_traceback(sys.exc_info()[2])
 
         # Before we parse the bookmarks data, locate the substack description
         #  to calculate the z-coordinate offset (see comment about substack coordinates, above)
@@ -181,7 +181,7 @@ class OpParseAnnotations(Operator):
                  "Failed to parse SUBSTACK",
                  "Attempted to open substack description file:\n {}"
                  "\n but something went wrong.  See console output for details.  Giving up."
-                 .format(substack_description_path) ), None, sys.exc_info()[2]
+                 .format(substack_description_path) ).with_traceback(sys.exc_info()[2])
 
         # See comment above about why we have to subtract a Z-offset
         z_offset = substack_description_json_dict['idz1'] - substack_description_json_dict['border']
@@ -219,7 +219,7 @@ class OpParseAnnotations(Operator):
         elif slot == self.AnnotationLocations:
             result[0] = sorted( self._annotations.keys() )
         elif slot == self.AnnotationBodyIds:
-            result[0] = sorted( set( map( lambda (label, comment): label, self._annotations.values() ) ) )
+            result[0] = sorted( set( [label_comment[0] for label_comment in list(self._annotations.values())] ) )
         else:
             assert False, "Unknown output slot: {}".format( slot.name )
 

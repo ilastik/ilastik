@@ -186,15 +186,15 @@ if __name__ == "__main__":
         opPixelClassification.Labels.setValue(labels)
 
         # Load the label cache, which will pull from the Labels slot...
-        print "Ingesting labels..."
+        print("Ingesting labels...")
         opPixelClassification.ingest_labels()
 
-        print "Initiating prediction..."
+        print("Initiating prediction...")
         predictions = opPixelClassification.Predictions[0][:].wait()
         assert predictions.shape == (100,100,2)
         assert predictions.dtype == numpy.float32
         assert 0.0 <= predictions.min() <= predictions.max() <= 1.0
-        print "Done predicting."
+        print("Done predicting.")
     
     # Run the test.
     test()

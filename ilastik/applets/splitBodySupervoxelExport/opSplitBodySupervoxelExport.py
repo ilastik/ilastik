@@ -178,9 +178,9 @@ class OpSplitBodySupervoxelExport(Operator):
         def handleFinished( result ):
             # Generate the mapping transforms dataset
             mapping = self._opAccumulateFinalImage.Mapping.value
-            num_labels = mapping.keys()[-1][1]
+            num_labels = list(mapping.keys())[-1][1]
             transform = numpy.zeros( shape=(num_labels, 2), dtype=numpy.uint32 )
-            for (start, stop), body_id in mapping.items():
+            for (start, stop), body_id in list(mapping.items()):
                 for supervoxel_label in range(start, stop):
                     transform[supervoxel_label][0] = supervoxel_label
                     if body_id == -1:
@@ -197,7 +197,7 @@ class OpSplitBodySupervoxelExport(Operator):
             ravelerSegmentationInfo = self.DatasetInfos[2].value
             pathComponents = PathComponents(ravelerSegmentationInfo.filePath, self.WorkingDirectory.value)
             with h5py.File(pathComponents.externalPath, 'r') as originalFile:
-                for k,dset in originalFile.items():
+                for k,dset in list(originalFile.items()):
                     if k not in ['transforms', 'stack']:
                         f.copy(dset, k)
             

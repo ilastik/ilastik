@@ -159,7 +159,7 @@ class TestOpObjectTrain(unittest.TestCase):
         try:
             results = self.op.Classifier[:].wait()
         except RuntimeError:
-            print "Tried to compute features for time step w/o labels!"
+            print("Tried to compute features for time step w/o labels!")
             raise
         
         
@@ -311,7 +311,7 @@ class TestOpBadObjectsToWarningMessage(unittest.TestCase):
         
         # valid format, bad features existent
         self.op.BadObjects.setValue({'objects':{1: {0: [1,2]}}, 'feats': set()})
-        self.assertNotEquals(self.op.WarningMessage.value, {})
+        self.assertNotEqual(self.op.WarningMessage.value, {})
         notimemsg=self.op.WarningMessage.value
         
         # valid format, bad features existent
@@ -329,8 +329,8 @@ class TestOpBadObjectsToWarningMessage(unittest.TestCase):
         self.op.BadObjects.setValue({'objects':{1: {0: [1,2]}}, 'feats': set()})
         messagedict = self.op.WarningMessage.value
         print(messagedict)
-        self.assertTrue('title' in messagedict.keys())
-        self.assertTrue('text' in messagedict.keys())
+        self.assertTrue('title' in list(messagedict.keys()))
+        self.assertTrue('text' in list(messagedict.keys()))
 
 
 class TestMaxLabel(object):
@@ -349,10 +349,10 @@ class TestMaxLabel(object):
         segmimg = vigra.taggedView(segmimg, 'txyzc')
         
         self.features = {"Bad Plugin": {"bad_feature_1": {}, "bad_feature_2":{}}}
-        self.featureArrays = {0: {"Bad Plugin":{"bad_feature_1": np.array(range(nobj)), \
-                                               "bad_feature_2": np.array(range(nobj))}},
-                              1: {"Bad Plugin":{"bad_feature_1": np.array(range(nobj)), \
-                                               "bad_feature_2": np.array(range(nobj))}}}
+        self.featureArrays = {0: {"Bad Plugin":{"bad_feature_1": np.array(list(range(nobj))), \
+                                               "bad_feature_2": np.array(list(range(nobj)))}},
+                              1: {"Bad Plugin":{"bad_feature_1": np.array(list(range(nobj))), \
+                                               "bad_feature_2": np.array(list(range(nobj)))}}}
         
         self.op = OpObjectClassification(graph = g)
         self.op.RawImages.setValues([rawimg])
@@ -420,9 +420,9 @@ class TestFullOperator(unittest.TestCase):
         
     def testExport(self):
         table = self.classOp.createExportTable(0, [])
-        print table["Object id"]
-        print table["Default features, RegionCenter_ch_1"]
-        print table["Prediction"]
+        print(table["Object id"])
+        print(table["Default features, RegionCenter_ch_1"])
+        print(table["Prediction"])
         
     def test_unfavorable_conditions(self):
         #TODO write test with not so nice input

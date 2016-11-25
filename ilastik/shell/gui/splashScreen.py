@@ -34,6 +34,6 @@ def showSplashScreen():
     splashScreen.show()
 
 def hideSplashScreen():
-    import startShellGui
+    from . import startShellGui
     global splashScreen
     splashScreen.finish(startShellGui.shell)

@@ -333,7 +333,7 @@ class NanshePreprocessingGui(LayerViewerGui):
 
         self._register_notify_dirty()
 
-        for i in xrange(len(self.layerstack)):
+        for i in range(len(self.layerstack)):
             if self.layerstack[i].name == "Output":
                 self.layerstack[i].visible = True
     

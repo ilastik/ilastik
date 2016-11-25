@@ -18,6 +18,6 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from pixelClassificationApplet import *
-from pixelClassificationDataExportApplet import *
-from opPixelClassificationDataExport import OpPixelClassificationDataExport
+from .pixelClassificationApplet import *
+from .pixelClassificationDataExportApplet import *
+from .opPixelClassificationDataExport import OpPixelClassificationDataExport

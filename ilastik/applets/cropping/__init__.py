@@ -18,9 +18,9 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from croppingApplet import CroppingApplet
-from croppingSingleLaneApplet import CroppingSingleLaneApplet
-from opCropping import OpCroppingTopLevel, OpCroppingSingleLane
-from cropSelectionApplet import  CropSelectionApplet
-from opCropSelection import  OpCropSelection
+from .croppingApplet import CroppingApplet
+from .croppingSingleLaneApplet import CroppingSingleLaneApplet
+from .opCropping import OpCroppingTopLevel, OpCroppingSingleLane
+from .cropSelectionApplet import  CropSelectionApplet
+from .opCropSelection import  OpCropSelection
 __author__ = 'jales'

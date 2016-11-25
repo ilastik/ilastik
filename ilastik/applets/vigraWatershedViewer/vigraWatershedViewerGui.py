@@ -273,7 +273,7 @@ class VigraWatershedViewerGui(LayerViewerGui):
         """
         totalVolume = 0
         totalCount = 0
-        for (start, stop), maxLabel in  self.topLevelOperatorView.opWatershed.maxLabels.items():
+        for (start, stop), maxLabel in  list(self.topLevelOperatorView.opWatershed.maxLabels.items()):
             blockshape = numpy.subtract(stop, start)
             vol = numpy.prod(blockshape)
             totalVolume += vol

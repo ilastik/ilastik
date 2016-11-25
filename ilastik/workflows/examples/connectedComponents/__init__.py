@@ -19,5 +19,5 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 
-from connectedComponentsWorkflow import ConnectedComponentsWorkflow
+from .connectedComponentsWorkflow import ConnectedComponentsWorkflow
 

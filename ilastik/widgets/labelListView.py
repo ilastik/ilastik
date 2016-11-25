@@ -26,8 +26,8 @@ from PyQt4.QtCore import Qt, pyqtSignal
 from PyQt4.QtGui import QColorDialog, QVBoxLayout, QPushButton, QDialog, \
                         QColor, QWidget, QMenu
 
-from labelListModel import LabelListModel, Label
-from listView import ListView
+from .labelListModel import LabelListModel, Label
+from .listView import ListView
 
 
 class ColorDialog(QDialog):

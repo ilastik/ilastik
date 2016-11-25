@@ -34,7 +34,7 @@ from ilastik.utility.gui import ThreadRouter, threadRouted, ThunkEvent, ThunkEve
 from ilastik.shell.gui.iconMgr import ilastikIcons
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 
-from opDataExport import get_model_op
+from .opDataExport import get_model_op
 from volumina.utility import decode_to_qstring
 from volumina.widgets.dataExportOptionsDlg import DataExportOptionsDlg
 
@@ -72,7 +72,7 @@ class DataExportGui(QWidget):
         pass
 
     def stopAndCleanUp(self):
-        for editor in self.layerViewerGuis.values():
+        for editor in list(self.layerViewerGuis.values()):
             self.viewerStack.removeWidget( editor )
             editor.stopAndCleanUp()
         self.layerViewerGuis.clear()
@@ -137,7 +137,7 @@ class DataExportGui(QWidget):
 
             # Remove the viewer for this dataset
             imageMultiSlot = self.topLevelOperator.Inputs[index]
-            if imageMultiSlot in self.layerViewerGuis.keys():
+            if imageMultiSlot in list(self.layerViewerGuis.keys()):
                 layerViewerGui = self.layerViewerGuis[imageMultiSlot]
                 self.viewerStack.removeWidget( layerViewerGui )
                 self._viewerControlWidgetStack.removeWidget( layerViewerGui.viewerControlWidget() )
@@ -480,7 +480,7 @@ class DataExportGui(QWidget):
         
         # Create if necessary
         imageMultiSlot = self.topLevelOperator.Inputs[row]
-        if imageMultiSlot not in self.layerViewerGuis.keys():
+        if imageMultiSlot not in list(self.layerViewerGuis.keys()):
             layerViewer = self.createLayerViewer(opLane)
 
             # Maximize the x-y view by default.

@@ -42,7 +42,7 @@ class StopWatchApplet( StandardApplet ):
     
     @property
     def singleLaneGuiClass(self):
-        from stopWatchGui import StopWatchGui
+        from .stopWatchGui import StopWatchGui
         return StopWatchGui
 
     @property

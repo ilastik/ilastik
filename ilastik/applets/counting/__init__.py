@@ -18,5 +18,5 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from countingApplet import CountingApplet
-from countingDataExportApplet import *
+from .countingApplet import CountingApplet
+from .countingDataExportApplet import *

@@ -35,7 +35,7 @@ def setViewerPos(shell, data):
 def connectToServer(shell, data):
     if ('port' in data and 'name' in data and 
         isinstance(data['port'], int) and 
-        isinstance(data['name'], basestring)):
+        isinstance(data['name'], str)):
         if 'host' in data:
             host = data['host']
         else:

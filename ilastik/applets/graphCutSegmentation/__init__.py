@@ -1,2 +1,2 @@
 from graphCutSegmentationApplet import GraphCutSegmentationApplet
-from opGraphCutSegmentation import OpGraphCutSegmentation
+from .opGraphCutSegmentation import OpGraphCutSegmentation

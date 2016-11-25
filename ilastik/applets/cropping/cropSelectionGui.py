@@ -185,7 +185,7 @@ class CropSelectionGui(CroppingGui):
 
     def _onCropChanged(self, parentFun, mapf, slot):
         parentFun()
-        new = map(mapf, self.cropListData)
+        new = list(map(mapf, self.cropListData))
         old = slot.value
         slot.setValue(_listReplace(old, new))
 
@@ -260,7 +260,7 @@ class CropSelectionGui(CroppingGui):
             self._renderMgr.setup(shape)
 
         layernames = set(layer.name for layer in self.layerstack)
-        self._renderedLayers = dict((k, v) for k, v in self._renderedLayers.iteritems()
+        self._renderedLayers = dict((k, v) for k, v in self._renderedLayers.items()
                                 if k in layernames)
 
         newvolume = numpy.zeros(shape, dtype=numpy.uint8)
@@ -295,12 +295,12 @@ class CropSelectionGui(CroppingGui):
         selectedRow = ncrops-1
         color1 = self._cropControlUi.cropListModel[selectedRow].brushColor()
         color2 = self._cropControlUi.cropListModel[selectedRow].pmapColor()
-        self.topLevelOperatorView.Crops.value[unicode(self._cropControlUi.cropListModel[selectedRow].name)] = {
-            unicode("time"): (self.topLevelOperatorView.MinValueT.value, self.topLevelOperatorView.MaxValueT.value),
-            unicode("starts"): self.editor.cropModel.get_roi_3d()[0],
-            unicode("stops"): self.editor.cropModel.get_roi_3d()[1],
-            unicode("cropColor"): (color1.red(), color1.green(),color1.blue()),
-            unicode("pmapColor"): (color2.red(), color2.green(),color2.blue())
+        self.topLevelOperatorView.Crops.value[str(self._cropControlUi.cropListModel[selectedRow].name)] = {
+            str("time"): (self.topLevelOperatorView.MinValueT.value, self.topLevelOperatorView.MaxValueT.value),
+            str("starts"): self.editor.cropModel.get_roi_3d()[0],
+            str("stops"): self.editor.cropModel.get_roi_3d()[1],
+            str("cropColor"): (color1.red(), color1.green(),color1.blue()),
+            str("pmapColor"): (color2.red(), color2.green(),color2.blue())
         }
         self._cropControlUi.cropListModel.select(selectedRow)
 

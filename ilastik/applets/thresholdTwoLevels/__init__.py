@@ -18,5 +18,5 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from thresholdTwoLevelsApplet import ThresholdTwoLevelsApplet
-from opThresholdTwoLevels import OpThresholdTwoLevels
+from .thresholdTwoLevelsApplet import ThresholdTwoLevelsApplet
+from .opThresholdTwoLevels import OpThresholdTwoLevels

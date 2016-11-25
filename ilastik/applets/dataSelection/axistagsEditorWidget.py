@@ -77,7 +77,7 @@ class AxistagsEditorWidget(QTableWidget):
 
         # Fill table with widgets
         self.setRowCount( len(row_widgets) )
-        self.setVerticalHeaderLabels( row_widgets.keys() )
+        self.setVerticalHeaderLabels( list(row_widgets.keys()) )
         for row, widgets in enumerate(row_widgets.values()):
             self.setCellWidget( row, 0, widgets.resolution_box )
             self.setCellWidget( row, 1, widgets.description_edit )
@@ -116,7 +116,7 @@ if __name__ == "__main__":
     axistags_editor.raise_()
 
     def handle_update():
-        print "Axistags were updated: {}".format( axistags_editor.axistags )
+        print("Axistags were updated: {}".format( axistags_editor.axistags ))
     axistags_editor.axistagsUpdated.connect( handle_update )
 
     # Change the order after 2 seconds
@@ -125,6 +125,6 @@ if __name__ == "__main__":
     app.exec_()
 
     # Print the final edited values
-    print "FINAL AXISTAGS:"
-    print axistags_editor.axistags.toJSON()
+    print("FINAL AXISTAGS:")
+    print(axistags_editor.axistags.toJSON())
     

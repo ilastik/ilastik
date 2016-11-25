@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 #                  http://ilastik.org/license.html
 ###############################################################################
-from __future__ import division
+
 from PyQt4 import uic
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
@@ -26,6 +26,7 @@ from PyQt4.QtGui import *
 import os.path
 import re
 from operator import mul
+from functools import reduce
 
 FILE_TYPES = ["h5", "csv"]
 REQ_MSG = " (REQUIRED)"
@@ -119,8 +120,8 @@ class ExportObjectInfoDialog(QDialog):
         :rtype: dict
         """
         s = {
-            "file type": unicode(FILE_TYPES[self.ui.fileFormat.currentIndex()]),
-            "file path": unicode(self.ui.exportPath.text()),
+            "file type": str(FILE_TYPES[self.ui.fileFormat.currentIndex()]),
+            "file path": str(self.ui.exportPath.text()),
             "compression": {}
         }
 
@@ -139,7 +140,7 @@ class ExportObjectInfoDialog(QDialog):
             pattern = r"([^/]+)\://(.*)"
             match = re.findall(pattern, data.text())
             if match:
-                text = unicode(match[0][1]).strip()
+                text = str(match[0][1]).strip()
             else:
                 text = data.text()
             self.ui.exportPath.setText(text)
@@ -155,7 +156,7 @@ class ExportObjectInfoDialog(QDialog):
             return
         if parent is None:
             parent = self.ui.featureView
-        for entry, child in features.iteritems():
+        for entry, child in features.items():
             item = QTreeWidgetItem(parent)
             item.setText(0, entry)
             self._setup_features(child, req_features, selected_features, max_depth-1, item)
@@ -199,7 +200,7 @@ class ExportObjectInfoDialog(QDialog):
             self.ui.toolBox.setCurrentIndex(0)
             return
         else:
-            path = unicode(self.ui.exportPath.text())
+            path = str(self.ui.exportPath.text())
             if not self.is_valid_path(path):
                 title = "Warning"
                 text = "No file extension or invalid file extension ( %s )\nAllowed: %s"
@@ -223,12 +224,12 @@ class ExportObjectInfoDialog(QDialog):
 
     # slot is called from button.click
     def choose_path(self):
-        filters = ";;".join(DIALOG_FILTERS.values())
+        filters = ";;".join(list(DIALOG_FILTERS.values()))
         current_extension = FILE_TYPES[self.ui.fileFormat.currentIndex()]
         current_filter = DIALOG_FILTERS[current_extension]
         path = QFileDialog.getSaveFileName(self.parent(), "Save File", self.ui.exportPath.text(), filters,
                                            current_filter)
-        path = unicode(path)
+        path = str(path)
         if path != "":
             match = path.rsplit(".", 1)
             if len(match) == 1:
@@ -255,7 +256,7 @@ class ExportObjectInfoDialog(QDialog):
 
     # slot is called from combobox.indexchanged
     def file_format_changed(self, index):
-        path = unicode(self.ui.exportPath.text())
+        path = str(self.ui.exportPath.text())
         match = path.rsplit(".", 1)
         path = "%s.%s" % (match[0], FILE_TYPES[index])
         self.ui.exportPath.setText(path)

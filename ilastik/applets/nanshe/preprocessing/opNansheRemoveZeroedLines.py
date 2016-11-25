@@ -178,7 +178,7 @@ class OpNansheRemoveZeroedLinesCached(Operator):
         self.Output.connect( self.opCache.Output )
 
     def setupOutputs(self):
-        axes_shape_iter = itertools.izip(self.opRemoveZeroedLines.Output.meta.axistags,
+        axes_shape_iter = zip(self.opRemoveZeroedLines.Output.meta.axistags,
                                          self.opRemoveZeroedLines.Output.meta.shape)
 
         block_shape = []

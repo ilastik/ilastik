@@ -29,10 +29,10 @@ class Default(object):
 def flatten_tracking_table(table, extra_table, obj_counts, max_tracks, t_range):
     #array = np.zeros(sum(obj_counts), ",".join(["i"] * max_tracks))
     #array.dtype.names = ["track%i" % i for i in xrange(1, max_tracks + 1)]
-    array = np.zeros(sum(obj_counts), [(Default.TrackColumnName.format(i), "i") for i in xrange(1, max_tracks + 1)])
+    array = np.zeros(sum(obj_counts), [(Default.TrackColumnName.format(i), "i") for i in range(1, max_tracks + 1)])
     row = 0
     for i, count in enumerate(obj_counts):
-        for o in xrange(1, count + 1):
+        for o in range(1, count + 1):
             track = []
             if t_range[0] <= i <= t_range[1]:
                 if o in table[i]:
@@ -64,8 +64,8 @@ def flatten_ilastik_feature_table(table, selection, signal):
     feature_channels = []
     feature_types = []
 
-    for cat_name, category in computed_feature[0].iteritems():
-        for feat_name, feat_array in category.iteritems():
+    for cat_name, category in computed_feature[0].items():
+        for feat_name, feat_array in category.items():
             if (cat_name == "Default features" or \
                      feat_name in selection) and \
                      feat_name not in feature_names:
@@ -77,7 +77,7 @@ def flatten_ilastik_feature_table(table, selection, signal):
     signal(25)
 
     obj_count = []
-    for t, cf in computed_feature.iteritems():
+    for t, cf in computed_feature.items():
         obj_count.append(cf["Default features"]["Count"].shape[0] - 1)  # no background
 
     signal(50)
@@ -88,7 +88,7 @@ def flatten_ilastik_feature_table(table, selection, signal):
 
     for i, name in enumerate(feature_names):
         if feature_channels[i] > 1:
-            for c in xrange(feature_channels[i]):
+            for c in range(feature_channels[i]):
                 dtype_names.append("%s_%i" % (name, c))
                 dtype_types.append(feature_types[i].name)
                 dtype_to_key[dtype_names[-1]] = (feature_cats[i], name, c)
@@ -98,13 +98,13 @@ def flatten_ilastik_feature_table(table, selection, signal):
             dtype_to_key[dtype_names[-1]] = (feature_cats[i], name, 0)
 
     feature_table = np.zeros((sum(obj_count),), dtype=",".join(dtype_types))
-    feature_table.dtype.names = map(str, dtype_names)
+    feature_table.dtype.names = list(map(str, dtype_names))
 
     signal(75)
 
     start = 0
     end = obj_count[0]
-    for t, cf in computed_feature.iteritems():
+    for t, cf in computed_feature.items():
         for name in dtype_names:
             cat, feat_name, index = dtype_to_key[name]
             data_len = len(cf[cat][feat_name][1:, index])
@@ -125,7 +125,7 @@ def objects_per_frame(label_image_slot):
     assert t_index == 0, "This function assumes that the first axis is time."    
 
     num_frames = label_image_slot.meta.shape[0]
-    for t in xrange(num_frames):
+    for t in range(num_frames):
         frame_data = label_image_slot[t:t+1].wait()
         yield frame_data.max()
 
@@ -144,7 +144,7 @@ def flatten_dict(dict_, object_count):
     list_ = [0] * sum(object_count)
     i = 0
     for t, count in enumerate(object_count):
-        for o in xrange(1, count + 1):
+        for o in range(1, count + 1):
             try:
                 item = dict_[t][o]
             except (IndexError, TypeError, KeyError):
@@ -159,7 +159,7 @@ def prepare_list(list_, names, dtypes=None):
     if dtypes is None:
         first_row = list_[0]
         if isinstance(first_row, str) or not isinstance(first_row, collections.Iterable):
-            list_ = zip(*[list_])
+            list_ = list(zip(*[list_]))
             first_row = list_[0]
 
         dtypes = []
@@ -173,14 +173,14 @@ def prepare_list(list_, names, dtypes=None):
             dtypes.append(dtype_name)
     
     array = np.zeros(shape, ",".join(dtypes))
-    array.dtype = np.dtype([(names[i], dtypes[i]) for i in xrange(len(names))])
+    array.dtype = np.dtype([(names[i], dtypes[i]) for i in range(len(names))])
     array[:] = list_
     return array
 
 
 def ilastik_ids(obj_counts):
     for t, count in enumerate(obj_counts):
-        for o in xrange(1, count + 1):
+        for o in range(1, count + 1):
             yield (t, o)
 
 
@@ -202,10 +202,10 @@ def create_slicing(axistags, dimensions, margin, feature_table):
     except ValueError:
         minz = maxz = [0] * table_shape
 
-    indices = map(axistags.index, "txyzc")
+    indices = list(map(axistags.index, "txyzc"))
     excludes = indices.count(-1)
     oid = 1
-    for i in xrange(table_shape):
+    for i in range(table_shape):
         if time[i] != time[i - 1]:
             oid = 1
         # noinspection PyTypeChecker
@@ -356,7 +356,7 @@ class ExportFile(object):
         self.ExportProgress(0)
         if mode in ("h5", "hd5", "hdf5"):
             with h5py.File(self.file_name, "w") as fout:
-                for table_name, table in self.table_dict.iteritems():
+                for table_name, table in self.table_dict.items():
                     self._make_h5_dataset(fout, table_name, table, self.meta_dict.get(table_name, {}),
                                           compression if compression is not None else {})
                     count += 1
@@ -368,7 +368,7 @@ class ExportFile(object):
             else:
                 base, ext = f_name
             file_names = []
-            for table_name, table in self.table_dict.iteritems():
+            for table_name, table in self.table_dict.items():
                 file_names.append("{name}_{table}.{ext}".format(name=base, table=table_name, ext=ext))
                 with open(file_names[-1], "w") as fout:
                     self._make_csv_table(fout, table)
@@ -382,7 +382,7 @@ class ExportFile(object):
         logger.info("exported %i tables" % count)
 
     def _add_columns(self, table_name, columns):
-        if table_name in self.table_dict.iterkeys():
+        if table_name in iter(self.table_dict.keys()):
             old = self.table_dict[table_name]
             columns = nlr.merge_arrays((old, columns), flatten=True)
 
@@ -394,7 +394,7 @@ class ExportFile(object):
             dset = fout.create_dataset(table_name, table.shape, data=table, **compression)
         except TypeError:
             dset = fout.create_dataset(table_name, table.shape, data=table)
-        for k, v in meta.iteritems():
+        for k, v in meta.items():
             dset.attrs[k] = v
 
     @staticmethod
@@ -446,5 +446,5 @@ if __name__ == "__main__":
 
     l = prepare_list(l, ("a",))
     l2 = prepare_list(l2, ("a", "b"))
-    print l
-    print l2
+    print(l)
+    print(l2)

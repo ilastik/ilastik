@@ -75,7 +75,7 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
         defaultDirectory = os.path.expanduser('~')
 
     fileNames = DataSelectionGui.getImageFileNamesToOpen(parent_widget, defaultDirectory)
-    fileNames = map(str, fileNames)
+    fileNames = list(map(str, fileNames))
 
     if not fileNames:
         return
@@ -111,7 +111,7 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
             # because that takes an annoyingly long amount of time.
             # Instead, we make the reasonable assumption that the input labels are already 1,2,3..N
             # and we don't tell the user what the label pixel counts are.
-            unique_read_labels = numpy.array(range(maxLabels+1))
+            unique_read_labels = numpy.array(list(range(maxLabels+1)))
             readLabelCounts = numpy.array([-1]*(maxLabels+1))
             labelInfo = (maxLabels, (unique_read_labels, readLabelCounts))
         else:    
@@ -189,12 +189,12 @@ def import_labeling_layer(labelLayer, labelingSlots, parent_widget=None):
 
         # Get user's chosen offsets, ordered by the 'write seeds' slot
         axes_5d = opReorderAxes.Output.meta.getAxisKeys()
-        tagged_offsets = collections.OrderedDict( zip( axes_5d, [0]*len(axes_5d) ) )
-        tagged_offsets.update( dict( zip( opReorderAxes.Output.meta.getAxisKeys(), settingsDlg.imageOffsets ) ) )
-        imageOffsets = tagged_offsets.values()
+        tagged_offsets = collections.OrderedDict( list(zip( axes_5d, [0]*len(axes_5d) )) )
+        tagged_offsets.update( dict( list(zip( opReorderAxes.Output.meta.getAxisKeys(), settingsDlg.imageOffsets )) ) )
+        imageOffsets = list(tagged_offsets.values())
 
         # Optimization if mapping is identity
-        if labelMapping.keys() == labelMapping.values():
+        if list(labelMapping.keys()) == list(labelMapping.values()):
             labelMapping = None
 
         # If the data was already cached, this will be fast.
@@ -254,7 +254,7 @@ class LabelImportOptionsDlg(QDialog):
         label_data_tagged_shape = dataInputSlot.meta.getTaggedShape()
 
         axisRanges = ()
-        for k in write_seeds_tagged_shape.keys():
+        for k in list(write_seeds_tagged_shape.keys()):
             try:
                 axisRanges += (write_seeds_tagged_shape[k] - label_data_tagged_shape[k],)
             except KeyError:
@@ -291,7 +291,7 @@ class LabelImportOptionsDlg(QDialog):
         inputAxes = dataInputSlot.meta.getAxisKeys()
         if srcInputFiles is not None and 'z' in inputAxes:
             z_idx = inputAxes.index('z')
-            filename_digits = filter(str.isdigit, os.path.basename(srcInputFiles[0]))
+            filename_digits = list(filter(str.isdigit, os.path.basename(srcInputFiles[0])))
             idx = int(filename_digits) if filename_digits else 0
             img_offset[z_idx] = max(0, min(idx, axisRanges[z_idx]))
 
@@ -359,7 +359,7 @@ class LabelImportOptionsDlg(QDialog):
                 return QValidator.Invalid, min(pos, len(uniqued_text))
             
             # Only valid axis keys allowed
-            filtered_keys = filter(lambda k: k in 'txyzc', text)
+            filtered_keys = [k for k in text if k in 'txyzc']
             filtered_text = "".join(filtered_keys)
             if text != filtered_text:
                 return QValidator.Invalid, min(pos, len(filtered_text))
@@ -392,7 +392,7 @@ class LabelImportOptionsDlg(QDialog):
 
     def _initSourceFilesList(self):
         srcInputFiles = self._srcInputFiles
-        map(self.inputFilesComboBox.addItem, map(os.path.basename, srcInputFiles))
+        list(map(self.inputFilesComboBox.addItem, list(map(os.path.basename, srcInputFiles))))
 
 
     #**************************************************************************
@@ -410,7 +410,7 @@ class LabelImportOptionsDlg(QDialog):
         write_seeds_tagged_shape = self._writeSeedsSlot.meta.getTaggedShape()
         label_data_tagged_shape = self._dataInputSlot.meta.getTaggedShape()
         axisRanges = ()
-        for k in write_seeds_tagged_shape.keys():
+        for k in list(write_seeds_tagged_shape.keys()):
             try:
                 axisRanges += (write_seeds_tagged_shape[k] - label_data_tagged_shape[k],)
             except KeyError:
@@ -445,12 +445,12 @@ class LabelImportOptionsDlg(QDialog):
         positionTbl.setHorizontalHeaderLabels(tblHeaders)
         positionTbl.resizeColumnsToContents()
 
-        tagged_insert = collections.OrderedDict(zip(axes, self.imageOffsets))
-        tagged_max = collections.OrderedDict(zip(axes, mx))
+        tagged_insert = collections.OrderedDict(list(zip(axes, self.imageOffsets)))
+        tagged_max = collections.OrderedDict(list(zip(axes, mx)))
         self._tagged_insert = tagged_insert
 
         positionTbl.setRowCount(len(tagged_insert))
-        positionTbl.setVerticalHeaderLabels(tagged_insert.keys())
+        positionTbl.setVerticalHeaderLabels(list(tagged_insert.keys()))
 
         self._insert_position_boxes.clear()
 
@@ -489,7 +489,7 @@ class LabelImportOptionsDlg(QDialog):
         labels, label_counts = read_labels_info
         label_mapping = self.labelMapping
 
-        mappings = zip(labels, [label_mapping[i] for i in labels], label_counts)
+        mappings = list(zip(labels, [label_mapping[i] for i in labels], label_counts))
 
         tblHeaders = ["map", "to", "px count"]
         mappingTbl.setColumnCount(len(tblHeaders))
@@ -497,7 +497,7 @@ class LabelImportOptionsDlg(QDialog):
         mappingTbl.resizeColumnsToContents()
 
         mappingTbl.setRowCount( len(labels) )
-        mappingTbl.setVerticalHeaderLabels( map(lambda x: str(x), labels) )
+        mappingTbl.setVerticalHeaderLabels( [str(x) for x in labels] )
 
         self._insert_mapping_boxes.clear()
 
@@ -549,14 +549,14 @@ class LabelImportOptionsDlg(QDialog):
     def _updatePosition(self):
         writeAxes = self._writeSeedsSlot.meta.getAxisKeys()
 
-        for (k,v) in self._insert_position_boxes.items():
+        for (k,v) in list(self._insert_position_boxes.items()):
             insertBox, _ = v
             self.imageOffsets[writeAxes.index(k)] = insertBox.value()
 
     def _updateMappingEnabled(self):
         max_labels, _ = self._labelInfo
 
-        for (k,v) in self._insert_mapping_boxes.items():
+        for (k,v) in list(self._insert_mapping_boxes.items()):
             enabledBox, mapToBox = v
             enabled = enabledBox.isChecked()
             if enabled:
@@ -572,13 +572,13 @@ class LabelImportOptionsDlg(QDialog):
             mapToBox.setValue(label_to)
             mapToBox.setEnabled(label_to > 0)
 
-        enabledBoxes, _ = zip(*self._insert_mapping_boxes.values())
+        enabledBoxes, _ = list(zip(*list(self._insert_mapping_boxes.values())))
         enableOk = any(map(QCheckBox.isChecked, enabledBoxes))
 
         self.buttonBox.button(QDialogButtonBox.Ok).setEnabled(enableOk)
 
     def _updateMapping(self):
-        for (k,v) in self._insert_mapping_boxes.items():
+        for (k,v) in list(self._insert_mapping_boxes.items()):
             _, mapToBox = v
             self.labelMapping[k] = mapToBox.value()
 

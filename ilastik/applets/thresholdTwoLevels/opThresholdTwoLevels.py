@@ -22,7 +22,7 @@
 import warnings
 import logging
 from functools import partial
-from ConfigParser import NoOptionError
+from configparser import NoOptionError
 
 # numerics
 import numpy
@@ -31,7 +31,7 @@ import vigra
 # ilastik
 from ilastik.applets.base.applet import DatasetConstraintError
 import ilastik.config
-from ipht import identity_preserving_hysteresis_thresholding
+from .ipht import identity_preserving_hysteresis_thresholding
 
 # Lazyflow
 from lazyflow.graph import Operator, InputSlot, OutputSlot
@@ -44,14 +44,14 @@ from lazyflow.rtype import SubRegion
 from lazyflow.request import Request, RequestPool
 
 # local
-from thresholdingTools import OpAnisotropicGaussianSmoothing5d
+from .thresholdingTools import OpAnisotropicGaussianSmoothing5d
 
-from thresholdingTools import OpSelectLabels
+from .thresholdingTools import OpSelectLabels
 
-from opGraphcutSegment import haveGraphCut
+from .opGraphcutSegment import haveGraphCut
 
 if haveGraphCut():
-    from opGraphcutSegment import OpObjectsSegment, OpGraphCut
+    from .opGraphcutSegment import OpObjectsSegment, OpGraphCut
 
 
 logger = logging.getLogger(__name__)
@@ -659,7 +659,7 @@ class _OpCacheWrapper(Operator):
         tagged_shape = self._op1.Output.meta.getTaggedShape()
         tagged_shape['t'] = 1
         tagged_shape['c'] = 1
-        cacheshape = map(lambda k: tagged_shape[k], 'xyzct')
+        cacheshape = [tagged_shape[k] for k in 'xyzct']
         if _labeling_impl == "lazy":
             #HACK hardcoded block shape
             blockshape = numpy.minimum(cacheshape, 256)

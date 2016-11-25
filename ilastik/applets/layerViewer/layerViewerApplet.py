@@ -19,7 +19,7 @@
 #		   http://ilastik.org/license.html
 ###############################################################################
 from ilastik.applets.base.standardApplet import StandardApplet
-from opLayerViewer import OpLayerViewer
+from .opLayerViewer import OpLayerViewer
 
 class LayerViewerApplet( StandardApplet ):
     """
@@ -37,7 +37,7 @@ class LayerViewerApplet( StandardApplet ):
     
     @property
     def singleLaneGuiClass(self):
-        from layerViewerGui import LayerViewerGui
+        from .layerViewerGui import LayerViewerGui
         return LayerViewerGui
 
     @property

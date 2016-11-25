@@ -20,7 +20,7 @@
 ###############################################################################
 import unittest
 import numpy as np
-from countingsvr import SVR, SMO
+from .countingsvr import SVR, SMO
 
 class TestSMO(unittest.TestCase):
     def setUp(self):
@@ -61,7 +61,7 @@ class TestSMO(unittest.TestCase):
         smo = SMO(self.tags, self.img, self.dot, self.upperBounds, self.mapping,
                  epsilon)
         self.assertTrue(np.all(smo.alpha == [0,0,0,0,0,0,0,0,0,0]))
-        print smo.I
+        print(smo.I)
         self.assertTrue(np.all(smo.I == [1,1,1,1,4,4,4,4,4,4]))
         #smo.takeStep(0,2)
         self.assertEqual(smo.examine(0), 0)
@@ -71,12 +71,12 @@ class TestSMO(unittest.TestCase):
         smo.examine(2)
 
         smo.mainLoop()
-        print smo.blow, smo.bup
-        print smo.alpha
+        print(smo.blow, smo.bup)
+        print(smo.alpha)
         #print smo.b
         #print smo.w
         #self.assertTrue(np.all(smo.alpha == [1./49**2,0,1./49**2]))
-        print "blub"
+        print("blub")
 
 
 if __name__ == '__main__':

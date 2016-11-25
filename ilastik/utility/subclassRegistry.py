@@ -60,8 +60,8 @@ if __name__ == "__main__":
     class SubclassTracker(SubclassRegistryMeta):
         pass
     
-    class SomeBase(object):
-        __metaclass__ = SubclassTracker
+    class SomeBase(object, metaclass=SubclassTracker):
+        pass
     
     class SomeSubclass(SomeBase):
         pass
