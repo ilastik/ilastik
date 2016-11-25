@@ -153,6 +153,7 @@ class OpWatershedSegmentationCalculation( Operator ):
 
         arrayBoundaries = resultBoundaries
         arraySeeds      = resultSeeds
+        originalShape   = arraySeeds.shape
         ######## data conversion #####
         #boundaries
         #input image: uint8 or float32
@@ -200,14 +201,25 @@ class OpWatershedSegmentationCalculation( Operator ):
                     seeds=arraySeeds[i,:,:], method="RegionGrowing")
                 labelImageArray[i] = labelImage
 
+        labelImageArrayTemp = np.ndarray(shape=originalShape, dtype=np_seeds.dtype)
+        labelImageArrayTemp[:,:,:,0] = labelImageArray
+
 
         #TODO TODO TODO
         #TODO setting the data doesn't change anything here
         #so the results can't be seen on the screen
         #self.Output.data = labelImageArray
         #TODO maybe use: setValue for this
+        print labelImageArrayTemp.shape
+
+        self.Output.setValue(labelImageArrayTemp)
+
+        #TODO maybe export array and have a look at it seperately, whether this works
 
         #self.Output.data = labelImage
+        import h5py
+        with h5py.File("testOutput", "w") as hf:
+            hf.create_dataset("exported_data", data=labelImageArray)
 
 
         print self.Seeds
@@ -215,7 +227,7 @@ class OpWatershedSegmentationCalculation( Operator ):
         #of the last image
         print maxRegionLabel
 
-    
+
     def __init__(self, *args, **kwargs):
         super( OpWatershedSegmentationCalculation, self ).__init__( *args, **kwargs )
 
