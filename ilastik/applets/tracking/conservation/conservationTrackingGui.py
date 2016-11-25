@@ -84,9 +84,14 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             self._drawer.appearanceBox.setValue(parameters['appearanceCost'])
         if 'disappearanceCost' in parameters.keys():
             self._drawer.disappearanceBox.setValue(parameters['disappearanceCost'])
+        if 'max_nearest_neighbors' in parameters.keys():
+            self._drawer.maxNearestNeighborsSpinBox.setValue(parameters['max_nearest_neighbors'])
         
+        # Hide division GUI widgets
         if 'withAnimalTracking' in parameters.keys() and parameters['withAnimalTracking'] == True:
-            self._drawer.divisionsBox.hide()       
+            self._drawer.divisionsBox.hide()
+            self._drawer.divWeightBox.hide()
+            self._drawer.label_6.hide()       
         
         return self._drawer
 
@@ -340,31 +345,15 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             menu.exec_(win_coord)
             return
 
-        try:
-            extra = self.mainOperator.extra_track_ids
-        except (IndexError, KeyError):
-            extra = {}
-
-        # if this is a resolved merger, find which of the merged IDs we actually clicked on
-        if time in extra and obj in extra[time]:
-            colors = [self.mainOperator.label2color[time][t] for t in extra[time][obj]]
-            tracks = [self.mainOperator.track_id[time][t] for t in extra[time][obj]]
-            selected_track = self.get_color(position5d)
-            idx = colors.index(selected_track)
-            color = colors[idx]
-            track = tracks[idx]
+        if self.mainOperator.hypotheses_graph == None:
+            color = None
+            track = None
         else:
-            try:
-                color = self.mainOperator.label2color[time][obj]
-                track = [self.mainOperator.track_id[time][obj]][0]
-            except (IndexError, KeyError):
-                color = None
-                track = []
+            color = self.mainOperator.hypotheses_graph.getLineageId(time, obj)
+            track = self.mainOperator.hypotheses_graph.getTrackId(time, obj)
 
-        if track:
-            children, parents = self.mainOperator.track_family(track)
-        else:
-            children, parents = None, None
+        children = None 
+        parents = None
 
         menu = TitledMenu([
             "Object {} of lineage id {}".format(obj, color),

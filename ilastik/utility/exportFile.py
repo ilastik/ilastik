@@ -18,6 +18,7 @@ class Default(object):
     KnimeId = {"names": ("object_id",)}
     IlastikId = {"names": ("timestep", "labelimage_oid")}
     Lineage = {"names": ("lineage_id",)}
+    TrackId = {"names": ("track_id",)}
     LabelRoiPath = "/images/{}/labeling"
     RawRoiPath = "/images/{}/raw"
     RawPath = "/images/raw"
@@ -53,16 +54,10 @@ def flatten_ilastik_feature_table(table, selection, signal):
     selection = list(selection)
     frames = table.meta.shape[0]
 
+    logger.info('Fetching object features for feature table...')
+    computed_feature = table([]).wait()
+
     signal(0)
-    if frames > 1:
-        computed_feature = {}
-        for t in xrange(frames):
-            request = table([t])
-            computed_feature.update(request.wait())
-            signal(100 * t / frames)
-    else:
-        computed_feature = table([]).wait()
-    signal(100)
 
     feature_names = []
     feature_cats = []
@@ -79,9 +74,13 @@ def flatten_ilastik_feature_table(table, selection, signal):
                 feature_channels.append((feat_array.shape[1]))
                 feature_types.append(feat_array.dtype)
 
+    signal(25)
+
     obj_count = []
     for t, cf in computed_feature.iteritems():
         obj_count.append(cf["Default features"]["Count"].shape[0] - 1)  # no background
+
+    signal(50)
 
     dtype_names = []
     dtype_types = []
@@ -101,6 +100,8 @@ def flatten_ilastik_feature_table(table, selection, signal):
     feature_table = np.zeros((sum(obj_count),), dtype=",".join(dtype_types))
     feature_table.dtype.names = map(str, dtype_names)
 
+    signal(75)
+
     start = 0
     end = obj_count[0]
     for t, cf in computed_feature.iteritems():
@@ -113,6 +114,8 @@ def flatten_ilastik_feature_table(table, selection, signal):
             end += obj_count[int(t) + 1]
         except IndexError:
             end = sum(obj_count)
+
+    signal(100)
 
     return feature_table
 

@@ -303,20 +303,6 @@ class TrackingBaseGui( LayerViewerGui ):
             self.applet.busy = True
             self.applet.appletStateUpdateRequested.emit()
 
-            t_from = None
-            # determine from_time (it could has been changed in the GUI meanwhile)            
-            for t_from, label2color_at in enumerate(self.mainOperator.label2color):
-                if len(label2color_at) == 0:
-                    continue
-                else:
-                    break
-
-            if t_from is None:
-                self._criticalMessage("There is nothing to export.")
-                return
-
-            t_from = int(t_from)
-
             if hasattr(self.mainOperator,"RelabeledImage"):
                 labelImageSlot = self.mainOperator.RelabeledImage
             else:
@@ -326,20 +312,13 @@ class TrackingBaseGui( LayerViewerGui ):
             key = []
             for idx, flag in enumerate(axisTagsToString(labelImageSlot.meta.axistags)):
                 if flag is 't':
-                    key.append(slice(t_from,t_from+1))
+                    key.append(slice(0,labelImageSlot.meta.shape[idx]))#slice(t_from,t_from+1))
                 elif flag is 'c':
                     key.append(slice(0,1))
                 else:
                     key.append(slice(0,labelImageSlot.meta.shape[idx]))
 
-
-            roi = SubRegion(labelImageSlot, key)
-            labelImage = labelImageSlot.get(roi).wait()
-            labelImage = labelImage[0,...,0]
-
             try:
-                # write_events([], str(directory), t_from, labelImage)
-
                 events = self.mainOperator.EventsVector.value
                 logger.info( "Saving events..." )
                 logger.info( "Length of events " + str(len(events)) )
@@ -349,7 +328,7 @@ class TrackingBaseGui( LayerViewerGui ):
                 for i in sorted(events.keys()):
                     events_at = events[i]
                     i = int(i)
-                    t = t_from + i
+                    t = i
                     key[0] = slice(t,t+1)
                     roi = SubRegion(labelImageSlot, key)
                     labelImage = labelImageSlot.get(roi).wait()

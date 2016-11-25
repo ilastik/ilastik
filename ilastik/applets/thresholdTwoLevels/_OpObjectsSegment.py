@@ -217,8 +217,7 @@ class OpObjectsSegment(OpGraphCut):
             # pre-thresholding
             seed = ccbox == i
             filtered = seed*ccsegm
-            passed = vigra.analysis.unique(filtered)
-            passed.sort()
+            passed = vigra.analysis.unique(filtered.astype(np.uint32))
             assert len(passed.shape) == 1
             if passed.size > 2:
                 logger.warn("ambiguous label assignment for region {}".format(

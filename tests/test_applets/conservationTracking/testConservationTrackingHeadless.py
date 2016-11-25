@@ -85,6 +85,12 @@ class TestConservationTrackingHeadless(object):
             logger.warn( "Conservation tracking could not be imported. CPLEX is most likely missing: " + str(e) )
             raise nose.SkipTest 
         
+        try:
+            import hytra
+        except ImportError as e:
+            logger.warn( "New tracking pipeline Hytra couldn't be imported: " + str(e) )
+            raise nose.SkipTest 
+        
         # Skip test because there are missing files
         if not os.path.isfile(self.PROJECT_FILE) or not os.path.isfile(self.RAW_DATA_FILE) or not os.path.isfile(self.BINARY_SEGMENTATION_FILE):
             logger.info("Test files not found.")   
