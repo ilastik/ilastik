@@ -31,7 +31,7 @@ from lazyflow.graph import Graph
 
 class WatershedSegmentationWorkflow(Workflow):
     workflowName = "Watershed Segmentation ['Raw Data', 'Boundaries', 'Seeds (optional)']"
-    workflowDescription = "A workflow that includes all watershed related applets"
+    workflowDescription = "A workflow that uses a seeded watershed applets for algorithmic calculations"
     defaultAppletIndex = 0 # show DataSelection by default
 
     # give your input data a number, so the group can be found for them
@@ -123,20 +123,20 @@ class WatershedSegmentationWorkflow(Workflow):
         opWatershedSegmentation.RawData.connect(    opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
         opWatershedSegmentation.Boundaries.connect( opDataSelection.ImageGroup[self.DATA_ROLE_BOUNDARIES] )
         opWatershedSegmentation.Seeds.connect(      opDataSelection.ImageGroup[self.DATA_ROLE_SEEDS] )
-        opWatershedSegmentation.CorrectedSeedsIn.connect(      opDataSelection.ImageGroup[self.DATA_ROLE_SEEDS] )
-        #for testing
-        #opWatershedSegmentation.CorrectedSeedsInTemp.connect(      opDataSelection.ImageGroup[self.DATA_ROLE_SEEDS] )
+        opWatershedSegmentation.CorrectedSeedsIn.connect( opDataSelection.ImageGroup[self.DATA_ROLE_SEEDS] )
 
         # DataExport inputs
         opDataExport.RawData.connect(       opDataSelection.ImageGroup[self.DATA_ROLE_RAW] )
         opDataExport.RawDatasetInfo.connect(opDataSelection.DatasetGroup[self.DATA_ROLE_RAW] )        
 
-        #TODO export
-        #for more information, see ilastik.org/lazyflow/advanced.html OperatorWrapper class
-        #opDataExport.Inputs.resize( len(self.EXPORT_NAMES) )
-        #opDataExport.Inputs[0].connect( opWatershedSegmentation.Superpixels )
+
+        # connect the output of the watershed-applet to the inputs of the data-export
+        opDataExport.Inputs.resize( len(self.EXPORT_NAMES) )
+        opDataExport.Inputs[0].connect( opWatershedSegmentation.CorrectedSeedsOut )
+        opDataExport.Inputs[1].connect( opWatershedSegmentation.WatershedCalculations )
         for slot in opDataExport.Inputs:
             assert slot.partner is not None
+        #for more information, see ilastik.org/lazyflow/advanced.html OperatorWrapper class
         
     def onProjectLoaded(self, projectManager):
         """

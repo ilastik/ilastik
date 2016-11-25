@@ -1,7 +1,4 @@
 #from collections import OrderedDict
-import numpy as np
-import vigra
-
 #for wsDtSegmentation
 #from ilastik.applets.wsdt.wsdtApplet import WsdtApplet
 #for OpLabelPipeline
@@ -11,12 +8,13 @@ import vigra
 #from lazyflow.roi import roiToSlice, sliceToRoi
 #from lazyflow.operators import OpBlockedArrayCache, OpValueCache
 #from lazyflow.operators.generic import OpPixelOperator, OpSingleChannelSelector
-
-
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-
 #for the LabelPipeline
 #from lazyflow.operators import OpCompressedUserLabelArray
+
+import numpy as np
+import vigra
+
+from lazyflow.graph import Operator, InputSlot, OutputSlot
 from ilastik.applets.pixelClassification.opPixelClassification import OpLabelPipeline
 
 import logging
@@ -32,19 +30,11 @@ class OpWatershedSegmentation(Operator):
     ############################################################
     # Inputslots for inputs from other applets
     ############################################################
-    RawData         = InputSlot() # Used by the GUI for display only
-    Boundaries      = InputSlot() 
-    Seeds           = InputSlot(optional=True) 
-    #CorrectedSeedsIn is a ndarray, which has the value of the Seeds-InputSlot, 
-    #which can be reseted every time the user wants this to do
-    #also ideal to use for drawing Labels into
-    CorrectedSeedsIn            = InputSlot(optional=True) 
-    #CorrectedSeedsOut           = InputSlot() 
+    RawData             = InputSlot() # Used by the GUI for display only
+    Boundaries          = InputSlot() 
+    Seeds               = InputSlot(optional=True) #for displaying in layer only
+    CorrectedSeedsIn    = InputSlot(optional=True) #deals as input for the LabelChange stuff 
 
-    #for testing
-    #CorrectedSeedsInTemp            = InputSlot(optional=True) 
-
-    #CorrectedSeedsIn = InputSlot(value=0)
 
     ############################################################
     # Inputslots for Internal Parameter Usage
@@ -58,10 +48,7 @@ class OpWatershedSegmentation(Operator):
     # Output Slots
     ############################################################
     #for the labeling
-    CorrectedSeedsOut   = OutputSlot() # Labels from the user
-    #NonzeroLabelBlocks  = OutputSlot() # A list if slices that contain non-zero label values
-
-    Projection2D        = OutputSlot()
+    CorrectedSeedsOut   = OutputSlot() # Labels from the user, used as seeds for the watershed algorithm
     WatershedCalculations = OutputSlot()
 
 
@@ -70,8 +57,9 @@ class OpWatershedSegmentation(Operator):
     LabelColors = OutputSlot()
     PmapColors = OutputSlot()
 
-    #TODO needed?
-    NumClasses = OutputSlot()
+    #NonzeroLabelBlocks  = OutputSlot() # A list if slices that contain non-zero label values
+    #NumClasses = OutputSlot()
+    #Projection2D        = OutputSlot()
 
 
     def __init__(self, *args, **kwargs):
@@ -217,12 +205,10 @@ class OpWatershedSegmentationCalculation( Operator ):
 
 
     def setupOutputs(self):
-        #TODO ?
         self.Output.meta.assignFrom(self.Boundaries.meta)
         self.Output.meta.dtype = np.uint8
         self.Output.meta.shape = self.Boundaries.meta.shape[:-1] + (1,)
         self.Output.meta.drange = (0,255)
-        pass
 
     def setInSlot(self, slot, subindex, roi, value):
         pass

@@ -18,13 +18,9 @@
 # on the ilastik web site at:
 #           http://ilastik.org/license.html
 ##############################################################################
-#from functools import partial
-#from contextlib import contextmanager
-#import threading
 
-import vigra
-
-import numpy as np
+#import numpy as np
+from PyQt4.Qt import pyqtSlot
 
 from pixelValueDisplaying import PixelValueDisplaying 
 from importAndResetLabels import ImportAndResetLabels 
@@ -34,8 +30,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-from PyQt4.Qt import pyqtSlot
 
+#from functools import partial
+#from contextlib import contextmanager
+#import threading
 #import volumina.colortables as colortables
 #import sip
 #from ilastik.utility.gui import threadRouted
@@ -67,10 +65,6 @@ class WatershedSegmentationGui(WatershedLabelingGui):
     def centralWidget( self ):
         return self
     
-    '''
-    def appletDrawer(self):
-        return self._drawer
-    '''
 
     '''
     def stopAndCleanUp(self):
@@ -90,7 +84,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         self.topLevelOperatorView = topLevelOperatorView
         op = self.topLevelOperatorView 
 
-        #init the _existingSeedsSlot variable as True. Only reset it, if there is no seed input given
+        # init the _existingSeedsSlot variable as True. Only reset it, if there is no seed input given
         self._existingSeedsSlot = True
 
 
@@ -182,11 +176,6 @@ class WatershedSegmentationGui(WatershedLabelingGui):
                 labelSlots, topLevelOperatorView, watershedLabelingDrawerUiPath )
 
 
-        # Any time watershed is re-computed, re-update the layer set, 
-        # in case the set of debug layers has changed.
-        '''
-        self.topLevelOperatorView.watershed_completed.subscribe( self.updateAllLayers )
-        '''
 
     
         # init the class to import and reset Labels
@@ -234,13 +223,14 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         ############################################################
 
 
+        #needed?
+        #op.RawData.notifyMetaChanged( set_brush_value_box_range )
 
         ############################################################
         # END TODO
         ############################################################
 
     '''
-
     def initAppletDrawerUi(self):
         """
         Overridden from base class (LayerViewerGui)
@@ -253,19 +243,6 @@ class WatershedSegmentationGui(WatershedLabelingGui):
             qt_signal.connect( self.configure_operator_from_gui )
             op_slot.notifyDirty( self.configure_gui_from_operator )
             self.__cleanup_fns.append( partial( op_slot.unregisterDirty, self.configure_gui_from_operator ) )
-
-        def control_layout_wlw( widget1, label_text, widget2 ):
-            """
-            Define the way, how the labels for input widgets are shown in the gui
-            They are added to a horizontal BoxLayout and afterwards 
-            this layout is added to a vertivalLayoutBox
-            """
-            row_layout = QHBoxLayout()
-            row_layout.addWidget(widget1)
-            row_layout.addWidget( QLabel(label_text) )
-            row_layout.addSpacerItem( QSpacerItem(10, 0, QSizePolicy.Expanding) )
-            row_layout.addWidget(widget2)
-            return row_layout
 
         def control_layout(*args):
             """
@@ -289,156 +266,6 @@ class WatershedSegmentationGui(WatershedLabelingGui):
                 row_layout.addWidget(widget)
                 begin = False
             return row_layout
-
-
-
-        ############################################################
-        #Configure the Gui
-        ############################################################
-        drawer_layout = QVBoxLayout()
-
-            ############################################################
-            # additional seeds
-            ############################################################
-        drawer_layout.addLayout( control_layout("Set additional seeds:") )
-        drawer_layout.addLayout( control_layout("Caution: no effect in Batch Processing") )
-        drawer_layout.addLayout( control_layout("") )
-
-        """
-        #channel Selection
-        channel_box = QSpinBox()
-        def set_channel_box_range(*args):
-            if sip.isdeleted(channel_box):
-                return
-            channel_box.setMinimum(0)
-            #throws an exception, if probabilities in input data aren't there, 
-            #Fixed with op.Input.ready()
-            if op.RawData.ready():
-                channel_box.setMaximum( op.RawData.meta.getTaggedShape()['c']-1 )
-            else:
-                #only showed in debug mode
-                #TODO not good, because emitted everytime when Input Data is changed
-                logging.warning( "RawData not ready (maybe not existing)" )
-
-        set_channel_box_range()
-        op.RawData.notifyMetaChanged( set_channel_box_range )
-        configure_update_handlers( channel_box.valueChanged, op.ChannelSelection )
-        drawer_layout.addLayout( control_layout( self.RawDataName + " Channel", channel_box ) )
-        self.channel_box = channel_box
-        #connect the channel spinbox with the layer channel box
-        self.channel_box.valueChanged.connect(self.on_RawData_channelChanged)
-        """
-
-
-        #show pixel value
-        pixelValue = QLabel('unused')
-        showPixelValue = QCheckBox()
-        #configure_update_handlers not necessary here, 
-        #because no information is passed on for calculations
-        drawer_layout.addLayout( control_layout_wlw(showPixelValue, "Show Pixel-Value for Seeds:", pixelValue) )
-        self.pixelValue = pixelValue
-        self.showPixelValue = showPixelValue
-        self.showPixelValue.stateChanged.connect(self.toggleConnectionPixelValue)
-        
-        
-
-        #brush value dropdown or similar
-        brush_value_box = QSpinBox()
-        
-        def set_brush_value_box_range(*args):
-            if sip.isdeleted(brush_value_box):
-                return
-            brush_value_box.setMinimum(0)
-            #throws an exception, if probabilities in input data aren't there, 
-            #Fixed with op.Input.ready()
-            if op.RawData.ready():
-                if op.RawData.meta.drange:
-                    #set min and max to the value range of the image
-                    brush_value_box.setMinimum( op.RawData.meta.drange[0] )
-                    brush_value_box.setMaximum( op.RawData.meta.drange[1] )
-            else:
-                #only showed in debug mode
-                #TODO not good, because emitted everytime when Input Data is changed
-                logging.warning( "RawData not ready (maybe not existing)" )
-        set_brush_value_box_range()
-        op.RawData.notifyMetaChanged( set_brush_value_box_range )
-        configure_update_handlers( brush_value_box.valueChanged, op.BrushValue )
-        drawer_layout.addLayout( control_layout("Brush value:", brush_value_box) )
-        self.brush_value_box = brush_value_box
-        #self.showPixelValue.stateChanged.connect(self.toggleConnectionPixelValue)
-
-        ############################################################
-        # BEGIN TODO
-        ############################################################
-
-        #pixel classification training applets
-        # We provide our own UI file (which adds an extra control for interactive mode)
-        #watershedLabelingDrawerUiPath = os.path.split(__file__)[0] + '/watershedLabelingDrawer.ui'
-
-        #SIEHE TODO LISTE AUF BLOCK
-
-        #toolBar = QToolBar()
-        #first =  QToolButton()
-        #arrowToolButton
-        #paintToolButton
-        #eraserToolButton
-        #thresToolButton
-        #brushSizeCaption
-        #brushSizeComboBox
-        
-        #c++
-        #button->setIcon(QIcon("<imagePath>"));
-        #button->setIconSize(QSize(65,65));
-
-
-        ############################################################
-        # END TODO
-        ############################################################
-
-            ############################################################
-            # seeded watershed
-            ############################################################
-        drawer_layout.addLayout( control_layout("") )
-        drawer_layout.addLayout( control_layout("Seeded watershed:") )
-
-
-        """
-        seed_method_combo = QComboBox()
-        seed_method_combo.addItem("Connected")
-        seed_method_combo.addItem("Clustered")
-        configure_update_handlers( seed_method_combo.currentIndexChanged, op.GroupSeeds )
-        drawer_layout.addLayout( control_layout( "Seed WatershedLabeling", seed_method_combo ) )
-        self.seed_method_combo = seed_method_combo
-        
-        enable_debug_box = QCheckBox()
-        configure_update_handlers( enable_debug_box.toggled, op.EnableDebugOutputs )
-        drawer_layout.addLayout( control_layout( "Show Debug Layers", enable_debug_box ) )
-        self.enable_debug_box = enable_debug_box
-
-        compute_button = QPushButton("Update Watershed", clicked=self.onUpdateWatershedsButton)
-        drawer_layout.addWidget( compute_button )
-        """
-
-        
-        ############################################################
-        #Init the drawer for the Applet
-        ############################################################
-        # Finally, the whole drawer widget
-        # which means all widgets created before are initilized to one widget, 
-        # that is saved as a class member
-        drawer = QWidget(parent=self)
-        drawer.setLayout(drawer_layout)
-
-        # Save these members for later use
-        self._drawer = drawer
-
-        # Initialize everything with the operator's initial values
-        self.configure_gui_from_operator()
-
-        # Delete space, so that the Layout lies on top of the page and not on bottom
-        drawer_layout.setSpacing(0)
-        drawer_layout.addSpacerItem( QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Expanding) )
-
     '''
 
     @pyqtSlot()
@@ -455,7 +282,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
             #print "first time"
             self.updateAllLayers()
 
-        #execute the watershed algorithm
+        # execute the watershed algorithm
         self.topLevelOperatorView.opWSC.execWatershedAlgorithm()
 
 
@@ -505,37 +332,34 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         """
 
         # Base class provides the label layer.
-        #needed to add here. otherwise the reset button doesn't work well
+        # needed to add here. otherwise the reset button doesn't work well
         layers = super(WatershedSegmentationGui, self).setupLayers()
         #layers[0].visible = False
-        #remove the Label-Layer, because it is not needed here
+        # remove the Label-Layer, because it is not needed here
         layers = []
 
         op = self.topLevelOperatorView
 
-        #Raw Data
+        # Raw Data
         self.initLayer(op.RawData, "Raw Data", layers, visible=False, 
                 layerFunction=self.createStandardLayerFromSlot ) 
 
-        #Boundaries
+        # Boundaries
         self.initLayer(op.Boundaries, "Boundaries", layers, opacity=0.1, 
                 layerFunction=self.createGrayscaleLayer) 
 
-        #Seeds
+        # Seeds
         self.initLayer(op.Seeds, "Seeds", layers, visible=False)
 
-        #CorrectedSeedsOut
+        # CorrectedSeedsOut
         self.initLayer(op.CorrectedSeedsOut, "Corrected Seeds", layers)
 
 
-        #handle the watershed output, 
-        #changes in slot ready/unready of all slots lead to the execution of setupLayers
+        # handle the watershed output, 
+        # changes in slot ready/unready of all slots lead to the execution of setupLayers
         if not self._firstClick_runWatershedPushButton:
-            #WatershedCalculations
+            # WatershedCalculations
             self.initLayer(op.WatershedCalculations, "Watershed Calculations", layers)
-
-
-
 
         return layers
 
