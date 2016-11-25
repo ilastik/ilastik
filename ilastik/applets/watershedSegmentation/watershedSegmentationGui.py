@@ -341,22 +341,23 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         op = self.topLevelOperatorView
 
         # Raw Data
-        self.initLayer(op.RawData, "Raw Data", layers, visible=False, 
+        self.initLayer(op.RawData,          "Raw Data",     layers, visible=False, 
                 layerFunction=self.createStandardLayerFromSlot ) 
 
         # Boundaries
-        self.initLayer(op.Boundaries, "Boundaries", layers, opacity=0.1, 
+        self.initLayer(op.Boundaries,       "Boundaries",   layers, opacity=0.1, 
                 layerFunction=self.createGrayscaleLayer) 
 
         # Seeds
-        self.initLayer(op.Seeds, "Seeds", layers, visible=False)
+        self.initLayer(op.Seeds,            "Seeds",        layers, visible=False)
 
         # CorrectedSeedsOut
-        self.initLayer(op.CorrectedSeedsOut, "Corrected Seeds", layers)
+        self.initLayer(op.CorrectedSeedsOut,"Corrected Seeds", layers)
 
 
         # handle the watershed output, 
         # changes in slot ready/unready of all slots lead to the execution of setupLayers
+        # therefore a variable is used to not lose this layer
         if not self._firstClick_runWatershedPushButton:
             # WatershedCalculations
             self.initLayer(op.WatershedCalculations, "Watershed Calculations", layers)

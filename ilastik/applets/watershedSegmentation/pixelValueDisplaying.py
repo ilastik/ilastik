@@ -92,7 +92,7 @@ class PixelValueDisplaying(object):
             return False
 
     def __del__(self):
-        #FIXME does this work here?
+        #FIXME does this work here? or is it even needed?
         #self._pixelValueCheckBox.stateChanged.disconnect(self.toggleConnectionPixelValue)
         #TODO disconnect connections in toggleConnectionPixelValue
         pass
