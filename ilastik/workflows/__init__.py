@@ -122,12 +122,6 @@ try:
 except ImportError as e:
     logger.warn("Failed to import 'workflowExample' workflow; check dependencies: " + str(e))
 
-try:
-    import eigenesThreshold
-    WORKFLOW_CLASSES += [eigenesThreshold.eigenesThresholdWorkflow.EigenesThresholdWorkflow]
-except ImportError as e:
-    logger.warn("Failed to import 'eigenesThreshold' workflow; check dependencies: " + str(e))
-
 
 try:
     import watershedSegmentation
@@ -136,13 +130,7 @@ except ImportError as e:
     logger.warn("Failed to import 'watershedSegmentation' workflow; check dependencies: " + str(e))
 
 
-try:
-    import pixelClassification_Andi
-    #WORKFLOW_CLASSES += [pixelClassification_Andi.PixelClassificationWorkflow_Andi]
-    WORKFLOW_CLASSES += [pixelClassification_Andi.pixelClassificationWorkflow_Andi.PixelClassificationWorkflow_Andi]
-except ImportError as e:
-    logger.warn("Failed to import 'Andi's Pixel Classfication' workflow; check dependencies: " + str(e))
-
+#channel selection
 try:
     import test
     WORKFLOW_CLASSES += [test.testWorkflow.TestWorkflow]
