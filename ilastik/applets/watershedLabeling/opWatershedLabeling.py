@@ -18,11 +18,26 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from lazyflow.graph import Operator, InputSlot, OutputSlot
-from lazyflow.operators import OpCompressedUserLabelArray
-from ilastik.utility.operatorSubView import OperatorSubView
-from ilastik.utility import OpMultiLaneWrapper
+#from lazyflow.graph import Operator, InputSlot, OutputSlot
+#from lazyflow.operators import OpCompressedUserLabelArray
+#from ilastik.utility.operatorSubView import OperatorSubView
+#from ilastik.utility import OpMultiLaneWrapper
 
+from ilastik.applets.labeling.opLabeling import OpLabelingTopLevel, OpLabelingSingleLane
+
+class OpWatershedLabelingTopLevel( OpLabelingTopLevel ):
+    """
+    can use everything form super-class
+    """
+    pass
+
+class OpWatershedLabelingSingleLane( OpLabelingSingleLane ):
+    """
+    can use everything form super-class
+    """
+    pass
+
+'''
 class OpWatershedLabelingTopLevel( Operator ):
     """
     Top-level operator for the watershedLabelingApplet base class.
@@ -192,3 +207,4 @@ class OpWatershedLabelingSingleLane( Operator ):
         #   are directly connected to internal operators.
         pass
 
+'''

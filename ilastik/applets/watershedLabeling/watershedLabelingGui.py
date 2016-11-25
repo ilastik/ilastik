@@ -22,29 +22,22 @@
 import os
 import re
 import logging
-import itertools
-from functools import partial
 
 # Third-party
-import numpy
-from PyQt4 import uic
-from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QIcon, QColor, QApplication, QMessageBox, QAction
+# for getting the next LabelColor
+from PyQt4.QtGui import QColor 
 
 # HCI
-from volumina.api import LazyflowSinkSource, ColortableLayer
-from volumina.utility import ShortcutManager, PreferencesManager
+#TODO could be deleted, if no addtional shortcuts are used
+from volumina.utility import ShortcutManager
 import volumina.colortables as colortables
-from ilastik.shell.gui.iconMgr import ilastikIcons
-from ilastik.widgets.labelListModel import LabelListModel, Label, LabelWithNumber, LabelListModelWithNumber
+
 
 # ilastik
-from ilastik.utility import bind, log_exception
-from ilastik.utility.gui import ThunkEventHandler, threadRouted
-from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
-
-from ilastik.applets.watershedLabeling.watershedLabelingImport import import_watershedLabeling_layer
+from ilastik.utility.gui import threadRouted
 from ilastik.applets.labeling.labelingGui import LabelingGui
+from ilastik.widgets.labelListModel import LabelWithNumber, LabelListModelWithNumber
+#from ilastik.applets.watershedLabeling.watershedLabelingImport import import_watershedLabeling_layer
 
 # Loggers
 logger = logging.getLogger(__name__)
@@ -355,6 +348,7 @@ class WatershedLabelingGui(LabelingGui):
                 labellayer.colorTable = self._colorTable16
     '''
 
+    #TODO additional shortcuts
     '''
     def __initShortcuts(self):
         mgr = ShortcutManager()
@@ -835,6 +829,7 @@ class WatershedLabelingGui(LabelingGui):
         """
         Return a QColor to use for the next label.
         in class Label in ilastik/widgets/labeListModel.py
+from ilastik.applets.labeling.labelingGui import LabelingGui
         if pmapColor is none, then the color for the drawing is used for the pmap
         """
         return None

@@ -155,6 +155,11 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         ############################################################
 
 
+        ############################################################
+        # for the Labels
+        ############################################################
+
+
 
         self._LabelPipeline         = op.opWSLP.opLabelPipeline
 
@@ -214,16 +219,20 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         self.pixelValueDisplaying.Label = "Show Corrected Seeds pixel value:"
         
 
+        ############################################################
+        # for the Watershed Algorithm
+        ############################################################
 
+        # responsable for the watershed algorithm
+        self._labelControlUi.runWatershedPushButton.clicked.connect(self.onRunWatershedPushButtonClicked)
+        # init this variable to True, that we know, that the button wasn't clicked before
+        self._firstClick_runWatershedPushButton = True
 
             
         ############################################################
         # BEGIN TODO
         ############################################################
 
-        self._labelControlUi.runWatershedPushButton.clicked.connect(self.onRunWatershedPushButtonClicked)
-        # init this variable to True, that we know, that the button wasn't clicked before
-        self._firstClick_runWatershedPushButton = True
 
 
         ############################################################
@@ -434,15 +443,20 @@ class WatershedSegmentationGui(WatershedLabelingGui):
 
     @pyqtSlot()
     def onRunWatershedPushButtonClicked(self):
-        print "runWatershedPushButton clicked"
+        #print "runWatershedPushButton clicked"
+        """
+        responsable to set the _firstClick_runWatershedPushButton varibable to False, 
+        so that a new Layer for the watershed results can be added
+        executes the watershed algorithm
+
+        """
         if self._firstClick_runWatershedPushButton:
             self._firstClick_runWatershedPushButton = False
-            print "first time"
+            #print "first time"
             self.updateAllLayers()
 
-        #TODO execute the calculation here or elsewhere
-        op = self.topLevelOperatorView
-        op.opWSC.execWatershedAlgorithm()
+        #execute the watershed algorithm
+        self.topLevelOperatorView.opWSC.execWatershedAlgorithm()
 
 
 
@@ -459,6 +473,11 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         :param layerFunction: if layerFunction is None, then use the default: 
             self._create_8bit_ordered_random_colortable_zero_transparent_layer_from_slot
         """
+        #if you have a channel-box in the gui, that shall be synchronized with the layer channel
+        #layer.channelChanged.connect(self.channel_box.setValue)
+        #setValue() will emit valueChanged() if the new value is different from the old one.
+        #not necessary: self.channel_box.valueChanged.emit(i)
+
         if layerFunction is None:
             layerFunction = self.create_8bit_ordered_random_colortable_zero_transparent_layer_from_slot
 
@@ -471,6 +490,8 @@ class WatershedSegmentationGui(WatershedLabelingGui):
             del layer
         else:
             logger.info("slot not ready; didn't add a layer with name: " + name)
+
+
 
 
     def setupLayers(self):
@@ -510,16 +531,11 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         #handle the watershed output, 
         #changes in slot ready/unready of all slots lead to the execution of setupLayers
         if not self._firstClick_runWatershedPushButton:
-            #TODO change output to 
+            #WatershedCalculations
             self.initLayer(op.WatershedCalculations, "Watershed Calculations", layers)
-            #self.initLayer(op.Boundaries, "Watershed Calculations", layers)
 
 
 
-        #if you have a channel-box in the gui, that shall be synchronized with the layer channel
-        #layer.channelChanged.connect(self.channel_box.setValue)
-        #setValue() will emit valueChanged() if the new value is different from the old one.
-        #not necessary: self.channel_box.valueChanged.emit(i)
 
         return layers
 

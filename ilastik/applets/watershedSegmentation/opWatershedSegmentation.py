@@ -140,9 +140,10 @@ class OpWatershedSegmentationCalculation( Operator ):
     Output      = OutputSlot()
     
     def execWatershedAlgorithm(self):
-        #TODO construct the algorithm here and execute this function from wsGui
-        pass
-        print "In OpWatershedSegmentationCalculation in function execWatershedAlgorithm"
+        """
+        handles the execution of the watershed algorithm 
+        """
+        #print "In OpWatershedSegmentationCalculation in function execWatershedAlgorithm"
 
         #get the data from boundaries and seeds
         requestBoundaries   = self.Boundaries[:]
@@ -171,19 +172,7 @@ class OpWatershedSegmentationCalculation( Operator ):
 
 
 
-        print arrayBoundaries.dtype
-        print arraySeeds.dtype
-        print arrayBoundaries.shape
-        print arraySeeds.shape
 
-        '''
-        requestBoundaries   = requestBoundaries.get().astype(np.float32, copy=False)
-        requestSeeds        = requestSeeds.get().astype(np.uint8, copy=False)
-
-        SeedsData           = requestBoundaries
-        BoundariesData      = requestSeeds
-
-        '''
         #TODO handle channel
         #TODO handle 2D or 3D, means, slicing or nonslicing
 
@@ -205,27 +194,22 @@ class OpWatershedSegmentationCalculation( Operator ):
         labelImageArrayTemp[:,:,:,0] = labelImageArray
 
 
-        #TODO TODO TODO
-        #TODO setting the data doesn't change anything here
-        #so the results can't be seen on the screen
-        #self.Output.data = labelImageArray
-        #TODO maybe use: setValue for this
-        print labelImageArrayTemp.shape
-
         self.Output.setValue(labelImageArrayTemp)
 
-        #TODO maybe export array and have a look at it seperately, whether this works
-
+        '''
         #self.Output.data = labelImage
         import h5py
         with h5py.File("testOutput", "w") as hf:
             hf.create_dataset("exported_data", data=labelImageArray)
-
-
-        print self.Seeds
-        print self.Output
+        #print self.Seeds
+        #print self.Output
         #of the last image
-        print maxRegionLabel
+        #print maxRegionLabel
+        #print arrayBoundaries.dtype
+        #print arraySeeds.dtype
+        #print arrayBoundaries.shape
+        #print arraySeeds.shape
+        '''
 
 
     def __init__(self, *args, **kwargs):
