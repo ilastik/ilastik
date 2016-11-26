@@ -59,7 +59,7 @@ class RegressorC(object):
         return result
     
     def fitcplex(self,X,Yl,tags, boxConstraints = None):
-        from . import cwrapper.cplex
+        from .cwrapper import cplex
         import ctypes
         c_float_p = ctypes.POINTER(ctypes.c_float)
         c_char_p= ctypes.POINTER(ctypes.c_char)
@@ -106,7 +106,7 @@ class RegressorC(object):
         #self.dens[np.where(self.dens < 0)] = 0
 
     def fitgurobi(self,X,Yl,tags, boxConstraints = None):
-        from . import cwrapper.gurobi
+        from .cwrapper import gurobi
         import ctypes
         #extlib.main()
         c_float_p = ctypes.POINTER(ctypes.c_float)
@@ -249,10 +249,10 @@ class RegressorGurobi(object):
                 model.addConstr(constr)        
         else:
             for i in range(X.shape[0]):
-		    constr=gu.quicksum([float(X_hat[i,j])*w_vars[j] for j in range(self.Nf+1)]) - u_vars1[i]<=float(Yl[i]) + self._epsilon
-		    model.addConstr(constr )
-		    constr=gu.quicksum([-(float(X_hat[i,j])*w_vars[j])  for j in range(self.Nf+1)]) - u_vars2[i]<=-float(Yl[i]) + self._epsilon
-		    model.addConstr(constr)        
+                    constr=gu.quicksum([float(X_hat[i,j])*w_vars[j] for j in range(self.Nf+1)]) - u_vars1[i]<=float(Yl[i]) + self._epsilon
+                    model.addConstr(constr )
+                    constr=gu.quicksum([-(float(X_hat[i,j])*w_vars[j])  for j in range(self.Nf+1)]) - u_vars2[i]<=-float(Yl[i]) + self._epsilon
+                    model.addConstr(constr)        
 
         model.update()
         #model.setParam('OutputFlag', False) 

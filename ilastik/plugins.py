@@ -140,13 +140,13 @@ class ObjectFeaturesPlugin(IPlugin):
 import warnings
 warnings.warn("TBD - yapsy needs to be rebuilt, then uncomment", UserWarning)
 
-#pluginManager = PluginManager()
-#pluginManager.setPluginPlaces(plugin_paths)
+pluginManager = PluginManager()
+pluginManager.setPluginPlaces(plugin_paths)
 
-#pluginManager.setCategoriesFilter({
-#   "ObjectFeatures" : ObjectFeaturesPlugin,
-#   })
+pluginManager.setCategoriesFilter({
+   "ObjectFeatures" : ObjectFeaturesPlugin,
+   })
 
-#pluginManager.collectPlugins()
-#for pluginInfo in pluginManager.getAllPlugins():
-#    pluginManager.activatePluginByName(pluginInfo.name)
+pluginManager.collectPlugins()
+for pluginInfo in pluginManager.getAllPlugins():
+    pluginManager.activatePluginByName(pluginInfo.name)
