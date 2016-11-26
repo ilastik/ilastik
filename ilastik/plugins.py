@@ -138,7 +138,6 @@ class ObjectFeaturesPlugin(IPlugin):
 # the manager #
 ###############
 import warnings
-warnings.warn("TBD - yapsy needs to be rebuilt, then uncomment", UserWarning)
 
 pluginManager = PluginManager()
 pluginManager.setPluginPlaces(plugin_paths)
