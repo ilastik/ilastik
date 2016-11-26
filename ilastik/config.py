@@ -33,7 +33,7 @@ plugin_directories: ~/.ilastik/plugins,
 logging_config: ~/custom_ilastik_logging_config.json
 """
 
-default_config = b"""
+default_config = """
 [ilastik]
 debug: false
 plugin_directories: ~/.ilastik/plugins,
@@ -74,7 +74,8 @@ cfg = configparser.SafeConfigParser()
 
 def init_ilastik_config(userConfig=None):
     global cfg
-    cfg.readfp(io.BytesIO(default_config))
+    #cfg.readfp(io.BytesIO(default_config.encode('utf-8')))
+    cfg.readfp(io.StringIO(default_config))
 
     if userConfig is not None and not os.path.exists(userConfig):
         raise Exception(
