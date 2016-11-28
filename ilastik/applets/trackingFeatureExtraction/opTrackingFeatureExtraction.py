@@ -176,8 +176,8 @@ class OpTrackingFeatureExtraction(Operator):
         # connect internal operators
         self._objectExtraction.RawImage.connect(self.RawImage)
         self._objectExtraction.BinaryImage.connect(self.BinaryImage)
-        self._objectExtraction.Features.connect(self.FeatureNamesVigra)
 
+        self._objectExtraction.Features.connect(self.FeatureNamesVigra)
         self._objectExtraction.RegionFeaturesCacheInput.connect(self.RegionFeaturesCacheInputVigra)
         self._objectExtraction.LabelImageCacheInput.connect(self.LabelImageCacheInput)
         self.CleanLabelBlocks.connect(self._objectExtraction.CleanLabelBlocks)
@@ -227,10 +227,8 @@ class OpTrackingFeatureExtraction(Operator):
 
             return result
         elif slot == self.RegionFeaturesAll:
-
             feat_vigra = self.RegionFeaturesVigra(roi).wait()
             feat_div = self.RegionFeaturesDivision(roi).wait()
-
             assert np.all(feat_vigra.keys() == feat_div.keys())
             result = {}        
             for t in feat_vigra.keys():

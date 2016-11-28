@@ -203,10 +203,6 @@ class FeatureManager( object ):
 
         feat_classes = {}
 
-        print "PASSED FEATURE NAMES:", feat_names
-        print "FEATURES KEYS:", feats_cur.keys()
-
-
         for name in feat_names:
             name_split = name.split(self.delim)
             if "SquaredDistances" in name_split:
