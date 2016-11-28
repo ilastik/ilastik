@@ -31,25 +31,12 @@ class TrackingSerializer(AppletSerializer):
     
     def __init__(self, mainOperator, projectFileGroupName):
         slots = [SerialDictSlot(mainOperator.Parameters, selfdepends=True),
-                 SerialHdf5BlockSlot(mainOperator.OutputHdf5,
-                                     mainOperator.InputHdf5,
-                                     mainOperator.CleanBlocks,
-                                     name="CachedOutput"),
                  SerialDictSlot(mainOperator.EventsVector, transform=str, selfdepends=True),
                  SerialDictSlot(mainOperator.FilteredLabels, transform=str, selfdepends=True),
-                 SerialPickledValueSlot(mainOperator.ExportSettings)
+                 SerialPickledValueSlot(mainOperator.ExportSettings),
+                 SerialPickledValueSlot(mainOperator.HypothesesGraph),
+                 SerialPickledValueSlot(mainOperator.ResolvedMergers)
                  ]
-        
-
-        if 'MergerOutput' in mainOperator.outputs:
-            slots.append(SerialHdf5BlockSlot(mainOperator.MergerOutputHdf5,
-                                     mainOperator.MergerInputHdf5,
-                                     mainOperator.MergerCleanBlocks,
-                                     name="MergerCachedOutput"),
-                          )
-
-        if 'CoordinateMap' in mainOperator.outputs:
-            slots.append(SerialPickleableSlot(mainOperator.CoordinateMap, 1, pgmlink.TimestepIdCoordinateMap()))
 
         super( TrackingSerializer, self ).__init__( projectFileGroupName, slots=slots )
         

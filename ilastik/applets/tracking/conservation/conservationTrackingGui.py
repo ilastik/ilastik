@@ -16,13 +16,18 @@ from ilastik.shell.gui.ipcManager import IPCFacade
 from ilastik.config import cfg as ilastik_config
 
 from lazyflow.request.request import Request
-try:
-    import pgmlink
-except:
-    import pgmlinkNoIlpSolver as pgmlink
 
 logger = logging.getLogger(__name__)
 traceLogger = logging.getLogger('TRACE.' + __name__)
+
+import dpct
+try:
+    import multiHypoTracking_with_cplex as mht
+except ImportError:
+    try:
+        import multiHypoTracking_with_gurobi as mht
+    except ImportError:
+        logger.warning("Could not find any ILP solver")
 
 class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
     
@@ -87,6 +92,14 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         if 'max_nearest_neighbors' in parameters.keys():
             self._drawer.maxNearestNeighborsSpinBox.setValue(parameters['max_nearest_neighbors'])
         
+
+        # solver: use stored value only if that solver is available
+        self._drawer.solverComboBox.clear()
+        availableSolvers = self.getAvailableTrackingSolverTypes()
+        self._drawer.solverComboBox.addItems(availableSolvers)
+        if 'solver' in parameters.keys() and parameters['solver'] in availableSolvers:
+            self._drawer.solverComboBox.setCurrentIndex(availableSolvers.index(parameters['solver']))
+
         # Hide division GUI widgets
         if 'withAnimalTracking' in parameters.keys() and parameters['withAnimalTracking'] == True:
             self._drawer.divisionsBox.hide()
@@ -96,25 +109,25 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
         return self._drawer
 
     @staticmethod
-    def getAvailablePgmlinkSolverTypes():
+    def getAvailableTrackingSolverTypes():
         solvers = []
-        if hasattr(pgmlink.ConsTrackingSolverType, "CplexSolver"):
-            solvers.append("ILP")
-
-        if hasattr(pgmlink.ConsTrackingSolverType, "DynProgSolver"):
-            solvers.append("Magnusson")
-
-        if hasattr(pgmlink.ConsTrackingSolverType, "FlowSolver"):
-            solvers.append("Flow")
+        try:
+            if dpct:
+                solvers.append('Flow-based')
+        except:
+            pass
+        try:
+            if mht:
+                solvers.append('ILP')
+        except:
+            pass
         return solvers
 
     def initAppletDrawerUi(self):
-        super(ConservationTrackingGui, self).initAppletDrawerUi()        
+        super(ConservationTrackingGui, self).initAppletDrawerUi()
 
         self._allowedTimeoutInputRegEx = re.compile('^[0-9]*$')
         self._drawer.timeoutBox.textChanged.connect(self._onTimeoutBoxChanged)
-        self._drawer.solverComboBox.clear()
-        self._drawer.solverComboBox.addItems(self.getAvailablePgmlinkSolverTypes())
 
         if not ilastik_config.getboolean("ilastik", "debug"):
             def checkboxAssertHandler(checkbox, assertEnabled=True):
@@ -344,13 +357,15 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
                 menu.addAction("Clear Hilite", IPCFacade().broadcast(Protocol.cmd("clear")))
             menu.exec_(win_coord)
             return
+        
+        hypothesesGraph = self.mainOperator.HypothesesGraph.value
 
-        if self.mainOperator.hypotheses_graph == None:
+        if hypothesesGraph == None:
             color = None
             track = None
         else:
-            color = self.mainOperator.hypotheses_graph.getLineageId(time, obj)
-            track = self.mainOperator.hypotheses_graph.getTrackId(time, obj)
+            color = hypothesesGraph.getLineageId(time, obj)
+            track = hypothesesGraph.getTrackId(time, obj)
 
         children = None 
         parents = None
