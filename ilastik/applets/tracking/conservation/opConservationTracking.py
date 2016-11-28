@@ -305,39 +305,22 @@ class OpConservationTracking(Operator, ExportingOperator):
                 
                 # Get coordinates for object IDs in label image. Used by GMM merger fit.
                 objectIds = vigra.analysis.unique(labelImage[0,...,0])
+                maxObjectId = max(objectIds)
+                
                 coordinatesForIds = {}
                 
                 pool = RequestPool()
-                poolIsNotEmpty = False
-                
                 for objectId in objectIds:
-                    node = (timestep, objectId)
-                        
-                    withCoords = False
-                        
-                    if originalGraph.hasNode(node) and 'value' in originalGraph._graph.node[node] and originalGraph._graph.node[node]['value'] > 1:
-                        withCoords = True
-                        
-                    if not withCoords:
-                        for edge in originalGraph._graph.out_edges(node):
-                            neighbor = edge[1]                        
-                            if  originalGraph.hasNode(neighbor) and 'value' in originalGraph._graph.node[neighbor] and  originalGraph._graph.node[neighbor]['value'] > 1:
-                                withCoords = True
-                                break
-                                                
-                    if withCoords:    
-                        pool.add(Request(partial(mergerResolver.getCoordinatesForObjectId, coordinatesForIds, labelImage[0, ..., 0], objectId)))
-                        poolIsNotEmpty = True                   
-                
-                if poolIsNotEmpty:
-                    with Timer() as coordTimer:
-                        pool.wait()
-                    logger.info("Compute coordinates time: {}".format(coordTimer.seconds()))                
+                    pool.add(Request(partial(mergerResolver.getCoordinatesForObjectId, coordinatesForIds, labelImage[0, ..., 0], timestep, objectId)))                 
+
+                with Timer() as coordTimer:
+                    pool.wait()
+                logger.info("Compute coordinates time: {}".format(coordTimer.seconds()))               
                 
                 # Fit mergers and store fit info in nodes  
                 if coordinatesForIds:
                     with Timer() as fitTimer:
-                        mergerResolver.fitAndRefineNodesForTimestep(coordinatesForIds, timestep)
+                        mergerResolver.fitAndRefineNodesForTimestep(coordinatesForIds, maxObjectId, timestep)
                     logger.info("Fit and refine time: {}".format(fitTimer.seconds()))      
                 
             # Compute object features, re-run flow solver, update model and result, and get merger dictionary
