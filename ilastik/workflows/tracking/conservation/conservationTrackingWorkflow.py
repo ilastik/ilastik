@@ -68,8 +68,7 @@ class ConservationTrackingWorkflowBase( Workflow ):
         
         opObjectExtraction = self.objectExtractionApplet.topLevelOperator
         opObjectExtraction.FeatureNamesVigra.setValue(configConservation.allFeaturesObjectCount)
-        print "SETTING VIGRA FEATURE NAMES TO:", configConservation.allFeaturesObjectCount
-        
+
         self.divisionDetectionApplet = self._createDivisionDetectionApplet(configConservation.selectedFeaturesDiv) # Might be None
 
         if self.divisionDetectionApplet:

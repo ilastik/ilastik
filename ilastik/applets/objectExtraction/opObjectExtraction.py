@@ -415,6 +415,8 @@ class OpObjectExtraction(Operator):
             #     taggedShape[k] = 256
         self._opCenterCache.BlockShape.setValue(tuple(taggedShape.values()))
 
+        self.augmentFeatureNames()
+
     def execute(self, slot, subindex, roi, result):
         assert False, "Shouldn't get here."
 
@@ -434,17 +436,6 @@ class OpObjectExtraction(Operator):
         if self.Features.ready():
             feature_names = self.Features([]).wait()
             feature_names_with_default = deepcopy(feature_names)
-
-            print "CALLED AUGMENT FEATURE NAMES WITH NAMES:", feature_names
-
-
-            for plugin_name, feature_dict in feature_names_with_default.iteritems():
-                for feature_name, feature_props in feature_dict.iteritems():
-                    feature_props["selected"] = True
-                    feature_props["default"] = False
-                    if feature_name in default_features.keys():
-                        # we don't care about plugin name here, because we require unique feature names for each plugin
-                        feature_props["default"] = True
 
             #expand the feature list by our default features
             logger.debug("attaching default features {} to vigra features {}".format(default_features, feature_names))
@@ -697,8 +688,8 @@ class OpRegionFeatures(Operator):
             try:
                 sel = feature_names["Standard Object Features"][feat_key]["selected"]
             except KeyError:
-                # this can happen, if the Features slot of the main operator has been set by a direct call to setValue
-                # rather than from the GUI
+                # we don't always set this property to True, sometimes it's just not there. The only important
+                # thing is that it's not False
                 sel = True
             if not sel:
                 # This feature has not been selected by the user. Remove it from the computed dict into a special dict

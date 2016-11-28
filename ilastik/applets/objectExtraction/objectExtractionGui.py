@@ -20,11 +20,12 @@
 ###############################################################################
 from PyQt4.QtGui import QColor, QTreeWidgetItem, QMessageBox
 from PyQt4 import uic
-from PyQt4.QtCore import Qt, QVariant
+from PyQt4.QtCore import Qt
 
 from lazyflow.rtype import SubRegion
 import os
 from collections import defaultdict
+from copy import deepcopy
 
 from ilastik.applets.layerViewer.layerViewerGui import LayerViewerGui
 from functools import partial
@@ -111,13 +112,26 @@ class FeatureSelectionDialog(QDialog):
             parent.setExpanded(False)
             self.countChecked[pluginName]=0
             self.countAll[pluginName]=len(self.featureDict[pluginName])
+
             advanced_names = []
             simple_names = []
             selected_names = []
 
             groups = set()
+            plugin = pluginManager.getPluginByName(pluginName, "ObjectFeatures")
+            features_with_props = deepcopy(features)
+            if plugin is not None:
+                plugin.plugin_object.fill_properties(features_with_props)
+
             for name in sorted(features.keys()):
                 parameters = features[name]
+
+                for prop, prop_value in features_with_props[name].iteritems():
+                    if not prop in parameters.keys():
+                        # this property has not been added yet (perhaps the feature dictionary has been read from file)
+                        # set it now
+                        parameters[prop] = prop_value
+
                 try:
                     if parameters['advanced'] is True:
                         advanced_names.append(name)

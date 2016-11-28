@@ -227,25 +227,10 @@ class OpTrackingFeatureExtraction(Operator):
 
             return result
         elif slot == self.RegionFeaturesAll:
-            print "region vigra features:", self.FeatureNamesVigra.value
-            print
-            print "inner operator features:", self._objectExtraction.Features.value
-            print
-            print "inner operator features with default:", self._objectExtraction.FeaturesWithDefault.value
-            print
-            self._objectExtraction.augmentFeatureNames()
-            print "inner operator features with default:", self._objectExtraction.FeaturesWithDefault.value
-            print
 
             feat_vigra = self.RegionFeaturesVigra(roi).wait()
-            #print "COMPUTED VIGRA FEATURES:", feat_vigra[0].keys()
-            #for p_name in feat_vigra[0].keys():
-            #    print feat_vigra[0][p_name].keys()
-            #print "vigra features in division operator:"
-            #feats_direct = self._opDivFeats.RegionFeaturesVigra([]).wait()
-            #print feats_direct.keys()
-
             feat_div = self.RegionFeaturesDivision(roi).wait()
+
             assert np.all(feat_vigra.keys() == feat_div.keys())
             result = {}        
             for t in feat_vigra.keys():
