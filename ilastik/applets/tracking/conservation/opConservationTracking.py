@@ -216,6 +216,133 @@ class OpConservationTracking(Operator, ExportingOperator):
 
     def setInSlot(self, slot, subindex, roi, value):
         assert slot == self.InputHdf5 or slot == self.MergerInputHdf5 or slot == self.RelabeledInputHdf5, "Invalid slot for setInSlot(): {}".format( slot.name )
+    
+    def _createHypothesesGraph(self):
+        '''
+        Construct a hypotheses graph given the current settings in the parameters slot
+        '''
+        parameters = self.Parameters.value
+        time_range = range(parameters['time_range'][0],parameters['time_range'][1] + 1)
+        x_range = parameters['x_range']
+        y_range = parameters['y_range']
+        z_range = parameters['z_range']
+        size_range = parameters['size_range']
+        scales = parameters['scales']
+        withDivisions = parameters['withDivisions']
+        withClassifierPrior = parameters['withClassifierPrior']
+        maxDist = parameters['maxDist']
+        maxObj = parameters['maxObj']
+        divThreshold = parameters['divThreshold']
+        max_nearest_neighbors = parameters['max_nearest_neighbors']
+
+        traxelstore = self._generate_traxelstore(time_range, x_range, y_range, z_range,
+                                                       size_range, scales[0], scales[1], scales[2], 
+                                                       with_div=withDivisions,
+                                                       with_classifier_prior=withClassifierPrior)
+        
+        def constructFov(shape, t0, t1, scale=[1, 1, 1]):
+            [xshape, yshape, zshape] = shape
+            [xscale, yscale, zscale] = scale
+        
+            fov = FieldOfView(t0, 0, 0, 0, t1, xscale * (xshape - 1), yscale * (yshape - 1),
+                              zscale * (zshape - 1))
+            return fov
+
+        fieldOfView = constructFov((x_range[1], y_range[1], z_range[1]),
+                                   0,
+                                   time_range[-1]+1,
+                                   scales)
+
+        hypothesesGraph = IlastikHypothesesGraph(
+            probabilityGenerator=traxelstore,
+            timeRange=(0,time_range[-1]+1),
+            maxNumObjects=maxObj,
+            numNearestNeighbors=max_nearest_neighbors,
+            fieldOfView=fieldOfView,
+            withDivisions=False,
+            maxNeighborDistance=maxDist,
+            divisionThreshold=divThreshold
+        )
+        return hypothesesGraph
+    
+    def _resolveMergers(self, hypothesesGraph, model):
+        '''
+        run merger resolution on the hypotheses graph which contains the current solution
+        '''
+        logger.info("Resolving mergers.")
+                
+        parameters = self.Parameters.value
+        withTracklets = parameters['withTracklets']
+        originalGraph = hypothesesGraph.referenceTraxelGraph if withTracklets else hypothesesGraph
+        resolvedMergersDict = {}
+        
+        # Enable full graph computation for animal tracking workflow
+        withFullGraph = False
+        if 'withAnimalTracking' in parameters and parameters['withAnimalTracking']: # TODO: Setting this parameter outside of the track() function (on AnimalConservationTrackingWorkflow) is not desirable 
+            withFullGraph = True
+            logger.info("Computing full graph on merger resolver (Only enabled on animal tracking workflow)")
+        
+        mergerResolver = IlastikMergerResolver(originalGraph, pluginPaths=self.pluginPaths, withFullGraph=withFullGraph)
+        
+        # Check if graph contains mergers, otherwise skip merger resolving
+        if not mergerResolver.mergerNum:
+            logger.info("Graph contains no mergers. Skipping merger resolving.")
+        else:        
+            # Fit and refine merger nodes using a GMM 
+            # It has to be done per time-step in order to aviod loading the whole video on RAM
+            traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = getMappingsBetweenUUIDsAndTraxels(model)
+            timesteps = [int(t) for t in traxelIdPerTimestepToUniqueIdMap.keys()]
+            timesteps.sort()
+            
+            timeIndex = self.LabelImage.meta.axistags.index('t')
+            
+            for timestep in timesteps:
+                roi = [slice(None) for i in range(len(self.LabelImage.meta.shape))]
+                roi[timeIndex] = slice(timestep, timestep+1)
+                roi = tuple(roi)
+                
+                labelImage = self.LabelImage[roi].wait()
+                
+                # Get coordinates for object IDs in label image. Used by GMM merger fit.
+                objectIds = vigra.analysis.unique(labelImage[0,...,0])
+                coordinatesForIds = {}
+                
+                pool = RequestPool()
+                poolIsNotEmpty = False
+                
+                for objectId in objectIds:
+                    node = (timestep, objectId)
+                        
+                    withCoords = False
+                        
+                    if originalGraph.hasNode(node) and 'value' in originalGraph._graph.node[node] and originalGraph._graph.node[node]['value'] > 1:
+                        withCoords = True
+                        
+                    if not withCoords:
+                        for edge in originalGraph._graph.out_edges(node):
+                            neighbor = edge[1]                        
+                            if  originalGraph.hasNode(neighbor) and 'value' in originalGraph._graph.node[neighbor] and  originalGraph._graph.node[neighbor]['value'] > 1:
+                                withCoords = True
+                                break
+                                                
+                    if withCoords:    
+                        pool.add(Request(partial(mergerResolver.getCoordinatesForObjectId, coordinatesForIds, labelImage[0, ..., 0], objectId)))
+                        poolIsNotEmpty = True                   
+                
+                if poolIsNotEmpty:
+                    with Timer() as coordTimer:
+                        pool.wait()
+                    logger.info("Compute coordinates time: {}".format(coordTimer.seconds()))                
+                
+                # Fit mergers and store fit info in nodes  
+                if coordinatesForIds:
+                    with Timer() as fitTimer:
+                        mergerResolver.fitAndRefineNodesForTimestep(coordinatesForIds, timestep)
+                    logger.info("Fit and refine time: {}".format(fitTimer.seconds()))      
+                
+            # Compute object features, re-run flow solver, update model and result, and get merger dictionary
+            resolvedMergersDict = mergerResolver.run()
+        return resolvedMergersDict
 
     def track(self,
             time_range,
@@ -271,7 +398,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         parameters['avgSize'] = avgSize
         parameters['withTracklets'] = withTracklets
         parameters['sizeDependent'] = sizeDependent
-        parameters['divWeight'] = divWeight   
+        parameters['divWeight'] = divWeight
         parameters['transWeight'] = transWeight
         parameters['withDivisions'] = withDivisions
         parameters['withOpticalCorrection'] = withOpticalCorrection
@@ -313,36 +440,7 @@ class OpConservationTracking(Operator, ExportingOperator):
                     'Check whether you have (i) the correct number of label names specified in Object Count Classification, and (ii) provided at least ' +\
                     'one training example for each class.')
         
-        traxelstore = self._generate_traxelstore(time_range, x_range, y_range, z_range,
-                                                       size_range, x_scale, y_scale, z_scale, 
-                                                       with_div=withDivisions,
-                                                       with_classifier_prior=withClassifierPrior)
-        
-        def constructFov(shape, t0, t1, scale=[1, 1, 1]):
-            [xshape, yshape, zshape] = shape
-            [xscale, yscale, zscale] = scale
-        
-            fov = FieldOfView(t0, 0, 0, 0, t1, xscale * (xshape - 1), yscale * (yshape - 1),
-                              zscale * (zshape - 1))
-            return fov
-
-        fieldOfView = constructFov((x_range[1], y_range[1], z_range[1]),
-                                   0,
-                                   time_range[-1]+1,
-                                   [x_scale,
-                                   y_scale,
-                                   z_scale])
-
-        hypothesesGraph = IlastikHypothesesGraph(
-            probabilityGenerator=traxelstore,
-            timeRange=(0,time_range[-1]+1),
-            maxNumObjects=maxObj,
-            numNearestNeighbors=max_nearest_neighbors,
-            fieldOfView=fieldOfView,
-            withDivisions=False,
-            maxNeighborDistance=maxDist,
-            divisionThreshold=0.1
-        )
+        hypothesesGraph = self._createHypothesesGraph()
 
         if withTracklets:
             hypothesesGraph = hypothesesGraph.generateTrackletGraph()
@@ -370,79 +468,9 @@ class OpConservationTracking(Operator, ExportingOperator):
             
         # Merger resolution
         resolvedMergersDict = {}
-                
         if withMergerResolution:
-            logger.info("Resolving mergers.")
-            
-            originalGraph = hypothesesGraph.referenceTraxelGraph if withTracklets else hypothesesGraph
-            
-            # Enable full graph computation for animal tracking workflow
-            withFullGraph = False
-            if 'withAnimalTracking' in parameters and parameters['withAnimalTracking']: # TODO: Setting this parameter outside of the track() function (on AnimalConservationTrackingWorkflow) is not desirable 
-                withFullGraph = True
-                logger.info("Computing full graph on merger resolver (Only enabled on animal tracking workflow)")
-            
-            mergerResolver = IlastikMergerResolver(originalGraph, pluginPaths=self.pluginPaths, withFullGraph=withFullGraph)
-            
-            # Check if graph contains mergers, otherwise skip merger resolving
-            if not mergerResolver.mergerNum:
-                logger.info("Graph contains no mergers. Skipping merger resolving.")
-            else:        
-                # Fit and refine merger nodes using a GMM 
-                # It has to be done per time-step in order to aviod loading the whole video on RAM
-                traxelIdPerTimestepToUniqueIdMap, uuidToTraxelMap = getMappingsBetweenUUIDsAndTraxels(model)
-                timesteps = [int(t) for t in traxelIdPerTimestepToUniqueIdMap.keys()]
-                timesteps.sort()
-                
-                timeIndex = self.LabelImage.meta.axistags.index('t')
-                
-                for timestep in timesteps:
-                    roi = [slice(None) for i in range(len(self.LabelImage.meta.shape))]
-                    roi[timeIndex] = slice(timestep, timestep+1)
-                    roi = tuple(roi)
-                    
-                    labelImage = self.LabelImage[roi].wait()
-                    
-                    # Get coordinates for object IDs in label image. Used by GMM merger fit.
-                    objectIds = vigra.analysis.unique(labelImage[0,...,0])
-                    coordinatesForIds = {}
-                    
-                    pool = RequestPool()
-                    poolIsNotEmpty = False
-                    
-                    for objectId in objectIds:
-                        node = (timestep, objectId)
-                         
-                        withCoords = False
-                         
-                        if originalGraph.hasNode(node) and 'value' in originalGraph._graph.node[node] and originalGraph._graph.node[node]['value'] > 1:
-                            withCoords = True
-                         
-                        if not withCoords:
-                            for edge in originalGraph._graph.out_edges(node):
-                                neighbor = edge[1]                        
-                                if  originalGraph.hasNode(neighbor) and 'value' in originalGraph._graph.node[neighbor] and  originalGraph._graph.node[neighbor]['value'] > 1:
-                                    withCoords = True
-                                    break
-                                                 
-                        if withCoords:    
-                            pool.add(Request(partial(mergerResolver.getCoordinatesForObjectId, coordinatesForIds, labelImage[0, ..., 0], objectId)))
-                            poolIsNotEmpty = True                   
-                    
-                    if poolIsNotEmpty:
-                        with Timer() as coordTimer:
-                            pool.wait()
-                        logger.info("Compute coordinates time: {}".format(coordTimer.seconds()))                
-                    
-                    # Fit mergers and store fit info in nodes  
-                    if coordinatesForIds:
-                        with Timer() as fitTimer:
-                            mergerResolver.fitAndRefineNodesForTimestep(coordinatesForIds, timestep)
-                        logger.info("Fit an refine time: {}".format(fitTimer.seconds()))      
-                    
-                # Compute object features, re-run flow solver, update model and result, and get merger dictionary
-                resolvedMergersDict = mergerResolver.run()
-
+            resolvedMergersDict = self._resolveMergers(hypothesesGraph, model)
+        
         # Set value of resolved mergers slot (Should be empty if mergers are disabled)         
         self.ResolvedMergers.setValue(resolvedMergersDict, check_changed=False)
                 
