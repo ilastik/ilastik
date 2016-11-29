@@ -28,8 +28,6 @@ from hytra.core.probabilitygenerator import ProbabilityGenerator
 from hytra.core.probabilitygenerator import Traxel
 from hytra.pluginsystem.plugin_manager import TrackingPluginManager
 
-from lazyflow.utility import Timer
-
 import vigra
 
 import logging
@@ -313,15 +311,12 @@ class OpConservationTracking(Operator, ExportingOperator):
                 for objectId in objectIds:
                     pool.add(Request(partial(mergerResolver.getCoordinatesForObjectId, coordinatesForIds, labelImage[0, ..., 0], timestep, objectId)))                 
 
-                with Timer() as coordTimer:
-                    pool.wait()
-                logger.info("Compute coordinates time: {}".format(coordTimer.seconds()))               
+                # Run requests to get object ID coordinates
+                pool.wait()              
                 
                 # Fit mergers and store fit info in nodes  
                 if coordinatesForIds:
-                    with Timer() as fitTimer:
-                        mergerResolver.fitAndRefineNodesForTimestep(coordinatesForIds, maxObjectId, timestep)
-                    logger.info("Fit and refine time: {}".format(fitTimer.seconds()))      
+                    mergerResolver.fitAndRefineNodesForTimestep(coordinatesForIds, maxObjectId, timestep)   
                 
             # Compute object features, re-run flow solver, update model and result, and get merger dictionary
             resolvedMergersDict = mergerResolver.run()
