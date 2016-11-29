@@ -93,10 +93,6 @@ class StructuredTrackingSerializer(AppletSerializer):
 
     def __init__(self, topLevelOperator, projectFileGroupName):
         slots = [ SerialDictSlot(topLevelOperator.Parameters, selfdepends=True),
-                 SerialHdf5BlockSlot(topLevelOperator.OutputHdf5,
-                                     topLevelOperator.InputHdf5,
-                                     topLevelOperator.CleanBlocks,
-                                     name="CachedOutput"),
                   SerialDictSlot(topLevelOperator.EventsVector, transform=str, selfdepends=True),
                   SerialDictSlot(topLevelOperator.FilteredLabels, transform=str, selfdepends=True),
                   SerialPickledValueSlot(topLevelOperator.ExportSettings),
@@ -107,13 +103,6 @@ class StructuredTrackingSerializer(AppletSerializer):
                   SerialSlot(topLevelOperator.DisappearanceWeight),
                   SerialSlot(topLevelOperator.MaxNumObjOut)
         ]
-
-        if 'MergerOutput' in topLevelOperator.outputs:
-            slots.append(SerialHdf5BlockSlot(topLevelOperator.MergerOutputHdf5,
-                                     topLevelOperator.MergerInputHdf5,
-                                     topLevelOperator.MergerCleanBlocks,
-                                     name="MergerCachedOutput"),
-                          )
 
         if 'CoordinateMap' in topLevelOperator.outputs:
             slots.append(SerialPickleableSlot(topLevelOperator.CoordinateMap, 1, pgmlink.TimestepIdCoordinateMap()))
