@@ -599,8 +599,7 @@ class OpConservationTracking(Operator, ExportingOperator):
                 if time not in resolvedMergersDict:
                     idxs = []
                 else:
-                    newIds = [nodeDict['newIds'] for _, nodeDict in resolvedMergersDict[time].items()]
-                    newIds = [id for ids in newIds for id in ids]
+                    newIds = [newId for _, nodeDict in resolvedMergersDict[time].items() for newId in nodeDict['newIds']]
                     idxs = [id for id in idxs if id in newIds]
             else:
                 idxs = [idx for idx in idxs if idx > 0 and hypothesesGraph.hasNode((time,idx)) and hypothesesGraph._graph.node[(time,idx)]['value'] > 1]
