@@ -169,8 +169,6 @@ class FeatureSelectionDialog(QDialog):
                     itemtext = name
                 item.setText(0, itemtext)
                 item.setText(1, "?")
-                #from PyQt4.QtGui import QStyle, QIcon
-                #item.setIcon(1, QIcon(QStyle.SP_TitleBarContextHelpButton))
 
                 self.displayNamesDict[itemtext] = name
                 item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
@@ -247,12 +245,14 @@ class FeatureSelectionDialog(QDialog):
                 pluginItem = itemParent.parent()
             pluginName=str(pluginItem.text(0))
             itemName=str(item.text(0))
+
+            plugin_feature_name = self.displayNamesDict[itemName]
+            try:
+                self.ui.textBrowser.setText(self.featureDict[pluginName][plugin_feature_name]["detailtext"])
+            except KeyError:
+                self.ui.textBrowser.setText("Sorry, no detailed description is available for this feature")
+
             if col==1:
-                plugin_feature_name = self.displayNamesDict[itemName]
-                try:
-                    self.ui.textBrowser.setText(self.featureDict[pluginName][plugin_feature_name]["detailtext"])
-                except KeyError:
-                    self.ui.textBrowser.setText("Sorry, no detailed description is available for this feature")
                 #early return, since the user clicked on "help" and didn't want to check the feature
                 return
             if currentItem == item: # user clicked on the text, check the box for the user
