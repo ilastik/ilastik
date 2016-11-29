@@ -114,8 +114,8 @@ class OpConservationTracking(Operator, ExportingOperator):
         
         # Merger resolver plugin manager (contains GMM fit routine)
         self.pluginPaths = [os.path.join(os.path.dirname(os.path.abspath(hytra.__file__)), 'plugins')]
-        self.pluginManager = TrackingPluginManager(verbose=False, pluginPaths=self.pluginPaths)
-        self.mergerResolverPlugin = self.pluginManager.getMergerResolver()       
+        pluginManager = TrackingPluginManager(verbose=False, pluginPaths=self.pluginPaths)
+        self.mergerResolverPlugin = pluginManager.getMergerResolver()       
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.LabelImage.meta)
