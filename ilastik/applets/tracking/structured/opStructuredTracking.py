@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 class OpStructuredTracking(OpConservationTracking):
     Crops = InputSlot()
     Labels = InputSlot(stype=Opaque, rtype=List)
-    Divisions = InputSlot(stype=Opaque, r type=List)
+    Divisions = InputSlot(stype=Opaque, rtype=List)
     Annotations = InputSlot(stype=Opaque)
     MaxNumObj = InputSlot()
 
