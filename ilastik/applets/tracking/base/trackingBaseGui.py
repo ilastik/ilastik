@@ -336,10 +336,7 @@ class TrackingBaseGui( LayerViewerGui ):
                     roi = SubRegion(labelImageSlot, key)
                     labelImage = labelImageSlot.get(roi).wait()
                     labelImage = labelImage[0,...,0]
-                    if self.withMergers:
-                        write_events(events_at, str(directory), t, labelImage, self.mainOperator.resolvedto)
-                    else:
-                        write_events(events_at, str(directory), t, labelImage)
+                    write_events(events_at, str(directory), t, labelImage)
                     _handle_progress(i/num_files * 100)
             except IOError as e:
                 self._criticalMessage("Cannot export the tracking results. Maybe these files already exist. "\

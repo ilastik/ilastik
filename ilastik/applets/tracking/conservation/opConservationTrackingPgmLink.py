@@ -384,7 +384,7 @@ class OpConservationTrackingPgmLink(OpTrackingBase):
                 solver = pgmlink.ConsTrackingSolverType.DynProgSolver
             else:
                 raise AssertionError("Cannot select Magnusson solver if pgmlink was compiled without Magnusson support")
-        elif solverName == "Flow":
+        elif solverName == "Flow-based":
             if hasattr(pgmlink.ConsTrackingSolverType, "FlowSolver"):
                 solver = pgmlink.ConsTrackingSolverType.FlowSolver
             else:

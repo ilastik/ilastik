@@ -110,7 +110,7 @@ def get_events_at(eventsVector, t):
     return events_at
 
 
-def write_events(events_at, directory, t, labelImage, mergers=None):
+def write_events(events_at, directory, t, labelImage):
         fn =  directory + "/" + str(t).zfill(5)  + ".h5"
         
         logger.info( "-- Writing results to " + path.basename(fn) ) 

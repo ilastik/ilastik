@@ -28,8 +28,6 @@ from hytra.core.probabilitygenerator import ProbabilityGenerator
 from hytra.core.probabilitygenerator import Traxel
 from hytra.pluginsystem.plugin_manager import TrackingPluginManager
 
-from lazyflow.utility import Timer
-
 import vigra
 
 import logging
@@ -116,8 +114,8 @@ class OpConservationTracking(Operator, ExportingOperator):
         
         # Merger resolver plugin manager (contains GMM fit routine)
         self.pluginPaths = [os.path.join(os.path.dirname(os.path.abspath(hytra.__file__)), 'plugins')]
-        self.pluginManager = TrackingPluginManager(verbose=False, pluginPaths=self.pluginPaths)
-        self.mergerResolverPlugin = self.pluginManager.getMergerResolver()       
+        pluginManager = TrackingPluginManager(verbose=False, pluginPaths=self.pluginPaths)
+        self.mergerResolverPlugin = pluginManager.getMergerResolver()       
 
     def setupOutputs(self):
         self.Output.meta.assignFrom(self.LabelImage.meta)
@@ -305,40 +303,20 @@ class OpConservationTracking(Operator, ExportingOperator):
                 
                 # Get coordinates for object IDs in label image. Used by GMM merger fit.
                 objectIds = vigra.analysis.unique(labelImage[0,...,0])
+                maxObjectId = max(objectIds)
+                
                 coordinatesForIds = {}
                 
                 pool = RequestPool()
-                poolIsNotEmpty = False
-                
                 for objectId in objectIds:
-                    node = (timestep, objectId)
-                        
-                    withCoords = False
-                        
-                    if originalGraph.hasNode(node) and 'value' in originalGraph._graph.node[node] and originalGraph._graph.node[node]['value'] > 1:
-                        withCoords = True
-                        
-                    if not withCoords:
-                        for edge in originalGraph._graph.out_edges(node):
-                            neighbor = edge[1]                        
-                            if  originalGraph.hasNode(neighbor) and 'value' in originalGraph._graph.node[neighbor] and  originalGraph._graph.node[neighbor]['value'] > 1:
-                                withCoords = True
-                                break
-                                                
-                    if withCoords:    
-                        pool.add(Request(partial(mergerResolver.getCoordinatesForObjectId, coordinatesForIds, labelImage[0, ..., 0], objectId)))
-                        poolIsNotEmpty = True                   
-                
-                if poolIsNotEmpty:
-                    with Timer() as coordTimer:
-                        pool.wait()
-                    logger.info("Compute coordinates time: {}".format(coordTimer.seconds()))                
+                    pool.add(Request(partial(mergerResolver.getCoordinatesForObjectId, coordinatesForIds, labelImage[0, ..., 0], timestep, objectId)))                 
+
+                # Run requests to get object ID coordinates
+                pool.wait()              
                 
                 # Fit mergers and store fit info in nodes  
                 if coordinatesForIds:
-                    with Timer() as fitTimer:
-                        mergerResolver.fitAndRefineNodesForTimestep(coordinatesForIds, timestep)
-                    logger.info("Fit and refine time: {}".format(fitTimer.seconds()))      
+                    mergerResolver.fitAndRefineNodesForTimestep(coordinatesForIds, maxObjectId, timestep)   
                 
             # Compute object features, re-run flow solver, update model and result, and get merger dictionary
             resolvedMergersDict = mergerResolver.run()
