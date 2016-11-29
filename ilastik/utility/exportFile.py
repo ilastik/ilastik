@@ -12,8 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class Default(object):
-    DivisionNames = {"names": ("timestep", "lineage_id", "parent_oid", "track_id", "child1_oid", "child_track1_id",
-                               "child2_oid", "child_track2_id")}
+    DivisionNames = {"names": ("timestep", "object_id", "lineage_id", "track_id", "child1_object_id", "child1_track_id", "child2_object_id", "child2_track_id")}
     ManualDivMap = [1, 0, 1, 1, 1, 1, 1, 1]
     KnimeId = {"names": ("object_id",)}
     IlastikId = {"names": ("timestep", "labelimage_oid")}
