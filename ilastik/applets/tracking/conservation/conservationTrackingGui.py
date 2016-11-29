@@ -129,13 +129,15 @@ class ConservationTrackingGui(TrackingBaseGui, ExportingGui):
             try:
                 if dpct:
                     solvers.append('Flow-based')
-            except:
-                pass
+            except Exception as e:
+                logger.info(str(e))
+                
             try:
                 if mht:
                     solvers.append('ILP')
-            except:
-                pass
+            except Exception as e:
+                logger.info(str(e))
+                
         else:
             if hasattr(pgmlink.ConsTrackingSolverType, "CplexSolver"):
                 solvers.append("ILP")
