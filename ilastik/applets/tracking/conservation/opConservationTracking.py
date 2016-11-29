@@ -359,6 +359,7 @@ class OpConservationTracking(Operator, ExportingOperator):
             avgSize=[0],                        
             withTracklets=False,
             sizeDependent=True,
+            detWeight=10.0,
             divWeight=10.0,
             transWeight=10.0,
             withDivisions=True,
@@ -398,6 +399,7 @@ class OpConservationTracking(Operator, ExportingOperator):
         parameters['avgSize'] = avgSize
         parameters['withTracklets'] = withTracklets
         parameters['sizeDependent'] = sizeDependent
+        parameters['detWeight'] = detWeight
         parameters['divWeight'] = divWeight
         parameters['transWeight'] = transWeight
         parameters['withDivisions'] = withDivisions
@@ -450,10 +452,9 @@ class OpConservationTracking(Operator, ExportingOperator):
         trackingGraph.convexifyCosts()
         model = trackingGraph.model
 
-        detectionWeight = 10.0 # FIXME: Should we store this weight in the parameters slot?
-        weights = {u'weights': [transWeight, detectionWeight, appearance_cost, disappearance_cost]}
+        weights = {u'weights': [transWeight, detWeight, appearance_cost, disappearance_cost]}
         if withDivisions:
-            weights = {u'weights': [transWeight, detectionWeight, divWeight, appearance_cost, disappearance_cost]}
+            weights = {u'weights': [transWeight, detWeight, divWeight, appearance_cost, disappearance_cost]}
 
         if solverName == 'Flow-based' and dpct:
             result = dpct.trackFlowBased(model, weights)
