@@ -123,111 +123,43 @@ class OpWatershedSegmentationCalculation( Operator ):
 
     #output slot
     Output      = OutputSlot()
-    
-    def execWatershedAlgorithm(self):
+
+
+    def __init__(self, *args, **kwargs):
+        super( OpWatershedSegmentationCalculation, self ).__init__( *args, **kwargs )
+
+
+    def setupOutputs(self):
+        self.Output.meta.assignFrom(self.Boundaries.meta)
+        self.Output.meta.dtype = np.uint8
+        self.Output.meta.shape = self.Boundaries.meta.shape[:-1] + (1,)
+        self.Output.meta.drange = (0,255)
+
+    def setInSlot(self, slot, subindex, roi, value):
+        pass
+
+    def execute(self, slot, subindex, roi, result):
+        #assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
+        pass
+
+    def propagateDirty(self, slot, subindex, roi):
+        pass    
+
+
+
+
+
+    def watershedAlgorithm(self, boundaries, seeds):
         """
-        handles the execution of the watershed algorithm 
+        :param boundaries: array that contains the boundaries
+        :param seeds: array that contains the seeds
+        :return: labelImage: the array, that contains the results of the watershed algorithm;
+            maxRegionLabel: the number of the watershed areas
+
+        execute the watershed algorithm of vigra on the boundary and seed array
         """
-        #print "In OpWatershedSegmentationCalculation in function execWatershedAlgorithm"
 
-        #get the data from boundaries and seeds
-        requestBoundaries   = self.Boundaries[:]
-        requestSeeds        = self.Seeds[:]
-        resultBoundaries    = requestBoundaries.wait()
-        resultSeeds         = requestSeeds.wait()
-
-        arrayBoundaries     = resultBoundaries
-        arraySeeds          = resultSeeds
-
-        #both shapes must be the same, and the axistags (means where x, y,z,t,c are)
-        assert arraySeeds.shape == arrayBoundaries.shape
-        assert self.Seeds.meta.axistags == self.Boundaries.meta.axistags
-        originalShape       = arraySeeds.shape
-
-
-        ######## data conversion #####
-        #boundaries
-        #input image: uint8 or float32
-        arrayBoundaries     = arrayBoundaries.astype(np.float32)
-
-        #for the seeds
-        #turbo: uint8, the rest: uint32
-        #arrayBoundaries     = arrayBoundaries.astype(np.uint8)
-        #TODO for turbo choose uint8
-        arraySeeds          = arraySeeds.astype(np.uint32)
-
-        ############################################################
-        # get info about 2D, 3D, with slicing or not
-        ############################################################
-
-        ######## size fixing #####
-        tags = self.Seeds.meta.axistags
-        xId = tags.index('x')
-        yId = tags.index('y')
-        zId = tags.index('z')
-        tId = tags.index('t')
-        cId = tags.index('c')
-        #number of dimensions
-        dims = len(self.Seeds.meta.shape)
-
-        ############################################################
-        # BEGIN TODO
-        ############################################################
-
-        #controlling for 2D, 2D with time, 3D, 3D with slicing 
-        if (cId >= dims or xId >= dims or yId >= dims):
-            logger.info("no channel, x or y used in data; something is probably wrong")
-
-        if (tId >= dims and zId >= dims):
-            print "only x and y available"
-            print "2D with one slice"
-
-        if (tId >= dims and zId < dims):
-            print "time not used, but z"
-            print "use the whole dataset for 3D watershed"
-
-        if (tId < dims and zId >= dims):
-            print "time used, but not z"
-            print "use the whole data sliced into 2D images for 2D watershed"
-
-        if (tId < dims and zId < dims):
-            print "time and z used"
-            print "use 3D watershed with slices, means 3D watershed of each 3d image of the data-set"
-
-
-
-
-        for i in range(dims):
-            pass
-
-
-
-
-
-
-        #cut off the channel dimension
-        arrayBoundaries     = arrayBoundaries.reshape(arrayBoundaries.shape[0:-1])
-        arraySeeds          = arraySeeds.reshape(arraySeeds.shape[0:-1])
-
-
-
-
-        #TODO handle channel
-        #TODO handle 2D or 3D, means, slicing or nonslicing
-
-        np_seeds=arraySeeds
-        labelImageArray = np.ndarray(shape=np_seeds.shape, dtype=np_seeds.dtype)
-        #TODO don't set this manually
-        timeAxisNum=0
-        timeAxis = True
-        if (timeAxis):
-            for i in range(np_seeds.shape[timeAxisNum]):
-                (labelImage, maxRegionLabel) = vigra.analysis.watershedsNew(\
-                        arrayBoundaries[i,:,:],\
-                    #neighborhood=4, seeds=nucleus[:,:,i-1], method="Turbo")
-                    #neighborhood=8, seeds=nucleus[:,:,i-1], method="RegionGrowing")
-                    seeds=arraySeeds[i,:,:], method="RegionGrowing")
-                labelImageArray[i] = labelImage
+        #TODO include the algorithm parameters of slots
 
         '''
         #watershed algorithm
@@ -256,19 +188,188 @@ class OpWatershedSegmentationCalculation( Operator ):
         #bei den membranen: die membrane selbst muessen 255 sein und der rest 0=schwarz
         #help(vigra.analysis.watershedsNew)
         '''
+        (labelImage, maxRegionLabel) = vigra.analysis.watershedsNew(\
+                boundaries,\
+                seeds=seeds,\
+                method="RegionGrowing")
+        return (labelImage, maxRegionLabel)
+
+    def removeChannelAxis(self, boundaries, seeds):
+        """
+        :param boundaries: array 1
+        :param seeds: array 2
+
+        Remove the last dimension of array 1 and array 2
+        the last dimension should be the channel, but this is tested in evaluateSlicing
+        :return: (boundaries, seeds) with removed last axis
+        """
+        #cut off the channel dimension
+        boundaries     = boundaries.reshape(boundaries.shape[0:-1])
+        seeds          = seeds.reshape(seeds.shape[0:-1])
+        return (boundaries, seeds)
+
+    def addChannelAxis(self, array):
+        """
+        :param array: array for operation
+        add a new dimension as last dimension to the array
+        this intends to restore the channel dimension
+        :return: the new array with an addtional axis at the end
+        """
+        # add axis for the channel 
+        arrayOut = array[...,np.newaxis]
+        return arrayOut
 
 
-        labelImageArrayTemp = np.ndarray(shape=originalShape, dtype=np_seeds.dtype)
-        labelImageArrayTemp[:,:,:,0] = labelImageArray
+    def evaluateSlicing(self, slot):
+        """
+        :param slot: use the data of the given slot
+        check whether the channel is the last axis
+        check whether the time axis is used or not
+        :return: tUsed True if time-axis is used, else: False
+            tId: the index of the time Axis
+        """
+        # get dimesions
+        tags = slot.meta.axistags
+        xId = tags.index('x')
+        yId = tags.index('y')
+        zId = tags.index('z')
+        tId = tags.index('t')
+        cId = tags.index('c')
+        #number of dimensions
+        dims = len(slot.meta.shape)
 
+        # channel dimension must be the last one
+        assert cId == dims - 1
+
+        #controlling for 2D, 2D with time, 3D, 3D with slicing 
+        tUsed = True if (tId < dims) else False
+        # error if x, y, or c can't aren't used
+        if (cId >= dims or xId >= dims or yId >= dims):
+            logger.info("no channel, x or y used in data; something is probably wrong")
+
+        return (tUsed, tId)
+
+    def slicedWatershedAlgorithm(self, boundaries, seeds, tAxis):
+        """
+        uses watershedAlgorithm for the main algorithm execution
+        but slices the data, sothat that algorithm can be used easily
+
+        :param boundaries: the array, that contains the boundaries data
+        :param seeds: the array, that contains the seeds data
+        :param tAxis: the dimension number of the time axis
+        :return: labelImageArray: the concatenated watershed result of all slices 
+        """
+        labelImageArray = np.ndarray(shape=seeds.shape, dtype=seeds.dtype)
+        for i in range(seeds.shape[tAxis]):
+            # iterate over the axis of the time
+            boundariesSlice  = boundaries.take( i, axis=tAxis)
+            seedsSlice       = seeds.take(      i, axis=tAxis)
+            (labelImage, maxRegionLabel) =\
+                    self.watershedAlgorithm(boundariesSlice, seedsSlice)
+
+            # write in the correct column of the output array, 
+            # because the dimensions must fit
+            if (tAxis == 0):
+                labelImageArray[i] = labelImage
+            elif (tAxis == 1):
+                labelImageArray[:,i] = labelImage
+            elif (tAxis == 2):
+                labelImageArray[:,:,i] = labelImage
+            elif (tAxis == 3):
+                labelImageArray[:,:,:,i] = labelImage
+        return labelImageArray
+
+    def execWatershedAlgorithm(self):
+        """
+        handles the execution of the watershed algorithm 
+        """
+        ############################################################
+        # BEGIN TODO
+        ############################################################
+        # maybe checkout into function
+
+        #get the data from boundaries and seeds
+        arrayBoundaries    = self.Boundaries[:].wait()
+        arraySeeds         = self.Seeds[:].wait()
+
+        #both shapes must be the same, and the axistags (means where x, y,z,t,c are)
+        assert arraySeeds.shape == arrayBoundaries.shape
+        assert self.Seeds.meta.axistags == self.Boundaries.meta.axistags
+
+
+        # TODO dataconversion depending on the input-paramter slot for which method to choose
+        ######## data conversion #####
+        #boundaries
+        #input image: uint8 or float32
+        arrayBoundaries     = arrayBoundaries.astype(np.float32)
+
+        #for the seeds
+        #turbo: uint8, the rest: uint32
+        #TODO for turbo choose uint8
+        arraySeeds          = arraySeeds.astype(np.uint32)
+
+        #TODO integrate process bar
 
 
         ############################################################
         # END TODO
         ############################################################
 
-        self.Output.setValue(labelImageArrayTemp)
 
+        ############################################################
+        #
+        ############################################################
+
+        # check the axes and return, whether the time is used and the number of its axis
+        (tUsed, tAxis) = self.evaluateSlicing(self.Seeds)
+
+        # needed for vigra to remove the channel axis
+        (arrayBoundaries, arraySeeds) = self.removeChannelAxis(arrayBoundaries, arraySeeds)
+
+
+
+        # doesn't matter whether image is 2D or 3D, at least we do slicing over time
+        # because 2D or 3D does vigra for us
+        if tUsed:
+            labelImageArray = self.slicedWatershedAlgorithm(arrayBoundaries, arraySeeds, tAxis)
+
+            # no slicing
+        else:
+            (labelImageArray, maxRegionLabel) =\
+                self.watershedAlgorithm(arrayBoundaries, arraySeeds)
+
+
+        # needed for ilastik to have a channel axis
+        labelImageArray = self.addChannelAxis(labelImageArray)
+
+
+        # set the value of the OutputSlot to the calculated array
+        self.Output.setValue(labelImageArray)
+
+        ''' 
+        #for debugging
+        tUsed = True if (tId < dims) else False
+        zUsed = True if (zId < dims) else False
+
+        if (cId >= dims or xId >= dims or yId >= dims):
+            logger.info("no channel, x or y used in data; something is probably wrong")
+
+        if (not tUsed and not zUsed):
+            print "only x and y available"
+            print "2D with one slice"
+
+        if (not tUsed and zUsed):
+            print "time not used, but z"
+            print "use the whole dataset for 3D watershed"
+
+        if (tUsed and not zUsed):
+            print "time used, but not z"
+            print "use the whole data sliced into 2D images for 2D watershed"
+
+        if (tUsed and zUsed):
+            print "time and z used"
+            print "use 3D watershed with slices, means 3D watershed of each 3d image of the data-set"
+        '''
         '''
         #self.Output.data = labelImage
         import h5py
@@ -285,25 +386,6 @@ class OpWatershedSegmentationCalculation( Operator ):
         '''
 
 
-    def __init__(self, *args, **kwargs):
-        super( OpWatershedSegmentationCalculation, self ).__init__( *args, **kwargs )
-
-
-    def setupOutputs(self):
-        self.Output.meta.assignFrom(self.Boundaries.meta)
-        self.Output.meta.dtype = np.uint8
-        self.Output.meta.shape = self.Boundaries.meta.shape[:-1] + (1,)
-        self.Output.meta.drange = (0,255)
-
-    def setInSlot(self, slot, subindex, roi, value):
-        pass
-
-    def execute(self, slot, subindex, roi, result):
-        #assert False, "Shouldn't get here.  Output is assigned a value in setupOutputs()"
-        pass
-
-    def propagateDirty(self, slot, subindex, roi):
-        pass    
 
 
 class OpWatershedSegmentationLabelPipeline( Operator ):
