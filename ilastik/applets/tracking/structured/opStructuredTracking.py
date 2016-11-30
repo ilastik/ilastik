@@ -106,7 +106,6 @@ class OpStructuredTracking(OpConservationTracking):
                                   "Go back to Training applet and Save your training for each crop.")
             return
 
-        print "in _runStructuredLearning  <============================================"
         self._updateCropsFromOperator()
         median_obj_size = [0]
 
@@ -143,16 +142,13 @@ class OpStructuredTracking(OpConservationTracking):
         self.Parameters.setValue(parameters, check_changed=False)
 
         foundAllArcs = False;
-        new_max_nearest_neighbors = maxNearestNeighbors-1
+        new_max_nearest_neighbors = max ([maxNearestNeighbors-1,1])
         maxObjOK = True
         parameters['max_nearest_neighbors'] = maxNearestNeighbors
-        while not foundAllArcs and maxObjOK and new_max_nearest_neighbors<3:
+        while not foundAllArcs and maxObjOK and new_max_nearest_neighbors<10:
             new_max_nearest_neighbors += 1
 
             time_range = range (0,self.LabelImage.meta.shape[0])
-
-            # if empty_frame:
-            #     raise DatasetConstraintError('Structured Learning', 'Can not track frames with 0 objects, abort.')
 
             parameters['max_nearest_neighbors'] = new_max_nearest_neighbors
             self.Parameters.setValue(parameters, check_changed=False)
@@ -162,9 +158,9 @@ class OpStructuredTracking(OpConservationTracking):
                 raise DatasetConstraintError('Structured Learning', 'Can not track frames with 0 objects, abort.')
 
             hypothesesGraph.insertEnergies()
-            trackingGraph = hypothesesGraph.toTrackingGraph()
-            import pprint
-            pprint.pprint(trackingGraph.model)
+            # trackingGraph = hypothesesGraph.toTrackingGraph()
+            # import pprint
+            # pprint.pprint(trackingGraph.model)
 
             maxDist = 200
             sizeDependent = False
@@ -183,7 +179,7 @@ class OpStructuredTracking(OpConservationTracking):
 
                     if not cropKey in self.Annotations.value.keys():
                         if not withBatchProcessing:
-                            self._criticalMessage("You have not trained or saved your training for " + str(cropKey) + \
+                            gui._criticalMessage("You have not trained or saved your training for " + str(cropKey) + \
                                               ". \nGo back to the Training applet and save all your training!")
                         return
 
@@ -241,8 +237,6 @@ class OpStructuredTracking(OpConservationTracking):
                                                     "Either remove track(s) from these objects or train the object count classifier with more labels!")
 
 
-                                        #foundAllArcs &= structuredLearningTracker.addArcLabel(time-1, int(previous_label), int(label), float(trackCountIntersection))
-
                                         sink = (time, int(label))
                                         foundAllArcs = False
                                         for edge in hypothesesGraph._graph.in_edges(sink): # an edge is a tuple of source and target nodes
@@ -264,18 +258,6 @@ class OpStructuredTracking(OpConservationTracking):
                                     hypothesesGraph._graph.node[(time, int(label))]['value'] = trackCount
                                     logger.info("[structuredTrackingGui] NODES: {} {}".format(time, int(label)))
 
-                                #     structuredLearningTracker.addFirstLabels(time, int(label), float(trackCount))
-                                #     if time > self.Crops.value[cropKey]["time"][0]:
-                                #         structuredLearningTracker.addDisappearanceLabel(time, int(label), 0.0)
-                                #
-                                # elif type[0] == "LAST":
-                                #     structuredLearningTracker.addLastLabels(time, int(label), float(trackCount))
-                                #     if time < self.Crops.value[cropKey]["time"][1]:
-                                #         structuredLearningTracker.addAppearanceLabel(time, int(label), 0.0)
-                                #
-                                # elif type[0] == "INTERMEDIATE":
-                                #     structuredLearningTracker.addIntermediateLabels(time, int(label), float(trackCount))
-
                     if foundAllArcs and "divisions" in crop.keys():
                         divisions = crop["divisions"]
 
@@ -290,22 +272,6 @@ class OpStructuredTracking(OpConservationTracking):
                             parent = int(self.getLabelInCrop(cropKey, time, track))
 
                             if parent >=0:
-                                # structuredLearningTracker.addDivisionLabel(time, parent, 1.0)
-                                # structuredLearningTracker.addAppearanceLabel(time, parent, 1.0)
-                                # structuredLearningTracker.addDisappearanceLabel(time, parent, 1.0)
-                                #
-                                # child0 = int(self.getLabelInCrop(cropKey, time+1, division[0][0]))
-                                # structuredLearningTracker.addDisappearanceLabel(time+1, child0, 1.0)
-                                # structuredLearningTracker.addAppearanceLabel(time+1, child0, 1.0)
-                                # foundAllArcs &= structuredLearningTracker.addArcLabel(time, parent, child0, 1.0)
-                                # if not foundAllArcs:
-                                #     logger.info("[structuredTrackingGui] Increasing max nearest neighbors!")
-                                #     break
-                                #
-                                # child1 = int(self.getLabelInCrop(cropKey, time+1, division[0][1]))
-                                # structuredLearningTracker.addDisappearanceLabel(time+1, child1, 1.0)
-                                # structuredLearningTracker.addAppearanceLabel(time+1, child1, 1.0)
-                                # foundAllArcs &= structuredLearningTracker.addArcLabel(time, parent, child1, 1.0)
                                 children = [int(self.getLabelInCrop(cropKey, time+1, division[0][i])) for i in [0, 1]]
                                 parentNode = (time, parent)
                                 hypothesesGraph._graph.node[parentNode]['divisionValue'] = 1
@@ -330,37 +296,36 @@ class OpStructuredTracking(OpConservationTracking):
             if not withBatchProcessing:
                 gui._drawer.maxNearestNeighborsSpinBox.setValue(maxNearestNeighbors)
 
-        forbidden_cost = 0.0
-        ep_gap = 0.005
-
         detectionWeight = self.DetectionWeight.value
         divisionWeight = self.DivisionWeight.value
         transitionWeight = self.TransitionWeight.value
         disappearanceWeight = self.DisappearanceWeight.value
         appearanceWeight = self.AppearanceWeight.value
 
-        # will be needed for python defined TRANSITION function
-        #structuredLearningTrackerParameters.register_transition_func(self.mainOperator.track_transition_func_no_weight)
-        # structuredLearningTracker.structuredLearning(structuredLearningTrackerParameters)
-
         hypothesesGraph.insertEnergies()
         # crops away everything (arcs and nodes) that doesn't have 'value' set
         prunedGraph = hypothesesGraph.pruneGraphToSolution(distanceToSolution=0) # width of non-annotated border needed for negative training examples
 
         trackingGraph = prunedGraph.toTrackingGraph()
+
         # trackingGraph.convexifyCosts()
         model = trackingGraph.model
         model['settings']['optimizerEpGap'] = 0.005
         gt = prunedGraph.getSolutionDictionary()
-        pprint.pprint(gt)
+
+        initialWeights = {u'weights': [transitionWeight, detectionWeight, appearanceWeight, disappearanceWeight]}
+        if withDivisions:
+            initialWeights = {u'weights': [transitionWeight, detectionWeight, divisionWeight, appearanceWeight, disappearanceWeight]}
+
+        mht.trainWithWeightInitialization(model,gt, initialWeights)
         weightsDict = mht.train(model, gt)
 
         weights = weightsDict['weights']
         if not withDivisions:
             weights.insert(2,0.0)
         if not withBatchProcessing and withDivisions and numAllAnnotatedDivisions == 0 and not weights[2] == 0.0:
-            self._informationMessage ("Divisible objects are checked, but you did not annotate any divisions in your tracking training. " + \
-                                 "The resulting division weight might be arbitrarily high and if there are divisions present in the dataset, " +\
+            gui._informationMessage("Divisible objects are checked, but you did not annotate any divisions in your tracking training. " + \
+                                 "The resulting division weight might be arbitrarily and if there are divisions present in the dataset, " +\
                                  "they might not be present in the tracking solution.")
 
         norm = 0
@@ -381,6 +346,52 @@ class OpStructuredTracking(OpConservationTracking):
             gui._drawer.transWeightBox.setValue(self.TransitionWeight.value)
             gui._drawer.appearanceBox.setValue(self.AppearanceWeight.value)
             gui._drawer.disappearanceBox.setValue(self.DisappearanceWeight.value)
+
+        if not withBatchProcessing:
+            if self.DetectionWeight.value < 0.0:
+                gui._informationMessage ("Detection weight calculated was negative. Tracking solution will be re-calculated with non-negativity constraints for learning weights. " + \
+                    "Furthermore, you should add more training and recalculate the learning weights in order to improve your tracking solution.")
+            elif self.DivisionWeight.value < 0.0:
+                gui._informationMessage ("Division weight calculated was negative. Tracking solution will be re-calculated with non-negativity constraints for learning weights. " + \
+                    "Furthermore, you should add more division cells to your training and recalculate the learning weights in order to improve your tracking solution.")
+            elif self.TransitionWeight.value < 0.0:
+                gui._informationMessage ("Transition weight calculated was negative. Tracking solution will be re-calculated with non-negativity constraints for learning weights. " + \
+                    "Furthermore, you should add more transitions to your training and recalculate the learning weights in order to improve your tracking solution.")
+            elif self.AppearanceWeight.value < 0.0:
+                gui._informationMessage ("Appearance weight calculated was negative. Tracking solution will be re-calculated with non-negativity constraints for learning weights. " + \
+                    "Furthermore, you should add more appearances to your training and recalculate the learning weights in order to improve your tracking solution.")
+            elif self.DisappearanceWeight.value < 0.0:
+                gui._informationMessage ("Disappearance weight calculated was negative. Tracking solution will be re-calculated with non-negativity constraints for learning weights. " + \
+                    "Furthermore, you should add more disappearances to your training and recalculate the learning weights in order to improve your tracking solution.")
+
+        if self.DetectionWeight.value < 0.0 or self.DivisionWeight.value < 0.0 or self.TransitionWeight.value < 0.0 or \
+            self.AppearanceWeight.value < 0.0 or self.DisappearanceWeight.value < 0.0:
+
+            model['settings']['nonNegativeWeightsOnly'] = True
+            weightsDict = mht.train(model, gt)
+
+            weights = weightsDict['weights']
+            if not withDivisions:
+                weights.insert(2,0.0)
+
+            norm = 0
+            for i in range(5):
+                norm += weights[i]*weights[i]
+            norm = math.sqrt(norm)
+
+            if norm > 0.0000001:
+                self.TransitionWeight.setValue(weights[0]/norm)
+                self.DetectionWeight.setValue(weights[1]/norm)
+                self.DivisionWeight.setValue(weights[2]/norm)
+                self.AppearanceWeight.setValue(weights[3]/norm)
+                self.DisappearanceWeight.setValue(weights[4]/norm)
+
+            if not withBatchProcessing:
+                gui._drawer.detWeightBox.setValue(self.DetectionWeight.value)
+                gui._drawer.divWeightBox.setValue(self.DivisionWeight.value)
+                gui._drawer.transWeightBox.setValue(self.TransitionWeight.value)
+                gui._drawer.appearanceBox.setValue(self.AppearanceWeight.value)
+                gui._drawer.disappearanceBox.setValue(self.DisappearanceWeight.value)
 
         logger.info("Structured Learning Tracking Weights (normalized):")
         logger.info("   detection weight     = {}".format(self.DetectionWeight.value))
