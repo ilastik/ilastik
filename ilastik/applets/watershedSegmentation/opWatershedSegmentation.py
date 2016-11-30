@@ -51,6 +51,7 @@ class OpWatershedSegmentation(Operator):
     ############################################################
     # watershed algorithm parameters (optional)
     ############################################################
+    # a list of options can be found in function: prepareInputParameter
     WSNeighbors         = InputSlot(value="direct")
     WSMethod            = InputSlot(value="RegionGrowing")
     WSTerminate         = InputSlot(value=vigra.analysis.SRGType.CompleteGrow)
@@ -239,8 +240,7 @@ class OpWatershedSegmentationCalculation( Operator ):
                 neighborhood    = neighbors,
                 method          = method,
                 terminate       = terminate,
-                max_cost        = 200)
-                #max_cost        = maxCost)
+                max_cost        = maxCost)
 
 
         return (labelImage, maxRegionLabel)
