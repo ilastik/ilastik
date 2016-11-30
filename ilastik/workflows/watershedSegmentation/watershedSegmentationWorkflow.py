@@ -133,7 +133,7 @@ class WatershedSegmentationWorkflow(Workflow):
         # connect the output of the watershed-applet to the inputs of the data-export
         opDataExport.Inputs.resize( len(self.EXPORT_NAMES) )
         opDataExport.Inputs[0].connect( opWatershedSegmentation.CorrectedSeedsOut )
-        opDataExport.Inputs[1].connect( opWatershedSegmentation.WatershedCalculations )
+        opDataExport.Inputs[1].connect( opWatershedSegmentation.WatershedCalc )
         for slot in opDataExport.Inputs:
             assert slot.partner is not None
         #for more information, see ilastik.org/lazyflow/advanced.html OperatorWrapper class

@@ -235,15 +235,6 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         """
         Overridden from base class (LayerViewerGui)
         """
-        op = self.topLevelOperatorView
-        
-        #handler which takes the qt_signal and the slot that fits to this signal and connects them
-        # clean-up and dirty-Notification will be done here too
-        def configure_update_handlers( qt_signal, op_slot ):
-            qt_signal.connect( self.configure_operator_from_gui )
-            op_slot.notifyDirty( self.configure_gui_from_operator )
-            self.__cleanup_fns.append( partial( op_slot.unregisterDirty, self.configure_gui_from_operator ) )
-
         def control_layout(*args):
             """
             Define the way, how the input widgets are shown in the gui
@@ -360,7 +351,7 @@ class WatershedSegmentationGui(WatershedLabelingGui):
         # therefore a variable is used to not lose this layer
         if not self._firstClick_runWatershedPushButton:
             # WatershedCalculations
-            self.initLayer(op.WatershedCalculations, "Watershed Calculations", layers)
+            self.initLayer(op.WatershedCalc, "Watershed Calculations", layers)
 
         return layers
 
