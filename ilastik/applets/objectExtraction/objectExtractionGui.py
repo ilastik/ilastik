@@ -690,7 +690,22 @@ if __name__ == "__main__":
     features["Standard"]["Count"]["displaytext"] = "Size in pixels"
     features["Standard"]["Count"]["detailtext"] = "Total size of the object in pixels. No correction for anisotropic resolution or anything else."
     features["Standard"]["Count"]["group"] = "Shape"
-    
+
+    features["Standard"]["Count"] = {}
+    features["Standard"]["Count"]["displaytext"] = "Size in pixels"
+    features["Standard"]["Count"]["detailtext"] = "Total size of the object in pixels. No correction for anisotropic resolution or anything else."
+    features["Standard"]["Count"]["group"] = "Shape"
+
+    features["Standard"]["Coord<Minimum>"] = {}
+    features["Standard"]["Coord<Minimum>"]["displaytext"]= "Bounding Box Minimum"
+    features["Standard"]["Coord<Minimum>"]["detailtext"]= "The coordinates of the lower left corner of the object's bounding box. The first axis is x, then y, then z (if available)."
+    features["Standard"]["Coord<Minimum>"]["group"] = "Location"
+
+    features["Standard"]["Coord<Maximum>"] = {}
+    features["Standard"]["Coord<Maximum>"]["displaytext"]= "Bounding Box Maximum"
+    features["Standard"]["Coord<Maximum>"]["detailtext"]= "The coordinates of the upper right corner of the object's bounding box. The first axis is x, then y, then z (if available)."
+    features["Standard"]["Coord<Maximum>"]["group"] = "Location"
+
     dlg = FeatureSelectionDialog(featureDict=features)
-    QTimer.singleShot(100, dlg.raise_)    
+    QTimer.singleShot(100, dlg.raise_)
     dlg.exec_()
