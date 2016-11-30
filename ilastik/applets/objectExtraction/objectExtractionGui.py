@@ -82,15 +82,10 @@ class FeatureSelectionDialog(QDialog):
         self.ui.allButton.pressed.connect(self.handleAll)
         self.ui.noneButton.pressed.connect(self.handleNone)
 
-        self.ui.treeWidget.header().setResizeMode(QHeaderView.Interactive)
-        self.ui.treeWidget.header().setStretchLastSection(True)
-        self.ui.treeWidget.viewport().setMouseTracking(True)
-
         # Must intercept events from the viewport, since the TreeWidget apparently
         # swallows them up before we can process them in our own eventFilter
         self.ui.treeWidget.viewport().installEventFilter(self)
-
-        self.ui.textBrowser.setText("Click on the \"?\" to get detailed information about a feature")
+        self.ui.treeWidget.viewport().setMouseTracking(True)
 
         self.countChecked = {}
         self.countAll = {}
@@ -103,19 +98,13 @@ class FeatureSelectionDialog(QDialog):
 
     def eventFilter(self, watched, event):
         """
-        Reset the TreeWidget column widths whenever the dialog is resized
+        Auto-show the help text when the mouse hovers over an item.
         """
         assert watched is self.ui.treeWidget.viewport()
-
-        if isinstance(event, QResizeEvent):
-            self.ui.treeWidget.header().resizeSection(0, self.ui.treeWidget.width() - 50)
-            self.ui.treeWidget.header().resizeSection(1, 50)
-
-        # Auto-show the help text when the mouse hovers over an item.
         if isinstance(event, QMouseEvent) and event.type() == QEvent.MouseMove:
             item = self.ui.treeWidget.itemAt(event.pos())
             if item is not None:
-                self.updateTree(item, 1) # Simulate clicking on the '?' column
+                self.showItemHelp(item)
 
         return False
 
@@ -126,7 +115,6 @@ class FeatureSelectionDialog(QDialog):
                 continue
             parent = QTreeWidgetItem(self.ui.treeWidget)
             parent.setText(0, pluginName)
-            parent.setText(1, "?")
 
             parent.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
             # hack to ensure checkboxes visible
@@ -191,7 +179,6 @@ class FeatureSelectionDialog(QDialog):
                 else:
                     itemtext = name
                 item.setText(0, itemtext)
-                item.setText(1, "?")
 
                 self.displayNamesDict[itemtext] = name
                 item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
@@ -234,10 +221,6 @@ class FeatureSelectionDialog(QDialog):
         # Because we maintain self.ui.treeWidget.currentItem @ None
         # the self.ui.treeWidget.currentItem only gets changed when the signal is triggered by clicking on the text.
         # Relies on self.ui.treeWidget.setCurrentItem(None) in populate()
-        if col == 1:
-            self.showItemHelp(item)
-            return
-        
         itemParent = item.parent()
         currentItem = self.ui.treeWidget.currentItem()
         if item.childCount()>0: # user clicked a Plugin Name or a group

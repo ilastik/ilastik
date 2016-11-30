@@ -25,7 +25,7 @@
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
      </property>
-     <widget class="QWidget" name="">
+     <widget class="QWidget" name="layoutWidget">
       <layout class="QVBoxLayout" name="verticalLayout">
        <item>
         <widget class="QTreeWidget" name="treeWidget">
@@ -36,16 +36,11 @@
           </sizepolicy>
          </property>
          <property name="columnCount">
-          <number>2</number>
+          <number>1</number>
          </property>
          <column>
           <property name="text">
            <string notr="true">Feature</string>
-          </property>
-         </column>
-         <column>
-          <property name="text">
-           <string>Help</string>
           </property>
          </column>
         </widget>
