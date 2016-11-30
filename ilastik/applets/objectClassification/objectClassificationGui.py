@@ -283,6 +283,8 @@ class ObjectClassificationGui(LabelingGui):
     def handleSubsetFeaturesClicked(self):
         mainOperator = self.topLevelOperatorView
         computedFeatures = copy.deepcopy(mainOperator.ComputedFeatureNames([]).wait())
+        # do NOT show default features, the user did not want them for classification
+        # the key for the fake plugin of default features is taken from the top of opObjectExtraction file
         if mainOperator.SelectedFeatures.ready():
             selectedFeatures = copy.deepcopy(mainOperator.SelectedFeatures([]).wait())
         else:

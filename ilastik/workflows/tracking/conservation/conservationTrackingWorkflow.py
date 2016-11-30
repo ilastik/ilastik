@@ -66,8 +66,8 @@ class ConservationTrackingWorkflowBase( Workflow ):
                                                                       name="Object Feature Computation")                                                                     
         
         opObjectExtraction = self.objectExtractionApplet.topLevelOperator
-        opObjectExtraction.FeatureNamesVigra.setValue(configConservation.allFeaturesObjectCount)        
-        
+        opObjectExtraction.FeatureNamesVigra.setValue(configConservation.allFeaturesObjectCount)
+
         self.divisionDetectionApplet = self._createDivisionDetectionApplet(configConservation.selectedFeaturesDiv) # Might be None
 
         if self.divisionDetectionApplet:

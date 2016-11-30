@@ -171,8 +171,8 @@ class testOpRegionFeaturesAgainstNumpy(object):
                 assert npmean == means[iobj]
                 #currently, we have a margin of 30, this assert is very dependent on it
                 #FIXME: make margin visible from outside and use it here
-                zmin = max(mins[iobj][2]-1, 0)
-                zmax = min(maxs[iobj][2]+1, self.rawimage.shape[3])
+                zmin = int(max(mins[iobj][2]-1, 0))
+                zmax = int(min(maxs[iobj][2]+1, self.rawimage.shape[3]))
 
                 exclmask = labelimage[t,:, :, zmin:zmax, :]!=iobj
                 npsum_excl = np.sum(np.asarray(self.rawimage)[t,:, :, zmin:zmax,:][exclmask])

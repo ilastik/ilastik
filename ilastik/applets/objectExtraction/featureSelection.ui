@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>508</width>
-    <height>473</height>
+    <width>1076</width>
+    <height>991</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -20,9 +20,23 @@
       <layout class="QVBoxLayout" name="verticalLayout">
        <item>
         <widget class="QTreeWidget" name="treeWidget">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="MinimumExpanding" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="columnCount">
+          <number>2</number>
+         </property>
          <column>
           <property name="text">
            <string notr="true">Feature</string>
+          </property>
+         </column>
+         <column>
+          <property name="text">
+           <string/>
           </property>
          </column>
         </widget>
