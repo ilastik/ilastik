@@ -21,7 +21,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class OpStructuredTracking(OpTrackingBase):
+class OpStructuredTrackingPgmlink(OpTrackingBase):
     DivisionProbabilities = InputSlot(stype=Opaque, rtype=List)
     DetectionProbabilities = InputSlot(stype=Opaque, rtype=List)
     NumLabels = InputSlot()
@@ -55,7 +55,7 @@ class OpStructuredTracking(OpTrackingBase):
 
     def __init__(self, parent=None, graph=None):
 
-        super(OpStructuredTracking, self).__init__(parent=parent, graph=graph)
+        super(OpStructuredTrackingPgmlink, self).__init__(parent=parent, graph=graph)
 
         self.labels = {}
         self.divisions = {}
@@ -96,7 +96,7 @@ class OpStructuredTracking(OpTrackingBase):
         self.Crops.notifyReady(bind(self._updateCropsFromOperator) )
 
     def setupOutputs(self):
-        super(OpStructuredTracking, self).setupOutputs()
+        super(OpStructuredTrackingPgmlink, self).setupOutputs()
         self.MergerOutput.meta.assignFrom(self.LabelImage.meta)
         self.RelabeledImage.meta.assignFrom(self.LabelImage.meta)
         self._ndim = 2 if self.LabelImage.meta.shape[3] == 1 else 3
@@ -120,7 +120,7 @@ class OpStructuredTracking(OpTrackingBase):
             parameters = self.Parameters.value
             trange = range(roi.start[0], roi.stop[0])
             original = np.zeros(result.shape, dtype=slot.meta.dtype)
-            super(OpStructuredTracking, self).execute(slot, subindex, roi, original)
+            super(OpStructuredTrackingPgmlink, self).execute(slot, subindex, roi, original)
 
             result[:] = self.LabelImage.get(roi).wait()
             pixel_offsets=roi.start[1:-1]  # offset only in pixels, not time and channel
@@ -161,7 +161,7 @@ class OpStructuredTracking(OpTrackingBase):
                         and 'withMergerResolution' in parameters.keys() and parameters['withMergerResolution']):
                         result[t-roi.start[0],...,0] = self._relabelMergers(result[t-roi.start[0],...,0], t, pixel_offsets, False, True)
         else:  # default bahaviour
-            super(OpStructuredTracking, self).execute(slot, subindex, roi, result)
+            super(OpStructuredTrackingPgmlink, self).execute(slot, subindex, roi, result)
 
         return result     
 
@@ -353,7 +353,7 @@ class OpStructuredTracking(OpTrackingBase):
                                         for track in trackSet:
 
                                             if not foundAllArcs:
-                                                logger.info("[opStructuredTracking] Increasing max nearest neighbors!")
+                                                logger.info("[opStructuredTrackingPgmlink] Increasing max nearest neighbors!")
                                                 break
 
                                             # is this a FIRST, INTERMEDIATE, LAST, SINGLETON(FIRST_LAST) object of a track (or FALSE_DETECTION)
@@ -367,7 +367,7 @@ class OpStructuredTracking(OpTrackingBase):
 
                                                 foundAllArcs &= self.consTracker.addArcLabel(time-1, int(previous_label), int(label), float(trackCountIntersection))
                                                 if not foundAllArcs:
-                                                    logger.info("[opStructuredTracking] Increasing max nearest neighbors!")
+                                                    logger.info("[opStructuredTrackingPgmlink] Increasing max nearest neighbors!")
                                                     break
 
                                         if type[0] == "FIRST":
@@ -387,7 +387,7 @@ class OpStructuredTracking(OpTrackingBase):
                                 divisions = crop["divisions"]
                                 for track in divisions.keys():
                                     if not foundAllArcs:
-                                        logger.info("[opStructuredTracking] Increasing max nearest neighbors!")
+                                        logger.info("[opStructuredTrackingPgmlink] Increasing max nearest neighbors!")
                                         break
                                     division = divisions[track]
                                     time = int(division[1])
@@ -403,7 +403,7 @@ class OpStructuredTracking(OpTrackingBase):
                                         self.consTracker.addAppearanceLabel(time+1, child0, 1.0)
                                         foundAllArcs &= self.consTracker.addArcLabel(time, parent, child0, 1.0)
                                         if not foundAllArcs:
-                                            logger.info("[opStructuredTracking] Increasing max nearest neighbors!")
+                                            logger.info("[opStructuredTrackingPgmlink] Increasing max nearest neighbors!")
                                             break
 
                                         child1 = int(self.getLabelInCrop(cropKey, time+1, division[0][1]))
@@ -411,7 +411,7 @@ class OpStructuredTracking(OpTrackingBase):
                                         self.consTracker.addAppearanceLabel(time+1, child1, 1.0)
                                         foundAllArcs &= self.consTracker.addArcLabel(time, parent, child1, 1.0)
                                         if not foundAllArcs:
-                                            logger.info("[opStructuredTracking] Increasing max nearest neighbors!")
+                                            logger.info("[opStructuredTrackingPgmlink] Increasing max nearest neighbors!")
                                             break
 
 
@@ -622,7 +622,7 @@ class OpStructuredTracking(OpTrackingBase):
                 return [type]
 
     def propagateDirty(self, slot, subindex, roi):
-        super(OpStructuredTracking, self).propagateDirty(slot, subindex, roi)
+        super(OpStructuredTrackingPgmlink, self).propagateDirty(slot, subindex, roi)
 
         if slot == self.NumLabels:
             if self.parent.parent.trackingApplet._gui \
