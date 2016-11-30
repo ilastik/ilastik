@@ -18,7 +18,7 @@
 # on the ilastik web site at:
 #		   http://ilastik.org/license.html
 ###############################################################################
-from PyQt4.QtGui import QColor, QTreeWidgetItem, QMessageBox
+from PyQt4.QtGui import QColor, QTreeWidgetItem, QMessageBox, QHeaderView, QResizeEvent
 from PyQt4 import uic
 from PyQt4.QtCore import Qt
 
@@ -82,9 +82,9 @@ class FeatureSelectionDialog(QDialog):
         self.ui.allButton.pressed.connect(self.handleAll)
         self.ui.noneButton.pressed.connect(self.handleNone)
 
-        #self.ui.treeWidget.header().setResizeMode(QtGui.QHeaderView.ResizeToContents)
-        self.ui.treeWidget.header().setResizeMode(QtGui.QHeaderView.Stretch)
-        self.ui.treeWidget.header().setStretchLastSection(False)
+        self.ui.treeWidget.header().setResizeMode(QHeaderView.Interactive)
+        self.ui.treeWidget.header().setStretchLastSection(True)
+        self.ui.treeWidget.installEventFilter(self)
 
         self.ui.textBrowser.setText("Click on the \"?\" to get detailed information about a feature")
 
@@ -97,6 +97,16 @@ class FeatureSelectionDialog(QDialog):
         self.set_margin()
         self.setObjectName("FeatureSelectionDialog")
 
+    def eventFilter(self, watched, event):
+        """
+        Reset the TreeWidget column widths whenever the dialog is resized
+        """
+        assert watched is self.ui.treeWidget
+        if isinstance(event, QResizeEvent):
+            self.ui.treeWidget.header().resizeSection(0, self.ui.treeWidget.width() - 50)
+            self.ui.treeWidget.header().resizeSection(1, 50)
+        return False
+
     def populate(self):
         #self.ui.treeWidget.setColumnCount(2)
         for pluginName, features in self.featureDict.iteritems():
@@ -105,6 +115,7 @@ class FeatureSelectionDialog(QDialog):
             parent = QTreeWidgetItem(self.ui.treeWidget)
             parent.setText(0, pluginName)
             parent.setText(1, "?")
+
             parent.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
             # hack to ensure checkboxes visible
             parent.setCheckState(0, Qt.Checked)
@@ -652,3 +663,24 @@ class ObjectExtractionGuiNonInteractive(QWidget):
 
     def stopAndCleanUp(self):
         pass
+
+
+#
+# Quick GUI testing...
+#
+if __name__ == "__main__":
+    from PyQt4.QtGui import QApplication
+    from PyQt4.QtCore import QTimer
+    
+    app = QApplication([])
+    
+    features = {}
+    features["Standard"] = {}
+    features["Standard"]["Count"] = {}
+    features["Standard"]["Count"]["displaytext"] = "Size in pixels"
+    features["Standard"]["Count"]["detailtext"] = "Total size of the object in pixels. No correction for anisotropic resolution or anything else."
+    features["Standard"]["Count"]["group"] = "Shape"
+    
+    dlg = FeatureSelectionDialog(featureDict=features)
+    QTimer.singleShot(100, dlg.raise_)    
+    dlg.exec_()
